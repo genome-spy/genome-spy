@@ -13,7 +13,7 @@ import { compileExpression } from "./expressionCompiler.js";
  *
  * @param {string} expr
  * @param {(name: string) => import("./types.js").ParamRef<any> | undefined} resolve
- * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
+ * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined, resolveAutoZoomLevelRef?: () => import("./types.js").ParamRef<number> }} [options]
  * @returns {BoundExpression}
  */
 export function bindExpression(expr, resolve, options = {}) {

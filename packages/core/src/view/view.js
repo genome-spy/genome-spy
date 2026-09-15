@@ -30,6 +30,7 @@ import { isInChromeSubtree } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
+import { warnOnce } from "../utils/warning.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -248,6 +249,17 @@ export default class View {
             context.animator,
             { snapTransitionedUpdates: true }
         );
+
+        if ("mark" in spec) {
+            this.paramRuntime.registerLazyExpression(
+                "zoomLevel",
+                "zoomLevel()",
+                () =>
+                    warnOnce(
+                        'The automatic zoomLevel parameter is deprecated. Use zoomLevel() or an explicit channel such as zoomLevel("x") instead.'
+                    )
+            );
+        }
 
         const params = [
             ...(spec.params ?? []),
@@ -1290,6 +1302,19 @@ export default class View {
         return this.getDataAncestors()
             .map((view) => view.resolutions.scale[primaryChannel])
             .find((resolution) => resolution);
+    }
+
+    /**
+     * Rebinds initialized automatic zoom expressions in data descendants after
+     * a positional scale resolution is added or removed.
+     * @internal
+     */
+    notifyScaleResolutionChange() {
+        this.visit((view) => {
+            if (view.getDataAncestors().includes(this)) {
+                view.paramRuntime.refreshScaleResolutionBindings();
+            }
+        });
     }
 
     /**

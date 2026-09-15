@@ -126,6 +126,10 @@ const functionContext = {
  */
 export function analyzeExpression(expr) {
     let usesScaleHelper = false;
+    const analysisRef = /** @type {any} */ ({
+        get: () => 1,
+        subscribe: /** @returns {() => void} */ () => () => undefined,
+    });
     const fn = createFunction(
         expr,
         {},
@@ -140,7 +144,13 @@ export function analyzeExpression(expr) {
                     getMappingRef: /** @returns {undefined} */ () => undefined,
                     getConfigurationRef: /** @returns {undefined} */ () =>
                         undefined,
+                    getZoomLevelRef: /** @returns {undefined} */ () =>
+                        undefined,
                 });
+            },
+            resolveAutoZoomLevelRef: () => {
+                usesScaleHelper = true;
+                return analysisRef;
             },
         }
     );
@@ -174,6 +184,10 @@ function buildFunctions(codegen, context) {
             args
         ) => buildScaleHelperCall(codegen, context, kind, args);
     }
+    fn.zoomLevel = (
+        /** @type {any[]} */
+        args
+    ) => buildZoomLevelCall(context, args);
 
     return fn;
 }
@@ -184,18 +198,22 @@ function buildFunctions(codegen, context) {
  * @prop { string[] } globals
  * @prop { string } code
  * @prop { import("../paramRuntime/types.js").ParamRef<any>[] } [scaleDependencies]
+ * @prop {{ kind: ScaleHelperKind, resolution: import("../scales/scaleResolution.js").default }[]} [scaleHelperDependencies]
  *
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
  * @typedef {object} ExpressionCompileContext
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ * @prop {() => import("../paramRuntime/types.js").ParamRef<number>} [resolveAutoZoomLevelRef]
  *
- * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "linearize"} ScaleHelperKind
+ * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "linearize" | "zoomLevel"} ScaleHelperKind
  *
  * @typedef {ExpressionCompileContext & {
  *   globalvar: string,
  *   globalObject: Record<string, any>,
- *   getScaleHelper: (kind: ScaleHelperKind, channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+ *   getScaleHelper: (kind: ScaleHelperKind, channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> },
+ *   getAutoZoomHelper: () => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<number> } | undefined,
+ *   recordScaleHelperDependency: (kind: ScaleHelperKind, resolution: import("../scales/scaleResolution.js").default) => void
  * }} ScaleHelperCompileContext
  */
 
@@ -242,6 +260,60 @@ function buildScaleHelperCall(codegen, context, kind, args) {
         .map((arg) => codegen(arg))
         .join(",");
     return `${context.globalvar}["${helper.codeName}"](${remainingArgs})`;
+}
+
+/**
+ * @param {ScaleHelperCompileContext} context
+ * @param {any[]} args
+ * @returns {string}
+ */
+function buildZoomLevelCall(context, args) {
+    if (args.length > 1) {
+        throw new Error(
+            'Scale helper "zoomLevel" accepts zero arguments or one literal channel name.'
+        );
+    }
+
+    if (args.length === 1) {
+        const channel = getLiteralString(args[0]);
+        if (!channel) {
+            throw new Error(
+                'Scale helper "zoomLevel" requires a literal channel name.'
+            );
+        }
+
+        const resolution = context.resolveScaleResolution?.(channel);
+        if (!resolution) {
+            throw new Error(
+                `Unknown scale channel "${channel}" in expression helper "zoomLevel".`
+            );
+        }
+
+        const helper = context.getScaleHelper("zoomLevel", channel, resolution);
+        return `${context.globalvar}["${helper.codeName}"]()`;
+    }
+
+    const automatic = context.getAutoZoomHelper();
+    const fallbackCalls = [];
+    for (const channel of /** @type {const} */ (["x", "y"])) {
+        const resolution = context.resolveScaleResolution?.(channel);
+        if (resolution) {
+            context.recordScaleHelperDependency("zoomLevel", resolution);
+            if (!automatic) {
+                const helper = context.getScaleHelper(
+                    "zoomLevel",
+                    channel,
+                    resolution
+                );
+                fallbackCalls.push(
+                    `${context.globalvar}["${helper.codeName}"]()`
+                );
+            }
+        }
+    }
+    return automatic
+        ? `${context.globalvar}["${automatic.codeName}"]()`
+        : `Math.sqrt(${fallbackCalls.join("*") || "1"})`;
 }
 
 /**
@@ -305,6 +377,9 @@ function createScaleHelperFunction(kind, resolution) {
                       : value
             );
     }
+    if (kind === "zoomLevel") {
+        return () => run(() => resolution.getZoomLevel());
+    }
     throw new Error("Unknown scale helper: " + kind);
 }
 
@@ -341,6 +416,7 @@ function runWithActiveScaleResolution(resolution, kind, fn) {
 function createScaleDependency(kind, resolution) {
     if (kind === "domain") return resolution.getDomainRef();
     if (kind === "linearize") return resolution.getConfigurationRef();
+    if (kind === "zoomLevel") return resolution.getZoomLevelRef();
     return resolution.getMappingRef();
 }
 
@@ -362,19 +438,36 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         // share the same reactive identity.
         /** @type {Map<string, { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }>} */
         const helperEntries = new Map();
+        /** @type {{ kind: ScaleHelperKind, resolution: import("../scales/scaleResolution.js").default }[]} */
+        const scaleHelperDependencies = [];
+        /** @type {{ codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<number> } | undefined} */
+        let autoZoomHelper;
         let nextScaleHelperId = 1;
 
         /**
          * @type {ExpressionCompileContext & {
          *   globalvar: string,
          *   globalObject: Record<string, any>,
-         *   getScaleHelper: (kind: ScaleHelperKind, channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+         *   getScaleHelper: (kind: ScaleHelperKind, channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> },
+         *   getAutoZoomHelper: () => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<number> } | undefined,
+         *   recordScaleHelperDependency: (kind: ScaleHelperKind, resolution: import("../scales/scaleResolution.js").default) => void
          * }}
          */
         const helperContext = {
             ...context,
             globalvar: "globalObject",
             globalObject,
+            recordScaleHelperDependency(kind, resolution) {
+                if (
+                    !scaleHelperDependencies.some(
+                        (dependency) =>
+                            dependency.kind === kind &&
+                            dependency.resolution === resolution
+                    )
+                ) {
+                    scaleHelperDependencies.push({ kind, resolution });
+                }
+            },
             getScaleHelper(kind, channel, resolution) {
                 // Helper instances are keyed by helper kind + channel so
                 // `domain("x")` and `scale("x", ...)` share the same
@@ -394,6 +487,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
                 const codeName = "__scale_helper_" + nextScaleHelperId++;
                 const entry = { codeName, dependency };
                 helperEntries.set(key, entry);
+                helperContext.recordScaleHelperDependency(kind, resolution);
                 // Store the concrete helper implementation on the global object
                 // used by the generated expression function.
                 globalObject[codeName] = createScaleHelperFunction(
@@ -401,6 +495,21 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
                     resolution
                 );
                 return entry;
+            },
+            getAutoZoomHelper() {
+                if (autoZoomHelper) {
+                    return autoZoomHelper;
+                }
+                const dependency = context.resolveAutoZoomLevelRef?.();
+                if (!dependency) {
+                    return;
+                }
+
+                const codeName = "__scale_helper_" + nextScaleHelperId++;
+                autoZoomHelper = { codeName, dependency };
+                scaleDependenciesByHelper.set("zoomLevel:auto", dependency);
+                globalObject[codeName] = () => dependency.get();
+                return autoZoomHelper;
             },
         };
 
@@ -440,6 +549,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         exprFunction.scaleDependencies = Array.from(
             new Set(scaleDependenciesByHelper.values())
         );
+        exprFunction.scaleHelperDependencies = scaleHelperDependencies;
 
         return exprFunction;
     } catch (e) {

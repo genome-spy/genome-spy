@@ -437,4 +437,37 @@ describe("scale resolution expression scope", () => {
             narrowDomainMax / 2
         );
     });
+
+    test("zero-argument zoomLevel rebinds when positional scale topology changes", async () => {
+        const view = await initView(
+            {
+                params: [{ name: "autoZoom", expr: "zoomLevel()" }],
+                layer: [],
+            },
+            LayerView
+        );
+
+        expect(view.paramRuntime.getValue("autoZoom")).toBe(1);
+
+        const child = await view.addChildSpec({
+            data: { values: [{ value: 0 }, { value: 10 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+        });
+        const xResolution = getRequiredScaleResolution(child, "x");
+
+        await xResolution.zoomTo([0, 5]);
+        expect(view.paramRuntime.getValue("autoZoom")).toBeCloseTo(
+            Math.sqrt(2)
+        );
+
+        await view.removeChildAt(0);
+        expect(view.paramRuntime.getValue("autoZoom")).toBe(1);
+    });
 });

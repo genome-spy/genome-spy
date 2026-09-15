@@ -1,6 +1,6 @@
 # Scale zoom expression helper
 
-Status: Proposed
+Status: In progress
 
 ## Context
 
@@ -158,19 +158,17 @@ intentionally axis-specific.
 The scale resolution already owns the current domain, reference domain, zoom
 extent, and `getZoomLevel()`. Add a lazy `ScaleResolution.getZoomLevelRef()`
 whose stable identity survives domain-runtime replacement. Back it with a
-resolution-owned operation ref that can rebind to the active domain runtime
-rather than copying zoom state into a view parameter or subscribing through a
-contributing unit.
+resolution-owned computed ref that depends on a lazy zoom-publication revision
+signal and the effective scale configuration, rather than copying zoom state
+into a view parameter or subscribing through a contributing unit.
 
-The operation depends on the complete domain-state ref, covering visible
-domain, initial reference, and the loaded data extent used by `zoom.extent:
-"data"`, plus the stable effective scale-configuration ref that determines
-zoomability and extent policy. Rebind it atomically if the domain runtime is
-replaced. Use numeric `Object.is` equality and synchronous scale propagation so
-one settled input change produces at most one helper invalidation. The existing
-`subscribeZoomExtent()` API may remain for non-expression consumers, but remove
-the UnitView compatibility subscriptions and do not mirror them into the new
-ref.
+Publish the revision from the domain runtime's existing zoom notification
+boundary. That boundary covers visible-domain changes, initial-reference
+changes, and loaded extents used by `zoom.extent: "data"`. Use numeric
+`Object.is` equality so one settled input change produces at most one helper
+invalidation. The existing `subscribeZoomExtent()` API may remain for
+non-expression consumers, but remove the UnitView compatibility subscriptions
+and do not mirror them into the new ref.
 
 ### Auto-discover positional zoom and allow explicit channels
 
@@ -304,6 +302,8 @@ that ambiguity.
 
 ## Milestone 1: Add the reactive scale helper
 
+Status: Complete (2026-09-15)
+
 ### Intended outcome
 
 Expressions can read automatically discovered positional zoom or a
@@ -317,9 +317,8 @@ channel-specific zoom level through stable reactive resolution dependencies.
   accept one literal channel for explicit mode.
 - Reuse existing unknown-scale diagnostics for explicit channels; auto mode
   returns identity when it discovers none.
-- Add lazy `ScaleResolution.getZoomLevelRef()` as a stable operation ref over
-  complete domain state and effective scale configuration; rebind it if the
-  domain runtime changes.
+- Add lazy `ScaleResolution.getZoomLevelRef()` as a stable computed ref over the
+  domain runtime's zoom-publication revision and effective scale configuration.
 - Return the existing `ScaleResolution.getZoomLevel()` value so programmatic and
   declarative consumers share one definition.
 - Add resolution-level zoom-input dependency preflight so same-resolution and
@@ -387,6 +386,8 @@ the shared expression runtime.
 
 ## Gate before example migration: Prove architecture and compatibility
 
+Status: Passed (2026-09-15)
+
 Do not change any specification under `examples/` until this gate passes. Keep
 the implementation and focused tests reviewable independently from the
 migration.
@@ -404,6 +405,16 @@ Review the architecture at this point. Confirm that the resolution-level
 zoom-input graph is the single preflight source of truth, operation refs use the
 ordinary reactive graph, no second imperative notification path is created,
 and same-scale feedback fails deterministically.
+
+Gate evidence:
+
+- All 307 Core test files passed: 2,654 tests passed, one skipped, and two todo.
+- Core TypeScript checks and repository lint passed.
+- The unchanged geometric zoom example rendered and responded to wheel zoom in
+  a browser, and materializing its bare alias emitted the deprecation warning.
+- Focused tests cover lazy alias allocation, warning behavior, stable auto-ref
+  rebinding, effective zoomability changes, and direct plus cross-scale cycles.
+- `git diff -- examples/` was empty when this gate was recorded.
 
 ## Milestone 2: Migrate examples, documentation, and OCAC
 

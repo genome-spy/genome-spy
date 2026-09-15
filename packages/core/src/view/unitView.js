@@ -58,12 +58,6 @@ export default class UnitView extends View {
      */
 
     /**
-     * Sets the zoom level parameter.
-     * @type {(zoomLevel: number) => void}
-     */
-    #zoomLevelSetter;
-
-    /**
      * @type {import("vega-util").AccessorFn[] | null}
      */
     #searchAccessors = null;
@@ -90,31 +84,7 @@ export default class UnitView extends View {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
-        this.#zoomLevelSetter = this.paramRuntime.allocateSetter(
-            "zoomLevel",
-            1.0
-        );
-
         this.resolve();
-
-        const zoomResolutions = primaryPositionalChannels
-            .map((channel) => this.getScaleResolution(channel))
-            .filter((resolution) => resolution !== undefined);
-        const publishZoomLevel = () =>
-            this.#zoomLevelSetter(
-                Math.sqrt(
-                    zoomResolutions.reduce(
-                        (level, resolution) =>
-                            level * resolution.getZoomLevel(),
-                        1
-                    )
-                )
-            );
-        for (const resolution of zoomResolutions) {
-            this.registerDisposer(
-                resolution.subscribeZoomExtent(publishZoomLevel)
-            );
-        }
 
         // Domain-inert linked scales have no collector publication to seed the
         // brush. Keep this startup bridge until that case has an owner boundary.

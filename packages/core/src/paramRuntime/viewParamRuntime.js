@@ -85,6 +85,12 @@ export default class ViewParamRuntime {
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
+    /** @type {Set<string>} */
+    #lazyExpressionNames = new Set();
+
+    /** @type {import("./types.js").OperationRef<number> | undefined} */
+    #autoZoomLevelRef;
+
     /** @type {Map<string, Set<import("../types/interactionApi.d.ts").IntervalSelectionControllerApi>>} */
     #selectionControllers = new Map();
 
@@ -142,6 +148,13 @@ export default class ViewParamRuntime {
         }
     }
 
+    get #expressionOptions() {
+        return {
+            resolveScaleResolution: this.#scaleResolutionResolver,
+            resolveAutoZoomLevelRef: () => this.getAutoZoomLevelRef(),
+        };
+    }
+
     /**
      * Registers a parameter definition into this runtime scope.
      *
@@ -159,7 +172,10 @@ export default class ViewParamRuntime {
         const name = param.name;
         validateParameterName(name);
 
-        if (this.#paramConfigs.has(name)) {
+        if (
+            this.#paramConfigs.has(name) ||
+            this.#lazyExpressionNames.has(name)
+        ) {
             throw new Error(
                 'Parameter "' + name + '" already registered in this scope.'
             );
@@ -184,6 +200,39 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Reserves an internal read-only expression parameter and binds it only
+     * when name resolution first consumes it.
+     *
+     * @param {string} name
+     * @param {string} expr
+     * @param {() => void} [onMaterialize]
+     */
+    registerLazyExpression(name, expr, onMaterialize) {
+        validateParameterName(name);
+        if (
+            this.#paramConfigs.has(name) ||
+            this.#lazyExpressionNames.has(name) ||
+            this.#localRefs.has(name)
+        ) {
+            throw new Error(
+                'Parameter "' + name + '" already registered in this scope.'
+            );
+        }
+
+        this.#lazyExpressionNames.add(name);
+        this.#runtime.registerInitializer(this.#scopeId, name, () => {
+            onMaterialize?.();
+            const ref = this.#runtime.registerDerived(
+                this.#scopeId,
+                name,
+                expr,
+                this.#expressionOptions
+            );
+            this.#localRefs.set(name, ref);
+        });
+    }
+
+    /**
      * Registers a read-only expression evaluated in another view's scope.
      * Generated views use this to preserve the declaration scope of styling.
      * Binding is deferred until first use so scale-dependent params are ready.
@@ -199,7 +248,10 @@ export default class ViewParamRuntime {
                 "Scoped expressions must share a parameter runtime."
             );
         }
-        if (this.#paramConfigs.has(name)) {
+        if (
+            this.#paramConfigs.has(name) ||
+            this.#lazyExpressionNames.has(name)
+        ) {
             throw new Error(
                 'Parameter "' + name + '" already registered in this scope.'
             );
@@ -211,7 +263,7 @@ export default class ViewParamRuntime {
                 expr,
                 {
                     expressionScope: source.#scopeId,
-                    resolveScaleResolution: source.#scaleResolutionResolver,
+                    ...source.#expressionOptions,
                 }
             );
             this.#localRefs.set(name, ref);
@@ -289,9 +341,7 @@ export default class ViewParamRuntime {
                     this.#scopeId,
                     name,
                     param.expr,
-                    {
-                        resolveScaleResolution: this.#scaleResolutionResolver,
-                    }
+                    this.#expressionOptions
                 );
                 this.#localRefs.set(name, ref);
             }
@@ -489,6 +539,7 @@ export default class ViewParamRuntime {
         const config = this.#paramConfigs.get(paramName);
         return (
             this.#localRefs.has(paramName) ||
+            this.#lazyExpressionNames.has(paramName) ||
             (config !== undefined && "expr" in config)
         );
     }
@@ -636,8 +687,51 @@ export default class ViewParamRuntime {
      */
     createExpression(expr) {
         return this.#runtime.createExpression(this.#scopeId, expr, {
-            resolveScaleResolution: this.#scaleResolutionResolver,
+            ...this.#expressionOptions,
         });
+    }
+
+    /**
+     * Returns the stable aggregate used by zero-argument `zoomLevel()` calls.
+     * Its x/y dependencies are rebound when scale resolution topology changes.
+     *
+     * @returns {import("./types.js").ParamRef<number>}
+     */
+    getAutoZoomLevelRef() {
+        if (!this.#autoZoomLevelRef) {
+            const dependencies = this.#getAutoZoomDependencies();
+            this.#autoZoomLevelRef = this.operation(
+                "automatic zoom level",
+                dependencies,
+                () => calculateAutoZoomLevel(dependencies),
+                () => undefined
+            );
+        }
+        return this.#autoZoomLevelRef;
+    }
+
+    /** Rebinds an initialized automatic zoom aggregate after topology changes. */
+    refreshScaleResolutionBindings() {
+        if (!this.#autoZoomLevelRef) {
+            return;
+        }
+        const dependencies = this.#getAutoZoomDependencies();
+        this.#autoZoomLevelRef.rebind(dependencies, () =>
+            calculateAutoZoomLevel(dependencies)
+        );
+        this.#runtime.flushNow({ afterTransaction: true });
+    }
+
+    /** @returns {import("./types.js").ParamRef<number>[]} */
+    #getAutoZoomDependencies() {
+        return Array.from(
+            new Set(
+                ["x", "y"]
+                    .map((channel) => this.#scaleResolutionResolver(channel))
+                    .filter((resolution) => resolution !== undefined)
+                    .map((resolution) => resolution.getZoomLevelRef())
+            )
+        );
     }
 
     /**
@@ -929,6 +1023,8 @@ export default class ViewParamRuntime {
         this.#allocatedSetters.clear();
         this.#localRefs.clear();
         this.#paramConfigs.clear();
+        this.#lazyExpressionNames.clear();
+        this.#autoZoomLevelRef = undefined;
         this.#selectionControllers.clear();
         this.#transitionStates.clear();
     }
@@ -977,6 +1073,16 @@ function getParamKind(config) {
     } else {
         return "base";
     }
+}
+
+/**
+ * @param {import("./types.js").ParamRef<number>[]} dependencies
+ * @returns {number}
+ */
+function calculateAutoZoomLevel(dependencies) {
+    return Math.sqrt(
+        dependencies.reduce((level, dependency) => level * dependency.get(), 1)
+    );
 }
 
 /**

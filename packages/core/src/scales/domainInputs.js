@@ -49,6 +49,7 @@ import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
  * @param {Set<import("./scaleResolution.js").ScaleResolutionMember>} options.dataMembers
  * @param {import("./domainPlanner.js").ConfiguredDomainSource | undefined} options.viewLevelDomain
  * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
+ * @param {(expressions: import("../paramRuntime/types.js").ExprRefFunction[]) => void} options.setZoomInputDependencies
  * @param {import("./domainPlanner.js").SelectionBindingResolver} options.resolveSelectionBinding
  * @param {import("./domainPlanner.js").FromComplexInterval} options.fromComplexInterval
  * @param {import("./domainPlanner.js").GetLocusExtent} options.getLocusExtent
@@ -71,6 +72,7 @@ export default function createDomainInputs({
     dataMembers,
     viewLevelDomain,
     createExpression,
+    setZoomInputDependencies,
     resolveSelectionBinding,
     fromComplexInterval,
     getLocusExtent,
@@ -118,6 +120,7 @@ export default function createDomainInputs({
                     expressions.set(ref.expr, createExpression(ref.expr));
             }
         }
+        setZoomInputDependencies(Array.from(expressions.values()));
 
         const accessors = new Map(
             Array.from(dataMembers, (member) => [
