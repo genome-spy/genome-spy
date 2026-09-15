@@ -613,9 +613,7 @@ const toolbarTemplate = () => html`
         >
             <img title="GenomeSpy" alt="GenomeSpy" src="${genomeSpyIcon}" />
         </a>
-        <span class="title">
-            <span>GenomeSpy Playground</span>
-        </span>
+        <h1 class="title">GenomeSpy Playground</h1>
         <button @click=${toggleLayout} class="tool-button hide-mobile">
             ${icon(faColumns).node[0]}
             <span>Toggle layout</span>
