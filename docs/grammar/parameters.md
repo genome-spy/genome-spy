@@ -45,6 +45,20 @@ parameters change.
 
 EXAMPLE examples/docs/grammar/parameters/expressions.json height=150
 
+### Automatic zoom level parameter (deprecated)
+
+Unit views provide a legacy `zoomLevel` parameter for expressions that resize
+or filter marks during navigation. It is created lazily and prints a console
+warning when first used. The name `zoomLevel` is reserved and cannot be used for
+an authored parameter.
+
+Replace a bare `zoomLevel` reference with the [`zoomLevel()` expression
+function](./expressions.md#zoomLevel). The function preserves the legacy x/y
+geometric aggregation and also works in expressions owned by composed views.
+Use `zoomLevel("x")` or another single channel when behavior should follow one
+specific scale. The bare parameter is retained for compatibility until
+GenomeSpy 2.0.
+
 ## Pushing Parameters to an Outer Scope
 
 A child view can update a parameter owned by an ancestor. Declare the writable

@@ -9,7 +9,7 @@
       "title": "Single probe",
       "mark": {
         "type": "point",
-        "size": { "expr": "min(2 * pow(zoomLevel, 1.5), 200)" }
+        "size": { "expr": "min(2 * pow(zoomLevel(), 1.5), 200)" }
       },
       "encoding": {
         "x": { "field": "Position", "type": "index" },

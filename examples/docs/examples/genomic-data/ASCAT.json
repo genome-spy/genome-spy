@@ -107,7 +107,7 @@
 
           "mark": {
             "type": "point",
-            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+            "size": { "expr": "min(10 * pow(zoomLevel(), 1.5), 200)" }
           },
 
           "encoding": {
@@ -156,7 +156,7 @@
 
           "mark": {
             "type": "point",
-            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+            "size": { "expr": "min(10 * pow(zoomLevel(), 1.5), 200)" }
           },
 
           "encoding": {

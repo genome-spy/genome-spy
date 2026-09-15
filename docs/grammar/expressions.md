@@ -187,6 +187,24 @@ Returns the current bandwidth of a band-like scale for the given channel. The
 value uses the same units as the scale range. For positional scales, multiply
 the result by `width` or `height` to convert it to pixels.
 
+<a name="zoomLevel" href="#zoomLevel">#</a>
+<b>zoomLevel</b>()<br/>
+Returns the geometric zoom level of the zoomable x and y scales that are
+resolvable from the expression scope. A missing or non-zoomable axis contributes
+`1`, so the result is `sqrt(xZoom * yZoom)` and is `1` when neither axis is
+zoomable.
+
+<a name="zoomLevel-channel" href="#zoomLevel-channel">#</a>
+<b>zoomLevel</b>(<i>channel</i>)<br/>
+Returns the zoom level of one scale, such as `zoomLevel("x")`. The channel must
+be a literal string. The value is the reference-domain span divided by the
+current displayed-domain span. A non-zoomable scale returns `1`.
+
+Compose separate calls when a formula needs multiple explicit scales. For
+example, `sqrt(zoomLevel("x") * zoomLevel("y"))` is the explicit equivalent of
+the automatic two-dimensional metric. Other formulas can use `min`, `max`, or
+ordinary arithmetic.
+
 These helpers are available in `formula` and `filter` transforms, in dynamic
 expression properties, and in scale `ExprRef` properties. They are reactive:
 when the referenced scale changes, dependent expressions update.

@@ -1,6 +1,6 @@
 # Scale zoom expression helper
 
-Status: In progress
+Status: Complete
 
 ## Context
 
@@ -418,6 +418,8 @@ Gate evidence:
 
 ## Milestone 2: Migrate examples, documentation, and OCAC
 
+Status: Complete (2026-09-15)
+
 ### Intended outcome
 
 Every specification under `examples/` uses the function form, and the OCAC
@@ -492,7 +494,25 @@ covered by focused test fixtures rather than public examples.
 
 `docs(core): demonstrate zoom-driven shared scales`
 
+Milestone evidence:
+
+- Every tracked specification under `examples/` now uses `zoomLevel()` or
+  `zoomLevel("channel")`; a boundary-aware search finds no bare references.
+- All 11 migrated or added examples initialized and rendered in WebGL.
+- The new shared-domain example plus representative automatic and 2D examples
+  initialized and rendered in Canvas.
+- The new shared-domain example updated its y axis during x wheel zoom, and its
+  SVG export preview remained fully vector-representable.
+- The ignored local OCAC specification rendered, zoomed, panned, kept its
+  threshold rules aligned, updated its y domain, and reset to the configured
+  whole-genome viewport.
+- The focused Core contract suite passed 244 tests, and Core TypeScript checks,
+  lint, documentation type synchronization, and the full documentation build
+  passed.
+
 ## Final integration verification
+
+Status: Passed (2026-09-15)
 
 - Run the focused expression, parameter, scale-domain, scale-lifecycle, and
   view-mutation suites.
