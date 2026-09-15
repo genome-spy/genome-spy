@@ -307,6 +307,48 @@ describe("Single-level ViewParamRuntime", () => {
         );
     });
 
+    test("Lazy expressions materialize on first name resolution", () => {
+        const pm = new ViewParamRuntime();
+        const setSource = pm.registerParam({ name: "source", value: 1 });
+        let materializations = 0;
+        pm.registerLazyExpression("lazy", "source + 1", () => {
+            materializations += 1;
+        });
+
+        expect(pm.isPendingParam("lazy")).toBe(true);
+        expect(
+            pm.getDebugState().params.map((param) => param.name)
+        ).not.toContain("lazy");
+
+        const expression = pm.createExpression("lazy * 2");
+
+        expect(expression()).toBe(4);
+        expect(materializations).toBe(1);
+        expect(pm.isPendingParam("lazy")).toBe(false);
+        expect(pm.getDebugState().params).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    name: "lazy",
+                    kind: "auto",
+                    writable: false,
+                }),
+            ])
+        );
+
+        setSource(2);
+        expect(expression()).toBe(6);
+        expect(materializations).toBe(1);
+    });
+
+    test("Lazy expression names are reserved", () => {
+        const pm = new ViewParamRuntime();
+        pm.registerLazyExpression("reserved", "1");
+
+        expect(() => pm.registerParam({ name: "reserved", value: 2 })).toThrow(
+            'Parameter "reserved" already registered in this scope.'
+        );
+    });
+
     test("runInTransaction batches expression updates", async () => {
         const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });

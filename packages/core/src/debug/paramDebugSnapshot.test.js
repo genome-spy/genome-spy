@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import View from "../view/view.js";
 import { createAndInitialize } from "../view/testUtils.js";
 import { createParamDebugSnapshot } from "./paramDebugSnapshot.js";
@@ -46,8 +46,31 @@ describe("createParamDebugSnapshot", () => {
                 }),
             ])
         );
-        expect(rootScope?.params.map((param) => param.name)).toContain(
+        expect(rootScope?.params.map((param) => param.name)).not.toContain(
             "zoomLevel"
         );
+
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        expect(view.paramRuntime.getValue("zoomLevel")).toBe(1);
+        expect(warn).toHaveBeenCalledOnce();
+
+        const materialized = createParamDebugSnapshot(view, {
+            getDebugId: () => "v1",
+        });
+        const materializedRoot = materialized.scopes.find(
+            (scope) => scope.viewPath === "viewRoot"
+        );
+        expect(materializedRoot?.params).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    name: "zoomLevel",
+                    kind: "auto",
+                    value: 1,
+                    writable: false,
+                    configured: false,
+                }),
+            ])
+        );
+        warn.mockRestore();
     });
 });

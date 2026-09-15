@@ -29,6 +29,34 @@ function mappingSpec() {
 }
 
 describe("graph-owned scale mapping", () => {
+    test("allows a scale range to depend on its own zoom level", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ value: 5 }] },
+            mark: "point",
+            encoding: {
+                size: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: {
+                        domain: [0, 10],
+                        range: [0, { expr: "10 * zoomLevel('size')" }],
+                        zoom: true,
+                    },
+                    legend: null,
+                },
+            },
+        });
+        const resolution = view.getScaleResolution("size");
+
+        expect(resolution.scale.range()).toEqual([0, 10]);
+
+        resolution.scale.domain([0, 5]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(resolution.scale.range()).toEqual([0, 20]);
+        view.disposeSubtree();
+    });
+
     test("bandwidth follows range and displayed-domain changes through its native dependency", async () => {
         const { view } = await createHeadlessEngine({
             params: [

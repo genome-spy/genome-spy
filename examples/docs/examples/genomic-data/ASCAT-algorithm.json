@@ -620,7 +620,7 @@
           "mark": {
             "type": "point",
             "size": {
-              "expr": "min(pow(zoomLevel, 2) * width * height / 10000, 100)"
+              "expr": "min(pow(zoomLevel(), 2) * width * height / 10000, 100)"
             },
             "color": "#aab",
             "opacity": 0.3
@@ -693,7 +693,7 @@
           "mark": {
             "type": "point",
             "size": {
-              "expr": "min(pow(zoomLevel, 2) * width * height / 10000, 100)"
+              "expr": "min(pow(zoomLevel(), 2) * width * height / 10000, 100)"
             },
             "color": "#aab",
             "opacity": 0.3

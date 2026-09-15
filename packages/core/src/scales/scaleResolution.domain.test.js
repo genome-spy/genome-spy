@@ -474,6 +474,180 @@ describe("Scale resolution domain handling", () => {
         expect(zoomLevel()).toBeGreaterThan(1);
     });
 
+    test("zoomLevel() drives another scale with the legacy 2D normalization", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 1 },
+                        { x: 10, y: 2 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 10], zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: {
+                                expr: "[10 / zoomLevel(), 50]",
+                            },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const xResolution = getRequiredScaleResolution(view, "x");
+        const yResolution = getRequiredScaleResolution(view, "y");
+        expect(r(yResolution.getDomain())).toEqual([10, 50]);
+
+        xResolution.getScale().domain([0, 5]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(yResolution.getDomain()[0]).toBeCloseTo(10 / Math.sqrt(2));
+        expect(yResolution.getDomain()[1]).toBe(50);
+    });
+
+    test("zoomLevel reads explicit channels and returns identity for non-zoomable scales", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 1 },
+                        { x: 10, y: 2 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 10], zoom: true },
+                    },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        const xResolution = getRequiredScaleResolution(view, "x");
+        const zoomLevels = view.paramRuntime.createExpression(
+            "[zoomLevel('x'), zoomLevel('y')]"
+        );
+
+        expect(zoomLevels()).toEqual([1, 1]);
+
+        xResolution.getScale().domain([0, 5]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(zoomLevels()).toEqual([2, 1]);
+    });
+
+    test("zoomLevel rejects direct and cross-scale domain cycles", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: {
+                                zoom: true,
+                                domain: {
+                                    expr: "[0, zoomLevel('x')]",
+                                },
+                            },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(/Scale dependency cycle/);
+
+        await expect(
+            initView(
+                {
+                    data: { values: [] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: {
+                                zoom: true,
+                                domain: {
+                                    expr: "[0, zoomLevel('y')]",
+                                },
+                            },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: {
+                                zoom: true,
+                                domain: {
+                                    expr: "[0, zoomLevel('x')]",
+                                },
+                            },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(/Scale dependency cycle/);
+    });
+
+    test("zoomLevel dependency preflight rejects cycles during reconfiguration", async () => {
+        const spec = {
+            data: { values: [] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: true },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+        };
+        const view = await initView(spec, UnitView);
+        const xResolution = getRequiredScaleResolution(view, "x");
+        const yResolution = getRequiredScaleResolution(view, "y");
+
+        spec.encoding.x.scale.domain = {
+            expr: "[0, 10 / zoomLevel('y')]",
+        };
+        xResolution.reconfigure();
+
+        spec.encoding.y.scale.domain = {
+            expr: "[0, 10 / zoomLevel('x')]",
+        };
+        expect(() => yResolution.reconfigure()).toThrow(
+            "Scale zoom dependency cycle"
+        );
+
+        spec.encoding.x.scale.domain = {
+            expr: "[0, 10 / zoomLevel('x')]",
+        };
+        expect(() => xResolution.reconfigure()).toThrow(
+            "Scale zoom dependency cycle"
+        );
+        view.disposeSubtree();
+    });
+
     test("Scale domain cycles fail fast", async () => {
         await expect(
             initView(

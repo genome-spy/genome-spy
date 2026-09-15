@@ -118,6 +118,13 @@ export default function createDomainInputs({
                     expressions.set(ref.expr, createExpression(ref.expr));
             }
         }
+        const zoomLevelResolutions = new Set(
+            Array.from(expressions.values()).flatMap((expression) =>
+                (expression.zoomLevelResolutions ?? []).filter((resolution) =>
+                    resolution.isZoomable()
+                )
+            )
+        );
 
         const accessors = new Map(
             Array.from(dataMembers, (member) => [
@@ -462,6 +469,8 @@ export default function createDomainInputs({
         }
 
         return {
+            zoomLevelResolutions,
+
             get lastVisible() {
                 return lastVisible;
             },

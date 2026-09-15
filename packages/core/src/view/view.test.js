@@ -215,6 +215,47 @@ describe("Trivial creations and initializations", () => {
         await zoomPromise;
     });
 
+    test("materializes the deprecated zoomLevel parameter lazily", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "legacyZoom", expr: "zoomLevel" }],
+            data: { values: [{ x: 0 }, { x: 10 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+        });
+
+        expect(view.paramRuntime.getValue("legacyZoom")).toBe(1);
+        expect(warn).toHaveBeenCalledOnce();
+
+        await view.getScaleResolution("x").zoomTo([0, 5]);
+
+        expect(view.paramRuntime.getValue("legacyZoom")).toBeCloseTo(
+            Math.sqrt(2)
+        );
+        expect(warn).toHaveBeenCalledOnce();
+        warn.mockRestore();
+    });
+
+    test("reserves the automatic zoomLevel parameter name", async () => {
+        await expect(
+            create(
+                {
+                    params: [{ name: "zoomLevel", value: 2 }],
+                    mark: "point",
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            'Parameter "zoomLevel" already registered in this scope.'
+        );
+    });
+
     test("evaluates ExprRef-backed mark cursor", async () => {
         const view = await create(
             {

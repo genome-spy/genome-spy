@@ -167,6 +167,12 @@ export default class ScaleResolution {
     /** @type {import("../paramRuntime/types.js").WritableParamRef<number> | undefined} */
     #configurationRef;
 
+    /** @type {import("../paramRuntime/types.js").WritableParamRef<number> | undefined} */
+    #zoomRevisionRef;
+
+    /** @type {import("../paramRuntime/types.js").ComputedParamRef<number> | undefined} */
+    #zoomLevelRef;
+
     get #runtime() {
         return (this.#paramRuntime ??= new ViewParamRuntime(
             () => this.#resolutionView.paramRuntime
@@ -198,7 +204,9 @@ export default class ScaleResolution {
         });
 
         this.#interactionController = new ScaleInteractionController({
-            getScale: () => this.getScale(),
+            // Zoom level does not depend on the range, so an initialized scale
+            // is safe to read while its range expression is being configured.
+            getScale: () => this.#scaleManager.scale ?? this.getScale(),
             navigate: (domain, duration, renderImmediately = false) =>
                 this.#commitDomainUpdate(
                     {
@@ -285,6 +293,21 @@ export default class ScaleResolution {
 
             throw this.#createParameterScopeError(match[1], error);
         }
+    }
+
+    // TODO: Replace this scale-specific traversal with generic graph cycle
+    // validation if zoom publication becomes an ordinary graph dependency.
+    /**
+     * @param {ScaleResolution} target
+     * @returns {boolean}
+     */
+    #hasZoomInputPathTo(target) {
+        if (this === target) {
+            return true;
+        }
+        return Array.from(this.#domainInputs?.zoomLevelResolutions ?? []).some(
+            (dependency) => dependency.#hasZoomInputPathTo(target)
+        );
     }
 
     /**
@@ -945,7 +968,7 @@ export default class ScaleResolution {
         // Pass resolved participants/configuration and scope-aware readers into
         // one replaceable binding. It derives source snapshots for the owner;
         // creating it does not itself request an initial source publication.
-        this.#domainInputs = createDomainInputs({
+        const inputs = createDomainInputs({
             owner: this.#domainRuntime,
             manager: this.#scaleManager,
             props,
@@ -969,6 +992,16 @@ export default class ScaleResolution {
             ignoreSelectionInitial: this.#ignoreSelectionInitial,
             lastVisible,
         });
+        const cycle = Array.from(inputs.zoomLevelResolutions).find(
+            (dependency) => dependency.#hasZoomInputPathTo(this)
+        );
+        if (cycle) {
+            inputs.dispose();
+            throw new Error(
+                `Scale zoom dependency cycle: ${this.channel} domain reads the zoom level of ${cycle.channel}.`
+            );
+        }
+        this.#domainInputs = inputs;
     }
 
     /**
@@ -1340,6 +1373,11 @@ export default class ScaleResolution {
                             this.#viewContext.renderImmediately(),
                         notifyDomain: () => this.#notifyListeners("domain"),
                         publishZoom: () => {
+                            if (this.#zoomRevisionRef) {
+                                this.#zoomRevisionRef.set(
+                                    this.#zoomRevisionRef.get() + 1
+                                );
+                            }
                             for (const listener of this.#zoomExtentListeners)
                                 listener();
                         },
@@ -1548,7 +1586,33 @@ export default class ScaleResolution {
      * be generalized to other quantitative channels such as color, opacity, size, etc.
      */
     getZoomLevel() {
+        if (!this.isZoomable()) {
+            return 1.0;
+        }
         return this.#interactionController.getZoomLevel();
+    }
+
+    /**
+     * Returns a stable reactive reference to the current zoom level.
+     * The producer is allocated only when an expression consumes it.
+     *
+     * @returns {import("../paramRuntime/types.js").ParamRef<number>}
+     */
+    getZoomLevelRef() {
+        if (!this.#zoomLevelRef) {
+            // TODO: Replace this revision bridge with a DomainRuntime zoom ref
+            // if the complete zoom state becomes graph-native.
+            this.#zoomRevisionRef = this.#runtime.signal(
+                "zoom publication revision",
+                0
+            );
+            this.#zoomLevelRef = this.#runtime.computed(
+                "scale zoom level",
+                [this.#zoomRevisionRef, this.getConfigurationRef()],
+                () => this.getZoomLevel()
+            );
+        }
+        return this.#zoomLevelRef;
     }
 
     /**

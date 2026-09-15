@@ -21,7 +21,7 @@
 
   "mark": {
     "type": "point",
-    "size": { "expr": "min(1 * zoomLevel * zoomLevel, 200)" }
+    "size": { "expr": "min(pow(zoomLevel(), 2), 200)" }
   },
 
   "encoding": {

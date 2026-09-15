@@ -328,7 +328,6 @@ const registerScaleResolutionMembers = (view, scaleMembersByResolution) => {
                     );
 
                 const contributesToDomain = !view.isDomainInert();
-
                 const unregister = resolution.registerMember({
                     view,
                     channel:
