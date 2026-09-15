@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
+
+### Features
+
+* **embed:** add scoped interaction and selection integrations ([#525](https://github.com/genome-spy/genome-spy/issues/525)) ([e4bfd0e](https://github.com/genome-spy/genome-spy/commit/e4bfd0eb158c043010c2b6271fb9248babd886f5)) by @tuner
+
 # [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
 
 **Note:** Version bump only for package @genome-spy/app
