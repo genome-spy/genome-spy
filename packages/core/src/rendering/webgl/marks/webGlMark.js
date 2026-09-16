@@ -70,6 +70,20 @@ const ORDER_PASS_VALUES = {
 };
 
 /**
+ * Replaces the conditional-order insertion point without relying on the
+ * whitespace retained by the GLSL build plugin.
+ *
+ * @param {string} shaderCode
+ * @param {string} guardCode
+ */
+export function replaceOrderGuard(shaderCode, guardCode) {
+    return shaderCode.replace(
+        /#pragma orderGuard(?:[ \t]*\r?\n){0,2}/,
+        guardCode
+    );
+}
+
+/**
  * @typedef {import("../../../types/rendering.js").ClipOptions} ClipOptions
  * @typedef {import("../../../view/layout/rectangle.js").default} Rectangle
  * @typedef {import("../types.js").WebGLMarkRenderingOptions} MarkRenderingOptions
@@ -714,8 +728,8 @@ export default class WebGLMark {
                 dynamicMarkUniforms.join("\n")
             );
         const addOrderGuard = (/** @type {string} */ shaderCode) =>
-            shaderCode.replace(
-                "#pragma orderGuard\n\n",
+            replaceOrderGuard(
+                shaderCode,
                 order
                     ? "    if (uOrderMode != 0 &&\n" +
                           "        (((uOrderMode & 3) == 1) != isOrderMatch())) {\n" +
