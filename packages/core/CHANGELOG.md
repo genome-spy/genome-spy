@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.88.1](https://github.com/genome-spy/genome-spy/compare/v0.88.0...v0.88.1) (2026-09-16)
+
+### Bug Fixes
+
+* **core:** preserve conditional order in production shaders ([e57e870](https://github.com/genome-spy/genome-spy/commit/e57e87076c20a53b1f52494a4815af0156e655de)) by @
+
 # [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
 
 ### Bug Fixes
