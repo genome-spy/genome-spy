@@ -2,11 +2,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import {
-    createAsciiTrueTypeFont,
     createTrueTypeFont,
     loadTrueTypeFont,
     trueTypeGlyphToPath,
 } from "./trueTypeFont.js";
+import { createAsciiTrueTypeFont } from "../../tests/oracles/createAsciiTrueTypeFont.js";
 import { parseTrueTypeFont } from "../vendor/textShaper/font/trueType.js";
 
 const SOURCE_CODE_PRO = new URL(

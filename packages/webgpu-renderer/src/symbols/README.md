@@ -143,8 +143,8 @@ bilinear classifier is deliberately narrower: it corrects only false
 inside/outside crossings. This removes faint seams without applying aggressive
 unprotected correction to legitimate acute tips. Production consumers retain
 signed atlas-pixel distances in `rgba16float` without changing the sampling
-filter. The generator can emit `rgba8unorm` only for controlled comparisons
-with the quantized canonical oracle.
+filter. Development comparison tools quantize readback values when comparing
+the texture with the canonical RGBA8 oracle.
 
 This correction adapts selected parts of msdfgen's artifact classifier. It
 still omits the canonical edge/corner protection stencil, local-extrema range

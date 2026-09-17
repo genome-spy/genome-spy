@@ -30,7 +30,7 @@ test("sparse GPU atlas preserves even-odd sign and dispatch bounds", async ({
         );
         await atlas.completion;
 
-        const bytesPerRow = Math.ceil((atlas.width * 4) / 256) * 256;
+        const bytesPerRow = Math.ceil((atlas.width * 8) / 256) * 256;
         const readback = device.createBuffer({
             size: bytesPerRow * atlas.height,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
@@ -48,19 +48,38 @@ test("sparse GPU atlas preserves even-odd sign and dispatch bounds", async ({
         device.queue.submit([encoder.finish()]);
         await readback.mapAsync(GPUMapMode.READ);
         const pixels = new Uint8Array(readback.getMappedRange());
+        const words = new Uint16Array(
+            pixels.buffer,
+            pixels.byteOffset,
+            pixels.byteLength / 2
+        );
+        const halfToFloat = (value) => {
+            const sign = value & 0x8000 ? -1 : 1;
+            const exponent = (value >> 10) & 0x1f;
+            const fraction = value & 0x03ff;
+            if (exponent === 0) {
+                return sign * 2 ** -14 * (fraction / 1024);
+            }
+            if (exponent === 0x1f) {
+                return fraction ? Number.NaN : sign * Number.POSITIVE_INFINITY;
+            }
+            return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+        };
+        const encodeDistance = (value) =>
+            Math.round(Math.max(0, Math.min(1, 0.5 + value / 24)) * 255);
 
         const medianAt = (x, y) => {
-            const offset = y * bytesPerRow + x * 4;
-            const r = pixels[offset];
-            const g = pixels[offset + 1];
-            const b = pixels[offset + 2];
+            const offset = (y * bytesPerRow) / 2 + x * 4;
+            const r = encodeDistance(halfToFloat(words[offset]));
+            const g = encodeDistance(halfToFloat(words[offset + 1]));
+            const b = encodeDistance(halfToFloat(words[offset + 2]));
             return Math.max(Math.min(r, g), Math.min(Math.max(r, g), b));
         };
         const hashPixels = (data) => {
             let hash = 2166136261;
             for (let y = 0; y < atlas.height; y++) {
                 const rowOffset = y * bytesPerRow;
-                for (let x = 0; x < atlas.width * 4; x++) {
+                for (let x = 0; x < atlas.width * 8; x++) {
                     hash ^= data[rowOffset + x];
                     hash = Math.imul(hash, 16777619);
                 }
@@ -185,15 +204,12 @@ test("GPU atlas stores regular signed distance in alpha", async ({ page }) => {
             return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
         };
 
-        const readSamples = async (format) => {
+        const readSamples = async () => {
             const atlas = createSparseGpuPathAtlas(device, ["M-1-1H1V1H-1Z"], {
                 ...options,
-                format,
             });
             await atlas.completion;
-            const bytesPerPixel = format === "rgba16float" ? 8 : 4;
-            const bytesPerRow =
-                Math.ceil((atlas.width * bytesPerPixel) / 256) * 256;
+            const bytesPerRow = Math.ceil((atlas.width * 8) / 256) * 256;
             const readback = device.createBuffer({
                 size: bytesPerRow * atlas.height,
                 usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
@@ -213,12 +229,7 @@ test("GPU atlas stores regular signed distance in alpha", async ({ page }) => {
                 bytes.byteLength / 2
             );
             const alphaAt = (x, y) => {
-                if (format === "rgba16float") {
-                    return halfToFloat(
-                        words[(y * bytesPerRow) / 2 + x * 4 + 3]
-                    );
-                }
-                return bytes[y * bytesPerRow + x * 4 + 3];
+                return halfToFloat(words[(y * bytesPerRow) / 2 + x * 4 + 3]);
             };
             const samples = {
                 outside: alphaAt(2, 2),
@@ -231,21 +242,14 @@ test("GPU atlas stores regular signed distance in alpha", async ({ page }) => {
             return samples;
         };
 
-        const samples = {
-            normalized: await readSamples("rgba8unorm"),
-            float: await readSamples("rgba16float"),
-        };
+        const samples = await readSamples();
         device.destroy();
         return samples;
     });
 
-    expect(result.normalized.outside).toBeLessThan(128);
-    expect(result.normalized.nearEdge).toBeGreaterThan(112);
-    expect(result.normalized.nearEdge).toBeLessThan(144);
-    expect(result.normalized.inside).toBeGreaterThan(128);
-    expect(result.float.outside).toBeLessThan(0);
-    expect(Math.abs(result.float.nearEdge)).toBeLessThan(2);
-    expect(result.float.inside).toBeGreaterThan(0);
+    expect(result.outside).toBeLessThan(0);
+    expect(Math.abs(result.nearEdge)).toBeLessThan(2);
+    expect(result.inside).toBeGreaterThan(0);
 });
 
 test("quadratic extrema do not create one-pixel sign streaks", async ({
@@ -269,7 +273,7 @@ test("quadratic extrema do not create one-pixel sign streaks", async ({
             }
         );
         await atlas.completion;
-        const bytesPerRow = 512;
+        const bytesPerRow = Math.ceil((atlas.width * 8) / 256) * 256;
         const readback = device.createBuffer({
             size: bytesPerRow * atlas.height,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
@@ -287,11 +291,28 @@ test("quadratic extrema do not create one-pixel sign streaks", async ({
         device.queue.submit([encoder.finish()]);
         await readback.mapAsync(GPUMapMode.READ);
         const pixels = new Uint8Array(readback.getMappedRange());
+        const words = new Uint16Array(
+            pixels.buffer,
+            pixels.byteOffset,
+            pixels.byteLength / 2
+        );
+        const halfToFloat = (value) => {
+            const sign = value & 0x8000 ? -1 : 1;
+            const exponent = (value >> 10) & 0x1f;
+            const fraction = value & 0x03ff;
+            if (exponent === 0) {
+                return sign * 2 ** -14 * (fraction / 1024);
+            }
+            if (exponent === 0x1f) {
+                return fraction ? Number.NaN : sign * Number.POSITIVE_INFINITY;
+            }
+            return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+        };
         const medianAt = (x, y) => {
-            const offset = y * bytesPerRow + x * 4;
-            const r = pixels[offset];
-            const g = pixels[offset + 1];
-            const b = pixels[offset + 2];
+            const offset = (y * bytesPerRow) / 2 + x * 4;
+            const r = halfToFloat(words[offset]);
+            const g = halfToFloat(words[offset + 1]);
+            const b = halfToFloat(words[offset + 2]);
             return Math.max(Math.min(r, g), Math.min(Math.max(r, g), b));
         };
         const extremumRow = Array.from({ length: 8 }, (_, index) =>
@@ -305,8 +326,8 @@ test("quadratic extrema do not create one-pixel sign streaks", async ({
         return { extremumRow, interior };
     });
 
-    expect(result.extremumRow.every((value) => value < 128)).toBe(true);
-    expect(result.interior).toBeGreaterThan(128);
+    expect(result.extremumRow.every((value) => value < 0)).toBe(true);
+    expect(result.interior).toBeGreaterThan(0);
 });
 
 test("MSDF generator reuses bounded scratch and exact immutable atlases", async ({
@@ -419,7 +440,7 @@ test("GPU generation supports tightly packed destination rectangles", async ({
             }
         );
         await atlas.completion;
-        const bytesPerRow = Math.ceil((atlas.width * 4) / 256) * 256;
+        const bytesPerRow = Math.ceil((atlas.width * 8) / 256) * 256;
         const readback = device.createBuffer({
             size: bytesPerRow * atlas.height,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
@@ -433,9 +454,30 @@ test("GPU generation supports tightly packed destination rectangles", async ({
         device.queue.submit([encoder.finish()]);
         await readback.mapAsync(GPUMapMode.READ);
         const pixels = new Uint8Array(readback.getMappedRange());
+        const words = new Uint16Array(
+            pixels.buffer,
+            pixels.byteOffset,
+            pixels.byteLength / 2
+        );
+        const halfToFloat = (value) => {
+            const sign = value & 0x8000 ? -1 : 1;
+            const exponent = (value >> 10) & 0x1f;
+            const fraction = value & 0x03ff;
+            if (exponent === 0) {
+                return sign * 2 ** -14 * (fraction / 1024);
+            }
+            if (exponent === 0x1f) {
+                return fraction ? Number.NaN : sign * Number.POSITIVE_INFINITY;
+            }
+            return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+        };
         const medianAt = (x, y) => {
-            const offset = y * bytesPerRow + x * 4;
-            const channels = pixels.slice(offset, offset + 3).sort();
+            const offset = (y * bytesPerRow) / 2 + x * 4;
+            const channels = [
+                halfToFloat(words[offset]),
+                halfToFloat(words[offset + 1]),
+                halfToFloat(words[offset + 2]),
+            ].sort((a, b) => a - b);
             return channels[1];
         };
         const summary = {
@@ -454,7 +496,7 @@ test("GPU generation supports tightly packed destination rectangles", async ({
     });
 
     expect(result).toMatchObject({ width: 104, height: 66 });
-    expect(result.narrowCenter).toBeGreaterThan(128);
-    expect(result.narrowOutside).toBeLessThan(128);
-    expect(result.squareCenter).toBeGreaterThan(128);
+    expect(result.narrowCenter).toBeGreaterThan(0);
+    expect(result.narrowOutside).toBeLessThan(0);
+    expect(result.squareCenter).toBeGreaterThan(0);
 });

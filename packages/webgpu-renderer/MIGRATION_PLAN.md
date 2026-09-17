@@ -42,10 +42,9 @@ The glyph-based text-effects PoC adds one outline and one scalar-SDF
 shadow/glow in label-major order without per-label textures. Text program keys
 are constant time and never serialize label contents during zoom or pan.
 
-Only current path/font work is tracked in
-`plans/path-points/production-integration-plan.md`: performance and adapter
-validation, a compact wide-range tier for tiny stroked points, portable
-Core/Canvas/SVG text effects, public contract documentation, and final cleanup.
+Remaining path/font follow-up includes a compact wide-range tier for tiny
+stroked points, portable Core/Canvas/SVG text effects, and public contract
+documentation.
 
 ## Milestone 1: Close current Core parity gaps
 

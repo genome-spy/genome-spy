@@ -14,7 +14,7 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
  * @property {Float32Array} entries
  */
 
-const PATH_POINT_SHADER_BODY = /* wgsl */ `
+export const PATH_POINT_SHADER_BODY = /* wgsl */ `
 const PI: f32 = 3.141592653589793;
 const AA_COVERAGE_RADIUS_PIXELS: f32 = 0.5;
 const FILL_RASTER_SAFETY_PIXELS: f32 = 0.5;
@@ -199,12 +199,7 @@ fn signedDistanceInDevicePixels(
 ) -> f32 {
     let sample = textureSample(pathAtlas, pathAtlasSampler, uv).rgb;
     let median = median3(sample);
-    let atlasDistance = select(
-        (median * 255.0 - 128.0) / 127.0 * params.uSpread,
-        median,
-        params.uFloatAtlas != 0u
-    );
-    return atlasDistance * devicePixelsPerAtlas;
+    return median * devicePixelsPerAtlas;
 }
 
 fn shade(in: VSOut) -> vec4<f32> {
@@ -280,7 +275,6 @@ export default class PathPointProgram extends PointProgram {
             { name: "uShapePixels", type: "f32", components: 1 },
             { name: "uSpread", type: "f32", components: 1 },
             { name: "uPathCount", type: "u32", components: 1 },
-            { name: "uFloatAtlas", type: "u32", components: 1 },
         ];
     }
 
@@ -324,52 +318,34 @@ export default class PathPointProgram extends PointProgram {
         if (!Array.isArray(paths)) {
             throw new Error("PathPoint config requires a paths array.");
         }
-        if (
-            this._markConfig.atlasBackend !== undefined &&
-            this._markConfig.atlasBackend !== "gpu"
-        ) {
-            throw new Error(
-                'PathPointProgram only supports atlasBackend "gpu".'
-            );
-        }
-        const atlasFormat = this._markConfig.atlasFormat ?? "rgba8unorm";
-        if (atlasFormat !== "rgba8unorm" && atlasFormat !== "rgba16float") {
-            throw new Error("Unsupported PathPoint atlas texture format.");
-        }
         const atlasOptions =
             /** @type {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number }} */ (
                 this._markConfig.atlasOptions ?? {}
             );
         const atlas = getMsdfAtlasGenerator(this.renderer).acquireAtlas(
             paths,
-            { ...atlasOptions, format: atlasFormat },
+            atlasOptions,
             gpuLabel(this.label, "path atlas")
         );
         // Resource cleanup is tied to queue completion. Keep the rejection
         // observed here; GPU validation still reports the original error.
         atlas.completion.catch(() => {});
-        this._installPathAtlas(
-            atlas,
-            atlas.texture,
-            atlasFormat,
-            atlas.entryBuffer,
-            true
-        );
+        this._installPathAtlas(atlas, atlas.texture, atlas.entryBuffer, true);
     }
 
     /**
      * @param {InstalledPathAtlas} atlas
      * @param {GPUTexture} texture
-     * @param {GPUTextureFormat} atlasFormat
      * @param {GPUBuffer | null} sharedEntries
      * @param {boolean} borrowed
+     * @param {GPUTextureFormat} atlasFormat
      */
     _installPathAtlas(
         atlas,
         texture,
-        atlasFormat,
         sharedEntries = null,
-        borrowed = false
+        borrowed = false,
+        atlasFormat = "rgba16float"
     ) {
         const sampler = this.device.createSampler({
             label: gpuLabel(this.label, "path atlas sampler"),
@@ -397,10 +373,6 @@ export default class PathPointProgram extends PointProgram {
         this._setUniformValue("uShapePixels", atlas.shapePixels);
         this._setUniformValue("uSpread", atlas.spread);
         this._setUniformValue("uPathCount", atlas.pathCount);
-        this._setUniformValue(
-            "uFloatAtlas",
-            atlasFormat === "rgba16float" ? 1 : 0
-        );
     }
 
     /** @param {Float32Array} data */

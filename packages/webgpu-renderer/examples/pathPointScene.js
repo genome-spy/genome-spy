@@ -76,7 +76,6 @@ export default async function runPathPointScene(canvas, options = {}) {
             ? {
                   paths: PATHS,
                   atlasBackend: "wasm",
-                  atlasFormat: "rgba8unorm",
                   atlasOptions: {
                       ...PATH_POINT_ATLAS_OPTIONS,
                       normalizationSpan: 2,

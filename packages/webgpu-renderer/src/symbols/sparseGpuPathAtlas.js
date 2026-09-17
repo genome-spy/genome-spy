@@ -563,7 +563,7 @@ struct Params {
 };
 
 @group(0) @binding(0) var rawInput: texture_2d<f32>;
-@group(0) @binding(1) var finalOutput: texture_storage_2d<OUTPUT_FORMAT, write>;
+@group(0) @binding(1) var finalOutput: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(2) var<uniform> params: Params;
 @group(0) @binding(3) var<storage, read> jobs: array<Job>;
 
@@ -815,43 +815,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (needsCorrection) {
         value = vec3<f32>(median3(value));
     }
-    OUTPUT_STORE
+    textureStore(finalOutput, coordinate, vec4<f32>(value, trueDistance));
 }
 `;
 
-const RGBA8_STORE = /* wgsl */ `
-let mapped = clamp(
-        vec4<f32>(0.5) + vec4<f32>(value, trueDistance) /
-            (2.0 * params.spread),
-        vec4<f32>(0.0),
-        vec4<f32>(1.0)
-    );
-    textureStore(finalOutput, coordinate, mapped);`;
-
-const RGBA16_FLOAT_STORE = /* wgsl */ `
-textureStore(finalOutput, coordinate, vec4<f32>(value, trueDistance));`;
-
-/**
- * @param {"rgba8unorm" | "rgba16float"} format
- */
-function createCorrectionShader(format) {
-    const outputStore =
-        format === "rgba8unorm" ? RGBA8_STORE : RGBA16_FLOAT_STORE;
-    return CORRECTION_SHADER.replace("OUTPUT_FORMAT", format).replace(
-        "OUTPUT_STORE",
-        outputStore
-    );
-}
-
 const pipelineCache = new WeakMap();
 
-/**
- * @param {GPUDevice} device
- * @param {"rgba8unorm" | "rgba16float"} format
- */
-function getPipelines(device, format) {
-    let devicePipelines = pipelineCache.get(device);
-    if (!devicePipelines) {
+/** @param {GPUDevice} device */
+function getPipelines(device) {
+    let pipelines = pipelineCache.get(device);
+    if (!pipelines) {
         const edgeModule = device.createShaderModule({
             label: "sparse path edge raster shader",
             code: EDGE_RASTER_SHADER,
@@ -860,47 +833,34 @@ function getPipelines(device, format) {
             label: "sparse path raw distance shader",
             code: RAW_DISTANCE_SHADER,
         });
-        devicePipelines = {
-            edgeModule,
+        const correctionModule = device.createShaderModule({
+            label: "sparse path correction shader",
+            code: CORRECTION_SHADER,
+        });
+        pipelines = {
+            edge: device.createRenderPipeline({
+                label: "sparse path edge raster pipeline",
+                layout: "auto",
+                vertex: { module: edgeModule, entryPoint: "vs_main" },
+                fragment: {
+                    module: edgeModule,
+                    entryPoint: "fs_main",
+                    targets: [{ format: "rgba16float" }],
+                },
+                primitive: { topology: "triangle-list" },
+            }),
             raw: device.createComputePipeline({
                 label: "sparse path raw distance pipeline",
                 layout: "auto",
                 compute: { module: rawModule, entryPoint: "main" },
             }),
-            formats: new Map(),
-        };
-        pipelineCache.set(device, devicePipelines);
-    }
-
-    let pipelines = devicePipelines.formats.get(format);
-    if (!pipelines) {
-        const correctionModule = device.createShaderModule({
-            label: `sparse path ${format} correction shader`,
-            code: createCorrectionShader(format),
-        });
-        pipelines = {
-            edge: device.createRenderPipeline({
-                label: `sparse path ${format} edge raster pipeline`,
-                layout: "auto",
-                vertex: {
-                    module: devicePipelines.edgeModule,
-                    entryPoint: "vs_main",
-                },
-                fragment: {
-                    module: devicePipelines.edgeModule,
-                    entryPoint: "fs_main",
-                    targets: [{ format }],
-                },
-                primitive: { topology: "triangle-list" },
-            }),
-            raw: devicePipelines.raw,
             correction: device.createComputePipeline({
-                label: `sparse path ${format} correction pipeline`,
+                label: "sparse path correction pipeline",
                 layout: "auto",
                 compute: { module: correctionModule, entryPoint: "main" },
             }),
         };
-        devicePipelines.formats.set(format, pipelines);
+        pipelineCache.set(device, pipelines);
     }
     return pipelines;
 }
@@ -933,7 +893,7 @@ function alignToFour(value) {
 
 /**
  * @param {string[]} paths
- * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} options
+ * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number }} options
  */
 function atlasCacheKey(paths, options) {
     return JSON.stringify([
@@ -946,7 +906,6 @@ function atlasCacheKey(paths, options) {
         options.normalizationSpan ?? null,
         options.tightPacking ?? false,
         options.maxAtlasWidth ?? null,
-        options.format ?? "rgba8unorm",
     ]);
 }
 
@@ -1128,7 +1087,7 @@ export class MsdfAtlasGenerator {
      * scratch can be overwritten immediately after each submission.
      *
      * @param {string[]} paths
-     * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} [options]
+     * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number }} [options]
      * @param {string} [label]
      */
     createAtlas(paths, options = {}, label = "path atlas") {
@@ -1136,10 +1095,6 @@ export class MsdfAtlasGenerator {
             throw new Error("MSDF atlas generator has been destroyed.");
         }
         const layout = buildSparsePathAtlasLayout(paths, options);
-        const format = options.format ?? "rgba8unorm";
-        if (format !== "rgba8unorm" && format !== "rgba16float") {
-            throw new Error("Unsupported sparse path atlas texture format.");
-        }
         this._ensureInputBuffer(layout.segmentData.byteLength, "segments");
         this._ensureInputBuffer(layout.jobData.byteLength, "jobs");
         this._ensureScratch(layout.width, layout.height);
@@ -1158,7 +1113,7 @@ export class MsdfAtlasGenerator {
             this._trueScratchBuffer
         );
         const rawTexture = /** @type {GPUTexture} */ (this._rawTexture);
-        const pipelines = getPipelines(this.device, format);
+        const pipelines = getPipelines(this.device);
         this.device.queue.writeBuffer(
             segmentBuffer,
             0,
@@ -1183,7 +1138,7 @@ export class MsdfAtlasGenerator {
         const texture = this.device.createTexture({
             label,
             size: [layout.width, layout.height],
-            format,
+            format: "rgba16float",
             usage:
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 GPUTextureUsage.STORAGE_BINDING |
@@ -1318,7 +1273,7 @@ export class MsdfAtlasGenerator {
             ...layout,
             texture,
             entryBuffer,
-            format,
+            format: "rgba16float",
             version: 1,
             completion: this.device.queue.onSubmittedWorkDone(),
             destroy: () => {
@@ -1335,7 +1290,7 @@ export class MsdfAtlasGenerator {
      * Return a device-lifetime immutable atlas for an exact canonical table.
      *
      * @param {string[]} paths
-     * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} [options]
+     * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number }} [options]
      * @param {string} [label]
      */
     acquireAtlas(paths, options = {}, label = "path atlas") {
@@ -1409,7 +1364,7 @@ export function getMsdfAtlasGenerator(renderer) {
  *
  * @param {GPUDevice} device
  * @param {string[]} paths
- * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number, format?: "rgba8unorm" | "rgba16float" }} [options]
+ * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number }} [options]
  * @param {string} [label]
  */
 export function createSparseGpuPathAtlas(

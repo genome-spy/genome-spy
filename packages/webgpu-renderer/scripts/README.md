@@ -107,10 +107,13 @@ bounds, and blending. Median statistics for the eight-pixel band around the
 canonical contour focus the report on distances ordinary fills and outlines
 actually sample. Per-symbol counts make the compound overlapping path
 distinguishable from regressions in stars, rectangles, and other ordinary
-contours. Both generators use RGBA8 by default so the diff isolates generation
-rather than texture quantization. Pass `--wgsl-format rgba16float` to compare
-the preferred WGSL rendering against the quantized WASM reference. The default
-point size of 60 pixels matches the largest symbols in the Path Points story.
+contours. The WGSL renderer uses its production RGBA16F atlas by default. The
+atlas diff quantizes its readback to the canonical oracle's RGBA8 encoding so
+texture differences remain directly inspectable. Pass
+`--wgsl-format rgba8unorm` to insert a development-only GPU quantization pass
+and isolate generator geometry from texture precision and filtering. The
+default point size of 60 pixels matches the largest symbols in the Path Points
+story.
 `--angles 0,15,30,45` expands the rotation matrix. `--tile-size`, `--spread`,
 and `--shape-padding` override the shared atlas geometry for controlled
 resolution and distance-range experiments. Use `--stroke-width 0` to isolate

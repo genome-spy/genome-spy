@@ -41,26 +41,5 @@ export function createTrueTypeFont(
 
 export function loadTrueTypeFont(url: string | URL): Promise<TrueTypeFont>;
 
-/** Prototype compatibility helper; production callers use TrueTypeFont. */
-export function createAsciiTrueTypeFont(
-    source: ArrayBuffer | ArrayBufferView | DataView
-): Readonly<{
-    unitsPerEm: number;
-    ascender: number;
-    descender: number;
-    lineGap: number;
-    paths: string[];
-    characters: Map<
-        string,
-        {
-            glyphId: number;
-            pathIndex: number;
-            advanceWidth: number;
-            bounds: TrueTypeBounds | null;
-        }
-    >;
-    getPairAdjustment: TrueTypeFont["getPairAdjustment"];
-}>;
-
 /** Internal outline-conversion helper retained for focused tests. */
 export function trueTypeGlyphToPath(glyph: unknown): string | null;

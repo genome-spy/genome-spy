@@ -84,6 +84,10 @@ point integration (451), and Core integration (241).
 
 ## Milestone 1: Move comparison compatibility behind a development boundary
 
+Status: completed. Production runtime decreased by 100 non-comment SLOC. The
+packed package decreased by 915 bytes; affected gzip fixtures decreased by
+237-405 bytes while the renderer-only fixture was unchanged.
+
 ### Intended outcome
 
 Production path and font modules expose only normal `rgba16float` behavior.
@@ -111,7 +115,7 @@ and inspection hooks needed for direct visual and numerical comparisons.
   switchable Path Points and Path Text Storybook examples.
 - Remove stale migration-plan references to the retired path-points plans.
 
-Expected reduction: 120-220 production SLOC.
+Actual reduction: 100 production SLOC.
 
 ### Affected areas and consumers
 

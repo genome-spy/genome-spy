@@ -16,7 +16,7 @@ test("WGSL bounds acute symbol and glyph strokes like msdfgen", async ({
             { identityScale },
         ] = await Promise.all([
             import("/src/index.js"),
-            import("/src/fonts/trueTypeFont.js"),
+            import("/tests/oracles/createAsciiTrueTypeFont.js"),
             import("/tests/oracles/msdfgen/pathPointMark.js"),
             import("/src/scales/identity.js"),
         ]);
@@ -47,7 +47,6 @@ test("WGSL bounds acute symbol and glyph strokes like msdfgen", async ({
                 count: x.length,
                 paths,
                 atlasBackend: backend,
-                atlasFormat: backend === "gpu" ? "rgba16float" : "rgba8unorm",
                 channels: {
                     x: { data: x, type: "f32", scale: identityScale() },
                     y: { data: y, type: "f32", scale: identityScale() },
@@ -142,7 +141,7 @@ test("WGSL retains 90-degree corners and star tips like msdfgen", async ({
         const size = new Float32Array(instances.length).fill(3600);
         const strokeWidth = new Float32Array(instances.length).fill(4);
 
-        /** @param {"gpu" | "wasm"} backend */
+        /** @param {"gpu-rgba8" | "wasm"} backend */
         const render = async (backend) => {
             const canvas = document.createElement("canvas");
             canvas.width = width * 2;
@@ -154,7 +153,6 @@ test("WGSL retains 90-degree corners and star tips like msdfgen", async ({
                 count: instances.length,
                 paths,
                 atlasBackend: backend,
-                atlasFormat: "rgba8unorm",
                 atlasOptions: {
                     tileSize: 128,
                     spread: 32,
@@ -191,7 +189,10 @@ test("WGSL retains 90-degree corners and star tips like msdfgen", async ({
             return pixels;
         };
 
-        const [gpu, wasm] = await Promise.all([render("gpu"), render("wasm")]);
+        const [gpu, wasm] = await Promise.all([
+            render("gpu-rgba8"),
+            render("wasm"),
+        ]);
         const counts = new Array(paths.length).fill(0);
         const pixelCellWidth = cellWidth * 2;
         const canvasWidth = width * 2;
@@ -290,7 +291,6 @@ test("WGSL star strokes have no deep white seams or detached spikes", async ({
                 count: instances.length,
                 paths,
                 atlasBackend: backend,
-                atlasFormat: backend === "gpu" ? "rgba16float" : "rgba8unorm",
                 channels: {
                     x: { data: x, type: "f32", scale: identityScale() },
                     y: { data: y, type: "f32", scale: identityScale() },

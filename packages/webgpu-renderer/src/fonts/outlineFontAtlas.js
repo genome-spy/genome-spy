@@ -136,7 +136,6 @@ export class OutlineFontAtlas {
             {
                 ...OUTLINE_ATLAS_OPTIONS,
                 normalizationSpan: this.font.unitsPerEm,
-                format: "rgba16float",
             },
             "outline glyph batch"
         );

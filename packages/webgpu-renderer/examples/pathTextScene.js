@@ -26,7 +26,7 @@ const LINES = [
 ];
 
 /**
- * @param {ReturnType<import("../src/fonts/trueTypeFont.js").createAsciiTrueTypeFont>} font
+ * @param {ReturnType<import("../tests/oracles/createAsciiTrueTypeFont.js").createAsciiTrueTypeFont>} font
  * @param {typeof LINES} [lines]
  */
 export function layoutPathTextLines(font, lines = LINES) {
@@ -80,7 +80,7 @@ export function layoutPathTextLines(font, lines = LINES) {
     return instances;
 }
 
-/** @param {ReturnType<import("../src/fonts/trueTypeFont.js").createAsciiTrueTypeFont>} font */
+/** @param {ReturnType<import("../tests/oracles/createAsciiTrueTypeFont.js").createAsciiTrueTypeFont>} font */
 export function getPathTextAtlasOptions(font) {
     return {
         tileSize: 128,

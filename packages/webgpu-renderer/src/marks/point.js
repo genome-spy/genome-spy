@@ -20,7 +20,6 @@ function resolvePathConfig(config) {
     return {
         ...config,
         paths,
-        atlasFormat: "rgba16float",
         atlasOptions: { normalizationSpan: 2 },
         channels: {
             ...config.channels,

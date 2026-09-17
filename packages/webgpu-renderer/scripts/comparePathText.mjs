@@ -42,9 +42,7 @@ const wgslFormatArgument = process.argv.indexOf("--wgsl-format");
 const wgslFormat =
     wgslFormatArgument >= 0 && process.argv[wgslFormatArgument + 1]
         ? process.argv[wgslFormatArgument + 1]
-        : scene === "path-points"
-          ? "rgba8unorm"
-          : "rgba16float";
+        : "rgba16float";
 const pointSizeArgument = process.argv.indexOf("--point-size");
 const pointSize =
     pointSizeArgument >= 0 && process.argv[pointSizeArgument + 1]
@@ -195,7 +193,7 @@ async function renderBackend(page, backend) {
                     { createAsciiTrueTypeFont },
                     { getPathTextAtlasOptions, layoutPathTextLines },
                 ] = await Promise.all([
-                    import("/src/fonts/trueTypeFont.js"),
+                    import("/tests/oracles/createAsciiTrueTypeFont.js"),
                     import("/examples/pathTextScene.js"),
                 ]);
                 const response = await fetch("/src/fonts/DefaultFont.ttf");
@@ -283,11 +281,11 @@ async function renderBackend(page, backend) {
             const handle = renderer.createMark(comparisonPathPointMark, {
                 count,
                 paths,
-                atlasBackend: selectedBackend,
-                atlasFormat:
-                    selectedBackend === "gpu"
-                        ? selectedWgslFormat
-                        : "rgba8unorm",
+                atlasBackend:
+                    selectedBackend === "gpu" &&
+                    selectedWgslFormat === "rgba8unorm"
+                        ? "gpu-rgba8"
+                        : selectedBackend,
                 ...(atlasOptions ? { atlasOptions } : {}),
                 channels: {
                     x: { data: x, type: "f32", scale: identityScale() },
@@ -361,7 +359,6 @@ async function comparePathPointAtlases(page) {
                         ([, value]) => value !== undefined
                     )
                 ),
-                format: "rgba8unorm",
             };
             const wasmAtlas = buildPathAtlas(paths, options);
             const canvas = document.createElement("canvas");
@@ -384,7 +381,7 @@ async function comparePathPointAtlases(page) {
 
             const width = gpuAtlas.width;
             const height = gpuAtlas.height;
-            const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+            const bytesPerRow = Math.ceil((width * 8) / 256) * 256;
             const readback = renderer.device.createBuffer({
                 size: bytesPerRow * height,
                 usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
@@ -397,16 +394,41 @@ async function comparePathPointAtlases(page) {
             );
             renderer.device.queue.submit([encoder.finish()]);
             await readback.mapAsync(GPUMapMode.READ);
-            const mapped = new Uint8Array(readback.getMappedRange());
+            const mapped = new Uint16Array(readback.getMappedRange());
             const gpu = new Uint8ClampedArray(width * height * 4);
+            const halfToFloat = (value) => {
+                const sign = value & 0x8000 ? -1 : 1;
+                const exponent = (value >> 10) & 0x1f;
+                const fraction = value & 0x03ff;
+                if (exponent === 0) {
+                    return sign * 2 ** -14 * (fraction / 1024);
+                }
+                if (exponent === 0x1f) {
+                    return fraction
+                        ? Number.NaN
+                        : sign * Number.POSITIVE_INFINITY;
+                }
+                return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+            };
             for (let y = 0; y < height; y++) {
-                gpu.set(
-                    mapped.subarray(
-                        y * bytesPerRow,
-                        y * bytesPerRow + width * 4
-                    ),
-                    y * width * 4
-                );
+                for (let x = 0; x < width; x++) {
+                    const source = (y * bytesPerRow) / 2 + x * 4;
+                    const target = (y * width + x) * 4;
+                    for (let component = 0; component < 4; component++) {
+                        const distance = halfToFloat(
+                            mapped[source + component]
+                        );
+                        gpu[target + component] = Math.round(
+                            Math.max(
+                                0,
+                                Math.min(
+                                    1,
+                                    0.5 + distance / (2 * options.spread)
+                                )
+                            ) * 255
+                        );
+                    }
+                }
             }
             const wasm = new Uint8ClampedArray(wasmAtlas.data);
             readback.unmap();
