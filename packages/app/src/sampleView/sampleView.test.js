@@ -29,6 +29,7 @@ import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 import { LEGACY_LABEL_TITLE_TEXT_WARNING } from "./sampleViewSpecNormalizer.js";
 import WebGpuViewRenderingContext from "@genome-spy/core/rendering/webgpu/webGpuViewRenderingContext.js";
 import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
+import BmFontManager from "@genome-spy/core/fonts/bmFontManager.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -2175,7 +2176,16 @@ describe("axis layout and visibility", () => {
             { sample, start: 0, end: 40, value: index },
             { sample, start: 40, end: 100, value: -index },
         ]);
-        const testContext = createTestViewContext();
+        const testContext = createTestViewContext(
+            {},
+            {
+                fontManager: new BmFontManager(
+                    undefined,
+                    undefined,
+                    async () => ({})
+                ),
+            }
+        );
         testContext.isViewConfiguredVisible = (candidate) =>
             candidate.spec.name !== "sample-labels";
         const { view, context } = await createSampleViewForTest({
