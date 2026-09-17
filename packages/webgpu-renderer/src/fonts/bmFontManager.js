@@ -34,16 +34,6 @@ export default class BmFontManager {
     }
 
     /**
-     * @param {string} family
-     * @param {FontStyle} style
-     * @param {FontWeight} weight
-     * @returns {string}
-     */
-    _getKey(family, style, weight) {
-        return getFontKey(family, style, weight);
-    }
-
-    /**
      * Registers a font for lookup by family/style/weight.
      *
      * @param {object} params
@@ -61,7 +51,7 @@ export default class BmFontManager {
         metrics,
         bitmap,
     }) {
-        const key = this._getKey(family, style, weight);
+        const key = getFontKey(family, style, weight);
         this._fonts.set(key, { metrics, bitmap });
     }
 
@@ -72,7 +62,7 @@ export default class BmFontManager {
      * @returns {FontEntry}
      */
     getFont(family, style = "normal", weight = "regular") {
-        const key = this._getKey(family, style, weight);
+        const key = getFontKey(family, style, weight);
         const fontEntry = this._fonts.get(key);
         if (!fontEntry) {
             if (!this._defaultFontEntry) {

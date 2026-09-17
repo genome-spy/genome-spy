@@ -141,6 +141,10 @@ Tentative commit: `refactor(webgpu-renderer): isolate MSDF diagnostics`
 
 ## Milestone 2: Consolidate text paths without reducing capabilities
 
+Status: completed. Production runtime decreased by 100 non-comment SLOC. Both
+text gzip fixtures decreased by 183 bytes and the packed package decreased by
+190 bytes.
+
 ### Intended outcome
 
 Bitmap and TrueType text, text effects, and lazy outline atlases retain their
@@ -162,7 +166,7 @@ resource plumbing.
 - Remove stale fields or caches only after reference tracing proves that no
   bitmap, outline, effect, retained-update, or destruction path consumes them.
 
-Expected reduction: 100-220 production SLOC.
+Actual reduction: 100 production SLOC.
 
 ### Affected areas and consumers
 

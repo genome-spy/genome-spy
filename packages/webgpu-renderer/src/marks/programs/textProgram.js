@@ -915,6 +915,13 @@ function normalizeTextConfig({
 } = {}) {
     /** @type {Record<string, ChannelConfigInput | TextStringChannelConfigInput>} */
     const normalizedChannels = { ...channels };
+    const textChannel = normalizedChannels.text;
+    normalizedChannels.text = {
+        value: 0,
+        type: "u32",
+        components: 1,
+        scale: { type: "identity" },
+    };
     const effects = resolveTextEffectLayers(channels);
     if (effects.enabled && !isTrueTypeFont(font)) {
         throw new Error(
@@ -931,50 +938,44 @@ function normalizeTextConfig({
     const seriesIndexExpression = effects.enabled
         ? "glyphs[renderItems[i].glyphIndex].stringIndex"
         : "glyphs[i].stringIndex";
+    /**
+     * @param {import("../../fonts/layout.js").TextLayout} layout
+     * @param {number} resolvedCount
+     * @param {FontEntry | null} fontEntry
+     * @param {BmFontManager | null} fontManager
+     */
+    const result = (layout, resolvedCount, fontEntry, fontManager) => ({
+        normalized: {
+            channels: /** @type {Record<string, ChannelConfigInput>} */ (
+                normalizedChannels
+            ),
+            count: resolvedCount,
+            seriesIndexExpression,
+        },
+        textLayout: layout,
+        fontEntry,
+        fontManager,
+        effects,
+    });
     if (isTrueTypeFont(font)) {
         if (textLayout) {
             throw new Error(
                 "TrueType text layout is derived from its outline font."
             );
         }
-        const strings = resolveTextStrings(normalizedChannels.text, count);
-        const layout = buildOutlineTextLayout(strings, font, {
-            fontSize: typeof fontSize === "number" ? fontSize : 12,
-            lineHeight: typeof lineHeight === "number" ? lineHeight : 1,
-            letterSpacing:
-                typeof letterSpacing === "number" ? letterSpacing : 0,
+        const strings = resolveTextStrings(textChannel, count);
+        const layout = buildResolvedTextLayout(strings, font, null, {
+            fontSize,
+            lineHeight,
+            letterSpacing,
         });
-        normalizedChannels.text = {
-            value: 0,
-            type: "u32",
-            components: 1,
-            scale: { type: "identity" },
-        };
-        return {
-            normalized: {
-                channels: /** @type {Record<string, ChannelConfigInput>} */ (
-                    normalizedChannels
-                ),
-                count: strings.length,
-                seriesIndexExpression,
-            },
-            textLayout: /** @type {any} */ (layout),
-            fontEntry: null,
-            fontManager: null,
-            effects,
-        };
+        return result(/** @type {any} */ (layout), strings.length, null, null);
     }
-    const resolvedStyle = fontStyle === "italic" ? "italic" : "normal";
-    const resolvedWeight =
-        typeof fontWeight === "number" || typeof fontWeight === "string"
-            ? /** @type {FontWeightInput} */ (fontWeight)
-            : 400;
+    const fontSpec = resolveBmFontSpec({ font, fontStyle, fontWeight });
     const fontManager = new BmFontManager();
     if (fontResource) {
         fontManager.registerFont({
-            family: typeof font === "string" ? font : "Lato",
-            style: resolvedStyle,
-            weight: resolvedWeight,
+            ...fontSpec,
             metrics:
                 /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ (
                     fontResource.metrics
@@ -983,17 +984,10 @@ function normalizeTextConfig({
         });
     }
     const fontEntry = fontManager.getFont(
-        typeof font === "string" ? font : "Lato",
-        resolvedStyle,
-        resolvedWeight
+        fontSpec.family,
+        fontSpec.style,
+        fontSpec.weight
     );
-    const textChannel =
-        /** @type {ChannelConfigInput | TextStringChannelConfigInput | undefined} */ (
-            normalizedChannels.text
-        );
-    /** @type {string[]} */
-    let strings;
-
     if (textLayout) {
         const layout =
             /** @type {import("../../fonts/layout.js").TextLayout} */ (
@@ -1005,59 +999,11 @@ function normalizeTextConfig({
                 `Text layout count (${stringCount}) does not match count (${count}).`
             );
         }
-        normalizedChannels.text = {
-            value: 0,
-            type: "u32",
-            components: 1,
-            scale: { type: "identity" },
-        };
-        return {
-            normalized: {
-                channels: /** @type {Record<string, ChannelConfigInput>} */ (
-                    normalizedChannels
-                ),
-                count: stringCount,
-                seriesIndexExpression,
-            },
-            textLayout: layout,
-            fontEntry,
-            fontManager,
-            effects,
-        };
+        return result(layout, stringCount, fontEntry, fontManager);
     }
 
-    if (
-        textChannel &&
-        "data" in textChannel &&
-        textChannel.data !== undefined
-    ) {
-        if (Array.isArray(textChannel.data)) {
-            strings = /** @type {string[]} */ (textChannel.data);
-        } else {
-            throw new Error(
-                "Text channel data must be a string array when no textLayout is provided."
-            );
-        }
-    } else if (
-        textChannel &&
-        "value" in textChannel &&
-        textChannel.value !== undefined
-    ) {
-        const textValue = textChannel.value;
-        if (typeof textValue !== "string") {
-            throw new Error(
-                "Text channel value must be a string when no textLayout is provided."
-            );
-        }
-        const repeat = count ?? 1;
-        strings = Array.from({ length: repeat }, () => textValue);
-    } else {
-        const repeat = count ?? 0;
-        strings = Array.from({ length: repeat }, () => "");
-    }
-
-    const layout = buildConfiguredTextLayout(strings, {
-        fontManager,
+    const strings = resolveTextStrings(textChannel, count);
+    const layout = buildResolvedTextLayout(strings, font, fontManager, {
         font,
         fontStyle,
         fontWeight,
@@ -1065,25 +1011,53 @@ function normalizeTextConfig({
         lineHeight,
         letterSpacing,
     });
-    normalizedChannels.text = {
-        value: 0,
-        type: "u32",
-        components: 1,
-        scale: { type: "identity" },
-    };
+    return result(layout, strings.length, fontEntry, fontManager);
+}
 
+/**
+ * @param {string[]} strings
+ * @param {unknown} font
+ * @param {BmFontManager | null} fontManager
+ * @param {TextConfigInput} config
+ */
+function buildResolvedTextLayout(strings, font, fontManager, config) {
+    if (isTrueTypeFont(font)) {
+        return buildOutlineTextLayout(strings, font, {
+            fontSize:
+                typeof config.fontSize === "number" ? config.fontSize : 12,
+            lineHeight:
+                typeof config.lineHeight === "number" ? config.lineHeight : 1,
+            letterSpacing:
+                typeof config.letterSpacing === "number"
+                    ? config.letterSpacing
+                    : 0,
+        });
+    }
+    return buildTextLayout({
+        strings,
+        fontManager: /** @type {BmFontManager} */ (fontManager),
+        font: resolveBmFontSpec(config),
+        fontSize: typeof config.fontSize === "number" ? config.fontSize : 12,
+        lineHeight:
+            typeof config.lineHeight === "number" ? config.lineHeight : 1,
+        letterSpacing:
+            typeof config.letterSpacing === "number" ? config.letterSpacing : 0,
+    });
+}
+
+/**
+ * @param {Pick<TextConfigInput, "font" | "fontStyle" | "fontWeight">} config
+ */
+function resolveBmFontSpec({ font, fontStyle, fontWeight }) {
     return {
-        normalized: {
-            channels: /** @type {Record<string, ChannelConfigInput>} */ (
-                normalizedChannels
-            ),
-            count: strings.length,
-            seriesIndexExpression,
-        },
-        textLayout: layout,
-        fontEntry,
-        fontManager,
-        effects,
+        family: typeof font === "string" ? font : "Lato",
+        style: /** @type {"normal" | "italic"} */ (
+            fontStyle === "italic" ? "italic" : "normal"
+        ),
+        weight:
+            typeof fontWeight === "number" || typeof fontWeight === "string"
+                ? /** @type {FontWeightInput} */ (fontWeight)
+                : 400,
     };
 }
 
@@ -1119,48 +1093,6 @@ function resolveTextStrings(textChannel, count) {
         return Array.from({ length: count ?? 1 }, () => value);
     }
     return Array.from({ length: count ?? 0 }, () => "");
-}
-
-/**
- * @param {string[]} strings
- * @param {object} options
- * @param {BmFontManager} options.fontManager
- * @param {unknown} [options.font]
- * @param {unknown} [options.fontStyle]
- * @param {unknown} [options.fontWeight]
- * @param {unknown} [options.fontSize]
- * @param {unknown} [options.lineHeight]
- * @param {unknown} [options.letterSpacing]
- */
-function buildConfiguredTextLayout(
-    strings,
-    {
-        fontManager,
-        font,
-        fontStyle,
-        fontWeight,
-        fontSize,
-        lineHeight,
-        letterSpacing,
-    }
-) {
-    const resolvedStyle = fontStyle === "italic" ? "italic" : "normal";
-    const resolvedWeight =
-        typeof fontWeight === "number" || typeof fontWeight === "string"
-            ? /** @type {FontWeightInput} */ (fontWeight)
-            : 400;
-    return buildTextLayout({
-        strings,
-        fontManager,
-        font: {
-            family: typeof font === "string" ? font : "Lato",
-            style: resolvedStyle,
-            weight: resolvedWeight,
-        },
-        fontSize: typeof fontSize === "number" ? fontSize : 12,
-        lineHeight: typeof lineHeight === "number" ? lineHeight : 1.0,
-        letterSpacing: typeof letterSpacing === "number" ? letterSpacing : 0.0,
-    });
 }
 
 /**
@@ -1306,6 +1238,17 @@ function getFontGpuResources(renderer, fontEntry) {
         .then((image) => image && resources.upload(image))
         .catch(() => {});
     return resources;
+}
+
+/** @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas */
+function outlineAtlasResource(atlas) {
+    return {
+        texture: atlas.texture,
+        sampler: atlas.sampler,
+        width: atlas.width,
+        height: atlas.height,
+        format: /** @type {GPUTextureFormat} */ ("rgba16float"),
+    };
 }
 
 export default class TextProgram extends BaseProgram {
@@ -1580,30 +1523,33 @@ export default class TextProgram extends BaseProgram {
                 /** @type {any} */ (layout),
                 this._markConfig.font
             );
-            return;
-        }
-        const fontEntry = /** @type {FontEntry} */ (this._markConfig.fontEntry);
-        const metrics = fontEntry.metrics;
-        const atlasWidth = metrics.common.scaleW;
-        const atlasHeight = metrics.common.scaleH;
-        this._setUniformValue("uFontBase", metrics.common.base);
-        this._setUniformValue("uLayoutFontSize", layout.fontSize);
-        this._setUniformValue("uAtlasScale", [1 / atlasWidth, 1 / atlasHeight]);
-        this._setUniformValue("uCapHeight", metrics.capHeight);
-        this._setUniformValue("uDescent", metrics.descent);
-        this._setUniformValue("uSdfPadding", SDF_PADDING);
-        this._setUniformValue("uOutlineFont", 0);
-        this._setUniformValue("uShapePixels", 1);
-        this._setUniformValue("uSpread", 1);
-        /** @type {number} */
-        this._sdfNumeratorBase = metrics.common.base * 0.35;
-        this._updateTextLayoutBuffers(layout);
+        } else {
+            const fontEntry = /** @type {FontEntry} */ (
+                this._markConfig.fontEntry
+            );
+            const metrics = fontEntry.metrics;
+            this._setUniformValue("uFontBase", metrics.common.base);
+            this._setUniformValue("uAtlasScale", [
+                1 / metrics.common.scaleW,
+                1 / metrics.common.scaleH,
+            ]);
+            this._setUniformValue("uCapHeight", metrics.capHeight);
+            this._setUniformValue("uDescent", metrics.descent);
+            this._setUniformValue("uSdfPadding", SDF_PADDING);
+            this._setUniformValue("uOutlineFont", 0);
+            this._setUniformValue("uShapePixels", 1);
+            this._setUniformValue("uSpread", 1);
+            /** @type {number} */
+            this._sdfNumeratorBase = metrics.common.base * 0.35;
 
-        const resources = getFontGpuResources(this.renderer, fontEntry);
-        this._extraBuffers.set("glyphMetrics", resources.glyphMetrics);
-        this._extraTextures.set("fontAtlas", resources.atlas);
-        this._borrowedExtraBuffers.add("glyphMetrics");
-        this._borrowedExtraTextures.add("fontAtlas");
+            const resources = getFontGpuResources(this.renderer, fontEntry);
+            this._extraBuffers.set("glyphMetrics", resources.glyphMetrics);
+            this._extraTextures.set("fontAtlas", resources.atlas);
+            this._borrowedExtraBuffers.add("glyphMetrics");
+            this._borrowedExtraTextures.add("fontAtlas");
+        }
+        this._setUniformValue("uLayoutFontSize", layout.fontSize);
+        this._updateTextLayoutBuffers(layout);
     }
 
     /**
@@ -1613,17 +1559,12 @@ export default class TextProgram extends BaseProgram {
     _initializeOutlineFontResources(layout, font) {
         const atlas = getOutlineFontAtlas(this.renderer, font);
         this._updateOutlineGlyphMetrics(layout, font, atlas);
-        const atlasScale =
-            (OUTLINE_ATLAS_OPTIONS.tileSize -
-                OUTLINE_ATLAS_OPTIONS.shapePadding * 2) /
-            font.unitsPerEm;
-
-        this._setUniformValue(
-            "uFontBase",
+        const shapePixels =
             OUTLINE_ATLAS_OPTIONS.tileSize -
-                OUTLINE_ATLAS_OPTIONS.shapePadding * 2
-        );
-        this._setUniformValue("uLayoutFontSize", layout.fontSize);
+            OUTLINE_ATLAS_OPTIONS.shapePadding * 2;
+        const atlasScale = shapePixels / font.unitsPerEm;
+
+        this._setUniformValue("uFontBase", shapePixels);
         this._setUniformValue("uAtlasScale", [
             1 / atlas.width,
             1 / atlas.height,
@@ -1634,24 +1575,10 @@ export default class TextProgram extends BaseProgram {
         this._setUniformValue("uDescent", -font.descender * atlasScale);
         this._setUniformValue("uSdfPadding", 0);
         this._setUniformValue("uOutlineFont", 1);
-        this._setUniformValue(
-            "uShapePixels",
-            OUTLINE_ATLAS_OPTIONS.tileSize -
-                OUTLINE_ATLAS_OPTIONS.shapePadding * 2
-        );
+        this._setUniformValue("uShapePixels", shapePixels);
         this._setUniformValue("uSpread", OUTLINE_ATLAS_OPTIONS.spread);
-        this._sdfNumeratorBase =
-            (OUTLINE_ATLAS_OPTIONS.tileSize -
-                OUTLINE_ATLAS_OPTIONS.shapePadding * 2) *
-            0.35;
-        this._updateTextLayoutBuffers(layout);
-        this._extraTextures.set("fontAtlas", {
-            texture: atlas.texture,
-            sampler: atlas.sampler,
-            width: atlas.width,
-            height: atlas.height,
-            format: "rgba16float",
-        });
+        this._sdfNumeratorBase = shapePixels * 0.35;
+        this._extraTextures.set("fontAtlas", outlineAtlasResource(atlas));
         this._borrowedExtraTextures.add("fontAtlas");
         this._outlineAtlas = atlas;
         this._outlineAtlasUnsubscribe = atlas.subscribe((grownAtlas) => {
@@ -1659,13 +1586,10 @@ export default class TextProgram extends BaseProgram {
                 1 / grownAtlas.width,
                 1 / grownAtlas.height,
             ]);
-            this._extraTextures.set("fontAtlas", {
-                texture: grownAtlas.texture,
-                sampler: grownAtlas.sampler,
-                width: grownAtlas.width,
-                height: grownAtlas.height,
-                format: "rgba16float",
-            });
+            this._extraTextures.set(
+                "fontAtlas",
+                outlineAtlasResource(grownAtlas)
+            );
             this._writeUniforms();
             this._rebuildBindGroup();
             this.renderer._invalidate();
@@ -1810,30 +1734,12 @@ export default class TextProgram extends BaseProgram {
         const outlineFont = isTrueTypeFont(this._markConfig.font)
             ? this._markConfig.font
             : null;
-        const layout = outlineFont
-            ? buildOutlineTextLayout(strings, outlineFont, {
-                  fontSize:
-                      typeof this._markConfig.fontSize === "number"
-                          ? this._markConfig.fontSize
-                          : 12,
-                  lineHeight:
-                      typeof this._markConfig.lineHeight === "number"
-                          ? this._markConfig.lineHeight
-                          : 1,
-                  letterSpacing:
-                      typeof this._markConfig.letterSpacing === "number"
-                          ? this._markConfig.letterSpacing
-                          : 0,
-              })
-            : buildConfiguredTextLayout(strings, {
-                  fontManager: /** @type {BmFontManager} */ (this._fontManager),
-                  font: this._markConfig.font,
-                  fontStyle: this._markConfig.fontStyle,
-                  fontWeight: this._markConfig.fontWeight,
-                  fontSize: this._markConfig.fontSize,
-                  lineHeight: this._markConfig.lineHeight,
-                  letterSpacing: this._markConfig.letterSpacing,
-              });
+        const layout = buildResolvedTextLayout(
+            strings,
+            this._markConfig.font,
+            this._fontManager,
+            this._markConfig
+        );
         /** @type {Record<string, import("../../index.js").TypedArray>} */
         const resolved = {};
         for (const [name, targets] of this._logicalSeriesTargets) {
