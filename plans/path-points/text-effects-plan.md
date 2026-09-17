@@ -1,6 +1,6 @@
 # Glyph-based text effects feasibility record
 
-Status: proof of concept complete; Core integration remains open
+Status: proof of concept complete; public integration deferred outside branch
 
 ## Result
 
@@ -66,7 +66,10 @@ but it is not required for the initial portable effect API.
 - Text program identity now depends only on font and effect variants; label
   contents are never serialized in the animation-frame hot path.
 
-## Production follow-up
+## Deferred production follow-up
+
+The following items are explicitly discarded from this branch's scope. The
+renderer proof of concept may merge, but no public grammar contract is implied.
 
 1. Define a backend-neutral Core API for one outline and one shadow/glow.
 2. Map the same paint order to Canvas2D and SVG; decide whether legacy WebGL
@@ -76,5 +79,5 @@ but it is not required for the initial portable effect API.
 4. Profile glyph-instance expansion and fragment cost on dense label workloads.
 5. Document the deliberate glyph-overlap and non-Gaussian blur differences.
 
-These items are tracked in
+These deferred opportunities are reconciled in
 [`production-integration-plan.md`](production-integration-plan.md).

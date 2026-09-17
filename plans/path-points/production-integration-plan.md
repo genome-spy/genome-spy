@@ -1,296 +1,102 @@
-# Production integration plan for GPU paths, fonts, and text effects
+# Production integration record for GPU paths and outline fonts
 
-Status: active; core path/font integration complete, production gates remain
+Status: complete and reconciled for branch retirement
 
-## Objective
+## Merge decision
 
-Finish the path-point and TrueType work as a production-quality WebGPU feature
-without compromising common scatter-plot performance or pulling font code into
-point-only bundles. Promote the completed text-effects PoC only through
-backend-neutral semantics that Canvas2D and SVG can also represent.
+This branch will merge the renderer infrastructure and the existing WebGPU
+integration without exposing new path, font-selection, or text-effect
+properties in GenomeSpy's public grammar.
 
-Historical experiments are condensed in the sibling feasibility records.
-Implementation details and provenance live in
-`packages/webgpu-renderer/src/symbols/README.md` and the focused adaptation
-notices.
+The intentionally limited scope avoids carrying a large feature branch while
+the WebGPU renderer is still evolving. It does not make the prototype renderer
+APIs a cross-backend compatibility contract.
 
-## Completed baseline
+## Included outcome
 
-- One renderer-owned sparse WebGPU MSDF generator serves symbols and glyphs
-  using bounded scratch resources and `rgba16float` output.
-- A fixed regular circle keeps the minimal analytic point shader. Fixed named
-  shapes, SVG paths, and finite variable shape tables use shared path atlases.
+- One renderer-owned sparse WebGPU MSDF generator serves SVG paths and static
+  TrueType glyphs using bounded scratch resources and `rgba16float` output.
+- A fixed regular circle retains the analytic point fast path. Other fixed
+  named shapes and finite path tables can use generated atlases.
 - Path-specific bounds and miter extents minimize quad expansion. Centered and
-  inward point strokes have explicit representability clamps.
-- The production text mark accepts immutable TrueType resources, lazily adds
-  required glyphs, grows shared atlases without changing coordinates, and
-  preserves logical-string layout, replacement, placement, picking, baselines,
-  ranged text, kerning, and 2 by 2 small-text supersampling.
+  inward strokes have explicit representability clamps.
+- Outline text supports lazy glyph generation, atlas growth, replacement,
+  picking, baselines, ranged text, basic kerning, and small-text supersampling.
 - The focused static-TTF reader supports `glyf` outlines, composites, Unicode
   `cmap`, horizontal metrics, GPOS Pair Adjustment, and legacy `kern` fallback.
-- The 47,064-byte Lato-derived Default Font is loaded through a separate entry.
-  Point-only bundles exclude the font and parser.
-- Core keeps BMFont measurement for now while its dynamically loaded WebGPU
-  integration lazily resolves exact family/weight/style descriptors to TTFs.
-  The temporary example catalog and application catalogs require no API key
-  and are absent from WebGL-only execution.
-- Core's required lollipop, text-quality, text-baseline, and plenty-of-points
-  examples render through WebGPU. Late view insertion participates in outline
-  preparation and deduplicates repeated font requests.
-- Canonical msdfgen is maintained in the separate `msdfgen-oracle` repository.
-  Explicit development tooling downloads a checksum-pinned release into an
-  ignored directory; production bundles and exports do not reference it.
-- The comparison harness checks both rendered symbols and final atlas texels.
-  Per-path median, sign, and near-contour statistics separate generator errors
-  from filtering, quad bounds, and known overlapping-contour behavior.
-- Endpoint pseudo-distances cover concave as well as convex corners, and
-  independently signed RGB candidates retain msdfgen-style channel topology
-  before global even-odd sign correction.
-- The glyph-based text-effects PoC renders label-major shadow, outline, and
-  fill layers in one draw. Effect-free text retains its direct glyph fast path.
-- Text program-key lookup is constant time and does not serialize label
-  contents during zoom or pan.
+- The Lato-derived Default Font remains a separate renderer entry so
+  point-only bundles exclude it and the parser.
+- Core retains BMFont measurement. Its dynamically loaded WebGPU adapter uses
+  a temporary lazy catalog for fonts required by examples. WebGL-only use does
+  not load that integration.
+- Canonical msdfgen lives in the separate `msdfgen-oracle` repository and is
+  fetched only by explicit comparison tooling. Production exports and bundles
+  contain no msdfgen binary or source.
+- Glyph-based outline and SDF shadow/glow rendering remains a renderer-level
+  proof of concept. Effect-free text keeps its direct glyph fast path.
 
-## Current architecture decisions
+## Verification accepted for merge
 
-### Point shapes
+- Focused unit and GPU regressions cover parsing, atlas generation and growth,
+  paths, glyphs, strokes, effects, picking, rotation, corner topology, and
+  retained updates.
+- Stress coverage grows and rebinds an outline atlas across thousands of
+  labels and verifies stable reuse during repeated replacements.
+- Browser smoke tests rendered the required lollipop, text-quality,
+  text-baseline, plenty-of-points, sequence-logo, and MSA examples at DPR 1
+  and 2. MSA and lollipop zoom/pan interactions repainted successfully.
+- Manual MSA profiling after constant-time text program-key lookup found
+  interaction performance acceptable.
+- The available Apple Metal 3 adapter accepted the exact `rgba16float`
+  storage, linear sampling, render, and copy usage without validation errors.
+  These operations are core WebGPU and require no optional feature.
+- Package and tree-shaking checks keep Default Font, TrueType parsing, and the
+  development oracle out of consumers that do not request them.
 
-- Public point values are built-in names or closed SVG path strings.
-- Only a mark whose shape is the fixed regular circle uses the analytic route.
-  Variable shape domains represent circles as paths too.
-- Raw strings are interned before GPU upload; instance buffers contain numeric
-  shape identifiers.
-- A mark's resolved path table is finite. Adding an unseen path requires mark
-  recreation until an incremental-symbol contract is deliberately designed.
+## Accepted limitations
 
-### Fonts and loading
+- Minor convex-corner differences and isolated acute-tip stroke blemishes can
+  remain at particular rotations and widths.
+- Atlas circles are slightly rougher than the analytic circle.
+- Small points with disproportionate strokes are clamped to the ordinary
+  atlas range.
+- The font reader is not a general shaping engine. GSUB, complex scripts,
+  bidi, fallback runs, variable fonts, CFF/CFF2, WOFF2, color fonts, and
+  hinting are unsupported.
+- SDF shadow blur is not Gaussian, and translucent per-glyph effects can
+  accumulate where glyph quads overlap.
+- Exact rendering parity between WebGPU, WebGL, Canvas2D, and SVG is not part
+  of this renderer-infrastructure merge.
 
-- The renderer receives a ready immutable `TrueTypeFont`; it does not choose a
-  family or fetch implicitly.
-- `createTrueTypeFont(bytes)` is synchronous and device-neutral.
-  `loadTrueTypeFont(url)` is an explicit fetch convenience.
-- Higher-level catalogs map exact normalized family/weight/style tuples to TTF
-  sources and load only descriptors actually requested by initialized views.
-- When no family is specified, Core tries Default Font for regular text and
-  matching Lato variants for unsupported implicit weight/style combinations.
-  Explicit missing families fail rather than silently substituting.
-- Core BMFont measurement remains until renderer-specific measurement becomes
-  a separate, justified refactor.
+## Deferred outside this branch
 
-### Atlas ownership and quality
+Every item below is explicitly discarded from this branch's scope and may be
+reconsidered as separate product work with its own requirements and plan:
 
-- Renderer caches use exact font or canonical path-table identity and own all
-  GPU resources for the device lifetime.
-- Symbol atlases are immutable; font atlases append and grow geometrically.
-- RGB stores MSDF; glyph alpha additionally stores regular signed distance.
-- Linear filtering and `rgba16float` are the current quality baseline.
-- Ordinary entries are not duplicated for uncommon wide effects. A compact
-  wide-range tier is added only for cases that the ordinary tier cannot
-  represent usefully.
+- Exposing SVG point paths, outline-font selection, or text effects in the
+  public Core grammar.
+- Defining backend-neutral Canvas2D/SVG outline and shadow semantics or adding
+  equivalent behavior to the retiring WebGL renderer.
+- Adding a compact wide-range atlas tier for unusually small, heavily stroked
+  point marks or unusually wide text effects.
+- Replacing Core BMFont measurement with renderer-provided measurement.
+- Defining public path normalization, fill-rule, unique-path-limit, and
+  incremental unseen-path contracts.
+- Expanding the focused reader into full shaping or broader font-container
+  support.
+- Additional five-million-point, supersampling-cost, package-size, cold-font,
+  peak-memory, or cross-adapter benchmarks beyond the accepted coverage.
+- Testing another adapter family, persistent atlas caches, atlas repacking,
+  device-loss recovery beyond existing infrastructure, and hosted font
+  resolution.
 
-### Text effects
+These are follow-up opportunities, not merge blockers. Any future public API
+must be designed independently rather than inferred from the current low-level
+renderer interfaces or temporary WebGPU font catalog.
 
-- One logical label paints all shadow glyphs, then all outline glyphs, then all
-  fills before advancing to the next label.
-- Only glyph quads are emitted; there is no dynamic whole-label scratch atlas.
-- RGB MSDF drives fill/outline and alpha SDF drives the initial shadow/glow.
-- Effect-only pixels do not participate in picking.
-- Portable Core semantics must map to Canvas2D and SVG even if blur kernels and
-  exact pixels differ. WebGL parity is optional because that backend is being
-  phased out.
+## Retirement
 
-## Non-goals
-
-- Replacing the analytic fixed-circle path.
-- General SVG stroking, open contours, caps, dashes, or configurable joins.
-- GSUB, complex scripts, bidi, font fallback runs, variable fonts, CFF,
-  WOFF2, color fonts, or browser font discovery.
-- A mandatory hosted font service or implicit Google Fonts request.
-- Per-label effect textures or exact translucent glyph-union composition.
-- Persistent cross-session atlas caches.
-- Exact pixel equality between WebGPU, Canvas2D, SVG, and WebGL.
-
-## Milestone 1: Close performance and compatibility gates
-
-Status: in progress
-
-### Intended outcome
-
-Representative interaction and scale workloads have recorded CPU, GPU, memory,
-and bundle baselines, with no content-sized work in animation-frame identity or
-resource checks.
-
-### Cleared gate
-
-- Manual profiling of `msa.json` zooming and panning after the constant-time
-  text program-key fix found interaction performance acceptable.
-- Automated WebGPU stress coverage now grows and rebinds an outline atlas over
-  four 4,096-label updates, then verifies stable reuse across repeated 12,000
-  label / 72,000 glyph replacements.
-- `benchmark:font-atlas` provides a reproducible synthetic-font workload that
-  separates layout/upload time, time to GPU completion, steady atlas reuse,
-  static rendering, growth history, and final RGBA16F texture bytes.
-- Chrome on the available Apple Metal 3 adapter accepted the atlas's exact
-  `rgba16float` storage, sampling, render, and copy usage without validation
-  errors. The format and required operations are part of core WebGPU and do
-  not require `shader-f16` or another optional feature.
-- Twenty-six focused GPU tests covered RGBA16F path/text generation, linear
-  sampling, atlas growth and copying, stress updates, strokes, and picking.
-  The required Core path/text examples rendered without errors at DPR 1 and 2;
-  MSA and lollipop zoom/pan interactions also repainted successfully.
-
-### Work
-
-- Re-run the five-million-point benchmark for fixed analytic circles, fixed
-  path symbols, and variable shapes.
-- Run and record headed `benchmark:font-atlas` results on target adapters, then
-  separately measure Default Font download/parsing and peak scratch bytes.
-- Measure single-sample versus supersampled text fragment cost while retaining
-  supersampling wherever small-text quality materially benefits.
-- Confirm point-only, custom-point, custom-font, and Default Font browser and
-  packed-package deltas.
-- Exercise at least one additional WebGPU adapter family when suitable
-  hardware or CI coverage is available. DPR 1 and 2 are validated on Metal.
-
-### Verification
-
-- Keep the program-key regression that proves text contents are not inspected.
-- Record reproducible commands, hardware/adapter, fixture size, and results.
-- Smoke-test MSA, lollipop, text quality, text baseline, and plenty-of-points
-  during real zoom/pan and picking interactions.
-
-Tentative commit: `perf(webgpu): validate path and text hot paths`
-
-Review gate: inspect any new retained caches or batching changes against Core's
-mark lifecycle and point-only bundle boundary.
-
-## Milestone 2: Add a compact wide-range point tier
-
-### Intended outcome
-
-Small stroked path points retain useful outline width without making ordinary
-symbols or stroke-free points sample unnecessarily large atlas entries.
-
-### Work
-
-- Select the tier from required stroke-to-diameter ratio and DPR.
-- Keep the ordinary detailed tier for normal and large marks.
-- Compute entry padding and quad expansion from the selected range plus actual
-  path/miter bounds.
-- Retain a final clamp for requests exceeding both tiers.
-- Avoid pre-generating both tiers for every path unless measurements show that
-  lazy generation costs more.
-
-### Verification
-
-- Extend the tiny-point stress matrix across shapes, centered/inward strokes,
-  rotations, DPR 1 and 2, and zero-stroke cases.
-- Check texture cache behavior and compare draw time/cache misses against the
-  current single tier.
-- Confirm fixed circles remain entirely outside the atlas system.
-
-Tentative commit: `feat(webgpu-renderer): add wide-range point atlases`
-
-## Milestone 3: Promote portable text effects
-
-### Intended outcome
-
-Core exposes one outline and one shadow/glow with consistent paint order and
-logical-pixel parameters across WebGPU, Canvas2D, and SVG.
-
-### Work
-
-- Define Core properties for shadow color, opacity, blur, and x/y offset.
-  Continue using text stroke properties for the outline.
-- Specify defaults, condition/expression behavior, scale support, picking,
-  bounds, export, and invalid-value handling.
-- Pass the channels through the WebGPU adapter without losing the effect-free
-  shader/resource specialization.
-- Render stroke before fill in Canvas2D and use SVG paint order plus a filter
-  for shadow/glow. Document that backend blur kernels can differ.
-- Decide whether legacy WebGL receives a minimal compatible implementation or
-  explicitly remains unchanged.
-- Profile dense dynamic-label workloads with shadow only, outline only, and
-  both. Add a wide-effect glyph tier only if representative use exceeds the
-  ordinary range.
-
-### Verification
-
-- Add specification/type/schema tests and focused backend render/export tests.
-- Exercise light/dark heterogeneous backgrounds, rotation, small text,
-  translucent glyph overlap, labels crossing clips, and dynamic updates.
-- Verify label-major painter order and fill-only picking in overlapping labels.
-
-### Documentation
-
-Document supported effects, logical-pixel units, backend differences, and the
-deliberate per-glyph overlap limitation.
-
-Tentative commit: `feat(core): add portable text outline and shadow effects`
-
-Review gate: approve the public cross-backend property contract before schema
-and documentation are finalized.
-
-## Milestone 4: Finalize public contracts and retire plans
-
-### Intended outcome
-
-The branch is documented, measured, free of prototype production paths, and
-ready for PR review.
-
-### Work
-
-- Document custom path constraints, normalization, fill rule, finite-domain
-  behavior, font table support, shaping omissions, loading, and failures.
-- Decide and document a device-based maximum for unique path tables.
-- Decide whether the renderer's legacy bitmap-text route remains as a supported
-  compatibility path; this does not force Core measurement to change.
-- Run repeated mount/update/destroy cycles and terminal device-loss recovery.
-- Reconcile and then delete temporary files under `plans/path-points/` in a
-  later commit before merge.
-
-### Verification
-
-- Run renderer/Core unit, type, lint, GPU, Storybook, build, tree-shaking, and
-  package-content checks.
-- Run the recursive example/font inventories and representative Canvas2D/SVG
-  exports.
-- Retain package-content and tree-shaking guards that reject oracle source,
-  WASM, loaders, and comparison adapters from production artifacts.
-
-Tentative commit: `docs(core): document path points and outline fonts`
-
-## Risks and unresolved decisions
-
-- Ordinary path-point atlases now agree with canonical msdfgen at the
-  near-contour median and sign level. Small residual corner differences come
-  from channel layout and filtered subpixel coverage; same-winding overlapping
-  contours remain the material generator discrepancy.
-- Small high-stroke points need a range tier that improves quality without
-  wasting cache bandwidth on common points.
-- Fixed-width font atlases can fragment; repacking would improve occupancy but
-  broaden invalidation.
-- High-edge-count glyph batches may expose sign-loop or atomic contention.
-- The public path fill rule, normalization, unique-path limit, and unseen-path
-  update behavior need explicit contracts.
-- Exact weight/style matching is intentionally simpler than CSS matching.
-- Basic Latin kerning is not full shaping; unsupported scripts need explicit
-  failure or fallback behavior.
-- SDF shadows are not Gaussian and translucent glyph effects can overlap.
-
-## Acceptance criteria
-
-- Fixed circles retain their original analytic performance and allocate no
-  atlas resources.
-- Custom paths and glyphs use the shared GPU generator without CPU per-texel
-  work, readback, or bitmap upload.
-- Shared atlases grow/rebind safely and release all resources with the renderer.
-- MSA zoom/pan contains no work proportional to total label content unless the
-  labels themselves actually change.
-- Common point/text bundles preserve the measured tree-shaking boundaries.
-- The earlier major seam, spike, sign-streak, missing-stroke, and clipping bugs
-  remain covered by focused GPU regressions.
-- Core font loading remains lazy, exact, API-key-free, and absent from WebGL-only
-  execution.
-- Public text effects have implementable WebGPU, Canvas2D, and SVG semantics.
-- Remaining minor MSDF and per-glyph effect differences are documented.
+The sibling files are completed feasibility and provenance records. After this
+reconciliation is committed, the entire temporary `plans/path-points/`
+directory can be deleted in a later commit. Durable implementation details and
+attribution remain in package documentation and adjacent source notices.

@@ -91,7 +91,10 @@ WebGPU capabilities and do not require WGSL `f16`. Focused GPU tests and the
 required Core examples exercise the exact usage combination on Apple Metal 3
 at DPR 1 and 2, so no RGBA8 compatibility fallback is planned.
 
-## Remaining production work
+## Deferred production work
+
+These items are explicitly discarded from this branch's scope and may be
+reconsidered independently after the renderer infrastructure has merged.
 
 - Add a compact wide-range tier for useful strokes on very small point marks.
 - Re-run generation, memory, and draw benchmarks on representative large font
@@ -99,5 +102,5 @@ at DPR 1 and 2, so no RGBA8 compatibility fallback is planned.
 - Define public finite-path limits and behavior when updates introduce an
   unseen path.
 
-These tasks are tracked only in
+These deferred opportunities are reconciled in
 [`production-integration-plan.md`](production-integration-plan.md).

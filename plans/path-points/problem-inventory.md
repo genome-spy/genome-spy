@@ -1,6 +1,6 @@
 # Path points, outline fonts, and text effects: problem inventory
 
-Status: reconciled against the implemented prototypes
+Status: complete and reconciled for branch retirement
 
 Related issues: [#236](https://github.com/genome-spy/genome-spy/issues/236),
 [#362](https://github.com/genome-spy/genome-spy/issues/362),
@@ -42,7 +42,11 @@ Related issues: [#236](https://github.com/genome-spy/genome-spy/issues/236),
 - Effect-free text retains the one-quad-per-glyph fast path.
 - Dynamic effects do not require a whole-label scratch atlas.
 
-## Remaining product and engineering problems
+## Deferred product and engineering problems
+
+All items in this section are explicitly discarded from the current branch's
+scope. They may be reconsidered as independent work after this renderer and
+WebGPU-integration infrastructure has merged.
 
 ### Public path contract
 
@@ -104,5 +108,5 @@ measurement is addressed independently.
 - Prototype APIs could become compatibility obligations before normalization,
   error behavior, and resource limits are specified.
 
-The ordered remaining work is maintained only in
+The merge decision and complete deferral list are recorded in
 [`production-integration-plan.md`](production-integration-plan.md).
