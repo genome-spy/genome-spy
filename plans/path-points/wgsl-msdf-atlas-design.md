@@ -86,11 +86,14 @@ algorithm attribution are maintained in
 The compatibility requirement is stable rendered topology and bounded visual
 difference, not internal channel equality.
 
+`rgba16float` storage writes, linear sampling, rendering, and copying are core
+WebGPU capabilities and do not require WGSL `f16`. Focused GPU tests and the
+required Core examples exercise the exact usage combination on Apple Metal 3
+at DPR 1 and 2, so no RGBA8 compatibility fallback is planned.
+
 ## Remaining production work
 
 - Add a compact wide-range tier for useful strokes on very small point marks.
-- Validate `rgba16float` storage/filter/copy support on the target adapter
-  matrix and define fallback behavior if a required device lacks it.
 - Re-run generation, memory, and draw benchmarks on representative large font
   and scatter-plot workloads.
 - Define public finite-path limits and behavior when updates introduce an

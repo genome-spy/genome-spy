@@ -130,6 +130,14 @@ resource checks.
 - `benchmark:font-atlas` provides a reproducible synthetic-font workload that
   separates layout/upload time, time to GPU completion, steady atlas reuse,
   static rendering, growth history, and final RGBA16F texture bytes.
+- Chrome on the available Apple Metal 3 adapter accepted the atlas's exact
+  `rgba16float` storage, sampling, render, and copy usage without validation
+  errors. The format and required operations are part of core WebGPU and do
+  not require `shader-f16` or another optional feature.
+- Twenty-six focused GPU tests covered RGBA16F path/text generation, linear
+  sampling, atlas growth and copying, stress updates, strokes, and picking.
+  The required Core path/text examples rendered without errors at DPR 1 and 2;
+  MSA and lollipop zoom/pan interactions also repainted successfully.
 
 ### Work
 
@@ -141,7 +149,8 @@ resource checks.
   supersampling wherever small-text quality materially benefits.
 - Confirm point-only, custom-point, custom-font, and Default Font browser and
   packed-package deltas.
-- Exercise DPR 1 and 2 and at least two available WebGPU adapter families.
+- Exercise at least one additional WebGPU adapter family when suitable
+  hardware or CI coverage is available. DPR 1 and 2 are validated on Metal.
 
 ### Verification
 
@@ -234,8 +243,6 @@ ready for PR review.
 - Document custom path constraints, normalization, fill rule, finite-domain
   behavior, font table support, shaping omissions, loading, and failures.
 - Decide and document a device-based maximum for unique path tables.
-- Validate `rgba16float` storage/filter/copy support and specify fallback or
-  required-feature behavior.
 - Decide whether the renderer's legacy bitmap-text route remains as a supported
   compatibility path; this does not force Core measurement to change.
 - Run repeated mount/update/destroy cycles and terminal device-loss recovery.
@@ -255,7 +262,6 @@ Tentative commit: `docs(core): document path points and outline fonts`
 
 ## Risks and unresolved decisions
 
-- `rgba16float` capabilities may differ across target adapters.
 - Ordinary path-point atlases now agree with canonical msdfgen at the
   near-contour median and sign level. Small residual corner differences come
   from channel layout and filtered subpixel coverage; same-winding overlapping
