@@ -517,12 +517,7 @@ function reduceCubic(p0, p1, p2, p3) {
  * @param {Point} p2
  * @param {Point} p3
  * @param {number} tolerance
- * @param {number} colorMask
- * @param {number} startPseudoMask
- * @param {number} endPseudoMask
- * @param {Point} startPseudoDomain
- * @param {Point} endPseudoDomain
- * @param {number} jobIndex
+ * @param {Omit<SparsePathSegment, "p0" | "p1" | "p2" | "kind">} metadata
  * @param {SparsePathSegment[]} output
  * @param {number} [depth]
  */
@@ -532,12 +527,7 @@ function approximateCubic(
     p2,
     p3,
     tolerance,
-    colorMask,
-    startPseudoMask,
-    endPseudoMask,
-    startPseudoDomain,
-    endPseudoDomain,
-    jobIndex,
+    metadata,
     output,
     depth = 0
 ) {
@@ -548,12 +538,7 @@ function approximateCubic(
             p1: reduced.control,
             p2: p3,
             kind: EDGE_QUADRATIC,
-            colorMask,
-            startPseudoMask,
-            endPseudoMask,
-            startPseudoDomain,
-            endPseudoDomain,
-            jobIndex,
+            ...metadata,
         });
         return;
     }
@@ -564,12 +549,11 @@ function approximateCubic(
         left[2],
         left[3],
         tolerance,
-        colorMask,
-        startPseudoMask,
-        0,
-        startPseudoDomain,
-        { x: 0, y: 0 },
-        jobIndex,
+        {
+            ...metadata,
+            endPseudoMask: 0,
+            endPseudoDomain: { x: 0, y: 0 },
+        },
         output,
         depth + 1
     );
@@ -579,12 +563,11 @@ function approximateCubic(
         right[2],
         right[3],
         tolerance,
-        colorMask,
-        0,
-        endPseudoMask,
-        { x: 0, y: 0 },
-        endPseudoDomain,
-        jobIndex,
+        {
+            ...metadata,
+            startPseudoMask: 0,
+            startPseudoDomain: { x: 0, y: 0 },
+        },
         output,
         depth + 1
     );
@@ -607,17 +590,9 @@ function packSegments(segments) {
             0,
             0,
         ];
-        for (
-            let coordinate = 0;
-            coordinate < coordinates.length;
-            coordinate++
-        ) {
-            view.setFloat32(
-                offset + coordinate * 4,
-                coordinates[coordinate],
-                true
-            );
-        }
+        coordinates.forEach((value, coordinate) => {
+            view.setFloat32(offset + coordinate * 4, value, true);
+        });
         view.setFloat32(offset + 32, segment.startPseudoDomain.x, true);
         view.setFloat32(offset + 36, segment.startPseudoDomain.y, true);
         view.setFloat32(offset + 40, segment.endPseudoDomain.x, true);
@@ -651,9 +626,9 @@ function packJobs(jobs) {
             job.gutter,
             0,
         ];
-        for (let value = 0; value < values.length; value++) {
-            view.setUint32(offset + value * 4, values[value], true);
-        }
+        values.forEach((value, index) =>
+            view.setUint32(offset + index * 4, value, true)
+        );
     }
     return buffer;
 }
@@ -827,25 +802,12 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
                 const p0 = transformPoint(edge.p0, scale, offsetX, offsetY);
                 const p1 = transformPoint(edge.p1, scale, offsetX, offsetY);
                 const p2 = transformPoint(edge.p2, scale, offsetX, offsetY);
-                if (edge.kind === "line") {
+                if (edge.kind !== "cubic") {
                     segments.push({
                         p0,
                         p1,
                         p2,
-                        kind: EDGE_LINE,
-                        colorMask: edge.colorMask,
-                        startPseudoMask: edge.startPseudoMask,
-                        endPseudoMask: edge.endPseudoMask,
-                        startPseudoDomain: edge.startPseudoDomain,
-                        endPseudoDomain: edge.endPseudoDomain,
-                        jobIndex,
-                    });
-                } else if (edge.kind === "quadratic") {
-                    segments.push({
-                        p0,
-                        p1,
-                        p2,
-                        kind: EDGE_QUADRATIC,
+                        kind: edge.kind === "line" ? EDGE_LINE : EDGE_QUADRATIC,
                         colorMask: edge.colorMask,
                         startPseudoMask: edge.startPseudoMask,
                         endPseudoMask: edge.endPseudoMask,
@@ -866,12 +828,14 @@ export function buildSparsePathAtlasLayout(paths, options = {}) {
                         p2,
                         p3,
                         cubicTolerance,
-                        edge.colorMask,
-                        edge.startPseudoMask,
-                        edge.endPseudoMask,
-                        edge.startPseudoDomain,
-                        edge.endPseudoDomain,
-                        jobIndex,
+                        {
+                            colorMask: edge.colorMask,
+                            startPseudoMask: edge.startPseudoMask,
+                            endPseudoMask: edge.endPseudoMask,
+                            startPseudoDomain: edge.startPseudoDomain,
+                            endPseudoDomain: edge.endPseudoDomain,
+                            jobIndex,
+                        },
                         segments
                     );
                 }

@@ -9,14 +9,16 @@ import { buildSparsePathAtlasLayout } from "./sparsePathAtlasLayout.js";
 // The authors' public prototype had no license when inspected, so none of its
 // shader source is copied or translated here.
 
-const EDGE_RASTER_SHADER = /* wgsl */ `
+const SEGMENT_WGSL = /* wgsl */ `
 struct Segment {
     p0p1: vec4<f32>,
     p2pad: vec4<f32>,
     pseudoDomains: vec4<f32>,
     metadata: vec4<u32>,
 };
+`;
 
+const JOB_PARAMS_WGSL = /* wgsl */ `
 struct Job {
     edgeRange: vec4<u32>,
     tileInfo: vec4<u32>,
@@ -30,6 +32,22 @@ struct Params {
     jobCount: u32,
     passMode: u32,
 };
+`;
+
+const QUADRATIC_POINT_WGSL = /* wgsl */ `
+fn quadraticPoint(
+    p0: vec2<f32>,
+    p1: vec2<f32>,
+    p2: vec2<f32>,
+    t: f32
+) -> vec2<f32> {
+    return mix(mix(p0, p1, t), mix(p1, p2, t), t);
+}
+`;
+
+const EDGE_RASTER_SHADER = /* wgsl */ `
+${SEGMENT_WGSL}
+${JOB_PARAMS_WGSL}
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
@@ -109,14 +127,7 @@ fn lineDistance(
     return DistanceSample(distance(point, p0 + edge * t), t);
 }
 
-fn quadraticPoint(
-    p0: vec2<f32>,
-    p1: vec2<f32>,
-    p2: vec2<f32>,
-    t: f32
-) -> vec2<f32> {
-    return mix(mix(p0, p1, t), mix(p1, p2, t), t);
-}
+${QUADRATIC_POINT_WGSL}
 
 fn quadraticDistance(
     point: vec2<f32>,
@@ -376,26 +387,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 `;
 
 const RAW_DISTANCE_SHADER = /* wgsl */ `
-struct Segment {
-    p0p1: vec4<f32>,
-    p2pad: vec4<f32>,
-    pseudoDomains: vec4<f32>,
-    metadata: vec4<u32>,
-};
-
-struct Job {
-    edgeRange: vec4<u32>,
-    tileInfo: vec4<u32>,
-};
-
-struct Params {
-    atlasSize: vec2<u32>,
-    maxSlotSize: vec2<u32>,
-    spread: f32,
-    minDeviationRatio: f32,
-    jobCount: u32,
-    passMode: u32,
-};
+${SEGMENT_WGSL}
+${JOB_PARAMS_WGSL}
 
 @group(0) @binding(0) var<storage, read> segments: array<Segment>;
 @group(0) @binding(1) var<storage, read> jobs: array<Job>;
@@ -404,14 +397,7 @@ struct Params {
 @group(0) @binding(4) var<uniform> params: Params;
 @group(0) @binding(5) var<storage, read> trueScratch: array<u32>;
 
-fn quadraticPoint(
-    p0: vec2<f32>,
-    p1: vec2<f32>,
-    p2: vec2<f32>,
-    t: f32
-) -> vec2<f32> {
-    return mix(mix(p0, p1, t), mix(p1, p2, t), t);
-}
+${QUADRATIC_POINT_WGSL}
 
 fn lineCrossesRay(point: vec2<f32>, p0: vec2<f32>, p1: vec2<f32>) -> bool {
     let straddles = (p0.y <= point.y && point.y < p1.y) ||
@@ -548,19 +534,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 `;
 
 const CORRECTION_SHADER = /* wgsl */ `
-struct Job {
-    edgeRange: vec4<u32>,
-    tileInfo: vec4<u32>,
-};
-
-struct Params {
-    atlasSize: vec2<u32>,
-    maxSlotSize: vec2<u32>,
-    spread: f32,
-    minDeviationRatio: f32,
-    jobCount: u32,
-    passMode: u32,
-};
+${JOB_PARAMS_WGSL}
 
 @group(0) @binding(0) var rawInput: texture_2d<f32>;
 @group(0) @binding(1) var finalOutput: texture_storage_2d<rgba16float, write>;
@@ -968,18 +942,6 @@ export class MsdfAtlasGenerator {
 
     /**
      * @param {number} required
-     * @param {number} capacity
-     */
-    _nextCapacity(required, capacity) {
-        let next = Math.max(4, capacity);
-        while (next < required) {
-            next *= 2;
-        }
-        return next;
-    }
-
-    /**
-     * @param {number} required
      * @param {"segments" | "jobs"} kind
      */
     _ensureInputBuffer(required, kind) {
@@ -990,10 +952,11 @@ export class MsdfAtlasGenerator {
         if (required <= this[capacityProperty]) {
             return;
         }
-        const capacity = this._nextCapacity(
-            alignToFour(required),
-            this[capacityProperty]
-        );
+        const alignedRequired = alignToFour(required);
+        let capacity = Math.max(4, this[capacityProperty]);
+        while (capacity < alignedRequired) {
+            capacity *= 2;
+        }
         const maxBindingSize =
             this.device.limits.maxStorageBufferBindingSize ?? Infinity;
         if (capacity > maxBindingSize) {
@@ -1155,28 +1118,27 @@ export class MsdfAtlasGenerator {
             0,
             asGpuBufferSource(layout.entries)
         );
-        const trueEdgeBindGroup = this.device.createBindGroup({
-            label: gpuLabel(label, "true-distance edge raster bindings"),
-            layout: pipelines.edge.getBindGroupLayout(0),
-            entries: [
-                { binding: 0, resource: { buffer: segmentBuffer } },
-                { binding: 1, resource: { buffer: jobBuffer } },
-                { binding: 2, resource: { buffer: scratchBuffer } },
-                { binding: 3, resource: { buffer: trueScratchBuffer } },
-                { binding: 4, resource: { buffer: trueParamsBuffer } },
-            ],
-        });
-        const pseudoEdgeBindGroup = this.device.createBindGroup({
-            label: gpuLabel(label, "pseudo-distance edge raster bindings"),
-            layout: pipelines.edge.getBindGroupLayout(0),
-            entries: [
-                { binding: 0, resource: { buffer: segmentBuffer } },
-                { binding: 1, resource: { buffer: jobBuffer } },
-                { binding: 2, resource: { buffer: scratchBuffer } },
-                { binding: 3, resource: { buffer: trueScratchBuffer } },
-                { binding: 4, resource: { buffer: pseudoParamsBuffer } },
-            ],
-        });
+        /** @param {string} passLabel @param {GPUBuffer} paramsBuffer */
+        const createEdgeBindGroup = (passLabel, paramsBuffer) =>
+            this.device.createBindGroup({
+                label: gpuLabel(label, passLabel + " edge raster bindings"),
+                layout: pipelines.edge.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: { buffer: segmentBuffer } },
+                    { binding: 1, resource: { buffer: jobBuffer } },
+                    { binding: 2, resource: { buffer: scratchBuffer } },
+                    { binding: 3, resource: { buffer: trueScratchBuffer } },
+                    { binding: 4, resource: { buffer: paramsBuffer } },
+                ],
+            });
+        const trueEdgeBindGroup = createEdgeBindGroup(
+            "true-distance",
+            trueParamsBuffer
+        );
+        const pseudoEdgeBindGroup = createEdgeBindGroup(
+            "pseudo-distance",
+            pseudoParamsBuffer
+        );
         const rawBindGroup = this.device.createBindGroup({
             label: gpuLabel(label, "raw distance bindings"),
             layout: pipelines.raw.getBindGroupLayout(0),
@@ -1204,23 +1166,55 @@ export class MsdfAtlasGenerator {
         const encoder = this.device.createCommandEncoder({
             label: gpuLabel(label, "generation commands"),
         });
+        /**
+         * @param {string} passLabel
+         * @param {GPUBindGroup} bindGroup
+         * @param {boolean} clear
+         */
+        const encodeEdgePass = (passLabel, bindGroup, clear) => {
+            const pass = encoder.beginRenderPass({
+                label: gpuLabel(label, passLabel + " edge raster pass"),
+                colorAttachments: [
+                    clear
+                        ? {
+                              view: texture.createView(),
+                              clearValue: [0, 0, 0, 0],
+                              loadOp: "clear",
+                              storeOp: "store",
+                          }
+                        : {
+                              view: texture.createView(),
+                              loadOp: "load",
+                              storeOp: "store",
+                          },
+                ],
+            });
+            pass.setPipeline(pipelines.edge);
+            pass.setBindGroup(0, bindGroup);
+            pass.draw(6, layout.segments.length);
+            pass.end();
+        };
+        /**
+         * @param {string} passLabel
+         * @param {GPUComputePipeline} pipeline
+         * @param {GPUBindGroup} bindGroup
+         */
+        const encodeComputePass = (passLabel, pipeline, bindGroup) => {
+            const pass = encoder.beginComputePass({
+                label: gpuLabel(label, passLabel + " pass"),
+            });
+            pass.setPipeline(pipeline);
+            pass.setBindGroup(0, bindGroup);
+            pass.dispatchWorkgroups(
+                Math.ceil(layout.maxSlotWidth / 8),
+                Math.ceil(layout.maxSlotHeight / 8),
+                layout.uniquePathCount
+            );
+            pass.end();
+        };
         encoder.clearBuffer(scratchBuffer, 0, scratchSize);
         encoder.clearBuffer(trueScratchBuffer, 0, scratchSize);
-        const trueRenderPass = encoder.beginRenderPass({
-            label: gpuLabel(label, "true-distance edge raster pass"),
-            colorAttachments: [
-                {
-                    view: texture.createView(),
-                    clearValue: [0, 0, 0, 0],
-                    loadOp: "clear",
-                    storeOp: "store",
-                },
-            ],
-        });
-        trueRenderPass.setPipeline(pipelines.edge);
-        trueRenderPass.setBindGroup(0, trueEdgeBindGroup);
-        trueRenderPass.draw(6, layout.segments.length);
-        trueRenderPass.end();
+        encodeEdgePass("true-distance", trueEdgeBindGroup, true);
         encoder.copyBufferToBuffer(
             trueScratchBuffer,
             0,
@@ -1228,44 +1222,13 @@ export class MsdfAtlasGenerator {
             0,
             scratchSize
         );
-        const pseudoRenderPass = encoder.beginRenderPass({
-            label: gpuLabel(label, "pseudo-distance edge raster pass"),
-            colorAttachments: [
-                {
-                    view: texture.createView(),
-                    loadOp: "load",
-                    storeOp: "store",
-                },
-            ],
-        });
-        pseudoRenderPass.setPipeline(pipelines.edge);
-        pseudoRenderPass.setBindGroup(0, pseudoEdgeBindGroup);
-        pseudoRenderPass.draw(6, layout.segments.length);
-        pseudoRenderPass.end();
-
-        const rawPass = encoder.beginComputePass({
-            label: gpuLabel(label, "raw distance pass"),
-        });
-        rawPass.setPipeline(pipelines.raw);
-        rawPass.setBindGroup(0, rawBindGroup);
-        rawPass.dispatchWorkgroups(
-            Math.ceil(layout.maxSlotWidth / 8),
-            Math.ceil(layout.maxSlotHeight / 8),
-            layout.uniquePathCount
+        encodeEdgePass("pseudo-distance", pseudoEdgeBindGroup, false);
+        encodeComputePass("raw distance", pipelines.raw, rawBindGroup);
+        encodeComputePass(
+            "correction",
+            pipelines.correction,
+            correctionBindGroup
         );
-        rawPass.end();
-
-        const correctionPass = encoder.beginComputePass({
-            label: gpuLabel(label, "correction pass"),
-        });
-        correctionPass.setPipeline(pipelines.correction);
-        correctionPass.setBindGroup(0, correctionBindGroup);
-        correctionPass.dispatchWorkgroups(
-            Math.ceil(layout.maxSlotWidth / 8),
-            Math.ceil(layout.maxSlotHeight / 8),
-            layout.uniquePathCount
-        );
-        correctionPass.end();
         this.device.queue.submit([encoder.finish()]);
 
         let atlasDestroyed = false;
@@ -1273,8 +1236,6 @@ export class MsdfAtlasGenerator {
             ...layout,
             texture,
             entryBuffer,
-            format: "rgba16float",
-            version: 1,
             completion: this.device.queue.onSubmittedWorkDone(),
             destroy: () => {
                 if (!atlasDestroyed) {
@@ -1322,13 +1283,17 @@ export class MsdfAtlasGenerator {
             atlas.destroy();
         }
         this._atlasCache.clear();
-        this._retire(this._segmentBuffer);
-        this._retire(this._jobBuffer);
-        this._retire(this._trueParamsBuffer);
-        this._retire(this._pseudoParamsBuffer);
-        this._retire(this._scratchBuffer);
-        this._retire(this._trueScratchBuffer);
-        this._retire(this._rawTexture);
+        for (const resource of [
+            this._segmentBuffer,
+            this._jobBuffer,
+            this._trueParamsBuffer,
+            this._pseudoParamsBuffer,
+            this._scratchBuffer,
+            this._trueScratchBuffer,
+            this._rawTexture,
+        ]) {
+            this._retire(resource);
+        }
         this._segmentBuffer = null;
         this._jobBuffer = null;
         this._trueParamsBuffer = null;
@@ -1357,27 +1322,4 @@ export function getMsdfAtlasGenerator(renderer) {
         generatorByRenderer.set(renderer, generator);
     }
     return generator;
-}
-
-/**
- * Generate an RGB MSDF-like path atlas entirely on the GPU.
- *
- * @param {GPUDevice} device
- * @param {string[]} paths
- * @param {{ tileSize?: number, spread?: number, shapePadding?: number, gutter?: number, cubicTolerance?: number, normalizationSpan?: number, tightPacking?: boolean, maxAtlasWidth?: number }} [options]
- * @param {string} [label]
- */
-export function createSparseGpuPathAtlas(
-    device,
-    paths,
-    options = {},
-    label = "path atlas"
-) {
-    const generator = new MsdfAtlasGenerator(device);
-    const atlas = generator.createAtlas(paths, options, label);
-    atlas.completion.then(
-        () => generator.destroy(),
-        () => generator.destroy()
-    );
-    return atlas;
 }

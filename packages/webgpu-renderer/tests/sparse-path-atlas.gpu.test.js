@@ -10,7 +10,7 @@ test("sparse GPU atlas preserves even-odd sign and dispatch bounds", async ({
 
     const result = await page.evaluate(async () => {
         const { createSparseGpuPathAtlas } =
-            await import("/src/symbols/sparseGpuPathAtlas.js");
+            await import("/tests/oracles/createSparseGpuPathAtlas.js");
         const adapter = await navigator.gpu.requestAdapter();
         const device = await adapter.requestDevice();
         const atlas = createSparseGpuPathAtlas(
@@ -181,7 +181,7 @@ test("GPU atlas stores regular signed distance in alpha", async ({ page }) => {
 
     const result = await page.evaluate(async () => {
         const { createSparseGpuPathAtlas } =
-            await import("/src/symbols/sparseGpuPathAtlas.js");
+            await import("/tests/oracles/createSparseGpuPathAtlas.js");
         const adapter = await navigator.gpu.requestAdapter();
         const device = await adapter.requestDevice();
         const options = {
@@ -259,7 +259,7 @@ test("quadratic extrema do not create one-pixel sign streaks", async ({
 
     const result = await page.evaluate(async () => {
         const { createSparseGpuPathAtlas } =
-            await import("/src/symbols/sparseGpuPathAtlas.js");
+            await import("/tests/oracles/createSparseGpuPathAtlas.js");
         const adapter = await navigator.gpu.requestAdapter();
         const device = await adapter.requestDevice();
         const atlas = createSparseGpuPathAtlas(
@@ -349,7 +349,6 @@ test("MSDF generator reuses bounded scratch and exact immutable atlases", async 
             spread: 8,
             shapePadding: 10,
             gutter: 1,
-            format: "rgba16float",
         };
         const first = generator.acquireAtlas(paths, options, "first");
         const scratch = generator._scratchBuffer;
@@ -365,8 +364,6 @@ test("MSDF generator reuses bounded scratch and exact immutable atlases", async 
             distinctTableSeparated: first !== third,
             scratchReused: scratch === generator._scratchBuffer,
             cacheSize: generator._atlasCache.size,
-            format: first.format,
-            version: first.version,
         };
         generator.destroy();
         await device.queue.onSubmittedWorkDone();
@@ -379,8 +376,6 @@ test("MSDF generator reuses bounded scratch and exact immutable atlases", async 
         distinctTableSeparated: true,
         scratchReused: true,
         cacheSize: 2,
-        format: "rgba16float",
-        version: 1,
     });
 });
 

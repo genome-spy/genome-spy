@@ -191,6 +191,11 @@ shared abstraction if it increases state or obscures their distinct lifecycles.
 
 ## Milestone 3: Consolidate the retained MSDF implementation
 
+Status: in progress. The first two passes decreased production runtime by 86
+non-comment SLOC. Affected gzip fixtures decreased by 39-115 bytes and the
+packed package decreased by 84 bytes relative to milestone 2. Oracle comparison
+statistics remained identical.
+
 ### Intended outcome
 
 The correctness-critical generator keeps the same algorithm but has fewer
@@ -214,6 +219,8 @@ parallel representations and duplicated declarations.
   without a measured SLOC reduction and unchanged oracle results.
 
 Expected reduction: 200-350 production SLOC.
+
+Reduction after two passes: 86 production SLOC.
 
 ### Verification
 

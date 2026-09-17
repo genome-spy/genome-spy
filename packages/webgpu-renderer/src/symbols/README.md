@@ -6,10 +6,8 @@ prepares their topology and edge metadata on the CPU, and generates an atlas
 directly on the GPU. The final texture is sampled by one shared mark shader for
 fill, variable-width outline, rotation, and picking.
 
-The production implementation has one backend:
-
-- `createSparseGpuPathAtlas` prepares paths on the CPU and generates distances
-  through WGSL render and compute passes.
+`MsdfAtlasGenerator` prepares paths on the CPU and generates distances through
+WGSL render and compute passes.
 
 Canonical msdfgen v1.13 remains available only through explicit test tooling as
 a visual and numerical oracle. It is not a runtime fallback.
