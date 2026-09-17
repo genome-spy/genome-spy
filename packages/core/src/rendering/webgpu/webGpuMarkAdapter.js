@@ -793,11 +793,14 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
 function createTextConfig(mark, data, coords, viewOpacity) {
     const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
-    const fontEntry = /** @type {any} */ (mark).font;
     const outlineFontEntry =
         /** @type {{outlineFont?: import("@genome-spy/webgpu-renderer/fonts/truetype").TrueTypeFont}} */ (
             /** @type {any} */ (mark).outlineFont
         );
+    const outlineFont = outlineFontEntry?.outlineFont;
+    if (!outlineFont) {
+        throw unsupported(mark, "Outline font is not prepared.");
+    }
     return {
         count: data.length,
         channels: {
@@ -850,15 +853,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             fill: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
-        font: outlineFontEntry?.outlineFont ?? resolveFont(mark),
-        ...(fontEntry?.metrics && fontEntry.bitmapUrl
-            ? {
-                  fontResource: {
-                      metrics: fontEntry.metrics,
-                      bitmap: fontEntry.bitmapUrl,
-                  },
-              }
-            : {}),
+        font: outlineFont,
         fontStyle: readProperty(mark, "fontStyle"),
         fontWeight: readProperty(mark, "fontWeight"),
         fontSize: size,
@@ -1038,24 +1033,6 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
             headPlacement: (value) => value ?? "inside",
         }),
     };
-}
-
-/**
- * Core's generic sans-serif default is normalized to Lato by its font manager.
- * The loaded metrics and atlas are passed separately so the renderer does not
- * need to duplicate Core's font-loading and fallback policy.
- *
- * @param {import("../../marks/mark.js").default} mark
- */
-function resolveFont(mark) {
-    const font = readProperty(mark, "font");
-    if (font == null || font == "sans-serif") {
-        return "Lato";
-    }
-    if (typeof font == "string") {
-        return font;
-    }
-    throw unsupported(mark, `Font "${String(font)}" is not supported.`);
 }
 
 /**

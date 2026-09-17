@@ -317,18 +317,6 @@ describe("Renderer mark definitions", () => {
         expect(renderer._onDeviceLoss).not.toHaveBeenCalled();
     });
 
-    test("destroys cached font resources with the renderer", () => {
-        const { renderer } = createRendererHarness();
-        const resources = { destroy: vi.fn() };
-        renderer._fontResourceCache.set({}, new Map([["font.png", resources]]));
-
-        renderer.destroy();
-        renderer.destroy();
-
-        expect(resources.destroy).toHaveBeenCalledOnce();
-        expect(renderer._fontResourceCache.size).toBe(0);
-    });
-
     test("draws retained mark occurrences in the requested order", () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();
@@ -1122,7 +1110,6 @@ function createRendererHarness() {
     renderer._marks = new Map();
     renderer._placementSets = new Map();
     renderer._detachedTargets = new Set();
-    renderer._fontResourceCache = new Map();
     renderer._ownedResources = new Set();
     renderer._nextMarkId = 1;
     renderer._state = "alive";

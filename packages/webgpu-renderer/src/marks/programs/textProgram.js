@@ -2,20 +2,14 @@ import BaseProgram from "./internal/baseProgram.js";
 import { initializePropertySlots } from "./internal/propertySlots.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
-import { buildTextLayout } from "../../fonts/layout.js";
 import {
     buildOutlineTextLayout,
     isTrueTypeFont,
     OUTLINE_ATLAS_OPTIONS,
 } from "../../fonts/outlineTextLayout.js";
 import { getOutlineFontAtlas } from "../../fonts/outlineFontAtlas.js";
-import BmFontManager, { fetchBmFontBitmap } from "../../fonts/bmFontManager.js";
-import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
-import {
-    asGpuBufferSource,
-    writeTextureData,
-} from "../../utils/webgpuTextureUtils.js";
-import { gpuLabel, RENDERER_GPU_OWNER } from "../../utils/gpuLabel.js";
+import { asGpuBufferSource } from "../../utils/webgpuTextureUtils.js";
+import { gpuLabel } from "../../utils/gpuLabel.js";
 import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
 import {
     buildGlyphOffsets,
@@ -52,9 +46,6 @@ import {
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
  * @typedef {import("../../index.js").TextChannels} TextChannels
  * @typedef {import("../../index.js").TextStringChannelConfigInput} TextStringChannelConfigInput
- * @typedef {ReturnType<BmFontManager["getFont"]>} FontEntry
- * @typedef {number|"thin"|"light"|"regular"|"normal"|"medium"|"bold"|"black"} FontWeightInput
- * @typedef {{ glyphMetrics: GPUBuffer, atlas: { texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat }, upload: (image: ImageBitmap | HTMLImageElement) => void, destroy: () => void }} FontGpuResources
  * @typedef {{ enabled: boolean, shadow: boolean, outline: boolean }} TextEffects
  */
 
@@ -448,11 +439,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 ${glyphLookup}
     let textMetrics = stringMetrics[glyph.stringIndex];
     let metrics = glyphMetrics[glyph.glyphId];
-    let tileSize = metrics.texRect.zw + select(
-        vec2<f32>(0.0),
-        vec2<f32>(1.0),
-        params.uOutlineFont != 0u
-    );
+    let tileSize = metrics.texRect.zw + vec2<f32>(1.0);
 
     // Base font size before range fitting.
     var size = getScaled_size(i);
@@ -588,17 +575,12 @@ ${effectSetup}
         sizeScale,
         sizeRatio,
         u32(getScaled_baseline(i)),
-        params.uSdfPadding,
+        0.0,
         params.uCapHeight,
         params.uDescent
     );
     if (params.uLogoLetters != 0u) {
-        var logoAtlasScale =
-            (metrics.texRect.zw + vec2<f32>(2.0 * params.uSdfPadding)) /
-            metrics.texRect.zw;
-        if (params.uOutlineFont != 0u) {
-            logoAtlasScale = metrics.texRect.zw / metrics.metrics.yz;
-        }
+        let logoAtlasScale = metrics.texRect.zw / metrics.metrics.yz;
         width = logoSize.x * logoAtlasScale.x;
         height = logoSize.y * logoAtlasScale.y;
         x = -0.5 * width;
@@ -661,11 +643,8 @@ ${effectSetup}
         tileSize.x - params.uSpread,
         tileSize.y - params.uSpread
     );
-    out.stemDarkening = 0.0;
+    out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);
     out.layer = layer;
-    if (params.uOutlineFont != 0u) {
-        out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);
-    }
 #if defined(uniqueId_DEFINED)
 ${pickAssignment}
 #endif
@@ -676,26 +655,8 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
     return max(min(r, g), min(max(r, g), b));
 }
 
-fn sampleSdf(uv: vec2<f32>) -> f32 {
-    let c = textureSample(fontAtlas, fontSampler, uv).rgb;
-    return 1.0 - median(c.r, c.g, c.b);
-}
-
 fn sampleTrueDistance(uv: vec2<f32>) -> f32 {
     return textureSample(fontAtlas, fontSampler, uv).a;
-}
-
-fn sampleSuperSdf(uv: vec2<f32>) -> f32 {
-    let dx = dpdx(uv);
-    // WebGL derivatives use a bottom-left framebuffer origin, whereas WebGPU
-    // derivatives use a top-left origin. Preserve the WebGL atlas offsets.
-    let dy = -dpdy(uv);
-    return (
-        sampleSdf(uv + 0.25 * dx + 0.25 * dy) +
-        sampleSdf(uv + 0.75 * dx + 0.25 * dy) +
-        sampleSdf(uv + 0.25 * dx + 0.75 * dy) +
-        sampleSdf(uv + 0.75 * dx + 0.75 * dy)
-    ) * 0.25;
 }
 
 fn freeTypeLikeStemDarkening(deviceFontSize: f32) -> f32 {
@@ -845,19 +806,7 @@ fn sourceOver(above: vec4<f32>, below: vec4<f32>) -> vec4<f32> {
 }
 
 fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {
-    if (params.uOutlineFont != 0u) {
 ${outlineShading}
-    }
-    let sigDist = sampleSuperSdf(in.uv);
-    var slope = in.slope;
-    if (params.uLogoLetters != 0u) {
-        slope = 0.7 / length(vec2<f32>(dpdy(sigDist), dpdx(sigDist)));
-    }
-    var alpha = clamp((sigDist - 0.5) * slope + 0.5, 0.0, 1.0);
-    alpha = alpha * edgeFadeOpacity;
-    alpha = pow(alpha, in.gamma);
-    let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
-    return premultiplyAlpha(color) * alpha;
 }
 
 // Picking intentionally ignores edge fading, like the WebGL renderer.
@@ -883,11 +832,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
  * @typedef {object} TextConfigInput
  * @prop {TextChannels} [channels]
  * @prop {number} [count]
- * @prop {unknown} [textLayout]
  * @prop {unknown} [font]
- * @prop {{metrics: unknown, bitmap: string | ImageBitmap}} [fontResource]
- * @prop {unknown} [fontStyle]
- * @prop {unknown} [fontWeight]
  * @prop {unknown} [fontSize]
  * @prop {unknown} [lineHeight]
  * @prop {unknown} [letterSpacing]
@@ -899,16 +844,12 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 
 /**
  * @param {TextConfigInput} [params]
- * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count: number, seriesIndexExpression: string }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry | null, fontManager: BmFontManager | null, effects: { enabled: boolean, shadow: boolean, outline: boolean } }}
+ * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count: number, seriesIndexExpression: string }, textLayout: ReturnType<typeof buildOutlineTextLayout>, effects: TextEffects }}
  */
 function normalizeTextConfig({
     channels = {},
     count,
-    textLayout,
     font,
-    fontResource,
-    fontStyle,
-    fontWeight,
     fontSize,
     lineHeight,
     letterSpacing,
@@ -923,10 +864,8 @@ function normalizeTextConfig({
         scale: { type: "identity" },
     };
     const effects = resolveTextEffectLayers(channels);
-    if (effects.enabled && !isTrueTypeFont(font)) {
-        throw new Error(
-            "Text outlines and shadows require a TrueType outline font."
-        );
+    if (!isTrueTypeFont(font)) {
+        throw new Error("Text marks require a TrueType outline font.");
     }
     if (effects.shadow) {
         normalizedChannels.shadowColor ??= { value: [0, 0, 0, 1] };
@@ -938,127 +877,38 @@ function normalizeTextConfig({
     const seriesIndexExpression = effects.enabled
         ? "glyphs[renderItems[i].glyphIndex].stringIndex"
         : "glyphs[i].stringIndex";
-    /**
-     * @param {import("../../fonts/layout.js").TextLayout} layout
-     * @param {number} resolvedCount
-     * @param {FontEntry | null} fontEntry
-     * @param {BmFontManager | null} fontManager
-     */
-    const result = (layout, resolvedCount, fontEntry, fontManager) => ({
-        normalized: {
-            channels: /** @type {Record<string, ChannelConfigInput>} */ (
-                normalizedChannels
-            ),
-            count: resolvedCount,
-            seriesIndexExpression,
-        },
-        textLayout: layout,
-        fontEntry,
-        fontManager,
-        effects,
-    });
-    if (isTrueTypeFont(font)) {
-        if (textLayout) {
-            throw new Error(
-                "TrueType text layout is derived from its outline font."
-            );
-        }
-        const strings = resolveTextStrings(textChannel, count);
-        const layout = buildResolvedTextLayout(strings, font, null, {
-            fontSize,
-            lineHeight,
-            letterSpacing,
-        });
-        return result(/** @type {any} */ (layout), strings.length, null, null);
-    }
-    const fontSpec = resolveBmFontSpec({ font, fontStyle, fontWeight });
-    const fontManager = new BmFontManager();
-    if (fontResource) {
-        fontManager.registerFont({
-            ...fontSpec,
-            metrics:
-                /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ (
-                    fontResource.metrics
-                ),
-            bitmap: fontResource.bitmap,
-        });
-    }
-    const fontEntry = fontManager.getFont(
-        fontSpec.family,
-        fontSpec.style,
-        fontSpec.weight
-    );
-    if (textLayout) {
-        const layout =
-            /** @type {import("../../fonts/layout.js").TextLayout} */ (
-                textLayout
-            );
-        const stringCount = layout.textWidth.length;
-        if (count !== undefined && count !== stringCount) {
-            throw new Error(
-                `Text layout count (${stringCount}) does not match count (${count}).`
-            );
-        }
-        return result(layout, stringCount, fontEntry, fontManager);
-    }
-
     const strings = resolveTextStrings(textChannel, count);
-    const layout = buildResolvedTextLayout(strings, font, fontManager, {
-        font,
-        fontStyle,
-        fontWeight,
+    const textLayout = buildResolvedTextLayout(strings, font, {
         fontSize,
         lineHeight,
         letterSpacing,
     });
-    return result(layout, strings.length, fontEntry, fontManager);
+    return {
+        normalized: {
+            channels: /** @type {Record<string, ChannelConfigInput>} */ (
+                normalizedChannels
+            ),
+            count: strings.length,
+            seriesIndexExpression,
+        },
+        textLayout,
+        effects,
+    };
 }
 
 /**
  * @param {string[]} strings
- * @param {unknown} font
- * @param {BmFontManager | null} fontManager
+ * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
  * @param {TextConfigInput} config
  */
-function buildResolvedTextLayout(strings, font, fontManager, config) {
-    if (isTrueTypeFont(font)) {
-        return buildOutlineTextLayout(strings, font, {
-            fontSize:
-                typeof config.fontSize === "number" ? config.fontSize : 12,
-            lineHeight:
-                typeof config.lineHeight === "number" ? config.lineHeight : 1,
-            letterSpacing:
-                typeof config.letterSpacing === "number"
-                    ? config.letterSpacing
-                    : 0,
-        });
-    }
-    return buildTextLayout({
-        strings,
-        fontManager: /** @type {BmFontManager} */ (fontManager),
-        font: resolveBmFontSpec(config),
+function buildResolvedTextLayout(strings, font, config) {
+    return buildOutlineTextLayout(strings, font, {
         fontSize: typeof config.fontSize === "number" ? config.fontSize : 12,
         lineHeight:
             typeof config.lineHeight === "number" ? config.lineHeight : 1,
         letterSpacing:
             typeof config.letterSpacing === "number" ? config.letterSpacing : 0,
     });
-}
-
-/**
- * @param {Pick<TextConfigInput, "font" | "fontStyle" | "fontWeight">} config
- */
-function resolveBmFontSpec({ font, fontStyle, fontWeight }) {
-    return {
-        family: typeof font === "string" ? font : "Lato",
-        style: /** @type {"normal" | "italic"} */ (
-            fontStyle === "italic" ? "italic" : "normal"
-        ),
-        weight:
-            typeof fontWeight === "number" || typeof fontWeight === "string"
-                ? /** @type {FontWeightInput} */ (fontWeight)
-                : 400,
-    };
 }
 
 /**
@@ -1093,151 +943,6 @@ function resolveTextStrings(textChannel, count) {
         return Array.from({ length: count ?? 1 }, () => value);
     }
     return Array.from({ length: count ?? 0 }, () => "");
-}
-
-/**
- * @param {string | ImageBitmap} bitmap
- * @returns {Promise<ImageBitmap | HTMLImageElement | null>}
- */
-async function loadFontBitmap(bitmap) {
-    if (typeof ImageBitmap !== "undefined" && bitmap instanceof ImageBitmap) {
-        return bitmap;
-    }
-    if (typeof bitmap !== "string") {
-        return null;
-    }
-    try {
-        return await fetchBmFontBitmap(bitmap);
-    } catch {
-        // Fall back to the browser image loader for non-fetchable URLs.
-    }
-    if (typeof Image === "undefined") {
-        return null;
-    }
-    return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error("Could not load font bitmap."));
-        image.src = bitmap;
-    });
-}
-
-/**
- * @param {import("../../renderer.js").Renderer} renderer
- * @param {FontEntry} fontEntry
- * @returns {FontGpuResources}
- */
-function getFontGpuResources(renderer, fontEntry) {
-    const { metrics, bitmap } = fontEntry;
-    let resourcesByBitmap = renderer._fontResourceCache.get(metrics);
-    const existing = resourcesByBitmap?.get(bitmap);
-    if (existing) {
-        return /** @type {FontGpuResources} */ (existing);
-    }
-    if (!resourcesByBitmap) {
-        resourcesByBitmap = new Map();
-        renderer._fontResourceCache.set(metrics, resourcesByBitmap);
-    }
-
-    const labelOwner = `${RENDERER_GPU_OWNER} font #${renderer._nextFontResourceId++}`;
-    const glyphMetricsData = new Float32Array((metrics.maxCharId + 1) * 8);
-    for (const glyph of metrics.chars) {
-        const base = glyph.id * 8;
-        glyphMetricsData[base] = glyph.x;
-        glyphMetricsData[base + 1] = glyph.y;
-        glyphMetricsData[base + 2] = glyph.width;
-        glyphMetricsData[base + 3] = glyph.height;
-        glyphMetricsData[base + 4] = glyph.yoffset;
-    }
-    const glyphMetrics = renderer.device.createBuffer({
-        label: gpuLabel(labelOwner, "glyph metrics"),
-        size: glyphMetricsData.byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-
-    let sampler;
-    let texture;
-    try {
-        renderer.device.queue.writeBuffer(glyphMetrics, 0, glyphMetricsData);
-        sampler = renderer.device.createSampler({
-            label: gpuLabel(labelOwner, "atlas sampler"),
-            magFilter: "linear",
-            minFilter: "linear",
-        });
-        texture = renderer.device.createTexture({
-            label: gpuLabel(labelOwner, "atlas"),
-            size: {
-                width: metrics.common.scaleW,
-                height: metrics.common.scaleH,
-                depthOrArrayLayers: 1,
-            },
-            format: "rgba8unorm",
-            usage:
-                GPUTextureUsage.TEXTURE_BINDING |
-                GPUTextureUsage.COPY_DST |
-                GPUTextureUsage.RENDER_ATTACHMENT,
-        });
-        const transparentAtlas = new Uint8Array(
-            metrics.common.scaleW * metrics.common.scaleH * 4
-        );
-        transparentAtlas.fill(255);
-        writeTextureData(renderer.device, texture, {
-            format: "rgba8unorm",
-            width: metrics.common.scaleW,
-            height: metrics.common.scaleH,
-            data: transparentAtlas,
-        });
-    } catch (error) {
-        texture?.destroy();
-        glyphMetrics.destroy();
-        throw error;
-    }
-
-    let destroyed = false;
-    /** @type {FontGpuResources} */
-    const resources = {
-        glyphMetrics,
-        atlas: {
-            texture,
-            sampler,
-            width: metrics.common.scaleW,
-            height: metrics.common.scaleH,
-            format: "rgba8unorm",
-        },
-        upload(image) {
-            if (destroyed || !renderer._isAlive()) {
-                return;
-            }
-            if (
-                image.width !== metrics.common.scaleW ||
-                image.height !== metrics.common.scaleH
-            ) {
-                console.warn(
-                    `Ignoring ${image.width}x${image.height} font bitmap; expected ${metrics.common.scaleW}x${metrics.common.scaleH}.`
-                );
-                return;
-            }
-            renderer.device.queue.copyExternalImageToTexture(
-                { source: image },
-                { texture },
-                { width: image.width, height: image.height }
-            );
-            renderer._invalidate();
-        },
-        destroy() {
-            if (destroyed) {
-                return;
-            }
-            destroyed = true;
-            glyphMetrics.destroy();
-            texture.destroy();
-        },
-    };
-    resourcesByBitmap.set(bitmap, resources);
-    void loadFontBitmap(bitmap)
-        .then((image) => image && resources.upload(image))
-        .catch(() => {});
-    return resources;
 }
 
 /** @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas */
@@ -1311,15 +1016,13 @@ export default class TextProgram extends BaseProgram {
      * @param {import("../../index.js").MarkProgramCreationContext} [context]
      */
     constructor(renderer, config, context) {
-        const { normalized, textLayout, fontEntry, fontManager, effects } =
-            normalizeTextConfig(config);
+        const { normalized, textLayout, effects } = normalizeTextConfig(config);
         super(
             renderer,
             {
                 ...config,
                 ...normalized,
                 textLayout,
-                fontEntry,
                 effects,
             },
             context
@@ -1337,9 +1040,7 @@ export default class TextProgram extends BaseProgram {
                 `Text series data count (${seriesCount}) does not match text count (${normalized.count}).`
             );
         }
-        this._fontManager = fontManager;
         delete this._markConfig.textLayout;
-        delete this._markConfig.fontEntry;
     }
 
     /**
@@ -1422,9 +1123,7 @@ export default class TextProgram extends BaseProgram {
             { name: "uAtlasScale", type: "f32", components: 2 },
             { name: "uCapHeight", type: "f32", components: 1 },
             { name: "uDescent", type: "f32", components: 1 },
-            { name: "uSdfPadding", type: "f32", components: 1 },
             { name: "uSdfNumerator", type: "f32", components: 1 },
-            { name: "uOutlineFont", type: "u32", components: 1 },
             { name: "uShapePixels", type: "f32", components: 1 },
             { name: "uSpread", type: "f32", components: 1 },
             { name: "uPaddingX", type: "f32", components: 1 },
@@ -1514,46 +1213,21 @@ export default class TextProgram extends BaseProgram {
     }
 
     _initializeExtraResources() {
-        const layout =
-            /** @type {import("../../fonts/layout.js").TextLayout} */ (
-                this._markConfig.textLayout
-            );
-        if (isTrueTypeFont(this._markConfig.font)) {
-            this._initializeOutlineFontResources(
-                /** @type {any} */ (layout),
+        const layout = /** @type {import("../../index.js").TextLayout} */ (
+            this._markConfig.textLayout
+        );
+        this._initializeOutlineFontResources(
+            /** @type {any} */ (layout),
+            /** @type {import("../../fonts/trueTypeFont.js").TrueTypeFont} */ (
                 this._markConfig.font
-            );
-        } else {
-            const fontEntry = /** @type {FontEntry} */ (
-                this._markConfig.fontEntry
-            );
-            const metrics = fontEntry.metrics;
-            this._setUniformValue("uFontBase", metrics.common.base);
-            this._setUniformValue("uAtlasScale", [
-                1 / metrics.common.scaleW,
-                1 / metrics.common.scaleH,
-            ]);
-            this._setUniformValue("uCapHeight", metrics.capHeight);
-            this._setUniformValue("uDescent", metrics.descent);
-            this._setUniformValue("uSdfPadding", SDF_PADDING);
-            this._setUniformValue("uOutlineFont", 0);
-            this._setUniformValue("uShapePixels", 1);
-            this._setUniformValue("uSpread", 1);
-            /** @type {number} */
-            this._sdfNumeratorBase = metrics.common.base * 0.35;
-
-            const resources = getFontGpuResources(this.renderer, fontEntry);
-            this._extraBuffers.set("glyphMetrics", resources.glyphMetrics);
-            this._extraTextures.set("fontAtlas", resources.atlas);
-            this._borrowedExtraBuffers.add("glyphMetrics");
-            this._borrowedExtraTextures.add("fontAtlas");
-        }
+            )
+        );
         this._setUniformValue("uLayoutFontSize", layout.fontSize);
         this._updateTextLayoutBuffers(layout);
     }
 
     /**
-     * @param {import("../../fonts/layout.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
+     * @param {import("../../index.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
      * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
      */
     _initializeOutlineFontResources(layout, font) {
@@ -1573,8 +1247,6 @@ export default class TextProgram extends BaseProgram {
         // TrueType descenders are signed, but baselineOffset expects the
         // positive distance from the alphabetic baseline to the font bottom.
         this._setUniformValue("uDescent", -font.descender * atlasScale);
-        this._setUniformValue("uSdfPadding", 0);
-        this._setUniformValue("uOutlineFont", 1);
         this._setUniformValue("uShapePixels", shapePixels);
         this._setUniformValue("uSpread", OUTLINE_ATLAS_OPTIONS.spread);
         this._sdfNumeratorBase = shapePixels * 0.35;
@@ -1597,7 +1269,7 @@ export default class TextProgram extends BaseProgram {
     }
 
     /**
-     * @param {import("../../fonts/layout.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
+     * @param {import("../../index.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
      * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
      * @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas
      * @returns {boolean} Whether the metric buffer identity changed.
@@ -1631,7 +1303,7 @@ export default class TextProgram extends BaseProgram {
     }
 
     /**
-     * @param {import("../../fonts/layout.js").TextLayout} layout
+     * @param {import("../../index.js").TextLayout} layout
      * @returns {boolean} Whether a bound buffer identity changed.
      */
     _updateTextLayoutBuffers(layout) {
@@ -1731,13 +1403,11 @@ export default class TextProgram extends BaseProgram {
             );
         }
 
-        const outlineFont = isTrueTypeFont(this._markConfig.font)
-            ? this._markConfig.font
-            : null;
         const layout = buildResolvedTextLayout(
             strings,
-            this._markConfig.font,
-            this._fontManager,
+            /** @type {import("../../fonts/trueTypeFont.js").TrueTypeFont} */ (
+                this._markConfig.font
+            ),
             this._markConfig
         );
         /** @type {Record<string, import("../../index.js").TypedArray>} */
@@ -1764,14 +1434,14 @@ export default class TextProgram extends BaseProgram {
             );
         }
         let textBuffersChanged = this._updateTextLayoutBuffers(layout);
-        if (outlineFont) {
-            textBuffersChanged =
-                this._updateOutlineGlyphMetrics(
-                    /** @type {any} */ (layout),
-                    outlineFont,
-                    this._outlineAtlas
-                ) || textBuffersChanged;
-        }
+        textBuffersChanged =
+            this._updateOutlineGlyphMetrics(
+                /** @type {any} */ (layout),
+                /** @type {import("../../fonts/trueTypeFont.js").TrueTypeFont} */ (
+                    this._markConfig.font
+                ),
+                this._outlineAtlas
+            ) || textBuffersChanged;
         this.updateSeries(resolved, strings.length, textBuffersChanged);
     }
 

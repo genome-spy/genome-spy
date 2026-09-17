@@ -1,6 +1,6 @@
 # WebGPU renderer production-SLOC reduction plan
 
-Status: proposed; intentionally not part of PR #533 until implementation starts
+Status: active
 
 ## Objective
 
@@ -66,8 +66,8 @@ point integration (451), and Core integration (241).
 - Do not remove the analytic fixed-circle fast path.
 - Do not remove text outlines, shadows, glows, label-major effect ordering, or
   their Storybook controls. They are intended future grammar capabilities.
-- Do not remove bitmap-font rendering, outline-font rendering, or either font
-  route's public entry points merely to meet the SLOC target.
+- Keep Core's existing BMFont-based measurement intact until renderers provide
+  their own measurement service.
 - Do not remove, compact, or weaken any built-in example-font catalog entry,
   application catalog behavior, exact matching, validation, Default Font
   selection, implicit Lato fallback, lazy loading, or request deduplication.
@@ -235,7 +235,33 @@ Tentative commit: `refactor(webgpu-renderer): simplify MSDF atlas generation`
 Review gate: inspect the final GPU pipeline and CPU layout against the oracle;
 do not accept SLOC savings that reintroduce seams, rounded corners, or clipping.
 
-## Milestone 4: Remove adapter and font-catalog duplication
+## Milestone 4: Remove WebGPU bitmap-font rendering
+
+Status: completed. The WebGPU text mark now accepts only prepared TrueType
+outline fonts. Core retains BMFont metrics for measurement but passes only its
+asynchronously prepared outline to the renderer. Production runtime decreased
+by 602 non-comment SLOC: 587 in `webgpu-renderer` and 15 in Core. The packed
+package decreased by 78,716 bytes, from 294,191 to 215,475 bytes.
+
+### Work
+
+- Remove the renderer-local BMFont manager, metrics adapter, registry, bitmap
+  layout, texture upload/cache, shader branch, package export, and Lato
+  JSON/PNG assets.
+- Keep the compact Default Font and arbitrary static TrueType support.
+- Remove Core's obsolete bitmap resource handoff without changing its font
+  catalog, async readiness, fallback, or measurement behavior.
+- Replace bitmap-only tests and fixtures with outline-font coverage.
+
+### Verification
+
+- Run renderer unit, WebGPU text/effect/stress, Core adapter, type, bundle,
+  lint, and package-content checks.
+- Confirm Core WebGL and renderer-neutral measurement remain untouched.
+
+Tentative commit: `refactor(webgpu-renderer): remove bitmap fonts`
+
+## Milestone 5: Remove adapter and font-catalog duplication
 
 ### Intended outcome
 
@@ -277,9 +303,8 @@ Tentative commit: `refactor(core): simplify WebGPU font resolution`
   implementation.
 - Restoring canonical msdfgen WASM as the production generator increases
   initialization cost and duplicates the GPU pipeline.
-- Deleting text effects, bitmap fonts, or catalog behavior would reduce SLOC by
-  removing intended or currently supported functionality, so it is explicitly
-  excluded from this optimization.
+- Deleting text effects or catalog behavior would reduce SLOC by removing
+  intended functionality, so it remains explicitly excluded.
 - Splitting every point/text variant into asynchronously loaded modules could
   improve selected bundles but adds lifecycle and failure state. Reconsider it
   only after the deletion milestones if bundle size remains unacceptable.
@@ -307,7 +332,7 @@ Tentative commit: `refactor(core): simplify WebGPU font resolution`
 - Fixed circles remain analytic and allocate no path atlas.
 - Named/custom paths and outline glyphs retain accepted visual quality and
   shared `rgba16float` GPU generation.
-- Bitmap and outline text rendering, text effects, and Core measurement remain
+- Outline text rendering, text effects, and Core measurement remain
   behaviorally stable.
 - The example/application font catalog retains every descriptor, precedence
   rule, validation behavior, fallback, and lazy-loading property.

@@ -60,12 +60,9 @@ describe("textMark program identity", () => {
         );
     });
 
-    test("keeps bitmap text on one program route", () => {
-        expect(
+    test("rejects fonts without TrueType outlines", () => {
+        expect(() =>
             textMark.getProgramKey(/** @type {any} */ ({ font: "Lato" }))
-        ).toBe("bitmap");
-        expect(
-            textMark.getProgramKey(/** @type {any} */ ({ font: "Other" }))
-        ).toBe("bitmap");
+        ).toThrow("require a TrueType outline font");
     });
 });

@@ -19,7 +19,6 @@ const publicEntries = new Map([
     ["", "src/index.js"],
     ["debug", "src/debug.js"],
     ["fonts/default", "src/fonts/defaultFont.js"],
-    ["fonts/lato", "src/fonts/lato.js"],
     ["fonts/truetype", "src/fonts/trueTypeFont.js"],
     ["high-precision", "src/utils/highPrecision.js"],
     ["scale-authoring", "src/marks/scales/scale-authoring.js"],
@@ -50,7 +49,6 @@ const fixtures = [
     "fontTrueType",
     "fontDefault",
     "textCustomFont",
-    "textLato",
 ];
 
 function resolveSelfImport(source) {
@@ -183,26 +181,11 @@ function assertTreeShaking(result) {
         return;
     }
 
-    if (result.name === "textLato") {
-        for (const id of [
-            "src/marks/programs/textProgram.js",
-            "src/fonts/lato.js",
-            "src/fonts/Lato-Regular.json",
-            "src/fonts/Lato-Regular.png",
-        ]) {
-            if (!result.modules.has(id)) {
-                throw new Error(
-                    `Lato bundle is missing required module: ${id}`
-                );
-            }
-        }
-        return;
-    }
-
     if (result.name === "textCustomFont") {
         for (const id of [
             "src/marks/text.js",
             "src/marks/programs/textProgram.js",
+            "src/fonts/trueTypeFont.js",
         ]) {
             if (!result.modules.has(id)) {
                 throw new Error(
@@ -210,25 +193,9 @@ function assertTreeShaking(result) {
                 );
             }
         }
-        if (result.modules.has("src/fonts/lato.js")) {
+        if (result.modules.has("src/fonts/defaultFont.js")) {
             throw new Error(
-                "Custom-font bundle unexpectedly includes the Lato preset."
-            );
-        }
-        for (const id of result.modules) {
-            if (
-                id === "src/fonts/defaultFont.js" ||
-                id === "src/fonts/trueTypeFont.js" ||
-                id.startsWith("src/vendor/textShaper/")
-            ) {
-                throw new Error(
-                    `Custom bitmap-font bundle includes TrueType loading: ${id}`
-                );
-            }
-        }
-        if (!result.minifiedCode.includes("Custom Sans")) {
-            throw new Error(
-                "Custom-font bundle does not retain the configured font family."
+                "Custom TrueType bundle unexpectedly includes Default Font."
             );
         }
         return;

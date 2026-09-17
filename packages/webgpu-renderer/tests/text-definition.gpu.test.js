@@ -14,18 +14,17 @@ test("text mark indexes logical series from glyph instances", async ({
             { createRenderer },
             { textMark },
             { linearScale },
-            { default: getMetrics },
+            { createTrueTypeFont },
         ] = await Promise.all([
             import("/src/index.js"),
             import("/src/marks/text.js"),
             import("/src/scales/linear.js"),
-            import("/src/fonts/bmFontMetrics.js"),
+            import("/src/fonts/trueTypeFont.js"),
         ]);
-        const fontJson = await fetch("/src/fonts/Lato-Regular.json").then(
-            (response) => response.json()
-        );
-        const bitmap = await createImageBitmap(
-            new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
+        const font = createTrueTypeFont(
+            await fetch("/src/fonts/DefaultFont.ttf").then((response) =>
+                response.arrayBuffer()
+            )
         );
 
         const canvas = document.createElement("canvas");
@@ -38,7 +37,7 @@ test("text mark indexes logical series from glyph instances", async ({
         renderer.device.pushErrorScope("validation");
         const mark = renderer.createMark(textMark, {
             count: 2,
-            fontResource: { metrics: getMetrics(fontJson), bitmap },
+            font,
             channels: {
                 uniqueId: {
                     data: new Uint32Array([41, 42]),

@@ -9,9 +9,7 @@
   "license": "MIT",
   "version": "0.88.0",
   "type": "module",
-  "sideEffects": [
-    "src/fonts/lato.js"
-  ],
+  "sideEffects": false,
   "types": "src/index.d.ts",
   "exports": {
     ".": {
@@ -90,10 +88,6 @@
       "types": "./src/debug.d.ts",
       "default": "./src/debug.js"
     },
-    "./fonts/lato": {
-      "types": "./src/fonts/lato.d.ts",
-      "default": "./src/fonts/lato.js"
-    },
     "./fonts/truetype": {
       "types": "./src/fonts/trueTypeFont.d.ts",
       "default": "./src/fonts/trueTypeFont.js"
@@ -136,7 +130,6 @@
     "compare:path-points": "node scripts/comparePathText.mjs --scene path-points",
     "compare:path-text": "node scripts/comparePathText.mjs",
     "benchmark:font-atlas": "node scripts/fontAtlasBenchmark/run.mjs",
-    "benchmark:resources": "node scripts/resourceSharingBenchmark/run.mjs",
     "dev": "vite",
     "lint": "eslint .",
     "storybook": "storybook dev -p 6006",

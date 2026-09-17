@@ -947,17 +947,8 @@ export type TextLayout = {
     descent: number;
 };
 
-export type FontResource = {
-    metrics: unknown;
-    bitmap: string | ImageBitmap;
-};
-
 export type TextMarkOptions = {
-    textLayout?: TextLayout;
-    font?: string | import("./fonts/trueTypeFont.js").TrueTypeFont;
-    fontResource?: FontResource;
-    fontStyle?: "normal" | "italic";
-    fontWeight?: number | string;
+    font?: import("./fonts/trueTypeFont.js").TrueTypeFont;
     fontSize?: number;
     lineHeight?: number;
     letterSpacing?: number;

@@ -56,9 +56,6 @@ letter additions:
 npm run build:default-font -- --repertoire core --output /tmp/DefaultFont-core.ttf
 ```
 
-The [resource-sharing benchmark](./resourceSharingBenchmark/README.md) has its
-own runner, methodology, and checked-in baseline.
-
 ## Canonical-oracle comparisons
 
 The comparison commands are development tools. `fetch:msdf-oracle` downloads
@@ -139,9 +136,8 @@ API entry points used for stable composition measurements:
   unrelated mark and scale programs are tree-shaken.
 - `pointOrdinal.js` measures a point mark with an ordinal scale.
 - `customIdentityMark.js` measures a custom mark alongside the renderer.
-- `textCustomFont.js` exercises text-program configuration with a
-  caller-provided font resource.
-- `textLato.js` measures the optional bundled Lato font preset.
+- `textCustomFont.js` measures text rendering with a caller-created TrueType
+  font.
 
 When adding or changing a fixture, keep its imports representative of the
 public package specifiers. Update the verification assertions when the

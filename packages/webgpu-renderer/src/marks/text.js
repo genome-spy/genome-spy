@@ -8,7 +8,7 @@ const outlineProgramKeys = new WeakMap();
 /** @param {import("../index.d.ts").MarkConfig<"text">} config */
 function getOutlineProgramKey(config) {
     if (!isTrueTypeFont(config.font)) {
-        return "bitmap";
+        throw new TypeError("Text marks require a TrueType outline font.");
     }
     const font = config.font;
     const effectFlags = resolveTextEffectFlags(config.channels);

@@ -438,7 +438,7 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels.yOffset).toEqual(dynamicValue(9));
         expect(config.channels.dx).toEqual(dynamicValue(4));
         expect(config.channels.dy).toEqual(dynamicValue(5));
-        expect(config.font).toBe("Lato");
+        expect(config.font.getGlyph).toBeTypeOf("function");
         expect(config.viewport).toEqual([10, 20, 110, 220]);
         expect(translated.properties.viewport).toEqual({
             value: [10, 20, 110, 220],
@@ -551,7 +551,7 @@ describe("WebGPU mark adapter", () => {
         ]);
     });
 
-    test("passes Core-loaded custom font resources to the renderer", () => {
+    test("passes the prepared custom outline to the renderer", () => {
         const mark = createMark(
             "text",
             [{ label: "A" }],
@@ -579,11 +579,8 @@ describe("WebGPU mark adapter", () => {
                 squeeze: false,
             }
         );
-        const fontResource = {
-            metrics: /** @type {any} */ ({}),
-            bitmapUrl: "test-sans.png",
-        };
-        Object.assign(mark, { font: fontResource });
+        const outlineFont = /** @type {any} */ ({ getGlyph() {} });
+        Object.assign(mark, { outlineFont: { outlineFont } });
 
         const translated = createWebGpuMarkConfig(
             mark,
@@ -595,11 +592,7 @@ describe("WebGPU mark adapter", () => {
         }
 
         expect(translated.config).toMatchObject({
-            font: "Test Sans",
-            fontResource: {
-                metrics: fontResource.metrics,
-                bitmap: "test-sans.png",
-            },
+            font: outlineFont,
             fontStyle: "italic",
             fontWeight: 700,
         });
@@ -644,7 +637,7 @@ describe("WebGPU mark adapter", () => {
 
         const config = /** @type {any} */ (translated?.config);
         expect(config.font).toBe(outlineFont);
-        expect(config.fontResource.bitmap).toBe("measurement.png");
+        expect(config).not.toHaveProperty("fontResource");
     });
 
     test("applies the text channel number format", () => {
@@ -2260,6 +2253,9 @@ function createMark(type, data, encoders, properties = {}) {
                 inwardStroke: false,
                 ...properties,
             },
+            ...(type == "text"
+                ? { outlineFont: { outlineFont: { getGlyph() {} } } }
+                : {}),
             getType: () => type,
             initializeRenderingRevisions: vi.fn(),
             getRenderingRevision: (

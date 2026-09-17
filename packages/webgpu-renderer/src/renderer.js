@@ -296,9 +296,6 @@ export class Renderer {
         this._programTemplateCache = new ProgramTemplateCache(addCount);
         this._transientTextures = new TransientTexturePool(device, format);
         this._textureCompositor = new TextureCompositor(device, format);
-        /** @type {Map<object, Map<unknown, { destroy: () => void }>>} */
-        this._fontResourceCache = new Map();
-        this._nextFontResourceId = 1;
         /** @type {Set<{ destroy: () => void }>} */
         this._ownedResources = new Set();
         /** @type {NormalizedDraw[] | null} */
@@ -1631,12 +1628,6 @@ export class Renderer {
         for (const target of this._detachedTargets) {
             target.destroy();
         }
-        for (const resourcesByBitmap of this._fontResourceCache.values()) {
-            for (const resources of resourcesByBitmap.values()) {
-                resources.destroy();
-            }
-        }
-        this._fontResourceCache.clear();
         for (const resource of this._ownedResources) {
             resource.destroy();
         }

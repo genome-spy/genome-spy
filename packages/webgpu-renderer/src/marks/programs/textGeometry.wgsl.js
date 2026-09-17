@@ -21,7 +21,7 @@ fn baselineOffset(
     return offset;
 }
 
-// BMFont y offsets and line offsets use a baseline-origin, y-up coordinate
+// Font y offsets and line offsets use a baseline-origin, y-up coordinate
 // system. Convert them to top-origin pixel coordinates while positioning the
 // atlas quad from top (vertexY = 0) to bottom (vertexY = 1).
 fn glyphVertexY(
