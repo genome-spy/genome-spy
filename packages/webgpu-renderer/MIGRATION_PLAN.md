@@ -34,8 +34,9 @@ fixed circle retains the minimal analytic fast path. The text mark accepts
 device-neutral TrueType resources, uses incremental shared `rgba16float`
 atlases, applies basic GPOS/legacy kerning, and preserves 2 by 2 small-text
 supersampling. Core lazily loads exact WebGPU outline variants while retaining
-BMFont measurement. Canonical msdfgen is isolated as package-excluded oracle
-tooling.
+BMFont measurement. Canonical msdfgen is maintained in a separate repository
+and downloaded only by explicit oracle tests, comparison scripts, and the
+Storybook comparison control.
 
 The glyph-based text-effects PoC adds one outline and one scalar-SDF
 shadow/glow in label-major order without per-label textures. Text program keys

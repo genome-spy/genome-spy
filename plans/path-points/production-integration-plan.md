@@ -11,7 +11,7 @@ backend-neutral semantics that Canvas2D and SVG can also represent.
 
 Historical experiments are condensed in the sibling feasibility records.
 Implementation details and provenance live in
-`packages/webgpu-renderer/src/symbols/README.md` and the vendored source
+`packages/webgpu-renderer/src/symbols/README.md` and the focused adaptation
 notices.
 
 ## Completed baseline
@@ -37,8 +37,9 @@ notices.
 - Core's required lollipop, text-quality, text-baseline, and plenty-of-points
   examples render through WebGPU. Late view insertion participates in outline
   preparation and deduplicates repeated font requests.
-- Canonical msdfgen is isolated under package-excluded `tools/` and
-  `tests/oracles/`; production bundles and exports do not reference it.
+- Canonical msdfgen is maintained in the separate `msdfgen-oracle` repository.
+  Explicit development tooling downloads a checksum-pinned release into an
+  ignored directory; production bundles and exports do not reference it.
 - The comparison harness checks both rendered symbols and final atlas texels.
   Per-path median, sign, and near-contour statistics separate generator errors
   from filtering, quad bounds, and known overlapping-contour behavior.
@@ -247,8 +248,8 @@ ready for PR review.
   package-content checks.
 - Run the recursive example/font inventories and representative Canvas2D/SVG
   exports.
-- Verify no msdfgen oracle source, WASM, loader, or runtime toggle appears in
-  production chunks or the packed package.
+- Retain package-content and tree-shaking guards that reject oracle source,
+  WASM, loaders, and comparison adapters from production artifacts.
 
 Tentative commit: `docs(core): document path points and outline fonts`
 

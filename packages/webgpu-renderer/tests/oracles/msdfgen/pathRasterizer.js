@@ -1,4 +1,5 @@
-import { renderMsdfWasm } from "./runtime/msdfgenWasm.js";
+// @ts-ignore -- this development-only module is fetched by the oracle scripts.
+import { renderMsdfWasm } from "./runtime/msdfgen-oracle.mjs";
 
 /**
  * @typedef {import("../../../src/symbols/pathTypes.js").GlyphPath} GlyphPath

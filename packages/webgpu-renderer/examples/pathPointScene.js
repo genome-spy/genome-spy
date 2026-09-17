@@ -27,9 +27,16 @@ export const PATH_POINT_ATLAS_OPTIONS = DEFAULT_SPARSE_PATH_ATLAS_OPTIONS;
 
 /**
  * @param {HTMLCanvasElement} canvas
+ * @param {{ backend?: "wgsl" | "msdfgen" }} [options]
  * @returns {Promise<() => void>}
  */
-export default async function runPathPointScene(canvas) {
+export default async function runPathPointScene(canvas, options = {}) {
+    const backend = options.backend ?? "wgsl";
+    const markDefinition =
+        backend === "msdfgen"
+            ? (await import("../tests/oracles/msdfgen/pathPointMark.js"))
+                  .comparisonPathPointMark
+            : pointMark;
     const renderer = await createExampleRenderer(canvas);
     const columns = PATHS.length;
     const rows = 6;
@@ -64,9 +71,21 @@ export default async function runPathPointScene(canvas) {
         fill[i] = column % palette.length;
     }
 
-    const { series, scales } = renderer.createMark(pointMark, {
+    const pathConfig =
+        backend === "msdfgen"
+            ? {
+                  paths: PATHS,
+                  atlasBackend: "wasm",
+                  atlasFormat: "rgba8unorm",
+                  atlasOptions: {
+                      ...PATH_POINT_ATLAS_OPTIONS,
+                      normalizationSpan: 2,
+                  },
+              }
+            : { shapes: PATHS };
+    const { series, scales } = renderer.createMark(markDefinition, {
         count,
-        shapes: PATHS,
+        ...pathConfig,
         channels: {
             x: {
                 data: x,

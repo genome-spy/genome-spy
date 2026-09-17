@@ -69,9 +69,22 @@ export const Points = withSource("runPointScene", null, {
     render: (args) => renderScene(runPointScene, args),
 });
 
-export const PathPoints = withSource("runPathPointScene", null, {
-    render: () => renderScene(runPathPointScene),
-});
+export const PathPoints = withSource(
+    "runPathPointScene",
+    { backend: "wgsl" },
+    {
+        args: { backend: "wgsl" },
+        argTypes: {
+            backend: {
+                control: "select",
+                options: ["wgsl", "msdfgen"],
+                description:
+                    "Atlas generator. msdfgen is a downloaded development oracle.",
+            },
+        },
+        render: (args) => renderScene(runPathPointScene, args),
+    }
+);
 
 export const PathText = withSource("runPathTextScene", null, {
     render: () => renderScene(runPathTextScene),

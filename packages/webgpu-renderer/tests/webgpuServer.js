@@ -94,7 +94,7 @@ function resolveFile(pathname) {
  * @returns {string}
  */
 function getContentType(file) {
-    if (file.endsWith(".js")) {
+    if (file.endsWith(".js") || file.endsWith(".mjs")) {
         return "text/javascript; charset=utf-8";
     } else if (file.endsWith(".json")) {
         return "application/json; charset=utf-8";

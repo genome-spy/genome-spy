@@ -36,8 +36,9 @@ GPU architecture and provenance are summarized in
   normalized eight-bit output.
 - The production point mark now accepts built-in names or SVG paths. A fixed
   circle alone retains the analytic fast path.
-- Canonical WASM and its sources are isolated under package-excluded `tools/`
-  and `tests/oracles/`; no production module imports them.
+- Canonical WASM and its sources live in the separate `msdfgen-oracle`
+  repository. Explicit development tooling downloads a checksum-pinned
+  release; no production module imports it.
 
 ## Selected boundaries
 

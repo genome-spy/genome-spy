@@ -187,8 +187,10 @@ class for large text.
 
 [msdfgen](https://github.com/Chlumsky/msdfgen) is the algorithmic and visual
 reference. The pinned v1.13 source, license, wrapper, and reproducible WASM
-build are documented under [`tools/msdfgen`](../../tools/msdfgen/README.md),
-with the package-excluded runtime under
+build are maintained in the separate
+[`genome-spy/msdfgen-oracle`](https://github.com/genome-spy/msdfgen-oracle)
+repository. Explicit comparison tooling downloads a checksum-pinned release as
+documented under
 [`tests/oracles/msdfgen`](../../tests/oracles/msdfgen/runtime/README.md).
 
 The CPU + WGSL generator closely follows these msdfgen ideas:

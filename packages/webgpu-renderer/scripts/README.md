@@ -10,6 +10,7 @@ the repository root.
 npm run test:tsc
 npm run test:bundle
 npm run build:default-font
+npm run fetch:msdf-oracle
 npm run test:msdf-oracle
 npm run benchmark:resources -- --headless
 npm run compare:path-points
@@ -60,11 +61,18 @@ own runner, methodology, and checked-in baseline.
 
 ## Canonical-oracle comparisons
 
-The comparison commands are development tools. They import the package-excluded
-canonical msdfgen oracle directly from `tests/oracles/msdfgen/`; production
-marks and ordinary browser bundles use only the WGSL generator.
-`test:msdf-oracle` runs the worker smoke test and the bounded visual-difference
-regressions without rebuilding the checked-in oracle.
+The comparison commands are development tools. `fetch:msdf-oracle` downloads
+the checksum-pinned
+[`genome-spy/msdfgen-oracle` v0.1.0 release](https://github.com/genome-spy/msdfgen-oracle/releases/tag/v0.1.0)
+into a Git-ignored directory under `tests/oracles/msdfgen/`. Production marks,
+ordinary unit tests, package builds, and published files use only the WGSL
+generator and do not need network access. Oracle tests, comparison commands,
+and Storybook fetch the release automatically through npm pre-scripts.
+
+The Path Points Storybook story exposes a `backend` control for switching
+between the production WGSL generator and canonical msdfgen. Both backends use
+the same paths and atlas geometry; the oracle texture is RGBA8 while the
+production texture is RGBA16F.
 
 ### Path-text backend comparison
 
