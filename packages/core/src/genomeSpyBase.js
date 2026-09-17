@@ -325,6 +325,9 @@ export default class GenomeSpy {
             onCanvasResize: () => this.#renderCoordinator?.renderAll(),
             onRenderInvalidated: () => this.animator.requestRender(),
             onError: (error) => this.#reportRuntimeError(error),
+            ...(this.options.fontCatalog === undefined
+                ? {}
+                : { fontCatalog: this.options.fontCatalog }),
         });
 
         if (this.#destroyed) {
@@ -432,7 +435,8 @@ export default class GenomeSpy {
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(
                 this.#renderingBackend.prepareFontBitmap,
-                this.#renderingBackend.defaultFontBitmapUrl
+                this.#renderingBackend.defaultFontBitmapUrl,
+                this.#renderingBackend.prepareOutlineFont
             ),
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),

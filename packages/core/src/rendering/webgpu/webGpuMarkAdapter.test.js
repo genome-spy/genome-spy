@@ -438,7 +438,7 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels.yOffset).toEqual(dynamicValue(9));
         expect(config.channels.dx).toEqual(dynamicValue(4));
         expect(config.channels.dy).toEqual(dynamicValue(5));
-        expect(config.font).toBe("Lato");
+        expect(config.font.getGlyph).toBeTypeOf("function");
         expect(config.viewport).toEqual([10, 20, 110, 220]);
         expect(translated.properties.viewport).toEqual({
             value: [10, 20, 110, 220],
@@ -551,7 +551,7 @@ describe("WebGPU mark adapter", () => {
         ]);
     });
 
-    test("passes Core-loaded custom font resources to the renderer", () => {
+    test("passes the prepared custom outline to the renderer", () => {
         const mark = createMark(
             "text",
             [{ label: "A" }],
@@ -579,11 +579,8 @@ describe("WebGPU mark adapter", () => {
                 squeeze: false,
             }
         );
-        const fontResource = {
-            metrics: /** @type {any} */ ({}),
-            bitmapUrl: "test-sans.png",
-        };
-        Object.assign(mark, { font: fontResource });
+        const outlineFont = /** @type {any} */ ({ getGlyph() {} });
+        Object.assign(mark, { outlineFont: { outlineFont } });
 
         const translated = createWebGpuMarkConfig(
             mark,
@@ -595,14 +592,52 @@ describe("WebGPU mark adapter", () => {
         }
 
         expect(translated.config).toMatchObject({
-            font: "Test Sans",
-            fontResource: {
-                metrics: fontResource.metrics,
-                bitmap: "test-sans.png",
-            },
+            font: outlineFont,
             fontStyle: "italic",
             fontWeight: 700,
         });
+    });
+
+    test("uses a prepared outline while retaining BMFont measurement", () => {
+        const mark = createMark(
+            "text",
+            [{ label: "A" }],
+            {
+                x: createConstantEncoder(0),
+                y: createConstantEncoder(0),
+                text: createEncoder((datum) => datum.label),
+                size: createConstantEncoder(11),
+                angle: createConstantEncoder(0),
+                xOffset: createConstantEncoder(0),
+                yOffset: createConstantEncoder(0),
+                color: createConstantEncoder("black"),
+                opacity: createConstantEncoder(1),
+            },
+            {
+                align: "center",
+                baseline: "middle",
+                paddingX: 0,
+                paddingY: 0,
+                flushX: false,
+                flushY: false,
+                squeeze: false,
+            }
+        );
+        const outlineFont = /** @type {any} */ ({ getGlyph() {} });
+        Object.assign(mark, {
+            font: { metrics: {}, bitmapUrl: "measurement.png" },
+            outlineFont: { outlineFont },
+        });
+
+        const translated = createWebGpuMarkConfig(
+            mark,
+            /** @type {any} */ ({}),
+            Rectangle.ZERO
+        );
+
+        const config = /** @type {any} */ (translated?.config);
+        expect(config.font).toBe(outlineFont);
+        expect(config).not.toHaveProperty("fontResource");
     });
 
     test("applies the text channel number format", () => {
@@ -922,22 +957,45 @@ describe("WebGPU mark adapter", () => {
         expect(requestRender).not.toHaveBeenCalled();
     });
 
-    test.each([
-        ["x", 12],
-        ["+", 13],
-    ])(
-        "maps the stroke-only point shape %s to renderer code %i",
-        (shape, code) => {
+    test.each(["x", "+"])(
+        "passes the fixed point shape %s to renderer program selection",
+        (shape) => {
             const mark = createMark("point", [{}], {
                 shape: createConstantEncoder(shape),
             });
             const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
 
+            expect(/** @type {any} */ (translated).config.shape).toBe(shape);
             expect(
-                /** @type {any} */ (translated).config.channels.shape
-            ).toEqual(dynamicValue(code, "u32"));
+                /** @type {any} */ (translated).config.channels
+            ).not.toHaveProperty("shape");
         }
     );
+
+    test("passes a fixed SVG path to renderer program selection", () => {
+        const path = "M-1-1H1V1H-1Z";
+        const mark = createMark("point", [{}], {
+            shape: createConstantEncoder(path),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+
+        expect(/** @type {any} */ (translated).config.shape).toBe(path);
+    });
+
+    test("interns data-driven SVG point paths into a finite shape table", () => {
+        const path = "M-1-1H1V1H-1Z";
+        const data = [{ shape: "square" }, { shape: path }];
+        const mark = createMark("point", data, {
+            shape: createEncoder((datum) => datum.shape),
+        });
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+
+        expect(config.shapes.at(-1)).toBe(path);
+        expect(config.channels.shape.data).toEqual(new Uint32Array([1, 14]));
+    });
 
     test("maps regular index positions to a single u32 component", () => {
         const data = [{ x: 4 }, { x: 9 }];
@@ -2195,6 +2253,9 @@ function createMark(type, data, encoders, properties = {}) {
                 inwardStroke: false,
                 ...properties,
             },
+            ...(type == "text"
+                ? { outlineFont: { outlineFont: { getGlyph() {} } } }
+                : {}),
             getType: () => type,
             initializeRenderingRevisions: vi.fn(),
             getRenderingRevision: (

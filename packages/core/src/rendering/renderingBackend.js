@@ -44,6 +44,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {undefined} [glHelper] Legacy field retained for the unchanged WebGPU adapter.
  * @property {string} [defaultFontBitmapUrl]
  * @property {(bitmapUrl: string) => Promise<void>} [prepareFontBitmap]
+ * @property {(request: {family: string | undefined, style: "normal" | "italic", weight: number, implicitFamily: boolean}) => Promise<object>} [prepareOutlineFont]
  * @property {(mark: import("../marks/mark.js").default) => import("../types/viewContext.js").MarkRenderingDebugState} [getMarkRenderingDebugState]
  * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
@@ -61,6 +62,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {() => void} onCanvasResize
  * @property {() => void} [onRenderInvalidated]
  * @property {(error: Error) => void} [onError]
+ * @property {import("../types/embedApi.js").FontCatalogEntry[]} [fontCatalog]
  */
 
 /**

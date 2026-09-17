@@ -296,9 +296,8 @@ export class Renderer {
         this._programTemplateCache = new ProgramTemplateCache(addCount);
         this._transientTextures = new TransientTexturePool(device, format);
         this._textureCompositor = new TextureCompositor(device, format);
-        /** @type {Map<object, Map<unknown, { destroy: () => void }>>} */
-        this._fontResourceCache = new Map();
-        this._nextFontResourceId = 1;
+        /** @type {Set<{ destroy: () => void }>} */
+        this._ownedResources = new Set();
         /** @type {NormalizedDraw[] | null} */
         this._renderFrame = null;
         /** @type {NormalizedDraw[] | null} */
@@ -600,6 +599,19 @@ export class Renderer {
         }
         this.markPickingDirty();
         this._onInvalidate();
+    }
+
+    /**
+     * Retain a lazily imported device resource until renderer destruction.
+     *
+     * @template {{ destroy: () => void }} T
+     * @param {T} resource
+     * @returns {T}
+     */
+    _ownResource(resource) {
+        this._assertAlive();
+        this._ownedResources.add(resource);
+        return resource;
     }
 
     /**
@@ -1616,12 +1628,10 @@ export class Renderer {
         for (const target of this._detachedTargets) {
             target.destroy();
         }
-        for (const resourcesByBitmap of this._fontResourceCache.values()) {
-            for (const resources of resourcesByBitmap.values()) {
-                resources.destroy();
-            }
+        for (const resource of this._ownedResources) {
+            resource.destroy();
         }
-        this._fontResourceCache.clear();
+        this._ownedResources.clear();
         this._renderFrame = null;
         this._globalUniformBuffer.destroy();
         this._transientTextures.destroy();

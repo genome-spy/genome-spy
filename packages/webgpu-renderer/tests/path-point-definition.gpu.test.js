@@ -1,0 +1,839 @@
+/* global document */
+
+import { expect, test } from "@playwright/test";
+import { ensureWebGPU } from "./gpuTestUtils.js";
+
+test("PathPoint renders and picks an MSDF path with an outline", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+        const handle = renderer.createMark(pointMark, {
+            count: 1,
+            shapes: ["M-1-1H1V1H-1Z"],
+            channels: {
+                uniqueId: { data: new Uint32Array([7]), type: "u32" },
+                x: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                y: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                size: { value: 400 },
+                shape: { value: 0 },
+                fill: { value: [0.2, 0.4, 0.8, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 4 },
+                angle: { value: 30 },
+            },
+        });
+
+        renderer.render({ draws: [{ mark: handle }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const center = await renderer.pick(32, 32);
+        const outside = await renderer.pick(4, 4);
+        renderer.destroy();
+        canvas.remove();
+        return { center, outside };
+    });
+
+    expect(result).toEqual({ center: 7, outside: null });
+});
+
+test("PathPoint keeps inward strokes inside the nominal shape", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+
+        /** @param {number} inwardStroke */
+        const render = async (inwardStroke) => {
+            const dpr = 2;
+            const canvas = document.createElement("canvas");
+            canvas.width = 64 * dpr;
+            canvas.height = 64 * dpr;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width: 64, height: 64, dpr });
+            const mark = renderer.createMark(pointMark, {
+                shape: "square",
+                channels: {
+                    x: { value: 32, scale: identityScale() },
+                    y: { value: 32, scale: identityScale() },
+                    size: { value: 400 },
+                    fill: { value: [0.2, 0.4, 0.8, 1] },
+                    stroke: { value: [0, 0, 0, 1] },
+                    strokeWidth: { value: 4 },
+                    inwardStroke: { value: inwardStroke, type: "u32" },
+                },
+            });
+            renderer.render({ draws: [{ mark }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+            const bitmap = await createImageBitmap(
+                await (await fetch(canvas.toDataURL("image/png"))).blob()
+            );
+            const copy = new OffscreenCanvas(canvas.width, canvas.height);
+            const context = copy.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            const pixels = context.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            ).data;
+            const sample = (x) => {
+                const offset = (32 * dpr * canvas.width + x * dpr) * 4;
+                return Array.from(pixels.slice(offset, offset + 4));
+            };
+            const samples = { inner: sample(39), outer: sample(43) };
+            renderer.destroy();
+            canvas.remove();
+            return samples;
+        };
+
+        return {
+            centered: await render(0),
+            inward: await render(1),
+        };
+    });
+
+    expect(result.centered.inner[2]).toBeGreaterThan(150);
+    expect(result.inward.inner[2]).toBeLessThan(50);
+    expect(result.centered.outer[0]).toBeLessThan(80);
+    expect(result.inward.outer.slice(0, 3)).toEqual([255, 255, 255]);
+});
+
+test("PathPoint applies the configured fill gradient", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+        const dpr = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = 64 * dpr;
+        canvas.height = 64 * dpr;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr });
+        const mark = renderer.createMark(pointMark, {
+            shape: "square",
+            channels: {
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 400 },
+                fill: { value: [0.2, 0.4, 0.8, 1] },
+                strokeOpacity: { value: 0 },
+                gradientStrength: { value: 1 },
+            },
+        });
+        renderer.render({ draws: [{ mark }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const copy = new OffscreenCanvas(canvas.width, canvas.height);
+        const context = copy.getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        ).data;
+        const sample = (x) => {
+            const offset = (32 * dpr * canvas.width + x * dpr) * 4;
+            return Array.from(pixels.slice(offset, offset + 4));
+        };
+        const samples = { center: sample(32), edge: sample(40) };
+        renderer.destroy();
+        canvas.remove();
+        return samples;
+    });
+
+    expect(result.center.slice(0, 3).every((value) => value > 240)).toBe(true);
+    expect(result.edge[2]).toBeGreaterThan(result.edge[0] + 80);
+});
+
+test("PathPoint ignores stroke color when stroke width is zero", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+
+        /** @param {number[]} stroke */
+        const render = async (stroke) => {
+            const dpr = 2;
+            const canvas = document.createElement("canvas");
+            canvas.width = 64 * dpr;
+            canvas.height = 64 * dpr;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width: 64, height: 64, dpr });
+            const mark = renderer.createMark(pointMark, {
+                shape: "square",
+                channels: {
+                    x: { value: 32, scale: identityScale() },
+                    y: { value: 32, scale: identityScale() },
+                    size: { value: 625 },
+                    fill: { value: [0.1, 0.4, 0.9, 1] },
+                    stroke: { value: stroke },
+                    strokeWidth: { value: 0 },
+                    angle: { value: 17 },
+                },
+            });
+            renderer.render({ draws: [{ mark }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+            const bitmap = await createImageBitmap(
+                await (await fetch(canvas.toDataURL("image/png"))).blob()
+            );
+            const copy = new OffscreenCanvas(canvas.width, canvas.height);
+            const context = copy.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            const pixels = Array.from(
+                context.getImageData(0, 0, canvas.width, canvas.height).data
+            );
+            bitmap.close();
+            renderer.destroy();
+            canvas.remove();
+            return pixels;
+        };
+
+        const redStroke = await render([1, 0, 0, 1]);
+        const greenStroke = await render([0, 1, 0, 1]);
+        let maximumDifference = 0;
+        for (let index = 0; index < redStroke.length; index++) {
+            maximumDifference = Math.max(
+                maximumDifference,
+                Math.abs(redStroke[index] - greenStroke[index])
+            );
+        }
+        return { maximumDifference };
+    });
+
+    expect(result.maximumDifference).toBe(0);
+});
+
+test("PathPoint marks share an exact renderer-owned GPU atlas", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        const config = {
+            count: 1,
+            shapes: ["M-1-1H1V1H-1Z"],
+            channels: {
+                uniqueId: { data: new Uint32Array([17]), type: "u32" },
+                x: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                y: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                size: { value: 400 },
+                shape: { value: 0 },
+                fill: { value: [0.2, 0.4, 0.8, 1] },
+            },
+        };
+        const first = renderer.createMark(pointMark, config);
+        const second = renderer.createMark(pointMark, config);
+        const programs = Array.from(renderer._marks.values());
+        const sharedTexture =
+            programs[0]._extraTextures.get("pathAtlas").texture ===
+            programs[1]._extraTextures.get("pathAtlas").texture;
+        const sharedEntries =
+            programs[0]._extraBuffers.get("pathAtlasEntries") ===
+            programs[1]._extraBuffers.get("pathAtlasEntries");
+
+        renderer.destroyMark(first.markId);
+        renderer.render({ draws: [{ mark: second }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const picked = await renderer.pick(32, 32);
+        renderer.destroy();
+        canvas.remove();
+        return { sharedTexture, sharedEntries, picked };
+    });
+
+    expect(result).toEqual({
+        sharedTexture: true,
+        sharedEntries: true,
+        picked: 17,
+    });
+});
+
+test("PathPoint retains an acute miter inside its path-specific quad", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+        const handle = renderer.createMark(pointMark, {
+            count: 1,
+            shapes: ["M0-1L1 1H-1Z"],
+            channels: {
+                uniqueId: { data: new Uint32Array([11]), type: "u32" },
+                x: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                y: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                size: { value: 400 },
+                shape: { value: 0 },
+                fill: { value: [0.2, 0.4, 0.8, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 4 },
+            },
+        });
+
+        renderer.render({ draws: [{ mark: handle }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const miter = await renderer.pick(32, 18);
+        const beyondMiter = await renderer.pick(32, 16);
+        renderer.destroy();
+        canvas.remove();
+        return { miter, beyondMiter };
+    });
+
+    expect(result).toEqual({ miter: 11, beyondMiter: null });
+});
+
+test("PathPoint bounds thick-stroke pseudo-distances to corner miters", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 128, dpr: 2 });
+        const handle = renderer.createMark(pointMark, {
+            count: 1,
+            shapes: ["M-.35-1H.35V-.35H1V.35H.35V1H-.35V.35H-1V-.35H-.35Z"],
+            channels: {
+                uniqueId: { data: new Uint32Array([17]), type: "u32" },
+                x: {
+                    value: 64,
+                    scale: linearScale({ domain: [0, 128], range: [0, 128] }),
+                },
+                y: {
+                    value: 64,
+                    scale: linearScale({ domain: [0, 128], range: [0, 128] }),
+                },
+                size: { value: 3600 },
+                shape: { value: 0 },
+                fill: { value: [0.95, 0.55, 0.2, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 12 },
+                angle: { value: 45 },
+            },
+        });
+
+        renderer.render({ draws: [{ mark: handle }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const center = await renderer.pick(64, 64);
+        const detached = await Promise.all([
+            renderer.pick(64, 20),
+            renderer.pick(64, 108),
+            renderer.pick(20, 64),
+            renderer.pick(108, 64),
+        ]);
+        renderer.destroy();
+        canvas.remove();
+        return { center, detached };
+    });
+
+    expect(result).toEqual({
+        center: 17,
+        detached: [null, null, null, null],
+    });
+});
+
+test("PathPoint retains symmetric circle coverage near quad boundaries", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+        const handle = renderer.createMark(pointMark, {
+            count: 1,
+            shapes: ["M0-1A1 1 0 1 1 0 1A1 1 0 1 1 0-1Z"],
+            channels: {
+                uniqueId: { data: new Uint32Array([13]), type: "u32" },
+                x: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                y: {
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
+                },
+                size: { value: 400 },
+                shape: { value: 0 },
+                fill: { value: [0.95, 0.55, 0.2, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 4 },
+            },
+        });
+
+        renderer.render({ draws: [{ mark: handle }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const boundary = await Promise.all([
+            renderer.pick(32, 21),
+            renderer.pick(32, 43),
+            renderer.pick(21, 32),
+            renderer.pick(43, 32),
+        ]);
+        const outside = await renderer.pick(32, 47);
+        renderer.destroy();
+        canvas.remove();
+        return { boundary, outside };
+    });
+
+    expect(result).toEqual({ boundary: [13, 13, 13, 13], outside: null });
+});
+
+test("rotated diamond coverage retains a guard band inside its quad", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { pointMark },
+            { identityScale },
+            { buildSparsePathAtlasLayout },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/point.js"),
+            import("/src/scales/identity.js"),
+            import("/src/symbols/sparsePathAtlasLayout.js"),
+        ]);
+        const path = "M0-1L1 0 0 1-1 0Z";
+        const diameter = 30;
+        const strokeWidth = 4;
+        const angleDegrees = 37;
+        const dpr = 2;
+        const center = 40;
+        const canvas = document.createElement("canvas");
+        canvas.width = 80 * dpr;
+        canvas.height = 80 * dpr;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 80, height: 80, dpr });
+        const handle = renderer.createMark(pointMark, {
+            count: 1,
+            shapes: [path],
+            channels: {
+                x: { value: center, scale: identityScale() },
+                y: { value: center, scale: identityScale() },
+                size: { value: diameter ** 2 },
+                shape: { value: 0 },
+                fill: { value: [0.25, 0.75, 0.4, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: strokeWidth },
+                angle: { value: angleDegrees },
+            },
+        });
+        renderer.render({ draws: [{ mark: handle }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const copy = new OffscreenCanvas(canvas.width, canvas.height);
+        const context = copy.getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        ).data;
+        const layout = buildSparsePathAtlasLayout([path]);
+        const localBounds = layout.entries.slice(4, 8);
+        const strokePadding = layout.entries.slice(8, 12);
+        const coverageRadius = strokeWidth * 0.5 + 0.5 / dpr;
+        const rasterSafety = 3 / dpr;
+        const localMin = [
+            localBounds[0] * diameter -
+                strokePadding[0] * coverageRadius -
+                rasterSafety,
+            localBounds[1] * diameter -
+                strokePadding[1] * coverageRadius -
+                rasterSafety,
+        ];
+        const localMax = [
+            localBounds[2] * diameter +
+                strokePadding[2] * coverageRadius +
+                rasterSafety,
+            localBounds[3] * diameter +
+                strokePadding[3] * coverageRadius +
+                rasterSafety,
+        ];
+        const angle = (angleDegrees * Math.PI) / 180;
+        const cosine = Math.cos(angle);
+        const sine = Math.sin(angle);
+        let minimumMargin = Infinity;
+        let coveredPixels = 0;
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const offset = (y * canvas.width + x) * 4;
+                const ink =
+                    255 -
+                    Math.min(
+                        pixels[offset],
+                        pixels[offset + 1],
+                        pixels[offset + 2]
+                    );
+                if (ink <= 4) {
+                    continue;
+                }
+                coveredPixels++;
+                const screenX = (x + 0.5) / dpr - center;
+                const screenY = (y + 0.5) / dpr - center;
+                const localX = cosine * screenX - sine * screenY;
+                const localY = sine * screenX + cosine * screenY;
+                minimumMargin = Math.min(
+                    minimumMargin,
+                    localX - localMin[0],
+                    localY - localMin[1],
+                    localMax[0] - localX,
+                    localMax[1] - localY
+                );
+            }
+        }
+        renderer.destroy();
+        canvas.remove();
+        return { minimumMargin, coveredPixels };
+    });
+
+    expect(result.coveredPixels).toBeGreaterThan(0);
+    expect(result.minimumMargin).toBeGreaterThan(0.75);
+});
+
+test("PathPoint culls zero-area paths with extreme strokes", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+        const mark = renderer.createMark(pointMark, {
+            count: 1,
+            shapes: ["M-1-1H1V1H-1Z"],
+            channels: {
+                uniqueId: { data: new Uint32Array([23]), type: "u32" },
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 0 },
+                shape: { value: 0 },
+                fill: { value: [0.25, 0.75, 0.4, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 128 },
+                angle: { value: 33 },
+            },
+        });
+
+        renderer.render({ draws: [{ mark }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const picked = await renderer.pick(32, 32);
+        renderer.destroy();
+        canvas.remove();
+        return picked;
+    });
+
+    expect(result).toBeNull();
+});
+
+test("PathPoint clamps pathological strokes across shapes and DPRs", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const results = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+        const paths = [
+            "M0-1A1 1 0 1 1 0 1A1 1 0 1 1 0-1Z",
+            "M-1-1H1V1H-1Z",
+            "M0-1L1 1H-1Z",
+            "M-.25-1H.25V-.25H1V.25H.25V1H-.25V.25H-1V-.25H-.25Z",
+            "M0-1 .24-.32.95-.31.38.12.59.81 0 .4-.59.81-.38.12-.95-.31-.24-.32Z",
+        ];
+        const diameters = [0.5, 1, 2, 3];
+        const requestedStrokeWidths = [8, 32, 128];
+        const cellSize = 32;
+        const rows = paths.flatMap((_, shape) =>
+            diameters.flatMap((diameter) =>
+                [0, 1].map((inwardStroke) => ({
+                    shape,
+                    diameter,
+                    inwardStroke,
+                    angle: (shape * 29 + diameter * 17) % 180,
+                }))
+            )
+        );
+
+        /** @param {number} dpr */
+        const render = async (dpr) => {
+            const columns = requestedStrokeWidths.length;
+            const width = columns * cellSize;
+            const height = rows.length * cellSize;
+            const instances = rows.flatMap((row, rowIndex) =>
+                requestedStrokeWidths.map((strokeWidth, column) => ({
+                    ...row,
+                    strokeWidth,
+                    x: (column + 0.5) * cellSize,
+                    y: (rowIndex + 0.5) * cellSize,
+                }))
+            );
+            const canvas = document.createElement("canvas");
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width, height, dpr });
+            const mark = renderer.createMark(pointMark, {
+                count: instances.length,
+                shapes: paths,
+                channels: {
+                    x: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.x
+                        ),
+                        type: "f32",
+                        scale: identityScale(),
+                    },
+                    y: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.y
+                        ),
+                        type: "f32",
+                        scale: identityScale(),
+                    },
+                    size: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.diameter ** 2
+                        ),
+                        type: "f32",
+                    },
+                    shape: {
+                        data: Uint32Array.from(
+                            instances,
+                            (instance) => instance.shape
+                        ),
+                        type: "u32",
+                    },
+                    fill: { value: [0.25, 0.75, 0.4, 1] },
+                    stroke: { value: [0, 0, 0, 1] },
+                    strokeWidth: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.strokeWidth
+                        ),
+                        type: "f32",
+                    },
+                    inwardStroke: {
+                        data: Uint32Array.from(
+                            instances,
+                            (instance) => instance.inwardStroke
+                        ),
+                        type: "u32",
+                    },
+                    angle: {
+                        data: Float32Array.from(
+                            instances,
+                            (instance) => instance.angle
+                        ),
+                        type: "f32",
+                    },
+                },
+            });
+            renderer.render({ draws: [{ mark }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+
+            const bitmap = await createImageBitmap(
+                await (await fetch(canvas.toDataURL("image/png"))).blob()
+            );
+            const copy = new OffscreenCanvas(canvas.width, canvas.height);
+            const context = copy.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            const pixels = context.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            ).data;
+            const deviceCellSize = cellSize * dpr;
+            let maximumDifference = 0;
+            let emptyCells = 0;
+            let edgeContacts = 0;
+
+            const pixelOffset = (row, column, x, y) =>
+                ((row * deviceCellSize + y) * canvas.width +
+                    column * deviceCellSize +
+                    x) *
+                4;
+            for (let row = 0; row < rows.length; row++) {
+                let inkPixels = 0;
+                for (let y = 0; y < deviceCellSize; y++) {
+                    for (let x = 0; x < deviceCellSize; x++) {
+                        const reference = pixelOffset(row, 0, x, y);
+                        const ink =
+                            255 -
+                            Math.min(
+                                pixels[reference],
+                                pixels[reference + 1],
+                                pixels[reference + 2]
+                            );
+                        if (ink > 32) {
+                            inkPixels++;
+                            if (
+                                x === 0 ||
+                                y === 0 ||
+                                x === deviceCellSize - 1 ||
+                                y === deviceCellSize - 1
+                            ) {
+                                edgeContacts++;
+                            }
+                        }
+                        for (let column = 1; column < columns; column++) {
+                            const candidate = pixelOffset(row, column, x, y);
+                            for (let channel = 0; channel < 4; channel++) {
+                                maximumDifference = Math.max(
+                                    maximumDifference,
+                                    Math.abs(
+                                        pixels[reference + channel] -
+                                            pixels[candidate + channel]
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
+                if (inkPixels === 0) {
+                    emptyCells++;
+                }
+            }
+
+            bitmap.close();
+            renderer.destroy();
+            canvas.remove();
+            return { dpr, maximumDifference, emptyCells, edgeContacts };
+        };
+
+        return Promise.all([render(1), render(2)]);
+    });
+
+    for (const result of results) {
+        expect(result.maximumDifference).toBeLessThanOrEqual(1);
+        // One half-pixel-wide inward-stroked shape may legitimately miss all
+        // sample centers at DPR 1.
+        expect(result.emptyCells).toBeLessThanOrEqual(1);
+        expect(result.edgeContacts).toBe(0);
+    }
+});

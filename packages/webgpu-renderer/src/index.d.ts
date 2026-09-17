@@ -803,6 +803,32 @@ export type PointChannels = Partial<
     Record<PointChannelName, ChannelConfigInput>
 >;
 
+export type BuiltinPointShape =
+    | "circle"
+    | "square"
+    | "cross"
+    | "diamond"
+    | "triangle-up"
+    | "triangle-right"
+    | "triangle-down"
+    | "triangle-left"
+    | "tick-up"
+    | "tick-right"
+    | "tick-down"
+    | "tick-left"
+    | "x"
+    | "+";
+
+/** Built-in name or a closed SVG path string centered at the origin. */
+export type PointShape = BuiltinPointShape | string;
+
+export type PointMarkConfig = MarkConfig<"point"> & {
+    /** Fixed shape. A fixed circle selects the analytic fast path. */
+    shape?: PointShape;
+    /** Finite table addressed by the numeric shape channel. */
+    shapes?: readonly PointShape[];
+};
+
 export type RuleChannelName =
     | "uniqueId"
     | "x"
@@ -879,7 +905,15 @@ export type TextChannelName =
     | "align"
     | "baseline"
     | "fill"
-    | "opacity";
+    | "stroke"
+    | "opacity"
+    | "strokeOpacity"
+    | "strokeWidth"
+    | "shadowColor"
+    | "shadowOpacity"
+    | "shadowOffsetX"
+    | "shadowOffsetY"
+    | "shadowBlur";
 
 export type TextStringChannelConfigInput =
     | (Omit<SeriesChannelConfigInput, "data" | "type"> & {
@@ -913,17 +947,8 @@ export type TextLayout = {
     descent: number;
 };
 
-export type FontResource = {
-    metrics: unknown;
-    bitmap: string | ImageBitmap;
-};
-
 export type TextMarkOptions = {
-    textLayout?: TextLayout;
-    font?: string;
-    fontResource?: FontResource;
-    fontStyle?: "normal" | "italic";
-    fontWeight?: number | string;
+    font?: import("./fonts/trueTypeFont.js").TrueTypeFont;
     fontSize?: number;
     lineHeight?: number;
     letterSpacing?: number;
@@ -1227,6 +1252,8 @@ export type MarkDefinition<
 > = Readonly<{
     /** Diagnostic name; dispatch uses the definition value, not this string. */
     type: string;
+    /** Immutable program/resource identity used by retained integrations. */
+    getProgramKey?(config: TConfig): unknown;
     createProgram(
         renderer: Renderer,
         config: TConfig,

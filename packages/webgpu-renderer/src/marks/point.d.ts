@@ -1,3 +1,3 @@
-import type { MarkConfig, MarkDefinition } from "../index.js";
+import type { MarkDefinition, PointMarkConfig } from "../index.js";
 
-export const pointMark: MarkDefinition<MarkConfig<"point">>;
+export const pointMark: MarkDefinition<PointMarkConfig>;

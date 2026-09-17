@@ -33,24 +33,22 @@ import {
     isValueDef,
 } from "../../encoder/encoder.js";
 
-const SHAPE_CODES = new Map(
-    [
-        "circle",
-        "square",
-        "cross",
-        "diamond",
-        "triangle-up",
-        "triangle-right",
-        "triangle-down",
-        "triangle-left",
-        "tick-up",
-        "tick-right",
-        "tick-down",
-        "tick-left",
-        "x",
-        "+",
-    ].map((shape, index) => [shape, index])
-);
+const SHAPE_NAMES = [
+    "circle",
+    "square",
+    "cross",
+    "diamond",
+    "triangle-up",
+    "triangle-right",
+    "triangle-down",
+    "triangle-left",
+    "tick-up",
+    "tick-right",
+    "tick-down",
+    "tick-left",
+    "x",
+    "+",
+];
 
 const ALIGN_CODES = new Map([
     ["left", 0],
@@ -582,14 +580,16 @@ function createPointConfig(mark, data, coords, viewOpacity) {
         "semanticZoomFraction",
     ]);
     const visibility = createPointVisibilityConfig(mark, data);
+    const shape = createPointShapeConfig(mark, data);
     return {
+        ...shape.config,
         count: data.length,
         channels: {
             ...createUniqueIdChannel(mark, data),
             x: createPositionChannel(mark, "x", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
             size: createNumericChannel(mark, "size", data),
-            shape: createEnumChannel(mark, "shape", data, SHAPE_CODES),
+            ...shape.channel,
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
             xOffset: createNumericChannel(mark, "xOffset", data),
             yOffset: createNumericChannel(mark, "yOffset", data),
@@ -619,6 +619,50 @@ function createPointConfig(mark, data, coords, viewOpacity) {
             ),
         },
         ...visibility,
+    };
+}
+
+/**
+ * Resolve fixed circles to the analytic program and every other finite shape
+ * set to renderer-owned SVG paths.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {object[]} data
+ */
+function createPointShapeConfig(mark, data) {
+    const encoder = mark.encoders.shape;
+    if (encoder.constant) {
+        return {
+            config: { shape: String(encoder(data[0])) },
+            channel: {},
+        };
+    }
+
+    const shapes = Array.from(SHAPE_NAMES);
+    const seen = new Set(shapes);
+    /** @param {unknown} value */
+    const addShape = (value) => {
+        const shape = String(value);
+        if (!seen.has(shape)) {
+            seen.add(shape);
+            shapes.push(shape);
+        }
+    };
+    for (const branch of encoder.branches) {
+        if (encoder.scale) {
+            for (const value of encoder.scale.range()) {
+                addShape(value);
+            }
+        } else {
+            for (const datum of data) {
+                addShape(branch.accessor(datum));
+            }
+        }
+    }
+    const codes = new Map(shapes.map((shape, index) => [shape, index]));
+    return {
+        config: { shapes },
+        channel: { shape: createEnumChannel(mark, "shape", data, codes) },
     };
 }
 
@@ -749,7 +793,14 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
 function createTextConfig(mark, data, coords, viewOpacity) {
     const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
-    const fontEntry = /** @type {any} */ (mark).font;
+    const outlineFontEntry =
+        /** @type {{outlineFont?: import("@genome-spy/webgpu-renderer/fonts/truetype").TrueTypeFont}} */ (
+            /** @type {any} */ (mark).outlineFont
+        );
+    const outlineFont = outlineFontEntry?.outlineFont;
+    if (!outlineFont) {
+        throw unsupported(mark, "Outline font is not prepared.");
+    }
     return {
         count: data.length,
         channels: {
@@ -802,15 +853,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             fill: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
-        font: resolveFont(mark),
-        ...(fontEntry?.metrics && fontEntry.bitmapUrl
-            ? {
-                  fontResource: {
-                      metrics: fontEntry.metrics,
-                      bitmap: fontEntry.bitmapUrl,
-                  },
-              }
-            : {}),
+        font: outlineFont,
         fontStyle: readProperty(mark, "fontStyle"),
         fontWeight: readProperty(mark, "fontWeight"),
         fontSize: size,
@@ -990,24 +1033,6 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
             headPlacement: (value) => value ?? "inside",
         }),
     };
-}
-
-/**
- * Core's generic sans-serif default is normalized to Lato by its font manager.
- * The loaded metrics and atlas are passed separately so the renderer does not
- * need to duplicate Core's font-loading and fallback policy.
- *
- * @param {import("../../marks/mark.js").default} mark
- */
-function resolveFont(mark) {
-    const font = readProperty(mark, "font");
-    if (font == null || font == "sans-serif") {
-        return "Lato";
-    }
-    if (typeof font == "string") {
-        return font;
-    }
-    throw unsupported(mark, `Font "${String(font)}" is not supported.`);
 }
 
 /**

@@ -20,6 +20,31 @@ export type EmbedFunction = (
     options?: EmbedOptions
 ) => Promise<EmbedResult>;
 
+/**
+ * One exact TrueType face available to the WebGPU renderer.
+ */
+export interface FontCatalogEntry {
+    /** Font-family name used by the visualization specification. */
+    family: string;
+
+    /** URL of a browser-fetchable TrueType (`.ttf`) font. */
+    source: string | URL;
+
+    /**
+     * CSS-like numeric font weight.
+     *
+     * __Default value:__ `400`
+     */
+    weight?: number;
+
+    /**
+     * Font style.
+     *
+     * __Default value:__ `"normal"`
+     */
+    style?: "normal" | "italic";
+}
+
 export interface EmbedOptions {
     /**
      * Rendering backend. `"auto"` uses WebGL2 when available and falls back to
@@ -30,6 +55,15 @@ export interface EmbedOptions {
      * __Default value:__ `"auto"`
      */
     renderer?: "auto" | "webgl" | "canvas" | "webgpu";
+
+    /**
+     * Additional TrueType faces for WebGPU text rendering. Entries are matched
+     * exactly by family, weight, and style and take precedence over GenomeSpy's
+     * temporary example-font catalog. Registering entries does not load them;
+     * each URL is fetched only if the initialized visualization requests it.
+     * This option has no effect with the WebGL or Canvas2D renderers.
+     */
+    fontCatalog?: FontCatalogEntry[];
 
     /**
      * A function that allows retrieval of named data. There are two ways to provide named data:

@@ -3,6 +3,9 @@ import runBasicScene from "../examples/basicScene.js";
 import runHatchScene from "../examples/hatchScene.js";
 import runBarScene from "../examples/barScene.js";
 import runPointScene from "../examples/pointScene.js";
+import runPathPointScene from "../examples/pathPointScene.js";
+import runPathTextScene from "../examples/pathTextScene.js";
+import runTextEffectsScene from "../examples/textEffectsScene.js";
 import runThresholdScene from "../examples/thresholdScene.js";
 import runPiecewiseScene from "../examples/piecewiseScene.js";
 import runIndexScene from "../examples/indexScene.js";
@@ -65,6 +68,90 @@ export const Bars = withSource("runBarScene", null, {
 export const Points = withSource("runPointScene", null, {
     render: (args) => renderScene(runPointScene, args),
 });
+
+export const PathPoints = withSource(
+    "runPathPointScene",
+    { backend: "wgsl" },
+    {
+        args: { backend: "wgsl" },
+        argTypes: {
+            backend: {
+                control: "select",
+                options: ["wgsl", "msdfgen"],
+                description:
+                    "Atlas generator. msdfgen is a downloaded development oracle.",
+            },
+        },
+        render: (args) => renderScene(runPathPointScene, args),
+    }
+);
+
+export const PathText = withSource("runPathTextScene", null, {
+    render: () => renderScene(runPathTextScene),
+});
+
+export const TextEffects = withSource(
+    "runTextEffectsScene",
+    {
+        size: 64,
+        angle: -6,
+        fill: "#f7f8ff",
+        outlineColor: "#14213d",
+        outlineWidth: 4,
+        outlineOpacity: 1,
+        shadowColor: "#2457ff",
+        shadowOpacity: 0.55,
+        shadowBlur: 7,
+        shadowOffsetX: 5,
+        shadowOffsetY: 7,
+        background: "#ffffff",
+    },
+    {
+        args: {
+            size: 64,
+            angle: -6,
+            fill: "#f7f8ff",
+            outlineColor: "#14213d",
+            outlineWidth: 4,
+            outlineOpacity: 1,
+            shadowColor: "#2457ff",
+            shadowOpacity: 0.55,
+            shadowBlur: 7,
+            shadowOffsetX: 5,
+            shadowOffsetY: 7,
+            background: "#ffffff",
+        },
+        argTypes: {
+            size: { control: { type: "range", min: 8, max: 140, step: 1 } },
+            angle: {
+                control: { type: "range", min: -180, max: 180, step: 1 },
+            },
+            fill: { control: "color" },
+            outlineColor: { control: "color" },
+            outlineWidth: {
+                control: { type: "range", min: 0, max: 24, step: 0.5 },
+            },
+            outlineOpacity: {
+                control: { type: "range", min: 0, max: 1, step: 0.01 },
+            },
+            shadowColor: { control: "color" },
+            shadowOpacity: {
+                control: { type: "range", min: 0, max: 1, step: 0.01 },
+            },
+            shadowBlur: {
+                control: { type: "range", min: 0, max: 24, step: 0.5 },
+            },
+            shadowOffsetX: {
+                control: { type: "range", min: -24, max: 24, step: 1 },
+            },
+            shadowOffsetY: {
+                control: { type: "range", min: -24, max: 24, step: 1 },
+            },
+            background: { control: "color" },
+        },
+        render: (args) => renderScene(runTextEffectsScene, args),
+    }
+);
 
 export const Threshold = withSource("runThresholdScene", null, {
     render: (args) => renderScene(runThresholdScene, args),

@@ -42,14 +42,25 @@ const DEFAULT_FONT_KEY = {
  * @typedef {object} FontEntry
  * @prop {BMFontMetrics | undefined} metrics
  * @prop {string | undefined} bitmapUrl
+ *
+ * @typedef {object} OutlineFontEntry
+ * @prop {object | undefined} outlineFont
+ *
+ * @typedef {object} OutlineFontRequest
+ * @prop {string | undefined} family
+ * @prop {FontStyle} style
+ * @prop {FontWeight} weight
+ * @prop {boolean} implicitFamily
  */
 export default class BmFontManager {
     /**
      * @param {(bitmapUrl: string) => Promise<void>} [prepareBitmap]
      * @param {string} [defaultBitmapUrl]
+     * @param {(request: OutlineFontRequest) => Promise<object>} [prepareOutlineFont]
      */
-    constructor(prepareBitmap, defaultBitmapUrl) {
+    constructor(prepareBitmap, defaultBitmapUrl, prepareOutlineFont) {
         this._prepareBitmap = prepareBitmap;
+        this._prepareOutlineFont = prepareOutlineFont;
 
         this.fontRepository =
             "https://raw.githubusercontent.com/etiennepinchon/aframe-fonts/master/fonts/";
@@ -64,6 +75,9 @@ export default class BmFontManager {
 
         /** @type {Map<string, Promise<BMFontMetrics>>} */
         this._fontPromises = new Map();
+
+        /** @type {Map<string, OutlineFontEntry>} */
+        this._outlineFonts = new Map();
 
         /** @type {Promise<void>[]} Keep track of overall font loading state */
         this._promises = [];
@@ -107,6 +121,39 @@ export default class BmFontManager {
         }
 
         return fontEntry;
+    }
+
+    /**
+     * Request a device-neutral outline alongside unchanged BMFont measurement.
+     * The returned entry is populated before `waitUntilReady` resolves.
+     *
+     * @param {string} [family]
+     * @param {FontStyle} [style]
+     * @param {FontWeight | keyof WEIGHTS} [weight]
+     * @returns {OutlineFontEntry | undefined}
+     */
+    getOutlineFont(family, style = "normal", weight = 400) {
+        if (!this._prepareOutlineFont) {
+            return undefined;
+        }
+        const implicitFamily = family == null || family == "sans-serif";
+        const request = {
+            family: implicitFamily ? undefined : family,
+            style,
+            weight: normalizeFontWeight(weight),
+            implicitFamily,
+        };
+        const key = JSON.stringify(request);
+        let entry = this._outlineFonts.get(key);
+        if (!entry) {
+            entry = { outlineFont: undefined };
+            this._outlineFonts.set(key, entry);
+            const loading = this._prepareOutlineFont(request).then((font) => {
+                entry.outlineFont = font;
+            });
+            this._promises.push(loading);
+        }
+        return entry;
     }
 
     /**

@@ -2,15 +2,20 @@ import BaseProgram from "./internal/baseProgram.js";
 import { initializePropertySlots } from "./internal/propertySlots.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
-import { buildTextLayout } from "../../fonts/layout.js";
-import BmFontManager, { fetchBmFontBitmap } from "../../fonts/bmFontManager.js";
-import { SDF_PADDING } from "../../fonts/bmFontMetrics.js";
 import {
-    asGpuBufferSource,
-    writeTextureData,
-} from "../../utils/webgpuTextureUtils.js";
-import { gpuLabel, RENDERER_GPU_OWNER } from "../../utils/gpuLabel.js";
+    buildOutlineTextLayout,
+    isTrueTypeFont,
+    OUTLINE_ATLAS_OPTIONS,
+} from "../../fonts/outlineTextLayout.js";
+import { getOutlineFontAtlas } from "../../fonts/outlineFontAtlas.js";
+import { asGpuBufferSource } from "../../utils/webgpuTextureUtils.js";
+import { gpuLabel } from "../../utils/gpuLabel.js";
 import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
+import {
+    buildGlyphOffsets,
+    buildTextRenderItems,
+    resolveTextEffectLayers,
+} from "./textRenderItems.js";
 
 /**
  * Text rendering overview (SDF + per-glyph instancing).
@@ -41,9 +46,7 @@ import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
  * @typedef {import("../../index.js").TextChannels} TextChannels
  * @typedef {import("../../index.js").TextStringChannelConfigInput} TextStringChannelConfigInput
- * @typedef {ReturnType<BmFontManager["getFont"]>} FontEntry
- * @typedef {number|"thin"|"light"|"regular"|"normal"|"medium"|"bold"|"black"} FontWeightInput
- * @typedef {{ glyphMetrics: GPUBuffer, atlas: { texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat }, upload: (image: ImageBitmap | HTMLImageElement) => void, destroy: () => void }} FontGpuResources
+ * @typedef {{ enabled: boolean, shadow: boolean, outline: boolean }} TextEffects
  */
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
@@ -65,7 +68,15 @@ export const TEXT_CHANNEL_SPECS = {
     align: { type: "u32", components: 1, default: 1 },
     baseline: { type: "u32", components: 1, default: 1 },
     fill: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
+    stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     opacity: { type: "f32", components: 1, default: 1.0 },
+    strokeOpacity: { type: "f32", components: 1, default: 1.0 },
+    strokeWidth: { type: "f32", components: 1, default: 0.0 },
+    shadowColor: { type: "f32", components: 4, optional: true },
+    shadowOpacity: { type: "f32", components: 1, optional: true },
+    shadowOffsetX: { type: "f32", components: 1, optional: true },
+    shadowOffsetY: { type: "f32", components: 1, optional: true },
+    shadowBlur: { type: "f32", components: 1, optional: true },
 };
 
 const {
@@ -75,12 +86,136 @@ const {
     optionalChannels: OPTIONAL_CHANNELS,
 } = buildChannelMaps(TEXT_CHANNEL_SPECS);
 
-const TEXT_SHADER_BODY = /* wgsl */ `
+/**
+ * @param {{ enabled: boolean, shadow: boolean, outline: boolean }} effects
+ * @returns {string}
+ */
+function createTextShaderBody(effects) {
+    const glyphLookup = effects.enabled
+        ? /* wgsl */ `
+    let renderItem = renderItems[i];
+    let layer = renderItem.layer;
+    let glyph = glyphs[renderItem.glyphIndex];`
+        : /* wgsl */ `
+    let layer = TEXT_LAYER_FILL;
+    let glyph = glyphs[i];`;
+    const effectSetup = effects.enabled
+        ? /* wgsl */ `
+    var layerColor = getScaled_fill(i);
+    var layerOpacityMultiplier = 1.0;
+    var layerExtent = 0.0;
+    var effectOffset = vec2<f32>(0.0);
+${
+    effects.outline
+        ? /* wgsl */ `    if (layer == TEXT_LAYER_OUTLINE) {
+        layerColor = getScaled_stroke(i);
+        layerOpacityMultiplier = getScaled_strokeOpacity(i);
+        layerExtent = max(getScaled_strokeWidth(i), 0.0) * 0.5 * globals.dpr;
+    }`
+        : ""
+}
+${
+    effects.shadow
+        ? /* wgsl */ `    if (layer == TEXT_LAYER_SHADOW) {
+        layerColor = getScaled_shadowColor(i);
+        layerOpacityMultiplier = getScaled_shadowOpacity(i);
+        layerExtent = max(getScaled_shadowBlur(i), 0.0) * globals.dpr;
+        effectOffset = vec2<f32>(
+            getScaled_shadowOffsetX(i),
+            getScaled_shadowOffsetY(i)
+        );
+    }`
+        : ""
+}
+    if (layerColor.a <= 0.0 || opacity * layerOpacityMultiplier <= 0.0 ||
+            (layer == TEXT_LAYER_OUTLINE && layerExtent <= 0.0)) {
+        return culledText();
+    }`
+        : /* wgsl */ `
+    let layerColor = getScaled_fill(i);
+    let layerOpacityMultiplier = 1.0;
+    let layerExtent = getScaled_strokeWidth(i) * 0.5 * globals.dpr;
+    let effectOffset = vec2<f32>(0.0);`;
+    const pickAssignment = effects.enabled
+        ? /* wgsl */ `
+    if (layer == TEXT_LAYER_FILL) {
+        out.pickId = getScaled_uniqueId(i) + 1u;
+    }`
+        : /* wgsl */ `
+    out.pickId = getScaled_uniqueId(i) + 1u;`;
+    const outlineShading = effects.enabled
+        ? /* wgsl */ `
+        let uvDx = dpdx(in.uv);
+        let uvDy = -dpdy(in.uv);
+        let tileDx = dpdx(in.tilePosition);
+        let tileDy = -dpdy(in.tilePosition);
+        let outlineCoverage = sampleSuperOutline(
+            in,
+            uvDx,
+            uvDy,
+            tileDx,
+            tileDy
+        );
+        var coverage = select(
+            outlineCoverage.x,
+            outlineCoverage.y,
+            in.layer == TEXT_LAYER_OUTLINE
+        );
+${
+    effects.shadow
+        ? /* wgsl */ `        let shadowCoverage = sampleSuperShadow(in, uvDx, uvDy);
+        coverage = select(
+            coverage,
+            shadowCoverage,
+            in.layer == TEXT_LAYER_SHADOW
+        );`
+        : ""
+}
+        coverage = pow(coverage, getGammaForColor(in.color.rgb));
+        let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
+        return premultiplyAlpha(color) * coverage * edgeFadeOpacity;`
+        : /* wgsl */ `
+        let uvDx = dpdx(in.uv);
+        let uvDy = -dpdy(in.uv);
+        let tileDx = dpdx(in.tilePosition);
+        let tileDy = -dpdy(in.tilePosition);
+        let coverage = sampleSuperOutline(
+            in,
+            uvDx,
+            uvDy,
+            tileDx,
+            tileDy
+        );
+        var fillColor = in.color;
+        var strokeColor = in.stroke;
+        let fillCoverage = pow(
+            coverage.x,
+            getGammaForColor(fillColor.rgb)
+        );
+        let strokeCoverage = pow(
+            coverage.y,
+            getGammaForColor(strokeColor.rgb)
+        );
+        fillColor.a *= in.opacity;
+        strokeColor.a *= in.opacity * in.strokeOpacity;
+        fillColor = premultiplyAlpha(fillColor);
+        strokeColor = premultiplyAlpha(strokeColor);
+        let fillLayer = fillColor * fillCoverage;
+        let strokeLayer = strokeColor * strokeCoverage;
+        let color = sourceOver(strokeLayer, fillLayer);
+        return color * edgeFadeOpacity;`;
+
+    return /* wgsl */ `
 struct GlyphInstance {
     stringIndex: u32,
     glyphId: u32,
     xOffset: f32,
     yOffset: f32,
+};
+
+struct RenderItem {
+    glyphIndex: u32,
+    layer: u32,
 };
 
 struct StringMetrics {
@@ -101,6 +236,10 @@ const ALIGN_AXIS_LEFT: i32 = -1;
 const ALIGN_AXIS_CENTER: i32 = 0;
 const ALIGN_AXIS_RIGHT: i32 = 1;
 
+const TEXT_LAYER_SHADOW: u32 = 0u;
+const TEXT_LAYER_OUTLINE: u32 = 1u;
+const TEXT_LAYER_FILL: u32 = 2u;
+
 ${TEXT_GEOMETRY_WGSL}
 
 struct VSOut {
@@ -115,6 +254,14 @@ struct VSOut {
     @location(4) @interpolate(flat) gamma: f32,
     @location(5) @interpolate(flat) pickId: u32,
     @location(6) edgeFadeOpacity: f32,
+    @location(7) stroke: vec4<f32>,
+    @location(8) strokeOpacity: f32,
+    @location(9) halfStrokeWidth: f32,
+    @location(10) @interpolate(flat) devicePixelsPerAtlas: f32,
+    @location(11) tilePosition: vec2<f32>,
+    @location(12) @interpolate(flat) shapeBounds: vec4<f32>,
+    @location(13) @interpolate(flat) stemDarkening: f32,
+    @location(14) @interpolate(flat) layer: u32,
 };
 
 fn culledText() -> VSOut {
@@ -130,6 +277,14 @@ fn culledText() -> VSOut {
     out.gamma = 1.0;
     out.pickId = 0u;
     out.edgeFadeOpacity = 0.0;
+    out.stroke = vec4<f32>(0.0);
+    out.strokeOpacity = 0.0;
+    out.halfStrokeWidth = 0.0;
+    out.devicePixelsPerAtlas = 0.0;
+    out.tilePosition = vec2<f32>(0.0);
+    out.shapeBounds = vec4<f32>(0.0);
+    out.stemDarkening = 0.0;
+    out.layer = TEXT_LAYER_FILL;
     return out;
 }
 
@@ -281,13 +436,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
-    let glyph = glyphs[i];
+${glyphLookup}
     let textMetrics = stringMetrics[glyph.stringIndex];
     let metrics = glyphMetrics[glyph.glyphId];
+    let tileSize = metrics.texRect.zw + vec2<f32>(1.0);
 
     // Base font size before range fitting.
     var size = getScaled_size(i);
     var opacity = getScaled_opacity(i);
+${effectSetup}
 
     // Rotation is applied both to range fitting and glyph placement.
     let angleDegrees = getScaled_angle(i);
@@ -333,6 +490,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     ).x + getScaled_x2Offset(i);
     if (params.uLogoLetters != 0u) {
         logoSize.x = abs(x2 - anchor.x);
+        anchor.x = (anchor.x + x2) * 0.5;
     } else {
         let xRange = positionInsideRange(
             min(anchor.x, x2),
@@ -405,8 +563,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let sizeRatio = size / params.uLayoutFontSize;
 
     let local = quad[v];
-    var width = metrics.texRect.z * sizeScale;
-    var height = metrics.texRect.w * sizeScale;
+    var width = tileSize.x * sizeScale;
+    var height = tileSize.y * sizeScale;
     var x = alignOffset(u32(getScaled_align(i)), textMetrics.width * sizeRatio) +
         glyph.xOffset * sizeRatio;
     var y = glyphVertexY(
@@ -417,18 +575,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         sizeScale,
         sizeRatio,
         u32(getScaled_baseline(i)),
-        params.uSdfPadding,
+        0.0,
         params.uCapHeight,
         params.uDescent
     );
     if (params.uLogoLetters != 0u) {
-        width = logoSize.x * 0.5 *
-            (metrics.texRect.z + 2.0 * params.uSdfPadding) /
-            metrics.texRect.z;
-        height = logoSize.y *
-            (metrics.texRect.w + 2.0 * params.uSdfPadding) /
-            metrics.texRect.w;
-        x = (local.x - 0.5) * width;
+        let logoAtlasScale = metrics.texRect.zw / metrics.metrics.yz;
+        width = logoSize.x * logoAtlasScale.x;
+        height = logoSize.y * logoAtlasScale.y;
+        x = -0.5 * width;
         y = (local.y - 0.5) * height;
     }
     // Core encodes dy as a negative y-up glyph offset. Convert it to the
@@ -438,8 +593,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         y + getScaled_dy(i)
     );
     let rotated = rot * localPos;
-    let localPixel = localAnchor + rotated;
-    let pixel = anchor + rotated;
+    let localPixel = localAnchor + rotated + effectOffset;
+    let pixel = anchor + rotated + effectOffset;
 
     var edgeFadeOpacity = 1.0;
     if (maxValue(params.uViewportEdgeFadeDistance) > -1e10) {
@@ -468,14 +623,30 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         1.0
     );
     out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
-    out.color = getScaled_fill(i);
-    out.opacity = opacity;
+    out.color = layerColor;
+    out.opacity = opacity * layerOpacityMultiplier;
     out.slope = max(1.0, size / params.uSdfNumerator * globals.dpr);
     out.gamma = getGammaForColor(out.color.rgb);
     out.pickId = 0u;
     out.edgeFadeOpacity = edgeFadeOpacity;
+    out.stroke = getScaled_stroke(i);
+    out.strokeOpacity = getScaled_strokeOpacity(i);
+    out.halfStrokeWidth = layerExtent;
+    out.devicePixelsPerAtlas = max(
+        size * globals.dpr / max(params.uShapePixels, 1.0),
+        1.0 / max(params.uSpread, 1.0)
+    );
+    out.tilePosition = local * tileSize;
+    out.shapeBounds = vec4<f32>(
+        params.uSpread,
+        params.uSpread,
+        tileSize.x - params.uSpread,
+        tileSize.y - params.uSpread
+    );
+    out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);
+    out.layer = layer;
 #if defined(uniqueId_DEFINED)
-    out.pickId = getScaled_uniqueId(i) + 1u;
+${pickAssignment}
 #endif
     return out;
 }
@@ -484,21 +655,141 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
     return max(min(r, g), min(max(r, g), b));
 }
 
-fn sampleSdf(uv: vec2<f32>) -> f32 {
-    let c = textureSample(fontAtlas, fontSampler, uv).rgb;
-    return 1.0 - median(c.r, c.g, c.b);
+fn sampleTrueDistance(uv: vec2<f32>) -> f32 {
+    return textureSample(fontAtlas, fontSampler, uv).a;
 }
 
-fn sampleSuperSdf(uv: vec2<f32>) -> f32 {
-    let dx = dpdx(uv);
-    // WebGL derivatives use a bottom-left framebuffer origin, whereas WebGPU
-    // derivatives use a top-left origin. Preserve the WebGL atlas offsets.
-    let dy = -dpdy(uv);
+fn freeTypeLikeStemDarkening(deviceFontSize: f32) -> f32 {
+    // FreeType's auto-hinter estimates a 0.075 em standard stem when the font
+    // provides no better value, then applies a piecewise darkening curve that
+    // fades to zero for sufficiently wide stems. We do not analyze hinted stem
+    // widths, so use the same fallback estimate and return half of FreeType's
+    // width increase as a symmetric signed-distance contour outset.
+    let estimatedStemWidth = deviceFontSize * 0.075;
+    var widthIncrease: f32;
+    if (estimatedStemWidth <= 0.5) {
+        widthIncrease = 0.4;
+    } else if (estimatedStemWidth < 1.0) {
+        widthIncrease = mix(0.4, 0.275, (estimatedStemWidth - 0.5) / 0.5);
+    } else if (estimatedStemWidth <= 1.667) {
+        widthIncrease = 0.275;
+    } else if (estimatedStemWidth < 2.333) {
+        widthIncrease = mix(
+            0.275,
+            0.0,
+            (estimatedStemWidth - 1.667) / (2.333 - 1.667)
+        );
+    } else {
+        widthIncrease = 0.0;
+    }
+    return widthIncrease * 0.5;
+}
+
+fn sampleOutlineCoverage(
+    uv: vec2<f32>,
+    tilePosition: vec2<f32>,
+    shapeBounds: vec4<f32>,
+    devicePixelsPerAtlas: f32,
+    halfStrokeWidth: f32,
+    stemDarkening: f32
+) -> vec2<f32> {
+    let sample = textureSample(fontAtlas, fontSampler, uv).rgb;
+    let distance = median(sample.r, sample.g, sample.b) * devicePixelsPerAtlas +
+        stemDarkening;
+    let aaAtlas = (0.5 + stemDarkening) / devicePixelsPerAtlas + 1.0;
+    let fillMin = shapeBounds.xy - vec2<f32>(aaAtlas);
+    let fillMax = shapeBounds.zw + vec2<f32>(aaAtlas);
+    let strokeAtlas = halfStrokeWidth / devicePixelsPerAtlas;
+    let strokeGuard = aaAtlas + 4.0 * strokeAtlas;
+    let strokeMin = shapeBounds.xy - vec2<f32>(strokeGuard);
+    let strokeMax = shapeBounds.zw + vec2<f32>(strokeGuard);
+    let fillInside = all(tilePosition >= fillMin) && all(tilePosition <= fillMax);
+    let strokeInside = all(tilePosition >= strokeMin) && all(tilePosition <= strokeMax);
+    let fillCoverage = select(
+        0.0,
+        clamp(distance + 0.5, 0.0, 1.0),
+        fillInside
+    );
+    let outerCoverage = select(
+        0.0,
+        clamp(distance + halfStrokeWidth + 0.5, 0.0, 1.0),
+        strokeInside
+    );
+    // Use the same guard for both stroke contours so their difference is
+    // exactly zero when the requested width is zero.
+    return vec2<f32>(
+        fillCoverage,
+        max(outerCoverage - fillCoverage, 0.0)
+    );
+}
+
+fn sampleSuperOutline(
+    in: VSOut,
+    uvDx: vec2<f32>,
+    uvDy: vec2<f32>,
+    tileDx: vec2<f32>,
+    tileDy: vec2<f32>
+) -> vec2<f32> {
     return (
-        sampleSdf(uv + 0.25 * dx + 0.25 * dy) +
-        sampleSdf(uv + 0.75 * dx + 0.25 * dy) +
-        sampleSdf(uv + 0.25 * dx + 0.75 * dy) +
-        sampleSdf(uv + 0.75 * dx + 0.75 * dy)
+        sampleOutlineCoverage(
+            in.uv + 0.25 * uvDx + 0.25 * uvDy,
+            in.tilePosition + 0.25 * tileDx + 0.25 * tileDy,
+            in.shapeBounds,
+            in.devicePixelsPerAtlas,
+            in.halfStrokeWidth,
+            in.stemDarkening
+        ) +
+        sampleOutlineCoverage(
+            in.uv + 0.75 * uvDx + 0.25 * uvDy,
+            in.tilePosition + 0.75 * tileDx + 0.25 * tileDy,
+            in.shapeBounds,
+            in.devicePixelsPerAtlas,
+            in.halfStrokeWidth,
+            in.stemDarkening
+        ) +
+        sampleOutlineCoverage(
+            in.uv + 0.25 * uvDx + 0.75 * uvDy,
+            in.tilePosition + 0.25 * tileDx + 0.75 * tileDy,
+            in.shapeBounds,
+            in.devicePixelsPerAtlas,
+            in.halfStrokeWidth,
+            in.stemDarkening
+        ) +
+        sampleOutlineCoverage(
+            in.uv + 0.75 * uvDx + 0.75 * uvDy,
+            in.tilePosition + 0.75 * tileDx + 0.75 * tileDy,
+            in.shapeBounds,
+            in.devicePixelsPerAtlas,
+            in.halfStrokeWidth,
+            in.stemDarkening
+        )
+    ) * 0.25;
+}
+
+fn shadowCoverageAt(in: VSOut, uv: vec2<f32>) -> f32 {
+    let distance = sampleTrueDistance(uv) * in.devicePixelsPerAtlas +
+        in.stemDarkening;
+    let maxBlur = max(
+        (params.uSpread - 1.0) * in.devicePixelsPerAtlas,
+        0.0
+    );
+    let blur = min(in.halfStrokeWidth, maxBlur);
+    if (blur <= 0.0) {
+        return clamp(distance + 0.5, 0.0, 1.0);
+    }
+    return smoothstep(-blur, blur, distance);
+}
+
+fn sampleSuperShadow(
+    in: VSOut,
+    uvDx: vec2<f32>,
+    uvDy: vec2<f32>
+) -> f32 {
+    return (
+        shadowCoverageAt(in, in.uv + 0.25 * uvDx + 0.25 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.75 * uvDx + 0.25 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.25 * uvDx + 0.75 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.75 * uvDx + 0.75 * uvDy)
     ) * 0.25;
 }
 
@@ -510,17 +801,12 @@ fn getGammaForColor(rgb: vec3<f32>) -> f32 {
     );
 }
 
+fn sourceOver(above: vec4<f32>, below: vec4<f32>) -> vec4<f32> {
+    return above + below * (1.0 - above.a);
+}
+
 fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {
-    let sigDist = sampleSuperSdf(in.uv);
-    var slope = in.slope;
-    if (params.uLogoLetters != 0u) {
-        slope = 0.7 / length(vec2<f32>(dpdy(sigDist), dpdx(sigDist)));
-    }
-    var alpha = clamp((sigDist - 0.5) * slope + 0.5, 0.0, 1.0);
-    alpha = alpha * edgeFadeOpacity;
-    alpha = pow(alpha, in.gamma);
-    let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
-    return premultiplyAlpha(color) * alpha;
+${outlineShading}
 }
 
 // Picking intentionally ignores edge fading, like the WebGL renderer.
@@ -540,16 +826,13 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     return shadeText(in);
 }
 `;
+}
 
 /**
  * @typedef {object} TextConfigInput
  * @prop {TextChannels} [channels]
  * @prop {number} [count]
- * @prop {unknown} [textLayout]
  * @prop {unknown} [font]
- * @prop {{metrics: unknown, bitmap: string | ImageBitmap}} [fontResource]
- * @prop {unknown} [fontStyle]
- * @prop {unknown} [fontWeight]
  * @prop {unknown} [fontSize]
  * @prop {unknown} [lineHeight]
  * @prop {unknown} [letterSpacing]
@@ -561,328 +844,116 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 
 /**
  * @param {TextConfigInput} [params]
- * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count: number, seriesIndexExpression: string }, textLayout: import("../../fonts/layout.js").TextLayout, fontEntry: FontEntry, fontManager: BmFontManager }}
+ * @returns {{ normalized: { channels: Record<string, ChannelConfigInput>, count: number, seriesIndexExpression: string }, textLayout: ReturnType<typeof buildOutlineTextLayout>, effects: TextEffects }}
  */
 function normalizeTextConfig({
     channels = {},
     count,
-    textLayout,
     font,
-    fontResource,
-    fontStyle,
-    fontWeight,
     fontSize,
     lineHeight,
     letterSpacing,
 } = {}) {
     /** @type {Record<string, ChannelConfigInput | TextStringChannelConfigInput>} */
     const normalizedChannels = { ...channels };
-    const resolvedStyle = fontStyle === "italic" ? "italic" : "normal";
-    const resolvedWeight =
-        typeof fontWeight === "number" || typeof fontWeight === "string"
-            ? /** @type {FontWeightInput} */ (fontWeight)
-            : 400;
-    const fontManager = new BmFontManager();
-    if (fontResource) {
-        fontManager.registerFont({
-            family: typeof font === "string" ? font : "Lato",
-            style: resolvedStyle,
-            weight: resolvedWeight,
-            metrics:
-                /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ (
-                    fontResource.metrics
-                ),
-            bitmap: fontResource.bitmap,
-        });
-    }
-    const fontEntry = fontManager.getFont(
-        typeof font === "string" ? font : "Lato",
-        resolvedStyle,
-        resolvedWeight
-    );
-    const textChannel =
-        /** @type {ChannelConfigInput | TextStringChannelConfigInput | undefined} */ (
-            normalizedChannels.text
-        );
-    /** @type {string[]} */
-    let strings;
-
-    if (textLayout) {
-        const layout =
-            /** @type {import("../../fonts/layout.js").TextLayout} */ (
-                textLayout
-            );
-        const stringCount = layout.textWidth.length;
-        if (count !== undefined && count !== stringCount) {
-            throw new Error(
-                `Text layout count (${stringCount}) does not match count (${count}).`
-            );
-        }
-        normalizedChannels.text = {
-            value: 0,
-            type: "u32",
-            components: 1,
-            scale: { type: "identity" },
-        };
-        return {
-            normalized: {
-                channels: /** @type {Record<string, ChannelConfigInput>} */ (
-                    normalizedChannels
-                ),
-                count: stringCount,
-                seriesIndexExpression: "glyphs[i].stringIndex",
-            },
-            textLayout: layout,
-            fontEntry,
-            fontManager,
-        };
-    }
-
-    if (
-        textChannel &&
-        "data" in textChannel &&
-        textChannel.data !== undefined
-    ) {
-        if (Array.isArray(textChannel.data)) {
-            strings = /** @type {string[]} */ (textChannel.data);
-        } else {
-            throw new Error(
-                "Text channel data must be a string array when no textLayout is provided."
-            );
-        }
-    } else if (
-        textChannel &&
-        "value" in textChannel &&
-        textChannel.value !== undefined
-    ) {
-        const textValue = textChannel.value;
-        if (typeof textValue !== "string") {
-            throw new Error(
-                "Text channel value must be a string when no textLayout is provided."
-            );
-        }
-        const repeat = count ?? 1;
-        strings = Array.from({ length: repeat }, () => textValue);
-    } else {
-        const repeat = count ?? 0;
-        strings = Array.from({ length: repeat }, () => "");
-    }
-
-    const layout = buildConfiguredTextLayout(strings, {
-        fontManager,
-        font,
-        fontStyle,
-        fontWeight,
-        fontSize,
-        lineHeight,
-        letterSpacing,
-    });
+    const textChannel = normalizedChannels.text;
     normalizedChannels.text = {
         value: 0,
         type: "u32",
         components: 1,
         scale: { type: "identity" },
     };
-
+    const effects = resolveTextEffectLayers(channels);
+    if (!isTrueTypeFont(font)) {
+        throw new Error("Text marks require a TrueType outline font.");
+    }
+    if (effects.shadow) {
+        normalizedChannels.shadowColor ??= { value: [0, 0, 0, 1] };
+        normalizedChannels.shadowOpacity ??= { value: 0 };
+        normalizedChannels.shadowOffsetX ??= { value: 0 };
+        normalizedChannels.shadowOffsetY ??= { value: 0 };
+        normalizedChannels.shadowBlur ??= { value: 0 };
+    }
+    const seriesIndexExpression = effects.enabled
+        ? "glyphs[renderItems[i].glyphIndex].stringIndex"
+        : "glyphs[i].stringIndex";
+    const strings = resolveTextStrings(textChannel, count);
+    const textLayout = buildResolvedTextLayout(strings, font, {
+        fontSize,
+        lineHeight,
+        letterSpacing,
+    });
     return {
         normalized: {
             channels: /** @type {Record<string, ChannelConfigInput>} */ (
                 normalizedChannels
             ),
             count: strings.length,
-            seriesIndexExpression: "glyphs[i].stringIndex",
+            seriesIndexExpression,
         },
-        textLayout: layout,
-        fontEntry,
-        fontManager,
+        textLayout,
+        effects,
     };
 }
 
 /**
  * @param {string[]} strings
- * @param {object} options
- * @param {BmFontManager} options.fontManager
- * @param {unknown} [options.font]
- * @param {unknown} [options.fontStyle]
- * @param {unknown} [options.fontWeight]
- * @param {unknown} [options.fontSize]
- * @param {unknown} [options.lineHeight]
- * @param {unknown} [options.letterSpacing]
+ * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
+ * @param {TextConfigInput} config
  */
-function buildConfiguredTextLayout(
-    strings,
-    {
-        fontManager,
-        font,
-        fontStyle,
-        fontWeight,
-        fontSize,
-        lineHeight,
-        letterSpacing,
-    }
-) {
-    const resolvedStyle = fontStyle === "italic" ? "italic" : "normal";
-    const resolvedWeight =
-        typeof fontWeight === "number" || typeof fontWeight === "string"
-            ? /** @type {FontWeightInput} */ (fontWeight)
-            : 400;
-    return buildTextLayout({
-        strings,
-        fontManager,
-        font: {
-            family: typeof font === "string" ? font : "Lato",
-            style: resolvedStyle,
-            weight: resolvedWeight,
-        },
-        fontSize: typeof fontSize === "number" ? fontSize : 12,
-        lineHeight: typeof lineHeight === "number" ? lineHeight : 1.0,
-        letterSpacing: typeof letterSpacing === "number" ? letterSpacing : 0.0,
+function buildResolvedTextLayout(strings, font, config) {
+    return buildOutlineTextLayout(strings, font, {
+        fontSize: typeof config.fontSize === "number" ? config.fontSize : 12,
+        lineHeight:
+            typeof config.lineHeight === "number" ? config.lineHeight : 1,
+        letterSpacing:
+            typeof config.letterSpacing === "number" ? config.letterSpacing : 0,
     });
 }
 
 /**
- * @param {string | ImageBitmap} bitmap
- * @returns {Promise<ImageBitmap | HTMLImageElement | null>}
+ * @param {ChannelConfigInput | TextStringChannelConfigInput | undefined} textChannel
+ * @param {number | undefined} count
+ * @returns {string[]}
  */
-async function loadFontBitmap(bitmap) {
-    if (typeof ImageBitmap !== "undefined" && bitmap instanceof ImageBitmap) {
-        return bitmap;
-    }
-    if (typeof bitmap !== "string") {
-        return null;
-    }
-    try {
-        return await fetchBmFontBitmap(bitmap);
-    } catch {
-        // Fall back to the browser image loader for non-fetchable URLs.
-    }
-    if (typeof Image === "undefined") {
-        return null;
-    }
-    return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error("Could not load font bitmap."));
-        image.src = bitmap;
-    });
-}
-
-/**
- * @param {import("../../renderer.js").Renderer} renderer
- * @param {FontEntry} fontEntry
- * @returns {FontGpuResources}
- */
-function getFontGpuResources(renderer, fontEntry) {
-    const { metrics, bitmap } = fontEntry;
-    let resourcesByBitmap = renderer._fontResourceCache.get(metrics);
-    const existing = resourcesByBitmap?.get(bitmap);
-    if (existing) {
-        return /** @type {FontGpuResources} */ (existing);
-    }
-    if (!resourcesByBitmap) {
-        resourcesByBitmap = new Map();
-        renderer._fontResourceCache.set(metrics, resourcesByBitmap);
-    }
-
-    const labelOwner = `${RENDERER_GPU_OWNER} font #${renderer._nextFontResourceId++}`;
-    const glyphMetricsData = new Float32Array((metrics.maxCharId + 1) * 8);
-    for (const glyph of metrics.chars) {
-        const base = glyph.id * 8;
-        glyphMetricsData[base] = glyph.x;
-        glyphMetricsData[base + 1] = glyph.y;
-        glyphMetricsData[base + 2] = glyph.width;
-        glyphMetricsData[base + 3] = glyph.height;
-        glyphMetricsData[base + 4] = glyph.yoffset;
-    }
-    const glyphMetrics = renderer.device.createBuffer({
-        label: gpuLabel(labelOwner, "glyph metrics"),
-        size: glyphMetricsData.byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-
-    let sampler;
-    let texture;
-    try {
-        renderer.device.queue.writeBuffer(glyphMetrics, 0, glyphMetricsData);
-        sampler = renderer.device.createSampler({
-            label: gpuLabel(labelOwner, "atlas sampler"),
-            magFilter: "linear",
-            minFilter: "linear",
-        });
-        texture = renderer.device.createTexture({
-            label: gpuLabel(labelOwner, "atlas"),
-            size: {
-                width: metrics.common.scaleW,
-                height: metrics.common.scaleH,
-                depthOrArrayLayers: 1,
-            },
-            format: "rgba8unorm",
-            usage:
-                GPUTextureUsage.TEXTURE_BINDING |
-                GPUTextureUsage.COPY_DST |
-                GPUTextureUsage.RENDER_ATTACHMENT,
-        });
-        const transparentAtlas = new Uint8Array(
-            metrics.common.scaleW * metrics.common.scaleH * 4
+function resolveTextStrings(textChannel, count) {
+    if (
+        textChannel &&
+        "data" in textChannel &&
+        textChannel.data !== undefined
+    ) {
+        if (Array.isArray(textChannel.data)) {
+            return /** @type {string[]} */ (textChannel.data);
+        }
+        throw new Error(
+            "Text channel data must be a string array when no textLayout is provided."
         );
-        transparentAtlas.fill(255);
-        writeTextureData(renderer.device, texture, {
-            format: "rgba8unorm",
-            width: metrics.common.scaleW,
-            height: metrics.common.scaleH,
-            data: transparentAtlas,
-        });
-    } catch (error) {
-        texture?.destroy();
-        glyphMetrics.destroy();
-        throw error;
     }
-
-    let destroyed = false;
-    /** @type {FontGpuResources} */
-    const resources = {
-        glyphMetrics,
-        atlas: {
-            texture,
-            sampler,
-            width: metrics.common.scaleW,
-            height: metrics.common.scaleH,
-            format: "rgba8unorm",
-        },
-        upload(image) {
-            if (destroyed || !renderer._isAlive()) {
-                return;
-            }
-            if (
-                image.width !== metrics.common.scaleW ||
-                image.height !== metrics.common.scaleH
-            ) {
-                console.warn(
-                    `Ignoring ${image.width}x${image.height} font bitmap; expected ${metrics.common.scaleW}x${metrics.common.scaleH}.`
-                );
-                return;
-            }
-            renderer.device.queue.copyExternalImageToTexture(
-                { source: image },
-                { texture },
-                { width: image.width, height: image.height }
+    if (
+        textChannel &&
+        "value" in textChannel &&
+        textChannel.value !== undefined
+    ) {
+        if (typeof textChannel.value !== "string") {
+            throw new Error(
+                "Text channel value must be a string when no textLayout is provided."
             );
-            renderer._invalidate();
-        },
-        destroy() {
-            if (destroyed) {
-                return;
-            }
-            destroyed = true;
-            glyphMetrics.destroy();
-            texture.destroy();
-        },
+        }
+        const value = textChannel.value;
+        return Array.from({ length: count ?? 1 }, () => value);
+    }
+    return Array.from({ length: count ?? 0 }, () => "");
+}
+
+/** @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas */
+function outlineAtlasResource(atlas) {
+    return {
+        texture: atlas.texture,
+        sampler: atlas.sampler,
+        width: atlas.width,
+        height: atlas.height,
+        format: /** @type {GPUTextureFormat} */ ("rgba16float"),
     };
-    resourcesByBitmap.set(bitmap, resources);
-    void loadFontBitmap(bitmap)
-        .then((image) => image && resources.upload(image))
-        .catch(() => {});
-    return resources;
 }
 
 export default class TextProgram extends BaseProgram {
@@ -945,15 +1016,14 @@ export default class TextProgram extends BaseProgram {
      * @param {import("../../index.js").MarkProgramCreationContext} [context]
      */
     constructor(renderer, config, context) {
-        const { normalized, textLayout, fontEntry, fontManager } =
-            normalizeTextConfig(config);
+        const { normalized, textLayout, effects } = normalizeTextConfig(config);
         super(
             renderer,
             {
                 ...config,
                 ...normalized,
                 textLayout,
-                fontEntry,
+                effects,
             },
             context
         );
@@ -970,10 +1040,7 @@ export default class TextProgram extends BaseProgram {
                 `Text series data count (${seriesCount}) does not match text count (${normalized.count}).`
             );
         }
-        this._glyphOffsets = buildGlyphOffsets(textLayout);
-        this._fontManager = fontManager;
         delete this._markConfig.textLayout;
-        delete this._markConfig.fontEntry;
     }
 
     /**
@@ -982,7 +1049,7 @@ export default class TextProgram extends BaseProgram {
      * @returns {number}
      */
     get drawCount() {
-        return this._glyphOffsets.length - 1;
+        return this._drawOffsets.length - 1;
     }
 
     /**
@@ -991,8 +1058,8 @@ export default class TextProgram extends BaseProgram {
      * @returns {{ firstInstance: number, instanceCount: number }}
      */
     resolveDrawRange(firstInstance, instanceCount) {
-        const firstGlyph = this._glyphOffsets[firstInstance];
-        const lastGlyph = this._glyphOffsets[firstInstance + instanceCount];
+        const firstGlyph = this._drawOffsets[firstInstance];
+        const lastGlyph = this._drawOffsets[firstInstance + instanceCount];
         return {
             firstInstance: firstGlyph,
             instanceCount: lastGlyph - firstGlyph,
@@ -1038,7 +1105,12 @@ export default class TextProgram extends BaseProgram {
      * @returns {string}
      */
     get shaderBody() {
-        return TEXT_SHADER_BODY;
+        const effects = this._markConfig?.effects;
+        return createTextShaderBody(
+            effects
+                ? /** @type {TextEffects} */ (effects)
+                : { enabled: false, shadow: false, outline: false }
+        );
     }
 
     /**
@@ -1051,8 +1123,9 @@ export default class TextProgram extends BaseProgram {
             { name: "uAtlasScale", type: "f32", components: 2 },
             { name: "uCapHeight", type: "f32", components: 1 },
             { name: "uDescent", type: "f32", components: 1 },
-            { name: "uSdfPadding", type: "f32", components: 1 },
             { name: "uSdfNumerator", type: "f32", components: 1 },
+            { name: "uShapePixels", type: "f32", components: 1 },
+            { name: "uSpread", type: "f32", components: 1 },
             { name: "uPaddingX", type: "f32", components: 1 },
             { name: "uPaddingY", type: "f32", components: 1 },
             { name: "uFlushX", type: "u32", components: 1 },
@@ -1077,7 +1150,8 @@ export default class TextProgram extends BaseProgram {
      * @returns {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]}
      */
     getExtraResourceDefs() {
-        return [
+        /** @type {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
+        const resources = [
             {
                 name: "glyphs",
                 role: "extraBuffer",
@@ -1123,36 +1197,113 @@ export default class TextProgram extends BaseProgram {
                 wgslName: "fontSampler",
             },
         ];
+        const effects = /** @type {TextEffects} */ (this._markConfig.effects);
+        if (effects.enabled) {
+            resources.push({
+                name: "renderItems",
+                role: "extraBuffer",
+                kind: "buffer",
+                bufferType: "read-only-storage",
+                visibility: "vertex",
+                wgslName: "renderItems",
+                wgslType: "array<RenderItem>",
+            });
+        }
+        return resources;
     }
 
     _initializeExtraResources() {
-        const layout =
-            /** @type {import("../../fonts/layout.js").TextLayout} */ (
-                this._markConfig.textLayout
-            );
-        const fontEntry = /** @type {FontEntry} */ (this._markConfig.fontEntry);
-        const metrics = fontEntry.metrics;
-        const atlasWidth = metrics.common.scaleW;
-        const atlasHeight = metrics.common.scaleH;
-        this._setUniformValue("uFontBase", metrics.common.base);
+        const layout = /** @type {import("../../index.js").TextLayout} */ (
+            this._markConfig.textLayout
+        );
+        this._initializeOutlineFontResources(
+            /** @type {any} */ (layout),
+            /** @type {import("../../fonts/trueTypeFont.js").TrueTypeFont} */ (
+                this._markConfig.font
+            )
+        );
         this._setUniformValue("uLayoutFontSize", layout.fontSize);
-        this._setUniformValue("uAtlasScale", [1 / atlasWidth, 1 / atlasHeight]);
-        this._setUniformValue("uCapHeight", metrics.capHeight);
-        this._setUniformValue("uDescent", metrics.descent);
-        this._setUniformValue("uSdfPadding", SDF_PADDING);
-        /** @type {number} */
-        this._sdfNumeratorBase = metrics.common.base * 0.35;
         this._updateTextLayoutBuffers(layout);
-
-        const resources = getFontGpuResources(this.renderer, fontEntry);
-        this._extraBuffers.set("glyphMetrics", resources.glyphMetrics);
-        this._extraTextures.set("fontAtlas", resources.atlas);
-        this._borrowedExtraBuffers.add("glyphMetrics");
-        this._borrowedExtraTextures.add("fontAtlas");
     }
 
     /**
-     * @param {import("../../fonts/layout.js").TextLayout} layout
+     * @param {import("../../index.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
+     * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
+     */
+    _initializeOutlineFontResources(layout, font) {
+        const atlas = getOutlineFontAtlas(this.renderer, font);
+        this._updateOutlineGlyphMetrics(layout, font, atlas);
+        const shapePixels =
+            OUTLINE_ATLAS_OPTIONS.tileSize -
+            OUTLINE_ATLAS_OPTIONS.shapePadding * 2;
+        const atlasScale = shapePixels / font.unitsPerEm;
+
+        this._setUniformValue("uFontBase", shapePixels);
+        this._setUniformValue("uAtlasScale", [
+            1 / atlas.width,
+            1 / atlas.height,
+        ]);
+        this._setUniformValue("uCapHeight", font.capHeight * atlasScale);
+        // TrueType descenders are signed, but baselineOffset expects the
+        // positive distance from the alphabetic baseline to the font bottom.
+        this._setUniformValue("uDescent", -font.descender * atlasScale);
+        this._setUniformValue("uShapePixels", shapePixels);
+        this._setUniformValue("uSpread", OUTLINE_ATLAS_OPTIONS.spread);
+        this._sdfNumeratorBase = shapePixels * 0.35;
+        this._extraTextures.set("fontAtlas", outlineAtlasResource(atlas));
+        this._borrowedExtraTextures.add("fontAtlas");
+        this._outlineAtlas = atlas;
+        this._outlineAtlasUnsubscribe = atlas.subscribe((grownAtlas) => {
+            this._setUniformValue("uAtlasScale", [
+                1 / grownAtlas.width,
+                1 / grownAtlas.height,
+            ]);
+            this._extraTextures.set(
+                "fontAtlas",
+                outlineAtlasResource(grownAtlas)
+            );
+            this._writeUniforms();
+            this._rebuildBindGroup();
+            this.renderer._invalidate();
+        });
+    }
+
+    /**
+     * @param {import("../../index.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
+     * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
+     * @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas
+     * @returns {boolean} Whether the metric buffer identity changed.
+     */
+    _updateOutlineGlyphMetrics(layout, font, atlas) {
+        const entries = atlas.ensure(layout.outlineGlyphs);
+        const atlasScale =
+            (OUTLINE_ATLAS_OPTIONS.tileSize -
+                OUTLINE_ATLAS_OPTIONS.shapePadding * 2) /
+            font.unitsPerEm;
+        const glyphMetrics = new Float32Array(layout.outlineGlyphs.length * 8);
+        for (let index = 0; index < layout.outlineGlyphs.length; index++) {
+            const metricOffset = index * 8;
+            const glyph = layout.outlineGlyphs[index];
+            const entry = entries[index];
+            glyphMetrics[metricOffset] = entry.x;
+            glyphMetrics[metricOffset + 1] = entry.y;
+            glyphMetrics[metricOffset + 2] = entry.width;
+            glyphMetrics[metricOffset + 3] = entry.height;
+            glyphMetrics[metricOffset + 4] =
+                -(glyph.bounds.yMin + glyph.bounds.yMax) * 0.5 * atlasScale -
+                glyph.tileHeight * 0.5;
+            // Logo fitting needs the visible outline size separately from the
+            // padded atlas tile represented by texRect.
+            glyphMetrics[metricOffset + 5] =
+                (glyph.bounds.xMax - glyph.bounds.xMin) * atlasScale;
+            glyphMetrics[metricOffset + 6] =
+                (glyph.bounds.yMax - glyph.bounds.yMin) * atlasScale;
+        }
+        return this._writeExtraBuffer("glyphMetrics", glyphMetrics);
+    }
+
+    /**
+     * @param {import("../../index.js").TextLayout} layout
      * @returns {boolean} Whether a bound buffer identity changed.
      */
     _updateTextLayoutBuffers(layout) {
@@ -1178,6 +1329,16 @@ export default class TextProgram extends BaseProgram {
         }
         changed =
             this._writeExtraBuffer("stringMetrics", stringData) || changed;
+        const effects = /** @type {TextEffects} */ (this._markConfig.effects);
+        if (effects.enabled) {
+            const renderItems = buildTextRenderItems(layout, effects);
+            changed =
+                this._writeExtraBuffer("renderItems", renderItems.data) ||
+                changed;
+            this._drawOffsets = renderItems.offsets;
+        } else {
+            this._drawOffsets = buildGlyphOffsets(layout);
+        }
         return changed;
     }
 
@@ -1242,15 +1403,13 @@ export default class TextProgram extends BaseProgram {
             );
         }
 
-        const layout = buildConfiguredTextLayout(strings, {
-            fontManager: this._fontManager,
-            font: this._markConfig.font,
-            fontStyle: this._markConfig.fontStyle,
-            fontWeight: this._markConfig.fontWeight,
-            fontSize: this._markConfig.fontSize,
-            lineHeight: this._markConfig.lineHeight,
-            letterSpacing: this._markConfig.letterSpacing,
-        });
+        const layout = buildResolvedTextLayout(
+            strings,
+            /** @type {import("../../fonts/trueTypeFont.js").TrueTypeFont} */ (
+                this._markConfig.font
+            ),
+            this._markConfig
+        );
         /** @type {Record<string, import("../../index.js").TypedArray>} */
         const resolved = {};
         for (const [name, targets] of this._logicalSeriesTargets) {
@@ -1274,25 +1433,20 @@ export default class TextProgram extends BaseProgram {
                 `Text series data count (${seriesCount}) does not match text count (${strings.length}).`
             );
         }
-        this._glyphOffsets = buildGlyphOffsets(layout);
-        const textBuffersChanged = this._updateTextLayoutBuffers(layout);
+        let textBuffersChanged = this._updateTextLayoutBuffers(layout);
+        textBuffersChanged =
+            this._updateOutlineGlyphMetrics(
+                /** @type {any} */ (layout),
+                /** @type {import("../../fonts/trueTypeFont.js").TrueTypeFont} */ (
+                    this._markConfig.font
+                ),
+                this._outlineAtlas
+            ) || textBuffersChanged;
         this.updateSeries(resolved, strings.length, textBuffersChanged);
     }
-}
 
-/**
- * Build an exclusive prefix sum from logical strings to glyph instances.
- *
- * @param {import("../../fonts/layout.js").TextLayout} textLayout
- * @returns {Uint32Array}
- */
-function buildGlyphOffsets(textLayout) {
-    const offsets = new Uint32Array(textLayout.textWidth.length + 1);
-    for (const stringIndex of textLayout.stringIndex) {
-        offsets[stringIndex + 1]++;
+    destroy() {
+        this._outlineAtlasUnsubscribe?.();
+        super.destroy();
     }
-    for (let i = 1; i < offsets.length; i++) {
-        offsets[i] += offsets[i - 1];
-    }
-    return offsets;
 }

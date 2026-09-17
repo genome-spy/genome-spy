@@ -79,6 +79,32 @@ test("launches with a rendering backend that has no retained resources", async (
     expect(finalize).toHaveBeenCalledOnce();
 });
 
+test("forwards a font catalog to the selected rendering backend", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const fontCatalog = [
+        { family: "Study Sans", source: "https://example.test/study.ttf" },
+    ];
+    mocks.createRenderingBackend.mockImplementation(createMockBackend);
+    const genomeSpy = new GenomeSpy(
+        container,
+        {
+            width: 100,
+            height: 100,
+            data: { values: [{}] },
+            mark: "rect",
+        },
+        { renderer: "webgpu", fontCatalog }
+    );
+
+    expect(await genomeSpy.launch()).toBe(true);
+    expect(mocks.createRenderingBackend).toHaveBeenCalledWith(
+        expect.objectContaining({ renderer: "webgpu", fontCatalog })
+    );
+
+    genomeSpy.destroy();
+});
+
 test("reports a backend error once and fails an in-progress launch", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);

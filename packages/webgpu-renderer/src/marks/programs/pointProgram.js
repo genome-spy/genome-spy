@@ -36,81 +36,16 @@ const {
 } = buildChannelMaps(POINT_CHANNEL_SPECS);
 
 const POINT_SHADER_BODY = /* wgsl */ `
-const PI: f32 = 3.141592653589793;
-const SQRT3: f32 = 1.7320508075688772;
-
-// Copypaste from fragment shader
-const CIRCLE: u32 = 0u;
-const SQUARE: u32 = 1u;
-const CROSS: u32 = 2u;
-const DIAMOND: u32 = 3u;
-const TRIANGLE_UP: u32 = 4u;
-const TRIANGLE_RIGHT: u32 = 5u;
-const TRIANGLE_DOWN: u32 = 6u;
-const TRIANGLE_LEFT: u32 = 7u;
-const TICK_UP: u32 = 8u;
-const TICK_RIGHT: u32 = 9u;
-const TICK_DOWN: u32 = 10u;
-const TICK_LEFT: u32 = 11u;
-const X: u32 = 12u;
-const PLUS: u32 = 13u;
-
-fn modf(x: f32, y: f32) -> f32 {
-    return x - y * floor(x / y);
-}
-
 fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
 
-fn distanceToColor(d: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, halfStrokeWidth: f32) -> vec4<f32> {
-    if (halfStrokeWidth > 0.0) {
-        let sd = abs(d) - halfStrokeWidth;
-        return mix(stroke, select(background, fill, d <= 0.0), distanceToRatio(sd));
-    }
-    return mix(background, fill, distanceToRatio(-d));
+fn sourceOver(above: vec4<f32>, below: vec4<f32>) -> vec4<f32> {
+    return above + below * (1.0 - above.a);
 }
 
-// The distance functions are inspired by:
-// http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
-// These are not true distance functions, because corners need to be sharp.
 fn circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
-}
-
-fn square(p: vec2<f32>, r: f32) -> f32 {
-    let q = abs(p);
-    return max(q.x, q.y) - r;
-}
-
-fn tickUp(p: vec2<f32>, r: f32) -> f32 {
-    let halfR = r * 0.5;
-    var q = p;
-    q.y += halfR;
-    q = abs(q);
-    return max(q.x - r * 0.15, q.y - halfR);
-}
-
-fn equilateralTriangle(p: vec2<f32>, r: f32) -> f32 {
-    var q = p;
-    q.y = -q.y;
-    let k = SQRT3;
-    let kr = k * r;
-    q.y -= kr / 2.0;
-    return max((abs(q.x) * k + q.y) / 2.0, -q.y - kr);
-}
-
-fn crossShape(p: vec2<f32>, r: f32, armHalfWidth: f32) -> f32 {
-    let q = abs(p);
-    let b = vec2<f32>(armHalfWidth, r);
-    let v = abs(q) - b.xy;
-    let h = abs(q) - b.yx;
-    return min(max(v.x, v.y), max(h.x, h.y));
-}
-
-fn diamond(p: vec2<f32>, r: f32) -> f32 {
-    let q = abs(p);
-    return (max(abs(q.x - q.y), abs(q.x + q.y)) - r) / 1.41421356237;
 }
 
 struct VSOut {
@@ -119,20 +54,16 @@ struct VSOut {
 #endif
     @builtin(position) pos: vec4<f32>,
     @location(0) local: vec2<f32>,
-    @location(1) size: f32,
-    @location(2) radius: f32,
-    @location(3) radiusWithPadding: f32,
-    @location(4) fill: vec4<f32>,
-    @location(5) stroke: vec4<f32>,
-    @location(6) fillOpacity: f32,
-    @location(7) strokeOpacity: f32,
-    @location(8) halfStrokeWidth: f32,
-    @location(9) @interpolate(flat) shape: u32,
-    @location(10) gradientStrength: f32,
-    @location(11) @interpolate(flat) inwardStroke: u32,
-    @location(12) rot0: vec2<f32>,
-    @location(13) rot1: vec2<f32>,
-    @location(14) @interpolate(flat) pickId: u32,
+    @location(1) radius: f32,
+    @location(2) radiusWithPadding: f32,
+    @location(3) fill: vec4<f32>,
+    @location(4) stroke: vec4<f32>,
+    @location(5) fillOpacity: f32,
+    @location(6) strokeOpacity: f32,
+    @location(7) halfStrokeWidth: f32,
+    @location(8) gradientStrength: f32,
+    @location(9) @interpolate(flat) inwardStroke: u32,
+    @location(10) @interpolate(flat) pickId: u32,
 };
 
 fn culledPoint() -> VSOut {
@@ -142,7 +73,6 @@ fn culledPoint() -> VSOut {
 #endif
     out.pos = vec4<f32>(0.0);
     out.local = vec2<f32>(0.0);
-    out.size = 0.0;
     out.radius = 0.0;
     out.radiusWithPadding = 0.0;
     out.fill = vec4<f32>(0.0);
@@ -150,11 +80,8 @@ fn culledPoint() -> VSOut {
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
     out.halfStrokeWidth = 0.0;
-    out.shape = 0u;
     out.gradientStrength = 0.0;
     out.inwardStroke = 0u;
-    out.rot0 = vec2<f32>(0.0);
-    out.rot1 = vec2<f32>(0.0);
     out.pickId = 0u;
     return out;
 }
@@ -179,47 +106,18 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     var strokeWidth = getScaled_strokeWidth(i);
     let strokeOpacity = getScaled_strokeOpacity(i);
-    let shapeRaw = getScaled_shape(i);
-    var shape = u32(shapeRaw);
 
-    var shapeAngle = 0.0;
-    if (shape > TICK_UP && shape <= TICK_LEFT) {
-        shapeAngle = f32(shape - TICK_UP) * 90.0;
-        shape = TICK_UP;
-    } else if (shape > TRIANGLE_UP && shape <= TRIANGLE_LEFT) {
-        shapeAngle = f32(shape - TRIANGLE_UP) * 90.0;
-        shape = TRIANGLE_UP;
-    } else if (shape == X) {
-        shapeAngle = -45.0;
-    }
-
-    // Line-only shapes use their width even when the stroke falls back to the
-    // fill color. An invisible stroke must not inset other filled shapes.
-    if (strokeOpacity <= 0.0 && shape != X && shape != PLUS) {
+    if (strokeOpacity <= 0.0) {
         strokeWidth = 0.0;
     }
 
-    let angleInDegrees = getScaled_angle(i);
-    let angle = -(shapeAngle + angleInDegrees) * PI / 180.0;
-    let sinTheta = sin(angle);
-    let cosTheta = cos(angle);
-    let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
-
-    let circle = shape == CIRCLE;
-    let roomForRotation = select(
-        sin(modf(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0),
-        1.0,
-        circle
-    );
-
     let aaPadding = 1.0 / globals.dpr;
-    let rotationPadding = (diameter * roomForRotation) - diameter;
     let strokePadding = select(
-        strokeWidth * select(SQRT3, 1.0, circle),
+        strokeWidth,
         0.0,
         getScaled_inwardStroke(i) > 0u
     );
-    let padding = rotationPadding + strokePadding + aaPadding;
+    let padding = strokePadding + aaPadding;
 
     let total = diameter + padding;
     let local = quad[v];
@@ -254,7 +152,6 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         1.0
     );
     out.local = local;
-    out.size = total;
     out.radius = diameter * 0.5;
     out.radiusWithPadding = out.radius + padding * 0.5;
     out.fill = getScaled_fill(i);
@@ -262,11 +159,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.fillOpacity = getScaled_fillOpacity(i);
     out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = strokeWidth * 0.5;
-    out.shape = shape;
     out.gradientStrength = getScaled_gradientStrength(i);
     out.inwardStroke = getScaled_inwardStroke(i);
-    out.rot0 = rot[0];
-    out.rot1 = rot[1];
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
@@ -275,29 +169,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 }
 
 fn shade(in: VSOut) -> vec4<f32> {
-    let rot = mat2x2<f32>(in.rot0, in.rot1);
-    let p = rot * ((in.local * 2.0 - vec2<f32>(1.0)) * in.radiusWithPadding);
+    let p = (in.local * 2.0 - vec2<f32>(1.0)) * in.radiusWithPadding;
     let r = in.radius;
-    var d = 0.0;
-
-    if (in.shape == CIRCLE) {
-        d = circle(p, r);
-    } else if (in.shape == SQUARE) {
-        d = square(p, r);
-    } else if (in.shape == CROSS) {
-        d = crossShape(p, r, r * 0.4);
-    } else if (in.shape == DIAMOND) {
-        d = diamond(p, r);
-    } else if (in.shape == TRIANGLE_UP) {
-        d = equilateralTriangle(p, r);
-    } else if (in.shape == TICK_UP) {
-        d = tickUp(p, r);
-    } else if (in.shape == X || in.shape == PLUS) {
-        let lineLength = select(r, r * 1.41421356237, in.shape == X);
-        d = crossShape(p, lineLength, in.halfStrokeWidth);
-    } else {
-        d = 0.0;
-    }
+    let d = circle(p, r);
 
     var fillColor = in.fill;
     var strokeColor = in.stroke;
@@ -312,23 +186,19 @@ fn shade(in: VSOut) -> vec4<f32> {
     fillColor = premultiplyAlpha(fillColor);
     strokeColor = premultiplyAlpha(strokeColor);
 
-    let lineShape = in.shape == X || in.shape == PLUS;
-    if (lineShape && strokeColor.a == 0.0) {
-        strokeColor = fillColor;
+    let fillCoverage = distanceToRatio(-d);
+    var strokeCoverage: f32;
+    if (in.inwardStroke > 0u) {
+        let innerCoverage = distanceToRatio(-d - 2.0 * in.halfStrokeWidth);
+        strokeCoverage = max(fillCoverage - innerCoverage, 0.0);
+    } else {
+        let outerCoverage = distanceToRatio(in.halfStrokeWidth - d);
+        let innerCoverage = distanceToRatio(-in.halfStrokeWidth - d);
+        strokeCoverage = max(outerCoverage - innerCoverage, 0.0);
     }
-    let offset = select(
-        select(0.0, in.halfStrokeWidth, in.inwardStroke > 0u),
-        0.0,
-        lineShape
-    );
-    // TODO: Match SVG and Canvas by drawing the fill first and the stroke over it.
-    let color = distanceToColor(
-        d + offset,
-        fillColor,
-        strokeColor,
-        vec4<f32>(0.0),
-        select(in.halfStrokeWidth, 0.0, lineShape)
-    );
+    let fillLayer = fillColor * fillCoverage;
+    let strokeLayer = strokeColor * strokeCoverage;
+    let color = sourceOver(strokeLayer, fillLayer);
 
     if (color.a == 0.0) {
         discard;

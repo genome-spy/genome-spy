@@ -10,6 +10,7 @@ import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
+import BmFontManager from "../fonts/bmFontManager.js";
 import AxisView from "./axisView.js";
 import LegendView from "./legendView.js";
 import { renderToLayout } from "./testUtils.js";
@@ -32,6 +33,22 @@ function makeUnitSpec(name) {
         encoding: {
             x: { field: "x", type: "quantitative" },
             y: { field: "y", type: "quantitative" },
+        },
+    };
+}
+
+/**
+ * @param {string} name
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeTextSpec(name) {
+    return {
+        name,
+        data: { values: [{}] },
+        mark: {
+            type: "text",
+            text: "Late outline",
+            font: "Study Sans",
         },
     };
 }
@@ -929,6 +946,65 @@ describe("ViewMutationApi", () => {
             : undefined;
         expect(fontManager.waitUntilReady).toHaveBeenCalled();
         expect(datum?.width).toBe(24);
+    });
+
+    test("prepares a deduplicated outline before inserted text becomes ready", async () => {
+        const outlineFont = { name: "Study Sans outline" };
+        /** @type {((font: object) => void) | undefined} */
+        let resolveOutline;
+        const loading = new Promise((resolve) => {
+            resolveOutline = resolve;
+        });
+        const prepareOutlineFont = vi.fn(() => loading);
+        const outlineManager = new BmFontManager(
+            undefined,
+            undefined,
+            prepareOutlineFont
+        );
+        const fontManager = /** @type {BmFontManager} */ (
+            /** @type {unknown} */ ({
+                getFont: () => outlineManager.getDefaultFont(),
+                getDefaultFont: () => outlineManager.getDefaultFont(),
+                getOutlineFont:
+                    outlineManager.getOutlineFont.bind(outlineManager),
+                waitUntilReady:
+                    outlineManager.waitUntilReady.bind(outlineManager),
+            })
+        );
+        const { view } = await createHeadlessEngine(
+            { name: "tracks", vconcat: [] },
+            { contextOptions: { fontManager } }
+        );
+        const api = createViewMutationApi({ viewRoot: view });
+
+        let inserted = false;
+        const firstInsertion = api
+            .insert("root", makeTextSpec("lateText"))
+            .then(() => {
+                inserted = true;
+            });
+        await Promise.resolve();
+
+        expect(inserted).toBe(false);
+        expect(prepareOutlineFont).toHaveBeenCalledOnce();
+        expect(prepareOutlineFont).toHaveBeenCalledWith({
+            family: "Study Sans",
+            style: "normal",
+            weight: 400,
+            implicitFamily: false,
+        });
+
+        resolveOutline?.(outlineFont);
+        await firstInsertion;
+        const lateText = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "lateText");
+        expect(/** @type {any} */ (lateText).mark.outlineFont.outlineFont).toBe(
+            outlineFont
+        );
+
+        await api.insert("root", makeTextSpec("lateTextAgain"));
+        expect(prepareOutlineFont).toHaveBeenCalledOnce();
     });
 
     test("inserts a direct spec into a layer container", async () => {

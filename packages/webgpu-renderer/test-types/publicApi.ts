@@ -4,7 +4,6 @@ import {
     type MarkDefinition,
 } from "@genome-spy/webgpu-renderer";
 import { setDebugResourcesEnabled } from "@genome-spy/webgpu-renderer/debug";
-import "@genome-spy/webgpu-renderer/fonts/lato";
 import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer/high-precision";
 import {
     emitScalePipeline,

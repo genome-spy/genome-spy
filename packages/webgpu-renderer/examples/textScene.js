@@ -1,7 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
 import { textMark } from "../src/marks/text.js";
 import { indexScale } from "../src/scales/index.js";
-import "../src/fonts/lato.js";
+import { loadDefaultFont } from "../src/fonts/defaultFont.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -10,6 +10,7 @@ import "../src/fonts/lato.js";
  */
 export default async function runTextScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
+    const font = await loadDefaultFont();
 
     const strings = ["Genome", "Spy", "WebGPU", "Text"];
     const count = strings.length;
@@ -54,7 +55,7 @@ export default async function runTextScene(canvas, options = {}) {
             fill: { value: [0.1, 0.2, 0.9, 1.0] },
             opacity: { value: initialOpacity, dynamic: true },
         },
-        font: "Lato",
+        font,
         fontSize: 32,
     });
 

@@ -56,4 +56,36 @@ describe("BmFontManager", () => {
         );
         expect(font.bitmapUrl).toContain("TestSans-Bold.png");
     });
+
+    test("prepares and deduplicates optional outline fonts", async () => {
+        const outlineFont = {};
+        const prepareOutlineFont = vi.fn(async () => outlineFont);
+        const manager = new BmFontManager(
+            undefined,
+            undefined,
+            prepareOutlineFont
+        );
+
+        const first = manager.getOutlineFont("Test Sans", "italic", "bold");
+        const second = manager.getOutlineFont("Test Sans", "italic", 700);
+        const implicit = manager.getOutlineFont("sans-serif");
+        await manager.waitUntilReady();
+
+        expect(first).toBe(second);
+        expect(first?.outlineFont).toBe(outlineFont);
+        expect(implicit).not.toBe(first);
+        expect(prepareOutlineFont).toHaveBeenCalledTimes(2);
+        expect(prepareOutlineFont).toHaveBeenNthCalledWith(1, {
+            family: "Test Sans",
+            style: "italic",
+            weight: 700,
+            implicitFamily: false,
+        });
+        expect(prepareOutlineFont).toHaveBeenNthCalledWith(2, {
+            family: undefined,
+            style: "normal",
+            weight: 400,
+            implicitFamily: true,
+        });
+    });
 });

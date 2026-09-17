@@ -27,6 +27,25 @@ contains only current work that still has a concrete renderer or Core consumer.
 - Adding registries, a renderer scene graph, per-facet marks, or speculative
   backend abstractions.
 
+## Active integration: GPU MSDF paths and outline fonts
+
+The production point mark accepts built-in names and closed SVG paths while a
+fixed circle retains the minimal analytic fast path. The text mark accepts
+device-neutral TrueType resources, uses incremental shared `rgba16float`
+atlases, applies basic GPOS/legacy kerning, and preserves 2 by 2 small-text
+supersampling. Core lazily loads exact WebGPU outline variants while retaining
+BMFont measurement. Canonical msdfgen is maintained in a separate repository
+and downloaded only by explicit oracle tests, comparison scripts, and the
+Storybook comparison control.
+
+The glyph-based text-effects PoC adds one outline and one scalar-SDF
+shadow/glow in label-major order without per-label textures. Text program keys
+are constant time and never serialize label contents during zoom or pan.
+
+Remaining path/font follow-up includes a compact wide-range tier for tiny
+stroked points, portable Core/Canvas/SVG text effects, and public contract
+documentation.
+
 ## Milestone 1: Close current Core parity gaps
 
 ### Outcome
@@ -119,10 +138,10 @@ Tentative commit: `refactor(webgpu-renderer): remove measured scale duplication`
 
 ## Deferred until a concrete consumer or design exists
 
-- Font registration, shaping, atlas generation, and public or persistent
-  caching are owned by issue #362. The renderer may pool exact immutable BMFont
-  GPU resources for one device lifetime, but must not expose the current
-  representation as the future font API.
+- Complex shaping, fallback, variable fonts, and persistent cross-session atlas
+  caches remain owned by issue #362. Static TrueType outlines, basic kerning,
+  device-lifetime atlas sharing, and the default font now have a concrete
+  integration design.
 - Independent per-facet scale domains require a separate scale-state proposal;
   placement rectangles remain geometry-only.
 - Worker transfer protocols, vector-backend compatibility, and selection-only

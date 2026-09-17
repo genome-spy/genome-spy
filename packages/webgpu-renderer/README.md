@@ -143,10 +143,11 @@ Advanced helpers have their own typed subpaths:
 | `high-precision`  | Pack large integer series and index-scale domains.             |
 | `scale-authoring` | Experimental WGSL scale-emission helpers.                      |
 | `debug`           | Enable renderer resource logging.                              |
-| `fonts/lato`      | Register the embedded Lato Regular font as the default preset. |
+| `fonts/default`   | Load the compact built-in TrueType font on demand.              |
+| `fonts/truetype` | Parse and load static TrueType fonts.                          |
 
 Importing one mark or scale does not include unrelated marks, scales, or font
-assets. The Lato entry point is the only intentional registration side effect.
+assets.
 
 ### Renderer lifecycle
 
@@ -565,23 +566,26 @@ is not yet supported.
 
 ## Text and fonts
 
-Import the embedded Lato preset only when a text mark needs it:
+Load a TrueType font before creating a text mark. The compact built-in font is
+available on demand:
 
 ```js
 import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
-import "@genome-spy/webgpu-renderer/fonts/lato";
+import { loadDefaultFont } from "@genome-spy/webgpu-renderer/fonts/default";
+
+const font = await loadDefaultFont();
 
 const labels = renderer.createMark(textMark, {
   channels: {
     // text, x, and y channel definitions
   },
-  font: "Lato",
+  font,
 });
 ```
 
 Text series and draw ranges use logical strings. The retained text program
 builds private glyph geometry and maps glyphs back to logical series. Programs
-using the same exact font resource share one renderer-lifetime atlas, sampler,
+using the same exact font object share one renderer-lifetime atlas, sampler,
 and glyph-metrics buffer; per-string geometry and bind groups remain mark-owned.
 `series.replace()` changes only the mark-owned string resources. Numeric text
 channels contain one value per logical string; scalar text replacement requires
@@ -635,6 +639,10 @@ Storybook contains interactive retained-renderer scenes and controls.
 
 Storybook remains on 8.x because its 10.x addon set is not fully published.
 The upgrade notice can be ignored.
+
+The experimental PathPoint and runtime TrueType scenes share a CPU + WGSL MSDF
+atlas generator. Its architecture, provenance, and current limitations are
+documented in [src/symbols/README.md](src/symbols/README.md).
 
 ### Verification
 

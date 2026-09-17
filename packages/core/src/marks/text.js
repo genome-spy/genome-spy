@@ -20,6 +20,11 @@ export default class TextMark extends Mark {
                 (dispose) => unitView.registerDisposer(dispose)
             ) ?? false;
         this.font = requestFont(unitView.context.fontManager, this.properties);
+        this.outlineFont = unitView.context.fontManager.getOutlineFont?.(
+            this.properties.font,
+            this.properties.fontStyle,
+            this.properties.fontWeight
+        );
         this.watchEncodedDataExpressions(["text", "logoLetters"]);
     }
 

@@ -1,7 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
 import { textMark } from "../src/marks/text.js";
 import { indexScale } from "../src/scales/index.js";
-import "../src/fonts/lato.js";
+import { loadDefaultFont } from "../src/fonts/defaultFont.js";
 
 /**
  * Ranged text demo: each string is constrained by x/x2 and y/y2 extents.
@@ -12,6 +12,7 @@ import "../src/fonts/lato.js";
  */
 export default async function runRangedTextScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
+    const font = await loadDefaultFont();
 
     const cols = 3;
     const rows = 2;
@@ -93,7 +94,7 @@ export default async function runRangedTextScene(canvas, options = {}) {
             fill: { value: [0.15, 0.2, 0.9, 1.0] },
             opacity: { value: initialOpacity, dynamic: true },
         },
-        font: "Lato",
+        font,
         paddingX: 8,
         paddingY: 8,
         flushX: false,

@@ -11,4 +11,6 @@ globalThis.GPUTextureUsage = {
     TEXTURE_BINDING: 1,
     COPY_DST: 2,
     RENDER_ATTACHMENT: 4,
+    STORAGE_BINDING: 8,
+    COPY_SRC: 16,
 };
