@@ -1,6 +1,6 @@
 # Renderer-owned text measurement
 
-Status: proposed; implementation has not started.
+Status: implementation in progress.
 
 ## Recommendation
 
@@ -317,22 +317,23 @@ label through attached DOM adds layout work and another lifecycle.
 
 ## Implementation milestones
 
-- [ ] **Live measurement contract and renderer integration.** Add the provider
+- [x] **Live measurement contract and renderer integration.** Add the provider
   types, backend/context wiring, readiness integration, BMFont and native
   providers, and a public WebGPU measurement entry point. Move transform and
   axis/title/legend measurements, including `truncateText`, to this contract.
-  Remove native dependence on
-  BMFont resource requests as part of wiring mark preparation. Verify custom
+  Select the BMFont and outline providers for WebGL and WebGPU; activate the
+  native provider for immediate rendering in the next milestone when its
+  destination measurement can be passed through traversal. Verify custom
   style/weight (including implicit family), transform-only font requests,
-  mark-only font requests, truncation, reactive size, dynamic subtree
-  insertion, headless layout, and default WebGL compatibility. Test WebGPU
-  measurement against its own rendered-text layout, including pair adjustments.
-  Update rendering architecture and measure-text documentation with provider
-  selection and export semantics. Tentative commit:
+  mark-only font requests, truncation, reactive size, dynamic subtree insertion,
+  headless layout, and default WebGL compatibility. Test WebGPU measurement
+  against its own rendered-text layout, including pair adjustments. Update the
+  rendering architecture with provider ownership. Tentative commit:
   `feat(core): use renderer-owned metrics for text measurement`.
 - [ ] **Native fitting, output, and export preparation.** Inject destination
   measurements into immediate traversal, picking, counting, and exports. Remove
-  ordinary width forcing and implement consistent squeeze transforms. Verify
+  ordinary native dependence on BMFont metrics and width forcing, activate the
+  Canvas native provider, and implement consistent squeeze transforms. Verify
   ranged/rotated text, both axes, clipping, flush/padding, squeeze thresholds,
   software picking, SVG counts, the ASCII fast path, and native font readiness
   for standalone analysis as well as export. Preserve nominal ordinary-text

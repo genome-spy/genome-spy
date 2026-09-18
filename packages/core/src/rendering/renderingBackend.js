@@ -41,6 +41,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
 /**
  * @typedef {object} RenderingBackend
  * @property {RenderingSurface} surface
+ * @property {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @property {undefined} [glHelper] Legacy field retained for the unchanged WebGPU adapter.
  * @property {string} [defaultFontBitmapUrl]
  * @property {(bitmapUrl: string) => Promise<void>} [prepareFontBitmap]

@@ -62,14 +62,8 @@ export default class TruncateTextTransform extends Transform {
     }
 
     initialize() {
-        const fontManager = this.paramRuntimeProvider.context.fontManager;
-        this.font = this.params.font
-            ? fontManager.getFont(
-                  this.params.font,
-                  this.params.fontStyle,
-                  this.params.fontWeight
-              )
-            : fontManager.getDefaultFont();
+        const textMetrics = this.paramRuntimeProvider.context.textMetrics;
+        this.fontMeasurement = textMetrics.requestFont(this.params);
     }
 
     /**
@@ -83,7 +77,7 @@ export default class TruncateTextTransform extends Transform {
             datum[this.as] = truncateText(
                 "" + value,
                 this.params.limit,
-                this.font.metrics?.measureWidth,
+                (text, size) => this.fontMeasurement.measureWidth(text, size),
                 this.fontSize,
                 this.ellipsis
             );

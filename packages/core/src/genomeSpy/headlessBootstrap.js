@@ -76,7 +76,7 @@ function createHeadlessAnimator() {
  *   viewFactoryOptions?: import("../view/viewFactory.js").ViewFactoryOptions,
  *   dataFlow?: DataFlow,
  *   genomeStore?: GenomeStore,
- *   fontManager?: BmFontManager,
+ *   textMetrics?: import("../fonts/textMetrics.js").TextMetricsProvider,
  *   animator?: import("../utils/animator.js").default,
  *   baseConfig?: ReturnType<typeof resolveBaseConfig>,
  *   getNamedDataFromProvider?: (name: string) => any[] | undefined,
@@ -121,7 +121,7 @@ export function createHeadlessViewContext(options = {}) {
     return createViewContext({
         dataFlow,
         genomeStore,
-        fontManager: options.fontManager ?? new BmFontManager(),
+        textMetrics: options.textMetrics ?? new BmFontManager(),
         animator: options.animator ?? createHeadlessAnimator(),
         requestLayoutReflow: options.requestLayoutReflow ?? (() => undefined),
         updateTooltip: options.updateTooltip ?? (() => undefined),
@@ -204,7 +204,7 @@ export async function createHeadlessEngine(spec, options = {}) {
     await initializeViewData(
         view,
         context.dataFlow,
-        context.fontManager,
+        context.textMetrics,
         options.onDataFlowBuilt ?? (() => undefined)
     );
 

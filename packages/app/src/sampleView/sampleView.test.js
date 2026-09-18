@@ -951,7 +951,7 @@ describe("sample label column", () => {
         await initializeVisibleViewData(
             coreView,
             context.dataFlow,
-            context.fontManager
+            context.textMetrics
         );
 
         expect(view.sampleLabelView.flowHandle?.collector.getItemCount()).toBe(
@@ -2179,7 +2179,7 @@ describe("axis layout and visibility", () => {
         const testContext = createTestViewContext(
             {},
             {
-                fontManager: new BmFontManager(
+                textMetrics: new BmFontManager(
                     undefined,
                     undefined,
                     async () => ({})
@@ -2211,7 +2211,7 @@ describe("axis layout and visibility", () => {
                 /** @type {unknown} */ (view)
             ),
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
         view.sampleGroupView.updateGroups();
@@ -2828,7 +2828,7 @@ describe("axis layout and visibility", () => {
                 /** @type {unknown} */ (view)
             ),
             context.dataFlow,
-            context.fontManager
+            context.textMetrics
         );
 
         const renderBSpy = vi.spyOn(axisB, "arrange");

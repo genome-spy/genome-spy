@@ -852,42 +852,26 @@ describe("ViewMutationApi", () => {
     });
 
     test("waits for inserted view fonts before loading data", async () => {
-        const fontEntry = /** @type {any} */ ({
-            metrics: undefined,
-            texture: undefined,
-        });
+        let ready = false;
         /** @type {(() => void) | undefined} */
         let resolveFont;
         let fontRequested = false;
         const fontReady = new Promise((resolve) => {
             resolveFont = () => {
-                fontEntry.metrics = /** @type {any} */ ({
-                    capHeight: 8,
-                    descent: 2,
-                    common: { base: 10 },
-                    measureWidth: (
-                        /** @type {string} */ text,
-                        /** @type {number} */ size
-                    ) => text.length * size,
-                });
+                ready = true;
                 resolve();
             };
         });
-        const fontManager = /** @type {any} */ ({
-            getFont: vi.fn(() => {
+        const textMetrics = /** @type {any} */ ({
+            requestFont: vi.fn(() => {
                 fontRequested = true;
-                return fontEntry;
-            }),
-            getDefaultFont: () => ({
-                metrics: {
-                    capHeight: 8,
-                    descent: 2,
-                    common: { base: 10 },
+                return {
                     measureWidth: (
                         /** @type {string} */ text,
                         /** @type {number} */ size
-                    ) => text.length * size,
-                },
+                    ) => (ready ? text.length * size : 0),
+                    getHeight: (/** @type {number} */ size) => size,
+                };
             }),
             waitUntilReady: vi.fn(() =>
                 fontRequested ? fontReady : Promise.resolve()
@@ -900,7 +884,7 @@ describe("ViewMutationApi", () => {
             },
             {
                 contextOptions: {
-                    fontManager,
+                    textMetrics,
                 },
             }
         );
@@ -944,7 +928,7 @@ describe("ViewMutationApi", () => {
         const datum = summary?.flowHandle?.collector
             ? Array.from(summary.flowHandle.collector.getData())[0]
             : undefined;
-        expect(fontManager.waitUntilReady).toHaveBeenCalled();
+        expect(textMetrics.waitUntilReady).toHaveBeenCalled();
         expect(datum?.width).toBe(24);
     });
 
@@ -961,8 +945,9 @@ describe("ViewMutationApi", () => {
             undefined,
             prepareOutlineFont
         );
-        const fontManager = /** @type {BmFontManager} */ (
+        const textMetrics = /** @type {BmFontManager} */ (
             /** @type {unknown} */ ({
+                requestFont: outlineManager.requestFont.bind(outlineManager),
                 getFont: () => outlineManager.getDefaultFont(),
                 getDefaultFont: () => outlineManager.getDefaultFont(),
                 getOutlineFont:
@@ -973,7 +958,7 @@ describe("ViewMutationApi", () => {
         );
         const { view } = await createHeadlessEngine(
             { name: "tracks", vconcat: [] },
-            { contextOptions: { fontManager } }
+            { contextOptions: { textMetrics } }
         );
         const api = createViewMutationApi({ viewRoot: view });
 

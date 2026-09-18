@@ -4,6 +4,7 @@ import RenderCoordinator from "./renderCoordinator.js";
 import { exportCanvas, exportRaster } from "./canvasExport.js";
 import WebGLRendererResources from "./rendererResources.js";
 import { rasterizeSvgRuns } from "./svgRasterizer.js";
+import BmFontManager from "../../fonts/bmFontManager.js";
 
 /**
  * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -17,9 +18,14 @@ export function createWebGLRenderingBackend(options) {
         options.onCanvasResize
     );
     const rendererResources = new WebGLRendererResources(glHelper);
+    const textMetrics = new BmFontManager(
+        (bitmapUrl) => rendererResources.prepareFontBitmap(bitmapUrl),
+        latoRegularBitmap
+    );
 
     return {
         surface: glHelper,
+        textMetrics,
         defaultFontBitmapUrl: latoRegularBitmap,
         prepareFontBitmap: (bitmapUrl) =>
             rendererResources.prepareFontBitmap(bitmapUrl),

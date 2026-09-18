@@ -42,6 +42,7 @@ const DEFAULT_FONT_KEY = {
  * @typedef {object} FontEntry
  * @prop {BMFontMetrics | undefined} metrics
  * @prop {string | undefined} bitmapUrl
+ * @prop {import("./textMetrics.js").FontMeasurement} measurement
  *
  * @typedef {object} OutlineFontEntry
  * @prop {object | undefined} outlineFont
@@ -88,7 +89,11 @@ export default class BmFontManager {
         this._defaultFontEntry = /** @type {FontEntry} */ ({
             metrics: getMetrics(latoRegular),
             bitmapUrl: defaultBitmapUrl,
+            measurement: undefined,
         });
+        this._defaultFontEntry.measurement = this._createMeasurement(
+            this._defaultFontEntry
+        );
         if (defaultBitmap) {
             this._promises.push(defaultBitmap);
         }
@@ -114,7 +119,9 @@ export default class BmFontManager {
             fontEntry = {
                 metrics: undefined,
                 bitmapUrl: undefined,
+                measurement: undefined,
             };
+            fontEntry.measurement = this._createMeasurement(fontEntry);
             this._fonts.set(key, fontEntry);
 
             this._promises.push(this._loadFontEntry(fontEntry, key));
@@ -123,10 +130,33 @@ export default class BmFontManager {
         return fontEntry;
     }
 
+    /** @param {import("./textMetrics.js").FontConfig} config */
+    requestFont(config) {
+        return this.getFont(config.font, config.fontStyle, config.fontWeight)
+            .measurement;
+    }
+
+    /** @param {FontEntry} entry */
+    _createMeasurement(entry) {
+        const getFontMetrics = () =>
+            entry.metrics ?? this._defaultFontEntry.metrics;
+        return {
+            /** @param {string} text @param {number} fontSize */
+            measureWidth: (text, fontSize) =>
+                getFontMetrics().measureWidth(text, fontSize),
+            /** @param {number} fontSize */
+            getHeight: (fontSize) => {
+                const metrics = getFontMetrics();
+                return (
+                    ((metrics.capHeight + metrics.descent) /
+                        metrics.common.base) *
+                    fontSize
+                );
+            },
+        };
+    }
+
     /**
-     * Request a device-neutral outline alongside unchanged BMFont measurement.
-     * The returned entry is populated before `waitUntilReady` resolves.
-     *
      * @param {string} [family]
      * @param {FontStyle} [style]
      * @param {FontWeight | keyof WEIGHTS} [weight]

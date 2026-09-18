@@ -2,6 +2,7 @@ import Canvas2DRenderCoordinator from "./canvas2DRenderCoordinator.js";
 import Canvas2DSurface from "./canvas2DSurface.js";
 import { exportCanvas, exportRaster } from "./rasterExport.js";
 import { createCanvas2DSvgRasterizer } from "./svgRasterizer.js";
+import BmFontManager from "../../fonts/bmFontManager.js";
 
 /**
  * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -11,6 +12,7 @@ export function createCanvas2DRenderingBackend(options) {
     const surface = new Canvas2DSurface(options);
     return {
         surface,
+        textMetrics: new BmFontManager(),
         createRenderCoordinator: (coordinatorOptions) =>
             new Canvas2DRenderCoordinator({
                 ...coordinatorOptions,

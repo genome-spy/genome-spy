@@ -1,5 +1,4 @@
 import {
-    normalizeFontWeight,
     resolveTextProperties,
     visitTextInstances,
 } from "../../immediate/marks/text.js";
@@ -11,6 +10,7 @@ import {
 import {
     createNativeFontFamily,
     getNativeBaselineOffset,
+    normalizeFontWeight,
 } from "../../nativeText.js";
 
 /**

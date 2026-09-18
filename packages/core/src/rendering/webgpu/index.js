@@ -3,6 +3,8 @@ import WebGpuRenderCoordinator from "./webGpuRenderCoordinator.js";
 import WebGpuSurface from "./webGpuSurface.js";
 import { exportRaster, rasterizeSvgRuns } from "./webGpuRasterExport.js";
 import { createOutlineFontPreparer } from "./webGpuFontCatalog.js";
+import { createNativeTextMetricsProvider } from "../nativeTextMetrics.js";
+import OutlineTextMetricsProvider from "./outlineTextMetrics.js";
 
 /**
  * Creates the experimental WebGPU backend used by the first-example vertical
@@ -28,11 +30,31 @@ export async function createWebGpuRenderingBackend(options) {
         return result;
     };
 
+    const prepareOutlineFont = createOutlineFontPreparer(options.fontCatalog);
+    /** @type {ReturnType<typeof createNativeTextMetricsProvider> | undefined} */
+    let nativeTextMetrics;
+    const getNativeTextMetrics = () => {
+        nativeTextMetrics ??= createNativeTextMetricsProvider(
+            options.container.ownerDocument
+        );
+        return nativeTextMetrics;
+    };
+    const provisionalTextMetrics = {
+        /** @param {import("../../fonts/textMetrics.js").FontConfig} config */
+        requestFont: (config) => getNativeTextMetrics().requestFont(config),
+        waitUntilReady: () => getNativeTextMetrics().waitUntilReady(),
+    };
+    const textMetrics = new OutlineTextMetricsProvider(
+        prepareOutlineFont,
+        provisionalTextMetrics
+    );
+
     return {
         surface,
+        textMetrics,
         glHelper: undefined,
         defaultFontBitmapUrl: latoRegularBitmap,
-        prepareOutlineFont: createOutlineFontPreparer(options.fontCatalog),
+        prepareOutlineFont,
         createRenderCoordinator: (coordinatorOptions) =>
             new WebGpuRenderCoordinator({
                 ...coordinatorOptions,

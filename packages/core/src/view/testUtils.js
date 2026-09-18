@@ -43,10 +43,10 @@ import BmFontManager from "../fonts/bmFontManager.js";
  * should be stable and independent of asynchronously loaded font variants.
  */
 class LayoutSnapshotFontManager {
-    #fontManager = new BmFontManager();
+    #textMetrics = new BmFontManager();
 
     getDefaultFont() {
-        return this.#fontManager.getDefaultFont();
+        return this.#textMetrics.getDefaultFont();
     }
 
     getFont() {
@@ -215,7 +215,7 @@ export async function specToLayout(spec, viewFactoryOptions = {}, coords) {
         },
         {
             baseConfig,
-            fontManager: createLayoutSnapshotFontManager(),
+            textMetrics: createLayoutSnapshotFontManager(),
         }
     );
 

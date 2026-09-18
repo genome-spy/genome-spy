@@ -81,6 +81,22 @@ retained delegate per logical mark and releases it through the owning view's
 disposer registry. WebGL programs, buffers, textures, and draw callbacks never
 become shared mark state or cross through `ViewContext`.
 
+### Text measurement ownership
+
+The selected live backend exposes one `TextMetricsProvider` through
+`ViewContext`. Data transforms and guide layout request synchronous font
+measurement handles from it. Requests also register asynchronous font and
+renderer-resource preparation before source loading, and size caches are
+invalidated after that readiness barrier. Early layout may use the provider's
+documented default-font measurement; dataflow never observes provisional
+metrics.
+
+WebGL measures with the same BMFont advances used for glyph vertices. WebGPU
+measures through the outline renderer's public whole-string operation, including
+its pair adjustments. Browser-native rendering uses a detached Canvas2D context.
+Font measurement handles contain no bitmap, outline, or GPU resources; concrete
+backends retain those in their existing private stores.
+
 SVG hybrid export counts visible instances and selects contiguous paint-order
 runs within the SVG subsystem. It asks the selected backend for an optional
 selective rasterization capability and may fall through to detached Canvas2D.

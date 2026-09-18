@@ -186,7 +186,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
             continue;
         }
 
-        const measuredWidth = mark.font.metrics.measureWidth(text, size);
+        const measuredWidth = mark.fontMeasurement.measureWidth(text, size);
         getRotatedSize(measuredWidth, size, angle, rotatedSize);
         if (hasX2 || hasY2) {
             fixRangeAlign(align, baseline, angle, rangeAlign);
@@ -450,20 +450,3 @@ const baselineValues = {
     alphabetic: 1,
     baseline: 1,
 };
-
-const fontWeights = {
-    thin: 100,
-    light: 300,
-    regular: 400,
-    normal: 400,
-    medium: 500,
-    bold: 700,
-    black: 900,
-};
-
-/** @param {string | number} weight */
-export function normalizeFontWeight(weight) {
-    return typeof weight == "number"
-        ? weight
-        : fontWeights[/** @type {keyof typeof fontWeights} */ (weight)];
-}

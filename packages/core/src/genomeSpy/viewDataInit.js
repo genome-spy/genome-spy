@@ -13,14 +13,14 @@ import { VISIT_SKIP } from "../view/view.js";
  *
  * @param {import("../view/view.js").default} viewRoot
  * @param {import("../data/dataFlow.js").default} dataFlow
- * @param {import("../fonts/bmFontManager.js").default} fontManager
+ * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @param {(dataFlow: import("../data/dataFlow.js").default) => void} onDataFlowBuilt
  * @returns {Promise<import("../data/dataFlow.js").default>}
  */
 export async function initializeViewData(
     viewRoot,
     dataFlow,
-    fontManager,
+    textMetrics,
     onDataFlowBuilt
 ) {
     const visibilityPredicate = (
@@ -39,7 +39,7 @@ export async function initializeViewData(
     // TODO: Replace this subtree-wide wait with consumer-specific waits:
     // await fonts inside text mark graphics updates and before loading data for
     // subtrees that contain measureText transforms.
-    await fontManager.waitUntilReady();
+    await textMetrics.waitUntilReady();
     viewRoot.invalidateSizeCache();
 
     // Find all data sources and initiate loading.
@@ -58,13 +58,13 @@ export async function initializeViewData(
  *
  * @param {import("../view/view.js").default} viewRoot
  * @param {import("../data/dataFlow.js").default} dataFlow
- * @param {import("../fonts/bmFontManager.js").default} fontManager
+ * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @returns {Promise<import("../data/dataFlow.js").default>}
  */
 export async function initializeVisibleViewData(
     viewRoot,
     dataFlow,
-    fontManager
+    textMetrics
 ) {
     const visibilityPredicate = (
         /** @type {import("../view/view.js").default} */ view
@@ -77,7 +77,7 @@ export async function initializeVisibleViewData(
     return initializeViewDataForViews(
         viewRoot,
         dataFlow,
-        fontManager,
+        textMetrics,
         viewsToInitialize
     );
 }
@@ -91,14 +91,14 @@ export async function initializeVisibleViewData(
  *
  * @param {import("../view/view.js").default} viewRoot
  * @param {import("../data/dataFlow.js").default} dataFlow
- * @param {import("../fonts/bmFontManager.js").default} fontManager
+ * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @param {Iterable<import("../view/view.js").default>} candidateViews
  * @returns {Promise<import("../data/dataFlow.js").default>}
  */
 export async function initializeViewDataForViews(
     viewRoot,
     dataFlow,
-    fontManager,
+    textMetrics,
     candidateViews
 ) {
     const candidates = new Set(candidateViews);
@@ -151,7 +151,7 @@ export async function initializeViewDataForViews(
 
     // Newly visible subtrees may introduce text marks or measureText transforms
     // that request fonts during initializeViewSubtree.
-    await fontManager.waitUntilReady();
+    await textMetrics.waitUntilReady();
     viewRoot.invalidateSizeCache();
 
     for (const collector of collectorsToRepropagate) {

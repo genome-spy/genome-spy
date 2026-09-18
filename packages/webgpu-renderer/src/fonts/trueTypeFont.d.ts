@@ -41,5 +41,12 @@ export function createTrueTypeFont(
 
 export function loadTrueTypeFont(url: string | URL): Promise<TrueTypeFont>;
 
+/** Measures advance width using the renderer's pair-adjustment rules. */
+export function measureTrueTypeTextWidth(
+    font: TrueTypeFont,
+    text: string,
+    fontSize: number
+): number;
+
 /** Internal outline-conversion helper retained for focused tests. */
 export function trueTypeGlyphToPath(glyph: unknown): string | null;

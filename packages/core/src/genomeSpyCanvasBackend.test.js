@@ -230,6 +230,13 @@ function createMockBackend(options) {
             getDevicePixelRatio: () => 1,
             finalize: vi.fn(),
         },
+        textMetrics: {
+            requestFont: () => ({
+                measureWidth: () => 0,
+                getHeight: () => 0,
+            }),
+            waitUntilReady: async () => undefined,
+        },
         createRenderCoordinator: () => ({
             computeLayout: /** @returns {void} */ () => undefined,
             renderAll: /** @returns {void} */ () => undefined,

@@ -19,8 +19,20 @@ export default class TextMark extends Mark {
                 "Reactive text fitToBand changes are not supported.",
                 (dispose) => unitView.registerDisposer(dispose)
             ) ?? false;
-        this.font = requestFont(unitView.context.fontManager, this.properties);
-        this.outlineFont = unitView.context.fontManager.getOutlineFont?.(
+        this.fontMeasurement = requestFont(
+            unitView.context.textMetrics,
+            this.properties
+        );
+        const legacyManager =
+            /** @type {import("../fonts/bmFontManager.js").default} */ (
+                unitView.context.textMetrics
+            );
+        this.font = legacyManager.getFont?.(
+            this.properties.font,
+            this.properties.fontStyle,
+            this.properties.fontWeight
+        );
+        this.outlineFont = legacyManager.getOutlineFont?.(
             this.properties.font,
             this.properties.fontStyle,
             this.properties.fontWeight

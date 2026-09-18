@@ -1,5 +1,4 @@
 import {
-    normalizeFontWeight,
     resolveTextProperties,
     visitTextInstances,
 } from "../../immediate/marks/text.js";
@@ -13,6 +12,7 @@ import { formatSvgNumber, formatSvgUnitless } from "../svgNumber.js";
 import {
     createNativeFontFamily,
     getNativeBaselineOffset,
+    normalizeFontWeight,
 } from "../../nativeText.js";
 
 /**

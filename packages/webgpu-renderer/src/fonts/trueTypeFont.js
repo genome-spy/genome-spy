@@ -1,4 +1,5 @@
 import { parseTrueTypeFont } from "../vendor/textShaper/font/trueType.js";
+import { measureTrueTypeLineWidth } from "./trueTypeTextMetrics.js";
 
 /** @typedef {{ x: number, y: number, onCurve: boolean }} TrueTypePoint */
 
@@ -170,4 +171,20 @@ export function loadTrueTypeFont(url) {
         void loading.catch(() => loadCache.delete(key));
     }
     return loading;
+}
+
+/**
+ * Measures the maximum advance width of a possibly multiline string using the
+ * same pair-adjustment rules as outline text layout.
+ *
+ * @param {ReturnType<typeof createTrueTypeFont>} font
+ * @param {string} text
+ * @param {number} fontSize
+ */
+export function measureTrueTypeTextWidth(font, text, fontSize) {
+    let width = 0;
+    for (const line of text.split("\n")) {
+        width = Math.max(width, measureTrueTypeLineWidth(font, line, fontSize));
+    }
+    return width;
 }

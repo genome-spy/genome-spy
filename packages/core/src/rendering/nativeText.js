@@ -27,6 +27,16 @@ const GENERIC_FONT_FAMILIES = new Set([
     "fangsong",
 ]);
 
+const FONT_WEIGHTS = {
+    thin: 100,
+    light: 300,
+    regular: 400,
+    normal: 400,
+    medium: 500,
+    bold: 700,
+    black: 900,
+};
+
 /** @param {string | undefined} font */
 export function createNativeFontFamily(font) {
     const preferredFont = font ?? "Lato";
@@ -38,6 +48,27 @@ export function createNativeFontFamily(font) {
     ]
         .map(formatFontFamily)
         .join(", ");
+}
+
+/** @param {import("../spec/font.js").FontWeight} weight */
+export function normalizeFontWeight(weight) {
+    if (typeof weight == "number") {
+        return weight;
+    }
+    const normalized =
+        FONT_WEIGHTS[/** @type {keyof typeof FONT_WEIGHTS} */ (weight)];
+    if (normalized === undefined) {
+        throw new Error("Unknown font weight: " + weight);
+    }
+    return normalized;
+}
+
+/** @param {import("../fonts/textMetrics.js").FontConfig} config */
+export function createNativeFontDescriptor(config) {
+    const style = config.fontStyle ?? "normal";
+    const weight = normalizeFontWeight(config.fontWeight ?? "normal");
+    const family = createNativeFontFamily(config.font);
+    return { style, weight, family };
 }
 
 /**

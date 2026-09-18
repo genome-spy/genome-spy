@@ -82,7 +82,7 @@ function createTitledGridChild(
 ) {
     const child = createMinimalGridChild();
     const context = createTestViewContext();
-    context.fontManager = createFontManager();
+    context.textMetrics = createFontManager();
     const parent = new ContainerView(
         { layer: [] },
         context,

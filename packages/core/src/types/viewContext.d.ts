@@ -3,7 +3,7 @@ import View, { BroadcastMessage } from "../view/view.js";
 import DataFlow from "../data/dataFlow.js";
 import Animator from "../utils/animator.js";
 import GenomeStore from "../genome/genomeStore.js";
-import BmFontManager from "../fonts/bmFontManager.js";
+import { TextMetricsProvider } from "../fonts/textMetrics.js";
 import Mark from "../marks/mark.js";
 import { Datum } from "../data/flowNode.js";
 import { ImportSpec, ViewSpec } from "../spec/view.js";
@@ -52,7 +52,7 @@ export default interface ViewContext {
     getMarkRenderingDebugState?: (mark: Mark) => MarkRenderingDebugState;
     animator: Animator;
     genomeStore?: GenomeStore;
-    fontManager: BmFontManager;
+    textMetrics: TextMetricsProvider;
 
     requestLayoutReflow: () => void;
 
