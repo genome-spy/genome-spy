@@ -65,6 +65,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
      *     devicePixelRatio: number,
      *     background: string | null,
      *     paint: boolean,
+     *     textMetrics?: import("../../fonts/textMetrics.js").TextMetricsProvider,
      *     markPredicate?: (mark: import("../../marks/mark.js").default) => boolean,
      *     xIndexManager?: import("./canvasXIndexManager.js").default,
      *     opacityLayers?: CanvasRenderingContext2D[]
@@ -77,6 +78,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         this.height = options.height;
         this.devicePixelRatio = options.devicePixelRatio;
         this.paint = options.paint;
+        this.textMetrics = options.textMetrics;
         this.#markPredicate = options.markPredicate ?? (() => true);
         this.#profiler = getPerformanceProfiler();
         this.#xIndexManager = options.xIndexManager;
@@ -308,6 +310,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                             visibleBounds,
                             anchorCullBounds,
                             viewOpacity: 1,
+                            textMetrics: this.textMetrics,
                             warn: (message) =>
                                 warnOnce(
                                     `${message} View: ${mark.unitView.getPathString()}`

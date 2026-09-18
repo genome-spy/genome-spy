@@ -15,6 +15,7 @@ export default class Canvas2DRenderCoordinator {
      * @param {import("../../view/view.js").default} options.viewRoot
      * @param {CanvasRenderingContext2D} options.context
      * @param {import("./canvas2DSurface.js").default} options.surface
+     * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
      * @param {() => string} options.getBackground
      * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
      * @param {() => void} options.onLayoutComputed
@@ -23,6 +24,7 @@ export default class Canvas2DRenderCoordinator {
         this.viewRoot = options.viewRoot;
         this.context = options.context;
         this.surface = options.surface;
+        this.textMetrics = options.textMetrics;
         this.getBackground = options.getBackground;
         this.broadcast = options.broadcast;
         this.onLayoutComputed = options.onLayoutComputed;
@@ -88,6 +90,7 @@ export default class Canvas2DRenderCoordinator {
                     devicePixelRatio: this.surface.getDevicePixelRatio(),
                     background: this.getBackground(),
                     paint: true,
+                    textMetrics: this.textMetrics,
                     xIndexManager: this.xIndexManager,
                     opacityLayers: this.opacityLayers,
                 })
@@ -115,6 +118,7 @@ export default class Canvas2DRenderCoordinator {
             width: size.width,
             height: size.height,
             devicePixelRatio: this.surface.getDevicePixelRatio(),
+            textMetrics: this.textMetrics,
             getRasterizer: () => {
                 if (!rasterizer) {
                     rasterizer = new SoftwarePickingRasterizer(

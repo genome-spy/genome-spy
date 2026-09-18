@@ -1,6 +1,6 @@
 import { InternMap } from "internmap";
 import { isString } from "vega-util";
-import latoRegular from "../fonts/Lato-Regular.json" with { type: "json" };
+import latoRegular from "./Lato-Regular.json" with { type: "json" };
 import getMetrics from "./bmFontMetrics.js";
 
 const WEIGHTS = {
@@ -28,7 +28,7 @@ const DEFAULT_FONT_KEY = {
  * https://github.com/etiennepinchon/aframe-fonts
  *
  *
- * @typedef {import("../types/bmFont.js").BMFont} BMFont
+ * @typedef {import("./bmFont.js").BMFont} BMFont
  * @typedef {import("./bmFontMetrics.js").BMFontMetrics} BMFontMetrics
  *
  * @typedef {"normal" | "italic"} FontStyle
@@ -42,25 +42,16 @@ const DEFAULT_FONT_KEY = {
  * @typedef {object} FontEntry
  * @prop {BMFontMetrics | undefined} metrics
  * @prop {string | undefined} bitmapUrl
+ * @prop {import("../../../fonts/textMetrics.js").FontMeasurement} measurement
  *
- * @typedef {object} OutlineFontEntry
- * @prop {object | undefined} outlineFont
- *
- * @typedef {object} OutlineFontRequest
- * @prop {string | undefined} family
- * @prop {FontStyle} style
- * @prop {FontWeight} weight
- * @prop {boolean} implicitFamily
  */
 export default class BmFontManager {
     /**
      * @param {(bitmapUrl: string) => Promise<void>} [prepareBitmap]
      * @param {string} [defaultBitmapUrl]
-     * @param {(request: OutlineFontRequest) => Promise<object>} [prepareOutlineFont]
      */
-    constructor(prepareBitmap, defaultBitmapUrl, prepareOutlineFont) {
+    constructor(prepareBitmap, defaultBitmapUrl) {
         this._prepareBitmap = prepareBitmap;
-        this._prepareOutlineFont = prepareOutlineFont;
 
         this.fontRepository =
             "https://raw.githubusercontent.com/etiennepinchon/aframe-fonts/master/fonts/";
@@ -76,9 +67,6 @@ export default class BmFontManager {
         /** @type {Map<string, Promise<BMFontMetrics>>} */
         this._fontPromises = new Map();
 
-        /** @type {Map<string, OutlineFontEntry>} */
-        this._outlineFonts = new Map();
-
         /** @type {Promise<void>[]} Keep track of overall font loading state */
         this._promises = [];
 
@@ -88,7 +76,11 @@ export default class BmFontManager {
         this._defaultFontEntry = /** @type {FontEntry} */ ({
             metrics: getMetrics(latoRegular),
             bitmapUrl: defaultBitmapUrl,
+            measurement: undefined,
         });
+        this._defaultFontEntry.measurement = this._createMeasurement(
+            this._defaultFontEntry
+        );
         if (defaultBitmap) {
             this._promises.push(defaultBitmap);
         }
@@ -114,7 +106,9 @@ export default class BmFontManager {
             fontEntry = {
                 metrics: undefined,
                 bitmapUrl: undefined,
+                measurement: undefined,
             };
+            fontEntry.measurement = this._createMeasurement(fontEntry);
             this._fonts.set(key, fontEntry);
 
             this._promises.push(this._loadFontEntry(fontEntry, key));
@@ -123,37 +117,30 @@ export default class BmFontManager {
         return fontEntry;
     }
 
-    /**
-     * Request a device-neutral outline alongside unchanged BMFont measurement.
-     * The returned entry is populated before `waitUntilReady` resolves.
-     *
-     * @param {string} [family]
-     * @param {FontStyle} [style]
-     * @param {FontWeight | keyof WEIGHTS} [weight]
-     * @returns {OutlineFontEntry | undefined}
-     */
-    getOutlineFont(family, style = "normal", weight = 400) {
-        if (!this._prepareOutlineFont) {
-            return undefined;
-        }
-        const implicitFamily = family == null || family == "sans-serif";
-        const request = {
-            family: implicitFamily ? undefined : family,
-            style,
-            weight: normalizeFontWeight(weight),
-            implicitFamily,
+    /** @param {import("../../../fonts/textMetrics.js").FontConfig} config */
+    requestFont(config) {
+        return this.getFont(config.font, config.fontStyle, config.fontWeight)
+            .measurement;
+    }
+
+    /** @param {FontEntry} entry */
+    _createMeasurement(entry) {
+        const getFontMetrics = () =>
+            entry.metrics ?? this._defaultFontEntry.metrics;
+        return {
+            /** @param {string} text @param {number} fontSize */
+            measureWidth: (text, fontSize) =>
+                getFontMetrics().measureWidth(text, fontSize),
+            /** @param {number} fontSize */
+            getHeight: (fontSize) => {
+                const metrics = getFontMetrics();
+                return (
+                    ((metrics.capHeight + metrics.descent) /
+                        metrics.common.base) *
+                    fontSize
+                );
+            },
         };
-        const key = JSON.stringify(request);
-        let entry = this._outlineFonts.get(key);
-        if (!entry) {
-            entry = { outlineFont: undefined };
-            this._outlineFonts.set(key, entry);
-            const loading = this._prepareOutlineFont(request).then((font) => {
-                entry.outlineFont = font;
-            });
-            this._promises.push(loading);
-        }
-        return entry;
     }
 
     /**

@@ -6,32 +6,13 @@ import ContainerView from "./containerView.js";
 import { createTestViewContext } from "./testUtils.js";
 
 function createFontContext() {
-    return /** @type {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} */ ({
-        fontManager: {
-            getDefaultFont: () => ({
-                metrics:
-                    /** @type {import("../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
-                        common: { base: 10 },
-                        capHeight: 7,
-                        descent: 2,
-                        measureWidth: (
-                            /** @type {string} */ text,
-                            /** @type {number} */ size
-                        ) => text.length * size,
-                    }),
+    return /** @type {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} */ ({
+        textMetrics: {
+            requestFont: () => ({
+                measureWidth: (text, size) => text.length * size,
+                getHeight: (size) => size * 0.9,
             }),
-            getFont: () => ({
-                metrics:
-                    /** @type {import("../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
-                        common: { base: 10 },
-                        capHeight: 7,
-                        descent: 2,
-                        measureWidth: (
-                            /** @type {string} */ text,
-                            /** @type {number} */ size
-                        ) => text.length * size,
-                    }),
-            }),
+            waitUntilReady: async () => undefined,
         },
     });
 }
@@ -39,7 +20,7 @@ function createFontContext() {
 /**
  * @param {string | import("../spec/title.js").Title} title
  * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} [fontContext]
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} [fontContext]
  * @returns {import("../spec/view.js").UnitSpec[]}
  */
 function createTitleUnits(title, configScopes = [], fontContext) {
@@ -51,7 +32,7 @@ function createTitleUnits(title, configScopes = [], fontContext) {
 /**
  * @param {string | import("../spec/title.js").Title} title
  * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} [fontContext]
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} [fontContext]
  * @returns {TitleView}
  */
 function createTitleView(title, configScopes = [], fontContext) {
@@ -70,13 +51,13 @@ function createTitleView(title, configScopes = [], fontContext) {
 /**
  * @param {string | import("../spec/title.js").Title} title
  * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} [fontContext]
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} [fontContext]
  * @returns {TitleView | undefined}
  */
 function createTitleViewOrUndefined(title, configScopes = [], fontContext) {
     const context = createTestViewContext();
     if (fontContext) {
-        context.fontManager = /** @type {any} */ (fontContext.fontManager);
+        context.textMetrics = /** @type {any} */ (fontContext.textMetrics);
     }
 
     const parent = new ContainerView(

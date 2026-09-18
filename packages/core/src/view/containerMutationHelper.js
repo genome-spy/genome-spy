@@ -142,7 +142,7 @@ export default class ContainerMutationHelper {
             await initializeViewDataForViews(
                 this.container,
                 this.container.context.dataFlow,
-                this.container.context.fontManager,
+                this.container.context.textMetrics,
                 viewsToInitialize
             );
         } catch (error) {
@@ -238,7 +238,7 @@ export default class ContainerMutationHelper {
         await initializeViewDataForViews(
             this.container,
             this.container.context.dataFlow,
-            this.container.context.fontManager,
+            this.container.context.textMetrics,
             viewsToInitialize
         );
     }

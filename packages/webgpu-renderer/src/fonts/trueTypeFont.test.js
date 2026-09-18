@@ -4,8 +4,10 @@ import { describe, expect, test } from "vitest";
 import {
     createTrueTypeFont,
     loadTrueTypeFont,
+    measureTrueTypeTextWidth,
     trueTypeGlyphToPath,
 } from "./trueTypeFont.js";
+import { buildOutlineTextLayout } from "./outlineTextLayout.js";
 import { createAsciiTrueTypeFont } from "../../tests/oracles/createAsciiTrueTypeFont.js";
 import { parseTrueTypeFont } from "../vendor/textShaper/font/trueType.js";
 
@@ -78,6 +80,18 @@ describe("ASCII TrueType adaptation", () => {
         expect(font.getGlyph("A")).toBe(font.getGlyph("A"));
         expect(font.getGlyph("Ω")).toBe(font.getGlyph("Ω"));
         expect(font.capHeight).toBe(font.getGlyph("H").bounds?.yMax);
+    });
+
+    test("measures with the same advances as outline layout", () => {
+        const font = createTrueTypeFont(readFileSync(DEFAULT_FONT));
+        const strings = ["AV", "To", "A V", "AV\nTo"];
+        const layout = buildOutlineTextLayout(strings, font, { fontSize: 18 });
+
+        strings.forEach((text, index) => {
+            expect(measureTrueTypeTextWidth(font, text, 18)).toBeCloseTo(
+                layout.textWidth[index]
+            );
+        });
     });
 
     test("deduplicates asynchronous loading by exact URL", async () => {

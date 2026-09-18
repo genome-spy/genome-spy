@@ -1,5 +1,4 @@
 import {
-    normalizeFontWeight,
     resolveTextProperties,
     visitTextInstances,
 } from "../../immediate/marks/text.js";
@@ -13,7 +12,9 @@ import { formatSvgNumber, formatSvgUnitless } from "../svgNumber.js";
 import {
     createNativeFontFamily,
     getNativeBaselineOffset,
+    normalizeFontWeight,
 } from "../../nativeText.js";
+import { requestLogoInkBounds } from "../../nativeTextMetrics.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -24,6 +25,10 @@ export function renderTextSvg(baseMark, options) {
         baseMark
     );
     const props = mark.properties;
+    const textMetrics =
+        options.textMetrics ?? mark.unitView.context.textMetrics;
+    const fontMeasurement = textMetrics.requestFont(props);
+    const measureLogoInkBounds = requestLogoInkBounds(textMetrics, props);
     const properties = resolveTextProperties(mark);
     const {
         coords,
@@ -90,12 +95,19 @@ export function renderTextSvg(baseMark, options) {
     const instanceCount = visitTextInstances(
         mark,
         properties,
-        { coords, data, visibleBounds, anchorCullBounds },
+        {
+            coords,
+            data,
+            visibleBounds,
+            anchorCullBounds,
+            fontMeasurement,
+            measureLogoInkBounds,
+        },
         (instance) => {
             if (options.countOnly) {
                 return;
             }
-            if (instance.logoScale) {
+            if (instance.logoTransform) {
                 if (instance.multiCharacterLogo) {
                     options.warn(
                         "SVG export stretches multi-character logo text as a single glyph cell."
@@ -115,54 +127,51 @@ export function renderTextSvg(baseMark, options) {
                     );
                 }
                 transforms.push(
-                    `scale(${formatSvgNumber(instance.logoScale.width)} ${formatSvgNumber(instance.logoScale.heightScale)})`
+                    `scale(${formatSvgNumber(instance.logoTransform.scaleX)} ${formatSvgNumber(instance.logoTransform.scaleY)})`
+                );
+                transforms.push(
+                    `translate(${formatSvgNumber(-instance.logoTransform.originX)} ${formatSvgNumber(-instance.logoTransform.originY)})`
                 );
                 const text = createSvgElement("text", {
                     x: 0,
                     y: 0,
-                    dy: getNativeBaselineOffset("middle", 1),
-                    "text-anchor": "middle",
-                    lengthAdjust: "spacingAndGlyphs",
-                    textLength: 1,
+                    "text-anchor": "start",
                     transform: transforms.join(" "),
                     ...encodeStyles(instance.datum),
-                    "font-size": 1,
+                    "font-size": instance.size,
                 });
                 text.textContent = instance.text;
                 group.appendChild(text);
                 return;
             }
 
-            const svgX = formatSvgNumber(instance.x);
-            const svgY = formatSvgNumber(instance.y);
+            const transforms = [
+                `translate(${formatSvgNumber(instance.x)} ${formatSvgNumber(instance.y)})`,
+            ];
+            if (instance.angle) {
+                transforms.push(`rotate(${formatSvgNumber(instance.angle)})`);
+            }
+            if (instance.dx || instance.dy) {
+                transforms.push(
+                    `translate(${formatSvgNumber(instance.dx)} ${formatSvgNumber(instance.dy)})`
+                );
+            }
+            if (instance.scale != 1) {
+                transforms.push(`scale(${formatSvgNumber(instance.scale)})`);
+            }
             const text = createSvgElement("text", {
-                x: svgX,
-                y: svgY,
-                dx: formatSvgNumber(instance.dx),
+                x: 0,
+                y: 0,
                 dy: formatSvgNumber(
-                    instance.dy +
-                        getNativeBaselineOffset(
-                            properties.baseline,
-                            instance.size
-                        )
+                    getNativeBaselineOffset(properties.baseline, instance.size)
                 ),
-                lengthAdjust: "spacingAndGlyphs",
-                textLength: formatSvgNumber(instance.width),
                 ...encodeStyles(instance.datum),
-                ...(instance.scale == 1
-                    ? {}
-                    : { "font-size": formatSvgNumber(instance.size) }),
                 ...(instance.fadeOpacity == 1
                     ? {}
                     : { opacity: formatSvgUnitless(instance.fadeOpacity) }),
+                transform: transforms.join(" "),
             });
             text.textContent = instance.text;
-            if (instance.angle) {
-                text.setAttribute(
-                    "transform",
-                    `rotate(${formatSvgNumber(instance.angle)} ${svgX} ${svgY})`
-                );
-            }
             group.appendChild(text);
         }
     );

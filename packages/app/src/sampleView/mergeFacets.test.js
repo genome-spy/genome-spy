@@ -67,7 +67,7 @@ describe("MergeSampleFacets visibility", () => {
         await initializeViewData(
             view,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
@@ -87,7 +87,7 @@ describe("MergeSampleFacets visibility", () => {
                 await initializeVisibleViewData(
                     view,
                     context.dataFlow,
-                    context.fontManager
+                    context.textMetrics
                 );
             },
         };
@@ -274,7 +274,7 @@ describe("MergeSampleFacets visibility", () => {
                     initializeVisibleViewData(
                         view,
                         context.dataFlow,
-                        context.fontManager
+                        context.textMetrics
                     )
                 );
             })

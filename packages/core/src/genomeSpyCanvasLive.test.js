@@ -167,8 +167,8 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     expect(await genomeSpy.launch()).toBe(true);
     genomeSpy.renderAll();
 
-    expect(contextTypes).toEqual(["2d"]);
-    expect(contexts).toHaveLength(1);
+    expect(contextTypes).toEqual(["2d", "2d"]);
+    expect(contexts).toHaveLength(2);
     expect(contexts[0].fillRect).toHaveBeenCalled();
     expect(contexts[0].arc).toHaveBeenCalledTimes(2);
     expect(contexts[0].bezierCurveTo).toHaveBeenCalledTimes(2);
@@ -300,7 +300,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
     genomeSpy.renderAll();
 
     expect(contextTypes).toContain("webgl2");
-    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(1);
+    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(2);
     expect(container.querySelectorAll("canvas")).toHaveLength(1);
     expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("Canvas2D compatibility renderer")
@@ -364,7 +364,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
             datum: expect.objectContaining({ x: 0.2, x2: 0.4 }),
         })
     );
-    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(1);
+    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(2);
 
     contexts[0].fillRect.mockClear();
     genomeSpy.updateNamedData("values", [
@@ -409,11 +409,11 @@ test("falls back automatically, picks data, updates live state, and exports", as
         background: null,
     });
     expect(blob.type).toBe("image/png");
-    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(2);
-    expect(contexts[1].canvas.width).toBe(80);
-    expect(contexts[1].canvas.height).toBe(40);
-    expect(genomeSpy.exportCanvas()).toBe("data:image/png;base64,canvas2d");
     expect(contextTypes.filter((type) => type == "2d")).toHaveLength(3);
+    expect(contexts[2].canvas.width).toBe(80);
+    expect(contexts[2].canvas.height).toBe(40);
+    expect(genomeSpy.exportCanvas()).toBe("data:image/png;base64,canvas2d");
+    expect(contextTypes.filter((type) => type == "2d")).toHaveLength(4);
 
     const gpuContextRequests = contextTypes.filter(
         (type) => type != "2d"
@@ -434,9 +434,9 @@ test("falls back automatically, picks data, updates live state, and exports", as
             pixelRatio: 2,
         },
     ]);
-    expect(contexts[3].canvas.width).toBe(80);
-    expect(contexts[3].canvas.height).toBe(40);
-    expect(contexts[4].drawImage).toHaveBeenCalledOnce();
+    expect(contexts[4].canvas.width).toBe(80);
+    expect(contexts[4].canvas.height).toBe(40);
+    expect(contexts[5].drawImage).toHaveBeenCalledOnce();
     expect(contextTypes.filter((type) => type != "2d")).toHaveLength(
         gpuContextRequests
     );

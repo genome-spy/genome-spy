@@ -38,6 +38,14 @@ test("launches with a rendering backend that has no retained resources", async (
 
     mocks.createRenderingBackend.mockImplementation((options) => {
         options.container.appendChild(canvas);
+        /** @type {import("./fonts/textMetrics.js").TextMetricsProvider} */
+        const textMetrics = {
+            requestFont: () => ({
+                measureWidth: () => 0,
+                getHeight: () => 0,
+            }),
+            waitUntilReady: async () => undefined,
+        };
         return {
             surface: {
                 canvas,
@@ -46,6 +54,7 @@ test("launches with a rendering backend that has no retained resources", async (
                 getDevicePixelRatio: () => 1,
                 finalize,
             },
+            textMetrics,
             createRenderCoordinator: () => ({
                 computeLayout: /** @returns {void} */ () => undefined,
                 renderAll: /** @returns {void} */ () => undefined,
@@ -229,6 +238,13 @@ function createMockBackend(options) {
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
             getDevicePixelRatio: () => 1,
             finalize: vi.fn(),
+        },
+        textMetrics: {
+            requestFont: () => ({
+                measureWidth: () => 0,
+                getHeight: () => 0,
+            }),
+            waitUntilReady: async () => undefined,
         },
         createRenderCoordinator: () => ({
             computeLayout: /** @returns {void} */ () => undefined,

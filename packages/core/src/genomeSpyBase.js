@@ -20,7 +20,6 @@ import UnitView from "./view/unitView.js";
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
 import GenomeStore from "./genome/genomeStore.js";
-import BmFontManager from "./fonts/bmFontManager.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
@@ -397,7 +396,7 @@ export default class GenomeSpy {
         await initializeViewData(
             this.viewRoot,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             (flow) => this.broadcast("dataFlowBuilt", flow)
         );
         this.#finalizeViewInitialization(context);
@@ -433,11 +432,7 @@ export default class GenomeSpy {
                 this.#renderingBackend.getMarkRenderingDebugState,
             animator: this.animator,
             genomeStore: this.genomeStore,
-            fontManager: new BmFontManager(
-                this.#renderingBackend.prepareFontBitmap,
-                this.#renderingBackend.defaultFontBitmapUrl,
-                this.#renderingBackend.prepareOutlineFont
-            ),
+            textMetrics: this.#renderingBackend.textMetrics,
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
@@ -684,7 +679,7 @@ export default class GenomeSpy {
         await initializeVisibleViewData(
             this.viewRoot,
             this.viewRoot.context.dataFlow,
-            this.viewRoot.context.fontManager
+            this.viewRoot.context.textMetrics
         );
 
         // Visibility toggles can change sizes; ensure layout is recomputed even

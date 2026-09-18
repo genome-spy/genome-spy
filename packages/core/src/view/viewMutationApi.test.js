@@ -10,7 +10,8 @@ import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
-import BmFontManager from "../fonts/bmFontManager.js";
+import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
+import OutlineTextMetricsProvider from "../rendering/webgpu/outlineTextMetrics.js";
 import AxisView from "./axisView.js";
 import LegendView from "./legendView.js";
 import { renderToLayout } from "./testUtils.js";
@@ -852,42 +853,26 @@ describe("ViewMutationApi", () => {
     });
 
     test("waits for inserted view fonts before loading data", async () => {
-        const fontEntry = /** @type {any} */ ({
-            metrics: undefined,
-            texture: undefined,
-        });
+        let ready = false;
         /** @type {(() => void) | undefined} */
         let resolveFont;
         let fontRequested = false;
         const fontReady = new Promise((resolve) => {
             resolveFont = () => {
-                fontEntry.metrics = /** @type {any} */ ({
-                    capHeight: 8,
-                    descent: 2,
-                    common: { base: 10 },
-                    measureWidth: (
-                        /** @type {string} */ text,
-                        /** @type {number} */ size
-                    ) => text.length * size,
-                });
+                ready = true;
                 resolve();
             };
         });
-        const fontManager = /** @type {any} */ ({
-            getFont: vi.fn(() => {
+        const textMetrics = /** @type {any} */ ({
+            requestFont: vi.fn(() => {
                 fontRequested = true;
-                return fontEntry;
-            }),
-            getDefaultFont: () => ({
-                metrics: {
-                    capHeight: 8,
-                    descent: 2,
-                    common: { base: 10 },
+                return {
                     measureWidth: (
                         /** @type {string} */ text,
                         /** @type {number} */ size
-                    ) => text.length * size,
-                },
+                    ) => (ready ? text.length * size : 0),
+                    getHeight: (/** @type {number} */ size) => size,
+                };
             }),
             waitUntilReady: vi.fn(() =>
                 fontRequested ? fontReady : Promise.resolve()
@@ -900,7 +885,7 @@ describe("ViewMutationApi", () => {
             },
             {
                 contextOptions: {
-                    fontManager,
+                    textMetrics,
                 },
             }
         );
@@ -944,7 +929,7 @@ describe("ViewMutationApi", () => {
         const datum = summary?.flowHandle?.collector
             ? Array.from(summary.flowHandle.collector.getData())[0]
             : undefined;
-        expect(fontManager.waitUntilReady).toHaveBeenCalled();
+        expect(textMetrics.waitUntilReady).toHaveBeenCalled();
         expect(datum?.width).toBe(24);
     });
 
@@ -956,24 +941,25 @@ describe("ViewMutationApi", () => {
             resolveOutline = resolve;
         });
         const prepareOutlineFont = vi.fn(() => loading);
-        const outlineManager = new BmFontManager(
-            undefined,
-            undefined,
-            prepareOutlineFont
+        const fallbackMeasurement =
+            new HeadlessTextMetricsProvider().requestFont();
+        const outlineManager = new OutlineTextMetricsProvider(
+            prepareOutlineFont,
+            {
+                requestFont: () => fallbackMeasurement,
+                waitUntilReady: () => Promise.resolve(),
+            }
         );
-        const fontManager = /** @type {BmFontManager} */ (
+        const textMetrics = /** @type {HeadlessTextMetricsProvider} */ (
             /** @type {unknown} */ ({
-                getFont: () => outlineManager.getDefaultFont(),
-                getDefaultFont: () => outlineManager.getDefaultFont(),
-                getOutlineFont:
-                    outlineManager.getOutlineFont.bind(outlineManager),
+                requestFont: outlineManager.requestFont.bind(outlineManager),
                 waitUntilReady:
                     outlineManager.waitUntilReady.bind(outlineManager),
             })
         );
         const { view } = await createHeadlessEngine(
             { name: "tracks", vconcat: [] },
-            { contextOptions: { fontManager } }
+            { contextOptions: { textMetrics } }
         );
         const api = createViewMutationApi({ viewRoot: view });
 
@@ -999,7 +985,9 @@ describe("ViewMutationApi", () => {
         const lateText = view
             .getDescendants()
             .find((descendant) => descendant.name === "lateText");
-        expect(/** @type {any} */ (lateText).mark.outlineFont.outlineFont).toBe(
+        const mark = /** @type {any} */ (lateText).mark;
+        expect(mark).not.toHaveProperty("outlineFont");
+        expect(outlineManager.getPreparedFont(mark.properties)).toBe(
             outlineFont
         );
 

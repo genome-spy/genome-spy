@@ -82,7 +82,7 @@ function createTitledGridChild(
 ) {
     const child = createMinimalGridChild();
     const context = createTestViewContext();
-    context.fontManager = createFontManager();
+    context.textMetrics = createFontManager();
     const parent = new ContainerView(
         { layer: [] },
         context,
@@ -110,25 +110,17 @@ function createTitledGridChild(
 }
 
 function createFontManager() {
+    /** @returns {Promise<void>} */
+    async function waitUntilReady() {}
     return /** @type {any} */ ({
-        getDefaultFont: () => ({
-            metrics: createFontMetrics(),
+        requestFont: () => ({
+            measureWidth: (
+                /** @type {string} */ text,
+                /** @type {number} */ size
+            ) => text.length * size,
+            getHeight: (/** @type {number} */ size) => size,
         }),
-        getFont: () => ({
-            metrics: createFontMetrics(),
-        }),
-    });
-}
-
-function createFontMetrics() {
-    return /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
-        common: { base: 10 },
-        capHeight: 7,
-        descent: 2,
-        measureWidth: (
-            /** @type {string} */ text,
-            /** @type {number} */ size
-        ) => text.length * size,
+        waitUntilReady,
     });
 }
 

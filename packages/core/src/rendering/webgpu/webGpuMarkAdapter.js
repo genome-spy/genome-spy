@@ -793,11 +793,13 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
 function createTextConfig(mark, data, coords, viewOpacity) {
     const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
-    const outlineFontEntry =
-        /** @type {{outlineFont?: import("@genome-spy/webgpu-renderer/fonts/truetype").TrueTypeFont}} */ (
-            /** @type {any} */ (mark).outlineFont
+    const textMetrics =
+        /** @type {import("./outlineTextMetrics.js").default} */ (
+            mark.unitView.context.textMetrics
         );
-    const outlineFont = outlineFontEntry?.outlineFont;
+    const textProperties =
+        /** @type {import("../../spec/mark.js").TextProps} */ (mark.properties);
+    const outlineFont = textMetrics.getPreparedFont(textProperties);
     if (!outlineFont) {
         throw unsupported(mark, "Outline font is not prepared.");
     }

@@ -6,7 +6,7 @@ import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
-import { getProjectedTextExtent, getTextHeight } from "../fonts/textMetrics.js";
+import { getProjectedTextExtent } from "../fonts/textMetrics.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 const LABELS_LAYER_NAME = "labels_main";
@@ -433,13 +433,7 @@ function getMeasuredLabelExtent(axisProps, labelsView) {
     const textMark = /** @type {import("../marks/text.js").default} */ (
         labelsView.mark
     );
-    const metrics = textMark.font.metrics;
-    if (!metrics) {
-        return undefined;
-    }
-
-    const labelHeight = getTextHeight(
-        metrics,
+    const labelHeight = textMark.fontMeasurement.getHeight(
         Number(textMark.properties.size)
     );
     const perpendicularExtent = getProjectedTextExtent(

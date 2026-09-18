@@ -23,7 +23,7 @@ export function createViewContext(options) {
         getMarkRenderingDebugState: options.getMarkRenderingDebugState,
         animator: options.animator ?? missing("animator"),
         genomeStore: options.genomeStore,
-        fontManager: options.fontManager ?? missing("fontManager"),
+        textMetrics: options.textMetrics ?? missing("textMetrics"),
         createOrImportView: async function (
             spec,
             layoutParent,

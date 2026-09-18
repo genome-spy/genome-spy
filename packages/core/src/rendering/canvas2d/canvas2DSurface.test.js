@@ -7,7 +7,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-test("creates only a 2D context and sizes its backing store", () => {
+test("creates only 2D contexts and sizes its backing store", () => {
     /** @type {string[]} */
     const contextTypes = [];
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
@@ -27,7 +27,7 @@ test("creates only a 2D context and sizes its backing store", () => {
         onCanvasResize: () => undefined,
     });
 
-    expect(contextTypes).toEqual(["2d"]);
+    expect(contextTypes).toEqual(["2d", "2d"]);
     expect(backend.surface.canvas.width).toBe(200);
     expect(backend.surface.canvas.height).toBe(100);
     expect("rendererResources" in backend).toBe(false);
@@ -120,7 +120,7 @@ test("creates a detached logical-pixel picking visualization", () => {
     ]);
     expect(imageDatas[1].data).toEqual(imageDatas[0].data);
     expect(diagnosticContext.putImageData).toHaveBeenCalledTimes(2);
-    expect(canvases).toHaveLength(3);
+    expect(canvases).toHaveLength(4);
 
     surface.finalize();
     expect(visualization).toMatchObject({ width: 4, height: 2 });

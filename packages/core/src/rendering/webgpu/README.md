@@ -72,11 +72,10 @@ render-group behavior.
 
 ## Outline font loading
 
-Core continues to use its bundled BMFont metrics for text measurement and
-layout. In parallel, the WebGPU backend asks the font manager to prepare a
-device-neutral TrueType outline only when an initialized text consumer requests
-that exact family, weight, and style. The low-level text mark is created after
-the existing readiness wait has populated the outline entry.
+The WebGPU backend prepares a device-neutral TrueType outline when an initialized
+text consumer requests a font family, weight, and style. The outline provides
+both layout measurements and glyph geometry. The low-level text mark is created
+after the existing readiness wait has populated the outline entry.
 
 `EmbedOptions.fontCatalog` adds application-owned TTF URLs to this resolution
 step. Catalog construction validates and indexes metadata but performs no

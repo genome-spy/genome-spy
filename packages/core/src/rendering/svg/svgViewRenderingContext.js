@@ -70,6 +70,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {import("../immediate/bounds.js").RenderBounds} visibleBounds
  * @prop {import("../immediate/bounds.js").RenderBounds} anchorCullBounds
  * @prop {number} viewOpacity
+ * @prop {import("../../fonts/textMetrics.js").TextMetricsProvider} [textMetrics]
  * @prop {boolean} [secondOrderPass]
  * @prop {boolean} [countOnly]
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
@@ -157,13 +158,14 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
-     * @param {SvgRenderingOptions} options
+     * @param {SvgRenderingOptions & {textMetrics?: import("../../fonts/textMetrics.js").TextMetricsProvider}} options
      */
     constructor(globalOptions, options) {
         super(globalOptions);
 
         this.width = options.width;
         this.height = options.height;
+        this.textMetrics = options.textMetrics;
         this.#maxVectorInstances = options.maxVectorInstances;
         const width = formatSvgNumber(options.width);
         const height = formatSvgNumber(options.height);
@@ -423,6 +425,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                     visibleBounds,
                     anchorCullBounds,
                     viewOpacity: mark.unitView.getEffectiveOpacity(),
+                    textMetrics: this.textMetrics,
                     secondOrderPass,
                     countOnly: this.#countingInstances,
                     getViewportEdgeFadeMaskUrl: (fade) =>

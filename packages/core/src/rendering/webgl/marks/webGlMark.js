@@ -59,6 +59,7 @@ import {
     isSinglePointSelection,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
+import { getWebGlTextFont } from "../textFont.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -162,7 +163,7 @@ export default class WebGLMark {
     }
 
     get font() {
-        return /** @type {any} */ (this.mark).font;
+        return getWebGlTextFont(this.mark);
     }
 
     get opaque() {

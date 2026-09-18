@@ -147,9 +147,7 @@ describe("TextMark", () => {
             textView.mark
         );
 
-        expect(textMark.font).not.toBe(
-            textView.context.fontManager.getDefaultFont()
-        );
+        expect(textMark.fontMeasurement).toBeDefined();
     });
 
     test("uses interval edges for ranged index text", async () => {
