@@ -8,22 +8,28 @@ const LOGO_REFERENCE_SIZE = 100;
  * Browser-native text measurement backed by one detached Canvas2D context.
  */
 export default class NativeTextMetricsProvider {
+    /** @type {CanvasRenderingContext2D} */
+    #context;
+
+    /** @type {FontFaceSet | undefined} */
+    #fontFaceSet;
+
+    /** @type {Map<object, NativeFontMeasurement>} */
+    #measurements = new InternMap([], JSON.stringify);
+
+    /** @type {Promise<unknown>[]} */
+    #pending = [];
+
+    /** @type {string | undefined} */
+    #currentFont;
+
     /**
      * @param {CanvasRenderingContext2D} context
      * @param {FontFaceSet | undefined} [fontFaceSet]
      */
     constructor(context, fontFaceSet) {
-        this.context = context;
-        this.fontFaceSet = fontFaceSet;
-
-        /** @type {Map<object, NativeFontMeasurement>} */
-        this.measurements = new InternMap([], JSON.stringify);
-
-        /** @type {Promise<unknown>[]} */
-        this.pending = [];
-
-        /** @type {string | undefined} */
-        this.currentFont = undefined;
+        this.#context = context;
+        this.#fontFaceSet = fontFaceSet;
 
         context.fontKerning = "normal";
         context.direction = "ltr";
@@ -34,16 +40,18 @@ export default class NativeTextMetricsProvider {
     /** @param {import("../fonts/textMetrics.js").FontConfig} config */
     requestFont(config) {
         const descriptor = createNativeFontDescriptor(config);
-        let measurement = this.measurements.get(descriptor);
+        let measurement = this.#measurements.get(descriptor);
         if (!measurement) {
-            measurement = new NativeFontMeasurement(this, descriptor);
-            this.measurements.set(descriptor, measurement);
+            measurement = new NativeFontMeasurement((text, fontSize) =>
+                this.#measureNative(descriptor, text, fontSize)
+            );
+            this.#measurements.set(descriptor, measurement);
 
-            const loading = this.fontFaceSet?.load(
+            const loading = this.#fontFaceSet?.load(
                 createCanvasFont(descriptor, 16)
             );
             if (loading) {
-                this.pending.push(
+                this.#pending.push(
                     loading.then(() => measurement.invalidateCache())
                 );
             }
@@ -52,103 +60,104 @@ export default class NativeTextMetricsProvider {
     }
 
     async waitUntilReady() {
-        await Promise.all(this.pending);
+        await Promise.all(this.#pending);
     }
 
     /**
      * @param {{style: string, weight: number, family: string}} descriptor
+     * @param {string} text
      * @param {number} fontSize
      */
-    prepareContext(descriptor, fontSize) {
+    #measureNative(descriptor, text, fontSize) {
         const font = createCanvasFont(descriptor, fontSize);
-        if (font != this.currentFont) {
-            this.context.font = font;
-            this.currentFont = font;
+        if (font != this.#currentFont) {
+            this.#context.font = font;
+            this.#currentFont = font;
         }
+        return this.#context.measureText(text);
     }
 }
 
 class NativeFontMeasurement {
-    /**
-     * @param {NativeTextMetricsProvider} provider
-     * @param {{style: string, weight: number, family: string}} descriptor
-     */
-    constructor(provider, descriptor) {
-        this.provider = provider;
-        this.descriptor = descriptor;
-        this.cachedFontSize = NaN;
-        this.asciiWidths = new Float64Array(128);
-        this.asciiWidths.fill(NaN);
-        this.cachedHeight = NaN;
+    /** @type {(text: string, fontSize: number) => TextMetrics} */
+    #measureNative;
 
-        /** @type {(NativeInkBounds | null | undefined)[]} */
-        this.asciiInkBounds = Array(128);
+    #cachedFontSize = NaN;
+
+    #asciiWidths = new Float64Array(128);
+
+    #cachedHeight = NaN;
+
+    /** @type {(NativeInkBounds | null | undefined)[]} */
+    #asciiInkBounds = Array(128);
+
+    /**
+     * @param {(text: string, fontSize: number) => TextMetrics} measureNative
+     */
+    constructor(measureNative) {
+        this.#measureNative = measureNative;
+        this.#asciiWidths.fill(NaN);
     }
 
     /** @param {string} text @param {number} fontSize */
     measureWidth(text, fontSize) {
-        if (fontSize != this.cachedFontSize) {
-            this.cachedFontSize = fontSize;
-            this.asciiWidths.fill(NaN);
-            this.cachedHeight = NaN;
-        }
+        this.#prepareFontSize(fontSize);
 
         const code = text.length == 1 ? text.charCodeAt(0) : 128;
         if (code < 128) {
-            const cached = this.asciiWidths[code];
+            const cached = this.#asciiWidths[code];
             if (!Number.isNaN(cached)) {
                 return cached;
             }
-            const width = this.measureNative(text, fontSize).width;
-            this.asciiWidths[code] = width;
+            const width = this.#measureNative(text, fontSize).width;
+            this.#asciiWidths[code] = width;
             return width;
         }
 
-        return this.measureNative(text, fontSize).width;
+        return this.#measureNative(text, fontSize).width;
     }
 
     /** @param {number} fontSize */
     getHeight(fontSize) {
-        if (fontSize != this.cachedFontSize) {
-            this.cachedFontSize = fontSize;
-            this.asciiWidths.fill(NaN);
-            this.cachedHeight = NaN;
-        }
-        if (Number.isNaN(this.cachedHeight)) {
-            const metrics = this.measureNative(MEASUREMENT_TEXT, fontSize);
-            this.cachedHeight =
+        this.#prepareFontSize(fontSize);
+        if (Number.isNaN(this.#cachedHeight)) {
+            const metrics = this.#measureNative(MEASUREMENT_TEXT, fontSize);
+            this.#cachedHeight =
                 metrics.actualBoundingBoxAscent +
                 metrics.actualBoundingBoxDescent;
         }
-        return this.cachedHeight;
+        return this.#cachedHeight;
     }
 
     /** @param {string} text */
     measureInkBounds(text) {
         const code = text.length == 1 ? text.charCodeAt(0) : 128;
-        if (code < 128 && this.asciiInkBounds[code] !== undefined) {
-            return this.asciiInkBounds[code];
+        if (code < 128 && this.#asciiInkBounds[code] !== undefined) {
+            return this.#asciiInkBounds[code];
         }
 
-        const metrics = this.measureNative(text, LOGO_REFERENCE_SIZE);
+        const metrics = this.#measureNative(text, LOGO_REFERENCE_SIZE);
         const bounds = createInkBounds(metrics);
         if (code < 128) {
-            this.asciiInkBounds[code] = bounds;
+            this.#asciiInkBounds[code] = bounds;
         }
         return bounds;
     }
 
     invalidateCache() {
-        this.cachedFontSize = NaN;
-        this.asciiWidths.fill(NaN);
-        this.cachedHeight = NaN;
-        this.asciiInkBounds.fill(undefined);
+        this.#cachedFontSize = NaN;
+        this.#asciiWidths.fill(NaN);
+        this.#cachedHeight = NaN;
+        this.#asciiInkBounds.fill(undefined);
     }
 
-    /** @param {string} text @param {number} fontSize */
-    measureNative(text, fontSize) {
-        this.provider.prepareContext(this.descriptor, fontSize);
-        return this.provider.context.measureText(text);
+    /** @param {number} fontSize */
+    #prepareFontSize(fontSize) {
+        if (fontSize != this.#cachedFontSize) {
+            this.#cachedFontSize = fontSize;
+            this.#asciiWidths.fill(NaN);
+            this.#cachedHeight = NaN;
+        }
     }
 }
 
