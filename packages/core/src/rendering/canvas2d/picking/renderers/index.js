@@ -113,22 +113,22 @@ function renderArrow(baseMark, options) {
                     instance.stemHalfWidth * 2 + instance.strokeWidth
                 );
             }
-            visitArrowHeadPositions(instance, (tipX, tipY) => {
+            visitArrowHeadPositions(instance, (tipX, tipY, tangent, normal) => {
                 const halfWidth = instance.headHalfWidth + strokePadding;
-                const frontX = tipX + instance.tangent.x * strokePadding;
-                const frontY = tipY + instance.tangent.y * strokePadding;
+                const frontX = tipX + tangent.x * strokePadding;
+                const frontY = tipY + tangent.y * strokePadding;
                 const backDistance =
                     instance.headRepeatFootprint + strokePadding;
-                const backX = tipX - instance.tangent.x * backDistance;
-                const backY = tipY - instance.tangent.y * backDistance;
+                const backX = tipX - tangent.x * backDistance;
+                const backY = tipY - tangent.y * backDistance;
                 setOrientedQuad(
                     headQuad,
                     frontX,
                     frontY,
                     backX,
                     backY,
-                    instance.normal.x,
-                    instance.normal.y,
+                    normal.x,
+                    normal.y,
                     halfWidth
                 );
                 options.rasterizer.fillConvexPolygon(id, headQuad);

@@ -5,6 +5,15 @@
 
   "params": [
     {
+      "name": "direction",
+      "value": "forward",
+      "bind": {
+        "input": "select",
+        "options": ["forward", "reverse", "both"],
+        "name": "Direction"
+      }
+    },
+    {
       "name": "headShape",
       "value": "triangle",
       "bind": {
@@ -137,6 +146,7 @@
 
   "mark": {
     "type": "arrow",
+    "direction": { "expr": "direction" },
     "headShape": { "expr": "headShape" },
     "headAngle": { "expr": "headAngle" },
     "headNotchAngle": { "expr": "headNotchAngle" },
@@ -173,6 +183,5 @@
     }
   },
 
-  "height": 120,
   "view": { "stroke": "lightgray" }
 }

@@ -476,7 +476,7 @@ export type OffsetDef = NumericMarkPropDef | MarkPropExprDef;
 
 export type ShapeDef = MarkPropDef<string | null, TypeForShape>;
 
-export type ArrowDirection = "forward" | "reverse";
+export type ArrowDirection = "forward" | "reverse" | "both";
 
 export type DirectionDef =
     | (ScaleFieldDef<TypeForShape> & FormatMixins)
@@ -647,7 +647,9 @@ export interface Encoding {
 
     /**
      * Direction of arrow marks. Encoded values are mapped with a discrete scale
-     * whose range values must be `"forward"` or `"reverse"`.
+     * whose range values must be `"forward"`, `"reverse"`, or `"both"`.
+     * The automatic range contains only `"forward"` and `"reverse"`; use an
+     * explicit value or range to select `"both"`.
      *
      * This channel is supported by arrow marks only and does not create a
      * legend.

@@ -1,5 +1,11 @@
 import ArrowProgram from "./programs/arrowProgram.js";
 
+export const ARROW_DIRECTIONS = Object.freeze({
+    forward: 0,
+    reverse: 1,
+    both: 2,
+});
+
 /**
  * @type {import("../index.d.ts").MarkDefinition<
  *   import("../index.d.ts").MarkConfig<"arrow">,

@@ -11,6 +11,7 @@ import runPiecewiseScene from "../examples/piecewiseScene.js";
 import runIndexScene from "../examples/indexScene.js";
 import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
+import runArrowScene from "../examples/arrowScene.js";
 import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
 import runSelectionUnionScene from "../examples/selectionUnionScene.js";
@@ -171,6 +172,10 @@ export const Rules = withSource("runRuleScene", null, {
 
 export const Links = withSource("runLinkScene", null, {
     render: (args) => renderScene(runLinkScene, args),
+});
+
+export const Arrows = withSource("runArrowScene", null, {
+    render: (args) => renderScene(runArrowScene, args),
 });
 
 export const Text = withSource(

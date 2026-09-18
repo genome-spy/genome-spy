@@ -860,7 +860,11 @@ describe("WebGPU mark adapter", () => {
     });
 
     test("translates arrow geometry and rendering properties", () => {
-        const data = [{ direction: "forward" }, { direction: "reverse" }];
+        const data = [
+            { direction: "forward" },
+            { direction: "reverse" },
+            { direction: "both" },
+        ];
         const mark = createMark(
             "arrow",
             data,
@@ -899,7 +903,7 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels.xOffset).toEqual(dynamicValue(2));
         expect(config.channels.y2Offset).toEqual(dynamicValue(5));
         expect(config.channels.direction).toEqual({
-            data: new Uint32Array([0, 1]),
+            data: new Uint32Array([0, 1, 2]),
             type: "u32",
         });
         expect(config.headAngle).toBe(45);

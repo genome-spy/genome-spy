@@ -1,43 +1,153 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Arrow direction encoded through a discrete scale.",
+  "description": "Forward, reverse, and bidirectional arrows in horizontal, vertical, and diagonal orientations.",
 
-  "data": {
-    "values": [
-      { "direction": "+", "start": 20, "end": 80 },
-      { "direction": "-", "start": 20, "end": 80 }
-    ]
+  "resolve": {
+    "scale": { "x": "independent", "y": "independent" },
+    "axis": { "x": "independent", "y": "independent" }
   },
 
-  "mark": {
-    "type": "arrow",
-    "fill": "#5B8DEF",
-    "stroke": "black",
-    "strokeWidth": 1
-  },
-
-  "encoding": {
-    "x": {
-      "field": "start",
-      "type": "quantitative",
-      "scale": { "domain": [0, 100] },
-      "axis": { "title": "Position" }
+  "hconcat": [
+    {
+      "name": "horizontal-arrows",
+      "title": "Horizontal",
+      "data": {
+        "values": [
+          { "direction": "forward", "start": 20, "end": 80 },
+          { "direction": "reverse", "start": 20, "end": 80 },
+          { "direction": "both", "start": 20, "end": 80 }
+        ]
+      },
+      "mark": {
+        "type": "arrow",
+        "size": 8,
+        "fill": "#5B8DEF",
+        "stroke": "black",
+        "strokeWidth": 1
+      },
+      "encoding": {
+        "x": {
+          "field": "start",
+          "type": "quantitative",
+          "scale": { "domain": [0, 100] },
+          "axis": { "title": "Position" }
+        },
+        "x2": { "field": "end" },
+        "y": {
+          "field": "direction",
+          "type": "nominal",
+          "scale": { "type": "band", "padding": 0.35 },
+          "axis": { "title": null }
+        },
+        "direction": {
+          "field": "direction",
+          "type": "nominal",
+          "scale": {
+            "domain": ["forward", "reverse", "both"],
+            "range": ["forward", "reverse", "both"]
+          }
+        }
+      }
     },
-    "x2": { "field": "end" },
-    "y": {
-      "field": "direction",
-      "type": "nominal",
-      "scale": { "type": "band", "padding": 0.35 },
-      "axis": { "title": null }
+    {
+      "title": "Vertical",
+      "data": {
+        "values": [
+          { "direction": "forward", "start": 20, "end": 80 },
+          { "direction": "reverse", "start": 20, "end": 80 },
+          { "direction": "both", "start": 20, "end": 80 }
+        ]
+      },
+      "mark": {
+        "type": "arrow",
+        "size": 8,
+        "fill": "#59A14F",
+        "stroke": "black",
+        "strokeWidth": 1
+      },
+      "encoding": {
+        "x": {
+          "field": "direction",
+          "type": "nominal",
+          "scale": { "type": "band", "padding": 0.35 },
+          "axis": { "title": null }
+        },
+        "y": {
+          "field": "start",
+          "type": "quantitative",
+          "scale": { "domain": [0, 100] },
+          "axis": { "title": "Position" }
+        },
+        "y2": { "field": "end" },
+        "direction": {
+          "field": "direction",
+          "type": "nominal",
+          "scale": {
+            "domain": ["forward", "reverse", "both"],
+            "range": ["forward", "reverse", "both"]
+          }
+        }
+      }
     },
-    "direction": {
-      "field": "direction",
-      "type": "nominal",
-      "scale": {
-        "domain": ["+", "-"],
-        "range": ["forward", "reverse"]
+    {
+      "title": "Diagonal",
+      "data": {
+        "values": [
+          {
+            "direction": "forward",
+            "x": 10,
+            "x2": 90,
+            "y": 15,
+            "y2": 35
+          },
+          {
+            "direction": "reverse",
+            "x": 10,
+            "x2": 90,
+            "y": 45,
+            "y2": 65
+          },
+          {
+            "direction": "both",
+            "x": 10,
+            "x2": 90,
+            "y": 75,
+            "y2": 95
+          }
+        ]
+      },
+      "mark": {
+        "type": "arrow",
+        "size": 8,
+        "fill": "#F28E2B",
+        "stroke": "black",
+        "strokeWidth": 1
+      },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 100] },
+          "axis": { "title": "x" }
+        },
+        "x2": { "field": "x2" },
+        "y": {
+          "field": "y",
+          "type": "quantitative",
+          "scale": { "domain": [0, 110] },
+          "axis": { "title": "y" }
+        },
+        "y2": { "field": "y2" },
+        "direction": {
+          "field": "direction",
+          "type": "nominal",
+          "scale": {
+            "domain": ["forward", "reverse", "both"],
+            "range": ["forward", "reverse", "both"]
+          }
+        }
       }
     }
-  }
+  ]
 }

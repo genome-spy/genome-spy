@@ -1,4 +1,4 @@
-import { Scalar } from "./channel.js";
+import { ArrowDirection, Scalar } from "./channel.js";
 import { ExprRef } from "./parameter.js";
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
@@ -361,12 +361,13 @@ export interface ArrowProps
     /**
      * Direction of the arrowhead. `"forward"` places the arrowhead at the
      * secondary endpoint (`x2`, `y2`). `"reverse"` places it at the primary
-     * endpoint (`x`, `y`). For data-driven direction, use the `direction`
-     * encoding channel.
+     * endpoint (`x`, `y`). `"both"` places equivalent heads at both endpoints
+     * and suppresses `headSpacing` and `startNotch` for that arrow. For
+     * data-driven direction, use the `direction` encoding channel.
      *
      * __Default value:__ `"forward"`
      */
-    direction?: "forward" | "reverse" | ExprRef;
+    direction?: ArrowDirection | ExprRef;
 
     /**
      * Angle in degrees between the arrow axis and an outer edge of the
@@ -438,7 +439,8 @@ export interface ArrowProps
 
     /**
      * Whether to draw a notch at the start of the arrow. The start notch uses
-     * the same slope as the arrowhead edge.
+     * the same slope as the arrowhead edge. It is suppressed when `direction`
+     * resolves to `"both"` because a bidirectional arrow has no unique start.
      *
      * __Default value:__ `false`
      */
@@ -461,7 +463,8 @@ export interface ArrowProps
     /**
      * Spacing between repeated arrowheads as a multiplier of resolved `size`.
      * The effective spacing is at least the rendered arrowhead footprint,
-     * including stroke. If `null`, arrowheads are not repeated.
+     * including stroke. If `null`, arrowheads are not repeated. Repetition is
+     * suppressed when `direction` resolves to `"both"`.
      *
      * __Default value:__ `null`
      */

@@ -344,7 +344,7 @@ function decodeDataUrl(dataUrl) {
 /**
  * @param {string} serverOrigin
  */
-async function startDevServer(serverOrigin) {
+export async function startDevServer(serverOrigin) {
     const port = String(new URL(serverOrigin).port || "4173");
     const child = spawn("node", ["dev-server.mjs"], {
         cwd: packageDir,
@@ -368,7 +368,7 @@ async function startDevServer(serverOrigin) {
 /**
  * @param {ReturnType<typeof startDevServer> extends Promise<infer T> ? T : never} child
  */
-async function stopServer(child) {
+export async function stopServer(child) {
     if (!child || child.exitCode !== null) {
         return;
     }
@@ -381,7 +381,7 @@ async function stopServer(child) {
  * @param {string} serverOrigin
  * @param {ReturnType<typeof startDevServer> extends Promise<infer T> ? T : undefined} child
  */
-async function waitForServer(serverOrigin, child) {
+export async function waitForServer(serverOrigin, child) {
     const url = new URL(healthCheckPath, serverOrigin);
     const deadline = Date.now() + 15_000;
 
@@ -414,7 +414,7 @@ function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function loadPlaywright() {
+export async function loadPlaywright() {
     try {
         return await import("playwright");
     } catch (error) {

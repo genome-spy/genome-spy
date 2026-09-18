@@ -754,7 +754,7 @@ export function getDiscreteRange(channel) {
                 "+",
             ];
         case "direction":
-            return ["forward", "reverse"];
+            return ["forward", "reverse", "both"];
         default:
     }
 }
