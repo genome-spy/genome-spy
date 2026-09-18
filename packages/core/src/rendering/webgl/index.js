@@ -1,10 +1,10 @@
-import latoRegularBitmap from "../../fonts/Lato-Regular.png";
+import latoRegularBitmap from "./fonts/Lato-Regular.png";
 import WebGLHelper, { readPickingPixel } from "./gl/webGLHelper.js";
 import RenderCoordinator from "./renderCoordinator.js";
 import { exportCanvas, exportRaster } from "./canvasExport.js";
 import WebGLRendererResources from "./rendererResources.js";
 import { rasterizeSvgRuns } from "./svgRasterizer.js";
-import BmFontManager from "../../fonts/bmFontManager.js";
+import BmFontManager from "./fonts/bmFontManager.js";
 
 /**
  * @param {import("../renderingBackend.js").RenderingBackendOptions} options

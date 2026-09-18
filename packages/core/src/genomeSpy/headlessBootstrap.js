@@ -7,7 +7,7 @@
 
 import DataFlow from "../data/dataFlow.js";
 import GenomeStore from "../genome/genomeStore.js";
-import BmFontManager from "../fonts/bmFontManager.js";
+import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
 import Animator from "../utils/animator.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import { resolveBaseConfig } from "../config/resolveConfig.js";
@@ -121,7 +121,7 @@ export function createHeadlessViewContext(options = {}) {
     return createViewContext({
         dataFlow,
         genomeStore,
-        textMetrics: options.textMetrics ?? new BmFontManager(),
+        textMetrics: options.textMetrics ?? new HeadlessTextMetricsProvider(),
         animator: options.animator ?? createHeadlessAnimator(),
         requestLayoutReflow: options.requestLayoutReflow ?? (() => undefined),
         updateTooltip: options.updateTooltip ?? (() => undefined),

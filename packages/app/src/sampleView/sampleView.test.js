@@ -29,7 +29,7 @@ import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 import { LEGACY_LABEL_TITLE_TEXT_WARNING } from "./sampleViewSpecNormalizer.js";
 import WebGpuViewRenderingContext from "@genome-spy/core/rendering/webgpu/webGpuViewRenderingContext.js";
 import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
-import BmFontManager from "@genome-spy/core/fonts/bmFontManager.js";
+import HeadlessTextMetricsProvider from "@genome-spy/core/fonts/headlessTextMetrics.js";
 import OutlineTextMetricsProvider from "@genome-spy/core/rendering/webgpu/outlineTextMetrics.js";
 
 transforms.mergeFacets = MergeSampleFacets;
@@ -2189,7 +2189,7 @@ describe("axis layout and visibility", () => {
                                 descender: 0,
                                 getGlyph() {},
                             }),
-                        new BmFontManager()
+                        new HeadlessTextMetricsProvider()
                     )
                 ),
             }

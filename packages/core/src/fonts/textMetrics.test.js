@@ -53,7 +53,7 @@ describe("textMetrics", () => {
         });
     });
 
-    test("measures text width and height from BMFont metrics", () => {
+    test("measures text width and height from a measurement handle", () => {
         const size = measureText(createMeasurement(), "ABC", 10);
 
         expect(size).toEqual({ width: 30, height: 9 });

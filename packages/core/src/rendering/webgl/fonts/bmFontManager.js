@@ -1,6 +1,6 @@
 import { InternMap } from "internmap";
 import { isString } from "vega-util";
-import latoRegular from "../fonts/Lato-Regular.json" with { type: "json" };
+import latoRegular from "./Lato-Regular.json" with { type: "json" };
 import getMetrics from "./bmFontMetrics.js";
 
 const WEIGHTS = {
@@ -28,7 +28,7 @@ const DEFAULT_FONT_KEY = {
  * https://github.com/etiennepinchon/aframe-fonts
  *
  *
- * @typedef {import("../types/bmFont.js").BMFont} BMFont
+ * @typedef {import("./bmFont.js").BMFont} BMFont
  * @typedef {import("./bmFontMetrics.js").BMFontMetrics} BMFontMetrics
  *
  * @typedef {"normal" | "italic"} FontStyle
@@ -42,7 +42,7 @@ const DEFAULT_FONT_KEY = {
  * @typedef {object} FontEntry
  * @prop {BMFontMetrics | undefined} metrics
  * @prop {string | undefined} bitmapUrl
- * @prop {import("./textMetrics.js").FontMeasurement} measurement
+ * @prop {import("../../../fonts/textMetrics.js").FontMeasurement} measurement
  *
  */
 export default class BmFontManager {
@@ -117,7 +117,7 @@ export default class BmFontManager {
         return fontEntry;
     }
 
-    /** @param {import("./textMetrics.js").FontConfig} config */
+    /** @param {import("../../../fonts/textMetrics.js").FontConfig} config */
     requestFont(config) {
         return this.getFont(config.font, config.fontStyle, config.fontWeight)
             .measurement;

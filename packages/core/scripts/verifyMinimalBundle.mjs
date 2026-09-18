@@ -38,7 +38,7 @@ const rendererRegistrationSources = [
     "src/rendering/registerSvg.js",
     "src/rendering/registerWebGL.js",
 ];
-const webGlFontBitmap = "src/fonts/Lato-Regular.png";
+const webGlFontBitmap = "src/rendering/webgl/fonts/Lato-Regular.png";
 const softwarePickingDirectory = "src/rendering/canvas2d/picking/";
 
 const tempDir = fs.mkdtempSync(

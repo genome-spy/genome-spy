@@ -121,24 +121,6 @@ function createFontManager() {
             getHeight: (/** @type {number} */ size) => size,
         }),
         waitUntilReady,
-        getDefaultFont: () => ({
-            metrics: createFontMetrics(),
-        }),
-        getFont: () => ({
-            metrics: createFontMetrics(),
-        }),
-    });
-}
-
-function createFontMetrics() {
-    return /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
-        common: { base: 10 },
-        capHeight: 7,
-        descent: 2,
-        measureWidth: (
-            /** @type {string} */ text,
-            /** @type {number} */ size
-        ) => text.length * size,
     });
 }
 

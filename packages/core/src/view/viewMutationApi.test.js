@@ -10,7 +10,7 @@ import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
-import BmFontManager from "../fonts/bmFontManager.js";
+import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
 import OutlineTextMetricsProvider from "../rendering/webgpu/outlineTextMetrics.js";
 import AxisView from "./axisView.js";
 import LegendView from "./legendView.js";
@@ -941,7 +941,8 @@ describe("ViewMutationApi", () => {
             resolveOutline = resolve;
         });
         const prepareOutlineFont = vi.fn(() => loading);
-        const fallbackMeasurement = new BmFontManager().requestFont({});
+        const fallbackMeasurement =
+            new HeadlessTextMetricsProvider().requestFont();
         const outlineManager = new OutlineTextMetricsProvider(
             prepareOutlineFont,
             {
@@ -949,7 +950,7 @@ describe("ViewMutationApi", () => {
                 waitUntilReady: () => Promise.resolve(),
             }
         );
-        const textMetrics = /** @type {BmFontManager} */ (
+        const textMetrics = /** @type {HeadlessTextMetricsProvider} */ (
             /** @type {unknown} */ ({
                 requestFont: outlineManager.requestFont.bind(outlineManager),
                 waitUntilReady:

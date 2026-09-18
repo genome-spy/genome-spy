@@ -36,36 +36,7 @@ import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import { mergeConfigScopes } from "../config/mergeConfig.js";
 import { resolveBaseConfig } from "../config/resolveConfig.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "../config/themes.js";
-import BmFontManager from "../fonts/bmFontManager.js";
-
-/**
- * Uses the embedded default font for every font request. Layout snapshots
- * should be stable and independent of asynchronously loaded font variants.
- */
-class LayoutSnapshotFontManager {
-    #textMetrics = new BmFontManager();
-
-    requestFont() {
-        return this.#textMetrics.requestFont({});
-    }
-
-    getDefaultFont() {
-        return this.#textMetrics.getDefaultFont();
-    }
-
-    getFont() {
-        return this.getDefaultFont();
-    }
-
-    /** @returns {Promise<void>} */
-    async waitUntilReady() {
-        return undefined;
-    }
-}
-
-function createLayoutSnapshotFontManager() {
-    return new LayoutSnapshotFontManager();
-}
+import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
@@ -217,7 +188,7 @@ export async function specToLayout(spec, viewFactoryOptions = {}, coords) {
         },
         {
             baseConfig,
-            textMetrics: createLayoutSnapshotFontManager(),
+            textMetrics: new HeadlessTextMetricsProvider(),
         }
     );
 
