@@ -1,6 +1,5 @@
 import { format } from "d3-format";
 import { isString } from "vega-util";
-import { SDF_PADDING } from "../../../fonts/bmFontMetrics.js";
 import { intersectsBounds, isOutsideBounds } from "../bounds.js";
 import linearstep from "../../../utils/linearstep.js";
 import {
@@ -39,7 +38,7 @@ export function resolveTextProperties(mark) {
  * @prop {number} dy
  * @prop {number} fadeOpacity
  * @prop {number} scale
- * @prop {{width: number, heightScale: number} | undefined} logoScale
+ * @prop {{scaleX: number, scaleY: number, originX: number, originY: number} | undefined} logoTransform
  * @prop {boolean} multiCharacterLogo
  * @prop {number[]} boundsQuad
  */
@@ -50,7 +49,7 @@ export function resolveTextProperties(mark) {
  *
  * @param {import("../../../marks/text.js").default} mark
  * @param {ReturnType<typeof resolveTextProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, anchorCullBounds: import("../bounds.js").RenderBounds, fontMeasurement: import("../../../fonts/textMetrics.js").FontMeasurement}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, anchorCullBounds: import("../bounds.js").RenderBounds, fontMeasurement: import("../../../fonts/textMetrics.js").FontMeasurement, measureLogoInkBounds: (text: string) => import("../../nativeTextMetrics.js").NativeInkBounds | null}} options
  * @param {(instance: TextInstance) => void} visitor
  */
 export function visitTextInstances(mark, properties, options, visitor) {
@@ -91,7 +90,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
     const rotatedSize = { width: 0, height: 0 };
     const rangeAlign = { x: 0, y: 0 };
     const rangePosition = { position: 0, scale: 0 };
-    const logoScale = { width: 0, heightScale: 0 };
+    const logoTransform = { scaleX: 0, scaleY: 0, originX: 0, originY: 0 };
     const boundsQuad = Array(8).fill(0);
     /** @type {TextInstance} */
     const instance = {
@@ -106,7 +105,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
         dy: properties.dy,
         fadeOpacity: 1,
         scale: 1,
-        logoScale: undefined,
+        logoTransform: undefined,
         multiCharacterLogo: false,
         boundsQuad,
     };
@@ -162,25 +161,25 @@ export function visitTextInstances(mark, properties, options, visitor) {
             ) {
                 continue;
             }
-            const glyph = mark.font.metrics.getChar(text[0]);
-            const heightScale =
-                (height *
-                    mark.font.metrics.common.base *
-                    (glyph.height + 2 * SDF_PADDING)) /
-                (glyph.height * glyph.height);
+            const inkBounds = options.measureLogoInkBounds(text);
+            if (!inkBounds) {
+                continue;
+            }
             instanceCount++;
             instance.datum = datum;
             instance.text = text;
             instance.x = x;
             instance.y = y;
-            instance.size = 1;
-            instance.width = 1;
+            instance.size = 100;
+            instance.width = inkBounds.xMax - inkBounds.xMin;
             instance.angle = angle;
             instance.fadeOpacity = 1;
             instance.scale = 1;
-            logoScale.width = width;
-            logoScale.heightScale = heightScale;
-            instance.logoScale = logoScale;
+            logoTransform.scaleX = width / instance.width;
+            logoTransform.scaleY = height / (inkBounds.yMax - inkBounds.yMin);
+            logoTransform.originX = (inkBounds.xMin + inkBounds.xMax) / 2;
+            logoTransform.originY = (inkBounds.yMin + inkBounds.yMax) / 2;
+            instance.logoTransform = logoTransform;
             instance.multiCharacterLogo = text.length > 1;
             visitor(instance);
             continue;
@@ -262,7 +261,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
         instance.angle = angle;
         instance.fadeOpacity = fadeOpacity;
         instance.scale = scale;
-        instance.logoScale = undefined;
+        instance.logoTransform = undefined;
         instance.multiCharacterLogo = false;
         visitor(instance);
     }

@@ -14,6 +14,7 @@ import {
     getNativeBaselineOffset,
     normalizeFontWeight,
 } from "../../nativeText.js";
+import { requestLogoInkBounds } from "../../nativeTextMetrics.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -27,6 +28,7 @@ export function renderTextSvg(baseMark, options) {
     const textMetrics =
         options.textMetrics ?? mark.unitView.context.textMetrics;
     const fontMeasurement = textMetrics.requestFont(props);
+    const measureLogoInkBounds = requestLogoInkBounds(textMetrics, props);
     const properties = resolveTextProperties(mark);
     const {
         coords,
@@ -99,12 +101,13 @@ export function renderTextSvg(baseMark, options) {
             visibleBounds,
             anchorCullBounds,
             fontMeasurement,
+            measureLogoInkBounds,
         },
         (instance) => {
             if (options.countOnly) {
                 return;
             }
-            if (instance.logoScale) {
+            if (instance.logoTransform) {
                 if (instance.multiCharacterLogo) {
                     options.warn(
                         "SVG export stretches multi-character logo text as a single glyph cell."
@@ -124,18 +127,18 @@ export function renderTextSvg(baseMark, options) {
                     );
                 }
                 transforms.push(
-                    `scale(${formatSvgNumber(instance.logoScale.width)} ${formatSvgNumber(instance.logoScale.heightScale)})`
+                    `scale(${formatSvgNumber(instance.logoTransform.scaleX)} ${formatSvgNumber(instance.logoTransform.scaleY)})`
+                );
+                transforms.push(
+                    `translate(${formatSvgNumber(-instance.logoTransform.originX)} ${formatSvgNumber(-instance.logoTransform.originY)})`
                 );
                 const text = createSvgElement("text", {
                     x: 0,
                     y: 0,
-                    dy: getNativeBaselineOffset("middle", 1),
-                    "text-anchor": "middle",
-                    lengthAdjust: "spacingAndGlyphs",
-                    textLength: 1,
+                    "text-anchor": "start",
                     transform: transforms.join(" "),
                     ...encodeStyles(instance.datum),
-                    "font-size": 1,
+                    "font-size": instance.size,
                 });
                 text.textContent = instance.text;
                 group.appendChild(text);

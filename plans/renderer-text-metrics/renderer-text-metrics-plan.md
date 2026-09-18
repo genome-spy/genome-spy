@@ -344,7 +344,7 @@ label through attached DOM adds layout work and another lifecycle.
   Assert export does not replay sources/transforms or change live measurements.
   Update native-renderer and text-mark docs with intentional output differences.
   Tentative commit: `fix(core): fit native text using destination font metrics`.
-- [ ] **Native logo ink bounds.** Remove the remaining BMFont dependency from
+- [x] **Native logo ink bounds.** Remove the remaining BMFont dependency from
   Canvas/SVG logo traversal, activate the Canvas native provider, and implement
   fixed-reference native ink bounds,
   zero-area handling, transforms, counting, and picking. Verify logo placement

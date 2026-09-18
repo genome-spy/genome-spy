@@ -7,6 +7,7 @@ import Rectangle from "../../view/layout/rectangle.js";
 import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
 import { createSvg } from "../svg/index.js";
+import NativeTextMetricsProvider from "../nativeTextMetrics.js";
 
 afterEach(() => {
     const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
@@ -135,7 +136,13 @@ function createRecordingContext() {
                     calls.drawImageRects.push(destination);
                 }
             ),
-        measureText: vi.fn(() => ({ width: 0.5 })),
+        measureText: vi.fn(() => ({
+            width: 0.5,
+            actualBoundingBoxLeft: 0,
+            actualBoundingBoxRight: 0.5,
+            actualBoundingBoxAscent: 0.79,
+            actualBoundingBoxDescent: 0.21,
+        })),
         fillText: (
             /** @type {string} */ text,
             /** @type {number} */ x,
@@ -1543,12 +1550,16 @@ describe("Canvas2DViewRenderingContext", () => {
             },
         });
         const recording = createRecordingContext();
+        const textMetrics = new NativeTextMetricsProvider(recording.context);
 
-        render(view, recording.context);
+        render(view, recording.context, undefined, textMetrics);
 
         expect(recording.context.measureText).toHaveBeenCalledWith("A");
         expect(recording.calls.scales[0][0]).toBeCloseTo(-120);
-        expect(recording.calls.fillTexts).toEqual([["A", 0, 0.35, undefined]]);
+        expect(recording.calls.scales[0][1]).toBeCloseTo(60);
+        expect(recording.calls.translates.at(-1)?.[0]).toBeCloseTo(-0.25);
+        expect(recording.calls.translates.at(-1)?.[1]).toBeCloseTo(0.29);
+        expect(recording.calls.fillTexts).toEqual([["A", 0, 0, undefined]]);
         expect(recording.context.textBaseline).toBe("alphabetic");
     });
 });

@@ -9,9 +9,9 @@ import {
 } from "../../immediate/markEncoding.js";
 import {
     createNativeFontFamily,
-    getNativeBaselineOffset,
     normalizeFontWeight,
 } from "../../nativeText.js";
+import { requestLogoInkBounds } from "../../nativeTextMetrics.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -25,6 +25,7 @@ export function renderTextCanvas(baseMark, options) {
     const textMetrics =
         options.textMetrics ?? mark.unitView.context.textMetrics;
     const fontMeasurement = textMetrics.requestFont(props);
+    const measureLogoInkBounds = requestLogoInkBounds(textMetrics, props);
     const properties = resolveTextProperties(mark);
     const context = options.context;
     const encoders =
@@ -58,7 +59,7 @@ export function renderTextCanvas(baseMark, options) {
     return visitTextInstances(
         mark,
         properties,
-        { ...options, fontMeasurement },
+        { ...options, fontMeasurement, measureLogoInkBounds },
         (instance) => {
             if (instance.multiCharacterLogo) {
                 options.warn(
@@ -83,23 +84,22 @@ export function renderTextCanvas(baseMark, options) {
                 fontSize = instance.size;
             }
 
-            if (instance.logoScale) {
+            if (instance.logoTransform) {
                 context.save();
                 context.translate(instance.x, instance.y);
                 context.rotate((instance.angle * Math.PI) / 180);
                 context.translate(instance.dx, instance.dy);
-                const glyphWidth = context.measureText(instance.text).width;
                 context.scale(
-                    instance.logoScale.width / glyphWidth,
-                    instance.logoScale.heightScale
+                    instance.logoTransform.scaleX,
+                    instance.logoTransform.scaleY
                 );
-                context.textAlign = "center";
+                context.translate(
+                    -instance.logoTransform.originX,
+                    -instance.logoTransform.originY
+                );
+                context.textAlign = "left";
                 context.textBaseline = "alphabetic";
-                context.fillText(
-                    instance.text,
-                    0,
-                    getNativeBaselineOffset("middle", 1)
-                );
+                context.fillText(instance.text, 0, 0);
                 context.restore();
             } else {
                 if (instance.angle || instance.scale != 1) {

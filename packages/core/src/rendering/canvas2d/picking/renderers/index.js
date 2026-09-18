@@ -31,6 +31,7 @@ import {
     resolveTextProperties,
     visitTextInstances,
 } from "../../../immediate/marks/text.js";
+import { requestLogoInkBounds } from "../../../nativeTextMetrics.js";
 
 const MIN_RULE_PICKING_WIDTH = 1;
 
@@ -259,10 +260,14 @@ function renderText(baseMark, options) {
     const textMetrics =
         options.textMetrics ?? mark.unitView.context.textMetrics;
     const fontMeasurement = textMetrics.requestFont(mark.properties);
+    const measureLogoInkBounds = requestLogoInkBounds(
+        textMetrics,
+        mark.properties
+    );
     return visitTextInstances(
         mark,
         resolveTextProperties(mark),
-        { ...options, fontMeasurement },
+        { ...options, fontMeasurement, measureLogoInkBounds },
         (instance) =>
             options.rasterizer.fillConvexPolygon(
                 getPickingId(mark, instance.datum),

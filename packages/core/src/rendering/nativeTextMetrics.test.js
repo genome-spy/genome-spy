@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
-import NativeTextMetricsProvider from "./nativeTextMetrics.js";
+import NativeTextMetricsProvider, {
+    requestLogoInkBounds,
+} from "./nativeTextMetrics.js";
 
 /** @param {FontFaceSet} [fontFaceSet] */
 function createFixture(fontFaceSet) {
@@ -7,6 +9,8 @@ function createFixture(fontFaceSet) {
         width: text.length * 10,
         actualBoundingBoxAscent: 7,
         actualBoundingBoxDescent: 2,
+        actualBoundingBoxLeft: 1,
+        actualBoundingBoxRight: text.length * 10 - 1,
     }));
     const context = /** @type {CanvasRenderingContext2D} */ (
         /** @type {unknown} */ ({
@@ -79,5 +83,53 @@ describe("NativeTextMetricsProvider", () => {
         measurement.measureWidth("A", 11);
 
         expect(measureText).toHaveBeenCalledTimes(2);
+    });
+
+    test("caches fixed-size ASCII logo ink bounds", () => {
+        const { provider, measureText } = createFixture();
+        const measureInkBounds = requestLogoInkBounds(provider, {});
+
+        expect(measureInkBounds("A")).toEqual({
+            xMin: -1,
+            xMax: 9,
+            yMin: -7,
+            yMax: 2,
+        });
+        expect(measureInkBounds("A")).toEqual({
+            xMin: -1,
+            xMax: 9,
+            yMin: -7,
+            yMax: 2,
+        });
+        expect(measureText).toHaveBeenCalledOnce();
+        expect(measureText.mock.calls[0][0]).toBe("A");
+    });
+
+    test("does not cache non-ASCII or multi-character logo bounds", () => {
+        const { provider, measureText } = createFixture();
+        const measureInkBounds = requestLogoInkBounds(provider, {});
+
+        measureInkBounds("Å");
+        measureInkBounds("Å");
+        measureInkBounds("AC");
+        measureInkBounds("AC");
+
+        expect(measureText).toHaveBeenCalledTimes(4);
+    });
+
+    test("skips and caches zero-area ASCII logo glyphs", () => {
+        const { provider, measureText } = createFixture();
+        measureText.mockReturnValue({
+            width: 5,
+            actualBoundingBoxAscent: 0,
+            actualBoundingBoxDescent: 0,
+            actualBoundingBoxLeft: 0,
+            actualBoundingBoxRight: 0,
+        });
+        const measureInkBounds = requestLogoInkBounds(provider, {});
+
+        expect(measureInkBounds(" ")).toBeNull();
+        expect(measureInkBounds(" ")).toBeNull();
+        expect(measureText).toHaveBeenCalledOnce();
     });
 });

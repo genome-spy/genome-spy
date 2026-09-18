@@ -2,6 +2,7 @@ import { InternMap } from "internmap";
 import { createNativeFontDescriptor } from "./nativeText.js";
 
 const MEASUREMENT_TEXT = "Mg";
+const LOGO_REFERENCE_SIZE = 100;
 
 /**
  * Browser-native text measurement backed by one detached Canvas2D context.
@@ -78,6 +79,9 @@ class NativeFontMeasurement {
         this.asciiWidths = new Float64Array(128);
         this.asciiWidths.fill(NaN);
         this.cachedHeight = NaN;
+
+        /** @type {(NativeInkBounds | null | undefined)[]} */
+        this.asciiInkBounds = Array(128);
     }
 
     /** @param {string} text @param {number} fontSize */
@@ -118,10 +122,26 @@ class NativeFontMeasurement {
         return this.cachedHeight;
     }
 
+    /** @param {string} text */
+    measureInkBounds(text) {
+        const code = text.length == 1 ? text.charCodeAt(0) : 128;
+        if (code < 128 && this.asciiInkBounds[code] !== undefined) {
+            return this.asciiInkBounds[code];
+        }
+
+        const metrics = this.measureNative(text, LOGO_REFERENCE_SIZE);
+        const bounds = createInkBounds(metrics);
+        if (code < 128) {
+            this.asciiInkBounds[code] = bounds;
+        }
+        return bounds;
+    }
+
     invalidateCache() {
         this.cachedFontSize = NaN;
         this.asciiWidths.fill(NaN);
         this.cachedHeight = NaN;
+        this.asciiInkBounds.fill(undefined);
     }
 
     /** @param {string} text @param {number} fontSize */
@@ -129,6 +149,50 @@ class NativeFontMeasurement {
         this.provider.prepareContext(this.descriptor, fontSize);
         return this.provider.context.measureText(text);
     }
+}
+
+/**
+ * @typedef {object} NativeInkBounds
+ * @property {number} xMin
+ * @property {number} xMax
+ * @property {number} yMin
+ * @property {number} yMax
+ */
+
+/** @param {TextMetrics} metrics @returns {NativeInkBounds | null} */
+function createInkBounds(metrics) {
+    const bounds = {
+        xMin: -metrics.actualBoundingBoxLeft,
+        xMax: metrics.actualBoundingBoxRight,
+        yMin: -metrics.actualBoundingBoxAscent,
+        yMax: metrics.actualBoundingBoxDescent,
+    };
+    return bounds.xMax > bounds.xMin && bounds.yMax > bounds.yMin
+        ? bounds
+        : null;
+}
+
+/**
+ * Returns a destination-specific logo measurement without widening the shared
+ * advance/height contract. Non-native providers retain a deterministic
+ * approximation for low-level headless SVG rendering.
+ *
+ * @param {import("../fonts/textMetrics.js").TextMetricsProvider} provider
+ * @param {import("../fonts/textMetrics.js").FontConfig} config
+ * @returns {(text: string) => NativeInkBounds | null}
+ */
+export function requestLogoInkBounds(provider, config) {
+    const measurement = provider.requestFont(config);
+    if (measurement instanceof NativeFontMeasurement) {
+        return (text) => measurement.measureInkBounds(text);
+    }
+    return (text) => {
+        const width = measurement.measureWidth(text, LOGO_REFERENCE_SIZE);
+        const height = measurement.getHeight(LOGO_REFERENCE_SIZE);
+        return width > 0 && height > 0
+            ? { xMin: 0, xMax: width, yMin: -height, yMax: 0 }
+            : null;
+    };
 }
 
 /**
