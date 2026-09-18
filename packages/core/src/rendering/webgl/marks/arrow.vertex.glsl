@@ -98,7 +98,7 @@ float effectiveHeadSlope(
     }
 
     if (uHeadPlacement == HEAD_PLACEMENT_OUTSIDE) {
-        if (!uStartNotch || stemHalfWidth <= 0.0) {
+        if (bidirectional || !uStartNotch || stemHalfWidth <= 0.0) {
             return configuredRHeadSlope;
         }
 

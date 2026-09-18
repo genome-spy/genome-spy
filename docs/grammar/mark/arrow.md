@@ -19,7 +19,17 @@ only `x` and `x2`, or only `y` and `y2`; diagonal arrows use both `x`/`x2` and
 `y`/`y2`. By default, the arrowhead points from the primary endpoint (`x`, `y`)
 toward the secondary endpoint (`x2`, `y2`). The `direction` channel can
 override this and is often the most convenient way to map strand-like values
-such as `+` and `-` to `"forward"` and `"reverse"`.
+such as `+` and `-` to `"forward"` and `"reverse"`. The `"both"` direction
+places equivalent arrowheads at both endpoints. Automatic direction scales use
+only `"forward"` and `"reverse"`; select `"both"` with an explicit mark value,
+encoding value, or scale range.
+
+For a bidirectional arrow, `headSpacing` and `startNotch` are suppressed because
+neither a repeated direction nor a unique start is meaningful. Other head
+properties apply symmetrically. In particular, `headPlacement: "inside"` keeps
+both heads within the encoded interval, while `"outside"` extends both ends.
+`headNotchAngle` controls the concavity of both triangle heads; open heads use
+`headAngle` for their inner edges as they do for one-way arrows.
 
 Shape is controlled with mark properties. The `size` mark property controls the
 stem thickness. Numeric `size` values are pixels. For axis-aligned arrows,
@@ -51,6 +61,7 @@ EXAMPLE examples/docs/grammar/mark/arrow/arrow-styles.json height=240 spechidden
 
 ### Arrow Playground
 
-The arrow shape parameters can be adjusted interactively:
+The arrow shape parameters and direction can be adjusted interactively. Select
+`"both"` to see how repeated heads and the start notch are suppressed:
 
 EXAMPLE examples/docs/grammar/mark/arrow/arrow-playground.json height=600 spechidden

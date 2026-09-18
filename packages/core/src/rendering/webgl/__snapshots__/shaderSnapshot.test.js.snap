@@ -5,7 +5,7 @@ exports[`generated shader snapshots > arrow direction encoding spec 1`] = `
   "fragment": "precision highp float;
 precision highp int;
 
-// view: viewRoot
+// view: viewRoot/horizontal-arrows
 
 layout(std140) uniform Mark {
     uniform int uHeadShape;
@@ -403,7 +403,7 @@ void main(void) {
   "vertex": "precision highp float;
 precision highp int;
 
-// view: viewRoot
+// view: viewRoot/horizontal-arrows
 
 layout(std140) uniform Mark {
     uniform int uHeadShape;
@@ -1195,7 +1195,7 @@ float effectiveHeadSlope(
     }
 
     if (uHeadPlacement == HEAD_PLACEMENT_OUTSIDE) {
-        if (!uStartNotch || stemHalfWidth <= 0.0) {
+        if (bidirectional || !uStartNotch || stemHalfWidth <= 0.0) {
             return configuredRHeadSlope;
         }
 
@@ -1426,6 +1426,8 @@ layout(std140) uniform Mark {
     uniform float uStrokeWidth_0;
     // Dynamic value
     uniform float uSize_0;
+    // Dynamic value
+    uniform float uDirection_0;
     mediump float uDomain_x[2];
 
 
@@ -1826,6 +1828,8 @@ layout(std140) uniform Mark {
     uniform float uStrokeWidth_0;
     // Dynamic value
     uniform float uSize_0;
+    // Dynamic value
+    uniform float uDirection_0;
     mediump float uDomain_x[2];
 
 
@@ -2244,8 +2248,8 @@ return accessor_size_0();
 
 
 float accessor_direction_0() {
-    // Constant value
-    return float(0.0);
+    // Dynamic value
+    return uDirection_0;
 }
 
 float getScaled_direction() {
@@ -2586,7 +2590,7 @@ float effectiveHeadSlope(
     }
 
     if (uHeadPlacement == HEAD_PLACEMENT_OUTSIDE) {
-        if (!uStartNotch || stemHalfWidth <= 0.0) {
+        if (bidirectional || !uStartNotch || stemHalfWidth <= 0.0) {
             return configuredRHeadSlope;
         }
 

@@ -40,6 +40,7 @@
   "scripts": {
     "dev": "node dev-server.mjs",
     "capture:screenshots": "node scripts/captureScreenshots.mjs",
+    "test:arrow:webgl": "node scripts/testArrowWebGL.mjs",
     "benchmark:interaction": "node scripts/runWebGpuInteractionBenchmark.mjs",
     "smoke:examples": "node scripts/captureScreenshots.mjs --all --check",
     "smoke:examples:webgpu": "node scripts/runWebGpuExamples.mjs --all",

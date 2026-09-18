@@ -9,7 +9,10 @@ import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
 import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
-import { arrowMark } from "@genome-spy/webgpu-renderer/marks/arrow";
+import {
+    ARROW_DIRECTIONS,
+    arrowMark,
+} from "@genome-spy/webgpu-renderer/marks/arrow";
 import { textMark } from "@genome-spy/webgpu-renderer/marks/text";
 import { bandScale } from "@genome-spy/webgpu-renderer/scales/band";
 import { identityScale } from "@genome-spy/webgpu-renderer/scales/identity";
@@ -70,10 +73,7 @@ const STROKE_CAP_CODES = new Map([
     ["round", 2],
 ]);
 
-const ARROW_DIRECTION_CODES = new Map([
-    ["forward", 0],
-    ["reverse", 1],
-]);
+const ARROW_DIRECTION_CODES = new Map(Object.entries(ARROW_DIRECTIONS));
 
 const HATCH_CODES = new Map(
     [

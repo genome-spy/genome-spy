@@ -1,6 +1,6 @@
 # Bidirectional arrow plan
 
-Status: active
+Status: completed
 
 ## Objective
 
@@ -251,6 +251,8 @@ Tentative commit: `feat(core): render bidirectional arrows in WebGL`
 
 ## Milestone 3: Add WebGPU parity, examples, and documentation
 
+Status: completed
+
 ### Intended outcome
 
 The generic WebGPU renderer and Core adapter support bidirectional arrows, the
@@ -310,6 +312,21 @@ and demonstrated across backends.
 Release notes should identify `"both"` as the new value and state its
 interaction with `headSpacing`, `startNotch`, `headPlacement`, and
 `minStemLength`. Existing specifications require no migration.
+
+The Core type and generated schema now expose `"both"`, while the automatic
+direction scale range remains the backward-compatible two-value range. The
+grammar page, playground, static direction example, and WebGPU Storybook scene
+demonstrate the endpoint and precedence semantics. The checked example image
+and generated view snapshot were refreshed.
+
+Final verification passed the full 4,293-test unit suite, workspace TypeScript
+checks, lint, schema and type generation, the docs build, and the WebGPU
+Storybook build. Dedicated browser tests exercised real WebGL and WebGPU
+rendering and picking at DPR 1 and 2. The WebGL probe is available through
+`npm run test:arrow:webgl --workspace=@genome-spy/core`; it covers both outside
+heads, the stem, and an empty bounding-box corner using a short-arrow fixture
+that detects accidental start-notch shortening. The requested Luna review
+found no remaining correctness or test gaps after that regression was fixed.
 
 Tentative commit: `feat(core): complete bidirectional arrow support`
 

@@ -4923,6 +4923,70 @@ exports[`shared examples > initializes examples/core/marks/arrow/arrow_direction
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -4939,16 +5003,28 @@ exports[`shared examples > initializes examples/core/marks/arrow/arrow_direction
     },
   ],
   "hierarchy": {
-    "baseUrl": null,
+    "baseUrl": "examples/",
     "children": [
       {
         "baseUrl": "examples/",
         "children": [],
-        "name": "grid0",
+        "name": "horizontal-arrows",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid2",
         "type": "UnitView",
       },
     ],
-    "name": "implicitRoot",
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }

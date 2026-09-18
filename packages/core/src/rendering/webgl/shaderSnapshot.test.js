@@ -457,7 +457,8 @@ describe("generated shader snapshots", () => {
         const sources = await captureShaderSources(
             loadSpec(
                 "../../../../../examples/core/marks/arrow/arrow_direction.json"
-            )
+            ),
+            "horizontal-arrows"
         );
 
         expect(sources).toMatchSnapshot();
@@ -483,6 +484,7 @@ describe("generated shader snapshots", () => {
 
         expect(sources.vertex).toContain("return float(2.0)");
         expect(sources.vertex).toContain("direction == DIRECTION_BOTH");
+        expect(sources.vertex).toMatch(/bidirectional\s*\|\|\s*!uStartNotch/);
         expect(sources.fragment).toContain(
             "bool bidirectional = vDirection == DIRECTION_BOTH"
         );
