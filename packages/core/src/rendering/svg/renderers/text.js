@@ -24,6 +24,9 @@ export function renderTextSvg(baseMark, options) {
         baseMark
     );
     const props = mark.properties;
+    const textMetrics =
+        options.textMetrics ?? mark.unitView.context.textMetrics;
+    const fontMeasurement = textMetrics.requestFont(props);
     const properties = resolveTextProperties(mark);
     const {
         coords,
@@ -90,7 +93,13 @@ export function renderTextSvg(baseMark, options) {
     const instanceCount = visitTextInstances(
         mark,
         properties,
-        { coords, data, visibleBounds, anchorCullBounds },
+        {
+            coords,
+            data,
+            visibleBounds,
+            anchorCullBounds,
+            fontMeasurement,
+        },
         (instance) => {
             if (options.countOnly) {
                 return;
@@ -133,36 +142,33 @@ export function renderTextSvg(baseMark, options) {
                 return;
             }
 
-            const svgX = formatSvgNumber(instance.x);
-            const svgY = formatSvgNumber(instance.y);
+            const transforms = [
+                `translate(${formatSvgNumber(instance.x)} ${formatSvgNumber(instance.y)})`,
+            ];
+            if (instance.angle) {
+                transforms.push(`rotate(${formatSvgNumber(instance.angle)})`);
+            }
+            if (instance.dx || instance.dy) {
+                transforms.push(
+                    `translate(${formatSvgNumber(instance.dx)} ${formatSvgNumber(instance.dy)})`
+                );
+            }
+            if (instance.scale != 1) {
+                transforms.push(`scale(${formatSvgNumber(instance.scale)})`);
+            }
             const text = createSvgElement("text", {
-                x: svgX,
-                y: svgY,
-                dx: formatSvgNumber(instance.dx),
+                x: 0,
+                y: 0,
                 dy: formatSvgNumber(
-                    instance.dy +
-                        getNativeBaselineOffset(
-                            properties.baseline,
-                            instance.size
-                        )
+                    getNativeBaselineOffset(properties.baseline, instance.size)
                 ),
-                lengthAdjust: "spacingAndGlyphs",
-                textLength: formatSvgNumber(instance.width),
                 ...encodeStyles(instance.datum),
-                ...(instance.scale == 1
-                    ? {}
-                    : { "font-size": formatSvgNumber(instance.size) }),
                 ...(instance.fadeOpacity == 1
                     ? {}
                     : { opacity: formatSvgUnitless(instance.fadeOpacity) }),
+                transform: transforms.join(" "),
             });
             text.textContent = instance.text;
-            if (instance.angle) {
-                text.setAttribute(
-                    "transform",
-                    `rotate(${formatSvgNumber(instance.angle)} ${svgX} ${svgY})`
-                );
-            }
             group.appendChild(text);
         }
     );

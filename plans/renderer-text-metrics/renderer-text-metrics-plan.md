@@ -330,10 +330,13 @@ label through attached DOM adds layout work and another lifecycle.
   against its own rendered-text layout, including pair adjustments. Update the
   rendering architecture with provider ownership. Tentative commit:
   `feat(core): use renderer-owned metrics for text measurement`.
-- [ ] **Native fitting, output, and export preparation.** Inject destination
+- [x] **Native fitting, output, and export preparation.** Inject destination
   measurements into immediate traversal, picking, counting, and exports. Remove
-  ordinary native dependence on BMFont metrics and width forcing, activate the
-  Canvas native provider, and implement consistent squeeze transforms. Verify
+  ordinary native dependence on BMFont metrics and width forcing, and implement
+  consistent squeeze transforms. Keep the live Canvas context on BMFont metrics
+  until the logo milestone removes the last immediate-renderer BMFont dependency;
+  ordinary Canvas drawing and SVG export already use destination-native metrics.
+  Verify
   ranged/rotated text, both axes, clipping, flush/padding, squeeze thresholds,
   software picking, SVG counts, the ASCII fast path, and native font readiness
   for standalone analysis as well as export. Preserve nominal ordinary-text
@@ -342,7 +345,8 @@ label through attached DOM adds layout work and another lifecycle.
   Update native-renderer and text-mark docs with intentional output differences.
   Tentative commit: `fix(core): fit native text using destination font metrics`.
 - [ ] **Native logo ink bounds.** Remove the remaining BMFont dependency from
-  Canvas/SVG logo traversal and implement fixed-reference native ink bounds,
+  Canvas/SVG logo traversal, activate the Canvas native provider, and implement
+  fixed-reference native ink bounds,
   zero-area handling, transforms, counting, and picking. Verify logo placement
   and the ASCII bounds cache using the cases above. Tentative commit:
   `fix(core): fit native sequence logos using ink bounds`.

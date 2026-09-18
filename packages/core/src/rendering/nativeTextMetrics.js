@@ -147,3 +147,26 @@ export function createNativeTextMetricsProvider(document) {
     }
     return new NativeTextMetricsProvider(context, document.fonts);
 }
+
+/**
+ * Registers every text mark in a prepared hierarchy before awaiting the
+ * provider, so drawing never discovers a new pending face.
+ *
+ * @param {import("../fonts/textMetrics.js").TextMetricsProvider} provider
+ * @param {import("../view/view.js").default} viewRoot
+ */
+export async function prepareTextMetrics(provider, viewRoot) {
+    viewRoot.visit((view) => {
+        const mark =
+            /** @type {{mark?: import("../marks/mark.js").default}} */ (view)
+                .mark;
+        if (mark?.getType() == "text") {
+            provider.requestFont(
+                /** @type {import("../spec/mark.js").TextProps} */ (
+                    mark.properties
+                )
+            );
+        }
+    });
+    await provider.waitUntilReady();
+}

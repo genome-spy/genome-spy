@@ -2,6 +2,8 @@ import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { RasterizationUnavailableError } from "../rasterization.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
+import { createNativeTextMetricsProvider } from "../nativeTextMetrics.js";
+import { prepareTextMetrics } from "../nativeTextMetrics.js";
 
 /**
  * Creates an SVG document by traversing a prepared view hierarchy.
@@ -11,6 +13,7 @@ import SvgViewRenderingContext from "./svgViewRenderingContext.js";
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {string | null} [options.background]
+ * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
  * @returns {{svg: SVGSVGElement, warnings: string[]}}
  */
 export function createSvg({
@@ -18,6 +21,7 @@ export function createSvg({
     logicalWidth,
     logicalHeight,
     background = "white",
+    textMetrics = viewRoot.context.textMetrics,
 }) {
     const renderingContext = new SvgViewRenderingContext(
         { picking: false },
@@ -25,6 +29,7 @@ export function createSvg({
             width: logicalWidth,
             height: logicalHeight,
             background,
+            textMetrics,
         }
     );
 
@@ -49,15 +54,21 @@ export function createSvg({
  * @param {import("../../view/view.js").default} options.viewRoot
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
- * @returns {import("../../types/embedApi.js").SvgExportAnalysis}
+ * @returns {Promise<import("../../types/embedApi.js").SvgExportAnalysis>}
  */
-export function analyzeSvgExport({ viewRoot, logicalWidth, logicalHeight }) {
+export async function analyzeSvgExport({
+    viewRoot,
+    logicalWidth,
+    logicalHeight,
+}) {
+    const textMetrics = await prepareSvgTextMetrics(viewRoot);
     const renderingContext = new SvgViewRenderingContext(
         { picking: false },
         {
             width: logicalWidth,
             height: logicalHeight,
             background: null,
+            textMetrics,
         }
     );
 
@@ -97,18 +108,20 @@ export function analyzeSvgExport({ viewRoot, logicalWidth, logicalHeight }) {
  * @param {{maxVectorInstances: number, pixelRatio?: number}} [options.rasterization]
  */
 export async function createSvgExport(options) {
+    const textMetrics = await prepareSvgTextMetrics(options.viewRoot);
+    const preparedOptions = { ...options, textMetrics };
     const rasterization = options.rasterization;
     if (!rasterization) {
-        return { ...createSvg(options), rasterized: [] };
+        return { ...createSvg(preparedOptions), rasterized: [] };
     }
 
     validateRasterizationOptions(rasterization);
     if (!options.rasterizeSvgRuns) {
-        return createVectorRasterizationFallback(options);
+        return createVectorRasterizationFallback(preparedOptions);
     }
 
     return createRasterizedSvg({
-        ...options,
+        ...preparedOptions,
         rasterizeSvgRuns: options.rasterizeSvgRuns,
         maxVectorInstances: rasterization.maxVectorInstances,
         pixelRatio: rasterization.pixelRatio,
@@ -127,6 +140,7 @@ export async function createSvgExport(options) {
  * @param {string | null} [options.background]
  * @param {number} options.maxVectorInstances
  * @param {number} [options.pixelRatio]
+ * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
  */
 export async function createRasterizedSvg({
     viewRoot,
@@ -136,7 +150,9 @@ export async function createRasterizedSvg({
     background = "white",
     maxVectorInstances,
     pixelRatio = 2,
+    textMetrics,
 }) {
+    textMetrics ??= await prepareSvgTextMetrics(viewRoot);
     validateRasterizationOptions({ maxVectorInstances, pixelRatio });
 
     const renderingContext = new SvgViewRenderingContext(
@@ -146,6 +162,7 @@ export async function createRasterizedSvg({
             height: logicalHeight,
             background,
             maxVectorInstances,
+            textMetrics,
         }
     );
     const coords = Rectangle.create(0, 0, logicalWidth, logicalHeight);
@@ -176,6 +193,7 @@ export async function createRasterizedSvg({
                     logicalWidth,
                     logicalHeight,
                     background,
+                    textMetrics,
                 });
             }
             throw error;
@@ -195,6 +213,16 @@ export async function createRasterizedSvg({
             pixelRatio,
         })),
     };
+}
+
+/** @param {import("../../view/view.js").default} viewRoot */
+async function prepareSvgTextMetrics(viewRoot) {
+    if (!document.fonts) {
+        return viewRoot.context.textMetrics;
+    }
+    const provider = createNativeTextMetricsProvider(document);
+    await prepareTextMetrics(provider, viewRoot);
+    return provider;
 }
 
 /**

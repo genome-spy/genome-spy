@@ -3,6 +3,7 @@ import Canvas2DSurface from "./canvas2DSurface.js";
 import { exportCanvas, exportRaster } from "./rasterExport.js";
 import { createCanvas2DSvgRasterizer } from "./svgRasterizer.js";
 import BmFontManager from "../../fonts/bmFontManager.js";
+import { createNativeTextMetricsProvider } from "../nativeTextMetrics.js";
 
 /**
  * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -10,6 +11,9 @@ import BmFontManager from "../../fonts/bmFontManager.js";
  */
 export function createCanvas2DRenderingBackend(options) {
     const surface = new Canvas2DSurface(options);
+    const nativeTextMetrics = createNativeTextMetricsProvider(
+        options.container.ownerDocument
+    );
     return {
         surface,
         textMetrics: new BmFontManager(),
@@ -18,21 +22,24 @@ export function createCanvas2DRenderingBackend(options) {
                 ...coordinatorOptions,
                 surface,
                 context: surface.context,
+                textMetrics: nativeTextMetrics,
             }),
         exportCanvas: (exportOptions) =>
             exportCanvas({
                 ...exportOptions,
                 liveSize: surface.getLogicalCanvasSize(),
                 liveDevicePixelRatio: surface.getDevicePixelRatio(),
+                textMetrics: nativeTextMetrics,
             }),
         exportRaster: (exportOptions) =>
             exportRaster({
                 ...exportOptions,
                 liveSize: surface.getLogicalCanvasSize(),
                 liveDevicePixelRatio: surface.getDevicePixelRatio(),
+                textMetrics: nativeTextMetrics,
             }),
         rasterizeSvgRuns: (rasterOptions) =>
-            createCanvas2DSvgRasterizer()(rasterOptions),
+            createCanvas2DSvgRasterizer(nativeTextMetrics)(rasterOptions),
         readPickingId: (x, y) => surface.readPickingId(x, y),
     };
 }

@@ -34,9 +34,12 @@ describe("SVG text renderer", () => {
         const text = svg.querySelector('[data-mark-type="text"] text');
         const textGroup = svg.querySelector('[data-mark-type="text"]');
 
-        expect(text?.getAttribute("x")).toBe("60");
-        expect(+text?.getAttribute("font-size")).toBeLessThan(20);
-        expect(+text?.getAttribute("textLength")).toBeLessThanOrEqual(40);
+        expect(text?.getAttribute("x")).toBe("0");
+        expect(text?.hasAttribute("font-size")).toBe(false);
+        expect(text?.hasAttribute("textLength")).toBe(false);
+        expect(text?.getAttribute("transform")).toMatch(
+            /^translate\(60 50\) scale\(0\.\d+\)$/
+        );
         expect(textGroup?.getAttribute("font-family")).toBe(
             "'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
         );
@@ -98,8 +101,12 @@ describe("SVG text renderer", () => {
 
         expect(labels).toHaveLength(2);
         expect(labels.map((label) => label.getAttribute("x"))).toEqual([
-            "50",
-            "150",
+            "0",
+            "0",
+        ]);
+        expect(labels.map((label) => label.getAttribute("transform"))).toEqual([
+            "translate(50 50)",
+            "translate(150 50)",
         ]);
         expect(warnings).toEqual([]);
     });
@@ -379,12 +386,11 @@ describe("SVG text renderer", () => {
         expect(
             context.getSvg().querySelectorAll('[data-mark-type="text"] text')
         ).toHaveLength(1);
-        expect(
-            context
-                .getSvg()
-                .querySelector('[data-mark-type="text"] text')
-                ?.getAttribute("y")
-        ).toBe("50");
+        const text = context
+            .getSvg()
+            .querySelector('[data-mark-type="text"] text');
+        expect(text?.getAttribute("y")).toBe("0");
+        expect(text?.getAttribute("transform")).toBe("translate(50 50)");
     });
 
     test("reuses one viewport-edge fade mask for all text in a view", async () => {

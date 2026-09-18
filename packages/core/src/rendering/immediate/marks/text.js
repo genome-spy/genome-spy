@@ -50,7 +50,7 @@ export function resolveTextProperties(mark) {
  *
  * @param {import("../../../marks/text.js").default} mark
  * @param {ReturnType<typeof resolveTextProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, anchorCullBounds: import("../bounds.js").RenderBounds}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, anchorCullBounds: import("../bounds.js").RenderBounds, fontMeasurement: import("../../../fonts/textMetrics.js").FontMeasurement}} options
  * @param {(instance: TextInstance) => void} visitor
  */
 export function visitTextInstances(mark, properties, options, visitor) {
@@ -186,7 +186,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
             continue;
         }
 
-        const measuredWidth = mark.fontMeasurement.measureWidth(text, size);
+        const measuredWidth = options.fontMeasurement.measureWidth(text, size);
         getRotatedSize(measuredWidth, size, angle, rotatedSize);
         if (hasX2 || hasY2) {
             fixRangeAlign(align, baseline, angle, rangeAlign);
@@ -257,7 +257,7 @@ export function visitTextInstances(mark, properties, options, visitor) {
         instance.text = text;
         instance.x = x;
         instance.y = y;
-        instance.size = scaledSize;
+        instance.size = size;
         instance.width = scaledWidth;
         instance.angle = angle;
         instance.fadeOpacity = fadeOpacity;

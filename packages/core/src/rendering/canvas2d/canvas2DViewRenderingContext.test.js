@@ -184,7 +184,8 @@ function createRecordingContext() {
 function render(
     /** @type {import("../../view/view.js").default} */ view,
     /** @type {CanvasRenderingContext2D} */ context,
-    /** @type {import("./canvasXIndexManager.js").default} */ xIndexManager = undefined
+    /** @type {import("./canvasXIndexManager.js").default} */ xIndexManager = undefined,
+    /** @type {import("../../fonts/textMetrics.js").TextMetricsProvider | undefined} */ textMetrics = undefined
 ) {
     view.arrange(
         new Canvas2DViewRenderingContext(
@@ -197,6 +198,7 @@ function render(
                 background: null,
                 paint: true,
                 xIndexManager,
+                textMetrics,
             }
         ),
         Rectangle.create(0, 0, 100, 100),
@@ -1372,11 +1374,52 @@ describe("Canvas2DViewRenderingContext", () => {
 
         render(view, recording.context);
 
-        expect(recording.calls.translates).toEqual([[50, 50]]);
+        expect(recording.calls.translates).toEqual([
+            [50, 50],
+            [3, 4],
+        ]);
         expect(recording.calls.rotations).toEqual([Math.PI / 2]);
-        expect(recording.calls.fillTexts[0].slice(0, 3)).toEqual(["T", 3, 4]);
+        expect(recording.calls.fillTexts[0].slice(0, 3)).toEqual(["T", 0, 0]);
         expect(recording.context.textAlign).toBe("right");
         expect(recording.context.textBaseline).toBe("top");
+    });
+
+    test("squeezes ranged text with a uniform transform", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ label: "A fitted label" }] },
+            mark: { type: "text", size: 20, paddingX: 2, squeeze: true },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.4 },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+        const recording = createRecordingContext();
+        /** @type {import("../../fonts/textMetrics.js").TextMetricsProvider} */
+        const textMetrics = {
+            requestFont: () => ({
+                measureWidth: () => 100,
+                getHeight: () => 20,
+            }),
+            waitUntilReady: async () => undefined,
+        };
+
+        render(view, recording.context, undefined, textMetrics);
+
+        expect(recording.calls.translates).toEqual([
+            [30, 50],
+            [0, 0],
+        ]);
+        expect(recording.calls.scales[0][0]).toBeCloseTo(0.1731);
+        expect(recording.calls.scales[0][1]).toBeCloseTo(0.1731);
+        expect(recording.calls.fillTexts).toEqual([
+            ["A fitted label", 0, 0, undefined],
+        ]);
+        expect(
+            recording.calls.fonts.some((font) => font.includes("20px"))
+        ).toBe(true);
     });
 
     test("uses the configured native font with portable fallbacks", async () => {

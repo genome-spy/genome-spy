@@ -22,6 +22,9 @@ export function renderTextCanvas(baseMark, options) {
         baseMark
     );
     const props = mark.properties;
+    const textMetrics =
+        options.textMetrics ?? mark.unitView.context.textMetrics;
+    const fontMeasurement = textMetrics.requestFont(props);
     const properties = resolveTextProperties(mark);
     const context = options.context;
     const encoders =
@@ -52,68 +55,69 @@ export function renderTextCanvas(baseMark, options) {
         context.textBaseline = textBaseline;
     }
 
-    return visitTextInstances(mark, properties, options, (instance) => {
-        if (instance.multiCharacterLogo) {
-            options.warn(
-                "Canvas2D stretches multi-character logo text as a single glyph cell."
-            );
-        }
-        const fill = toPaintString(encoders.color(instance.datum));
-        const opacity =
-            encodeNumber(encoders.opacity, instance.datum) *
-            options.viewOpacity *
-            instance.fadeOpacity;
-        if (fill == "none" || opacity <= 0) {
-            return;
-        }
-        if (fillStyle != fill) {
-            context.fillStyle = fill;
-            fillStyle = fill;
-        }
-        context.globalAlpha = opacity;
-        if (fontSize != instance.size) {
-            context.font = `${fontPrefix}${instance.size}px ${fontFamily}`;
-            fontSize = instance.size;
-        }
+    return visitTextInstances(
+        mark,
+        properties,
+        { ...options, fontMeasurement },
+        (instance) => {
+            if (instance.multiCharacterLogo) {
+                options.warn(
+                    "Canvas2D stretches multi-character logo text as a single glyph cell."
+                );
+            }
+            const fill = toPaintString(encoders.color(instance.datum));
+            const opacity =
+                encodeNumber(encoders.opacity, instance.datum) *
+                options.viewOpacity *
+                instance.fadeOpacity;
+            if (fill == "none" || opacity <= 0) {
+                return;
+            }
+            if (fillStyle != fill) {
+                context.fillStyle = fill;
+                fillStyle = fill;
+            }
+            context.globalAlpha = opacity;
+            if (fontSize != instance.size) {
+                context.font = `${fontPrefix}${instance.size}px ${fontFamily}`;
+                fontSize = instance.size;
+            }
 
-        if (instance.logoScale) {
-            context.save();
-            context.translate(instance.x, instance.y);
-            context.rotate((instance.angle * Math.PI) / 180);
-            context.translate(instance.dx, instance.dy);
-            const glyphWidth = context.measureText(instance.text).width;
-            context.scale(
-                instance.logoScale.width / glyphWidth,
-                instance.logoScale.heightScale
-            );
-            context.textAlign = "center";
-            context.textBaseline = "alphabetic";
-            context.fillText(
-                instance.text,
-                0,
-                getNativeBaselineOffset("middle", 1)
-            );
-            context.restore();
-        } else {
-            if (instance.angle) {
+            if (instance.logoScale) {
                 context.save();
                 context.translate(instance.x, instance.y);
                 context.rotate((instance.angle * Math.PI) / 180);
+                context.translate(instance.dx, instance.dy);
+                const glyphWidth = context.measureText(instance.text).width;
+                context.scale(
+                    instance.logoScale.width / glyphWidth,
+                    instance.logoScale.heightScale
+                );
+                context.textAlign = "center";
+                context.textBaseline = "alphabetic";
                 context.fillText(
                     instance.text,
-                    instance.dx,
-                    instance.dy,
-                    instance.width
+                    0,
+                    getNativeBaselineOffset("middle", 1)
                 );
                 context.restore();
             } else {
-                context.fillText(
-                    instance.text,
-                    instance.x + instance.dx,
-                    instance.y + instance.dy,
-                    instance.width
-                );
+                if (instance.angle || instance.scale != 1) {
+                    context.save();
+                    context.translate(instance.x, instance.y);
+                    context.rotate((instance.angle * Math.PI) / 180);
+                    context.translate(instance.dx, instance.dy);
+                    context.scale(instance.scale, instance.scale);
+                    context.fillText(instance.text, 0, 0);
+                    context.restore();
+                } else {
+                    context.fillText(
+                        instance.text,
+                        instance.x + instance.dx,
+                        instance.y + instance.dy
+                    );
+                }
             }
         }
-    });
+    );
 }

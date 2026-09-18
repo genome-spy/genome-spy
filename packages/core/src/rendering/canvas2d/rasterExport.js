@@ -2,6 +2,7 @@ import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { RasterizationUnavailableError } from "../rasterization.js";
 import renderCanvas2D from "./renderCanvas2D.js";
+import { prepareTextMetrics } from "../nativeTextMetrics.js";
 
 /**
  * @typedef {object} Canvas2DExportOptions
@@ -13,6 +14,7 @@ import renderCanvas2D from "./renderCanvas2D.js";
  * @property {number} [pixelRatio]
  * @property {string | null} [clearColor]
  * @property {"image/png"} [mimeType]
+ * @property {import("../../fonts/textMetrics.js").TextMetricsProvider} [textMetrics]
  */
 
 /**
@@ -25,7 +27,10 @@ export async function exportRaster(options) {
         throw new Error(`Unsupported raster export MIME type: ${mimeType}`);
     }
 
-    const canvas = renderToCanvas(options);
+    const textMetrics =
+        options.textMetrics ?? options.viewRoot.context.textMetrics;
+    await prepareTextMetrics(textMetrics, options.viewRoot);
+    const canvas = renderToCanvas({ ...options, textMetrics });
     return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => {
             if (blob) {
@@ -93,6 +98,8 @@ function renderToCanvas(options) {
         devicePixelRatio: pixelRatio,
         background: options.clearColor ?? null,
         paint: true,
+        textMetrics:
+            options.textMetrics ?? options.viewRoot.context.textMetrics,
     });
     return canvas;
 }

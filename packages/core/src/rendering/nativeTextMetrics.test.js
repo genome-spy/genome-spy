@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 import NativeTextMetricsProvider from "./nativeTextMetrics.js";
 
-function createFixture() {
+/** @param {FontFaceSet} [fontFaceSet] */
+function createFixture(fontFaceSet) {
     const measureText = vi.fn((/** @type {string} */ text) => ({
         width: text.length * 10,
         actualBoundingBoxAscent: 7,
@@ -17,7 +18,7 @@ function createFixture() {
             measureText,
         })
     );
-    const provider = new NativeTextMetricsProvider(context);
+    const provider = new NativeTextMetricsProvider(context, fontFaceSet);
     return { provider, measureText };
 }
 
@@ -52,5 +53,31 @@ describe("NativeTextMetricsProvider", () => {
 
         expect(measurement.getHeight(11)).toBe(9);
         expect(measurement.getHeight(11)).toBe(9);
+    });
+
+    test("loads requested faces and invalidates measurements when ready", async () => {
+        /** @type {(value?: unknown) => void} */
+        let resolveLoading;
+        const load = vi.fn(
+            () =>
+                new Promise((resolve) => {
+                    resolveLoading = resolve;
+                })
+        );
+        const { provider, measureText } = createFixture(
+            /** @type {FontFaceSet} */ (/** @type {unknown} */ ({ load }))
+        );
+        const measurement = provider.requestFont({ font: "Open Sans" });
+
+        measurement.measureWidth("A", 11);
+        expect(load).toHaveBeenCalledWith(
+            expect.stringContaining("16px 'Open Sans'")
+        );
+
+        resolveLoading();
+        await provider.waitUntilReady();
+        measurement.measureWidth("A", 11);
+
+        expect(measureText).toHaveBeenCalledTimes(2);
     });
 });
