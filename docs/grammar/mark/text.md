@@ -25,6 +25,11 @@ The `x2` and `y2` channels allow for positioning the text inside a segment. The
 text is either squeezed (default) or hidden when it does not fit in the segment.
 The `squeeze` property controls the behavior.
 
+Canvas2D and SVG preserve the glyph proportions by applying a uniform scale to
+squeezed text. Sequence-logo letters are different: `logoLetters` stretches the
+measured glyph ink independently in each direction so that it fills the encoded
+cell.
+
 The example below has two layers: gray rectangles at the bottom and ranged
 text on the top. Try to zoom and pan to see how they behave!
 

@@ -350,7 +350,7 @@ label through attached DOM adds layout work and another lifecycle.
   zero-area handling, transforms, counting, and picking. Verify logo placement
   and the ASCII bounds cache using the cases above. Tentative commit:
   `fix(core): fit native sequence logos using ink bounds`.
-- [ ] **Integration acceptance.** Exercise the measure-text table, ranged-text,
+- [x] **Integration acceptance.** Exercise the measure-text table, ranged-text,
   sequence-logo, scored-refSeq-genes, shared-hconcat-legend, and title-styles
   examples under WebGL and Canvas, plus WebGPU where supported. Use
   `examples/docs/examples/genomic-data/msa.json` as the primary cross-renderer

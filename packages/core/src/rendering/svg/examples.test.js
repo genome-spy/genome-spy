@@ -52,9 +52,9 @@ describe("SVG example exports", () => {
         expect(
             chromosomeLabels.slice(0, 2).map((element) => element.textContent)
         ).toEqual(["chr1", "chr2"]);
-        expect(chromosomeLabels[0].getAttribute("x")).toBe("4");
-        expect(+chromosomeLabels[1].getAttribute("x")).toBeGreaterThan(
-            +chromosomeLabels[0].getAttribute("x")
+        expect(getTranslateX(chromosomeLabels[0])).toBe(4);
+        expect(getTranslateX(chromosomeLabels[1])).toBeGreaterThan(
+            getTranslateX(chromosomeLabels[0])
         );
         expect(
             chromosomeLabels[0]
@@ -159,7 +159,7 @@ describe("SVG example exports", () => {
             const expectedCenter =
                 +rect.getAttribute("x") + +rect.getAttribute("width") / 2;
             expect(
-                Math.abs(+labels[i].getAttribute("x") - expectedCenter)
+                Math.abs(getTranslateX(labels[i]) - expectedCenter)
             ).toBeLessThanOrEqual(0.1);
         }
         expect(textValues).toEqual(expect.arrayContaining(["28", "55", "91"]));
@@ -169,3 +169,14 @@ describe("SVG example exports", () => {
         expect(svg.querySelector("image")).toBeNull();
     });
 });
+
+/** @param {Element} element */
+function getTranslateX(element) {
+    const match = element
+        .getAttribute("transform")
+        ?.match(/^translate\((-?\d+(?:\.\d+)?)/);
+    if (!match) {
+        throw new Error("Expected a leading SVG translate transform.");
+    }
+    return +match[1];
+}

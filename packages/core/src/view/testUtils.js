@@ -45,6 +45,10 @@ import BmFontManager from "../fonts/bmFontManager.js";
 class LayoutSnapshotFontManager {
     #textMetrics = new BmFontManager();
 
+    requestFont() {
+        return this.#textMetrics.requestFont({});
+    }
+
     getDefaultFont() {
         return this.#textMetrics.getDefaultFont();
     }
@@ -60,9 +64,7 @@ class LayoutSnapshotFontManager {
 }
 
 function createLayoutSnapshotFontManager() {
-    return /** @type {BmFontManager} */ (
-        /** @type {unknown} */ (new LayoutSnapshotFontManager())
-    );
+    return new LayoutSnapshotFontManager();
 }
 
 /**

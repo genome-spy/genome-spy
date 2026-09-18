@@ -110,7 +110,17 @@ function createTitledGridChild(
 }
 
 function createFontManager() {
+    /** @returns {Promise<void>} */
+    async function waitUntilReady() {}
     return /** @type {any} */ ({
+        requestFont: () => ({
+            measureWidth: (
+                /** @type {string} */ text,
+                /** @type {number} */ size
+            ) => text.length * size,
+            getHeight: (/** @type {number} */ size) => size,
+        }),
+        waitUntilReady,
         getDefaultFont: () => ({
             metrics: createFontMetrics(),
         }),
