@@ -7,6 +7,8 @@ import { prepareTextMetrics } from "../nativeTextMetrics.js";
 
 /**
  * Creates an SVG document by traversing a prepared view hierarchy.
+ * This synchronous helper uses the active metrics unless supplied explicitly;
+ * use createSvgExport when destination-native font loading is required.
  *
  * @param {object} options
  * @param {import("../../view/view.js").default} options.viewRoot
