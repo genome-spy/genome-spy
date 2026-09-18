@@ -1,0 +1,59 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
+
+  "description": "Five H3K27ac BigWigs",
+  "assembly": "mm10",
+
+  "samples": {
+    "identity": {
+      "data": {
+        "values": [
+          { "sampleId": "forebrain-e12-5-rep1", "label": "Forebrain E12.5 R1" },
+          { "sampleId": "forebrain-e12-5-rep2", "label": "Forebrain E12.5 R2" },
+          { "sampleId": "heart-e12-5-rep1", "label": "Heart E12.5 R1" },
+          { "sampleId": "heart-e12-5-rep2", "label": "Heart E12.5 R2" },
+          { "sampleId": "limb-e12-5-rep1", "label": "Limb E12.5 R1" }
+        ]
+      },
+      "idField": "sampleId",
+      "displayNameField": "label"
+    }
+  },
+
+  "spec": {
+    "height": 30,
+    "data": {
+      "lazy": {
+        "type": "bigwig",
+        "url": {
+          "template": "https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/bigwigs/{sampleId}.bigWig",
+          "values": { "expr": "visibleSamples" },
+          "field": "sampleId",
+          "maxValues": 5
+        }
+      }
+    },
+    "mark": { "type": "rect", "color": "#4c78a8", "minWidth": 0.5 },
+    "encoding": {
+      "sample": { "field": "sampleId" },
+      "x": {
+        "chrom": "chrom",
+        "pos": "start",
+        "type": "locus",
+        "scale": {
+          "domain": [
+            { "chrom": "chr10", "pos": 82400000 },
+            { "chrom": "chr10", "pos": 92400000 }
+          ]
+        },
+        "axis": { "grid": true, "chromGrid": true }
+      },
+      "x2": { "chrom": "chrom", "pos": "end" },
+      "y": {
+        "field": "score",
+        "type": "quantitative",
+        "scale": { "zero": true }
+      }
+    }
+  }
+}
