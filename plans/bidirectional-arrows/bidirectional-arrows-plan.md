@@ -319,8 +319,8 @@ grammar page, playground, static direction example, and WebGPU Storybook scene
 demonstrate the endpoint and precedence semantics. The checked example image
 and generated view snapshot were refreshed.
 
-Final verification passed the full 4,293-test unit suite, workspace TypeScript
-checks, lint, schema and type generation, the docs build, and the WebGPU
+Final verification passed the full unit suite, workspace TypeScript checks,
+lint, schema and type generation, the docs build, and the WebGPU
 Storybook build. Dedicated browser tests exercised real WebGL and WebGPU
 rendering and picking at DPR 1 and 2. The WebGL probe is available through
 `npm run test:arrow:webgl --workspace=@genome-spy/core`; it covers both outside
