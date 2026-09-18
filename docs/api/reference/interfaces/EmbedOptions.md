@@ -17,6 +17,18 @@ __Default value:__ `"auto"`
 
 ***
 
+### fontCatalog?
+
+> `optional` **fontCatalog?**: [`FontCatalogEntry`](FontCatalogEntry.md)[]
+
+Additional TrueType faces for WebGPU text rendering. Entries are matched
+exactly by family, weight, and style and take precedence over GenomeSpy's
+temporary example-font catalog. Registering entries does not load them;
+each URL is fetched only if the initialized visualization requests it.
+This option has no effect with the WebGL or Canvas2D renderers.
+
+***
+
 ### namedDataProvider?
 
 > `optional` **namedDataProvider?**: (`name`) => `any`[]
