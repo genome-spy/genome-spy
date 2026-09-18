@@ -11,6 +11,7 @@ import {
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
 import BmFontManager from "../fonts/bmFontManager.js";
+import OutlineTextMetricsProvider from "../rendering/webgpu/outlineTextMetrics.js";
 import AxisView from "./axisView.js";
 import LegendView from "./legendView.js";
 import { renderToLayout } from "./testUtils.js";
@@ -940,18 +941,17 @@ describe("ViewMutationApi", () => {
             resolveOutline = resolve;
         });
         const prepareOutlineFont = vi.fn(() => loading);
-        const outlineManager = new BmFontManager(
-            undefined,
-            undefined,
-            prepareOutlineFont
+        const fallbackMeasurement = new BmFontManager().requestFont({});
+        const outlineManager = new OutlineTextMetricsProvider(
+            prepareOutlineFont,
+            {
+                requestFont: () => fallbackMeasurement,
+                waitUntilReady: () => Promise.resolve(),
+            }
         );
         const textMetrics = /** @type {BmFontManager} */ (
             /** @type {unknown} */ ({
                 requestFont: outlineManager.requestFont.bind(outlineManager),
-                getFont: () => outlineManager.getDefaultFont(),
-                getDefaultFont: () => outlineManager.getDefaultFont(),
-                getOutlineFont:
-                    outlineManager.getOutlineFont.bind(outlineManager),
                 waitUntilReady:
                     outlineManager.waitUntilReady.bind(outlineManager),
             })
@@ -984,7 +984,9 @@ describe("ViewMutationApi", () => {
         const lateText = view
             .getDescendants()
             .find((descendant) => descendant.name === "lateText");
-        expect(/** @type {any} */ (lateText).mark.outlineFont.outlineFont).toBe(
+        const mark = /** @type {any} */ (lateText).mark;
+        expect(mark).not.toHaveProperty("outlineFont");
+        expect(outlineManager.getPreparedFont(mark.properties)).toBe(
             outlineFont
         );
 

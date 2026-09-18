@@ -26,9 +26,6 @@ export function createWebGLRenderingBackend(options) {
     return {
         surface: glHelper,
         textMetrics,
-        defaultFontBitmapUrl: latoRegularBitmap,
-        prepareFontBitmap: (bitmapUrl) =>
-            rendererResources.prepareFontBitmap(bitmapUrl),
         getMarkRenderingDebugState: (mark) =>
             rendererResources.getMarkRenderingDebugState(mark),
         createRenderCoordinator: (coordinatorOptions) =>

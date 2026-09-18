@@ -23,20 +23,6 @@ export default class TextMark extends Mark {
             unitView.context.textMetrics,
             this.properties
         );
-        const legacyManager =
-            /** @type {import("../fonts/bmFontManager.js").default} */ (
-                unitView.context.textMetrics
-            );
-        this.font = legacyManager.getFont?.(
-            this.properties.font,
-            this.properties.fontStyle,
-            this.properties.fontWeight
-        );
-        this.outlineFont = legacyManager.getOutlineFont?.(
-            this.properties.font,
-            this.properties.fontStyle,
-            this.properties.fontWeight
-        );
         this.watchEncodedDataExpressions(["text", "logoLetters"]);
     }
 

@@ -28,20 +28,9 @@ export default class OutlineTextMetricsProvider {
         return this.#requestEntry(config).measurement;
     }
 
-    /**
-     * Temporary renderer-resource bridge removed when marks stop retaining
-     * backend font entries.
-     *
-     * @param {string} [family]
-     * @param {"normal" | "italic"} [style]
-     * @param {import("../../spec/font.js").FontWeight} [weight]
-     */
-    getOutlineFont(family, style = "normal", weight = 400) {
-        return this.#requestEntry({
-            font: family,
-            fontStyle: style,
-            fontWeight: weight,
-        });
+    /** @param {import("../../fonts/textMetrics.js").FontConfig} config */
+    getPreparedFont(config) {
+        return this.entries.get(normalizeRequest(config))?.outlineFont;
     }
 
     async waitUntilReady() {

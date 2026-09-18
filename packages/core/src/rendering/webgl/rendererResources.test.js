@@ -112,12 +112,12 @@ test("leaves text marks pending until font metrics are ready", () => {
     const resources = new WebGLRendererResources(createGlHelper());
     const fixture = createMark("text");
     fixture.mark.getType = () => "text";
-    fixture.mark.font = { metrics: undefined };
+    fixture.font.metrics = undefined;
 
     resources.prepareMarks([fixture.mark]);
     expect(resources.getMarkEntry(fixture.mark)).toBeUndefined();
 
-    fixture.mark.font.metrics = {};
+    fixture.font.metrics = {};
     resources.prepareMarks([fixture.mark]);
     expect(resources.getMarkEntry(fixture.mark)).toBeDefined();
 });
@@ -321,15 +321,18 @@ function createGlHelper() {
 /** @param {string} name */
 function createMark(name) {
     const collector = { completed: true, dataRevision: 0 };
+    const font = { metrics: {} };
     /** @type {(() => void)[]} */
     const disposers = [];
     const fixture = {
         collector,
+        font,
         configurationRevision: 0,
         encodedDataRevision: 0,
         mark: /** @type {any} */ ({
             name,
             encoders: {},
+            properties: {},
             getType: () => "point",
             initializeRenderingRevisions: vi.fn(),
             getRenderingRevision: () => fixture.configurationRevision,
@@ -338,6 +341,9 @@ function createMark(name) {
                 getCollector: () => collector,
                 registerDisposer: (/** @type {() => void} */ disposer) =>
                     disposers.push(disposer),
+                context: {
+                    textMetrics: { getFont: () => font },
+                },
             },
         }),
         dispose() {

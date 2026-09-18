@@ -28,11 +28,12 @@ vi.mock("./webGpuFontCatalog.js", () => ({
 
 import { createWebGpuRenderingBackend } from "./index.js";
 
-test("supplies Core's bundled default font bitmap", async () => {
+test("keeps font resources behind the text metrics provider", async () => {
     const backend = await createWebGpuRenderingBackend(/** @type {any} */ ({}));
 
-    expect(backend.defaultFontBitmapUrl).toContain("Lato-Regular.png");
-    expect(backend.prepareOutlineFont).toBeTypeOf("function");
+    expect(backend.textMetrics).toBeDefined();
+    expect(backend).not.toHaveProperty("defaultFontBitmapUrl");
+    expect(backend).not.toHaveProperty("prepareOutlineFont");
 });
 
 test("constructs a lazy preparer from the application font catalog", async () => {
@@ -44,7 +45,7 @@ test("constructs a lazy preparer from the application font catalog", async () =>
     );
 
     expect(mocks.createOutlineFontPreparer).toHaveBeenCalledWith(fontCatalog);
-    expect(backend.prepareOutlineFont).toBe(mocks.prepareOutlineFont);
+    expect(backend.textMetrics).toBeDefined();
     expect(mocks.prepareOutlineFont).not.toHaveBeenCalled();
 });
 

@@ -580,7 +580,8 @@ describe("WebGPU mark adapter", () => {
             }
         );
         const outlineFont = /** @type {any} */ ({ getGlyph() {} });
-        Object.assign(mark, { outlineFont: { outlineFont } });
+        /** @type {any} */ (mark.unitView.context.textMetrics).getPreparedFont =
+            () => outlineFont;
 
         const translated = createWebGpuMarkConfig(
             mark,
@@ -598,7 +599,7 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
-    test("uses a prepared outline while retaining BMFont measurement", () => {
+    test("uses a prepared outline without a mark-owned font resource", () => {
         const mark = createMark(
             "text",
             [{ label: "A" }],
@@ -624,10 +625,8 @@ describe("WebGPU mark adapter", () => {
             }
         );
         const outlineFont = /** @type {any} */ ({ getGlyph() {} });
-        Object.assign(mark, {
-            font: { metrics: {}, bitmapUrl: "measurement.png" },
-            outlineFont: { outlineFont },
-        });
+        /** @type {any} */ (mark.unitView.context.textMetrics).getPreparedFont =
+            () => outlineFont;
 
         const translated = createWebGpuMarkConfig(
             mark,
@@ -2253,9 +2252,6 @@ function createMark(type, data, encoders, properties = {}) {
                 inwardStroke: false,
                 ...properties,
             },
-            ...(type == "text"
-                ? { outlineFont: { outlineFont: { getGlyph() {} } } }
-                : {}),
             getType: () => type,
             initializeRenderingRevisions: vi.fn(),
             getRenderingRevision: (
@@ -2275,7 +2271,12 @@ function createMark(type, data, encoders, properties = {}) {
                     watchExpression: vi.fn(),
                 },
                 registerDisposer: vi.fn(),
-                context: { animator: { requestRender: vi.fn() } },
+                context: {
+                    animator: { requestRender: vi.fn() },
+                    textMetrics: {
+                        getPreparedFont: () => ({ getGlyph() {} }),
+                    },
+                },
             },
         })
     );

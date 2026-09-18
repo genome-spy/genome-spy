@@ -30,6 +30,7 @@ import { LEGACY_LABEL_TITLE_TEXT_WARNING } from "./sampleViewSpecNormalizer.js";
 import WebGpuViewRenderingContext from "@genome-spy/core/rendering/webgpu/webGpuViewRenderingContext.js";
 import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
 import BmFontManager from "@genome-spy/core/fonts/bmFontManager.js";
+import OutlineTextMetricsProvider from "@genome-spy/core/rendering/webgpu/outlineTextMetrics.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -2179,10 +2180,17 @@ describe("axis layout and visibility", () => {
         const testContext = createTestViewContext(
             {},
             {
-                textMetrics: new BmFontManager(
-                    undefined,
-                    undefined,
-                    async () => ({})
+                textMetrics: /** @type {any} */ (
+                    new OutlineTextMetricsProvider(
+                        async () =>
+                            /** @type {any} */ ({
+                                unitsPerEm: 1,
+                                capHeight: 1,
+                                descender: 0,
+                                getGlyph() {},
+                            }),
+                        new BmFontManager()
+                    )
                 ),
             }
         );
