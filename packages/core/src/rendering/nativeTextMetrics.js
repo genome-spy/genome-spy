@@ -24,6 +24,11 @@ export default class NativeTextMetricsProvider {
 
         /** @type {string | undefined} */
         this.currentFont = undefined;
+
+        context.fontKerning = "normal";
+        context.direction = "ltr";
+        context.textAlign = "left";
+        context.textBaseline = "alphabetic";
     }
 
     /** @param {import("../fonts/textMetrics.js").FontConfig} config */
@@ -60,10 +65,6 @@ export default class NativeTextMetricsProvider {
             this.context.font = font;
             this.currentFont = font;
         }
-        this.context.fontKerning = "normal";
-        this.context.direction = "ltr";
-        this.context.textAlign = "left";
-        this.context.textBaseline = "alphabetic";
     }
 }
 
