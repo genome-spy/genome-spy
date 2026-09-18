@@ -26,7 +26,7 @@ float sdPolygon(vec2[N] v, vec2 p) {
     for( int i=0, j=N-1; i<N; j=i, i++ ) {
         vec2 e = v[j] - v[i];
         vec2 w =    p - v[i];
-        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
+        vec2 b = w - e*clamp( dot(w,e)/max(dot(e,e), 1e-12), 0.0, 1.0 );
         d = min( d, dot(b,b) );
         bvec3 c = bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x);
         if( all(c) || all(not(c)) ) s*=-1.0;  
@@ -39,7 +39,8 @@ float sdStem(
     float halfLength,
     float halfWidth,
     float rHeadSlope,
-    float rStartNotchSlope
+    float rStartNotchSlope,
+    bool bidirectional
 ) {
     if (halfWidth < 0.0) {
         return FAR_OUTSIDE;
@@ -47,14 +48,26 @@ float sdStem(
 
     float headSideLength = halfWidth * rHeadSlope;
     float startNotchLength = halfWidth * rStartNotchSlope;
-    vec2 vertices[6] = vec2[6](
-        vec2(-halfLength, 0.0),
-        vec2(-halfLength + headSideLength, halfWidth),
-        vec2(halfLength, halfWidth),
-        vec2(halfLength - startNotchLength, 0.0),
-        vec2(halfLength, -halfWidth),
-        vec2(-halfLength + headSideLength, -halfWidth)
-    );
+    vec2 vertices[6];
+    if (bidirectional) {
+        vertices = vec2[6](
+            vec2(-halfLength, 0.0),
+            vec2(-halfLength + headSideLength, halfWidth),
+            vec2(halfLength - headSideLength, halfWidth),
+            vec2(halfLength, 0.0),
+            vec2(halfLength - headSideLength, -halfWidth),
+            vec2(-halfLength + headSideLength, -halfWidth)
+        );
+    } else {
+        vertices = vec2[6](
+            vec2(-halfLength, 0.0),
+            vec2(-halfLength + headSideLength, halfWidth),
+            vec2(halfLength, halfWidth),
+            vec2(halfLength - startNotchLength, 0.0),
+            vec2(halfLength, -halfWidth),
+            vec2(-halfLength + headSideLength, -halfWidth)
+        );
+    }
 
     return sdPolygon(vertices, p);
 }
@@ -63,8 +76,10 @@ float sdStem(
 vec2 headInnerCorner(float halfWidth, float rHeadSlope, float headStrokeWidth) {
     float headAxisLength = halfWidth * rHeadSlope;
     vec2 topOuter = vec2(headAxisLength, halfWidth);
-    vec2 normalOffset = headStrokeWidth
-        * normalize(vec2(halfWidth, -headAxisLength));
+    vec2 normal = vec2(halfWidth, -headAxisLength);
+    vec2 normalOffset = length(normal) > 0.0
+        ? headStrokeWidth * normalize(normal)
+        : vec2(0.0);
     return topOuter + normalOffset;
 }
 
@@ -115,13 +130,14 @@ float repeat(float x, float spacing) {
     return x >= spacing ? x - floor(x / spacing) * spacing : x;
 }
 
-float sdArrow(vec2 arrowPos, float arrowHalfLength) {
+float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
     float stemDistance = sdStem(
         arrowPos,
         arrowHalfLength,
         vStemHalfWidth,
         vRHeadSlope,
-        vRStartNotchSlope
+        vRStartNotchSlope,
+        bidirectional
     );
 
     bool headRepeat = vHeadSpacing >= 0.0;
@@ -144,6 +160,17 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength) {
         vHeadStrokeWidth
     );
 
+    if (bidirectional) {
+        float endHeadDistance = sdArrowHead(
+            vec2(arrowHalfLength - arrowPos.x, arrowPos.y),
+            vHeadHalfWidth,
+            vRHeadSlope,
+            vRHeadNotchSlope,
+            vHeadStrokeWidth
+        );
+        headDistance = min(headDistance, endHeadDistance);
+    }
+
     if (headRepeat) {
         // Cull heads that would be partially clipped.
         float headTipDistance = distanceFromStart - arrowHeadX;
@@ -161,10 +188,15 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength) {
 
 void main(void) {
     vec2 arrowPos = vPosInPixels;
+    bool bidirectional = vDirection == DIRECTION_BOTH;
     if (vDirection == DIRECTION_FORWARD) {
         arrowPos.x = -arrowPos.x;
     }
-    float d = sdArrow(arrowPos, vArrowHalfLengthInPixels);
+    float d = sdArrow(
+        arrowPos,
+        vArrowHalfLengthInPixels,
+        bidirectional
+    );
 
     fragColor = distanceToColor(
         d,

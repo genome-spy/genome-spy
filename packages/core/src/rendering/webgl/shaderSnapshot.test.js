@@ -464,7 +464,31 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("getScaled_direction()");
         expect(sources.vertex).toContain("uRangeTexture_direction");
         expect(sources.fragment).toContain("vDirection");
+        expect(sources.fragment).toContain("DIRECTION_BOTH");
+        expect(sources.fragment).toContain("endHeadDistance");
         expect(sources.fragment).not.toContain("uDirection");
+    });
+
+    test("bidirectional arrow compiles to the dedicated shader branch", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{}] },
+            mark: "arrow",
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+                direction: /** @type {any} */ ({ value: "both" }),
+            },
+        });
+
+        expect(sources.vertex).toContain("return float(2.0)");
+        expect(sources.vertex).toContain("direction == DIRECTION_BOTH");
+        expect(sources.fragment).toContain(
+            "bool bidirectional = vDirection == DIRECTION_BOTH"
+        );
+        expect(sources.fragment).toContain(
+            "headDistance = min(headDistance, endHeadDistance)"
+        );
     });
 
     test("text shader supports visible-range culling", async () => {

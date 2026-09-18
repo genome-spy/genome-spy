@@ -206,6 +206,8 @@ Tentative commit: `feat(core): add shared bidirectional arrow geometry`
 
 ## Milestone 2: Add WebGL geometry and picking parity
 
+Status: completed
+
 ### Intended outcome
 
 The default WebGL backend renders and picks bidirectional arrows with the same
@@ -239,6 +241,11 @@ WebGL direction mapping, shader snapshots, live rendering, and GPU picking.
 ### Documentation and migration
 
 No additional migration or documentation is introduced in this milestone.
+
+The focused WebGL browser probe compiled the real shader and confirmed visible
+forward, reverse, and bidirectional outside-placement rows. It also queried the
+GPU picking buffer at DPR 1 and 2: both endpoint heads and the center stem hit
+the same datum, while an empty corner of the arrow bounds remained empty.
 
 Tentative commit: `feat(core): render bidirectional arrows in WebGL`
 

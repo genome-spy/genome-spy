@@ -18,6 +18,7 @@ layout(std140) uniform Mark {
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
+const float DIRECTION_BOTH = 2.0;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_OPEN = 1;
