@@ -29,7 +29,8 @@ consistent.
   Repeated heads do not express a useful ordering when both endpoints are
   heads, and a start notch has no unique start.
 - `headNotchAngle` is different from `startNotch`: it controls the concavity of
-  each triangle head and remains meaningful for a bidirectional arrow.
+  triangle heads and remains meaningful for a bidirectional triangle arrow.
+  Open heads intentionally continue using `headAngle` for both edges.
 - `headPlacement` remains meaningful. `"inside"` keeps both heads within the
   encoded interval; `"outside"` extends both heads beyond their respective
   endpoints.
@@ -81,8 +82,10 @@ For a datum whose resolved direction is `"both"`:
 - draw exactly one head at each endpoint;
 - do not repeat heads, even when `headSpacing` is non-null;
 - do not draw `startNotch`, even when it is true;
-- continue to apply `headShape`, `headAngle`, `headNotchAngle`, `headWidth`,
-  `headPlacement`, fill, stroke, and opacity to both heads;
+- continue to apply `headShape`, `headAngle`, `headWidth`, `headPlacement`,
+  fill, stroke, and opacity to both heads;
+- preserve the existing head-shape rule: `headNotchAngle` shapes both triangle
+  heads, while open heads continue using `headAngle` for their inner edge;
 - when `stem` is false, draw the two standalone endpoint heads;
 - apply `minStemLength` symmetrically to inside triangle heads.
 
@@ -101,10 +104,14 @@ would fill the head notches and make short-arrow adjustment difficult to keep
 consistent.
 
 The immediate renderer should carry the two endpoint-head flags in its reused
-skeleton record and visit heads with each head's own tangent. Its bidirectional
-stem is a symmetric double-pointed polygon under the two heads. The WebGL and
-WebGPU signed-distance implementations should use the equivalent symmetric
-stem and the minimum distance to the two mirrored heads.
+skeleton record. Change `visitArrowHeadPositions` so its callback receives the
+tip plus the tangent and normal for that specific head; the start head uses the
+opposite tangent and normal from the end head. Canvas/SVG polygon construction
+and Canvas software picking must consume that per-head orientation instead of
+reusing the instance axis. Its bidirectional stem is a symmetric double-pointed
+polygon under the two heads. The WebGL and WebGPU signed-distance
+implementations should use the equivalent symmetric stem and the minimum
+distance to the two mirrored heads.
 
 For outside placement, expand the draw bounds independently at the start and
 end. For inside placement, calculate the effective shared head slope with
@@ -142,14 +149,14 @@ and WGSL.
   `headSpacing` or `startNotch`; the documented per-datum precedence is
   deterministic.
 
-## Milestone 1: Implement the shared grammar and renderer behavior
+## Milestone 1: Add the public contract and shared immediate geometry
 
 ### Intended outcome
 
 Specifications can use `direction: "both"` as a constant, expression result,
-raw scale-less value, or discrete scale range value. Every live renderer,
-export path, and picking path draws the same two-headed geometry, including
-inside/outside placement and short arrows.
+raw scale-less value, or discrete scale range value. The renderer-neutral
+geometry, Canvas2D, SVG export, and Canvas software picking draw the same
+two-headed geometry, including inside/outside placement and short arrows.
 
 ### Work
 
@@ -158,23 +165,13 @@ inside/outside placement and short arrows.
   documentation with `"both"`. Keep the automatic scale range unchanged and
   cover that compatibility decision with a focused test.
 - Replace the immediate renderer's reverse-only endpoint swap with explicit
-  exhaustive direction resolution. Refactor its reused skeleton and head
-  visitor so each endpoint head has the correct tip and tangent without adding
-  per-frame allocations to the skeleton hot path.
+  exhaustive direction resolution at the encoder-to-geometry boundary.
+  Refactor its reused skeleton and head visitor so each endpoint head has the
+  correct tip, tangent, and normal without adding per-frame allocations to the
+  skeleton hot path.
 - Add the symmetric stem polygon, two-head visitation, bidirectional culling
   bounds, outside expansion, and symmetric short-arrow slope calculation.
   Disable repeated heads and the start notch only for bidirectional instances.
-- Add the `2` direction code and equivalent two-head distance geometry to the
-  WebGL shaders. Expand both sides of the vertex strip for outside placement
-  and keep normal/picking passes on the same signed-distance result.
-- Add the same code and geometry to the generic WebGPU arrow definition. Make
-  outside expansion direction-aware for all three values, fixing reverse
-  outside placement as part of the same change. Update the Core adapter's enum
-  mapping and contract tests.
-- Update `docs/grammar/mark/arrow.md` and the arrow playground. Add a direction
-  control and explain that `"both"` suppresses `headSpacing` and `startNotch`
-  but not `headNotchAngle`. Regenerate the schema-derived documentation and
-  example artifacts through the normal docs workflow.
 
 ### Affected areas and downstream consumers
 
@@ -184,57 +181,140 @@ inside/outside placement and short arrows.
 - Shared semantic/immediate rendering:
   `packages/core/src/rendering/immediate/marks/arrow.js`; Canvas2D, SVG, and
   software picking consume this path.
-- WebGL rendering:
-  `packages/core/src/rendering/webgl/marks/arrow.{common,vertex,fragment}.glsl`
-  and shader snapshots.
-- WebGPU rendering:
-  `packages/webgpu-renderer/src/marks/programs/arrowProgram.js`, its public
-  direction-code contract, GPU tests, and Core's WebGPU adapter.
-- User-facing docs and examples:
-  `docs/grammar/mark/arrow.md` and
-  `examples/docs/grammar/mark/arrow/arrow-playground.json`.
 
 ### Verification
 
-- Schema/type tests accept `"both"` in mark properties and direction ranges,
-  while invalid strings remain rejected.
+- Schema/type tests accept `"both"` in mark properties and explicit direction
+  ranges, while the automatic range remains unchanged.
+- Encoder/immediate tests cover constant values, expressions, scale-less
+  fields, explicit scale ranges, conditional values, and invalid values. Every
+  invalid path must throw before renderer-specific geometry is built.
 - Immediate/SVG tests place tips at both exact endpoints and cover triangle and
   open heads, `stem: false`, inside and outside placement, and a short arrow
   with nonzero `minStemLength`. Include focused assertions showing that
   `headSpacing` and `startNotch` have no effect on a bidirectional datum while
   still affecting forward/reverse data in the same mark.
 - Canvas software-picking tests hit both heads and the stem but not the empty
-  corners of the arrow's bounding rectangle.
-- WebGL shader snapshots contain the third direction path, symmetric outside
-  expansion, and two-head distance evaluation.
-- WebGPU adapter tests translate `"both"` to code `2`; the WebGPU GPU test uses
-  pixel or picking probes at both endpoints and includes a reverse outside-head
-  regression probe.
-- Update a representative rendered example to show horizontal, vertical, and
-  diagonal bidirectional arrows alongside forward and reverse arrows. Compare
-  WebGL, Canvas2D, SVG, and WebGPU output at DPR 1 and 2, including zoom/clipping
-  at both ends.
-- Run focused Vitest suites with the `agent` reporter, the WebGPU arrow GPU
-  test, workspace TypeScript checks, schema/docs generation checks, and lint
-  for touched files.
+  corners of the arrow's bounding rectangle, including outside placement at
+  both ends.
+- Degenerate fixtures cover `headWidth: 0`, `stem: false`, segment length less
+  than or equal to `minStemLength`, and zero-length coincident endpoints. They
+  must produce finite geometry or the existing intentional no-output result.
+- Run the focused schema, encoder, immediate, SVG, Canvas, and software-picking
+  Vitest suites with the `agent` reporter plus the Core TypeScript check.
 
 ### Documentation and migration
 
-This is backward-compatible: existing values and automatic defaults do not
-change.
+The public type and schema change are backward-compatible because existing
+values and automatic defaults do not change. No specification migration is
+required.
+
+Tentative commit: `feat(core): add shared bidirectional arrow geometry`
+
+## Milestone 2: Add WebGL geometry and picking parity
+
+### Intended outcome
+
+The default WebGL backend renders and picks bidirectional arrows with the same
+endpoint, placement, and short-arrow semantics as the immediate path.
+
+### Work
+
+- Add the `2` direction code and equivalent two-head distance geometry to the
+  WebGL shaders.
+- Add a symmetric double-pointed stem for `"both"`, suppress repetition and
+  the start notch per instance, and apply the two-head short-arrow allowance.
+- Expand both sides of the vertex strip for outside placement and keep normal
+  and picking passes on the same signed-distance result.
+
+### Affected areas and downstream consumers
+
+`packages/core/src/rendering/webgl/marks/arrow.{common,vertex,fragment}.glsl`,
+WebGL direction mapping, shader snapshots, live rendering, and GPU picking.
+
+### Verification
+
+- Update shader snapshots for the third direction path, symmetric outside
+  expansion, and two-head distance evaluation.
+- Add a real WebGL browser probe that renders and picks both endpoint heads,
+  the center stem, and empty bounding-box corners. Include inside, outside,
+  short, and reverse-outside instances so source snapshots are not the only
+  geometry evidence.
+- Run focused WebGL unit tests and the browser probe at DPR 1 and 2.
+
+### Documentation and migration
+
+No additional migration or documentation is introduced in this milestone.
+
+Tentative commit: `feat(core): render bidirectional arrows in WebGL`
+
+## Milestone 3: Add WebGPU parity, examples, and documentation
+
+### Intended outcome
+
+The generic WebGPU renderer and Core adapter support bidirectional arrows, the
+reverse/outside expansion bug is fixed, and the complete feature is documented
+and demonstrated across backends.
+
+### Work
+
+- Add a public frozen WebGPU direction-code export with forward `0`, reverse
+  `1`, and both `2`; use it in the renderer GPU test and Core adapter instead of
+  duplicating magic numbers.
+- Add symmetric bidirectional geometry to the WebGPU arrow program and make
+  outside expansion direction-aware for all three values, fixing reverse
+  outside placement.
+- Add or update a focused WebGPU arrow Storybook scene as required for a
+  substantial renderer capability. Update `packages/webgpu-renderer/MIGRATION_PLAN.md`
+  only if this work changes a tracked migration phase.
+- Update `examples/core/marks/arrow/arrow_direction.json` to exercise an
+  explicit three-value direction range and include horizontal, vertical, and
+  diagonal cases. Regenerate its checked PNG and example snapshots.
+- Update `docs/grammar/mark/arrow.md` and the arrow playground. Add a direction
+  control and explain that `"both"` suppresses `headSpacing` and `startNotch`,
+  while `headNotchAngle` continues to apply only to triangle heads. Regenerate
+  `docs/genome-spy-schema.json` and verify the schema-derived type
+  documentation through the normal docs workflow.
+
+### Affected areas and downstream consumers
+
+- `packages/webgpu-renderer/src/marks/{arrow.js,arrow.d.ts}` and
+  `packages/webgpu-renderer/src/marks/programs/arrowProgram.js`.
+- WebGPU arrow GPU tests, Storybook examples, and Core's WebGPU adapter.
+- `examples/core/marks/arrow/arrow_direction.{json,png}`, example snapshots,
+  `examples/docs/grammar/mark/arrow/arrow-playground.json`, the arrow grammar
+  page, and generated schema artifacts.
+
+### Verification
+
+- WebGPU adapter tests translate `"both"` through the exported code contract.
+- The WebGPU GPU test uses pixel and picking probes at both endpoints and
+  includes a reverse outside-head regression probe at DPR 1 and 2.
+- Degenerate WebGPU cases match the immediate/WebGL results for zero head
+  width, hidden stems, over-constrained minimum stems, and zero-length
+  endpoints.
+- Build the affected Storybook and visually compare its arrow scene.
+- Run focused WebGPU unit/GPU tests, Core adapter tests, workspace TypeScript
+  checks, docs/schema generation checks, and lint for touched files.
+- Compare the representative static direction example through WebGL,
+  Canvas2D, SVG, and WebGPU, including zoom/clipping at both ends.
+
+### Documentation and migration
+
 Release notes should identify `"both"` as the new value and state its
 interaction with `headSpacing`, `startNotch`, `headPlacement`, and
-`minStemLength`. No specification migration is required.
+`minStemLength`. Existing specifications require no migration.
 
-Tentative commit: `feat(core): add bidirectional arrows`
+Tentative commit: `feat(core): complete bidirectional arrow support`
 
 ## Review gate
 
-Review the public direction contract and all renderer implementations together.
-In particular, compare endpoint expansion, short-arrow slope adjustment,
-stroke/picking coverage, and clipping across immediate, WebGL, and WebGPU
-paths. Do not accept a renderer-specific approximation or a solution that
-duplicates two full arrow instances.
+Review after milestone 1 at the shared geometry boundary, then review the final
+renderer integration after milestone 3. In particular, compare endpoint
+orientation, expansion, short-arrow slope adjustment, stroke/picking coverage,
+and clipping across immediate, WebGL, and WebGPU paths. Do not accept a
+renderer-specific approximation or a solution that duplicates two full arrow
+instances.
 
 ## Final integration verification
 
@@ -274,11 +354,14 @@ do not expand this feature's API to solve it.
 - The automatic direction range remains `["forward", "reverse"]`; an explicit
   value or range is required to select `"both"`.
 - Both endpoints use the same configured head geometry and placement.
-- Bidirectional instances have no repeated heads and no start notch, while
-  `headNotchAngle` still shapes both heads.
+- Bidirectional instances have no repeated heads and no start notch.
+- `headNotchAngle` shapes both triangle heads; open heads preserve their
+  existing `headAngle`-derived inner edges.
 - `minStemLength` is applied symmetrically for short inside arrows.
 - WebGL, WebGPU, Canvas2D, SVG, and all picking paths agree on representative
   horizontal, vertical, diagonal, inside, outside, open, filled, and stemless
   cases.
 - Existing forward/reverse examples and tests remain unchanged except for
   intentional schema/range snapshot updates.
+- Invalid direction values fail consistently before renderer-specific geometry
+  is built.
