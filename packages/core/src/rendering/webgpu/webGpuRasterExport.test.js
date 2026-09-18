@@ -131,6 +131,7 @@ describe("WebGPU raster export", () => {
             runs: [run, run],
             viewRoot: /** @type {any} */ ({}),
             layoutResult: /** @type {any} */ ({ layout: true }),
+            textMetrics: /** @type {any} */ ({}),
             logicalWidth: 100,
             logicalHeight: 80,
             pixelRatio: 2,

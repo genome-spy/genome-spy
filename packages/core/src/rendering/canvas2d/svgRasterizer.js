@@ -3,17 +3,15 @@ import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { getPhysicalCrop, setRasterImage } from "../svg/raster/rasterImage.js";
 import renderCanvas2D from "./renderCanvas2D.js";
-import { prepareTextMetrics } from "../nativeTextMetrics.js";
 
 /**
  * Initializes a detached Canvas2D selective rasterizer. Both contexts are
  * created before rendering so an unavailable Canvas2D implementation can fall
  * through without hiding later rendering errors.
  *
- * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [textMetrics]
  * @returns {(options: import("../renderingBackend.js").SvgRunRasterizationOptions) => Promise<void>}
  */
-export function createCanvas2DSvgRasterizer(textMetrics) {
+export function createCanvas2DSvgRasterizer() {
     let canvas;
     let context;
     let cropCanvas;
@@ -36,9 +34,6 @@ export function createCanvas2DSvgRasterizer(textMetrics) {
     }
 
     return async (options) => {
-        const preparedTextMetrics =
-            textMetrics ?? options.viewRoot.context.textMetrics;
-        await prepareTextMetrics(preparedTextMetrics, options.viewRoot);
         const width = Math.ceil(options.logicalWidth * options.pixelRatio);
         const height = Math.ceil(options.logicalHeight * options.pixelRatio);
         /** @type {CanvasRenderingContext2D[]} */
@@ -74,7 +69,7 @@ export function createCanvas2DSvgRasterizer(textMetrics) {
                 paint: true,
                 markPredicate: (mark) => run.marks.has(mark),
                 opacityLayers,
-                textMetrics: preparedTextMetrics,
+                textMetrics: options.textMetrics,
             });
 
             const crop = getPhysicalCrop(

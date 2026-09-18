@@ -38,7 +38,7 @@ export function createCanvas2DRenderingBackend(options) {
                 textMetrics: nativeTextMetrics,
             }),
         rasterizeSvgRuns: (rasterOptions) =>
-            createCanvas2DSvgRasterizer(nativeTextMetrics)(rasterOptions),
+            createCanvas2DSvgRasterizer()(rasterOptions),
         readPickingId: (x, y) => surface.readPickingId(x, y),
     };
 }

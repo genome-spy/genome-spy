@@ -184,6 +184,7 @@ export async function createRasterizedSvg({
                 runs,
                 viewRoot,
                 layoutResult,
+                textMetrics,
                 logicalWidth,
                 logicalHeight,
                 pixelRatio,

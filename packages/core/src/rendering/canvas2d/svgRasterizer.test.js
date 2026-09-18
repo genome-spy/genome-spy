@@ -30,12 +30,13 @@ describe("Canvas2D SVG rasterizer", () => {
             x2: 10.1,
             y2: 12.6,
         });
-        const rasterizeSvgRuns = createCanvas2DSvgRasterizer(textMetrics);
+        const rasterizeSvgRuns = createCanvas2DSvgRasterizer();
 
         await rasterizeSvgRuns({
             runs: [run],
             viewRoot: /** @type {any} */ ({ visit: vi.fn() }),
             layoutResult: /** @type {any} */ ({}),
+            textMetrics,
             logicalWidth: 100,
             logicalHeight: 80,
             pixelRatio: 1,
@@ -83,12 +84,13 @@ describe("Canvas2D SVG rasterizer", () => {
             y2: 12.6,
         });
 
-        await createCanvas2DSvgRasterizer(textMetrics)({
+        await createCanvas2DSvgRasterizer()({
             runs: [run],
             viewRoot: /** @type {any} */ ({
                 visit: vi.fn(),
                 arrange: vi.fn(),
             }),
+            textMetrics,
             logicalWidth: 100,
             logicalHeight: 80,
             pixelRatio: 2,
@@ -130,7 +132,7 @@ describe("Canvas2D SVG rasterizer", () => {
         mocks.renderCanvas2D.mockImplementation(() => {
             throw failure;
         });
-        const rasterizeSvgRuns = createCanvas2DSvgRasterizer(textMetrics);
+        const rasterizeSvgRuns = createCanvas2DSvgRasterizer();
 
         await expect(
             rasterizeSvgRuns({
@@ -144,6 +146,7 @@ describe("Canvas2D SVG rasterizer", () => {
                 ],
                 viewRoot: /** @type {any} */ ({ visit: vi.fn() }),
                 layoutResult: /** @type {any} */ ({}),
+                textMetrics,
                 logicalWidth: 100,
                 logicalHeight: 80,
                 pixelRatio: 1,

@@ -33,6 +33,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {import("./svg/svgViewRenderingContext.js").SvgRasterRun[]} runs
  * @property {import("../view/view.js").default} viewRoot
  * @property {import("../view/layout/layoutResult.js").default} [layoutResult]
+ * @property {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @property {number} logicalWidth
  * @property {number} logicalHeight
  * @property {number} pixelRatio
