@@ -88,12 +88,15 @@ interface FontMeasurement {
 ```
 
 `FontConfig` uses the existing family, style, and weight properties. The methods
-are synchronous after readiness. Width means advance width in logical pixels,
-not ink bounds or device pixels. `getHeight` is a stable font-level layout
-extent, not the bounding box of a particular string. Keep the existing WebGL
-cap-height-plus-descent convention; native and outline providers supply their
-own documented equivalent. No glyph, bitmap, or GPU resource fields belong in
-this contract.
+are always synchronous. Before the requested face is ready, they explicitly use
+the provider's deterministic default-font measurement; after
+`waitUntilReady()`, they use the requested face. Width means advance width in
+logical pixels, not ink bounds or device pixels. `getHeight` is a stable
+font-level layout extent, not the bounding box of the measured string. Keep the
+existing WebGL cap-height-plus-descent convention. The native provider measures
+`Mg` at the requested size and uses its actual ascent plus descent; the outline
+provider uses the corresponding font-wide vertical metrics. No glyph, bitmap,
+or GPU resource fields belong in this contract.
 
 Expose the provider as `RenderingBackend.textMetrics` and
 `ViewContext.textMetrics`. Keep the provider identity fixed for the live view
@@ -106,10 +109,11 @@ Axis/title/legend measurement helpers use the same live provider, including
 font requests that occur during view construction and dynamic insertion.
 
 Preserve the existing pre-load font barrier, generalized to include measurement
-and renderer resource preparation. A view may ask for provisional sizes before
-the barrier; preserve explicit provisional layout behavior and invalidate size
-caches after readiness rather than letting unready handles silently measure.
-Do not add per-row promises or a second reactive invalidation system.
+and renderer resource preparation. A view may receive the documented default-
+font provisional sizes before the barrier. Invalidate size caches after
+readiness so later layout uses the requested face. Dataflow starts after the
+barrier and therefore never observes provisional metrics. Do not add readiness
+state to handles, per-row promises, or a second reactive invalidation system.
 
 Backend implementations:
 
@@ -125,38 +129,37 @@ normalization with drawing. Measure at the requested font size, not at one pixel
 and multiply: browser font behavior need not be perfectly scale invariant.
 Explicitly align kerning, direction, and supported spacing settings between
 measurement and drawing. Start with existing grammar settings, not new ones.
-Retain prepared font handles and the last context font setting. Cache native
-measurements only for single Unicode code points, covering repeated MSA letters
-and logo cells. Multi-character strings use whole-string native measurement
-without caching; never sum cached character advances to measure a string.
+Retain prepared font handles and the last context font setting.
 
-Use the existing WebGPU font lookup as the implementation pattern:
-`packages/webgpu-renderer/src/fonts/trueTypeFont.js` keeps an ASCII array and a
-Unicode map scoped to each prepared font. Adopt that small lookup structure in
-the native helper, not the TrueType parsing or outline machinery. This is
-same-repository MIT-licensed code; record the source in a nearby comment if
-closely adapting it. Do not import private WebGPU modules into Core.
+Add only an ASCII fast path for the pathological dense-sequence case in
+`examples/docs/examples/genomic-data/msa.json`, where most text instances are
+single `A`, `C`, `T`, or `G` letters at one size. Each native font measurement
+handle retains one exact font size and a 128-element `Float64Array` of advance
+widths, using `NaN` for an unmeasured entry. A size change clears the array and
+replaces the retained size. Cache only strings whose length is one and whose
+UTF-16 code unit is below 128. Measure all non-ASCII and multi-code-unit strings
+whole without caching; never sum character advances to measure a string.
 
-For native advances, scope the lookup to the resolved font settings and requested
-unsqueezed size. For logo ink bounds, use the fixed reference size described
-below. These are separate measurement results. Cell dimensions, rotation,
-placement, and squeeze factors do not enter either key. Retain lookups across
-frames and share them between drawing and picking through the native provider.
-Populate only after font readiness and release with the provider. Bound the
-number of retained font/size buckets and Unicode entries so reactive sizes or
-large alphabets cannot cause indefinite growth; a small bounded Map is enough,
-without a general string-cache framework. Determine single-code-point eligibility
-without allocating an array; a surrogate pair counts as one, while combining
-sequences and multi-code-point emoji take the uncached whole-string path.
+Logo ink bounds use a separate 128-element array at the fixed reference size
+described below. An undefined entry is unmeasured, `null` records zero-area ink,
+and other entries contain the measured native bounds. Cell dimensions,
+rotation, placement, and squeeze factors do not enter either cache. Share the
+handle between drawing and picking so repeated sequence letters are measured
+once within a stable font size. Do not introduce Unicode maps, size-bucket maps,
+eviction policies, or a general string-cache abstraction.
 
 BMFont resources remain WebGL implementation details. `TextMark` requests a
 backend-neutral measurement handle during construction, even if no transform
 measures that mark. The selected provider's `requestFont()` registers preparation
 of the corresponding backend font resources as well as measurement readiness.
-The WebGL adapter retrieves the prepared BMFont from its backend-owned store;
-the WebGPU adapter/provider similarly shares its prepared outline font. Do not
-defer the first font request until adapter render preparation: that happens
-after the current data-loading barrier. The concrete initialization order is:
+Each backend factory creates its provider and private font store together. The
+WebGL adapter retrieves the prepared BMFont from that store by normalized font
+configuration; the WebGPU adapter/provider similarly shares its private outline
+font store. The provider itself owns only bounded JavaScript state and a detached
+Canvas context, so it needs no separate disposal contract; renderer resources
+retain their existing backend lifetime. Do not defer the first font request
+until adapter render preparation: that happens after the current data-loading
+barrier. The concrete initialization order is:
 
 1. View/mark construction and transform initialization register font requests.
 2. Await the selected provider's pending preparation, then invalidate provisional
@@ -256,11 +259,10 @@ is unchanged by this native helper.
 
 Add a dense MSA case using ordinary squeezed single-letter text as well as a
 logo case. Instrument native measurement calls: repeated cells with the same
-letter/font/base size should measure once after preparation, including across
-repaints and picking. Different base sizes must not reuse advances; different
-cell sizes should reuse logo bounds. Verify multi-character strings bypass the
-cache, supplementary code points are eligible, and cache limits hold when
-sizes or Unicode characters vary.
+ASCII letter/font/base size should measure once after preparation, including
+across repaints and picking while that size remains current. A different base
+size clears the advance cache; different cell sizes reuse logo bounds. Verify
+that multi-character and non-ASCII strings bypass both caches.
 
 Export rules:
 
@@ -273,12 +275,13 @@ Export rules:
    `document.fonts.ready` alone does not initiate a requested face's load. Neither
    mechanism downloads an arbitrary named family or converts BMFont assets into
    native fonts. Existing browser fallback families remain valid.
-   Apply this preparation explicitly to `analyzeSvgExport()`, vector export,
-   and hybrid export before its first counting traversal. Low-level synchronous
-   SVG functions require prepared destination handles. Collect requests from
-   text marks in the prepared hierarchy before awaiting; do not discover them
-   only inside drawing callbacks. Reuse the prepared provider for counting and
-   emission within one operation.
+   Add one SVG-owned helper that creates a native provider, collects requests
+   from text marks in the prepared hierarchy, and awaits it. Use the returned
+   provider in asynchronous `analyzeSvgExport()`, vector export, and hybrid
+   export before the first counting traversal. Reuse that provider for counting
+   and emission within one operation. Low-level synchronous SVG rendering may
+   accept a prepared provider; without one, it uses currently available browser
+   fonts and retains its documented readiness limitation.
 4. Synchronous internal rendering consumes prepared resources. Deprecated
    synchronous export can only use fonts already available; do not invent a
    blocking load or claim readiness. Keep its limitation documented.
@@ -329,25 +332,33 @@ label through attached DOM adds layout work and another lifecycle.
   `feat(core): use renderer-owned metrics for text measurement`.
 - [ ] **Native fitting, output, and export preparation.** Inject destination
   measurements into immediate traversal, picking, counting, and exports. Remove
-  ordinary width forcing; implement consistent squeeze transforms and native
-  logo ink bounds. Verify ranged/rotated text, both axes, clipping, flush/padding,
-  squeeze thresholds, software picking, SVG counts, and native font readiness
+  ordinary width forcing and implement consistent squeeze transforms. Verify
+  ranged/rotated text, both axes, clipping, flush/padding, squeeze thresholds,
+  software picking, SVG counts, the ASCII fast path, and native font readiness
   for standalone analysis as well as export. Preserve nominal ordinary-text
-  height semantics and verify logo ink placement using the cases above.
+  height semantics.
   Assert export does not replay sources/transforms or change live measurements.
   Update native-renderer and text-mark docs with intentional output differences.
   Tentative commit: `fix(core): fit native text using destination font metrics`.
+- [ ] **Native logo ink bounds.** Remove the remaining BMFont dependency from
+  Canvas/SVG logo traversal and implement fixed-reference native ink bounds,
+  zero-area handling, transforms, counting, and picking. Verify logo placement
+  and the ASCII bounds cache using the cases above. Tentative commit:
+  `fix(core): fit native sequence logos using ink bounds`.
 - [ ] **Integration acceptance.** Exercise the measure-text table, ranged-text,
   sequence-logo, scored-refSeq-genes, shared-hconcat-legend, and title-styles
-  examples under WebGL and Canvas, plus WebGPU where supported. Zoom/pan gene
-  tracks, vary reactive font size, export vector and hybrid SVG, and export PNG.
-  Include kerning pairs such as AV/To, whitespace, italic overhang, custom fonts,
-  non-ASCII/missing glyphs, and repeated exports. Check natural native typography,
-  agreement of rendered bounds and picking, and unchanged live state afterward.
-  Use real-browser checks for metrics; mocks alone cannot establish kerning or
-  font loading. Run focused unit suites, workspace type checks, and lint; use
-  layout/SVG and browser skills for their respective verification. Publish the
-  export limitations in user docs. Tentative commit:
+  examples under WebGL and Canvas, plus WebGPU where supported. Use
+  `examples/docs/examples/genomic-data/msa.json` as the primary cross-renderer
+  check for both ordinary squeezed single-letter text and stretched logo letters,
+  including vector and hybrid SVG export. Zoom/pan gene tracks, vary reactive
+  font size, and export PNG. Include kerning pairs such as AV/To, whitespace,
+  italic overhang, custom fonts, non-ASCII/missing glyphs, and repeated exports.
+  Check natural native typography, agreement of rendered bounds and picking,
+  and unchanged live state afterward. Use real-browser checks for metrics; mocks
+  alone cannot establish kerning or font loading. Run focused unit suites,
+  workspace type checks, and lint; use layout/SVG and browser skills for their
+  respective verification. Publish the export limitations in user docs.
+  Tentative commit:
   `test(core): cover renderer text measurement and export consistency`.
 
 Review the provider/readiness/public WebGPU API boundary before implementation
@@ -364,6 +375,6 @@ for arbitrary font-loading events in this change.
 
 The WebGPU public measurement signature needs agreement with its text-layout
 owner; require a whole-string API that reuses rendering logic, not a Core-side
-sum of exposed glyph metrics. The native height convention needs a representative
-axis/title regression check before settling exact values. Neither question
-changes the central live-versus-destination measurement rule.
+sum of exposed glyph metrics. Verify the selected native `Mg` height convention
+with representative axis and title regressions. Neither concern changes the
+central live-versus-destination measurement rule.
