@@ -1535,6 +1535,36 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.context.fill).toHaveBeenCalledTimes(1);
     });
 
+    test("records both bidirectional arrowheads", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                direction: /** @type {any} */ ("both"),
+                size: 10,
+                headWidth: 2,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.moves).toEqual([
+            [80, 50],
+            [20, 50],
+            [80, 50],
+        ]);
+        expect(recording.calls.closes).toBe(3);
+        expect(recording.context.fill).toHaveBeenCalledOnce();
+    });
+
     test("normalizes reversed logo-letter cells by the measured glyph width", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

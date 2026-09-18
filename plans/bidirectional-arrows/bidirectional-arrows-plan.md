@@ -1,6 +1,6 @@
 # Bidirectional arrow plan
 
-Status: proposed
+Status: active
 
 ## Objective
 
@@ -149,21 +149,19 @@ and WGSL.
   `headSpacing` or `startNotch`; the documented per-datum precedence is
   deterministic.
 
-## Milestone 1: Add the public contract and shared immediate geometry
+## Milestone 1: Build the shared immediate geometry
+
+Status: completed
 
 ### Intended outcome
 
-Specifications can use `direction: "both"` as a constant, expression result,
-raw scale-less value, or discrete scale range value. The renderer-neutral
-geometry, Canvas2D, SVG export, and Canvas software picking draw the same
-two-headed geometry, including inside/outside placement and short arrows.
+The renderer-neutral geometry, Canvas2D, SVG export, and Canvas software
+picking can draw the same two-headed geometry, including inside/outside
+placement and short arrows. The public type, schema, and discrete code mapping
+remain unchanged until every GPU backend is ready.
 
 ### Work
 
-- Extend `ArrowDirection`, `ArrowProps.direction`, `DirectionDef`, the
-  supported discrete direction values, schema fixtures, and channel
-  documentation with `"both"`. Keep the automatic scale range unchanged and
-  cover that compatibility decision with a focused test.
 - Replace the immediate renderer's reverse-only endpoint swap with explicit
   exhaustive direction resolution at the encoder-to-geometry boundary.
   Refactor its reused skeleton and head visitor so each endpoint head has the
@@ -175,20 +173,16 @@ two-headed geometry, including inside/outside placement and short arrows.
 
 ### Affected areas and downstream consumers
 
-- Public specification and generated schema:
-  `packages/core/src/spec/{channel,mark}.d.ts`, direction scale defaults, and
-  schema tests.
 - Shared semantic/immediate rendering:
   `packages/core/src/rendering/immediate/marks/arrow.js`; Canvas2D, SVG, and
   software picking consume this path.
 
 ### Verification
 
-- Schema/type tests accept `"both"` in mark properties and explicit direction
-  ranges, while the automatic range remains unchanged.
-- Encoder/immediate tests cover constant values, expressions, scale-less
-  fields, explicit scale ranges, conditional values, and invalid values. Every
-  invalid path must throw before renderer-specific geometry is built.
+- Immediate tests use internal fixtures for constant values, expressions,
+  scale-less fields, and explicit scale ranges without exposing the value in
+  the public type or schema yet. Invalid scale-less values fail before geometry
+  is built.
 - Immediate/SVG tests place tips at both exact endpoints and cover triangle and
   open heads, `stem: false`, inside and outside placement, and a short arrow
   with nonzero `minStemLength`. Include focused assertions showing that
@@ -205,9 +199,8 @@ two-headed geometry, including inside/outside placement and short arrows.
 
 ### Documentation and migration
 
-The public type and schema change are backward-compatible because existing
-values and automatic defaults do not change. No specification migration is
-required.
+No public documentation or migration is introduced in this internal
+milestone.
 
 Tentative commit: `feat(core): add shared bidirectional arrow geometry`
 
@@ -221,7 +214,8 @@ endpoint, placement, and short-arrow semantics as the immediate path.
 ### Work
 
 - Add the `2` direction code and equivalent two-head distance geometry to the
-  WebGL shaders.
+  WebGL shaders. Extend Core's internal discrete direction mapper and its tests
+  so `"both"` reaches WebGL only after the shader supports code `2`.
 - Add a symmetric double-pointed stem for `"both"`, suppress repetition and
   the start notch per instance, and apply the two-head short-arrow allowance.
 - Expand both sides of the vertex strip for outside placement and keep normal
@@ -264,6 +258,11 @@ and demonstrated across backends.
 - Add symmetric bidirectional geometry to the WebGPU arrow program and make
   outside expansion direction-aware for all three values, fixing reverse
   outside placement.
+- Extend `ArrowDirection`, `ArrowProps.direction`, `DirectionDef`, schema
+  fixtures, and channel documentation with `"both"`. Test direct mark values,
+  expression values, `encoding.direction: { value: "both" }`, scale-less
+  fields, explicit ranges, and invalid values. Keep the automatic direction
+  range `["forward", "reverse"]` unchanged.
 - Add or update a focused WebGPU arrow Storybook scene as required for a
   substantial renderer capability. Update `packages/webgpu-renderer/MIGRATION_PLAN.md`
   only if this work changes a tracked migration phase.

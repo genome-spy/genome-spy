@@ -174,6 +174,103 @@ describe("SoftwarePickingViewRenderingContext", () => {
         expect(buffer.read(50, 15)).toBe(0);
     });
 
+    test("picks both bidirectional arrowheads with outside placement", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                direction: /** @type {any} */ ("both"),
+                headPlacement: "outside",
+                size: 10,
+                headWidth: 2,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+            },
+        });
+        const buffer = render(view);
+
+        expect(buffer.read(10, 50)).toBeGreaterThan(0);
+        expect(buffer.read(50, 50)).toBeGreaterThan(0);
+        expect(buffer.read(90, 50)).toBeGreaterThan(0);
+        expect(buffer.read(50, 40)).toBe(0);
+    });
+
+    test("keeps bidirectional outside heads pickable at opposite viewport edges", async () => {
+        for (const [start, end, x, y] of [
+            [-0.2, -0.05, 3, 97],
+            [1.05, 1.2, 97, 3],
+        ]) {
+            const { view } = await createHeadlessEngine({
+                data: { values: [{}] },
+                mark: {
+                    type: "arrow",
+                    direction: /** @type {any} */ ("both"),
+                    headPlacement: "outside",
+                    size: 10,
+                    headWidth: 2,
+                    fill: "black",
+                    stroke: null,
+                },
+                encoding: {
+                    x: { value: start },
+                    x2: { value: end },
+                    y: { value: start },
+                    y2: { value: end },
+                },
+            });
+            const buffer = render(view);
+
+            expect(buffer.read(x, y)).toBeGreaterThan(0);
+        }
+    });
+
+    test("preserves distinct picking ids for mixed arrow directions", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { y: 0.2, direction: "forward" },
+                    { y: 0.5, direction: "reverse" },
+                    { y: 0.8, direction: "both" },
+                ],
+            },
+            mark: {
+                type: "arrow",
+                headSpacing: 2,
+                startNotch: true,
+                size: 6,
+                headWidth: 3,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { field: "y", type: "quantitative", scale: null },
+                direction: {
+                    field: "direction",
+                    type: "nominal",
+                    scale: null,
+                },
+            },
+        });
+        const buffer = render(view);
+        const forwardId = buffer.read(80, 80);
+        const reverseId = buffer.read(20, 50);
+        const bothStartId = buffer.read(20, 20);
+        const bothEndId = buffer.read(80, 20);
+
+        expect(forwardId).toBeGreaterThan(0);
+        expect(reverseId).toBeGreaterThan(0);
+        expect(bothStartId).toBeGreaterThan(0);
+        expect(bothEndId).toBe(bothStartId);
+        expect(new Set([forwardId, reverseId, bothStartId]).size).toBe(3);
+    });
+
     test("skips nonparticipating marks without allocating", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
