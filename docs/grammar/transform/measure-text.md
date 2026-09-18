@@ -8,10 +8,8 @@ collision length for the [displace1d](./displace1d.md) transform.
 Custom fonts can be configured with the same `font`, `fontStyle`, and
 `fontWeight` properties as the [`text`](../mark/text.md) mark.
 
-Measurements use the active renderer's text geometry: bitmap-font metrics in
-WebGL, outline metrics in WebGPU, and browser-native metrics in Canvas2D. This
-keeps downstream filtering and collision layout consistent with the live
-renderer.
+Measurements use the active renderer's text geometry, keeping downstream
+filtering and collision layout consistent with live text.
 
 For an usage example, check the [Annotation
 Tracks](https://observablehq.com/@tuner/annotation-tracks?collection=@tuner/genomespy)

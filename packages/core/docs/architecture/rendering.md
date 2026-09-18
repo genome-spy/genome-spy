@@ -86,16 +86,17 @@ become shared mark state or cross through `ViewContext`.
 The selected live backend exposes one `TextMetricsProvider` through
 `ViewContext`. Data transforms and guide layout request synchronous font
 measurement handles from it. Requests also register asynchronous font and
-renderer-resource preparation before source loading, and size caches are
-invalidated after that readiness barrier. Early layout may use the provider's
-documented default-font measurement; dataflow never observes provisional
-metrics.
+renderer-resource preparation before source loading. Native measurement caches
+are invalidated when loaded faces become ready. Early layout may use the
+provider's documented default-font measurement; dataflow never observes
+provisional metrics.
 
 WebGL measures with the same BMFont advances used for glyph vertices. WebGPU
 measures through the outline renderer's public whole-string operation, including
 its pair adjustments. Browser-native rendering uses a detached Canvas2D context.
-Font measurement handles contain no bitmap, outline, or GPU resources; concrete
-backends retain those in their existing private stores.
+Marks retain only renderer-neutral measurement handles. Backend providers and
+adapters own font-resource lookup and lifetime; backend resources never become
+shared mark state.
 
 SVG hybrid export counts visible instances and selects contiguous paint-order
 runs within the SVG subsystem. It asks the selected backend for an optional

@@ -95,8 +95,7 @@ Native-font and effect limitations of the fallback are the same as in the live
 
     `exportCanvas(width, height, devicePixelRatio, background)` remains
     available for compatibility and returns a PNG data URL. Use
-    `imageExport.raster()` for new code. The synchronous API cannot wait for
-    native fonts; it uses whichever faces are already available.
+    `imageExport.raster()` for new code.
 
 ## Exporting SVG
 
@@ -131,13 +130,10 @@ Exported text uses the configured font followed by a list of system-font
 fallbacks. The exact appearance can vary when the configured font is not
 available in the application that opens the SVG.
 
-SVG export loads requested browser fonts before measuring and drawing text.
-Local fitting, squeezing, and sequence-logo placement therefore follow the SVG
-destination font. Earlier dataflow decisions, such as collision filtering and
-space reserved for guides, retain the active renderer's measurements; export
-does not rerun sources or transforms. Cross-renderer exports can consequently
-leave slightly different gaps or omit a label that a fresh native rendering
-would retain.
+SVG export loads requested browser fonts before measuring and generating text.
+Fitting, squeezing, and sequence-logo placement therefore follow the SVG
+destination font. Data transforms are not rerun, so cross-renderer exports may
+retain filtering and spacing decisions made using the live renderer's metrics.
 
 ### Downloading the SVG
 
