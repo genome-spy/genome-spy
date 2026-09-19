@@ -370,6 +370,11 @@ shared scale properties for that view subtree. If the subtree has multiple
 independent scales for the same channel, place `scales.<channel>` closer to the
 intended subtree or make the sharing explicit with `resolve.scale`.
 
+A declaration with an explicit `type` creates a scale even when no encoding
+uses it. This allows a container to start without tracks. With
+`resolve.scale.x: "shared"`, added tracks share the scale, and removing them
+preserves its zoom state.
+
 A view-level scale declaration is exclusive. When nested declarations target
 the same scale resolution, the ancestor declaration shadows the whole
 descendant declaration; their properties are not merged. Declarations in

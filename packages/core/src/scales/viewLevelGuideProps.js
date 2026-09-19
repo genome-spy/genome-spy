@@ -1,3 +1,7 @@
+import {
+    ensureAxisResolution,
+    getResolutionView,
+} from "../view/resolutionPlanner.js";
 import { VISIT_SKIP } from "../view/view.js";
 import { visitNonChromeViews } from "../view/viewSelectors.js";
 
@@ -64,6 +68,20 @@ const LEGEND_GUIDE = {
  * @returns {ViewLevelAxisPropsMapping[]}
  */
 export function attachViewLevelAxisProps(root) {
+    visitNonChromeViews(root, (view) => {
+        for (const channel of /** @type {PrimaryPositionalChannel[]} */ ([
+            "x",
+            "y",
+        ])) {
+            const scale = view.resolutions.scale[channel];
+            if (scale?.isExplicitlyOwned())
+                ensureAxisResolution(
+                    getResolutionView(view, "axis", channel),
+                    channel,
+                    scale
+                );
+        }
+    });
     return /** @type {ViewLevelAxisPropsMapping[]} */ (
         attachViewLevelGuideProps(root, AXIS_GUIDE)
     );

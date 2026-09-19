@@ -819,8 +819,7 @@ export default class GridChild {
     #getActiveAxisCandidates(orient) {
         return this.axisCandidates.filter(
             (candidate) =>
-                candidate.orient === orient &&
-                candidate.resolution.hasVisibleNonChromeMember()
+                candidate.orient === orient && candidate.resolution.isVisible()
         );
     }
 

@@ -1777,6 +1777,20 @@ export default class GridView extends ContainerView {
             }
         }
 
+        // A declared scale can keep its guide even when the grid has no tracks.
+        if (!layoutItems.length) {
+            for (const axis of Object.values(this.#sharedAxes)) {
+                const { orient } = axis.axisProps;
+                const axisCoords = translateAxisCoords(coords, orient, axis);
+
+                queueDecoration(
+                    defaultAxisZindex(axis.axisProps, false),
+                    DECORATION_ORDER.axis,
+                    () => axis.arrange(context, axisCoords, options)
+                );
+            }
+        }
+
         arrangeLocalLegends(
             this.#sharedLegends,
             this.#getSharedAxesByOrient(),

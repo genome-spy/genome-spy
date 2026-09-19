@@ -114,6 +114,11 @@ export default class ScaleResolution {
     /** @type {Set<ScaleResolutionMember>} The involved views */
     #members = new Set();
 
+    #disposed = false;
+
+    /** @type {Set<() => void>} */
+    #disposers = new Set();
+
     /** @type {Set<ScaleResolutionMember>} */
     #dataDomainMembers = new Set();
 
@@ -192,6 +197,9 @@ export default class ScaleResolution {
         this.name = undefined;
 
         this.#hostView = hostView;
+        if (this.isExplicitlyOwned()) {
+            hostView.registerDisposer(() => this.dispose());
+        }
 
         this.#scaleManager = new ScaleInstanceManager({
             getRuntime: () => this.#runtime,
@@ -237,6 +245,17 @@ export default class ScaleResolution {
             throw new Error("ScaleResolution has no members!");
         }
         return first.view;
+    }
+
+    /** Whether the host declares a typed scale independently of encodings. */
+    isExplicitlyOwned() {
+        const type =
+            this.#hostView?.spec.scales?.[
+                /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                    this.channel
+                )
+            ]?.type;
+        return !!type && type !== "null";
     }
 
     get #resolutionView() {
@@ -593,7 +612,7 @@ export default class ScaleResolution {
         }
 
         if (!adapt) {
-            if (!this.type) {
+            if (!this.type || this.#members.size === 0) {
                 this.type = type;
             } else if (type !== this.type && !isSecondaryChannel(channel)) {
                 // TODO: Revisit shared discrete positional scales when
@@ -617,10 +636,16 @@ export default class ScaleResolution {
     }
 
     #syncMembers() {
+        // Host disposal can precede its own encoding member unregistration.
+        if (this.#disposed) return;
+
         this.#invalidateOrderedMembers();
         this.#invalidateMergedScaleProps();
 
-        if (this.#scaleManager.scale && this.#members.size > 0) {
+        if (
+            this.#scaleManager.scale &&
+            (this.#members.size > 0 || this.isExplicitlyOwned())
+        ) {
             this.reconfigure();
         }
     }
@@ -749,7 +774,9 @@ export default class ScaleResolution {
                 this.#dataDomainMembers.delete(registeredMember);
                 this.#onMembersChanged();
             }
-            return removed && this.#members.size === 0;
+            return (
+                removed && this.#members.size === 0 && !this.isExplicitlyOwned()
+            );
         };
     }
 
@@ -918,7 +945,22 @@ export default class ScaleResolution {
         );
     }
 
+    /**
+     * Registers cleanup for consumers whose lifetime is bounded by this scale.
+     * @param {() => void} disposer
+     * @returns {() => void}
+     */
+    registerDisposer(disposer) {
+        this.#disposers.add(disposer);
+        return () => {
+            this.#disposers.delete(disposer);
+        };
+    }
+
     dispose() {
+        this.#disposed = true;
+        for (const disposer of this.#disposers) disposer();
+        this.#disposers.clear();
         this.#domainInputs?.dispose();
         this.#zoomExtentListeners.clear();
         this.#listeners.domain.clear();
@@ -948,7 +990,12 @@ export default class ScaleResolution {
         }
 
         const scale = this.#scaleManager.scale;
-        if (!scale || scale.type === "null" || !this.#members.size) return;
+        if (
+            !scale ||
+            scale.type === "null" ||
+            (!this.#members.size && !this.isExplicitlyOwned())
+        )
+            return;
 
         const members = new Set(
             this.#members

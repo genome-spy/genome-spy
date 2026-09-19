@@ -1,3 +1,5 @@
+import { isDiscrete } from "vega-scale";
+import ScaleResolution from "./scaleResolution.js";
 import { VISIT_SKIP } from "../view/view.js";
 import { visitNonChromeViews } from "../view/viewSelectors.js";
 
@@ -5,7 +7,6 @@ import { visitNonChromeViews } from "../view/viewSelectors.js";
  * @typedef {import("../spec/channel.js").ChannelWithScale} ChannelWithScale
  * @typedef {import("../spec/scale.js").Scale} Scale
  * @typedef {import("../view/view.js").default} View
- * @typedef {import("./scaleResolution.js").default} ScaleResolution
  *
  * @typedef {object} ViewLevelScalePropsMapping
  * @prop {View} view
@@ -55,6 +56,26 @@ export function mapViewLevelScaleProps(root) {
  */
 export function attachViewLevelScaleProps(root) {
     clearViewLevelScaleProps(root);
+    for (const mapping of mapViewLevelScaleProps(root)) {
+        const { view, channel, props } = mapping;
+        // An earlier ancestor declaration may have just created the shared scale.
+        mapping.resolution ??= mapViewLevelScaleDeclaration(
+            view,
+            channel,
+            props
+        ).resolution;
+        if (!mapping.resolution && props.type && props.type !== "null") {
+            const resolution = new ScaleResolution(channel, view);
+            resolution.type =
+                props.type === "locus" || props.type === "index"
+                    ? props.type
+                    : isDiscrete(props.type)
+                      ? "nominal"
+                      : "quantitative";
+            view.resolutions.scale[channel] = resolution;
+        }
+    }
+
     const mappings = mapViewLevelScaleProps(root);
     for (const mapping of mappings) {
         if (mapping.resolution) {
@@ -68,7 +89,8 @@ export function attachViewLevelScaleProps(root) {
 }
 
 /**
- * Clears view-level scale props owned by views in the subtree.
+ * Clears encoding-owned attachments before remapping the subtree.
+ * Typed declarations retain their configuration while tracks are replaced.
  *
  * @param {View} root
  */
@@ -78,7 +100,11 @@ export function clearViewLevelScaleProps(root) {
 
     for (const resolution of resolutions) {
         const attachment = resolution.getViewLevelScaleProps();
-        if (attachment && views.has(attachment.view)) {
+        if (
+            attachment &&
+            views.has(attachment.view) &&
+            !resolution.isExplicitlyOwned()
+        ) {
             resolution.clearViewLevelScaleProps(attachment.view);
         }
     }

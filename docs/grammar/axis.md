@@ -2,7 +2,8 @@
 
 Axes explain how positional channels such as `x` and `y` map data values to
 positions. GenomeSpy creates axes automatically for positional field and
-expression encodings.
+expression encodings, and for positional view-level scale declarations with an
+explicit `type`.
 
 ## Configuration
 
@@ -27,6 +28,9 @@ axis:
 In composed views, view-level `axes.<channel>` can provide a shared location for
 axis properties when the subtree has a unique axis resolution for that channel.
 See [Resolution](#resolution).
+
+Set both `resolve.scale.x` and `resolve.axis.x` to `"shared"` to keep one
+axis as tracks are added or removed, including when the container is empty.
 
 Set `axis` to `null` on a channel to remove the corresponding axis. In a shared
 axis resolution, this removes the shared axis.

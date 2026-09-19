@@ -81,7 +81,11 @@ describe("deterministic shared resolution merges", () => {
 
         /** @param {any[]} members */
         const create = (members) => {
-            const resolution = new AxisResolution("x");
+            const resolution = new AxisResolution(
+                "x",
+                memberA.view.getScaleResolution(),
+                /** @type {any} */ ({ resolutions: { scale: {} } })
+            );
             for (const member of members) {
                 resolution.registerMember(member);
             }

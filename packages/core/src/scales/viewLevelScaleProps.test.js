@@ -15,6 +15,135 @@ import {
 } from "./viewLevelScaleProps.js";
 
 describe("view-level scale property mapping", () => {
+    test("typed declarations support an empty container and preserve zoom across track mutations", async () => {
+        const { view } = await createHeadlessEngine({
+            resolve: { scale: { x: "shared" } },
+            scales: {
+                x: {
+                    type: "locus",
+                    assembly: {
+                        name: "test",
+                        contigs: [{ name: "chr1", size: 1000 }],
+                    },
+                },
+            },
+            vconcat: [],
+        });
+        const resolution = view.getScaleResolution("x");
+        expect(resolution.getScale().domain()).toEqual([0, 1000]);
+        // Navigate before any track exists, then retain that viewport through replacement.
+        await resolution.zoomTo([100, 199]);
+        const spec = {
+            data: { values: [{ start: 20 }] },
+            mark: "point",
+            encoding: { x: { field: "start", type: "locus" } },
+        };
+        try {
+            for (let i = 0; i < 2; i++) {
+                const child = await view.addChildSpec(spec);
+                expect(child.getScaleResolution("x")).toBe(resolution);
+                expect(resolution.getScale().domain()).toEqual([100, 200]);
+                await view.removeChildAt(0);
+                expect(view.getScaleResolution("x")).toBe(resolution);
+                expect(resolution.getScale().domain()).toEqual([100, 200]);
+            }
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("an initially populated typed shared scale survives removal of its last track", async () => {
+        const { view } = await createHeadlessEngine({
+            resolve: { scale: { x: "shared" } },
+            scales: { x: { type: "linear", domain: [0, 100], zoom: true } },
+            vconcat: [
+                {
+                    mark: "point",
+                    data: { values: [{ x: 5 }] },
+                    encoding: { x: { field: "x", type: "quantitative" } },
+                },
+            ],
+        });
+        try {
+            const resolution = view.getScaleResolution("x");
+            await resolution.zoomTo([20, 40]);
+            await view.removeChildAt(0);
+            expect(view.getScaleResolution("x")).toBe(resolution);
+            expect(resolution.getScale().domain()).toEqual([20, 40]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test.each(["linear", undefined])(
+        "nested declarations share the ancestor domain without encodings (type: %s)",
+        async (type) => {
+            const { view } = await createHeadlessEngine({
+                scales: { x: { type, domain: [0, 100] } },
+                // An untyped ancestor configures the child-owned scale. Keep its axis there.
+                resolve: { axis: { x: "independent" } },
+                layer: [
+                    {
+                        scales: { x: { type: "linear", domain: [0, 10] } },
+                        data: { values: [{}] },
+                        mark: "point",
+                    },
+                ],
+            });
+            try {
+                const resolution = mapViewLevelScaleProps(view)[0].resolution;
+                expect(view.children[0].getScaleResolution("x")).toBe(
+                    resolution
+                );
+                expect(resolution.getScale().domain()).toEqual([0, 100]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
+    test("a declared scale domain reacts without encoding members", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "end", value: 10 }],
+            scales: { x: { type: "linear", domain: [0, { expr: "end" }] } },
+            vconcat: [],
+        });
+        try {
+            const resolution = view.getScaleResolution("x");
+            expect(resolution.getScale().domain()).toEqual([0, 10]);
+            view.paramRuntime.setValue("end", 20);
+            await view.paramRuntime.whenPropagated();
+            expect(resolution.getScale().domain()).toEqual([0, 20]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("standalone value expressions can read a declared scale", async () => {
+        const { view } = await createHeadlessEngine({
+            scales: {
+                x: {
+                    type: "locus",
+                    assembly: {
+                        name: "test",
+                        contigs: [{ name: "chr1", size: 1000 }],
+                    },
+                },
+            },
+            data: { values: [{}] },
+            params: [{ name: "span", expr: "abs(span(domain('x')))" }],
+            mark: { type: "text", text: { expr: "span" } },
+        });
+        try {
+            expect(view.paramRuntime.getValue("span")).toBe(1000);
+            view.getScaleResolution("x").getScale().domain([100, 200]);
+            await view.paramRuntime.whenPropagated();
+            expect(view.paramRuntime.getValue("span")).toBe(100);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("initial view creation attaches mapped declarations automatically", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {

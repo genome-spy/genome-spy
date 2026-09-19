@@ -13,7 +13,7 @@ import { isInChromeSubtree } from "./viewChrome.js";
 
 /**
  * @typedef {object} ResolutionMember
- * @prop {import("./unitView.js").default} view
+ * @prop {import("./view.js").default} view
  * @prop {import("../spec/channel.js").Channel} channel
  * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
  * @prop {import("../spec/channel.js").ChannelWithScale} targetChannel
@@ -25,12 +25,12 @@ import { isInChromeSubtree } from "./viewChrome.js";
  */
 
 /**
- * @param {import("./unitView.js").default} view
+ * @param {import("./view.js").default} view
  * @param {ResolutionPlannerTarget} type
  * @param {import("../spec/channel.js").ChannelWithScale} targetChannel
- * @returns {import("./unitView.js").default}
+ * @returns {import("./view.js").default}
  */
-const getResolutionView = (view, type, targetChannel) => {
+export const getResolutionView = (view, type, targetChannel) => {
     let resolutionView = view;
     while (
         (getResolutionBehavior(resolutionView, type, targetChannel) ==
@@ -45,7 +45,6 @@ const getResolutionView = (view, type, targetChannel) => {
                 ))) &&
         getResolutionBehavior(resolutionView, type, targetChannel) != "excluded"
     ) {
-        // @ts-ignore
         resolutionView = resolutionView.dataParent;
     }
 
@@ -84,7 +83,7 @@ function getResolutionBehavior(view, type, channel) {
 
 /**
  * @param {import("./unitView.js").default} ownerView
- * @param {import("./unitView.js").default} resolutionView
+ * @param {import("./view.js").default} resolutionView
  * @param {import("../spec/channel.js").ChannelWithScale} targetChannel
  * @returns {import("../scales/scaleResolution.js").default}
  */
@@ -163,23 +162,6 @@ const forEachEncodedChannel = (view, callback) => {
  * @param {import("./unitView.js").default} view
  * @returns {ResolutionMember[]}
  */
-const collectAxisResolutionMembers = (view) => {
-    /** @type {ResolutionMember[]} */
-    const axisMembers = [];
-    forEachEncodedChannel(view, (channel, channelDef) => {
-        const member = getResolutionMember(view, "axis", channel, channelDef);
-        if (member && isPositionalChannel(member.channel)) {
-            axisMembers.push(member);
-        }
-    });
-
-    return axisMembers;
-};
-
-/**
- * @param {import("./unitView.js").default} view
- * @returns {ResolutionMember[]}
- */
 const collectLegendResolutionMembers = (view) => {
     /** @type {ResolutionMember[]} */
     const legendMembers = [];
@@ -228,43 +210,56 @@ const collectScaleResolutionMembers = (view) => {
 };
 
 /**
- * @param {import("./unitView.js").default} view
- * @param {ResolutionMember[]} axisMembers
+ * Resolves guide placement independently of scale ownership. Multiple axes may
+ * reference one scale; a shared axis must reference exactly one scale.
+ * @param {import("./view.js").default} host
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ * @param {ScaleResolution} scale
  */
-const registerAxisResolutionMembers = (view, axisMembers) => {
-    for (const {
-        view: resolutionView,
-        channel,
-        channelDef,
-        targetChannel,
-    } of axisMembers) {
-        if (
-            !isPositionalChannel(channel) ||
-            !isPrimaryPositionalChannel(targetChannel)
-        ) {
-            continue;
-        }
-
-        if (!resolutionView.resolutions.axis[targetChannel]) {
-            resolutionView.resolutions.axis[targetChannel] = new AxisResolution(
-                targetChannel
-            );
-        }
-        const resolution = resolutionView.resolutions.axis[targetChannel];
-        const unregister = resolution.registerMember({
-            view,
-            channel,
-            channelDef,
+export function ensureAxisResolution(host, channel, scale) {
+    let resolution = host.resolutions.axis[channel];
+    if (host.getScaleResolution(channel) !== scale) {
+        throw new Error(
+            `Shared axes must have a shared scale! Declare or share the ${channel} scale at the axis host or an ancestor.`
+        );
+    }
+    if (!resolution) {
+        resolution = new AxisResolution(channel, scale, host);
+        host.resolutions.axis[channel] = resolution;
+        const release = scale.registerDisposer(() => {
+            delete host.resolutions.axis[channel];
         });
-        view.registerDisposer(() => {
-            if (
-                unregister() &&
-                resolutionView.resolutions.axis[targetChannel] === resolution
-            ) {
-                delete resolutionView.resolutions.axis[targetChannel];
-            }
+        host.registerDisposer(() => {
+            release();
+            delete host.resolutions.axis[channel];
         });
     }
+    return resolution;
+}
+
+/** @param {import("./unitView.js").default} view */
+const registerAxisContributions = (view) => {
+    forEachEncodedChannel(view, (channel, channelDef) => {
+        const member = getResolutionMember(view, "axis", channel, channelDef);
+        if (
+            !member ||
+            !isPositionalChannel(channel) ||
+            !isPrimaryPositionalChannel(member.targetChannel)
+        )
+            return;
+        const resolution = ensureAxisResolution(
+            member.view,
+            member.targetChannel,
+            view.getScaleResolution(member.targetChannel)
+        );
+        view.registerDisposer(
+            resolution.registerMember({
+                view,
+                channel,
+                channelDef: member.channelDef,
+            })
+        );
+    });
 };
 
 /**
@@ -366,7 +361,7 @@ export const resolveViewResolutions = (view, type) => {
     }
 
     if (type == "axis") {
-        registerAxisResolutionMembers(view, collectAxisResolutionMembers(view));
+        registerAxisContributions(view);
     } else if (type == "legend") {
         registerLegendResolutionMembers(
             view,
