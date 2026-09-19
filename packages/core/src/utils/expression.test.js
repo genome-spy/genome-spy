@@ -5,6 +5,13 @@ import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { bindExpression } from "../paramRuntime/expressionRef.js";
 
 describe("expression helpers", () => {
+    test("computes nicely rounded tick steps", () => {
+        expect(createFunction("tickStep(0, 12000000, 2)")()).toBe(5000000);
+        expect(createFunction("tickStep(0, 3000000, 2)")()).toBe(2000000);
+        expect(createFunction("tickStep(0, 0.8, 2)")()).toBe(0.5);
+        expect(createFunction("tickStep(10, 0, 2)")()).toBe(-5);
+    });
+
     test("analyzes scale helpers and referenced globals", () => {
         expect(analyzeExpression("width * scale('x', step)")).toEqual({
             usesScaleHelper: true,

@@ -221,6 +221,14 @@ range changes do not determine magnification.
 
 ### Other functions
 
+<a name="tickStep" href="#tickStep">#</a>
+<b>tickStep</b>(<i>start</i>, <i>stop</i>, <i>count</i>)<br/>
+Returns a nicely rounded step of `1`, `2`, or `5` times a power of ten for
+approximately _count_ intervals between _start_ and _stop_. For example,
+`tickStep(0, 12000000, 2)` returns `5000000`. Descending intervals produce a
+negative step.
+See [D3's tickStep documentation](https://d3js.org/d3-array/ticks#tickStep).
+
 <a name="mapHasKey" href="#mapHasKey">#</a>
 <b>mapHasKey</b>(<i>map</i>, <i>key</i>)<br/>
 Returns true if the map contains the given key.

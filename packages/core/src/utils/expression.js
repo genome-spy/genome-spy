@@ -11,6 +11,7 @@ import {
     span,
 } from "vega-util";
 import { format as d3format } from "d3-format";
+import { tickStep } from "d3-array";
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
@@ -35,6 +36,7 @@ function sequence(value) {
 
 const functionContext = {
     clamp,
+    tickStep,
     format(/** @type {number} */ value, /** @type {string} */ format) {
         return d3format(format)(value);
     },
