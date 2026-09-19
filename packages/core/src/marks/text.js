@@ -23,7 +23,16 @@ export default class TextMark extends Mark {
             unitView.context.textMetrics,
             this.properties
         );
-        this.watchEncodedDataExpressions(["text", "logoLetters"]);
+    }
+
+    initializeEncoders() {
+        const firstInitialization = !this.encoders;
+        super.initializeEncoders();
+
+        // Property expressions may depend on scales contributed by sibling views.
+        if (firstInitialization) {
+            this.watchEncodedDataExpressions(["text", "logoLetters"]);
+        }
     }
 
     /** @returns {import("../spec/channel.js").Channel[]} */

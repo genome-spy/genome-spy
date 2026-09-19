@@ -3,6 +3,7 @@ import { initializeViewSubtree } from "../data/flowInit.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 
 /**
  * @param {import("../spec/channel.js").PositionDef | import("../spec/channel.js").Position2Def} channelDef
@@ -13,6 +14,53 @@ function getBand(channelDef) {
 }
 
 describe("TextMark", () => {
+    test("binds scale-dependent text properties after shared scales exist", async () => {
+        // The text precedes the sibling that contributes the shared x scale.
+        const { view } = await createHeadlessEngine({
+            resolve: { scale: { x: "shared" } },
+            vconcat: [
+                {
+                    params: [
+                        { name: "visibleSpan", expr: "abs(span(domain('x')))" },
+                        { name: "label", expr: "format(visibleSpan, '.0f')" },
+                    ],
+                    data: { values: [{}] },
+                    mark: {
+                        type: "text",
+                        text: { expr: "label" },
+                        logoLetters: { expr: "visibleSpan < 5" },
+                    },
+                },
+                {
+                    data: { values: [{ x: 0 }, { x: 10 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+
+        try {
+            const textView = /** @type {UnitView} */ (
+                /** @type {import("../view/concatView.js").default} */ (view)
+                    .children[0]
+            );
+            const mark = textView.mark;
+            expect(mark.encoders.text({})).toBe("10");
+
+            const revision = mark.getEncodedDataRevision();
+            view.getScaleResolution("x").getScale().domain([0, 2]);
+            await view.paramRuntime.whenPropagated();
+
+            expect(mark.encoders.text({})).toBe("2");
+            // Both text and logoLetters change, each with one subscription.
+            expect(mark.getEncodedDataRevision()).toBe(revision + 2);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("defers expression updates until data propagation completes", async () => {
         const view = await create(
             {
