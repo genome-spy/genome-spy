@@ -42,6 +42,7 @@ import {
     isVConcatSpec,
 } from "../viewSpecGuards.js";
 import { isRulerGapChannel } from "../scaleProjection.js";
+import { primaryPositionalChannels } from "../../encoder/encoder.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -52,11 +53,6 @@ export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js
  *     orient: import("../../spec/axis.js").AxisOrient,
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
- * @typedef {{
- *     owner: import("../view.js").default,
- *     paramName: string,
- *     config: import("../../spec/parameter.js").RulerConfig,
- * }} GridChildRulerBinding
  */
 
 /**
@@ -102,6 +98,29 @@ function supportsRulerGapTracking(view, channels) {
             (child) => child.getScaleResolution(channel) === resolution
         )
     );
+}
+
+/**
+ * @param {import("../../spec/view.js").UnitSpec | undefined} spec
+ * @param {import("../containerView.js").default} layoutParent
+ * @param {import("../view.js").default} dataParent
+ * @param {string} name
+ */
+function createChromeView(spec, layoutParent, dataParent, name) {
+    if (!spec) {
+        return;
+    }
+
+    const view = new UnitView(
+        spec,
+        layoutParent.context,
+        layoutParent,
+        dataParent,
+        name
+    );
+    markViewAsNonAddressable(view, { skipSubtree: true });
+    markViewAsChrome(view, { skipSubtree: true });
+    return view;
 }
 
 export default class GridChild {
@@ -195,37 +214,18 @@ export default class GridChild {
             this.backgroundZindex = viewBackground?.zindex ?? 0;
             this.backgroundStrokeZindex = viewBackground?.strokeZindex;
 
-            const backgroundSpec = createBackground(viewBackground);
-            if (backgroundSpec) {
-                this.background = new UnitView(
-                    backgroundSpec,
-                    layoutParent.context,
-                    layoutParent,
-                    view,
-                    "background" + serial
-                );
-                markViewAsNonAddressable(this.background, {
-                    skipSubtree: true,
-                });
-                markViewAsChrome(this.background, { skipSubtree: true });
-            }
-
-            const backgroundStrokeSpec = createBackgroundStroke(viewBackground);
-            if (backgroundStrokeSpec) {
-                this.backgroundStroke = new UnitView(
-                    backgroundStrokeSpec,
-                    layoutParent.context,
-                    layoutParent,
-                    view,
-                    "backgroundStroke" + serial
-                );
-                markViewAsNonAddressable(this.backgroundStroke, {
-                    skipSubtree: true,
-                });
-                markViewAsChrome(this.backgroundStroke, {
-                    skipSubtree: true,
-                });
-            }
+            this.background = createChromeView(
+                createBackground(viewBackground),
+                layoutParent,
+                view,
+                "background" + serial
+            );
+            this.backgroundStroke = createChromeView(
+                createBackgroundStroke(viewBackground),
+                layoutParent,
+                view,
+                "backgroundStroke" + serial
+            );
         }
 
         this.title = view.spec.title
@@ -255,11 +255,12 @@ export default class GridChild {
     }
 
     #setupRulers() {
-        for (const {
-            owner,
-            paramName,
-            config: ruler,
-        } of this.#getRulerBindings()) {
+        for (const { owner, paramName, param } of this.#getInheritedParams()) {
+            if (!isRulerParameter(param)) {
+                continue;
+            }
+
+            const ruler = param.ruler;
             const channels = ruler.encodings ?? ["x"];
             // The concat owner handles points in its inter-child gaps. Its
             // descendants still handle points inside their own plots.
@@ -304,33 +305,42 @@ export default class GridChild {
             if (ruler.display === "none") {
                 continue;
             } else if (
-                this.#usesContainerRulerOverlay(
+                this.#usesContainerOverlay(
                     owner,
-                    paramName,
-                    ruler,
                     channels,
-                    scaleResolutions
+                    ruler.extent,
+                    `Ruler param "${paramName}"`
                 )
             ) {
                 continue;
             } else {
-                this.#addRulerOverlay(
-                    owner,
-                    paramName,
-                    ruler,
-                    channels,
-                    scaleResolutions
+                this.rulerOverlays.push(
+                    createConfiguredRulerOverlayView({
+                        paramName,
+                        channels,
+                        config: ruler,
+                        scaleResolution: scaleResolutions[channels[0]],
+                        context: this.layoutParent.context,
+                        layoutParent: this.layoutParent,
+                        dataParent: this.view,
+                        name: "rulerOverlay" + this.#serial + "_" + paramName,
+                        expressionRuntime: owner.paramRuntime,
+                    })
                 );
             }
         }
     }
 
     /**
-     * @returns {GridChildRulerBinding[]}
+     * Iterates visible parameter declarations from nearest to farthest owner.
+     *
+     * @returns {IterableIterator<{
+     *     owner: import("../view.js").default,
+     *     paramName: string,
+     *     param: import("../../spec/parameter.js").Parameter,
+     * }>}
      */
-    #getRulerBindings() {
-        /** @type {GridChildRulerBinding[]} */
-        const bindings = [];
+    *#getInheritedParams() {
         const seen = new Set();
 
         for (const owner of this.view.getDataAncestors()) {
@@ -340,67 +350,29 @@ export default class GridChild {
                 }
 
                 seen.add(paramName);
-                if (isRulerParameter(param)) {
-                    bindings.push({
-                        owner,
-                        paramName,
-                        config: param.ruler,
-                    });
-                }
+                yield { owner, paramName, param };
             }
         }
-
-        return bindings;
     }
 
     /**
      * @param {import("../view.js").default} owner
-     * @param {string} paramName
-     * @param {import("../../spec/parameter.js").RulerConfig} ruler
      * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
-     * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
+     * @param {"auto" | "view" | "container" | undefined} extent
+     * @param {string} label
      */
-    #usesContainerRulerOverlay(
-        owner,
-        paramName,
-        ruler,
-        channels,
-        scaleResolutions
-    ) {
+    #usesContainerOverlay(owner, channels, extent, label) {
         return (
             resolveOverlayExtent({
-                extent: ruler.extent,
+                extent,
                 ownerSpec: owner.spec,
                 channels,
                 isAligned: (channel) =>
                     owner.getScaleResolution?.(channel) ===
-                    scaleResolutions[channel],
-                label: `Ruler param "${paramName}"`,
+                    this.view.getScaleResolution(channel),
+                label,
             }) === "container"
         );
-    }
-
-    /**
-     * @param {import("../view.js").default} owner
-     * @param {string} paramName
-     * @param {import("../../spec/parameter.js").RulerConfig} ruler
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
-     * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
-     */
-    #addRulerOverlay(owner, paramName, ruler, channels, scaleResolutions) {
-        const overlay = createConfiguredRulerOverlayView({
-            paramName,
-            channels,
-            config: ruler,
-            scaleResolution: scaleResolutions[channels[0]],
-            context: this.layoutParent.context,
-            layoutParent: this.layoutParent,
-            dataParent: this.view,
-            name: "rulerOverlay" + this.#serial + "_" + paramName,
-            expressionRuntime: owner.paramRuntime,
-        });
-
-        this.rulerOverlays.push(overlay);
     }
 
     async #initializeGeneratedOverlays() {
@@ -438,69 +410,44 @@ export default class GridChild {
     }
 
     #setupIntervalSelection() {
-        const seen = new Set();
-
-        for (const owner of this.view.getDataAncestors()) {
-            for (const [paramName, param] of owner.paramRuntime.paramConfigs) {
-                if (seen.has(paramName)) {
-                    continue;
-                }
-
-                seen.add(paramName);
-                if (!("select" in param)) {
-                    continue;
-                }
-                const select = asSelectionConfig(param.select);
-                if (
-                    isIntervalSelectionConfig(select) &&
-                    (owner !== this.view || !isAnyConcatSpec(owner.spec))
-                ) {
-                    const channels = select.encodings ?? ["x"];
-                    const renderOverlay =
-                        !this.#usesContainerSelectionRectOverlay(
-                            owner,
-                            paramName,
-                            select,
-                            channels
-                        );
-
-                    if (renderOverlay) {
-                        this.#intervalSelectionControllers.push(
-                            new IntervalSelectionController(
-                                this,
-                                paramName,
-                                /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
-                                    param
-                                ),
-                                select,
-                                owner.paramRuntime,
-                                true
-                            )
-                        );
-                    }
-                }
+        for (const { owner, paramName, param } of this.#getInheritedParams()) {
+            if (!("select" in param)) {
+                continue;
             }
-        }
-    }
 
-    /**
-     * @param {import("../view.js").default} owner
-     * @param {string} paramName
-     * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
-     */
-    #usesContainerSelectionRectOverlay(owner, paramName, select, channels) {
-        return (
-            resolveOverlayExtent({
-                extent: select.extent,
-                ownerSpec: owner.spec,
-                channels,
-                isAligned: (channel) =>
-                    owner.getScaleResolution?.(channel) ===
-                    this.view.getScaleResolution(channel),
-                label: `Interval selection param "${paramName}"`,
-            }) === "container"
-        );
+            const select = asSelectionConfig(param.select);
+            if (
+                !isIntervalSelectionConfig(select) ||
+                (owner === this.view && isAnyConcatSpec(owner.spec))
+            ) {
+                continue;
+            }
+
+            const channels = select.encodings ?? ["x"];
+            if (
+                this.#usesContainerOverlay(
+                    owner,
+                    channels,
+                    select.extent,
+                    `Interval selection param "${paramName}"`
+                )
+            ) {
+                continue;
+            }
+
+            this.#intervalSelectionControllers.push(
+                new IntervalSelectionController(
+                    this,
+                    paramName,
+                    /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                        param
+                    ),
+                    select,
+                    owner.paramRuntime,
+                    true
+                )
+            );
+        }
     }
 
     get context() {
@@ -691,10 +638,7 @@ export default class GridChild {
 
         if (parentChromePolicy.axes) {
             // Handle children that have caught axis resolutions. Create axes for them.
-            for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
-                "x",
-                "y",
-            ])) {
+            for (const channel of primaryPositionalChannels) {
                 if (view.needsAxes[channel]) {
                     const r = view.resolutions.axis[channel];
                     if (!r) {
@@ -707,10 +651,7 @@ export default class GridChild {
 
             // Handle gridlines of children. Note: children's axis resolution may be caught by
             // this view or some of this view's ancestors.
-            for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
-                "x",
-                "y",
-            ])) {
+            for (const channel of primaryPositionalChannels) {
                 if (
                     view.needsAxes[channel] &&
                     // Handle a special case where the child view has an excluded resolution
@@ -809,32 +750,27 @@ export default class GridChild {
      */
     getActiveAxisCandidate(orient) {
         // Later candidates win, matching the existing layer draw order.
-        return this.#getActiveAxisCandidates(orient).at(-1);
-    }
-
-    /**
-     * @param {import("../../spec/axis.js").AxisOrient} orient
-     * @returns {AxisCandidate[]}
-     */
-    #getActiveAxisCandidates(orient) {
-        return this.axisCandidates.filter(
-            (candidate) =>
-                candidate.orient === orient && candidate.resolution.isVisible()
-        );
+        return this.axisCandidates
+            .filter(
+                (candidate) =>
+                    candidate.orient === orient &&
+                    candidate.resolution.isVisible()
+            )
+            .at(-1);
     }
 
     /**
      * Disposes GridChild-owned controllers and generated guide views.
      */
     dispose() {
-        for (const controller of this.#intervalSelectionControllers) {
-            controller.dispose();
-        }
-        for (const controller of this.#rulerViewportControllers) {
-            controller.dispose();
-        }
-        for (const controller of this.#rulerMouseEventControllers) {
-            controller.dispose();
+        for (const controllers of [
+            this.#intervalSelectionControllers,
+            this.#rulerViewportControllers,
+            this.#rulerMouseEventControllers,
+        ]) {
+            for (const controller of controllers) {
+                controller.dispose();
+            }
         }
         this.#intervalSelectionControllers = [];
         this.#rulerViewportControllers = [];
@@ -888,7 +824,7 @@ export default class GridChild {
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return applyOverhangConfig(
             this.#getGuideOverhang()
-                .add(this.#getTitleOverhang())
+                .add(this.title?.getOverhang() ?? Padding.zero())
                 .add(this.view.getOverhang()),
             this.view.spec.overhang
         );
@@ -933,10 +869,6 @@ export default class GridChild {
             calculate("bottom") + legend("bottom"),
             calculate("left") + legend("left")
         );
-    }
-
-    #getTitleOverhang() {
-        return this.title?.getOverhang() ?? Padding.zero();
     }
 
     getTitleZindex() {

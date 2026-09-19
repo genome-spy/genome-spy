@@ -242,8 +242,6 @@ export default class GridView extends ContainerView {
         this.#spacing = spec.spacing ?? 10;
         this.#columns = columns;
 
-        this.#children = [];
-
         this.wrappingFacet = false;
 
         const separatorProps = resolveSeparatorProps(spec.separator);
@@ -730,116 +728,117 @@ export default class GridView extends ContainerView {
         const promises = [];
 
         for (const [paramName, param] of this.paramRuntime.paramConfigs) {
-            if (!("select" in param)) {
-                continue;
-            }
+            if ("select" in param) {
+                const select = asSelectionConfig(param.select);
+                if (!isIntervalSelectionConfig(select)) {
+                    continue;
+                }
 
-            const select = asSelectionConfig(param.select);
-            if (!isIntervalSelectionConfig(select)) {
-                continue;
-            }
-
-            const channels = select.encodings ?? ["x"];
-            const channel = channels.length === 1 ? channels[0] : undefined;
-            if (
-                !channel ||
-                resolveOverlayExtent({
-                    extent: select.extent,
-                    ownerSpec: this.spec,
+                const channels = select.encodings ?? ["x"];
+                const channel = this.#getContainerOverlayChannel(
                     channels,
-                    isAligned: (channel) =>
-                        this.#hasAlignedOverlayProjection(channel),
-                    label: `Interval selection param "${paramName}"`,
-                }) !== "container"
-            ) {
-                continue;
-            }
-
-            const selectionExpr = this.paramRuntime.createExpression(paramName);
-            const selection = selectionExpr();
-            if (!selection || !isIntervalSelection(selection)) {
-                this.paramRuntime.setValue(
-                    paramName,
-                    param.value
-                        ? { type: "interval", intervals: param.value }
-                        : createIntervalSelection(channels)
+                    select.extent,
+                    `Interval selection param "${paramName}"`
                 );
-            }
+                if (!channel) {
+                    continue;
+                }
 
-            const overlay = createSelectionRectOverlay({
-                selectionExpr,
-                selectionExpression: paramName,
-                channels,
-                brushConfig: select.mark,
-                context: this.context,
-                layoutParent: this,
-                dataParent: this,
-                scaleResolutionSource: this,
-            });
-            this.#containerOverlays.push({
-                overlay,
-                order: DECORATION_ORDER.selectionRect,
-                channel,
-                controller: new IntervalSelectionController(
-                    this,
-                    paramName,
-                    /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
-                        param
-                    ),
-                    select,
-                    this.paramRuntime,
-                    false,
-                    overlay
-                ),
-            });
-            promises.push(overlay.view.initializeChildren());
-        }
+                const selectionExpr =
+                    this.paramRuntime.createExpression(paramName);
+                const selection = selectionExpr();
+                if (!selection || !isIntervalSelection(selection)) {
+                    this.paramRuntime.setValue(
+                        paramName,
+                        param.value
+                            ? { type: "interval", intervals: param.value }
+                            : createIntervalSelection(channels)
+                    );
+                }
 
-        for (const [paramName, param] of this.paramRuntime.paramConfigs) {
-            if (!isRulerParameter(param)) {
-                continue;
-            }
-
-            if (param.ruler.display === "none") {
-                continue;
-            }
-
-            const channels = param.ruler.encodings ?? ["x"];
-            const channel = channels.length === 1 ? channels[0] : undefined;
-            if (
-                !channel ||
-                resolveOverlayExtent({
-                    extent: param.ruler.extent,
-                    ownerSpec: this.spec,
+                const overlay = createSelectionRectOverlay({
+                    selectionExpr,
+                    selectionExpression: paramName,
                     channels,
-                    isAligned: (channel) =>
-                        this.#hasAlignedOverlayProjection(channel),
-                    label: `Ruler param "${paramName}"`,
-                }) !== "container"
+                    brushConfig: select.mark,
+                    context: this.context,
+                    layoutParent: this,
+                    dataParent: this,
+                    scaleResolutionSource: this,
+                });
+                this.#containerOverlays.push({
+                    overlay,
+                    order: DECORATION_ORDER.selectionRect,
+                    channel,
+                    controller: new IntervalSelectionController(
+                        this,
+                        paramName,
+                        /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                            param
+                        ),
+                        select,
+                        this.paramRuntime,
+                        false,
+                        overlay
+                    ),
+                });
+                promises.push(overlay.view.initializeChildren());
+            } else if (
+                isRulerParameter(param) &&
+                param.ruler.display !== "none"
             ) {
-                continue;
-            }
+                const channels = param.ruler.encodings ?? ["x"];
+                const channel = this.#getContainerOverlayChannel(
+                    channels,
+                    param.ruler.extent,
+                    `Ruler param "${paramName}"`
+                );
+                if (!channel) {
+                    continue;
+                }
 
-            const overlay = createConfiguredRulerOverlayView({
-                paramName,
-                channels,
-                config: param.ruler,
-                scaleResolution: this.getScaleResolution(channel),
-                context: this.context,
-                layoutParent: this,
-                dataParent: this,
-                name: "rulerOverlay" + "_" + paramName,
-                expressionRuntime: this.paramRuntime,
-            });
-            this.#containerOverlays.push({
-                overlay,
-                order: DECORATION_ORDER.ruler,
-                channel,
-            });
-            promises.push(overlay.view.initializeChildren());
+                const overlay = createConfiguredRulerOverlayView({
+                    paramName,
+                    channels,
+                    config: param.ruler,
+                    scaleResolution: this.getScaleResolution(channel),
+                    context: this.context,
+                    layoutParent: this,
+                    dataParent: this,
+                    name: "rulerOverlay" + "_" + paramName,
+                    expressionRuntime: this.paramRuntime,
+                });
+                this.#containerOverlays.push({
+                    overlay,
+                    order: DECORATION_ORDER.ruler,
+                    channel,
+                });
+                promises.push(overlay.view.initializeChildren());
+            }
         }
 
         await Promise.all(promises);
+    }
+
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {"auto" | "view" | "container" | undefined} extent
+     * @param {string} label
+     */
+    #getContainerOverlayChannel(channels, extent, label) {
+        if (channels.length !== 1) {
+            return;
+        }
+
+        return resolveOverlayExtent({
+            extent,
+            ownerSpec: this.spec,
+            channels,
+            isAligned: (channel) => this.#hasAlignedOverlayProjection(channel),
+            label,
+        }) === "container"
+            ? channels[0]
+            : undefined;
     }
 
     /** @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
@@ -1045,11 +1044,6 @@ export default class GridView extends ContainerView {
                 maxPx += this.#spacing;
             }
 
-            if (i == 0 || this.wrappingFacet) {
-                // Header
-                px += 0;
-            }
-
             // Axis/padding
             px += size.axisBefore;
             minPx += size.axisBefore;
@@ -1074,11 +1068,6 @@ export default class GridView extends ContainerView {
             px += size.axisAfter;
             minPx += size.axisAfter;
             maxPx += size.axisAfter;
-
-            if (i == sizes.length - 1 || this.wrappingFacet) {
-                //Footer
-                px += 0;
-            }
         }
 
         const measuredSize = {
@@ -1130,44 +1119,24 @@ export default class GridView extends ContainerView {
         );
     }
 
-    #getSharedAxisOverhang() {
-        /**
-         * @param {import("../../spec/axis.js").AxisOrient} orient
-         */
-        const getSharedAxisSize = (orient) => {
+    #getSharedGuideOverhang() {
+        const getSize = (
+            /** @type {import("../../spec/axis.js").AxisOrient} */ orient
+        ) => {
             const channel = ORIENT_CHANNELS[orient];
             const axisView = this.#sharedAxes[channel];
-            if (axisView?.axisProps.orient !== orient) {
-                return 0;
-            }
-
-            return getExternalAxisOverhang(axisView);
+            const axisSize =
+                axisView?.axisProps.orient === orient
+                    ? getExternalAxisOverhang(axisView)
+                    : 0;
+            return axisSize + getLegendOverhang(this.#sharedLegends, orient);
         };
 
         return new Padding(
-            getSharedAxisSize("top"),
-            getSharedAxisSize("right"),
-            getSharedAxisSize("bottom"),
-            getSharedAxisSize("left")
-        );
-    }
-
-    #getSharedLegendOverhang() {
-        const getSharedLegendSize = (
-            /** @type {import("../../spec/legend.js").LegendOrient} */ orient
-        ) => getLegendOverhang(this.#sharedLegends, orient);
-
-        return new Padding(
-            getSharedLegendSize("top"),
-            getSharedLegendSize("right"),
-            getSharedLegendSize("bottom"),
-            getSharedLegendSize("left")
-        );
-    }
-
-    #getSharedGuideOverhang() {
-        return this.#getSharedAxisOverhang().add(
-            this.#getSharedLegendOverhang()
+            getSize("top"),
+            getSize("right"),
+            getSize("bottom"),
+            getSize("left")
         );
     }
 
@@ -1320,16 +1289,7 @@ export default class GridView extends ContainerView {
         const layoutItems = [];
 
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
-            const {
-                view,
-                axes,
-                gridLines,
-                background,
-                backgroundStroke,
-                title,
-                selectionRect,
-                rulerOverlays,
-            } = gridChild;
+            const { view } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
             const colLocSize =
@@ -1419,14 +1379,6 @@ export default class GridView extends ContainerView {
             layoutItems.push({
                 col,
                 row,
-                view,
-                axes,
-                gridLines,
-                background,
-                backgroundStroke,
-                title,
-                selectionRect,
-                rulerOverlays,
                 viewportCoords,
                 viewCoords,
                 parentClip,
@@ -1481,54 +1433,41 @@ export default class GridView extends ContainerView {
         };
 
         for (const item of layoutItems) {
-            if (item.background) {
+            const { background } = item.gridChild;
+            if (background) {
                 queueDecoration(
                     item.gridChild.backgroundZindex,
                     DECORATION_ORDER.background,
                     () =>
-                        item.background?.arrange(
-                            context,
-                            item.visibleChildCoords,
-                            {
-                                ...options,
-                                clipRect: undefined,
-                            }
-                        )
+                        background.arrange(context, item.visibleChildCoords, {
+                            ...options,
+                            clipRect: undefined,
+                        })
                 );
             }
         }
 
-        const verticalSeparator = this.#separatorViews.vertical;
-        if (verticalSeparator) {
-            verticalSeparator.update(
-                columnFlexCoords,
-                grid.nCols,
-                coords,
-                (direction, index) => this.#getViewSlot(direction, index),
-                this.wrappingFacet,
-                gridOverhang
-            );
-            queueDecoration(
-                verticalSeparator.getZindex(),
-                DECORATION_ORDER.separator,
-                () => verticalSeparator.arrange(context, coords, options)
-            );
-        }
+        for (const direction of /** @type {const} */ ([
+            "vertical",
+            "horizontal",
+        ])) {
+            const separator = this.#separatorViews[direction];
+            if (!separator) {
+                continue;
+            }
 
-        const horizontalSeparator = this.#separatorViews.horizontal;
-        if (horizontalSeparator) {
-            horizontalSeparator.update(
-                rowFlexCoords,
-                grid.nRows,
+            separator.update(
+                direction === "vertical" ? columnFlexCoords : rowFlexCoords,
+                direction === "vertical" ? grid.nCols : grid.nRows,
                 coords,
                 (direction, index) => this.#getViewSlot(direction, index),
                 this.wrappingFacet,
                 gridOverhang
             );
             queueDecoration(
-                horizontalSeparator.getZindex(),
+                separator.getZindex(),
                 DECORATION_ORDER.separator,
-                () => horizontalSeparator.arrange(context, coords, options)
+                () => separator.arrange(context, coords, options)
             );
         }
 
@@ -1558,13 +1497,6 @@ export default class GridView extends ContainerView {
 
         for (const item of layoutItems) {
             const {
-                view,
-                axes,
-                gridLines,
-                backgroundStroke,
-                title,
-                selectionRect,
-                rulerOverlays,
                 viewportCoords,
                 viewCoords,
                 parentClip,
@@ -1576,6 +1508,15 @@ export default class GridView extends ContainerView {
                 col,
                 row,
             } = item;
+            const {
+                view,
+                axes,
+                gridLines,
+                backgroundStroke,
+                title,
+                selectionRect,
+                rulerOverlays,
+            } = gridChild;
 
             const clippedChildren = isClippedChildren(view);
             const clipped = clippedChildren || scrollable;
