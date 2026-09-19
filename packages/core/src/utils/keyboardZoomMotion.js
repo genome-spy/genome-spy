@@ -1,3 +1,5 @@
+import { smoothToTarget } from "./animator.js";
+
 /**
  * @typedef {"KeyW" | "KeyA" | "KeyS" | "KeyD"} NavigationKeyCode
  */
@@ -250,7 +252,7 @@ function updateAxis(axis, direction, dtMs, profile) {
 
         const target = direction * (profile.baseSpeed + extraSpeed);
 
-        axis.velocity = smoothApproach(
+        axis.velocity = smoothToTarget(
             axis.velocity,
             target,
             dtMs,
@@ -258,7 +260,7 @@ function updateAxis(axis, direction, dtMs, profile) {
         );
     } else {
         axis.holdMs = 0;
-        axis.velocity = smoothApproach(
+        axis.velocity = smoothToTarget(
             axis.velocity,
             0,
             dtMs,
@@ -272,14 +274,4 @@ function updateAxis(axis, direction, dtMs, profile) {
 
     axis.direction = direction;
     return axis.velocity;
-}
-
-/**
- * @param {number} current
- * @param {number} target
- * @param {number} dtMs
- * @param {number} halfLifeMs
- */
-function smoothApproach(current, target, dtMs, halfLifeMs) {
-    return target + (current - target) * Math.pow(2, -dtMs / halfLifeMs);
 }

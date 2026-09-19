@@ -24,6 +24,7 @@ nav = [
             "grammar/transform/coverage.md",
             "grammar/transform/cross.md",
             { "Displace1D" = "grammar/transform/displace1d.md" },
+            { "Displace2D" = "grammar/transform/displace2d.md" },
             "grammar/transform/filter.md",
             { "FilterScoredLabels" = "grammar/transform/filter-scored-labels.md" },
             "grammar/transform/flatten.md",
@@ -44,6 +45,7 @@ nav = [
             "grammar/transform/sample.md",
             { "SetIntersection" = "grammar/transform/set-intersection.md" },
             "grammar/transform/stack.md",
+            "grammar/transform/transition.md",
             "grammar/transform/window.md",
         ] },
         { "Graphical Marks" = [
