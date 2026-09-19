@@ -460,13 +460,17 @@ export default class Mark {
                     if (isExprDef(channelDef)) {
                         watchExpression(channelDef.expr, "configuration");
                     }
-                    if (!trackResources) {
+                    // Text values and branch selection determine retained glyph
+                    // geometry, even when other constants use GPU uniforms.
+                    const kind =
+                        channel === "text" ? "configuration" : "resources";
+                    if (!trackResources && kind === "resources") {
                         continue;
                     }
                     for (const param of getSelectionPredicateParams(
                         branch.predicate
                     )) {
-                        watchExpression(param, "resources");
+                        watchExpression(param, kind);
                     }
                     const values = [
                         isValueDef(channelDef) ? channelDef.value : undefined,
@@ -474,7 +478,7 @@ export default class Mark {
                     ];
                     for (const value of values) {
                         if (isExprRef(value)) {
-                            watchExpression(value.expr, "resources");
+                            watchExpression(value.expr, kind);
                         }
                     }
                 }
