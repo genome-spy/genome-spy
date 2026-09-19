@@ -483,7 +483,7 @@ SCHEMA LookupSelfInput
 
 ## MarkConfig
 
-See the [MarkConfig documentation](mark/index.md#properties).
+See the [MarkConfig documentation](mark/index.md#shared-properties).
 
 ## MarkPropExprDef
 
@@ -947,7 +947,7 @@ SCHEMA TypeForShape
 
 ## UnitSpec
 
-See the [UnitSpec documentation](index.md#properties).
+See the [UnitSpec documentation](index.md#unit-view-reference).
 
 ## UrlData
 

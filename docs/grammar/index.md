@@ -5,49 +5,47 @@ title: GenomeSpy Visualization Grammar
 # Visualization Grammar
 
 Genome browser applications typically couple the visual representations to
-specific file formats and provide few customization options. GenomeSpy has a
-more abstract approach to visualization, providing combinatorial building blocks
-such as [marks](mark/index.md), [transformations](transform/index.md), and
+specific file formats and provide few customization options. GenomeSpy instead
+uses declarative JSON specifications: you describe the data and its visual
+representation rather than issue drawing commands.
+
+The grammar combines [data sources](data/index.md),
+[transformations](transform/index.md), [marks](mark/index.md),
 [scales](scale.md), [axes](axis.md), [titles](title.md), and
-[legends](legend.md). As a result,
-users can author tailored visualizations that display the underlying data more
-effectively.
+[legends](legend.md). Data consists of rows with named fields. Transformations
+filter, derive, or summarize rows before encodings map fields, values, and
+expressions to visual channels. Scales translate data values into visual values,
+marks render the results, and axes and legends describe the scales.
 
-The concept was first introduced in [The Grammar of
-Graphics](https://www.springer.com/gp/book/9780387245447) and developed further
-in [ggplot2](https://ggplot2.tidyverse.org/) and
-[Vega-Lite](https://vega.github.io/vega-lite/).
+!!! note "A grammar based on Vega-Lite"
 
-!!! note "A dialect of Vega-Lite"
+    GenomeSpy's visualization grammar is based on
+    [Vega-Lite](https://vega.github.io/vega-lite/) and follows its concepts and
+    syntax where practical, providing partial specification compatibility. The
+    implementation is independent and designed for visualizing and analyzing
+    large datasets containing genomic coordinates. This documentation links to
+    the Vega-Lite documentation where the same grammar concepts apply.
 
-    The visualization grammar of GenomeSpy is a dialect of
-    [Vega-Lite](https://vega.github.io/vega-lite/), providing partial
-    compatibility. However, the goals of GenomeSpy and Vega-Lite are different –
-    GenomeSpy is more domain-specific and primarily intended for the
-    visualization and analysis of large datasets containing genomic coordinates.
-    Nevertheless, GenomeSpy tries to follow Vega-Lite's grammar where practical,
-    and thus, this documentation has several references to its documentation.
+    The grammar-of-graphics approach was introduced in [The Grammar of
+    Graphics](https://www.springer.com/gp/book/9780387245447) and developed
+    further in [ggplot2](https://ggplot2.tidyverse.org/) and Vega-Lite.
 
 ## Unit views
 
 A GenomeSpy specification describes a hierarchy of views. A unit view is a leaf
-in the hierarchy that renders data using a graphical [mark](mark/index.md). The
-`mark` is the only required property. A unit view can define its own `data`,
+in the hierarchy that renders rows using a graphical [mark](mark/index.md). The
+`mark` is its only required property. A unit view can define its own `data`,
 `transform`, and `encoding`, or inherit them from an ancestor composition view.
-Transforms modify the data before the encoding maps its fields to visual
-channels of the mark.
 
 EXAMPLE examples/docs/grammar/index/single-view-specification.json height=200
 
-### Properties
+## View hierarchy and composition
 
-The following reference lists all properties available on unit views. Most are
-shared by the different view types and can be used throughout a view hierarchy;
-`mark` is specific to unit views.
-
-SCHEMA UnitSpec
-
-## View composition
+The root of a specification can be a unit view or a composition view. It can
+also define settings for the whole specification, including
+[genome assemblies](genomic-coordinates.md), [themes and
+configuration](config.md), the background, and the base URL for external
+resources.
 
 [Composition views](composition/index.md) arrange child views into a hierarchy.
 For example, [`layer`](composition/layer.md) overlays views to create custom
@@ -55,6 +53,16 @@ glyphs, while the [concatenation](composition/concat.md) operators arrange views
 into tracks or grids. Common properties such as `data`, `transform`, and
 `encoding` can be defined on a composition view and inherited by its
 descendants.
+
+## Parameters and interaction
+
+[Parameters](parameters.md) add values, input controls, and interactive
+selections to a specification. [Expressions](expressions.md) can derive values
+from parameters and drive [mark properties](mark/index.md#properties), while
+[conditional encodings](conditional-encoding.md) and transformations can
+respond to parameter values and selections. This allows interaction to change
+visual properties and data while preserving the declarative specification
+model.
 
 ## Schema-assisted editing
 
@@ -81,3 +89,11 @@ The inline examples in this documentation omit `$schema` to keep them concise.
 Schema validation checks the structure and configuration values of a
 specification, but it cannot verify external resources, the existence of data
 fields, or expression behavior.
+
+## Unit view reference
+
+The following reference lists all properties available on unit views. Most are
+shared by the different view types and can be used throughout a view hierarchy;
+`mark` is specific to unit views.
+
+SCHEMA UnitSpec

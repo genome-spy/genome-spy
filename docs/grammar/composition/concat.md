@@ -92,7 +92,7 @@ discrete step. The step may also be an expression reference.
 
 SCHEMA Step
 
-Discrete [offset channels](../mark/index.md#nested-offset-scales) can introduce
+Discrete [offset channels](../scale.md#nested-offset-scales) can introduce
 a second scale whose steps determine the view size.
 
 ### Scrollable viewports

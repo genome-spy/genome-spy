@@ -13,9 +13,7 @@ and heatmaps.
 
 ```json title="Example: Specifying the mark type"
 {
-  ...,
   "mark": "rect"
-  ...,
 }
 ```
 
@@ -27,41 +25,61 @@ the `type` property:
 
 ```json title="Example: Specifying the mark type and additional properties"
 {
-  ...,
   "mark": {
     "type": "rect",
     "cornerRadius": 5
-  },
-  ...,
+  }
 }
 ```
 
+A mark property applies to every mark instance rendered by that mark. Many
+properties also accept an [expression reference](../expressions.md), allowing
+the shared value to react to parameters or the viewport without making it
+data-driven:
+
+```json title="Example: Specifying a mark property with an expression reference"
+{
+  "mark": {
+    "type": "point",
+    "size": { "expr": "min(0.5 * pow(zoomLevel(), 1.5), 200)" }
+  }
+}
+```
+
+Explicit mark properties override defaults from
+[config and styles](../config.md#mark-defaults). If an `encoding` specifies the
+same visual channel, the encoding takes precedence over the mark property.
+Mark-specific properties are documented on each mark's page.
+
+### Shared properties
+
+SCHEMA MarkConfig style cursor x y color opacity clip xOffset yOffset x2Offset y2Offset tooltip
+
 ## Encoding
 
-While mark properties are static, _i.e._, same for all mark instances,
-`encoding` allows for mapping data to [visual channels](#channels) and using
-data-driven visual encoding.
+While mark properties are shared by all rows rendered by a mark, `encoding`
+maps data to [visual channels](#channels) and allows each mark instance to have
+different visual properties.
 
-It's worth noting that while all visual encoding channels are also available as
-static properties, not all properties can be used for encoding. Only certain
-properties are suitable for encoding data in a meaningful way.
+Visual encoding channels can also be set as shared mark properties. Other mark
+properties cannot be encoded because they do not meaningfully vary by row.
 
 ```json title="Example: Specifying visual channels with the encoding property"
 {
-  ...,
   "mark": "rect",
   "encoding": {
     "x": {
-      "field": "from", "type": "index"
+      "field": "from",
+      "type": "index"
     },
     "x2": {
       "field": "to"
     },
     "color": {
-      "field": "category", "type": "nominal"
+      "field": "category",
+      "type": "nominal"
     }
-  },
-  ...
+  }
 }
 ```
 
@@ -116,41 +134,8 @@ has no offset by default. Set the `x2Offset` or `y2Offset` mark property to
 displace an explicit secondary endpoint. These secondary offsets are mark
 properties, not encoding channels.
 
-###### Nested offset scales
-
-A discrete field, datum, or expression on `xOffset` or `yOffset` creates a
-nested band scale when the matching primary position uses a band scale. The
-offset range is measured in logical pixels and spans the primary band.
-Point-like marks use subgroup centers, while rectangles cover subgroup band
-extents.
-
-The primary scale's `paddingInner` and `paddingOuter` control spacing between
-groups and default to `0.2` when a nested offset scale is present. The offset
-scale's padding controls spacing between marks within each group. Explicit
-padding values override the defaults.
-
-See the [grouped bar example](rect.md#grouped-bars).
-
-```json title="Nested bands for grouped bars"
-{
-  "width": { "step": 12 },
-  "encoding": {
-    "x": { "field": "category", "type": "nominal" },
-    "xOffset": {
-      "field": "group",
-      "type": "nominal",
-      "scale": { "paddingInner": 0.15 }
-    }
-  }
-}
-```
-
-As described in [Step sizing](../composition/concat.md#step-sizing), a
-step-based width or height normally describes a positional scale step. When a
-discrete offset scale is present, it describes each offset step by default. Use
-`{ "step": 12, "for": "position" }` to make the step describe each primary
-category instead. An explicit offset-scale `range` remains a pixel range and is
-not replaced by nested-band inference.
+A discrete field, datum, or expression on an offset channel can create a
+[nested offset scale](../scale.md#nested-offset-scales) for grouped marks.
 
 #### Other channels
 
@@ -176,13 +161,18 @@ not replaced by nested-band inference.
 : Stroke width in pixels
 
 `size`
-: Depends on the mark. `"point"`: the area of the rectangle that encloses the mark instance. `"rule"` and `"link"`: stroke width. `"text"`: font size.
+: Depends on the mark. `"point"`: the area of the rectangle that encloses the
+  mark instance. `"rule"` and `"link"`: stroke width. `"arrow"`: stem
+  thickness. `"text"`: font size.
 
 `shape`
 : Shape of `"point"` marks.
 
 `angle`
 : Rotational angle of `"point"` and `"text"` marks.
+
+`direction`
+: Direction of `"arrow"` marks.
 
 `text`
 : Text that the `"text"` mark should render for a mark instance.
@@ -246,6 +236,10 @@ visual mark properties.
   or an array of field definitions for a composite key. For composite keys, the
   field order is significant.
 
+`search`
+: Exposes one or more fields to the GenomeSpy App's
+  [search behavior](../../sample-collections/app-features.md#search).
+
 #### Channels for sample collections
 
 The [GenomeSpy app](../../sample-collections/visualizing.md#specifying-a-sample-view) supports an additional channel.
@@ -263,11 +257,15 @@ channel, but you can also use [expressions](#expression), [values](#value), or
 For interaction-driven styling, see [Conditional
 Encoding](../conditional-encoding.md).
 
-Expect for the `value` method, all methods require specifying the data type
-using the `type` property, which must be one of: `"quantitative"`, `"nominal"`,
-or `"ordinal"`, `"index"`, or
-[`"locus"`](../genomic-coordinates.md#encoding-genomic-coordinates).
-The first three types are equivalent to the [Vega-Lite
+Most scaled field, expression, and datum definitions require a `type` property.
+Secondary position definitions such as `x2`, metadata channels, and some text
+definitions do not. Value definitions do not use a data type because their
+values already belong to the channel's visual range.
+
+The available data types are `"quantitative"`, `"nominal"`, `"ordinal"`,
+`"index"`, and
+[`"locus"`](../genomic-coordinates.md#encoding-genomic-coordinates). The first
+three are equivalent to the [Vega-Lite
 types](https://vega.github.io/vega-lite/docs/type.html) of the same name.
 
 #### Field
@@ -278,8 +276,7 @@ types](https://vega.github.io/vega-lite/docs/type.html) of the same name.
 {
   "encoding": {
     "color": { "field": "significance", "type": "ordinal" }
-  },
-  ...
+  }
 }
 ```
 
@@ -292,8 +289,7 @@ a scale transformation.
 {
   "encoding": {
     "color": { "expr": "datum.score > 10", "type": "nominal" }
-  },
-  ...
+  }
 }
 ```
 
@@ -305,8 +301,7 @@ a scale transformation.
 {
   "encoding": {
     "color": { "value": "red" }
-  },
-  ...
+  }
 }
 ```
 
@@ -319,10 +314,25 @@ the scale transformation will be applied.
 {
   "encoding": {
     "color": { "datum": "important", "type": "ordinal" }
-  },
-  ...
+  }
 }
 ```
+
+#### Common definition properties
+
+Field, expression, and datum definitions can include a `scale` that maps data
+values to visual values. Positional channels can include an `axis`, and other
+scaled channels can include a `legend`. Set `scale`, `axis`, or `legend` to
+`null` to disable it. See [Scales](../scale.md), [Axes](../axis.md), and
+[Legends](../legend.md).
+
+Use `title` to label an encoded field in guides and tooltips, and `format` to
+format numeric labels and text. On position definitions, `band` selects a
+relative position within a scale band: `0` is the beginning, `0.5` the center,
+and `1` the end.
+
+Definitions can also include `condition` for interaction-driven values. See
+[Conditional Encoding](../conditional-encoding.md).
 
 #### Chrom and Pos
 
