@@ -44,11 +44,12 @@ export const CHANNEL_ORIENTS = {
 /**
  * @type {Record<AxisOrient, import("../spec/channel.js").PrimaryPositionalChannel>}
  */
-export const ORIENT_CHANNELS = Object.fromEntries(
-    Object.entries(CHANNEL_ORIENTS)
-        .map(([channel, slots]) => slots.map((slot) => [slot, channel]))
-        .flat(1)
-);
+export const ORIENT_CHANNELS = {
+    bottom: "x",
+    top: "x",
+    left: "y",
+    right: "y",
+};
 
 /**
  * @param {AxisOrient} slot
@@ -666,67 +667,6 @@ function createAxis(
     });
 
     /**
-     * @return {import("../spec/view.js").UnitSpec}
-     */
-    const createDomain = () => ({
-        name: "domain",
-        data: { values: [{}] },
-        mark: {
-            type: "rule",
-            clip: false,
-            strokeDash: ap.domainDash,
-            strokeCap: ap.domainCap,
-            color: ap.domainColor,
-            [secondary]: anchor,
-            size: ap.domainWidth,
-        },
-    });
-
-    /**
-     * @return {import("../spec/view.js").UnitSpec}
-     */
-    const createLabels = () => ({
-        name: LABELS_LAYER_NAME,
-        transform: layoutLabels
-            ? [
-                  {
-                      type: "filter",
-                      expr: `datum.${LABEL_VISIBLE_FIELD}`,
-                  },
-              ]
-            : undefined,
-        mark: {
-            type: "text",
-            clip: labelClipPolicy === "anchor" ? "never" : false,
-            cullByVisibleRange: labelClipPolicy === "anchor" ? main : undefined,
-            align: ap.labelAlign,
-            angle: ap.labelAngle,
-            baseline: ap.labelBaseline,
-            font: labelTextStyle.font,
-            fontStyle: labelTextStyle.fontStyle,
-            fontWeight: labelTextStyle.fontWeight,
-            [secondary + "Offset"]:
-                (ap.tickSize + ap.labelPadding) * offsetDirection,
-            [secondary]: anchor,
-            size: labelTextStyle.size,
-            color: ap.labelColor,
-        },
-        encoding: {
-            [main]: makeMainDomainDef(),
-            ...(labelFlush !== false || labelFlushZoomExtent
-                ? {
-                      [main + "Offset"]: {
-                          field: LABEL_OFFSET_FIELD,
-                          type: "quantitative",
-                          scale: null,
-                      },
-                  }
-                : {}),
-            text: { field: "label" },
-        },
-    });
-
-    /**
      * @return {import("../spec/transform.js").TransformParams[]}
      */
     const createLabelTransforms = () => {
@@ -786,35 +726,120 @@ function createAxis(
         return transform;
     };
 
-    /**
-     * @return {import("../spec/view.js").UnitSpec}
-     */
-    const createTicks = () => ({
-        name: "ticks",
-        mark: {
-            type: "rule",
-            clip: false,
-            strokeDash: ap.tickDash,
-            strokeCap: ap.tickCap,
-            color: ap.tickColor,
-            size: ap.tickWidth,
-        },
-        encoding: {
-            [secondary]: { value: anchor },
-            [secondary + "2"]: {
-                value: {
-                    expr: `${anchor} - ${ap.tickSize} / ${AXIS_EXTENT_PARAM} * ${
-                        anchor ? 1 : -1
-                    }`,
-                },
+    /** @type {LayerSpec} */
+    const axisSpec = {
+        // Force the resolution towards the parent view even if it has "independent" behavior
+        resolve: { scale: { [main]: "forced" } },
+        domainInert: true,
+        data: {
+            lazy: {
+                type: "axisTicks",
+                channel: main,
+                axis: axisProps,
             },
         },
-    });
+        layer: [],
+    };
 
-    /**
-     * @return {import("../spec/view.js").UnitSpec}
-     */
-    const createTitle = () => {
+    if (ap.domain) {
+        axisSpec.layer.push({
+            name: "domain",
+            data: { values: [{}] },
+            mark: {
+                type: "rule",
+                clip: false,
+                strokeDash: ap.domainDash,
+                strokeCap: ap.domainCap,
+                color: ap.domainColor,
+                [secondary]: anchor,
+                size: ap.domainWidth,
+            },
+        });
+    }
+
+    if (ap.ticks || ap.labels) {
+        /** @type {LayerSpec} */
+        const ticksAndLabels = {
+            name: TICKS_AND_LABELS_LAYER_NAME,
+            transform: ap.labels ? createLabelTransforms() : undefined,
+            encoding: {
+                [main]: makeMainDomainDef(),
+            },
+            layer: [],
+        };
+
+        if (ap.ticks) {
+            ticksAndLabels.layer.push({
+                name: "ticks",
+                mark: {
+                    type: "rule",
+                    clip: false,
+                    strokeDash: ap.tickDash,
+                    strokeCap: ap.tickCap,
+                    color: ap.tickColor,
+                    size: ap.tickWidth,
+                },
+                encoding: {
+                    [secondary]: { value: anchor },
+                    [secondary + "2"]: {
+                        value: {
+                            expr: `${anchor} - ${ap.tickSize} / ${AXIS_EXTENT_PARAM} * ${
+                                anchor ? 1 : -1
+                            }`,
+                        },
+                    },
+                },
+            });
+        }
+
+        if (ap.labels) {
+            ticksAndLabels.layer.push({
+                name: LABELS_LAYER_NAME,
+                transform: layoutLabels
+                    ? [
+                          {
+                              type: "filter",
+                              expr: `datum.${LABEL_VISIBLE_FIELD}`,
+                          },
+                      ]
+                    : undefined,
+                mark: {
+                    type: "text",
+                    clip: labelClipPolicy === "anchor" ? "never" : false,
+                    cullByVisibleRange:
+                        labelClipPolicy === "anchor" ? main : undefined,
+                    align: ap.labelAlign,
+                    angle: ap.labelAngle,
+                    baseline: ap.labelBaseline,
+                    font: labelTextStyle.font,
+                    fontStyle: labelTextStyle.fontStyle,
+                    fontWeight: labelTextStyle.fontWeight,
+                    [secondary + "Offset"]:
+                        (ap.tickSize + ap.labelPadding) * offsetDirection,
+                    [secondary]: anchor,
+                    size: labelTextStyle.size,
+                    color: ap.labelColor,
+                },
+                encoding: {
+                    [main]: makeMainDomainDef(),
+                    ...(labelFlush !== false || labelFlushZoomExtent
+                        ? {
+                              [main + "Offset"]: {
+                                  field: LABEL_OFFSET_FIELD,
+                                  type: "quantitative",
+                                  scale: null,
+                              },
+                          }
+                        : {}),
+                    text: { field: "label" },
+                },
+            });
+        }
+
+        axisSpec.layer.push(ticksAndLabels);
+    }
+
+    if (ap.title) {
         /** @type {Partial<import("../spec/mark.js").TextProps>} */
         const rangedTitleProps =
             ap.titleFit === "range"
@@ -827,7 +852,7 @@ function createAxis(
                       [main]: 0.5,
                   };
 
-        return {
+        axisSpec.layer.push({
             name: "title",
             data: { values: [{}] },
             mark: {
@@ -847,59 +872,7 @@ function createAxis(
                 fontWeight: ap.titleFontWeight,
                 [secondary]: 1 - anchor,
             },
-        };
-    };
-
-    /**
-     * @return {import("../spec/view.js").LayerSpec}
-     */
-    const createTicksAndLabels = () => {
-        /** @type {LayerSpec} */
-        const spec = {
-            name: TICKS_AND_LABELS_LAYER_NAME,
-            transform: ap.labels ? createLabelTransforms() : undefined,
-            encoding: {
-                [main]: makeMainDomainDef(),
-            },
-            layer: [],
-        };
-
-        if (ap.ticks) {
-            spec.layer.push(createTicks());
-        }
-
-        if (ap.labels) {
-            spec.layer.push(createLabels());
-        }
-
-        return spec;
-    };
-
-    /** @type {LayerSpec} */
-    const axisSpec = {
-        // Force the resolution towards the parent view even if it has "independent" behavior
-        resolve: { scale: { [main]: "forced" } },
-        domainInert: true,
-        data: {
-            lazy: {
-                type: "axisTicks",
-                channel: main,
-                axis: axisProps,
-            },
-        },
-        layer: [],
-    };
-
-    if (ap.domain) {
-        axisSpec.layer.push(createDomain());
-    }
-
-    if (ap.ticks || ap.labels) {
-        axisSpec.layer.push(createTicksAndLabels());
-    }
-
-    if (ap.title) {
-        axisSpec.layer.push(createTitle());
+        });
     }
 
     return axisSpec;
@@ -941,108 +914,6 @@ export function createGenomeAxis(
         padding: CHROM_LABEL_RANGE_PADDING,
     };
 
-    /**
-     * @return {import("../spec/view.js").UnitSpec}
-     */
-    const createChromosomeTicks = () => ({
-        name: "chromosome_ticks",
-        mark: {
-            type: "rule",
-            strokeDash: axisProps.chromTickDash,
-            strokeDashOffset: axisProps.chromTickDashOffset,
-            [secondary]: anchor,
-            [secondary + "2"]: {
-                expr: `${anchor} - ${ap.chromTickSize} / ${AXIS_EXTENT_PARAM} * ${
-                    anchor ? 1 : -1
-                }`,
-            },
-            color: axisProps.chromTickColor,
-            size: ap.chromTickWidth,
-        },
-    });
-
-    /**
-     * @return {import("../spec/view.js").UnitSpec}
-     */
-    const createChromosomeLabels = () => {
-        /** @type {Partial<import("../spec/mark.js").TextProps>} */
-        let chromLabelMarkProps;
-        switch (tickSide) {
-            case "top":
-                chromLabelMarkProps = {
-                    y: 0,
-                    angle: 0,
-                    paddingX: chromLabelLayout.padding,
-                    dy: -ap.chromLabelPadding,
-                    viewportEdgeFadeWidthLeft: 20,
-                    viewportEdgeFadeWidthRight: 20,
-                    viewportEdgeFadeDistanceRight: -10,
-                    viewportEdgeFadeDistanceLeft: -20,
-                };
-                break;
-            case "bottom":
-                chromLabelMarkProps = {
-                    y: 1,
-                    angle: 0,
-                    paddingX: chromLabelLayout.padding,
-                    dy: ap.chromLabelPadding + ap.chromLabelFontSize * 0.73, // A hack to align baseline with other labels
-                    viewportEdgeFadeWidthLeft: 20,
-                    viewportEdgeFadeWidthRight: 20,
-                    viewportEdgeFadeDistanceRight: -10,
-                    viewportEdgeFadeDistanceLeft: -20,
-                };
-                break;
-            case "left":
-                chromLabelMarkProps = {
-                    x: 1,
-                    angle: -90,
-                    paddingY: chromLabelLayout.padding,
-                    dy: -ap.chromLabelPadding,
-                    viewportEdgeFadeWidthBottom: 20,
-                    viewportEdgeFadeWidthTop: 20,
-                    viewportEdgeFadeDistanceBottom: -20,
-                    viewportEdgeFadeDistanceTop: -10,
-                };
-                break;
-            case "right":
-                chromLabelMarkProps = {
-                    x: 0,
-                    angle: 90,
-                    align: "right",
-                    paddingY: chromLabelLayout.padding,
-                    dy: -ap.chromLabelPadding,
-                };
-                break;
-            default:
-                chromLabelMarkProps = {};
-        }
-
-        /** @type {import("../spec/view.js").UnitSpec} */
-        const labels = {
-            name: "chromosome_labels",
-            mark: {
-                type: "text",
-                size: chromLabelTextStyle.size,
-                font: chromLabelTextStyle.font,
-                fontWeight: chromLabelTextStyle.fontWeight,
-                fontStyle: chromLabelTextStyle.fontStyle,
-                color: ap.chromLabelColor,
-                align: axisProps.chromLabelAlign,
-                baseline: "alphabetic",
-                clip: false,
-                ...chromLabelMarkProps,
-            },
-            encoding: {
-                [main + "2"]: {
-                    field: "continuousEnd",
-                    type,
-                },
-                text: { field: "name" },
-            },
-        };
-        return labels;
-    };
-
     // Create an ordinary axis
     const axisSpec = createAxis(
         {
@@ -1066,7 +937,7 @@ export function createGenomeAxis(
             data: {
                 lazy: {
                     type: "axisGenome",
-                    channel: orient2channel(ap.orient),
+                    channel: main,
                 },
             },
             encoding: {
@@ -1081,11 +952,76 @@ export function createGenomeAxis(
         };
 
         if (axisProps.chromTicks) {
-            chromLayerSpec.layer.push(createChromosomeTicks());
+            chromLayerSpec.layer.push({
+                name: "chromosome_ticks",
+                mark: {
+                    type: "rule",
+                    strokeDash: axisProps.chromTickDash,
+                    strokeDashOffset: axisProps.chromTickDashOffset,
+                    [secondary]: anchor,
+                    [secondary + "2"]: {
+                        expr: `${anchor} - ${ap.chromTickSize} / ${AXIS_EXTENT_PARAM} * ${
+                            anchor ? 1 : -1
+                        }`,
+                    },
+                    color: axisProps.chromTickColor,
+                    size: ap.chromTickWidth,
+                },
+            });
         }
 
         if (axisProps.chromLabels) {
-            chromLayerSpec.layer.push(createChromosomeLabels());
+            const horizontal = main === "x";
+            const fadeProps = horizontal
+                ? {
+                      viewportEdgeFadeWidthLeft: 20,
+                      viewportEdgeFadeWidthRight: 20,
+                      viewportEdgeFadeDistanceRight: -10,
+                      viewportEdgeFadeDistanceLeft: -20,
+                  }
+                : tickSide === "left"
+                  ? {
+                        viewportEdgeFadeWidthBottom: 20,
+                        viewportEdgeFadeWidthTop: 20,
+                        viewportEdgeFadeDistanceBottom: -20,
+                        viewportEdgeFadeDistanceTop: -10,
+                    }
+                  : {};
+
+            chromLayerSpec.layer.push({
+                name: "chromosome_labels",
+                mark: {
+                    type: "text",
+                    size: chromLabelTextStyle.size,
+                    font: chromLabelTextStyle.font,
+                    fontWeight: chromLabelTextStyle.fontWeight,
+                    fontStyle: chromLabelTextStyle.fontStyle,
+                    color: ap.chromLabelColor,
+                    align:
+                        tickSide === "right"
+                            ? "right"
+                            : axisProps.chromLabelAlign,
+                    baseline: "alphabetic",
+                    clip: false,
+                    [secondary]: anchor,
+                    angle: horizontal ? 0 : tickSide === "left" ? -90 : 90,
+                    [horizontal ? "paddingX" : "paddingY"]:
+                        chromLabelLayout.padding,
+                    dy:
+                        tickSide === "bottom"
+                            ? ap.chromLabelPadding +
+                              ap.chromLabelFontSize * 0.73
+                            : -ap.chromLabelPadding,
+                    ...fadeProps,
+                },
+                encoding: {
+                    [main + "2"]: {
+                        field: "continuousEnd",
+                        type,
+                    },
+                    text: { field: "name" },
+                },
+            });
         }
 
         axisSpec.layer.push(chromLayerSpec);

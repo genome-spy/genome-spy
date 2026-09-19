@@ -484,6 +484,45 @@ describe("axis placement", () => {
         expect(labelsMark.angle).toBe(90);
     });
 
+    test.each([
+        ["top", { y: 0, angle: 0, paddingX: 4, dy: -2 }],
+        ["bottom", { y: 1, angle: 0, paddingX: 4, dy: 9.3 }],
+        ["left", { x: 1, angle: -90, paddingY: 4, dy: -2 }],
+        ["right", { x: 0, angle: 90, paddingY: 4, dy: -2 }],
+    ])("positions %s chromosome labels", (orient, expected) => {
+        const spec = createGenomeAxis(
+            /** @type {import("../spec/axis.js").GenomeAxis} */ ({
+                orient,
+                chromTicks: false,
+                chromLabels: true,
+                chromLabelAlign: "center",
+                chromLabelPadding: 2,
+                chromLabelFontSize: 10,
+                labels: false,
+                ticks: false,
+                domain: false,
+            }),
+            "locus"
+        );
+        const chromLayer = spec.layer.find(
+            (layer) => layer.name === "chromosome_ticks_and_labels"
+        );
+        if (!chromLayer || !("layer" in chromLayer)) {
+            throw new Error("Chromosome layer not found!");
+        }
+
+        const labels = chromLayer.layer.find(
+            (layer) => layer.name === "chromosome_labels"
+        );
+        if (!labels) {
+            throw new Error("Chromosome labels not found!");
+        }
+
+        expect(
+            /** @type {import("../spec/view.js").UnitSpec} */ (labels).mark
+        ).toMatchObject(expected);
+    });
+
     test.each(["left", "right", "top", "bottom"])(
         "%s inside axis does not reserve external overhang",
         async (orient) => {
