@@ -1,0 +1,53 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Zoom-responsive genomic scale bars",
+    "Zoom the shared genomic scale to change the distance represented by the arrow. A static dummy datum and expression-driven mark properties keep the scale bar centered at roughly half the viewport width."
+  ],
+
+  "assembly": "hg38",
+
+  "scales": { "x": { "type": "locus" } },
+
+  "data": { "values": [{}] },
+
+  "params": [
+    { "name": "visibleSpan", "expr": "abs(span(domain('x')))" },
+    { "name": "distance", "expr": "max(1, tickStep(0, visibleSpan, 2))" },
+    {
+      "name": "unit",
+      "expr": "distance >= 1e9 ? 1e9 : distance >= 1e6 ? 1e6 : distance >= 1e3 ? 1e3 : 1"
+    },
+    { "name": "barFraction", "expr": "distance / visibleSpan" }
+  ],
+
+  "layer": [
+    {
+      "name": "scale-bar",
+      "mark": {
+        "type": "arrow",
+        "direction": "both",
+        "headPlacement": "inside",
+        "headShape": "open",
+        "size": 1,
+        "color": "black",
+        "headWidth": 10,
+        "headAngle": 90,
+        "yOffset": 2,
+        "x": { "expr": "0.5 - barFraction / 2" },
+        "x2": { "expr": "0.5 + barFraction / 2" }
+      }
+    },
+    {
+      "name": "scale-label",
+      "mark": {
+        "type": "text",
+        "yOffset": -2,
+        "baseline": "alphabetic",
+        "text": {
+          "expr": "format(distance / unit, '.0f') + (unit == 1e9 ? ' Gb' : unit == 1e6 ? ' Mb' : unit == 1e3 ? ' kb' : ' bp')"
+        }
+      }
+    }
+  ]
+}
