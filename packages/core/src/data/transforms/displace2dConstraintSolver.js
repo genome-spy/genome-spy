@@ -32,16 +32,26 @@ const MAX_ITERATIONS = 800;
 /**
  * Progressively projects rectangles out of constraint violations.
  *
- * The numerical structure is inspired by Position Based Dynamics: positions
- * are corrected directly by repeated constraint projections, and priority maps
- * to a PBD-style inverse-mass mobility. There is no velocity integration.
+ * Only the inner constraint-solving loop is inspired by Position Based
+ * Dynamics: constraints are projected sequentially onto positions, and
+ * priority maps to PBD-style inverse-mass mobility. This is not a physical
+ * simulation or an implementation of the full PBD algorithm; it has no time
+ * integration, velocity update, or momentum-conservation requirement.
  * https://doi.org/10.2312/PE/vriphys/vriphys06/071-080
  *
- * ggrepel is related prior art for the label-placement objective: keep label
- * boxes apart from labels and data points while pulling them toward their
- * anchors. This solver is an independent implementation and uses position
- * projection rather than ggrepel's force simulation.
+ * ggrepel inspired the label-placement objective: keep label boxes apart from
+ * labels and data points while pulling them toward their anchors. No ggrepel
+ * code or force simulation is used here.
  * https://github.com/slowkow/ggrepel
+ *
+ * The deterministic repair search uses a Vogel-style golden-angle spiral as a
+ * convenient way to sample directions without favoring the coordinate axes.
+ * https://doi.org/10.1016/0025-5564(79)90080-4
+ *
+ * Progressive execution belongs to the surrounding transform. Its bounded
+ * ticks and incremental publication follow the interaction model of browser
+ * force layouts, but the numerical method in this class is not force-directed.
+ * https://d3js.org/d3-force/simulation
  *
  * A sweep first applies plot bounds and collision-aware anchor attraction. It
  * then visits every label pair and anchor obstacle, projecting overlaps apart
