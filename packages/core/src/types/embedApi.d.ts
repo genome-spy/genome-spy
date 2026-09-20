@@ -585,7 +585,7 @@ export interface ViewDataReadOptions {
 }
 
 export interface ViewDataReadResult {
-    /** Structured-cloned values in collector order. Nested values are detached. */
+    /** Detached values in collector order, excluding Core picking identifiers. */
     rows: Record<string, unknown>[];
 
     /** Number of visited rows, including at most one lookahead row. */

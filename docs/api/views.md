@@ -109,9 +109,9 @@ console.log(result.rows, result.truncated, result.rowsExamined);
 
 The limit must be an integer from 0 to 1000. A read examines at most `limit + 1`
 rows, including lookahead for truncation. Rows follow the current data collector
-order and include derived fields. Nested values are detached using structured
-cloning; non-cloneable values and shared-memory buffers throw. This also applies
-to buffers nested in maps, sets, or typed arrays. Metadata rejects shared memory
+order and include derived fields, excluding Core picking identifiers. Nested
+values are detached using structured cloning; non-cloneable values and
+shared-memory buffers throw. This also applies to buffers nested in maps, sets, or typed arrays. Metadata rejects shared memory
 as well. Source getters run during cloning; reads expect trusted data. The row
 limit does not bound an individual row's byte size or the time spent cloning it.
 

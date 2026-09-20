@@ -1,3 +1,4 @@
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import UnitView from "./unitView.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import { buildReadinessRequest } from "./dataReadiness.js";
@@ -29,7 +30,12 @@ export function describeView(view) {
  * @param {import("../types/embedApi.js").ViewDataReadOptions} options
  * @returns {import("../types/embedApi.js").ViewDataReadResult}
  */
-export function readViewData(view, { limit }) {
+export function readViewData(view, options) {
+    if (!options || typeof options !== "object" || Array.isArray(options)) {
+        throw new Error("Data read options with a limit are required.");
+    }
+
+    const { limit } = options;
     if (!Number.isInteger(limit) || limit < 0 || limit > 1000) {
         throw new Error("Data read limit must be an integer from 0 to 1000.");
     }
@@ -58,7 +64,10 @@ export function readViewData(view, { limit }) {
             truncated = true;
             break;
         }
-        rows.push(cloneDetached(row));
+        const datum = cloneDetached(row);
+        // Match public mark-hit data: picking identifiers belong to Core.
+        delete datum[UNIQUE_ID_KEY];
+        rows.push(datum);
     }
 
     return {

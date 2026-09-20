@@ -3,6 +3,7 @@ import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
 
 /** @param {Record<string, any>[]} rows */
@@ -61,7 +62,15 @@ describe("public view data reads", () => {
             truncated: false,
         });
 
-        for (const limit of [-1, 1.5, 1001]) {
+        /** @type {unknown[]} */
+        const invalidOptions = [undefined, null, [], 1];
+        for (const options of invalidOptions) {
+            expect(() => handle.readData(/** @type {any} */ (options))).toThrow(
+                "Data read options with a limit are required."
+            );
+        }
+
+        for (const limit of [undefined, -1, 1.5, 1001]) {
             expect(() => handle.readData({ limit })).toThrow();
         }
     });
@@ -261,3 +270,42 @@ test.runIf(structuredClone(new AggregateError([])) instanceof AggregateError)(
         expect(() => handle.readData({ limit: 1 })).toThrow("Shared memory");
     }
 );
+
+test("returns transformed gene rows without Core picking identifiers", async () => {
+    const { view } = await createHeadlessEngine({
+        name: "genes",
+        data: { values: [{ symbol: "TP53", start: 10, end: 20 }] },
+        transform: [
+            { type: "formula", expr: "datum.end - datum.start", as: "span" },
+        ],
+        mark: "rect",
+        encoding: {
+            x: { field: "start", type: "quantitative" },
+            x2: { field: "end" },
+        },
+    });
+    const handle = createViewMutationApi({ viewRoot: view }).root();
+    const datum = /** @type {import("./unitView.js").default} */ (view)
+        .getCollector()
+        .getData()
+        [Symbol.iterator]()
+        .next().value;
+    const pickingId = datum[UNIQUE_ID_KEY];
+    expect(pickingId).toBeTypeOf("number");
+
+    expect(handle.readData({ limit: 1 }).rows).toEqual([
+        { symbol: "TP53", start: 10, end: 20, span: 10 },
+    ]);
+    expect(datum[UNIQUE_ID_KEY]).toBe(pickingId);
+});
+
+test("rejects shared WebAssembly memory in returned data", async () => {
+    const payload = new WebAssembly.Memory({
+        initial: 1,
+        maximum: 1,
+        shared: true,
+    });
+    const handle = await setup([{ x: 1, payload }]);
+
+    expect(() => handle.readData({ limit: 1 })).toThrow("Shared memory");
+});

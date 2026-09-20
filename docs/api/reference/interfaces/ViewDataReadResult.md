@@ -8,7 +8,7 @@
 
 > **rows**: `Record`<`string`, `unknown`\>[]
 
-Structured-cloned values in collector order. Nested values are detached.
+Detached values in collector order, excluding Core picking identifiers.
 
 ***
 
