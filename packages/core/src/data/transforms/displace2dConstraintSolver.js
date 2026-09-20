@@ -30,41 +30,37 @@ const MAX_ITERATIONS = 800;
  */
 
 /**
- * Progressively projects rectangles out of constraint violations.
+ * Progressively finds non-overlapping placements for anchored rectangles.
  *
- * Only the inner constraint-solving loop is inspired by Position Based
- * Dynamics: constraints are projected sequentially onto positions, and
- * priority maps to PBD-style inverse-mass mobility. This is not a physical
- * simulation or an implementation of the full PBD algorithm; it has no time
- * integration, velocity update, or momentum-conservation requirement.
- * https://doi.org/10.2312/PE/vriphys/vriphys06/071-080
- *
- * ggrepel inspired the label-placement objective: keep label boxes apart from
- * labels and data points while pulling them toward their anchors. No ggrepel
- * code or force simulation is used here.
+ * The objective is inspired by ggrepel: keep label boxes apart from each other
+ * and from data points while pulling them toward their anchors. No ggrepel code
+ * or force simulation is used here.
  * https://github.com/slowkow/ggrepel
- *
- * The deterministic repair search uses a Vogel-style golden-angle spiral as a
- * convenient way to sample directions without favoring the coordinate axes.
- * https://doi.org/10.1016/0025-5564(79)90080-4
- *
- * Progressive execution belongs to the surrounding transform. Its bounded
- * ticks and incremental publication follow the interaction model of browser
- * force layouts, but the numerical method in this class is not force-directed.
- * https://d3js.org/d3-force/simulation
  *
  * A sweep first applies plot bounds and collision-aware anchor attraction. It
  * then visits every label pair and anchor obstacle, projecting overlaps apart
  * along their shallowest axis. Corrections are divided according to priority
  * and capped so intermediate states remain usable for progressive display.
- * Periodic deterministic radial searches escape local tangles; after reaching
- * a legal layout, a similar search tries to replace needlessly distant local
- * optima with closer placements.
  *
- * The main improvement opportunities are a spatial broad phase for the
- * quadratic pair scans, a more global constraint method such as VPSC to reduce
- * local minima, and better stable identity/priority semantics across changing
- * input rows. These are deliberately outside this small experimental solver.
+ * This inner loop borrows sequential constraint projection and inverse-mass
+ * mobility from Position Based Dynamics. It is not a physical simulation or a
+ * full PBD implementation: there is no time integration, velocity, or momentum.
+ * https://doi.org/10.2312/PE/vriphys/vriphys06/071-080
+ *
+ * Periodic deterministic radial searches escape local tangles and later try
+ * to replace needlessly distant placements with closer ones. Their Vogel-style
+ * golden-angle spiral samples directions without favoring the coordinate axes.
+ * https://doi.org/10.1016/0025-5564(79)90080-4
+ *
+ * The surrounding transform runs bounded batches of sweeps and publishes them
+ * incrementally, following the interaction model of browser force layouts even
+ * though this numerical method is not force-directed.
+ * https://d3js.org/d3-force/simulation
+ *
+ * Pair scans are deliberately quadratic: useful label counts are modest, and
+ * dense layouts leave little for a spatial broad phase to prune. The solver
+ * favors stable progressive motion over a global optimum; a method such as VPSC
+ * could improve placement quality but would be a substantially different design.
  */
 export class Displace2DConstraintSolver {
     /** @type {ConstraintItem[]} */
@@ -89,10 +85,27 @@ export class Displace2DConstraintSolver {
      * @param {[number, number]} [yExtent]
      */
     constructor(items, xExtent, yExtent) {
-        validateExtent(xExtent, "xExtent");
-        validateExtent(yExtent, "yExtent");
-        for (const item of items) {
-            validateItem(item);
+        const invalidItem = items.some(
+            ({ anchorX, anchorY, width, height, anchorWidth, anchorHeight }) =>
+                ![
+                    anchorX,
+                    anchorY,
+                    width,
+                    height,
+                    anchorWidth,
+                    anchorHeight,
+                ].every(Number.isFinite) ||
+                Math.min(width, height, anchorWidth, anchorHeight) < 0
+        );
+        const invalidExtent = [xExtent, yExtent].some(
+            (extent) =>
+                extent &&
+                (!Number.isFinite(extent[0]) ||
+                    !Number.isFinite(extent[1]) ||
+                    extent[0] > extent[1])
+        );
+        if (invalidItem || invalidExtent) {
+            throw new Error("displace2d received invalid geometry.");
         }
 
         this.items = items;
@@ -702,39 +715,6 @@ function pairHash(first, second) {
 /** @param {number} priority @param {number} count */
 function mobility(priority, count) {
     return count <= 1 ? 1 : 0.2 + (0.8 * priority) / (count - 1);
-}
-
-/** @param {ConstraintItem} item */
-function validateItem(item) {
-    if (!Number.isFinite(item.anchorX) || !Number.isFinite(item.anchorY)) {
-        throw new Error("displace2d positions must be finite numbers.");
-    }
-    for (const dimension of [
-        item.width,
-        item.height,
-        item.anchorWidth,
-        item.anchorHeight,
-    ]) {
-        if (!Number.isFinite(dimension) || dimension < 0) {
-            throw new Error(
-                "displace2d dimensions must be finite non-negative numbers."
-            );
-        }
-    }
-}
-
-/** @param {[number, number] | undefined} extent @param {string} name */
-function validateExtent(extent, name) {
-    if (
-        extent &&
-        (!Number.isFinite(extent[0]) ||
-            !Number.isFinite(extent[1]) ||
-            extent[0] > extent[1])
-    ) {
-        throw new Error(
-            `displace2d ${name} must contain finite ascending bounds.`
-        );
-    }
 }
 
 /** @param {number} value @param {number} min @param {number} max */
