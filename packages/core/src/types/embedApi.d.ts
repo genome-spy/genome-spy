@@ -575,7 +575,10 @@ export interface ViewDescription {
     /** Authored encoding combined with inherited encoding, detached from the specification. */
     encoding: import("../spec/channel.js").Encoding;
 
-    /** Current viewport contribution readiness; does not imply a rendered frame. */
+    /**
+     * Unit-view data readiness for the current viewport; false for containers.
+     * Does not imply a rendered frame.
+     */
     dataReady: boolean;
 }
 
@@ -620,7 +623,7 @@ export interface ViewHandle {
     describe: () => ViewDescription;
 
     /**
-     * Returns a bounded detached read from one ready, non-faceted unit view.
+     * Returns a bounded detached read from one ready unit view with at most one facet batch.
      * Throws for unready data, containers, removed views, finalized embeds,
      * multiple facet batches, non-cloneable returned values, or shared memory.
      * The row bound does not bound the size of an individual nested datum.

@@ -85,11 +85,72 @@ describe("public view data reads", () => {
     });
 });
 
-test("metadata is detached and reads reject a view before data initialization", async () => {
-    const handle = await setup([{ x: 1 }]);
+test("describes inherited encoding and detaches nested metadata", async () => {
+    const { view } = await createHeadlessViewHierarchy({
+        encoding: {
+            x: { field: "x", type: "quantitative", scale: { domain: [0, 10] } },
+            color: { value: "red" },
+        },
+        layer: [
+            {
+                name: "track",
+                title: "Test track",
+                description: ["Test description"],
+                mark: "point",
+                encoding: { color: null },
+            },
+        ],
+    });
+    const api = createViewMutationApi({ viewRoot: view });
+    const handle = api.get({ view: "track", scope: [] });
     const description = handle.describe();
-    description.encoding.x = { value: 123 };
-    expect(handle.describe().encoding.x).toMatchObject({ field: "x" });
+
+    expect(description).toMatchObject({
+        title: "Test track",
+        description: ["Test description"],
+        encoding: { x: { field: "x", scale: { domain: [0, 10] } } },
+        dataReady: false,
+    });
+    expect(description.encoding).not.toHaveProperty("color");
+    expect(api.root().describe().dataReady).toBe(false);
+
+    /** @type {string[]} */ (description.description).push("changed");
+    const x = /** @type {import("../spec/channel.js").PositionFieldDef} */ (
+        description.encoding.x
+    );
+    x.scale.domain = [99, 100];
+    expect(handle.describe().description).toEqual(["Test description"]);
+    expect(handle.describe().encoding.x).toMatchObject({
+        scale: { domain: [0, 10] },
+    });
+});
+
+test("metadata cloning reads source getters once and rejects shared memory", async () => {
+    const { view } = await createHeadlessViewHierarchy({
+        mark: "point",
+        encoding: { x: { field: "x", type: "quantitative" } },
+    });
+    const handle = createViewMutationApi({ viewRoot: view }).root();
+    let reads = 0;
+    /** @type {unknown} */
+    let title = "X";
+    // Install after view creation so this checks the public metadata boundary.
+    Object.defineProperty(view.spec.encoding.x, "title", {
+        enumerable: true,
+        get() {
+            reads++;
+            return title;
+        },
+    });
+
+    expect(handle.describe().encoding.x).toHaveProperty("title", "X");
+    expect(reads).toBe(1);
+
+    title = new SharedArrayBuffer(1);
+    expect(() => handle.describe()).toThrow("Shared memory");
+});
+
+test("reads reject a view before data initialization", async () => {
     const { view } = await createHeadlessViewHierarchy({
         name: "unready",
         data: { values: [{ x: 1 }] },
@@ -195,29 +256,41 @@ test("non-cloneable returned values reject without modifying source data", async
     expect(datum.callback).toBe(callback);
 });
 
-test("rejects multiple facet batches produced by the dataflow", async () => {
-    // Core's collect transform groups rows into facet batches without an App view.
-    const { view } = await createHeadlessEngine({
-        name: "track",
-        data: {
-            values: [
+test.each(["A", "B"])(
+    "reads only one collected facet batch (second group: %s)",
+    async (group) => {
+        // The sample encoding groups the terminal collector through normal dataflow.
+        const { view } = await createHeadlessEngine({
+            name: "track",
+            data: {
+                values: [
+                    { x: 1, group: "A" },
+                    { x: 2, group },
+                ],
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                sample: { field: "group" },
+            },
+        });
+        const handle = createViewMutationApi({ viewRoot: view }).get({
+            view: "track",
+            scope: [],
+        });
+        expect(handle.describe().dataReady).toBe(true);
+        if (group === "A") {
+            expect(handle.readData({ limit: 2 }).rows).toEqual([
                 { x: 1, group: "A" },
-                { x: 2, group: "B" },
-            ],
-        },
-        transform: [{ type: "collect", groupby: ["group"] }],
-        mark: "point",
-        encoding: { x: { field: "x", type: "quantitative" } },
-    });
-    const handle = createViewMutationApi({ viewRoot: view }).get({
-        view: "track",
-        scope: [],
-    });
-    expect(handle.describe().dataReady).toBe(true);
-    expect(() => handle.readData({ limit: 1 })).toThrow(
-        "Faceted data reads are not supported"
-    );
-});
+                { x: 2, group: "A" },
+            ]);
+        } else {
+            expect(() => handle.readData({ limit: 1 })).toThrow(
+                "Faceted data reads are not supported"
+            );
+        }
+    }
+);
 
 /** @type {[string, (buffer: SharedArrayBuffer) => unknown][]} */
 const sharedMemoryCases = [

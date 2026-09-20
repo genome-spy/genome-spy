@@ -12,15 +12,15 @@ export function describeView(view) {
     const collector =
         view instanceof UnitView ? view.getCollector() : undefined;
 
-    return {
-        title: cloneDetached(view.getTitleText() ?? null),
-        description: cloneDetached(view.spec.description ?? null),
-        encoding: cloneDetached(view.getEncoding()),
+    return cloneDetached({
+        title: view.getTitleText() ?? null,
+        description: view.spec.description ?? null,
+        encoding: view.getEncoding(),
         dataReady: Boolean(
             collector &&
             isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
         ),
-    };
+    });
 }
 
 /**

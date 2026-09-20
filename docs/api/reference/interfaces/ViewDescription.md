@@ -32,4 +32,5 @@ Authored encoding combined with inherited encoding, detached from the specificat
 
 > **dataReady**: `boolean`
 
-Current viewport contribution readiness; does not imply a rendered frame.
+Unit-view data readiness for the current viewport; false for containers.
+Does not imply a rendered frame.

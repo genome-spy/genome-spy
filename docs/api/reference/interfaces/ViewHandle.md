@@ -33,7 +33,7 @@ Returns detached metadata. Throws for a removed view or finalized embed.
 
 > **readData**: (`options`) => [`ViewDataReadResult`](ViewDataReadResult.md)
 
-Returns a bounded detached read from one ready, non-faceted unit view.
+Returns a bounded detached read from one ready unit view with at most one facet batch.
 Throws for unready data, containers, removed views, finalized embeds,
 multiple facet batches, non-cloneable returned values, or shared memory.
 The row bound does not bound the size of an individual nested datum.

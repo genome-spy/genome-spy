@@ -301,6 +301,7 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
             ensureEmbedIsActive(isActive);
             ensureViewIsLive(view);
         };
+
         const id = getViewIdentityRegistry(getRootView()).getId(view);
 
         handle = {
@@ -352,6 +353,7 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 if (channel !== "x" && channel !== "y") {
                     throw new Error("Expected positional channel x or y.");
                 }
+
                 return view.getScaleResolution(channel);
             },
 
