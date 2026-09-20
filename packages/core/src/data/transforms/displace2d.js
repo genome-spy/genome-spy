@@ -5,11 +5,15 @@ import {
 } from "../../paramRuntime/paramUtils.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
-import { Displace2DRelaxation } from "./displace2dRelaxation.js";
-import { solveDisplacement } from "./displace2dSolver.js";
+import { Displace2DConstraintSolver } from "./displace2dConstraintSolver.js";
 
 const FRAME_BUDGET = 4;
-const MAX_STEPS_PER_FRAME = 4;
+const INITIAL_STEPS = 2;
+const MAX_STEPS_PER_FRAME = 64;
+const DISPLAY_HALF_LIFE = 60;
+const MAX_DISPLAY_STEP = 10;
+const DISPLAY_EPSILON = 0.05;
+const DEFAULT_FRAME_INTERVAL = 1000 / 60;
 
 /**
  * @typedef {object} PlacementProps
@@ -21,6 +25,13 @@ const MAX_STEPS_PER_FRAME = 4;
  * @prop {number} yPositionFactor
  * @prop {[number, number] | undefined} xExtent
  * @prop {[number, number] | undefined} yExtent
+ */
+
+/**
+ * @typedef {import("./displace2dConstraintSolver.js").ConstraintItem & {
+ *     displayX: number,
+ *     displayY: number
+ * }} PlacementItem
  */
 
 /**
@@ -54,13 +65,19 @@ export default class Displace2DTransform extends Transform {
     /** @type {{ index: number, flowBatch: import("../../types/flowBatch.js").FlowBatch }[]} */
     #liveBatchStarts = [];
 
-    /** @type {Displace2DRelaxation[]} */
+    /** @type {Displace2DConstraintSolver[]} */
     #relaxations = [];
 
-    /** @type {WeakMap<import("../flowNode.js").Datum, import("./displace2dRelaxation.js").RelaxationItem>} */
+    /** @type {WeakMap<import("../flowNode.js").Datum, PlacementItem>} */
     #stateByDatum = new WeakMap();
 
+    /** @type {(PlacementItem | undefined)[][]} */
+    #stateByGroup = [];
+
     #animationRequested = false;
+
+    /** @type {number | undefined} */
+    #lastAnimationTimestamp;
 
     /** @type {PlacementProps} */
     #placementProps;
@@ -95,10 +112,6 @@ export default class Displace2DTransform extends Transform {
         this.as = params.as ?? ["xDisplacement", "yDisplacement"];
         this.xAccessor = field(params.x);
         this.yAccessor = field(params.y);
-
-        this.usesAnchorObstacles =
-            params.anchorWidth !== undefined &&
-            params.anchorHeight !== undefined;
 
         const placementProps = {
             width: params.width,
@@ -210,20 +223,12 @@ export default class Displace2DTransform extends Transform {
         this.#requestAnimation();
     }
 
-    /** @param {import("../flowNode.js").Datum[]} data */
-    #place(data) {
+    /**
+     * @param {import("../flowNode.js").Datum[]} data
+     * @param {number} groupIndex
+     */
+    #place(data, groupIndex) {
         const props = this.#placementProps;
-        const placedData = [];
-        const xPositions = [];
-        const yPositions = [];
-        const widths = [];
-        const heights = [];
-        const anchorWidths = this.usesAnchorObstacles
-            ? /** @type {number[]} */ ([])
-            : undefined;
-        const anchorHeights = this.usesAnchorObstacles
-            ? /** @type {number[]} */ ([])
-            : undefined;
         const xScale = this.scalePositions
             ? this.#xScaleResolution.getScale()
             : undefined;
@@ -236,42 +241,6 @@ export default class Displace2DTransform extends Transform {
         const yAxisLength = this.scalePositions
             ? this.#yScaleResolution.getAxisLength()
             : 0;
-
-        for (const datum of data) {
-            const x = this.scalePositions
-                ? xScale(this.xAccessor(datum)) * xAxisLength
-                : this.xAccessor(datum) * props.xPositionFactor;
-            const y = this.scalePositions
-                ? (1 - yScale(this.yAccessor(datum))) * yAxisLength
-                : this.yAccessor(datum) * props.yPositionFactor;
-
-            // The solver keeps label boxes inside its extents. Giving it an
-            // off-viewport anchor would therefore pull that label into view.
-            // Exclude the datum and clear offsets left by an earlier scale state.
-            if (
-                this.scalePositions &&
-                !(x >= 0 && x <= xAxisLength && y >= 0 && y <= yAxisLength)
-            ) {
-                datum[this.as[0]] = 0;
-                datum[this.as[1]] = 0;
-                continue;
-            }
-
-            placedData.push(datum);
-            xPositions.push(x);
-            yPositions.push(y);
-            widths.push(this.widthAccessor(datum));
-            heights.push(this.heightAccessor(datum));
-            if (this.usesAnchorObstacles) {
-                anchorWidths.push(this.anchorWidthAccessor(datum));
-                anchorHeights.push(this.anchorHeightAccessor(datum));
-            }
-        }
-
-        if (placedData.length == 0) {
-            return undefined;
-        }
-
         /** @type {[number, number] | undefined} */
         const xExtent = this.scalePositions
             ? [0, xAxisLength]
@@ -280,70 +249,109 @@ export default class Displace2DTransform extends Transform {
         const yExtent = this.scalePositions
             ? [0, yAxisLength]
             : scaleExtent(props.yExtent, props.yPositionFactor);
-        const displacements = solveDisplacement(
-            xPositions,
-            yPositions,
-            widths,
-            heights,
-            xExtent,
-            yExtent,
-            this.usesAnchorObstacles
-                ? {
-                      x: xPositions,
-                      y: yPositions,
-                      width: anchorWidths,
-                      height: anchorHeights,
-                  }
-                : undefined
-        );
-
-        /** @type {import("./displace2dRelaxation.js").RelaxationItem[]} */
+        /** @type {PlacementItem[]} */
         const items = [];
         const progressive =
             this.animator && this.animator.transitionsEnabled !== false;
-        for (let i = 0; i < placedData.length; i++) {
-            const datum = placedData[i];
-            const anchorX = xPositions[i];
-            const anchorY = yPositions[i];
-            let item = progressive ? this.#stateByDatum.get(datum) : undefined;
+        const previousStates = this.#stateByGroup[groupIndex] ?? [];
+        const nextStates = new Array(data.length);
+        let initialized = false;
+        let retained = false;
+
+        for (let dataIndex = 0; dataIndex < data.length; dataIndex++) {
+            const datum = data[dataIndex];
+            const anchorX = this.scalePositions
+                ? xScale(this.xAccessor(datum)) * xAxisLength
+                : this.xAccessor(datum) * props.xPositionFactor;
+            const anchorY = this.scalePositions
+                ? (1 - yScale(this.yAccessor(datum))) * yAxisLength
+                : this.yAccessor(datum) * props.yPositionFactor;
+
+            // An off-viewport anchor would pull its label back into view.
+            if (
+                this.scalePositions &&
+                !(
+                    anchorX >= 0 &&
+                    anchorX <= xAxisLength &&
+                    anchorY >= 0 &&
+                    anchorY <= yAxisLength
+                )
+            ) {
+                datum[this.as[0]] = 0;
+                datum[this.as[1]] = 0;
+                nextStates[dataIndex] = previousStates[dataIndex];
+                continue;
+            }
+
+            let item = progressive
+                ? (this.#stateByDatum.get(datum) ?? previousStates[dataIndex])
+                : undefined;
             if (item) {
-                item.x += anchorX - item.anchorX;
-                item.y += anchorY - item.anchorY;
-                item.vx *= 0.5;
-                item.vy *= 0.5;
+                retained = true;
+                const anchorDeltaX = anchorX - item.anchorX;
+                const anchorDeltaY = anchorY - item.anchorY;
+                item.x += anchorDeltaX;
+                item.y += anchorDeltaY;
+                item.displayX += anchorDeltaX;
+                item.displayY += anchorDeltaY;
                 item.datum = datum;
                 item.anchorX = anchorX;
                 item.anchorY = anchorY;
-                item.width = widths[i];
-                item.height = heights[i];
-                item.anchorWidth = anchorWidths?.[i] ?? 0;
-                item.anchorHeight = anchorHeights?.[i] ?? 0;
-                item.priority = i;
+                item.width = this.widthAccessor(datum);
+                item.height = this.heightAccessor(datum);
+                item.anchorWidth = this.anchorWidthAccessor(datum);
+                item.anchorHeight = this.anchorHeightAccessor(datum);
+                item.priority = items.length;
             } else {
+                initialized = true;
                 item = {
                     datum,
                     anchorX,
                     anchorY,
-                    x: anchorX + displacements.x[i],
-                    y: anchorY + displacements.y[i],
-                    vx: 0,
-                    vy: 0,
-                    width: widths[i],
-                    height: heights[i],
-                    anchorWidth: anchorWidths?.[i] ?? 0,
-                    anchorHeight: anchorHeights?.[i] ?? 0,
-                    priority: i,
+                    x: anchorX,
+                    y: anchorY,
+                    width: this.widthAccessor(datum),
+                    height: this.heightAccessor(datum),
+                    anchorWidth: this.anchorWidthAccessor(datum),
+                    anchorHeight: this.anchorHeightAccessor(datum),
+                    priority: items.length,
+                    displayX: anchorX,
+                    displayY: anchorY,
                 };
-                if (progressive) {
-                    this.#stateByDatum.set(datum, item);
-                }
+            }
+            if (progressive) {
+                this.#stateByDatum.set(datum, item);
+                nextStates[dataIndex] = item;
             }
             items.push(item);
-            datum[this.as[0]] = item.x - anchorX;
-            datum[this.as[1]] = item.y - anchorY;
+        }
+        this.#stateByGroup[groupIndex] = nextStates;
+
+        if (items.length == 0) {
+            return undefined;
         }
 
-        return new Displace2DRelaxation(items, xExtent, yExtent);
+        const solver = new Displace2DConstraintSolver(items, xExtent, yExtent);
+        if (progressive) {
+            if (retained) {
+                solver.compactTowardAnchors();
+            }
+            if (initialized) {
+                for (let i = 0; i < INITIAL_STEPS; i++) {
+                    solver.step();
+                }
+            }
+        } else {
+            solver.solve();
+        }
+        for (const item of items) {
+            item.datum[this.as[0]] =
+                (progressive ? item.displayX : item.x) - item.anchorX;
+            item.datum[this.as[1]] =
+                (progressive ? item.displayY : item.y) - item.anchorY;
+        }
+
+        return progressive ? solver : undefined;
     }
 
     #placeFacets() {
@@ -352,11 +360,13 @@ export default class Displace2DTransform extends Transform {
         // File boundaries preserve source metadata, not collision groups.
         this.#relaxations = [];
         let facetStart = 0;
+        let groupIndex = 0;
         for (const { index, flowBatch } of this.#batchStarts) {
             if (flowBatch.type == "facet") {
                 if (index > facetStart) {
                     const relaxation = this.#place(
-                        this.#data.slice(facetStart, index)
+                        this.#data.slice(facetStart, index),
+                        groupIndex++
                     );
                     if (relaxation) {
                         this.#relaxations.push(relaxation);
@@ -367,12 +377,14 @@ export default class Displace2DTransform extends Transform {
         }
         if (facetStart < this.#data.length) {
             const relaxation = this.#place(
-                facetStart == 0 ? this.#data : this.#data.slice(facetStart)
+                facetStart == 0 ? this.#data : this.#data.slice(facetStart),
+                groupIndex++
             );
             if (relaxation) {
                 this.#relaxations.push(relaxation);
             }
         }
+        this.#stateByGroup.length = groupIndex;
     }
 
     /**
@@ -405,7 +417,7 @@ export default class Displace2DTransform extends Transform {
             !this.animator ||
             this.animator.transitionsEnabled === false ||
             this.#animationRequested ||
-            !this.#hasActiveRelaxation()
+            this.#relaxations.length == 0
         ) {
             return;
         }
@@ -417,53 +429,105 @@ export default class Displace2DTransform extends Transform {
     #cancelAnimation() {
         this.animator?.cancelTransition(this.#animate);
         this.#animationRequested = false;
+        this.#lastAnimationTimestamp = undefined;
     }
 
-    /** @param {number} _timestamp */
-    #animate = (_timestamp) => {
+    /** @param {number} timestamp */
+    #animate = (timestamp) => {
         this.#animationRequested = false;
         if (this.disposed) {
             return;
         }
 
+        const elapsed = Math.min(
+            50,
+            Math.max(
+                1,
+                this.#lastAnimationTimestamp === undefined
+                    ? DEFAULT_FRAME_INTERVAL
+                    : timestamp - this.#lastAnimationTimestamp
+            )
+        );
+        this.#lastAnimationTimestamp = timestamp;
         const start = performance.now();
-        let changed = false;
+        let solverActive = false;
         for (let i = 0; i < MAX_STEPS_PER_FRAME; i++) {
-            changed = this.#stepRelaxations() || changed;
-            if (
-                !this.#hasActiveRelaxation() ||
-                performance.now() - start >= FRAME_BUDGET
-            ) {
+            solverActive = this.#stepRelaxations();
+            if (!solverActive || performance.now() - start >= FRAME_BUDGET) {
                 break;
             }
         }
 
-        if (changed) {
+        const displayState = this.#advanceDisplayedPositions(elapsed);
+        if (displayState != 0) {
             this.#writeRelaxedOffsets();
             this.#replayChildren();
         }
-        this.#requestAnimation();
+        if (solverActive || displayState == 2) {
+            this.#requestAnimation();
+        }
     };
 
     #stepRelaxations() {
-        let changed = false;
+        let active = false;
         for (const relaxation of this.#relaxations) {
             if (relaxation.active) {
-                changed = relaxation.step() || changed;
+                relaxation.step();
             }
+            active ||= relaxation.active;
         }
-        return changed;
+        return active;
     }
 
-    #hasActiveRelaxation() {
-        return this.#relaxations.some((relaxation) => relaxation.active);
+    /**
+     * @param {number} elapsed
+     * @returns {0 | 1 | 2} No change, changed and settled, or still moving.
+     */
+    #advanceDisplayedPositions(elapsed) {
+        const alpha = 1 - 2 ** (-elapsed / DISPLAY_HALF_LIFE);
+        let changed = false;
+        let pending = false;
+        for (const relaxation of this.#relaxations) {
+            for (const item of relaxation.items) {
+                const placement = /** @type {PlacementItem} */ (item);
+                const dx = item.x - placement.displayX;
+                const dy = item.y - placement.displayY;
+                if (dx != 0) {
+                    placement.displayX +=
+                        Math.abs(dx) <= DISPLAY_EPSILON
+                            ? dx
+                            : clamp(
+                                  dx * alpha,
+                                  -MAX_DISPLAY_STEP,
+                                  MAX_DISPLAY_STEP
+                              );
+                    changed = true;
+                }
+                if (dy != 0) {
+                    placement.displayY +=
+                        Math.abs(dy) <= DISPLAY_EPSILON
+                            ? dy
+                            : clamp(
+                                  dy * alpha,
+                                  -MAX_DISPLAY_STEP,
+                                  MAX_DISPLAY_STEP
+                              );
+                    changed = true;
+                }
+                pending ||=
+                    Math.abs(item.x - placement.displayX) > DISPLAY_EPSILON ||
+                    Math.abs(item.y - placement.displayY) > DISPLAY_EPSILON;
+            }
+        }
+        return changed ? (pending ? 2 : 1) : 0;
     }
 
     #writeRelaxedOffsets() {
         for (const relaxation of this.#relaxations) {
             for (const item of relaxation.items) {
-                item.datum[this.as[0]] = item.x - item.anchorX;
-                item.datum[this.as[1]] = item.y - item.anchorY;
+                const placement = /** @type {PlacementItem} */ (item);
+                item.datum[this.as[0]] = placement.displayX - item.anchorX;
+                item.datum[this.as[1]] = placement.displayY - item.anchorY;
             }
         }
     }
@@ -576,4 +640,9 @@ function scaleExtent(extent, factor) {
     const first = extent[0] * factor;
     const second = extent[1] * factor;
     return [Math.min(first, second), Math.max(first, second)];
+}
+
+/** @param {number} value @param {number} min @param {number} max */
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
 }

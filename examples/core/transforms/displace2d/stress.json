@@ -6,8 +6,6 @@
   ],
 
   "title": "Deterministic dense-label stress test",
-  "width": 1000,
-  "height": 700,
 
   "params": [
     {
@@ -108,6 +106,21 @@
           "debounce": 0,
           "as": ["labelDx", "labelDy"]
         },
+        {
+          "type": "formula",
+          "expr": "max(0, 1 - min(datum.collisionWidth / 2 / max(abs(datum.labelDx), 1e-6), 8.5 / max(abs(datum.labelDy), 1e-6)))",
+          "as": "leaderScale"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelDx * datum.leaderScale",
+          "as": "leaderDx"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelDy * datum.leaderScale",
+          "as": "leaderDy"
+        },
         { "type": "filter", "expr": "datum.inViewport" }
       ],
       "encoding": {
@@ -126,12 +139,12 @@
             "x2": { "field": "x" },
             "y2": { "field": "y" },
             "xOffset": {
-              "field": "labelDx",
+              "field": "leaderDx",
               "type": "quantitative",
               "scale": null
             },
             "yOffset": {
-              "field": "labelDy",
+              "field": "leaderDy",
               "type": "quantitative",
               "scale": null
             }

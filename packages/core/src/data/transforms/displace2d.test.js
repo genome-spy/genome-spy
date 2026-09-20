@@ -7,6 +7,8 @@ import Collector from "../collector.js";
 import Displace2DTransform from "./displace2d.js";
 import createTransform from "./transformFactory.js";
 
+const FRAME_INTERVAL = 1000 / 60;
+
 class TestAnimator {
     transitionsEnabled = true;
 
@@ -69,6 +71,18 @@ function createFlow(data, overrides = {}) {
     return { output, source, transform };
 }
 
+/**
+ * @param {number[][]} offsets
+ * @param {number} width
+ * @param {number} height
+ */
+function expectPairSeparated(offsets, width, height) {
+    expect(
+        Math.abs(offsets[0][0] - offsets[1][0]) >= width ||
+            Math.abs(offsets[0][1] - offsets[1][1]) >= height
+    ).toBe(true);
+}
+
 describe("Displace2DTransform", () => {
     test("progressively relaxes retained rows and replays descendants", () => {
         const animator = new TestAnimator();
@@ -101,9 +115,20 @@ describe("Displace2DTransform", () => {
         expect(animator.transitions).toHaveLength(1);
         animator.frame(0);
 
-        expect(data.map(({ dx, dy }) => [dx, dy])).not.toEqual(initial);
+        const firstFrame = data.map(({ dx, dy }) => [dx, dy]);
+        expect(firstFrame).not.toEqual(initial);
         expect(observer).toHaveBeenCalledTimes(2);
         expect(animator.transitions).toHaveLength(1);
+
+        for (let frame = 1; animator.transitions.length > 0; frame++) {
+            animator.frame(frame * FRAME_INTERVAL);
+            expect(frame).toBeLessThan(100);
+        }
+        expect(
+            Math.max(...data.map(({ dx, dy }) => Math.hypot(dx, dy)))
+        ).toBeGreaterThan(
+            Math.max(...firstFrame.map(([dx, dy]) => Math.hypot(dx, dy)))
+        );
 
         transform.dispose();
         expect(animator.transitions).toHaveLength(0);
@@ -148,6 +173,58 @@ describe("Displace2DTransform", () => {
             expect(data[i].dx).toBeCloseTo(previousOffsets[i][0]);
             expect(data[i].dy).toBeCloseTo(previousOffsets[i][1]);
         }
+    });
+
+    test("warm-starts replacement rows by stable facet order", () => {
+        const animator = new TestAnimator();
+        const transform = new Displace2DTransform(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            /** @type {any} */ ({ context: { animator } })
+        );
+        const output = new Collector();
+        transform.addChild(output);
+        for (const datum of [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ]) {
+            transform.handle(datum);
+        }
+        transform.complete();
+        for (let i = 0; i < 5; i++) {
+            animator.frame(i);
+        }
+        const previousOffsets = Array.from(output.getData(), ({ dx, dy }) => [
+            dx,
+            dy,
+        ]);
+
+        transform.reset();
+        for (const datum of [
+            { x: 20, y: 10 },
+            { x: 20, y: 10 },
+        ]) {
+            transform.handle(datum);
+        }
+        transform.complete();
+
+        const nextOffsets = Array.from(output.getData(), ({ dx, dy }) => [
+            dx,
+            dy,
+        ]);
+        expect(nextOffsets.some(([dx, dy]) => dx != 0 || dy != 0)).toBe(true);
+        expect(
+            Math.max(...nextOffsets.map(([dx, dy]) => Math.hypot(dx, dy)))
+        ).toBeLessThanOrEqual(
+            Math.max(...previousOffsets.map(([dx, dy]) => Math.hypot(dx, dy))) +
+                1e-10
+        );
     });
 
     test("preserves facet batches during progressive replay", () => {
@@ -210,19 +287,11 @@ describe("Displace2DTransform", () => {
                 datum.xDisplacement,
                 datum.yDisplacement,
             ]);
-            expect(offsets).toEqual(
-                faceted
-                    ? [
-                          [0, 0],
-                          [0, -10],
-                          [0, 0],
-                          [0, -10],
-                      ]
-                    : [
-                          [0, 0],
-                          [0, -10],
-                      ]
-            );
+            expectPairSeparated(offsets.slice(0, 2), 10, 10);
+            if (faceted) {
+                expectPairSeparated(offsets.slice(2, 4), 10, 10);
+                expect(offsets.slice(2, 4)).toEqual(offsets.slice(0, 2));
+            }
 
             const fileCalls = batches.mock.calls.flatMap(([batch], index) =>
                 batch.type == "file"
@@ -652,10 +721,14 @@ describe("Displace2DTransform", () => {
         const { output } = createFlow(input);
         const placed = [...output.getData()];
 
-        expect(placed.map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
-            [0, -10],
-        ]);
+        expectPairSeparated(
+            placed.map(({ dx, dy }) => [dx, dy]),
+            10,
+            10
+        );
+        expect(Math.hypot(placed[0].dx, placed[0].dy)).toBeLessThan(
+            Math.hypot(placed[1].dx, placed[1].dy)
+        );
         expect(placed[0]).toBe(input[0]);
         expect(placed[1]).toBe(input[1]);
     });
@@ -669,10 +742,11 @@ describe("Displace2DTransform", () => {
             { width: "width", height: "height" }
         );
 
-        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
-            [0, -10],
-        ]);
+        expectPairSeparated(
+            [...output.getData()].map(({ dx, dy }) => [dx, dy]),
+            20,
+            10
+        );
     });
 
     test("avoids anchor dimensions read from fields", () => {
@@ -681,9 +755,8 @@ describe("Displace2DTransform", () => {
             { anchorWidth: "anchorWidth", anchorHeight: "anchorHeight" }
         );
 
-        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, -10],
-        ]);
+        const [{ dx, dy }] = [...output.getData()];
+        expect(Math.abs(dx) >= 7 || Math.abs(dy) >= 7).toBe(true);
     });
 
     test("scales and normalizes source-coordinate extents", () => {
@@ -769,10 +842,11 @@ describe("Displace2DTransform", () => {
 
         await Promise.resolve();
         expect(repropagate).toHaveBeenCalledOnce();
-        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
-            [0, -20],
-        ]);
+        expectPairSeparated(
+            [...output.getData()].map(({ dx, dy }) => [dx, dy]),
+            20,
+            20
+        );
         repropagate.mockClear();
 
         paramRuntime.runInTransaction(() => {
@@ -785,10 +859,11 @@ describe("Displace2DTransform", () => {
         });
         await paramRuntime.whenPropagated();
         expect(repropagate).toHaveBeenCalledOnce();
-        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
-            [0, 0],
-            [0, -10],
-        ]);
+        expectPairSeparated(
+            [...output.getData()].map(({ dx, dy }) => [dx, dy]),
+            10,
+            10
+        );
     });
 
     test("debounces reactive placement changes", async () => {
@@ -821,24 +896,16 @@ describe("Displace2DTransform", () => {
 
             const offsets = () =>
                 Array.from(output.getData(), ({ dx, dy }) => [dx, dy]);
-            expect(offsets()).toEqual([
-                [0, 0],
-                [0, -20],
-            ]);
+            const initialOffsets = offsets();
+            expectPairSeparated(initialOffsets, 20, 20);
 
             setHeight(10);
             await vi.advanceTimersByTimeAsync(49);
-            expect(offsets()).toEqual([
-                [0, 0],
-                [0, -20],
-            ]);
+            expect(offsets()).toEqual(initialOffsets);
 
             await vi.advanceTimersByTimeAsync(1);
             await paramRuntime.whenPropagated();
-            expect(offsets()).toEqual([
-                [0, 0],
-                [0, -10],
-            ]);
+            expectPairSeparated(offsets(), 20, 10);
         } finally {
             vi.useRealTimers();
         }

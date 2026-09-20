@@ -2,208 +2,279 @@
 
 ## Status
 
-PoC implemented on `codex/progressive-displace2d-poc`. The prototype is ready
-for maintainer acid testing and tuning, not production integration.
+The force-relaxation baseline is preserved in commit `ae17eb4c2`. The current
+working tree replaces it with an uncommitted position-based constraint solver
+for visual evaluation. Neither experiment is ready for production integration.
 
 ## Motivation
 
-The current `displace2d` solver is fast and deterministic, but its bounded
-greedy candidate order can produce visually poor local placements. This proof
-of concept evaluates whether a persistent rectangle-relaxation process can
-improve those placements progressively without blocking interaction or making
-labels move chaotically.
+The canonical `displace2d` solver is fast, deterministic, and collision-free,
+but its bounded greedy search can send labels to a distant overflow row even
+when a closer global arrangement is visually apparent. The experiment asks
+whether a stateful solver can keep labels local, improve placement over several
+animation frames, and remain coherent during zoom and pan.
 
-The execution model is inspired by animated force layouts: retain solver state,
+The execution model is inspired by animated layouts: retain solver state,
 advance it by a bounded amount before each render, publish intermediate
-positions, and stop scheduling frames after convergence. The placement
-algorithm is not a graph force layout. It uses rectangle overlap corrections,
-anchor attraction, velocity damping, viewport constraints, and deterministic
-tie breaking.
-
-ggrepel is useful behavioral prior art: it repeatedly repels overlapping label
-boxes and points, attracts labels toward their original positions, damps
-velocity, and stops at iteration or time limits. GenomeSpy must not copy or
-closely adapt its GPL-3.0 implementation. This PoC uses an independently written
-solver compatible with GenomeSpy's MIT license and omits ggrepel's random
-jitter and discrete leader-line swaps because those operations are unsuitable
-for visible animation.
+positions, and stop scheduling frames after convergence. The numerical method
+is not a graph force layout. The current trial follows the position-based
+constraint projection pattern described by Müller et al.:
+https://diglib.eg.org/items/deb0a7a1-2ddf-496f-889a-fe0df1feeb73. It is an
+independent implementation suitable for GenomeSpy's MIT license.
 
 ## Goals
 
-1. Preserve the existing public `displace2d` grammar, defaults, output fields,
-   facet behavior, scale-aware placement, obstacles, extents, and overflow
-   fallback.
-2. Use the current greedy result as a complete deterministic initial layout,
-   then improve it through smooth progressive relaxation.
-3. Retain live datum rows and replay only descendants once per animation frame.
-4. Warm-start repeated scale and layout updates from retained datum state when
-   upstream replay preserves datum identity.
-5. Stop animation when movement and overlap settle, and bound unsuccessful
-   relaxation with an iteration limit.
+1. Preserve the existing `displace2d` grammar shape, defaults, output fields,
+   facet behavior, scale-aware placement, obstacles, and extents.
+2. Initialize new labels at their anchors rather than from greedy placements.
+3. Prefer nearby residual overlap to arbitrarily distant overflow placement in
+   a saturated region.
+4. Retain live rows and replay descendants at most once per animation frame.
+5. Warm-start scale and layout updates even when upstream transforms replace
+   datum objects while preserving stable input order.
 6. Exercise `reversed-axes.json` and `stress.json` without downstream
    `transition` transforms.
+7. Keep radical solver corrections visually smooth and terminate fixture leader
+   lines at label boundaries instead of their center points.
 
 ## Non-goals
 
 - Adding solver selection or tuning parameters to the public grammar.
-- Porting ggrepel or matching its static output.
-- Guaranteeing that every intermediate frame is collision-free.
+- Guaranteeing collision-free output for impossible or saturated layouts.
 - Guaranteeing path-independent restoration after interaction.
-- Solving leader-line crossings in the first PoC.
-- Replacing the current greedy solver or deleting its focused tests.
-- Defining a production saturation policy for impossible label densities.
+- Solving leader-line crossings.
+- Deleting the canonical greedy solver while this remains an experiment.
+- Defining the production policy for overlap, hiding, or maximum displacement.
 
 ## Key decisions
 
-### Greedy initialization followed by relaxation
+### Direct position projection
 
-The existing solver supplies a finite, validated, collision-free starting
-layout and preserves current overflow behavior. Relaxation then pulls labels
-toward anchors while resolving rectangle and anchor penetrations. There is no
-final greedy cleanup because it would reintroduce discontinuous jumps.
+New labels start at their anchors. Each solver sweep projects overlapping
+rectangles and anchor obstacles apart and projects feasible rectangles into the
+configured bounds. Anchor attraction is collision-aware: a label moves toward
+its anchor only when the intermediate position is already legal, preventing a
+soft anchor force from recreating overlap. Corrections operate directly on
+positions; there is no velocity or momentum to overshoot. Each item can move at
+most 1.5 logical pixels in an ordinary sweep.
 
-### Stateful transform, separate numerical state
+Interactive rendering attempts up to 64 sweeps but stops at the existing 4 ms
+frame budget. Small feasible groups can therefore settle before the next
+render, while dense groups still yield promptly.
 
-`Displace2DTransform` continues to collect complete batches. After initial
-publication it retains the live rows, batch markers, and relaxation groups.
-Animation callbacks mutate the existing displacement fields and replay only
-the transform's descendants. A separate numerical module owns positions,
-velocities, collision corrections, bounds, and convergence.
+Small projection steps alone can trap a warm-started label in an obsolete local
+arrangement. On geometry replay, retained labels therefore perform a
+deterministic compaction pass before relaxation resumes. Each label samples 32
+positions from its anchor toward its retained position and jumps to the nearest
+one that is already legal against labels, anchor obstacles, and bounds. The jump
+is deliberately not movement-capped, but it can only reduce anchor distance.
 
-### Identity without a grammar change
+Initial and persistently infeasible arrangements have a second escape hatch.
+Every 32 unresolved sweeps, up to four lower-priority overlapping labels search
+128 deterministic golden-angle candidates around their anchors and jump to the
+nearest legal candidate found. This avoids fixed-order projection cycles in
+ordinary feasible clusters without adding a distant overflow row.
 
-The current grammar has no stable key. The PoC therefore associates state with
-datum object identity through a `WeakMap`. Scale and parameter replays normally
-reuse those objects, allowing warm starts. Replacement objects receive fresh
-greedy positions. A production design would need to decide whether this
-limitation is acceptable or whether stable identity belongs in the grammar.
+When a layout is collision-free and otherwise settled, the same bounded radial
+search may move lower-priority labels to legal candidates that are meaningfully
+closer to their anchors. This gives zoomed sparse layouts a chance to improve
+beyond their first acceptable local minimum.
 
-### Animation-aware stability
+Exact coincidences use deterministic pair hashing to choose directions. Input
+priority is represented as inverse mobility, making earlier labels less mobile
+without pinning them completely. The solver is still quadratic and uses an
+800-iteration safety limit.
 
-Each iteration computes corrections from one position snapshot and applies
-them together. Velocity damping, a per-iteration movement cap, deterministic
-directions for exact coincidences, and modest anchor attraction limit visible
-jitter. The solver publishes at most once per animation frame even if multiple
-iterations fit the frame work budget.
+### Temporal state without a grammar key
 
-### Compatibility and headless behavior
+Datum identity remains the strongest state match. However, scale-dependent
+transforms in the stress pipeline replace datum objects during replay, so a
+`WeakMap` alone reset offsets to zero. The transform now falls back to stable
+input position within each facet and retains inactive off-viewport entries.
+This fixes the tested pipeline without adding a public key parameter, but it
+cannot distinguish row insertion, deletion, or reordering from replacement.
 
-When no Animator is available or transitions are disabled for headless
-rendering, the transform retains the existing greedy result. The dataflow
-becomes complete after the initial batch publication; visual settling does not
-hold readiness open. This keeps synchronous export deterministic but means the
-PoC specifically evaluates the interactive renderer path.
+### Progressive and synchronous execution
+
+Interactive dataflows perform two initial projection sweeps for new rows, then
+continue through the Animator. Replayed rows publish their retained offsets
+before the next solver frame. Headless or transition-disabled dataflows run the
+same bounded solver synchronously, so both paths now use the same placement
+algorithm rather than producing greedy output in exports.
+
+### Solver targets and displayed positions
+
+Interactive rows retain a displayed position separately from the solver target.
+Solver projection, compaction, repair, and final improvement may change the
+target discontinuously. Once per animation frame, the displayed position
+approaches that target with a 60 ms half-life and a 10-pixel per-axis movement
+cap. Animation continues after numerical convergence until displayed positions
+reach their targets. This restores smooth motion without a downstream
+`transition` transform. Headless output continues to use the settled target
+directly.
+
+### Leader-line attachment in fixtures
+
+The transform still emits only label-center offsets. The two evaluation
+fixtures derive separate leader offsets by intersecting the anchor-to-center
+segment with the centered label collision rectangle. Text uses the full
+displacement while the rule endpoint uses the shortened offset, preventing
+rules from running through labels without expanding the transform grammar.
+
+### Saturation is explicit
+
+The constraint solver has no overflow row. Collision-aware attraction preserves
+legal separation once achieved, while bounded radial repair escapes local
+cycles. Dense clusters can still stop with overlaps when the repair search and
+iteration limit cannot find enough space, but they do not place a tail of labels
+hundreds of pixels from their anchors. This is useful experimental behavior,
+not yet a decided public contract.
+
+### Bounded performance optimization
+
+Ordinary moving sweeps no longer measure the maximum overlap with a second
+quadratic scan. They conservatively assume overlap until a repair sweep or
+settling check actually needs the answer, and that check stops at the first
+significant overlap. Per-label mobility is also precomputed. A spatial index was
+deliberately deferred because it would add substantial machinery to this PoC.
+
+## Alternatives considered
+
+- The committed force-relaxation baseline starts from a collision-free greedy
+  layout. It resolves almost every overlap after relaxation but inherits very
+  distant seeds and uses momentum that amplifies interaction changes.
+- Alternating VPSC remains the strongest next alternative if constraint
+  projection leaves too many overlaps. It should produce a more deliberate
+  compact layout, but exact axis solves need a separate rendered-position
+  interpolator to avoid collective jumps.
+- Discrete candidate optimization can produce excellent static placements but
+  is not naturally progressive; it would compute targets off-screen and animate
+  toward committed solutions.
 
 ## Risks and unresolved questions
 
-- Dense impossible layouts may never become collision-free; the iteration cap
-  stops work but cannot invent space. A production design may need visibility
-  or priority policy.
-- WeakMap identity does not survive tuple replacement and cannot guarantee
-  continuity for every source or transform pipeline.
+- Stable facet order is only an implicit identity contract. A production design
+  may need an optional key if insertion and filtering must retain state safely.
+- Dense initial layouts currently retain many overlaps. More collision
+  sub-sweeps, adaptive anchor compliance, or VPSC may improve this without
+  reviving distant placements.
 - Progressive output is history-dependent and may settle differently after an
-  out-and-back zoom.
+  out-and-back interaction.
+- Compaction can create a visible jump. It trades strict continuity for escaping
+  a stale arrangement and currently has no rendered-position interpolation.
+- Radial repair also jumps and adds bounded quadratic work every 32 unresolved
+  sweeps. Its candidate count and repair frequency are experimental.
+- Display interpolation can temporarily overlap labels even when solver targets
+  are legal, and independently interpolated paths can cross.
+- Boundary-attached leader offsets currently live in the fixtures. A reusable
+  production feature may need a general rectangle-boundary transform or mark
+  facility, especially for rotated or non-centered labels.
 - Replaying descendants on every active frame may cost more than solving.
-- The selected force constants and work budget are experimental and must not
-  become accidental public API.
-- A greedy overflow seed may take many frames to return distant labels to a
-  compact configuration.
+- The solver performs pairwise label and obstacle scans and has no spatial
+  index.
+- Exact public semantics for headless output, saturation, and priority remain
+  undecided.
 
 ## Milestones
 
-### 1. Add the relaxation engine and transform lifecycle
+### 1. Preserve the force-relaxation baseline
 
-Intended outcome: a deterministic, independently implemented rectangle
-relaxer advances retained placements and reports convergence. The transform
-uses Core's Animator, preserves facet batches, cancels work on disposal, and
-keeps its existing public parameters.
+Intended outcome: retain the first progressive implementation as a reproducible
+comparison point.
 
-Affected areas: `displace2d.js`, a new sibling numerical module, and focused
-transform/solver tests. Downstream collectors and marks are replayed once per
-published frame.
+Affected areas: the transform lifecycle, force relaxer, focused tests, and two
+interactive fixtures.
 
-Verification: test overlap reduction, bounded movement, warm-started anchor
-updates, descendant replay, facet boundaries, headless settling, and disposal.
-Run focused `displace2d` and transition tests plus Core TypeScript checks.
+Verification: 64 focused tests, Core TypeScript, lint, the full 4,242-test
+suite, and both browser smoke fixtures passed before commit `ae17eb4c2`.
 
-Documentation or migration: none for the PoC; the public grammar is unchanged.
+Documentation or migration: none; experimental grammar is unchanged.
 
-Tentative commit: `feat(core): prototype progressive displace2d relaxation`
+Commit: `feat(core): prototype progressive label relaxation`
 
-### 2. Exercise the interactive fixtures
+### 2. Evaluate position-based constraint projection
 
-Intended outcome: `reversed-axes.json` and `stress.json` use progressive output
-directly, without target fields or downstream transition transforms.
+Intended outcome: remove the greedy initializer and velocity integration, keep
+new placements local, and preserve offsets through pan and zoom.
 
-Affected areas: the two example specifications only.
+Affected areas: `displace2d.js`, the numerical solver and tests. The fixture
+specifications remain unchanged from the baseline commit.
 
-Verification: focused browser smoke checks, manual zoom/pan/resize inspection,
-console inspection, and observation of settling at low and high label counts.
-Compare responsiveness and placement quality with the parent branch.
+Verification: focused solver, transform, greedy-solver, and transition suites;
+Core TypeScript; lint; browser smoke; manual initial, zoom, and pan inspection;
+and comparative displacement/overlap measurements on stress-like geometry.
 
-Documentation or migration: keep these as development fixtures; do not update
-public documentation until the experiment is accepted.
+Documentation or migration: record findings here. Do not update public
+specification documentation until an algorithm and saturation policy are
+selected.
 
-Tentative commit: `test(core): exercise progressive displace2d fixtures`
+Tentative commit: `feat(core): try position-based label constraints`
 
-## Final integration acceptance criteria
+## Acceptance criteria for the experiment
 
-- Both named examples initialize without browser errors and visibly settle.
-- Labels move continuously without candidate jumps during relaxation.
-- Scale interaction warm-starts retained rows rather than restarting them from
-  greedy placements on every replay.
-- Animation stops after convergence or the iteration cap and is canceled on
-  disposal.
-- Facets remain independent and their batch boundaries survive animation.
-- Headless output retains the current deterministic greedy offsets.
-- The `Displace2DParams` TypeScript/schema shape is unchanged.
-- Focused unit tests, Core TypeScript checks, lint for touched files, and both
-  browser smoke tests pass.
+- Both fixtures initialize without browser errors and visibly settle.
+- The feasible reversed-axis fixture has no visible label-label overlaps after
+  settling.
+- Labels move without momentum-driven oscillation.
+- Radical target changes are displayed through bounded interpolation rather
+  than published as one-frame jumps.
+- Zoom and pan retain offsets instead of restarting replacement rows at zero.
+- A retained label can jump closer when a newly legal position opens toward its
+  anchor.
+- Fixture leader lines terminate at the label collision boundary rather than
+  its center.
+- New labels begin at their anchors rather than a greedy overflow position.
+- Animation stops at convergence or the iteration cap and cancels on disposal.
+- Facets remain independent and batch boundaries survive animation.
+- Interactive and headless paths use the same numerical method.
+- `Displace2DParams` and its generated schema remain unchanged.
 
-## PoC evidence
+## Evidence
 
-Implemented:
+Recorded on 2026-09-20:
 
-- `Displace2DRelaxation` independently implements simultaneous rectangle and
-  anchor collision corrections, weak anchor and boundary attraction, input-
-  order mobility, velocity damping, deterministic coincidence directions, a
-  movement cap, and a 600-iteration safety limit.
-- `Displace2DTransform` retains live rows and facet markers, associates state
-  with datum identity, warm-starts anchor changes, performs at most four
-  iterations and approximately 4 ms of work per frame, replays descendants
-  once, and cancels animation on reset or disposal.
-- Non-animated and headless paths retain the original greedy output.
-- The reversed-axis and stress fixtures now use `displace2d` output directly
-  with zero debounce and contain no transition transform.
+- The baseline implementation was committed as `ae17eb4c2` after its full
+  verification pass.
+- The constraint-solver trial passes 55 focused tests and the Core TypeScript
+  check. A regression test confirms warm starts across replacement datum
+  objects using stable facet order. Another verifies that a label stranded 100
+  pixels from its anchor compacts to the nearest legal sample under 20 pixels.
+  Feasible clustered-layout tests now include heterogeneous widths and anchor
+  obstacles modeled after the reversed-axis fixture.
+- Both fixtures pass the focused WebGL browser smoke test. Manual inspection of
+  the stress fixture covered settling, wheel zoom, and drag pan. Offsets remain
+  present through interaction. A second zoom-in/out pass with compaction enabled
+  showed labels returning close to newly isolated anchors; the browser console
+  contains only the existing Lit development warning.
+- Manual inspection confirms that the reversed-axis fixture now settles without
+  visible label-label overlap. The corresponding synthetic geometry converged
+  in 104 iterations with no intersections and a maximum displacement of about
+  46 pixels.
+- The transform regression test verifies that a numerically settled target is
+  approached over multiple animation frames. Manual stress-fixture zooming
+  shows the display continuing smoothly after the solver target changes.
+- Both fixtures now derive `leaderDx` and `leaderDy` from the label rectangle;
+  manual inspection confirms that rules stop outside the rendered text.
+- On approximate 150-label stress geometry, greedy placement had median, 90th
+  percentile, and maximum anchor distances of about 82, 136, and 848 pixels.
+  With radial repair, the constraint trial produced about 20, 56, and 64 pixels.
+- The same approximate constraint result retained 44 intersecting label pairs
+  after its 800-iteration limit, down from 86 before radial repair. The dense
+  initial browser view still visibly confirms that proximity improved at the
+  expense of too many overlaps. This is the main issue to resolve or compare
+  against VPSC.
+- On deterministic 500-label stress geometry, the median time for 64 sweeps
+  fell from 120.5 to 75.9 ms and a full 800-sweep solve from 1.71 to 1.18 s.
+  Final overlap count and anchor-distance statistics were unchanged. The solver
+  grew by 13 lines; a follow-up V8 profile attributes the remaining time to
+  the actual pairwise sweep and radial repair rather than overlap measurement.
 
-Verification recorded on 2026-09-20:
+## Remaining evaluation
 
-- Focused solver, transform, relaxation, and transition suites pass with 64
-  tests. The full unit suite passes with 4,242 tests, one skip, and two todos.
-  Core TypeScript and touched-file lint pass.
-- Both requested examples pass the focused WebGL browser smoke check. Only the
-  existing Lit development and software-WebGL readback warnings were emitted.
-- Manual browser inspection covered initial settling and wheel zoom in both
-  fixtures. The reversed-axis labels settle into a compact arrangement and
-  retain smooth relative motion through zoom. The 150-label stress view
-  remains responsive and replaces the greedy overflow topology with gradual
-  movement.
-- A synthetic version of the 150-label stress geometry had five remaining
-  label intersections after the 600-iteration limit. The median minimum-axis
-  penetration was approximately 0.6 px and the maximum 3.6 px. The PoC does
-  not claim collision-free convergence.
-- The implementation adds substantial state and lifecycle machinery: the
-  transform grows from 414 to 579 lines and the new solver and focused tests
-  add 377 lines. This is acceptable for an experiment but should be reduced or
-  factored before production adoption.
-
-Remaining evaluation:
-
-- Maintainer visual assessment of motion quality, settling time, and whether
-  residual overlaps are preferable to greedy overflow.
-- Interaction profiling at the stress fixture's 500-label maximum. The PoC
-  uses pairwise label and anchor scans per iteration, so its numerical work is
-  quadratic even though each frame has a wall-time guard.
-- A production decision about stable identity, saturation policy, headless
-  equivalence, deterministic restoration, and whether progressive semantics
-  should replace or coexist with the canonical greedy transform.
+- Maintainer judgment on whether the much shorter leader lines justify the
+  current overlap rate.
+- Decide whether to improve constraint projection or move directly to an
+  alternating VPSC experiment.
+- Evaluate a spatial index only if this numerical method is selected for
+  production; current profiling does not justify that added PoC complexity.
+- Decide on stable identity and saturation semantics before production work.
