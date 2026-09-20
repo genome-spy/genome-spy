@@ -1113,6 +1113,14 @@ export interface Displace1DParams extends TransformParamsBase {
 export interface Displace2DParams extends TransformParamsBase {
     type: "displace2d";
 
+    /**
+     * Field containing a unique string or finite numeric key. A key preserves
+     * progressive placement when upstream transforms replace, filter, or
+     * reorder row objects. Without a key, placement state is retained only
+     * while the input row objects retain their identity.
+     */
+    key?: Field;
+
     /** Field containing the original horizontal rectangle center. */
     x: Field;
 

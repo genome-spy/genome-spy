@@ -63,7 +63,12 @@
           "sort": { "field": "priority", "order": "ascending" }
         },
         {
+          "type": "filter",
+          "expr": "inrange(datum.x, domain('x')) && inrange(datum.y, domain('y'))"
+        },
+        {
           "type": "displace2d",
+          "key": "label",
           "x": "x",
           "y": "y",
           "width": "collisionWidth",

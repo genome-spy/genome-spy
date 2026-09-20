@@ -414,6 +414,7 @@ describe("generated core schema", () => {
             transform: [
                 {
                     type: "displace2d",
+                    key: "x",
                     x: "x",
                     y: "y",
                     width: "width",

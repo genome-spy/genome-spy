@@ -73,8 +73,8 @@ export default class Displace2DTransform extends Transform {
     /** @type {WeakMap<import("../flowNode.js").Datum, PlacementItem>} */
     #stateByDatum = new WeakMap();
 
-    /** @type {(PlacementItem | undefined)[][]} */
-    #stateByGroup = [];
+    /** @type {Map<string | number, PlacementItem | undefined>} */
+    #stateByKey = new Map();
 
     #animationRequested = false;
 
@@ -101,6 +101,9 @@ export default class Displace2DTransform extends Transform {
 
     /** @type {ReturnType<typeof field>} */
     #yAccessor;
+
+    /** @type {ReturnType<typeof field> | undefined} */
+    #keyAccessor;
 
     /** @type {DimensionAccessor} */
     #widthAccessor;
@@ -142,8 +145,12 @@ export default class Displace2DTransform extends Transform {
         }
 
         this.#as = params.as ?? ["xDisplacement", "yDisplacement"];
+        if (params.key && this.#as.includes(params.key)) {
+            throw new Error("displace2d output fields must preserve the key.");
+        }
         this.#xAccessor = field(params.x);
         this.#yAccessor = field(params.y);
+        this.#keyAccessor = params.key ? field(params.key) : undefined;
 
         const placementProps = {
             width: params.width,
@@ -261,9 +268,9 @@ export default class Displace2DTransform extends Transform {
 
     /**
      * @param {import("../flowNode.js").Datum[]} data
-     * @param {number} groupIndex
+     * @param {Map<string | number, PlacementItem | undefined>} nextStates
      */
-    #place(data, groupIndex) {
+    #place(data, nextStates) {
         const props = this.#placementProps;
         const xScale = this.#scalePositions
             ? this.#xScaleResolution.getScale()
@@ -289,13 +296,26 @@ export default class Displace2DTransform extends Transform {
         const items = [];
         const progressive =
             this.#animator && this.#animator.transitionsEnabled !== false;
-        const previousStates = this.#stateByGroup[groupIndex] ?? [];
-        const nextStates = new Array(data.length);
         let initialized = false;
         let retained = false;
 
         for (let dataIndex = 0; dataIndex < data.length; dataIndex++) {
             const datum = data[dataIndex];
+            const key = this.#keyAccessor?.(datum);
+            if (this.#keyAccessor) {
+                validateKey(key);
+                if (nextStates.has(key)) {
+                    throw new Error(`displace2d key must be unique: ${key}`);
+                }
+            }
+            let item = progressive
+                ? this.#keyAccessor
+                    ? this.#stateByKey.get(key)
+                    : this.#stateByDatum.get(datum)
+                : undefined;
+            if (this.#keyAccessor) {
+                nextStates.set(key, item);
+            }
             const anchorX = this.#scalePositions
                 ? xScale(this.#xAccessor(datum)) * xAxisLength
                 : this.#xAccessor(datum) * props.xPositionFactor;
@@ -315,13 +335,9 @@ export default class Displace2DTransform extends Transform {
             ) {
                 datum[this.#as[0]] = 0;
                 datum[this.#as[1]] = 0;
-                nextStates[dataIndex] = previousStates[dataIndex];
                 continue;
             }
 
-            let item = progressive
-                ? (this.#stateByDatum.get(datum) ?? previousStates[dataIndex])
-                : undefined;
             if (item) {
                 retained = true;
                 const anchorDeltaX = anchorX - item.anchorX;
@@ -356,13 +372,14 @@ export default class Displace2DTransform extends Transform {
                 };
             }
             if (progressive) {
-                this.#stateByDatum.set(datum, item);
-                nextStates[dataIndex] = item;
+                if (this.#keyAccessor) {
+                    nextStates.set(key, item);
+                } else {
+                    this.#stateByDatum.set(datum, item);
+                }
             }
             items.push(item);
         }
-        this.#stateByGroup[groupIndex] = nextStates;
-
         if (items.length == 0) {
             return undefined;
         }
@@ -395,14 +412,14 @@ export default class Displace2DTransform extends Transform {
         // their computation and publication lifecycles transform-specific.
         // File boundaries preserve source metadata, not collision groups.
         this.#relaxations = [];
+        const nextStates = new Map();
         let facetStart = 0;
-        let groupIndex = 0;
         for (const { index, flowBatch } of this.#batchStarts) {
             if (flowBatch.type == "facet") {
                 if (index > facetStart) {
                     const relaxation = this.#place(
                         this.#data.slice(facetStart, index),
-                        groupIndex++
+                        nextStates
                     );
                     if (relaxation) {
                         this.#relaxations.push(relaxation);
@@ -414,13 +431,15 @@ export default class Displace2DTransform extends Transform {
         if (facetStart < this.#data.length) {
             const relaxation = this.#place(
                 facetStart == 0 ? this.#data : this.#data.slice(facetStart),
-                groupIndex++
+                nextStates
             );
             if (relaxation) {
                 this.#relaxations.push(relaxation);
             }
         }
-        this.#stateByGroup.length = groupIndex;
+        if (this.#keyAccessor) {
+            this.#stateByKey = nextStates;
+        }
     }
 
     /**
@@ -676,6 +695,16 @@ function scaleExtent(extent, factor) {
     const first = extent[0] * factor;
     const second = extent[1] * factor;
     return [Math.min(first, second), Math.max(first, second)];
+}
+
+/** @param {any} key */
+function validateKey(key) {
+    if (
+        typeof key != "string" &&
+        !(typeof key == "number" && Number.isFinite(key))
+    ) {
+        throw new Error("displace2d keys must be strings or finite numbers.");
+    }
 }
 
 /** @param {number} value @param {number} min @param {number} max */

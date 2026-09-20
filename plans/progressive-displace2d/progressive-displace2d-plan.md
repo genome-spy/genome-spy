@@ -85,14 +85,12 @@ priority is represented as inverse mobility, making earlier labels less mobile
 without pinning them completely. The solver is still quadratic and uses an
 800-iteration safety limit.
 
-### Temporal state without a grammar key
+### Temporal state
 
-Datum identity remains the strongest state match. However, scale-dependent
-transforms in the stress pipeline replace datum objects during replay, so a
-`WeakMap` alone reset offsets to zero. The transform now falls back to stable
-input position within each facet and retains inactive off-viewport entries.
-This fixes the tested pipeline without adding a public key parameter, but it
-cannot distinguish row insertion, deletion, or reordering from replacement.
+The optional `key` field preserves state when upstream transforms replace,
+filter, or reorder datum objects. Without a key, state follows datum identity
+through a `WeakMap`. Unmatched rows start from their anchors; state is never
+transferred implicitly by input position.
 
 ### Progressive and synchronous execution
 
@@ -153,8 +151,6 @@ deliberately deferred because it would add substantial machinery to this PoC.
 
 ## Risks and unresolved questions
 
-- Stable facet order is only an implicit identity contract. A production design
-  may need an optional key if insertion and filtering must retain state safely.
 - Dense initial layouts currently retain many overlaps. More collision
   sub-sweeps, adaptive anchor compliance, or VPSC may improve this without
   reviving distant placements.

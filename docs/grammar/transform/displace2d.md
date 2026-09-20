@@ -41,6 +41,11 @@ original center. Sorting by a priority field immediately before `displace2d`
 gives important annotations the first choice of positions. The transform always
 preserves every row.
 
+Set `key` when upstream transforms may replace row objects or change their
+order or membership between updates. Rows with the same key retain their
+progressive placement through cloning, filtering, and reordering. Without a
+key, placement state follows object identity only.
+
 ## Scale-aware placement
 
 Set `scalePositions` to `true` when `x` and `y` contain values for the view's

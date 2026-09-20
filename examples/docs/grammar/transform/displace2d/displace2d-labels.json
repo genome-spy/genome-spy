@@ -82,6 +82,7 @@
         },
         {
           "type": "displace2d",
+          "key": "priority",
           "x": "x",
           "y": "y",
           "width": "activeCollisionWidth",

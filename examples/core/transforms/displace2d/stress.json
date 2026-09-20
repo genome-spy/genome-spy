@@ -96,6 +96,7 @@
         },
         {
           "type": "displace2d",
+          "key": "i",
           "x": "x",
           "y": "y",
           "width": "activeCollisionWidth",
@@ -108,7 +109,7 @@
         },
         {
           "type": "formula",
-          "expr": "max(0, 1 - min(datum.collisionWidth / 2 / max(abs(datum.labelDx), 1e-6), 8.5 / max(abs(datum.labelDy), 1e-6)))",
+          "expr": "max(0, 1 - min(datum.collisionWidth / 2 / max(abs(datum.labelDx), 1e-6), 7 / max(abs(datum.labelDy), 1e-6)))",
           "as": "leaderScale"
         },
         {

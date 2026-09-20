@@ -175,7 +175,7 @@ describe("Displace2DTransform", () => {
         }
     });
 
-    test("warm-starts replacement rows by stable facet order", () => {
+    test("does not transfer state between replacement rows without a key", () => {
         const animator = new TestAnimator();
         const transform = new Displace2DTransform(
             {
@@ -200,11 +200,6 @@ describe("Displace2DTransform", () => {
         for (let i = 0; i < 5; i++) {
             animator.frame(i);
         }
-        const previousOffsets = Array.from(output.getData(), ({ dx, dy }) => [
-            dx,
-            dy,
-        ]);
-
         transform.reset();
         for (const datum of [
             { x: 20, y: 10 },
@@ -214,17 +209,89 @@ describe("Displace2DTransform", () => {
         }
         transform.complete();
 
-        const nextOffsets = Array.from(output.getData(), ({ dx, dy }) => [
-            dx,
-            dy,
+        expect(Array.from(output.getData(), ({ dx, dy }) => [dx, dy])).toEqual([
+            [0, 0],
+            [0, 0],
         ]);
-        expect(nextOffsets.some(([dx, dy]) => dx != 0 || dy != 0)).toBe(true);
-        expect(
-            Math.max(...nextOffsets.map(([dx, dy]) => Math.hypot(dx, dy)))
-        ).toBeLessThanOrEqual(
-            Math.max(...previousOffsets.map(([dx, dy]) => Math.hypot(dx, dy))) +
-                1e-10
+    });
+
+    test("warm-starts keyed replacement rows after filtering and reordering", () => {
+        const animator = new TestAnimator();
+        const transform = new Displace2DTransform(
+            {
+                type: "displace2d",
+                key: "id",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            /** @type {any} */ ({ context: { animator } })
         );
+        const output = new Collector();
+        transform.addChild(output);
+        for (const id of ["a", "b", "c"]) {
+            transform.handle({ id, x: 0, y: 0 });
+        }
+        transform.complete();
+        for (let i = 0; i < 5; i++) {
+            animator.frame(i);
+        }
+        const previousOffsets = new Map(
+            Array.from(output.getData(), ({ id, dx, dy }) => [id, [dx, dy]])
+        );
+
+        transform.reset();
+        for (const id of ["c", "b"]) {
+            transform.handle({ id, x: 0, y: 0 });
+        }
+        transform.complete();
+
+        for (const { id, dx, dy } of output.getData()) {
+            expect([dx, dy]).toEqual(previousOffsets.get(id));
+        }
+    });
+
+    test("rejects invalid and duplicate keys", () => {
+        const animator = new TestAnimator();
+        const create = () =>
+            new Displace2DTransform(
+                {
+                    type: "displace2d",
+                    key: "id",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                },
+                /** @type {any} */ ({ context: { animator } })
+            );
+
+        const invalid = create();
+        invalid.handle({ id: {}, x: 0, y: 0 });
+        expect(() => invalid.complete()).toThrow("keys must");
+
+        const duplicate = create();
+        duplicate.handle({ id: "a", x: 0, y: 0 });
+        duplicate.handle({ id: "a", x: 1, y: 1 });
+        expect(() => duplicate.complete()).toThrow("key must be unique");
+
+        expect(
+            () =>
+                new Displace2DTransform(
+                    {
+                        type: "displace2d",
+                        key: "id",
+                        x: "x",
+                        y: "y",
+                        width: 10,
+                        height: 10,
+                        as: ["id", "dy"],
+                    },
+                    /** @type {any} */ ({ context: { animator } })
+                )
+        ).toThrow("preserve the key");
     });
 
     test("preserves facet batches during progressive replay", () => {
