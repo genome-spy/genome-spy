@@ -34,6 +34,8 @@ const DEFAULT_FRAME_INTERVAL = 1000 / 60;
  * }} PlacementItem
  */
 
+/** @typedef {(datum: import("../flowNode.js").Datum) => number} DimensionAccessor */
+
 /**
  * Computes non-overlapping placements for a two-dimensional batch.
  */
@@ -82,6 +84,36 @@ export default class Displace2DTransform extends Transform {
     /** @type {PlacementProps} */
     #placementProps;
 
+    /** @type {import("../../utils/animator.js").default | undefined} */
+    #animator;
+
+    /** @type {boolean} */
+    #scalePositions;
+
+    /** @type {number} */
+    #debounce;
+
+    /** @type {[string, string]} */
+    #as;
+
+    /** @type {ReturnType<typeof field>} */
+    #xAccessor;
+
+    /** @type {ReturnType<typeof field>} */
+    #yAccessor;
+
+    /** @type {DimensionAccessor} */
+    #widthAccessor;
+
+    /** @type {DimensionAccessor} */
+    #heightAccessor;
+
+    /** @type {DimensionAccessor} */
+    #anchorWidthAccessor;
+
+    /** @type {DimensionAccessor} */
+    #anchorHeightAccessor;
+
     get behavior() {
         return BEHAVIOR_COLLECTS | BEHAVIOR_MODIFIES;
     }
@@ -93,12 +125,12 @@ export default class Displace2DTransform extends Transform {
     constructor(params, paramRuntimeProvider) {
         super(params, paramRuntimeProvider);
 
-        this.animator = paramRuntimeProvider?.context?.animator;
+        this.#animator = paramRuntimeProvider?.context?.animator;
 
-        this.scalePositions = params.scalePositions ?? false;
-        this.debounce = params.debounce ?? 50;
+        this.#scalePositions = params.scalePositions ?? false;
+        this.#debounce = params.debounce ?? 50;
         if (
-            this.scalePositions &&
+            this.#scalePositions &&
             (params.xPositionFactor !== undefined ||
                 params.yPositionFactor !== undefined ||
                 params.xExtent !== undefined ||
@@ -109,9 +141,9 @@ export default class Displace2DTransform extends Transform {
             );
         }
 
-        this.as = params.as ?? ["xDisplacement", "yDisplacement"];
-        this.xAccessor = field(params.x);
-        this.yAccessor = field(params.y);
+        this.#as = params.as ?? ["xDisplacement", "yDisplacement"];
+        this.#xAccessor = field(params.x);
+        this.#yAccessor = field(params.y);
 
         const placementProps = {
             width: params.width,
@@ -124,7 +156,8 @@ export default class Displace2DTransform extends Transform {
             yExtent: params.yExtent,
         };
         const hasReactiveProps = Object.values(placementProps).some(isExprRef);
-        this.#placementBootstrapped = !hasReactiveProps && !this.scalePositions;
+        this.#placementBootstrapped =
+            !hasReactiveProps && !this.#scalePositions;
 
         const placementChanged = () => {
             if (this.#placementBootstrapped && this.completed) {
@@ -143,21 +176,24 @@ export default class Displace2DTransform extends Transform {
               )
             : /** @type {any} */ (placementProps);
         const props = this.#placementProps;
-        this.widthAccessor = dimensionAccessor(params.width, () => props.width);
-        this.heightAccessor = dimensionAccessor(
+        this.#widthAccessor = dimensionAccessor(
+            params.width,
+            () => props.width
+        );
+        this.#heightAccessor = dimensionAccessor(
             params.height,
             () => props.height
         );
-        this.anchorWidthAccessor = dimensionAccessor(
+        this.#anchorWidthAccessor = dimensionAccessor(
             params.anchorWidth,
             () => props.anchorWidth
         );
-        this.anchorHeightAccessor = dimensionAccessor(
+        this.#anchorHeightAccessor = dimensionAccessor(
             params.anchorHeight,
             () => props.anchorHeight
         );
 
-        if (this.scalePositions) {
+        if (this.#scalePositions) {
             const view = /** @type {import("../../view/view.js").default} */ (
                 paramRuntimeProvider
             );
@@ -203,12 +239,12 @@ export default class Displace2DTransform extends Transform {
         }
 
         const bootstrap = !this.#placementBootstrapped;
-        if (bootstrap || (this.scalePositions && !this.#hasScaleLayout())) {
+        if (bootstrap || (this.#scalePositions && !this.#hasScaleLayout())) {
             // Establish data-driven scale domains before reading the scales,
             // or publish neutral offsets until layout is available.
             for (const datum of data) {
-                datum[this.as[0]] = 0;
-                datum[this.as[1]] = 0;
+                datum[this.#as[0]] = 0;
+                datum[this.#as[1]] = 0;
             }
             this.#publishBufferedData();
             if (bootstrap) {
@@ -229,30 +265,30 @@ export default class Displace2DTransform extends Transform {
      */
     #place(data, groupIndex) {
         const props = this.#placementProps;
-        const xScale = this.scalePositions
+        const xScale = this.#scalePositions
             ? this.#xScaleResolution.getScale()
             : undefined;
-        const yScale = this.scalePositions
+        const yScale = this.#scalePositions
             ? this.#yScaleResolution.getScale()
             : undefined;
-        const xAxisLength = this.scalePositions
+        const xAxisLength = this.#scalePositions
             ? this.#xScaleResolution.getAxisLength()
             : 0;
-        const yAxisLength = this.scalePositions
+        const yAxisLength = this.#scalePositions
             ? this.#yScaleResolution.getAxisLength()
             : 0;
         /** @type {[number, number] | undefined} */
-        const xExtent = this.scalePositions
+        const xExtent = this.#scalePositions
             ? [0, xAxisLength]
             : scaleExtent(props.xExtent, props.xPositionFactor);
         /** @type {[number, number] | undefined} */
-        const yExtent = this.scalePositions
+        const yExtent = this.#scalePositions
             ? [0, yAxisLength]
             : scaleExtent(props.yExtent, props.yPositionFactor);
         /** @type {PlacementItem[]} */
         const items = [];
         const progressive =
-            this.animator && this.animator.transitionsEnabled !== false;
+            this.#animator && this.#animator.transitionsEnabled !== false;
         const previousStates = this.#stateByGroup[groupIndex] ?? [];
         const nextStates = new Array(data.length);
         let initialized = false;
@@ -260,16 +296,16 @@ export default class Displace2DTransform extends Transform {
 
         for (let dataIndex = 0; dataIndex < data.length; dataIndex++) {
             const datum = data[dataIndex];
-            const anchorX = this.scalePositions
-                ? xScale(this.xAccessor(datum)) * xAxisLength
-                : this.xAccessor(datum) * props.xPositionFactor;
-            const anchorY = this.scalePositions
-                ? (1 - yScale(this.yAccessor(datum))) * yAxisLength
-                : this.yAccessor(datum) * props.yPositionFactor;
+            const anchorX = this.#scalePositions
+                ? xScale(this.#xAccessor(datum)) * xAxisLength
+                : this.#xAccessor(datum) * props.xPositionFactor;
+            const anchorY = this.#scalePositions
+                ? (1 - yScale(this.#yAccessor(datum))) * yAxisLength
+                : this.#yAccessor(datum) * props.yPositionFactor;
 
             // An off-viewport anchor would pull its label back into view.
             if (
-                this.scalePositions &&
+                this.#scalePositions &&
                 !(
                     anchorX >= 0 &&
                     anchorX <= xAxisLength &&
@@ -277,8 +313,8 @@ export default class Displace2DTransform extends Transform {
                     anchorY <= yAxisLength
                 )
             ) {
-                datum[this.as[0]] = 0;
-                datum[this.as[1]] = 0;
+                datum[this.#as[0]] = 0;
+                datum[this.#as[1]] = 0;
                 nextStates[dataIndex] = previousStates[dataIndex];
                 continue;
             }
@@ -297,10 +333,10 @@ export default class Displace2DTransform extends Transform {
                 item.datum = datum;
                 item.anchorX = anchorX;
                 item.anchorY = anchorY;
-                item.width = this.widthAccessor(datum);
-                item.height = this.heightAccessor(datum);
-                item.anchorWidth = this.anchorWidthAccessor(datum);
-                item.anchorHeight = this.anchorHeightAccessor(datum);
+                item.width = this.#widthAccessor(datum);
+                item.height = this.#heightAccessor(datum);
+                item.anchorWidth = this.#anchorWidthAccessor(datum);
+                item.anchorHeight = this.#anchorHeightAccessor(datum);
                 item.priority = items.length;
             } else {
                 initialized = true;
@@ -310,10 +346,10 @@ export default class Displace2DTransform extends Transform {
                     anchorY,
                     x: anchorX,
                     y: anchorY,
-                    width: this.widthAccessor(datum),
-                    height: this.heightAccessor(datum),
-                    anchorWidth: this.anchorWidthAccessor(datum),
-                    anchorHeight: this.anchorHeightAccessor(datum),
+                    width: this.#widthAccessor(datum),
+                    height: this.#heightAccessor(datum),
+                    anchorWidth: this.#anchorWidthAccessor(datum),
+                    anchorHeight: this.#anchorHeightAccessor(datum),
                     priority: items.length,
                     displayX: anchorX,
                     displayY: anchorY,
@@ -345,9 +381,9 @@ export default class Displace2DTransform extends Transform {
             solver.solve();
         }
         for (const item of items) {
-            item.datum[this.as[0]] =
+            item.datum[this.#as[0]] =
                 (progressive ? item.displayX : item.x) - item.anchorX;
-            item.datum[this.as[1]] =
+            item.datum[this.#as[1]] =
                 (progressive ? item.displayY : item.y) - item.anchorY;
         }
 
@@ -414,8 +450,8 @@ export default class Displace2DTransform extends Transform {
 
     #requestAnimation() {
         if (
-            !this.animator ||
-            this.animator.transitionsEnabled === false ||
+            !this.#animator ||
+            this.#animator.transitionsEnabled === false ||
             this.#animationRequested ||
             this.#relaxations.length == 0
         ) {
@@ -423,11 +459,11 @@ export default class Displace2DTransform extends Transform {
         }
 
         this.#animationRequested = true;
-        this.animator.requestTransition(this.#animate);
+        this.#animator.requestTransition(this.#animate);
     }
 
     #cancelAnimation() {
-        this.animator?.cancelTransition(this.#animate);
+        this.#animator?.cancelTransition(this.#animate);
         this.#animationRequested = false;
         this.#lastAnimationTimestamp = undefined;
     }
@@ -526,8 +562,8 @@ export default class Displace2DTransform extends Transform {
         for (const relaxation of this.#relaxations) {
             for (const item of relaxation.items) {
                 const placement = /** @type {PlacementItem} */ (item);
-                item.datum[this.as[0]] = placement.displayX - item.anchorX;
-                item.datum[this.as[1]] = placement.displayY - item.anchorY;
+                item.datum[this.#as[0]] = placement.displayX - item.anchorX;
+                item.datum[this.#as[1]] = placement.displayY - item.anchorY;
             }
         }
     }
@@ -570,12 +606,12 @@ export default class Displace2DTransform extends Transform {
             this.#placementBootstrapped &&
             !this.disposed &&
             this.completed &&
-            (!this.scalePositions || this.#hasScaleLayout())
+            (!this.#scalePositions || this.#hasScaleLayout())
         );
     }
 
     /** @param {number} [wait] */
-    #scheduleReplay(wait = this.debounce) {
+    #scheduleReplay(wait = this.#debounce) {
         this.#cancelReplay();
         if (!this.#isReplayReady()) {
             return;
@@ -619,7 +655,7 @@ export default class Displace2DTransform extends Transform {
 /**
  * @param {import("../../spec/transform.js").Displace2DParams["anchorWidth"]} param
  * @param {() => PlacementProps["width"]} getValue
- * @returns {(datum: import("../flowNode.js").Datum) => number}
+ * @returns {DimensionAccessor}
  */
 function dimensionAccessor(param, getValue) {
     return typeof param == "string"
