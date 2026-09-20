@@ -7,6 +7,7 @@ const REPAIR_INTERVAL = 32;
 const REPAIR_CANDIDATES = 128;
 const MAX_REPAIRS_PER_SWEEP = 8;
 const MIN_RADIAL_IMPROVEMENT = 1;
+const LEADER_LABEL_PENALTY = 40;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const MOVEMENT_EPSILON = 0.01;
 const OVERLAP_EPSILON = 0.05;
@@ -48,8 +49,8 @@ const MAX_ITERATIONS = 800;
  * https://doi.org/10.2312/PE/vriphys/vriphys06/071-080
  *
  * Periodic deterministic radial searches escape local tangles and later try
- * to replace needlessly distant placements with closer ones. Their Vogel-style
- * golden-angle spiral samples directions without favoring the coordinate axes.
+ * to improve distance and leader clearance. Their Vogel-style golden-angle
+ * spiral samples directions without favoring the coordinate axes.
  * https://doi.org/10.1016/0025-5564(79)90080-4
  *
  * The surrounding transform runs bounded batches of sweeps and publishes them
@@ -465,23 +466,8 @@ export class Displace2DConstraintSolver {
             );
             const phase =
                 (pairHash(i, this.items.length) / 2 ** 32) * Math.PI * 2;
-            for (
-                let candidate = 0;
-                candidate < REPAIR_CANDIDATES;
-                candidate++
-            ) {
-                const expansion = 1 + candidate / (4 * (REPAIR_CANDIDATES - 1));
-                const radius =
-                    radialStep * Math.sqrt(candidate + 1) * expansion;
-                const angle = phase + candidate * GOLDEN_ANGLE;
-                const x = item.anchorX + Math.cos(angle) * radius;
-                const y = item.anchorY + Math.sin(angle) * radius;
-                if (this.#isAvailable(i, x, y)) {
-                    item.x = x;
-                    item.y = y;
-                    repairs++;
-                    break;
-                }
+            if (this.#searchPlacement(i, radialStep, phase, Infinity, true)) {
+                repairs++;
             }
             if (repairs >= MAX_REPAIRS_PER_SWEEP) {
                 break;
@@ -514,25 +500,13 @@ export class Displace2DConstraintSolver {
             );
             const phase =
                 (pairHash(i, this.items.length + 1) / 2 ** 32) * Math.PI * 2;
-            for (
-                let candidate = 0;
-                candidate < REPAIR_CANDIDATES;
-                candidate++
+            const currentScore =
+                currentDistance +
+                leaderLabelPenalty(this.items, i, item.x, item.y);
+            if (
+                this.#searchPlacement(i, radialStep, phase, currentScore, false)
             ) {
-                const radius = radialStep * Math.sqrt(candidate + 1);
-                if (radius + MIN_RADIAL_IMPROVEMENT >= currentDistance) {
-                    break;
-                }
-
-                const angle = phase + candidate * GOLDEN_ANGLE;
-                const x = item.anchorX + Math.cos(angle) * radius;
-                const y = item.anchorY + Math.sin(angle) * radius;
-                if (this.#isAvailable(i, x, y)) {
-                    item.x = x;
-                    item.y = y;
-                    improvements++;
-                    break;
-                }
+                improvements++;
             }
             if (improvements >= MAX_REPAIRS_PER_SWEEP) {
                 break;
@@ -540,6 +514,88 @@ export class Displace2DConstraintSolver {
         }
         return improvements > 0;
     }
+
+    /**
+     * @param {number} index
+     * @param {number} radialStep
+     * @param {number} phase
+     * @param {number} bestScore
+     * @param {boolean} expand
+     */
+    #searchPlacement(index, radialStep, phase, bestScore, expand) {
+        const item = this.items[index];
+        let bestX = item.x;
+        let bestY = item.y;
+        for (let candidate = 0; candidate < REPAIR_CANDIDATES; candidate++) {
+            const radius =
+                radialStep *
+                Math.sqrt(candidate + 1) *
+                (expand ? 1 + candidate / (4 * (REPAIR_CANDIDATES - 1)) : 1);
+            if (radius + MIN_RADIAL_IMPROVEMENT >= bestScore) {
+                break;
+            }
+
+            const angle = phase + candidate * GOLDEN_ANGLE;
+            const x = item.anchorX + Math.cos(angle) * radius;
+            const y = item.anchorY + Math.sin(angle) * radius;
+            if (this.#isAvailable(index, x, y)) {
+                const score =
+                    radius + leaderLabelPenalty(this.items, index, x, y);
+                if (score + MIN_RADIAL_IMPROVEMENT < bestScore) {
+                    bestScore = score;
+                    bestX = x;
+                    bestY = y;
+                }
+            }
+        }
+        if (bestX == item.x && bestY == item.y) {
+            return false;
+        }
+        item.x = bestX;
+        item.y = bestY;
+        return true;
+    }
+}
+
+/**
+ * Returns a bounded cost for a leader passing near another label's center.
+ *
+ * @param {ConstraintItem[]} items
+ * @param {number} index
+ * @param {number} x
+ * @param {number} y
+ */
+function leaderLabelPenalty(items, index, x, y) {
+    const item = items[index];
+    const lineDx = x - item.anchorX;
+    const lineDy = y - item.anchorY;
+    let penalty = 0;
+    for (let i = 0; i < items.length; i++) {
+        const other = items[i];
+        if (i == index || other.width == 0 || other.height == 0) {
+            continue;
+        }
+
+        const scaleX = 2 / other.width;
+        const scaleY = 2 / other.height;
+        const startX = (item.anchorX - other.x) * scaleX;
+        const startY = (item.anchorY - other.y) * scaleY;
+        const dx = lineDx * scaleX;
+        const dy = lineDy * scaleY;
+        const lengthSquared = dx * dx + dy * dy;
+        const t = clamp(-(startX * dx + startY * dy) / lengthSquared, 0, 1);
+        const closestX = startX + t * dx;
+        const closestY = startY + t * dy;
+        const proximity = Math.max(
+            0,
+            1 - (closestX * closestX + closestY * closestY) / 2
+        );
+        penalty = Math.max(
+            penalty,
+            LEADER_LABEL_PENALTY * proximity * proximity
+        );
+    }
+    return penalty;
 }
 
 /**
