@@ -36,6 +36,8 @@ const DEFAULT_FRAME_INTERVAL = 1000 / 60;
 
 /** @typedef {(datum: import("../flowNode.js").Datum) => number} DimensionAccessor */
 
+/** @typedef {Map<any, PlacementItem | undefined> | WeakMap<any, PlacementItem | undefined>} PlacementStateMap */
+
 /**
  * Computes non-overlapping placements for a two-dimensional batch.
  */
@@ -70,11 +72,8 @@ export default class Displace2DTransform extends Transform {
     /** @type {Displace2DConstraintSolver[]} */
     #relaxations = [];
 
-    /** @type {WeakMap<import("../flowNode.js").Datum, PlacementItem>} */
-    #stateByDatum = new WeakMap();
-
-    /** @type {Map<string | number, PlacementItem | undefined>} */
-    #stateByKey = new Map();
+    /** @type {PlacementStateMap} */
+    #states;
 
     #animationRequested = false;
 
@@ -151,6 +150,7 @@ export default class Displace2DTransform extends Transform {
         this.#xAccessor = field(params.x);
         this.#yAccessor = field(params.y);
         this.#keyAccessor = params.key ? field(params.key) : undefined;
+        this.#states = params.key ? new Map() : new WeakMap();
 
         const placementProps = {
             width: params.width,
@@ -235,8 +235,6 @@ export default class Displace2DTransform extends Transform {
     }
 
     complete() {
-        const data = this.#data;
-
         if (this.#debouncePending) {
             // An upstream scale-dependent transform may replay while placement
             // is debounced. Keep the previously published rows and offsets
@@ -249,7 +247,7 @@ export default class Displace2DTransform extends Transform {
         if (bootstrap || (this.#scalePositions && !this.#hasScaleLayout())) {
             // Establish data-driven scale domains before reading the scales,
             // or publish neutral offsets until layout is available.
-            for (const datum of data) {
+            for (const datum of this.#data) {
                 datum[this.#as[0]] = 0;
                 datum[this.#as[1]] = 0;
             }
@@ -268,28 +266,30 @@ export default class Displace2DTransform extends Transform {
 
     /**
      * @param {import("../flowNode.js").Datum[]} data
-     * @param {Map<string | number, PlacementItem | undefined>} nextStates
+     * @param {PlacementStateMap} nextStates
      */
     #place(data, nextStates) {
         const props = this.#placementProps;
-        const xScale = this.#scalePositions
+        const keyAccessor = this.#keyAccessor;
+        const scalePositions = this.#scalePositions;
+        const xScale = scalePositions
             ? this.#xScaleResolution.getScale()
             : undefined;
-        const yScale = this.#scalePositions
+        const yScale = scalePositions
             ? this.#yScaleResolution.getScale()
             : undefined;
-        const xAxisLength = this.#scalePositions
+        const xAxisLength = scalePositions
             ? this.#xScaleResolution.getAxisLength()
             : 0;
-        const yAxisLength = this.#scalePositions
+        const yAxisLength = scalePositions
             ? this.#yScaleResolution.getAxisLength()
             : 0;
         /** @type {[number, number] | undefined} */
-        const xExtent = this.#scalePositions
+        const xExtent = scalePositions
             ? [0, xAxisLength]
             : scaleExtent(props.xExtent, props.xPositionFactor);
         /** @type {[number, number] | undefined} */
-        const yExtent = this.#scalePositions
+        const yExtent = scalePositions
             ? [0, yAxisLength]
             : scaleExtent(props.yExtent, props.yPositionFactor);
         /** @type {PlacementItem[]} */
@@ -301,31 +301,27 @@ export default class Displace2DTransform extends Transform {
 
         for (let dataIndex = 0; dataIndex < data.length; dataIndex++) {
             const datum = data[dataIndex];
-            const key = this.#keyAccessor?.(datum);
-            if (this.#keyAccessor) {
+            const key = keyAccessor ? keyAccessor(datum) : datum;
+            if (keyAccessor) {
                 validateKey(key);
                 if (nextStates.has(key)) {
                     throw new Error(`displace2d key must be unique: ${key}`);
                 }
             }
-            let item = progressive
-                ? this.#keyAccessor
-                    ? this.#stateByKey.get(key)
-                    : this.#stateByDatum.get(datum)
-                : undefined;
-            if (this.#keyAccessor) {
+            let item = progressive ? this.#states.get(key) : undefined;
+            if (keyAccessor) {
                 nextStates.set(key, item);
             }
-            const anchorX = this.#scalePositions
+            const anchorX = scalePositions
                 ? xScale(this.#xAccessor(datum)) * xAxisLength
                 : this.#xAccessor(datum) * props.xPositionFactor;
-            const anchorY = this.#scalePositions
+            const anchorY = scalePositions
                 ? (1 - yScale(this.#yAccessor(datum))) * yAxisLength
                 : this.#yAccessor(datum) * props.yPositionFactor;
 
             // An off-viewport anchor would pull its label back into view.
             if (
-                this.#scalePositions &&
+                scalePositions &&
                 !(
                     anchorX >= 0 &&
                     anchorX <= xAxisLength &&
@@ -372,11 +368,7 @@ export default class Displace2DTransform extends Transform {
                 };
             }
             if (progressive) {
-                if (this.#keyAccessor) {
-                    nextStates.set(key, item);
-                } else {
-                    this.#stateByDatum.set(datum, item);
-                }
+                nextStates.set(key, item);
             }
             items.push(item);
         }
@@ -412,7 +404,7 @@ export default class Displace2DTransform extends Transform {
         // their computation and publication lifecycles transform-specific.
         // File boundaries preserve source metadata, not collision groups.
         this.#relaxations = [];
-        const nextStates = new Map();
+        const nextStates = this.#keyAccessor ? new Map() : this.#states;
         let facetStart = 0;
         for (const { index, flowBatch } of this.#batchStarts) {
             if (flowBatch.type == "facet") {
@@ -437,9 +429,7 @@ export default class Displace2DTransform extends Transform {
                 this.#relaxations.push(relaxation);
             }
         }
-        if (this.#keyAccessor) {
-            this.#stateByKey = nextStates;
-        }
+        this.#states = nextStates;
     }
 
     /**
