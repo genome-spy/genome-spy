@@ -5,7 +5,7 @@ const MAX_STEP = 1.5;
 const COMPACTION_SAMPLES = 32;
 const REPAIR_INTERVAL = 32;
 const REPAIR_CANDIDATES = 128;
-const MAX_REPAIRS_PER_SWEEP = 4;
+const MAX_REPAIRS_PER_SWEEP = 8;
 const MIN_RADIAL_IMPROVEMENT = 1;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const MOVEMENT_EPSILON = 0.01;
@@ -438,7 +438,7 @@ export class Displace2DConstraintSolver {
 
             const radialStep = Math.max(
                 4,
-                Math.min(item.width, item.height) / 3
+                Math.sqrt(item.width * item.height) / 4
             );
             const phase =
                 (pairHash(i, this.items.length) / 2 ** 32) * Math.PI * 2;
@@ -447,7 +447,9 @@ export class Displace2DConstraintSolver {
                 candidate < REPAIR_CANDIDATES;
                 candidate++
             ) {
-                const radius = radialStep * Math.sqrt(candidate + 1);
+                const expansion = 1 + candidate / (4 * (REPAIR_CANDIDATES - 1));
+                const radius =
+                    radialStep * Math.sqrt(candidate + 1) * expansion;
                 const angle = phase + candidate * GOLDEN_ANGLE;
                 const x = item.anchorX + Math.cos(angle) * radius;
                 const y = item.anchorY + Math.sin(angle) * radius;
