@@ -43,7 +43,12 @@ export const getResolutionView = (view, type, targetChannel) => {
                         targetChannel
                     )
                 ))) &&
-        getResolutionBehavior(resolutionView, type, targetChannel) != "excluded"
+        getResolutionBehavior(resolutionView, type, targetChannel) !=
+            "excluded" &&
+        !(
+            type === "scale" &&
+            resolutionView.resolutions.scale[targetChannel]?.isExplicitlyOwned()
+        )
     ) {
         resolutionView = resolutionView.dataParent;
     }

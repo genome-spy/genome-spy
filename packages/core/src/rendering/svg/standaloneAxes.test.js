@@ -207,3 +207,31 @@ test("a shared axis rejects a scale declared below its placement host", async ()
         "Declare or share the x scale at the axis host or an ancestor."
     );
 });
+
+test.each(["unit", "layer"])(
+    "a standalone %s view uses its declared scale for position ticks",
+    async (composition) => {
+        const mark = { mark: /** @type {const} */ ("point") };
+        const { view, render } = await createPlot({
+            name: "plot",
+            scales: { x: { type: "locus" } },
+            resolve: { scale: { x: "shared" }, axis: { x: "shared" } },
+            data: { values: [{}] },
+            ...(composition === "unit" ? mark : { layer: [mark] }),
+        });
+        try {
+            const plot = view
+                .getDescendants()
+                .find((child) => child.name === "plot");
+            const scale = plot.getScaleResolution("x");
+            await scale.zoomTo([0, 1000000]);
+            const svg = await render();
+            expect(scale.getAxisLength()).toBeGreaterThan(0);
+            expect(labels(svg)).toContain("200,000");
+            // The implicit wrapper must not create a second scale for the guides.
+            expect(view.getScaleResolution("x")).toBeUndefined();
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
