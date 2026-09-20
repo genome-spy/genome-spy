@@ -105,16 +105,8 @@
           "anchorWidth": "activeAnchorSize",
           "anchorHeight": "activeAnchorSize",
           "scalePositions": true,
-          "as": ["labelTargetDx", "labelTargetDy"]
-        },
-        {
-          "type": "transition",
-          "key": "i",
-          "fields": ["labelTargetDx", "labelTargetDy"],
-          "as": ["labelDx", "labelDy"],
-          "targetDelay": 10,
-          "halfLife": 100,
-          "epsilon": 0.25
+          "debounce": 0,
+          "as": ["labelDx", "labelDy"]
         },
         { "type": "filter", "expr": "datum.inViewport" }
       ],

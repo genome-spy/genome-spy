@@ -5,7 +5,11 @@ import {
 } from "../../paramRuntime/paramUtils.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
+import { Displace2DRelaxation } from "./displace2dRelaxation.js";
 import { solveDisplacement } from "./displace2dSolver.js";
+
+const FRAME_BUDGET = 4;
+const MAX_STEPS_PER_FRAME = 4;
 
 /**
  * @typedef {object} PlacementProps
@@ -44,6 +48,20 @@ export default class Displace2DTransform extends Transform {
     /** @type {{ index: number, flowBatch: import("../../types/flowBatch.js").FlowBatch }[]} */
     #batchStarts = [];
 
+    /** @type {import("../flowNode.js").Datum[]} */
+    #liveData = [];
+
+    /** @type {{ index: number, flowBatch: import("../../types/flowBatch.js").FlowBatch }[]} */
+    #liveBatchStarts = [];
+
+    /** @type {Displace2DRelaxation[]} */
+    #relaxations = [];
+
+    /** @type {WeakMap<import("../flowNode.js").Datum, import("./displace2dRelaxation.js").RelaxationItem>} */
+    #stateByDatum = new WeakMap();
+
+    #animationRequested = false;
+
     /** @type {PlacementProps} */
     #placementProps;
 
@@ -57,6 +75,8 @@ export default class Displace2DTransform extends Transform {
      */
     constructor(params, paramRuntimeProvider) {
         super(params, paramRuntimeProvider);
+
+        this.animator = paramRuntimeProvider?.context?.animator;
 
         this.scalePositions = params.scalePositions ?? false;
         this.debounce = params.debounce ?? 50;
@@ -152,7 +172,10 @@ export default class Displace2DTransform extends Transform {
             );
         }
 
-        this.registerDisposer(() => this.#cancelReplay());
+        this.registerDisposer(() => {
+            this.#cancelReplay();
+            this.#cancelAnimation();
+        });
     }
 
     complete() {
@@ -184,6 +207,7 @@ export default class Displace2DTransform extends Transform {
 
         this.#placeFacets();
         this.#publishBufferedData();
+        this.#requestAnimation();
     }
 
     /** @param {import("../flowNode.js").Datum[]} data */
@@ -245,20 +269,24 @@ export default class Displace2DTransform extends Transform {
         }
 
         if (placedData.length == 0) {
-            return;
+            return undefined;
         }
 
+        /** @type {[number, number] | undefined} */
+        const xExtent = this.scalePositions
+            ? [0, xAxisLength]
+            : scaleExtent(props.xExtent, props.xPositionFactor);
+        /** @type {[number, number] | undefined} */
+        const yExtent = this.scalePositions
+            ? [0, yAxisLength]
+            : scaleExtent(props.yExtent, props.yPositionFactor);
         const displacements = solveDisplacement(
             xPositions,
             yPositions,
             widths,
             heights,
-            this.scalePositions
-                ? [0, xAxisLength]
-                : scaleExtent(props.xExtent, props.xPositionFactor),
-            this.scalePositions
-                ? [0, yAxisLength]
-                : scaleExtent(props.yExtent, props.yPositionFactor),
+            xExtent,
+            yExtent,
             this.usesAnchorObstacles
                 ? {
                       x: xPositions,
@@ -268,50 +296,186 @@ export default class Displace2DTransform extends Transform {
                   }
                 : undefined
         );
+
+        /** @type {import("./displace2dRelaxation.js").RelaxationItem[]} */
+        const items = [];
+        const progressive =
+            this.animator && this.animator.transitionsEnabled !== false;
         for (let i = 0; i < placedData.length; i++) {
             const datum = placedData[i];
-            datum[this.as[0]] = displacements.x[i];
-            datum[this.as[1]] = displacements.y[i];
+            const anchorX = xPositions[i];
+            const anchorY = yPositions[i];
+            let item = progressive ? this.#stateByDatum.get(datum) : undefined;
+            if (item) {
+                item.x += anchorX - item.anchorX;
+                item.y += anchorY - item.anchorY;
+                item.vx *= 0.5;
+                item.vy *= 0.5;
+                item.datum = datum;
+                item.anchorX = anchorX;
+                item.anchorY = anchorY;
+                item.width = widths[i];
+                item.height = heights[i];
+                item.anchorWidth = anchorWidths?.[i] ?? 0;
+                item.anchorHeight = anchorHeights?.[i] ?? 0;
+                item.priority = i;
+            } else {
+                item = {
+                    datum,
+                    anchorX,
+                    anchorY,
+                    x: anchorX + displacements.x[i],
+                    y: anchorY + displacements.y[i],
+                    vx: 0,
+                    vy: 0,
+                    width: widths[i],
+                    height: heights[i],
+                    anchorWidth: anchorWidths?.[i] ?? 0,
+                    anchorHeight: anchorHeights?.[i] ?? 0,
+                    priority: i,
+                };
+                if (progressive) {
+                    this.#stateByDatum.set(datum, item);
+                }
+            }
+            items.push(item);
+            datum[this.as[0]] = item.x - anchorX;
+            datum[this.as[1]] = item.y - anchorY;
         }
+
+        return new Displace2DRelaxation(items, xExtent, yExtent);
     }
 
     #placeFacets() {
         // TODO: Whole-batch transforms could share facet iteration while keeping
         // their computation and publication lifecycles transform-specific.
         // File boundaries preserve source metadata, not collision groups.
+        this.#relaxations = [];
         let facetStart = 0;
         for (const { index, flowBatch } of this.#batchStarts) {
             if (flowBatch.type == "facet") {
                 if (index > facetStart) {
-                    this.#place(this.#data.slice(facetStart, index));
+                    const relaxation = this.#place(
+                        this.#data.slice(facetStart, index)
+                    );
+                    if (relaxation) {
+                        this.#relaxations.push(relaxation);
+                    }
                 }
                 facetStart = index;
             }
         }
         if (facetStart < this.#data.length) {
-            this.#place(
+            const relaxation = this.#place(
                 facetStart == 0 ? this.#data : this.#data.slice(facetStart)
             );
+            if (relaxation) {
+                this.#relaxations.push(relaxation);
+            }
         }
     }
 
-    #propagateBufferedData() {
+    /**
+     * @param {import("../flowNode.js").Datum[]} data
+     * @param {{ index: number, flowBatch: import("../../types/flowBatch.js").FlowBatch }[]} batchStarts
+     */
+    #propagateData(data, batchStarts) {
         let start = 0;
-        for (const { index, flowBatch } of this.#batchStarts) {
+        for (const { index, flowBatch } of batchStarts) {
             while (start < index) {
-                this._propagate(this.#data[start++]);
+                this._propagate(data[start++]);
             }
             super.beginBatch(flowBatch);
         }
-        while (start < this.#data.length) {
-            this._propagate(this.#data[start++]);
+        while (start < data.length) {
+            this._propagate(data[start++]);
         }
     }
 
     #publishBufferedData() {
-        this.#propagateBufferedData();
+        this.#propagateData(this.#data, this.#batchStarts);
         super.complete();
+        this.#liveData = this.#data.slice();
+        this.#liveBatchStarts = this.#batchStarts.slice();
         this.#clearBufferedData();
+    }
+
+    #requestAnimation() {
+        if (
+            !this.animator ||
+            this.animator.transitionsEnabled === false ||
+            this.#animationRequested ||
+            !this.#hasActiveRelaxation()
+        ) {
+            return;
+        }
+
+        this.#animationRequested = true;
+        this.animator.requestTransition(this.#animate);
+    }
+
+    #cancelAnimation() {
+        this.animator?.cancelTransition(this.#animate);
+        this.#animationRequested = false;
+    }
+
+    /** @param {number} _timestamp */
+    #animate = (_timestamp) => {
+        this.#animationRequested = false;
+        if (this.disposed) {
+            return;
+        }
+
+        const start = performance.now();
+        let changed = false;
+        for (let i = 0; i < MAX_STEPS_PER_FRAME; i++) {
+            changed = this.#stepRelaxations() || changed;
+            if (
+                !this.#hasActiveRelaxation() ||
+                performance.now() - start >= FRAME_BUDGET
+            ) {
+                break;
+            }
+        }
+
+        if (changed) {
+            this.#writeRelaxedOffsets();
+            this.#replayChildren();
+        }
+        this.#requestAnimation();
+    };
+
+    #stepRelaxations() {
+        let changed = false;
+        for (const relaxation of this.#relaxations) {
+            if (relaxation.active) {
+                changed = relaxation.step() || changed;
+            }
+        }
+        return changed;
+    }
+
+    #hasActiveRelaxation() {
+        return this.#relaxations.some((relaxation) => relaxation.active);
+    }
+
+    #writeRelaxedOffsets() {
+        for (const relaxation of this.#relaxations) {
+            for (const item of relaxation.items) {
+                item.datum[this.as[0]] = item.x - item.anchorX;
+                item.datum[this.as[1]] = item.y - item.anchorY;
+            }
+        }
+    }
+
+    #replayChildren() {
+        for (const child of this.children) {
+            child.reset();
+        }
+        this.#propagateData(this.#liveData, this.#liveBatchStarts);
+        for (const child of this.children) {
+            child.complete();
+        }
     }
 
     #clearBufferedData() {
@@ -373,6 +537,7 @@ export default class Displace2DTransform extends Transform {
     }
 
     reset() {
+        this.#cancelAnimation();
         if (!this.#debouncePending) {
             super.reset();
         }

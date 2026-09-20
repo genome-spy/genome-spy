@@ -7,6 +7,36 @@ import Collector from "../collector.js";
 import Displace2DTransform from "./displace2d.js";
 import createTransform from "./transformFactory.js";
 
+class TestAnimator {
+    transitionsEnabled = true;
+
+    /** @type {((timestamp: number) => void)[]} */
+    transitions = [];
+
+    /** @param {(timestamp: number) => void} callback */
+    requestTransition(callback) {
+        this.cancelTransition(callback);
+        this.transitions.push(callback);
+    }
+
+    /** @param {(timestamp: number) => void} callback */
+    cancelTransition(callback) {
+        const index = this.transitions.indexOf(callback);
+        if (index >= 0) {
+            this.transitions.splice(index, 1);
+        }
+    }
+
+    /** @param {number} timestamp */
+    frame(timestamp) {
+        const transitions = this.transitions;
+        this.transitions = [];
+        for (const transition of transitions) {
+            transition(timestamp);
+        }
+    }
+}
+
 /**
  * @param {Record<string, any>[]} data
  * @param {Partial<import("../../spec/transform.js").Displace2DParams>} [overrides]
@@ -40,6 +70,118 @@ function createFlow(data, overrides = {}) {
 }
 
 describe("Displace2DTransform", () => {
+    test("progressively relaxes retained rows and replays descendants", () => {
+        const animator = new TestAnimator();
+        const transform = new Displace2DTransform(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            /** @type {any} */ ({ context: { animator } })
+        );
+        const output = new Collector();
+        const observer = vi.fn();
+        output.observe(observer);
+        transform.addChild(output);
+        /** @type {Record<string, number>[]} */
+        const data = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ];
+        for (const datum of data) {
+            transform.handle(datum);
+        }
+        transform.complete();
+
+        const initial = data.map(({ dx, dy }) => [dx, dy]);
+        expect(animator.transitions).toHaveLength(1);
+        animator.frame(0);
+
+        expect(data.map(({ dx, dy }) => [dx, dy])).not.toEqual(initial);
+        expect(observer).toHaveBeenCalledTimes(2);
+        expect(animator.transitions).toHaveLength(1);
+
+        transform.dispose();
+        expect(animator.transitions).toHaveLength(0);
+    });
+
+    test("warm-starts retained rows when anchors move", () => {
+        const animator = new TestAnimator();
+        const transform = new Displace2DTransform(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            /** @type {any} */ ({ context: { animator } })
+        );
+        const output = new Collector();
+        transform.addChild(output);
+        /** @type {Record<string, number>[]} */
+        const data = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ];
+        for (const datum of data) {
+            transform.handle(datum);
+        }
+        transform.complete();
+        animator.frame(0);
+        const previousOffsets = data.map(({ dx, dy }) => [dx, dy]);
+
+        transform.reset();
+        for (const datum of data) {
+            datum.x += 20;
+            datum.y += 10;
+            transform.handle(datum);
+        }
+        transform.complete();
+
+        for (let i = 0; i < data.length; i++) {
+            expect(data[i].dx).toBeCloseTo(previousOffsets[i][0]);
+            expect(data[i].dy).toBeCloseTo(previousOffsets[i][1]);
+        }
+    });
+
+    test("preserves facet batches during progressive replay", () => {
+        const animator = new TestAnimator();
+        const transform = new Displace2DTransform(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+            },
+            /** @type {any} */ ({ context: { animator } })
+        );
+        const output = new Collector();
+        const batches = vi.spyOn(output, "beginBatch");
+        transform.addChild(output);
+        for (const facetId of ["a", "b"]) {
+            transform.beginBatch({ type: "facet", facetId: [facetId] });
+            transform.handle({ x: 0, y: 0 });
+            transform.handle({ x: 0, y: 0 });
+        }
+        transform.complete();
+        batches.mockClear();
+
+        animator.frame(0);
+
+        expect(
+            batches.mock.calls.map(([batch]) =>
+                batch.type == "facet" ? batch.facetId[0] : undefined
+            )
+        ).toEqual(["a", "b"]);
+    });
+
     test.each([false, true])(
         "places across file boundaries and preserves events (faceted: %s)",
         (faceted) => {
