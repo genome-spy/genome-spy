@@ -8,11 +8,15 @@
 
 > **title**: `string` \| `string`[]
 
+View title text, or null when absent.
+
 ***
 
 ### description
 
 > **description**: `string` \| `string`[]
+
+Authored view description, or null when absent.
 
 ***
 

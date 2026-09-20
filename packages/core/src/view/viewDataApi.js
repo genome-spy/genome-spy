@@ -10,10 +10,11 @@ import { buildReadinessRequest } from "./dataReadiness.js";
 export function describeView(view) {
     const collector =
         view instanceof UnitView ? view.getCollector() : undefined;
+
     return {
-        title: structuredClone(view.getTitleText() ?? null),
-        description: structuredClone(view.spec.description ?? null),
-        encoding: structuredClone(view.getEncoding()),
+        title: cloneDetached(view.getTitleText() ?? null),
+        description: cloneDetached(view.spec.description ?? null),
+        encoding: cloneDetached(view.getEncoding()),
         dataReady: Boolean(
             collector &&
             isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
@@ -35,6 +36,7 @@ export function readViewData(view, { limit }) {
     if (!(view instanceof UnitView)) {
         throw new Error("Data reads require a unit view.");
     }
+
     const collector = view.getCollector();
     if (
         !collector ||
@@ -45,17 +47,20 @@ export function readViewData(view, { limit }) {
     if (collector.facetBatches.size > 1) {
         throw new Error("Faceted data reads are not supported.");
     }
+
     const rows = [];
     let rowsExamined = 0;
     let truncated = false;
+
     for (const row of collector.getData()) {
         rowsExamined++;
         if (rows.length === limit) {
             truncated = true;
             break;
         }
-        rows.push(structuredClone(row));
+        rows.push(cloneDetached(row));
     }
+
     return {
         rows,
         rowsExamined,
@@ -63,4 +68,58 @@ export function readViewData(view, { limit }) {
         scope: "loaded-transformed",
         ready: true,
     };
+}
+
+/**
+ * Structured cloning retains shared memory. Inspect the clone so source getters
+ * run only once, and reject shared buffers before exposing a result.
+ * @template T
+ * @param {T} value
+ * @returns {T}
+ */
+function cloneDetached(value) {
+    const clone = structuredClone(value);
+    /** @type {unknown[]} */
+    const pending = [clone];
+    const visited = new Set();
+
+    while (pending.length) {
+        const item = pending.pop();
+        if (item === null || typeof item !== "object" || visited.has(item)) {
+            continue;
+        }
+        visited.add(item);
+
+        if (
+            typeof SharedArrayBuffer !== "undefined" &&
+            item instanceof SharedArrayBuffer
+        ) {
+            throw new TypeError(
+                "Shared memory is not supported in view API results."
+            );
+        }
+
+        if (ArrayBuffer.isView(item) || item instanceof WebAssembly.Memory) {
+            pending.push(item.buffer);
+        } else if (item instanceof Map) {
+            for (const [key, entry] of item) {
+                pending.push(key, entry);
+            }
+        } else if (item instanceof Set) {
+            for (const entry of item) {
+                pending.push(entry);
+            }
+        } else if (item instanceof Error) {
+            pending.push(item.cause);
+            if (item instanceof AggregateError) {
+                pending.push(item.errors);
+            }
+        } else {
+            for (const entry of Object.values(item)) {
+                pending.push(entry);
+            }
+        }
+    }
+
+    return clone;
 }

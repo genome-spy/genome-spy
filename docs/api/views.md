@@ -96,8 +96,9 @@ if (tracks.isAlive()) {
 ## Describing and reading a track
 
 `describe()` returns detached title, description, authored and inherited encoding,
-and data readiness metadata. Encoding excludes mark defaults and runtime adjustments. A unit view also supports bounded reads of its loaded,
-transformed rows:
+and data readiness metadata. Encoding excludes mark defaults and runtime
+adjustments. A unit view also supports bounded reads of its loaded, transformed
+rows:
 
 ```js
 const track = api.views.get({ scope: [], view: "track" });
@@ -109,8 +110,10 @@ console.log(result.rows, result.truncated, result.rowsExamined);
 The limit must be an integer from 0 to 1000. A read examines at most `limit + 1`
 rows, including lookahead for truncation. Rows follow the current data collector
 order and include derived fields. Nested values are detached using structured
-cloning; non-cloneable values throw. The row limit does not bound an individual
-row's byte size.
+cloning; non-cloneable values and shared-memory buffers throw. This also applies
+to buffers nested in maps, sets, or typed arrays. Metadata rejects shared memory
+as well. Source getters run during cloning; reads expect trusted data. The row
+limit does not bound an individual row's byte size or the time spent cloning it.
 
 The returned scope is `loaded-transformed`. Navigation does not filter eager
 loaded rows by the viewport. A non-truncated result means all currently loaded

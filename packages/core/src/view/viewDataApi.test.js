@@ -27,10 +27,12 @@ describe("public view data reads", () => {
     test("reads transformed data with bounded lookahead and detached nested values", async () => {
         const handle = await setup([{ x: 1, nested: { value: 2 } }, { x: 3 }]);
         expect(handle.describe().dataReady).toBe(true);
+
         const result = handle.readData({ limit: 1 });
         expect(result.rows[0].doubled).toBe(2);
         expect(result.rowsExamined).toBe(2);
         expect(result.truncated).toBe(true);
+
         /** @type {any} */ (result.rows[0].nested).value = 99;
         expect(handle.readData({ limit: 2 }).rows[0].nested).toEqual({
             value: 2,
@@ -39,15 +41,18 @@ describe("public view data reads", () => {
             rowsExamined: 2,
             truncated: false,
         });
+
         expect(handle.readData({ limit: 0 })).toMatchObject({
             rows: [],
             rowsExamined: 1,
             truncated: true,
         });
+
         const before = handle.readData({ limit: 2 }).rows;
         await handle.getScaleResolution("x").zoomTo([1, 2]);
         expect(handle.readData({ limit: 2 }).rows).toEqual(before);
     });
+
     test("handles empty data and rejects invalid limits", async () => {
         const handle = await setup([]);
         expect(handle.readData({ limit: 0 })).toMatchObject({
@@ -55,9 +60,12 @@ describe("public view data reads", () => {
             rowsExamined: 0,
             truncated: false,
         });
-        for (const limit of [-1, 1.5, 1001])
+
+        for (const limit of [-1, 1.5, 1001]) {
             expect(() => handle.readData({ limit })).toThrow();
+        }
     });
+
     test("rejects containers and finalized handles", async () => {
         const { view } = await createHeadlessViewHierarchy({ vconcat: [] });
         let active = true;
@@ -201,3 +209,55 @@ test("rejects multiple facet batches produced by the dataflow", async () => {
         "Faceted data reads are not supported"
     );
 });
+
+/** @type {[string, (buffer: SharedArrayBuffer) => unknown][]} */
+const sharedMemoryCases = [
+    ["buffer", (buffer) => buffer],
+    ["typed array", (buffer) => new Uint8Array(buffer)],
+    ["data view", (buffer) => new DataView(buffer)],
+    ["map key", (buffer) => new Map([[buffer, 1]])],
+    ["map value", (buffer) => new Map([[1, buffer]])],
+    ["set", (buffer) => new Set([buffer])],
+    ["error cause", (buffer) => new Error("nested", { cause: buffer })],
+];
+
+test.each(sharedMemoryCases)(
+    "rejects shared memory in a returned %s",
+    async (_, wrap) => {
+        const buffer = new SharedArrayBuffer(1);
+        const handle = await setup([{ x: 1, payload: wrap(buffer) }]);
+
+        // Lookahead does not expose the row, so only a nonempty read rejects it.
+        expect(handle.readData({ limit: 0 }).truncated).toBe(true);
+        expect(() => handle.readData({ limit: 1 })).toThrow("Shared memory");
+        expect(new Uint8Array(buffer)[0]).toBe(0);
+    }
+);
+
+test("keeps ordinary buffers detached through cyclic maps and sets", async () => {
+    const bytes = new Uint8Array([7]);
+    const payload = new Map();
+    payload.set("self", payload);
+    payload.set("values", new Set([bytes]));
+    const handle = await setup([{ x: 1, payload }]);
+
+    const read = () =>
+        /** @type {Map<string, any>} */ (
+            handle.readData({ limit: 1 }).rows[0].payload
+        );
+    const result = read();
+    expect(result.get("self")).toBe(result);
+    result.get("values").values().next().value[0] = 99;
+    expect(read().get("values").values().next().value[0]).toBe(7);
+});
+
+// Runtimes that preserve AggregateError also retain its non-enumerable errors.
+// Other runtimes clone it as Error, dropping that collection entirely.
+test.runIf(structuredClone(new AggregateError([])) instanceof AggregateError)(
+    "rejects shared memory in an aggregate error collection",
+    async () => {
+        const payload = new AggregateError([new SharedArrayBuffer(1)]);
+        const handle = await setup([{ x: 1, payload }]);
+        expect(() => handle.readData({ limit: 1 })).toThrow("Shared memory");
+    }
+);

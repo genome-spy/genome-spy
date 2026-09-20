@@ -16,11 +16,15 @@ Structured-cloned values in collector order. Nested values are detached.
 
 > **rowsExamined**: `number`
 
+Number of visited rows, including at most one lookahead row.
+
 ***
 
 ### truncated
 
 > **truncated**: `boolean`
+
+More currently loaded transformed rows exist beyond the returned rows.
 
 ***
 
@@ -35,3 +39,5 @@ Loaded transformed rows, not viewport-filtered marks or all source rows.
 ### ready
 
 > **ready**: `true`
+
+Always true: reads reject data that is not ready.

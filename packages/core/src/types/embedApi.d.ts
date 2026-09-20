@@ -566,10 +566,15 @@ export interface DatasetApi {
 // structural mutations remain on ViewApi.
 
 export interface ViewDescription {
+    /** View title text, or null when absent. */
     title: string | string[] | null;
+
+    /** Authored view description, or null when absent. */
     description: string | string[] | null;
+
     /** Authored encoding combined with inherited encoding, detached from the specification. */
     encoding: import("../spec/channel.js").Encoding;
+
     /** Current viewport contribution readiness; does not imply a rendered frame. */
     dataReady: boolean;
 }
@@ -582,10 +587,17 @@ export interface ViewDataReadOptions {
 export interface ViewDataReadResult {
     /** Structured-cloned values in collector order. Nested values are detached. */
     rows: Record<string, unknown>[];
+
+    /** Number of visited rows, including at most one lookahead row. */
     rowsExamined: number;
+
+    /** More currently loaded transformed rows exist beyond the returned rows. */
     truncated: boolean;
+
     /** Loaded transformed rows, not viewport-filtered marks or all source rows. */
     scope: "loaded-transformed";
+
+    /** Always true: reads reject data that is not ready. */
     ready: true;
 }
 
@@ -610,7 +622,7 @@ export interface ViewHandle {
     /**
      * Returns a bounded detached read from one ready, non-faceted unit view.
      * Throws for unready data, containers, removed views, finalized embeds,
-     * multiple facet batches, or non-cloneable returned values.
+     * multiple facet batches, non-cloneable returned values, or shared memory.
      * The row bound does not bound the size of an individual nested datum.
      */
     readData: (options: ViewDataReadOptions) => ViewDataReadResult;

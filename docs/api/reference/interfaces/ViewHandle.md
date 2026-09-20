@@ -35,7 +35,7 @@ Returns detached metadata. Throws for a removed view or finalized embed.
 
 Returns a bounded detached read from one ready, non-faceted unit view.
 Throws for unready data, containers, removed views, finalized embeds,
-multiple facet batches, or non-cloneable returned values.
+multiple facet batches, non-cloneable returned values, or shared memory.
 The row bound does not bound the size of an individual nested datum.
 
 #### Parameters
