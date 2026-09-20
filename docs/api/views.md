@@ -93,6 +93,39 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Describing and reading a track
+
+`describe()` returns detached title, description, authored and inherited encoding,
+and data readiness metadata. Encoding excludes mark defaults and runtime adjustments. A unit view also supports bounded reads of its loaded,
+transformed rows:
+
+```js
+const track = api.views.get({ scope: [], view: "track" });
+console.log(track.describe());
+const result = track.readData({ limit: 100 });
+console.log(result.rows, result.truncated, result.rowsExamined);
+```
+
+The limit must be an integer from 0 to 1000. A read examines at most `limit + 1`
+rows, including lookahead for truncation. Rows follow the current data collector
+order and include derived fields. Nested values are detached using structured
+cloning; non-cloneable values throw. The row limit does not bound an individual
+row's byte size.
+
+The returned scope is `loaded-transformed`. Navigation does not filter eager
+loaded rows by the viewport. A non-truncated result means all currently loaded
+transformed rows were returned; it does not establish full source coverage for
+lazy data. Reads reject unready data, containers, stale handles, and multiple
+facet batches. Readiness concerns data, not completion of a rendered frame.
+All three accessors reject a finalized embed with `staleEmbed` and a removed
+view with `staleHandle`.
+
+`track.getScaleResolution("x")` (or `"y"`) returns the view's resolved positional
+scale, including unnamed scales, or `undefined` if absent. This is the same
+[scale API](runtime-state.md#named-scales) used for named scales. Its locus `zoomTo()`
+input has an inclusive upper endpoint; `getDomain()` reports the internal
+half-open domain. For example, `zoomTo([100, 299])` displays `[100, 300)`.
+
 ## Marks and scoped interaction
 
 Each handle exposes `marks` for interaction with marks in that view's subtree.

@@ -565,6 +565,30 @@ export interface DatasetApi {
 // belong here under resource namespaces, while hierarchy-wide lookup and
 // structural mutations remain on ViewApi.
 
+export interface ViewDescription {
+    title: string | string[] | null;
+    description: string | string[] | null;
+    /** Authored encoding combined with inherited encoding, detached from the specification. */
+    encoding: import("../spec/channel.js").Encoding;
+    /** Current viewport contribution readiness; does not imply a rendered frame. */
+    dataReady: boolean;
+}
+
+export interface ViewDataReadOptions {
+    /** Maximum returned rows, from 0 to 1000. Examines at most limit + 1 rows. */
+    limit: number;
+}
+
+export interface ViewDataReadResult {
+    /** Structured-cloned values in collector order. Nested values are detached. */
+    rows: Record<string, unknown>[];
+    rowsExamined: number;
+    truncated: boolean;
+    /** Loaded transformed rows, not viewport-filtered marks or all source rows. */
+    scope: "loaded-transformed";
+    ready: true;
+}
+
 /**
  * Live handle to a view in the embedded GenomeSpy instance.
  *
@@ -580,6 +604,23 @@ export interface DatasetApi {
  * on a stale handle also fail rather than silently operating on another view.
  */
 export interface ViewHandle {
+    /** Returns detached metadata. Throws for a removed view or finalized embed. */
+    describe: () => ViewDescription;
+
+    /**
+     * Returns a bounded detached read from one ready, non-faceted unit view.
+     * Throws for unready data, containers, removed views, finalized embeds,
+     * multiple facet batches, or non-cloneable returned values.
+     * The row bound does not bound the size of an individual nested datum.
+     */
+    readData: (options: ViewDataReadOptions) => ViewDataReadResult;
+
+    /**
+     * Returns the resolved positional scale, including unnamed scales, or undefined if absent.
+     * Throws for invalid channels, removed views, or finalized embeds.
+     */
+    getScaleResolution: (channel: "x" | "y") => ScaleResolutionApi | undefined;
+
     /**
      * Runtime-stable id for this handle.
      *

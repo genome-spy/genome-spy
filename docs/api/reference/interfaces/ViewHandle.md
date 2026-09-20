@@ -17,6 +17,58 @@ on a stale handle also fail rather than silently operating on another view.
 
 ## Properties
 
+### describe
+
+> **describe**: () => [`ViewDescription`](ViewDescription.md)
+
+Returns detached metadata. Throws for a removed view or finalized embed.
+
+#### Returns
+
+[`ViewDescription`](ViewDescription.md)
+
+***
+
+### readData
+
+> **readData**: (`options`) => [`ViewDataReadResult`](ViewDataReadResult.md)
+
+Returns a bounded detached read from one ready, non-faceted unit view.
+Throws for unready data, containers, removed views, finalized embeds,
+multiple facet batches, or non-cloneable returned values.
+The row bound does not bound the size of an individual nested datum.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `options` | [`ViewDataReadOptions`](ViewDataReadOptions.md) |
+
+#### Returns
+
+[`ViewDataReadResult`](ViewDataReadResult.md)
+
+***
+
+### getScaleResolution
+
+> **getScaleResolution**: (`channel`) => [`ScaleResolutionApi`](ScaleResolutionApi.md)
+
+Returns the resolved positional scale, including unnamed scales, or undefined if absent.
+Throws for invalid channels, removed views, or finalized embeds.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `channel` | `"x"` \| `"y"` |
+
+#### Returns
+
+[`ScaleResolutionApi`](ScaleResolutionApi.md)
+
+***
+
 ### id
 
 > `readonly` **id**: `string`

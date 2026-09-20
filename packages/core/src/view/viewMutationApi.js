@@ -1,3 +1,4 @@
+import { describeView, readViewData } from "./viewDataApi.js";
 import ConcatView from "./concatView.js";
 import GridView from "./gridView/gridView.js";
 import LayerView from "./layerView.js";
@@ -296,6 +297,10 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
             return handle;
         }
 
+        const ensureReadable = () => {
+            ensureEmbedIsActive(isActive);
+            ensureViewIsLive(view);
+        };
         const id = getViewIdentityRegistry(getRootView()).getId(view);
 
         handle = {
@@ -330,6 +335,24 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 }
 
                 return children.map((child) => getHandle(child));
+            },
+
+            describe: () => {
+                ensureReadable();
+                return describeView(view);
+            },
+
+            readData: (options) => {
+                ensureReadable();
+                return readViewData(view, options);
+            },
+
+            getScaleResolution: (channel) => {
+                ensureReadable();
+                if (channel !== "x" && channel !== "y") {
+                    throw new Error("Expected positional channel x or y.");
+                }
+                return view.getScaleResolution(channel);
             },
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
@@ -432,7 +455,7 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
         if (!isLiveView(view, getRootView)) {
             throw new ViewMutationError(
                 "staleHandle",
-                "Cannot use a mark API handle for a removed view."
+                "Cannot use an API handle for a removed view."
             );
         }
     }
