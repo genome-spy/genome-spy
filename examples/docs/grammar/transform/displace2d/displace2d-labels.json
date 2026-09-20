@@ -62,7 +62,7 @@
         },
         {
           "type": "formula",
-          "expr": "datum.x >= min(domain('x')[0], domain('x')[1]) && datum.x <= max(domain('x')[0], domain('x')[1]) && datum.y >= min(domain('y')[0], domain('y')[1]) && datum.y <= max(domain('y')[0], domain('y')[1])",
+          "expr": "inrange(datum.x, domain('x')) && inrange(datum.y, domain('y'))",
           "as": "inViewport"
         },
         {
