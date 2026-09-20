@@ -16,9 +16,9 @@ SCHEMA Displace2DParams
 
 ## Example
 
-Zoom the scatterplot to see the labels recompute and move smoothly. The same
-transitioned displacement fields move both the centered text and one endpoint
-of each leader line.
+Zoom the scatterplot to see the labels recompute and move smoothly. Leader
+lines stop at the edge of the centered text instead of continuing underneath
+it.
 
 EXAMPLE examples/docs/grammar/transform/displace2d/displace2d-labels.json height=420
 
@@ -96,17 +96,14 @@ measure text automatically, or route leader lines.
 
 ## Viewport participation
 
-`displace2d` processes every input row, including rows whose source positions
-are outside the visible scale domains. To hide annotations with offscreen
-anchors, compute an `inViewport` field from both domains, set their collision
-and anchor dimensions to zero, and filter them after displacement and
-transition. Use `min` and `max` when comparing domains so the expression also
-works with reversed axes. The example above demonstrates this ordering.
+`displace2d` processes every input row. To exclude annotations with offscreen
+anchors, filter them before displacement using `inrange` with the current scale
+domains. Configure `key` so labels that remain visible keep their placement as
+the filter membership changes. `inrange` also supports reversed domains.
 
 ## Smooth updates
 
-`displace2d` produces a deterministic target layout for every input batch. Add
-a [`transition`](./transition.md) transform after it when scale or layout
-changes should move annotations smoothly. Keep the target fields separate from
-the displayed fields so repeated dataflow updates do not replace the targets
-with partially interpolated values. The example above uses this composition.
+In interactive views, `displace2d` advances the solver within a per-frame work
+budget and eases displayed positions toward the evolving placement. It stops
+requesting frames after the layout settles. Headless rendering and disabled
+transitions solve the same constraints synchronously.

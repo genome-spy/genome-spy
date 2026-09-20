@@ -6,8 +6,6 @@
     "Measures and separates overlapping labels while leader lines preserve their connection to the original points."
   ],
 
-  "width": 640,
-  "height": 360,
   "data": {
     "values": [
       { "x": 4.82, "y": 5.08, "label": "TP53", "priority": 1 },
@@ -61,51 +59,45 @@
           "sort": { "field": "priority", "order": "ascending" }
         },
         {
-          "type": "formula",
-          "expr": "inrange(datum.x, domain('x')) && inrange(datum.y, domain('y'))",
-          "as": "inViewport"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.inViewport ? datum.collisionWidth : 0",
-          "as": "activeCollisionWidth"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.inViewport ? 20 : 0",
-          "as": "activeCollisionHeight"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.inViewport ? 10 : 0",
-          "as": "activeAnchorSize"
+          "type": "filter",
+          "expr": "inrange(datum.x, domain('x')) && inrange(datum.y, domain('y'))"
         },
         {
           "type": "displace2d",
-          "key": "priority",
+          "key": "label",
           "x": "x",
           "y": "y",
-          "width": "activeCollisionWidth",
-          "height": "activeCollisionHeight",
-          "anchorWidth": "activeAnchorSize",
-          "anchorHeight": "activeAnchorSize",
+          "width": "collisionWidth",
+          "height": 20,
+          "anchorWidth": 10,
+          "anchorHeight": 10,
           "scalePositions": true,
-          "as": ["labelTargetDx", "labelTargetDy"]
+          "debounce": 0,
+          "as": ["labelDx", "labelDy"]
         },
         {
-          "type": "transition",
-          "key": "priority",
-          "fields": ["labelTargetDx", "labelTargetDy"],
-          "as": ["labelDx", "labelDy"],
-          "targetDelay": 10,
-          "halfLife": 100,
-          "epsilon": 0.25
+          "type": "formula",
+          "expr": "max(0, 1 - min(datum.collisionWidth / 2 / max(abs(datum.labelDx), 1e-6), 8 / max(abs(datum.labelDy), 1e-6)))",
+          "as": "leaderScale"
         },
-        { "type": "filter", "expr": "datum.inViewport" }
+        {
+          "type": "formula",
+          "expr": "datum.labelDx * datum.leaderScale",
+          "as": "leaderDx"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelDy * datum.leaderScale",
+          "as": "leaderDy"
+        }
       ],
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "y", "type": "quantitative" }
+        "y": { "field": "y", "type": "quantitative" },
+        "tooltip": [
+          { "field": "label", "type": "nominal" },
+          { "field": "priority", "type": "quantitative" }
+        ]
       },
       "layer": [
         {
@@ -115,12 +107,12 @@
             "x2": { "field": "x" },
             "y2": { "field": "y" },
             "xOffset": {
-              "field": "labelDx",
+              "field": "leaderDx",
               "type": "quantitative",
               "scale": null
             },
             "yOffset": {
-              "field": "labelDy",
+              "field": "leaderDy",
               "type": "quantitative",
               "scale": null
             }
