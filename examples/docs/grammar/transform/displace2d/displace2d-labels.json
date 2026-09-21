@@ -71,8 +71,6 @@
           "height": 20,
           "anchorWidth": 10,
           "anchorHeight": 10,
-          "scalePositions": true,
-          "debounce": 0,
           "as": ["labelDx", "labelDy"]
         },
         {

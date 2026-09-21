@@ -3,6 +3,7 @@ import {
     activateExprRefProps,
     isExprRef,
 } from "../../paramRuntime/paramUtils.js";
+import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import { Displace2DConstraintSolver } from "./displace2dConstraintSolver.js";
@@ -21,10 +22,6 @@ const DEFAULT_FRAME_INTERVAL = 1000 / 60;
  * @prop {number | import("../../spec/channel.js").Field} height
  * @prop {number | import("../../spec/channel.js").Field} anchorWidth
  * @prop {number | import("../../spec/channel.js").Field} anchorHeight
- * @prop {number} xPositionFactor
- * @prop {number} yPositionFactor
- * @prop {[number, number] | undefined} xExtent
- * @prop {[number, number] | undefined} yExtent
  */
 
 /**
@@ -43,11 +40,6 @@ const DEFAULT_FRAME_INTERVAL = 1000 / 60;
  */
 export default class Displace2DTransform extends Transform {
     #placementBootstrapped = false;
-
-    /** @type {ReturnType<typeof setTimeout> | undefined} */
-    #replayTimer;
-
-    #debouncePending = false;
 
     /** @type {import("../../scales/scaleResolution.js").default} */
     #xScaleResolution;
@@ -80,17 +72,8 @@ export default class Displace2DTransform extends Transform {
     /** @type {number | undefined} */
     #lastAnimationTimestamp;
 
-    /** @type {PlacementProps} */
-    #placementProps;
-
     /** @type {import("../../utils/animator.js").default | undefined} */
     #animator;
-
-    /** @type {boolean} */
-    #scalePositions;
-
-    /** @type {number} */
-    #debounce;
 
     /** @type {[string, string]} */
     #as;
@@ -129,20 +112,6 @@ export default class Displace2DTransform extends Transform {
 
         this.#animator = paramRuntimeProvider?.context?.animator;
 
-        this.#scalePositions = params.scalePositions ?? false;
-        this.#debounce = params.debounce ?? 50;
-        if (
-            this.#scalePositions &&
-            (params.xPositionFactor !== undefined ||
-                params.yPositionFactor !== undefined ||
-                params.xExtent !== undefined ||
-                params.yExtent !== undefined)
-        ) {
-            throw new Error(
-                "displace2d scalePositions cannot be combined with position factors or extents."
-            );
-        }
-
         this.#as = params.as ?? ["xDisplacement", "yDisplacement"];
         if (params.key && this.#as.includes(params.key)) {
             throw new Error("displace2d output fields must preserve the key.");
@@ -157,14 +126,8 @@ export default class Displace2DTransform extends Transform {
             height: params.height,
             anchorWidth: params.anchorWidth ?? 0,
             anchorHeight: params.anchorHeight ?? 0,
-            xPositionFactor: params.xPositionFactor ?? 1,
-            yPositionFactor: params.yPositionFactor ?? 1,
-            xExtent: params.xExtent,
-            yExtent: params.yExtent,
         };
         const hasReactiveProps = Object.values(placementProps).some(isExprRef);
-        this.#placementBootstrapped =
-            !hasReactiveProps && !this.#scalePositions;
 
         const placementChanged = () => {
             if (this.#placementBootstrapped && this.completed) {
@@ -172,7 +135,7 @@ export default class Displace2DTransform extends Transform {
             }
         };
 
-        this.#placementProps = hasReactiveProps
+        const props = hasReactiveProps
             ? /** @type {any} */ (
                   activateExprRefProps(
                       this.paramRuntime,
@@ -182,7 +145,6 @@ export default class Displace2DTransform extends Transform {
                   )
               )
             : /** @type {any} */ (placementProps);
-        const props = this.#placementProps;
         this.#widthAccessor = dimensionAccessor(
             params.width,
             () => props.width
@@ -200,33 +162,29 @@ export default class Displace2DTransform extends Transform {
             () => props.anchorHeight
         );
 
-        if (this.#scalePositions) {
-            const view = /** @type {import("../../view/view.js").default} */ (
-                paramRuntimeProvider
-            );
-            this.#xScaleResolution = view.getScaleResolution("x");
-            this.#yScaleResolution = view.getScaleResolution("y");
-            if (!this.#xScaleResolution || !this.#yScaleResolution) {
-                throw new Error(
-                    "displace2d scalePositions requires x and y scales."
-                );
-            }
+        const view = /** @type {import("../../view/view.js").default} */ (
+            paramRuntimeProvider
+        );
+        this.#xScaleResolution = view.getScaleResolution("x");
+        this.#yScaleResolution = view.getScaleResolution("y");
+        if (!this.#xScaleResolution || !this.#yScaleResolution) {
+            throw new Error("displace2d requires x and y scales.");
+        }
 
-            const scaleChanged = () => this.#scheduleReplay();
-            for (const resolution of [
-                this.#xScaleResolution,
-                this.#yScaleResolution,
-            ]) {
-                this.registerDisposer(
-                    resolution.getMappingRef().subscribe(scaleChanged)
-                );
-            }
+        const scaleChanged = () => this.#scheduleReplay();
+        for (const resolution of [
+            this.#xScaleResolution,
+            this.#yScaleResolution,
+        ]) {
             this.registerDisposer(
-                view._addBroadcastHandler("layoutComputed", () =>
-                    this.#scheduleReplay(0)
-                )
+                resolution.getMappingRef().subscribe(scaleChanged)
             );
         }
+        this.registerDisposer(
+            view._addBroadcastHandler("layoutComputed", () =>
+                this.#scheduleReplay()
+            )
+        );
 
         this.registerDisposer(() => {
             this.#cancelReplay();
@@ -235,16 +193,8 @@ export default class Displace2DTransform extends Transform {
     }
 
     complete() {
-        if (this.#debouncePending) {
-            // An upstream scale-dependent transform may replay while placement
-            // is debounced. Keep the previously published rows and offsets
-            // intact until the trailing replay recomputes the whole branch.
-            this.#clearBufferedData();
-            return;
-        }
-
         const bootstrap = !this.#placementBootstrapped;
-        if (bootstrap || (this.#scalePositions && !this.#hasScaleLayout())) {
+        if (bootstrap || !this.#hasScaleLayout()) {
             // Establish data-driven scale domains before reading the scales,
             // or publish neutral offsets until layout is available.
             for (const datum of this.#data) {
@@ -254,7 +204,7 @@ export default class Displace2DTransform extends Transform {
             this.#publishBufferedData();
             if (bootstrap) {
                 this.#placementBootstrapped = true;
-                this.#scheduleReplay(0);
+                this.#scheduleReplay();
             }
             return;
         }
@@ -269,29 +219,17 @@ export default class Displace2DTransform extends Transform {
      * @param {PlacementStateMap} nextStates
      */
     #place(data, nextStates) {
-        const props = this.#placementProps;
         const keyAccessor = this.#keyAccessor;
-        const scalePositions = this.#scalePositions;
-        const xScale = scalePositions
-            ? this.#xScaleResolution.getScale()
-            : undefined;
-        const yScale = scalePositions
-            ? this.#yScaleResolution.getScale()
-            : undefined;
-        const xAxisLength = scalePositions
-            ? this.#xScaleResolution.getAxisLength()
-            : 0;
-        const yAxisLength = scalePositions
-            ? this.#yScaleResolution.getAxisLength()
-            : 0;
+        const xScale = this.#xScaleResolution.getScale();
+        const yScale = this.#yScaleResolution.getScale();
+        const xAxisLength = this.#xScaleResolution.getAxisLength();
+        const yAxisLength = this.#yScaleResolution.getAxisLength();
+        const xAdjustment = getScalePositionAdjustment(xScale);
+        const yAdjustment = getScalePositionAdjustment(yScale);
         /** @type {[number, number] | undefined} */
-        const xExtent = scalePositions
-            ? [0, xAxisLength]
-            : scaleExtent(props.xExtent, props.xPositionFactor);
+        const xExtent = [0, xAxisLength];
         /** @type {[number, number] | undefined} */
-        const yExtent = scalePositions
-            ? [0, yAxisLength]
-            : scaleExtent(props.yExtent, props.yPositionFactor);
+        const yExtent = [0, yAxisLength];
         /** @type {PlacementItem[]} */
         const items = [];
         const progressive =
@@ -312,23 +250,19 @@ export default class Displace2DTransform extends Transform {
             if (keyAccessor) {
                 nextStates.set(key, item);
             }
-            const anchorX = scalePositions
-                ? xScale(this.#xAccessor(datum)) * xAxisLength
-                : this.#xAccessor(datum) * props.xPositionFactor;
-            const anchorY = scalePositions
-                ? (1 - yScale(this.#yAccessor(datum))) * yAxisLength
-                : this.#yAccessor(datum) * props.yPositionFactor;
+            const anchorX =
+                (xScale(this.#xAccessor(datum)) + xAdjustment) * xAxisLength;
+            const anchorY =
+                (1 - yScale(this.#yAccessor(datum)) - yAdjustment) *
+                yAxisLength;
+            const anchorInViewport =
+                anchorX >= 0 &&
+                anchorX <= xAxisLength &&
+                anchorY >= 0 &&
+                anchorY <= yAxisLength;
 
             // An off-viewport anchor would pull its label back into view.
-            if (
-                scalePositions &&
-                !(
-                    anchorX >= 0 &&
-                    anchorX <= xAxisLength &&
-                    anchorY >= 0 &&
-                    anchorY <= yAxisLength
-                )
-            ) {
+            if (!anchorInViewport) {
                 datum[this.#as[0]] = 0;
                 datum[this.#as[1]] = 0;
                 continue;
@@ -615,31 +549,20 @@ export default class Displace2DTransform extends Transform {
             this.#placementBootstrapped &&
             !this.disposed &&
             this.completed &&
-            (!this.#scalePositions || this.#hasScaleLayout())
+            this.#hasScaleLayout()
         );
     }
 
-    /** @param {number} [wait] */
-    #scheduleReplay(wait = this.#debounce) {
+    #scheduleReplay() {
         this.#cancelReplay();
         if (!this.#isReplayReady()) {
             return;
         }
 
-        if (wait > 0) {
-            this.#debouncePending = true;
-            this.#replayTimer = setTimeout(() => {
-                this.#debouncePending = false;
-                this.paramRuntime.requestUpdate(this.#runScheduledReplay);
-            }, wait);
-        } else {
-            this.paramRuntime.requestUpdate(this.#runScheduledReplay);
-        }
+        this.paramRuntime.requestUpdate(this.#runScheduledReplay);
     }
 
     #cancelReplay() {
-        clearTimeout(this.#replayTimer);
-        this.#debouncePending = false;
         this.paramRuntimeProvider?.paramRuntime?.cancelUpdate(
             this.#runScheduledReplay
         );
@@ -647,9 +570,7 @@ export default class Displace2DTransform extends Transform {
 
     reset() {
         this.#cancelAnimation();
-        if (!this.#debouncePending) {
-            super.reset();
-        }
+        super.reset();
         this.#clearBufferedData();
     }
 
@@ -670,21 +591,6 @@ function dimensionAccessor(param, getValue) {
     return typeof param == "string"
         ? field(param)
         : () => /** @type {number} */ (getValue());
-}
-
-/**
- * @param {[number, number] | undefined} extent
- * @param {number} factor
- * @returns {[number, number] | undefined}
- */
-function scaleExtent(extent, factor) {
-    if (!extent) {
-        return undefined;
-    }
-
-    const first = extent[0] * factor;
-    const second = extent[1] * factor;
-    return [Math.min(first, second), Math.max(first, second)];
 }
 
 /** @param {any} key */

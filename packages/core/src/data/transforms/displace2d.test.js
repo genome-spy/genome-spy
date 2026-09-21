@@ -8,6 +8,60 @@ import Displace2DTransform from "./displace2d.js";
 import createTransform from "./transformFactory.js";
 
 const FRAME_INTERVAL = 1000 / 60;
+const TEST_AXIS_LENGTH = 10_000;
+
+/**
+ * @param {{ animator?: TestAnimator, paramRuntime?: ViewParamRuntime, layoutReady?: boolean }} [options]
+ */
+function createTestView(options = {}) {
+    const paramRuntime = options.paramRuntime ?? new ViewParamRuntime();
+    let axisLength = options.layoutReady === false ? 0 : TEST_AXIS_LENGTH;
+    const createResolution = (/** @type {"x" | "y"} */ channel) => {
+        const scale = Object.assign(
+            (/** @type {number} */ value) =>
+                channel == "x"
+                    ? (value + TEST_AXIS_LENGTH / 2) / TEST_AXIS_LENGTH
+                    : 1 - (value + TEST_AXIS_LENGTH / 2) / TEST_AXIS_LENGTH,
+            { type: "linear" }
+        );
+        return {
+            getScale: () => scale,
+            getAxisLength: () => axisLength,
+            getMappingRef: () => ({ subscribe: () => () => {} }),
+        };
+    };
+    const resolutions = {
+        x: createResolution("x"),
+        y: createResolution("y"),
+    };
+    return /** @type {any} */ ({
+        context: { animator: options.animator },
+        paramRuntime,
+        getScaleResolution: (/** @type {"x" | "y"} */ channel) =>
+            resolutions[channel],
+        _addBroadcastHandler: () => () => {},
+        initializeLayout: () => {
+            axisLength = TEST_AXIS_LENGTH;
+        },
+    });
+}
+
+/**
+ * @param {import("../../spec/transform.js").Displace2DParams} params
+ * @param {{ animator?: TestAnimator, paramRuntime?: ViewParamRuntime, consumeBootstrap?: boolean }} [options]
+ */
+function createDisplace2D(params, options = {}) {
+    const view = createTestView({ ...options, layoutReady: false });
+    const transform = new Displace2DTransform(params, view);
+    if (options.consumeBootstrap !== false) {
+        transform.complete();
+        view.initializeLayout();
+        transform.reset();
+    } else {
+        view.initializeLayout();
+    }
+    return transform;
+}
 
 class TestAnimator {
     transitionsEnabled = true;
@@ -45,20 +99,15 @@ class TestAnimator {
  */
 function createFlow(data, overrides = {}) {
     const source = new Collector();
-    const transform = new Displace2DTransform(
-        {
-            type: "displace2d",
-            x: "x",
-            y: "y",
-            width: 10,
-            height: 10,
-            xPositionFactor: 100,
-            yPositionFactor: 100,
-            as: ["dx", "dy"],
-            ...overrides,
-        },
-        /** @type {any} */ ({})
-    );
+    const transform = createDisplace2D({
+        type: "displace2d",
+        x: "x",
+        y: "y",
+        width: 10,
+        height: 10,
+        as: ["dx", "dy"],
+        ...overrides,
+    });
     const output = new Collector();
     source.addChild(transform);
     transform.addChild(output);
@@ -86,7 +135,7 @@ function expectPairSeparated(offsets, width, height) {
 describe("Displace2DTransform", () => {
     test("progressively relaxes retained rows and replays descendants", () => {
         const animator = new TestAnimator();
-        const transform = new Displace2DTransform(
+        const transform = createDisplace2D(
             {
                 type: "displace2d",
                 x: "x",
@@ -95,7 +144,7 @@ describe("Displace2DTransform", () => {
                 height: 10,
                 as: ["dx", "dy"],
             },
-            /** @type {any} */ ({ context: { animator } })
+            { animator }
         );
         const output = new Collector();
         const observer = vi.fn();
@@ -136,7 +185,7 @@ describe("Displace2DTransform", () => {
 
     test("warm-starts retained rows when anchors move", () => {
         const animator = new TestAnimator();
-        const transform = new Displace2DTransform(
+        const transform = createDisplace2D(
             {
                 type: "displace2d",
                 x: "x",
@@ -145,7 +194,7 @@ describe("Displace2DTransform", () => {
                 height: 10,
                 as: ["dx", "dy"],
             },
-            /** @type {any} */ ({ context: { animator } })
+            { animator }
         );
         const output = new Collector();
         transform.addChild(output);
@@ -177,7 +226,7 @@ describe("Displace2DTransform", () => {
 
     test("does not transfer state between replacement rows without a key", () => {
         const animator = new TestAnimator();
-        const transform = new Displace2DTransform(
+        const transform = createDisplace2D(
             {
                 type: "displace2d",
                 x: "x",
@@ -186,7 +235,7 @@ describe("Displace2DTransform", () => {
                 height: 10,
                 as: ["dx", "dy"],
             },
-            /** @type {any} */ ({ context: { animator } })
+            { animator }
         );
         const output = new Collector();
         transform.addChild(output);
@@ -217,7 +266,7 @@ describe("Displace2DTransform", () => {
 
     test("warm-starts keyed replacement rows after filtering and reordering", () => {
         const animator = new TestAnimator();
-        const transform = new Displace2DTransform(
+        const transform = createDisplace2D(
             {
                 type: "displace2d",
                 key: "id",
@@ -227,7 +276,7 @@ describe("Displace2DTransform", () => {
                 height: 10,
                 as: ["dx", "dy"],
             },
-            /** @type {any} */ ({ context: { animator } })
+            { animator }
         );
         const output = new Collector();
         transform.addChild(output);
@@ -256,7 +305,7 @@ describe("Displace2DTransform", () => {
     test("rejects invalid and duplicate keys", () => {
         const animator = new TestAnimator();
         const create = () =>
-            new Displace2DTransform(
+            createDisplace2D(
                 {
                     type: "displace2d",
                     key: "id",
@@ -265,7 +314,7 @@ describe("Displace2DTransform", () => {
                     width: 10,
                     height: 10,
                 },
-                /** @type {any} */ ({ context: { animator } })
+                { animator }
             );
 
         const invalid = create();
@@ -277,26 +326,25 @@ describe("Displace2DTransform", () => {
         duplicate.handle({ id: "a", x: 1, y: 1 });
         expect(() => duplicate.complete()).toThrow("key must be unique");
 
-        expect(
-            () =>
-                new Displace2DTransform(
-                    {
-                        type: "displace2d",
-                        key: "id",
-                        x: "x",
-                        y: "y",
-                        width: 10,
-                        height: 10,
-                        as: ["id", "dy"],
-                    },
-                    /** @type {any} */ ({ context: { animator } })
-                )
+        expect(() =>
+            createDisplace2D(
+                {
+                    type: "displace2d",
+                    key: "id",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                    as: ["id", "dy"],
+                },
+                { animator }
+            )
         ).toThrow("preserve the key");
     });
 
     test("preserves facet batches during progressive replay", () => {
         const animator = new TestAnimator();
-        const transform = new Displace2DTransform(
+        const transform = createDisplace2D(
             {
                 type: "displace2d",
                 x: "x",
@@ -304,7 +352,7 @@ describe("Displace2DTransform", () => {
                 width: 10,
                 height: 10,
             },
-            /** @type {any} */ ({ context: { animator } })
+            { animator }
         );
         const output = new Collector();
         const batches = vi.spyOn(output, "beginBatch");
@@ -329,10 +377,13 @@ describe("Displace2DTransform", () => {
     test.each([false, true])(
         "places across file boundaries and preserves events (faceted: %s)",
         (faceted) => {
-            const transform = new Displace2DTransform(
-                { type: "displace2d", x: "x", y: "y", width: 10, height: 10 },
-                /** @type {any} */ ({})
-            );
+            const transform = createDisplace2D({
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+            });
             const output = new Collector();
             transform.addChild(output);
             const batches = vi.spyOn(output, "beginBatch");
@@ -389,10 +440,13 @@ describe("Displace2DTransform", () => {
     );
 
     test("preserves facet membership and places facets independently", () => {
-        const transform = new Displace2DTransform(
-            { type: "displace2d", x: "x", y: "y", width: 10, height: 10 },
-            /** @type {any} */ ({})
-        );
+        const transform = createDisplace2D({
+            type: "displace2d",
+            x: "x",
+            y: "y",
+            width: 10,
+            height: 10,
+        });
         const output = new Collector();
         transform.addChild(output);
         for (const id of ["a", "b"]) {
@@ -407,93 +461,15 @@ describe("Displace2DTransform", () => {
         }
     });
 
-    test("debounces placement across upstream scale-driven replay", async () => {
-        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-        try {
-            const view = await createAndInitialize(
-                {
-                    width: 100,
-                    height: 100,
-                    data: {
-                        values: [
-                            { x: 0.4, y: 0.5 },
-                            { x: 0.6, y: 0.5 },
-                        ],
-                    },
-                    transform: [
-                        {
-                            type: "formula",
-                            expr: "domain('x')[1]",
-                            as: "domainEnd",
-                        },
-                        {
-                            type: "displace2d",
-                            x: "x",
-                            y: "y",
-                            width: 10,
-                            height: 10,
-                            scalePositions: true,
-                        },
-                    ],
-                    mark: "point",
-                    encoding: {
-                        x: {
-                            field: "x",
-                            type: "quantitative",
-                            scale: { domain: [0, 4], zoom: true },
-                        },
-                        y: {
-                            field: "y",
-                            type: "quantitative",
-                            scale: { domain: [0, 1] },
-                        },
-                    },
-                },
-                UnitView
-            );
-            renderToLayout(view, Rectangle.create(0, 0, 100, 100));
-            view.handleBroadcast({ type: "layoutComputed" });
-            await view.paramRuntime.whenPropagated();
-            const offsets = () =>
-                Array.from(view.flowHandle.collector.getData(), (datum) => [
-                    datum.xDisplacement,
-                    datum.yDisplacement,
-                ]);
-            const initialOffsets = offsets();
-            expect(initialOffsets.some(([dx, dy]) => dx != 0 || dy != 0)).toBe(
-                true
-            );
-
-            const resolution = view.getScaleResolution("x");
-            await resolution.zoomTo([0, 2], false);
-            await vi.advanceTimersByTimeAsync(25);
-            await resolution.zoomTo([0, 1], false);
-            await vi.advanceTimersByTimeAsync(49);
-            expect(offsets()).toEqual(initialOffsets);
-
-            await vi.advanceTimersByTimeAsync(1);
-            await view.paramRuntime.whenPropagated();
-            expect(offsets()).toEqual([
-                [0, 0],
-                [0, 0],
-            ]);
-        } finally {
-            vi.useRealTimers();
-        }
-    });
-
     test("restores canonical offsets after intermediate geometry", () => {
-        const transform = new Displace2DTransform(
-            {
-                type: "displace2d",
-                x: "x",
-                y: "y",
-                width: 10,
-                height: 10,
-                as: ["dx", "dy"],
-            },
-            /** @type {any} */ ({})
-        );
+        const transform = createDisplace2D({
+            type: "displace2d",
+            x: "x",
+            y: "y",
+            width: 10,
+            height: 10,
+            as: ["dx", "dy"],
+        });
         const output = new Collector();
         transform.addChild(output);
         const home = [
@@ -517,17 +493,14 @@ describe("Displace2DTransform", () => {
         expect(place(home)).toEqual(initial);
     });
 
-    test("uses unit factors and displacement field defaults", () => {
-        const transform = new Displace2DTransform(
-            {
-                type: "displace2d",
-                x: "x",
-                y: "y",
-                width: 10,
-                height: 10,
-            },
-            /** @type {any} */ ({})
-        );
+    test("uses displacement field defaults", () => {
+        const transform = createDisplace2D({
+            type: "displace2d",
+            x: "x",
+            y: "y",
+            width: 10,
+            height: 10,
+        });
         const output = new Collector();
         transform.addChild(output);
         transform.handle({ x: 0, y: 0 });
@@ -561,8 +534,6 @@ describe("Displace2DTransform", () => {
                     y: "y",
                     width: 20,
                     height: 20,
-                    scalePositions: true,
-                    debounce: 0,
                     as: ["dx", "dy"],
                 },
             ],
@@ -627,8 +598,6 @@ describe("Displace2DTransform", () => {
                     y: "y",
                     width: 10,
                     height: 10,
-                    scalePositions: true,
-                    debounce: 0,
                     as: ["dx", "dy"],
                 },
             ],
@@ -683,6 +652,48 @@ describe("Displace2DTransform", () => {
         ).toBe(true);
     });
 
+    test("places categorical positions at band centers", async () => {
+        const view = await createAndInitialize(
+            {
+                width: 100,
+                height: 100,
+                data: { values: [{ x: "category", y: "category" }] },
+                transform: [
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: 20,
+                        height: 20,
+                        as: ["dx", "dy"],
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "nominal",
+                        scale: { type: "band" },
+                    },
+                    y: {
+                        field: "y",
+                        type: "nominal",
+                        scale: { type: "band" },
+                    },
+                },
+            },
+            UnitView
+        );
+        renderToLayout(view, Rectangle.create(0, 0, 100, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await view.paramRuntime.whenPropagated();
+
+        expect([...view.flowHandle.collector.getData()][0]).toMatchObject({
+            dx: 0,
+            dy: 0,
+        });
+    });
+
     test("gives off-viewport data zero offsets with nonlinear scales", async () => {
         /** @type {import("../../spec/view.js").UnitSpec} */
         const spec = {
@@ -696,7 +707,6 @@ describe("Displace2DTransform", () => {
                     y: "y",
                     width: 20,
                     height: 20,
-                    scalePositions: true,
                     as: ["dx", "dy"],
                 },
             ],
@@ -741,7 +751,6 @@ describe("Displace2DTransform", () => {
                         y: "y",
                         width: 20,
                         height: 20,
-                        scalePositions: true,
                         as: ["dx", "dy"],
                     },
                 ],
@@ -826,31 +835,6 @@ describe("Displace2DTransform", () => {
         expect(Math.abs(dx) >= 7 || Math.abs(dy) >= 7).toBe(true);
     });
 
-    test("scales and normalizes source-coordinate extents", () => {
-        const positive = createFlow([{ x: 1.2, y: 0.5 }], {
-            width: 20,
-            height: 20,
-            xExtent: [0, 1],
-            yExtent: [0, 1],
-        });
-        const negative = createFlow([{ x: 1.2, y: 0.5 }], {
-            width: 20,
-            height: 20,
-            xPositionFactor: -100,
-            xExtent: [0, 1],
-            yExtent: [0, 1],
-        });
-
-        expect([...positive.output.getData()][0]).toMatchObject({
-            dx: -30,
-            dy: 0,
-        });
-        expect([...negative.output.getData()][0]).toMatchObject({
-            dx: 30,
-            dy: 0,
-        });
-    });
-
     test("coalesces reactive placement changes into one replay", async () => {
         const paramRuntime = new ViewParamRuntime();
         const setWidth = paramRuntime.registerParam({
@@ -861,38 +845,17 @@ describe("Displace2DTransform", () => {
             name: "height",
             value: 20,
         });
-        const setXFactor = paramRuntime.registerParam({
-            name: "xFactor",
-            value: 100,
-        });
-        const setYFactor = paramRuntime.registerParam({
-            name: "yFactor",
-            value: 100,
-        });
-        const setXExtent = paramRuntime.registerParam({
-            name: "xExtent",
-            value: [0, 1],
-        });
-        const setYExtent = paramRuntime.registerParam({
-            name: "yExtent",
-            value: [0, 1],
-        });
         const source = new Collector();
-        const transform = new Displace2DTransform(
+        const transform = createDisplace2D(
             {
                 type: "displace2d",
                 x: "x",
                 y: "y",
                 width: { expr: "width" },
                 height: { expr: "height" },
-                xPositionFactor: { expr: "xFactor" },
-                yPositionFactor: { expr: "yFactor" },
-                xExtent: { expr: "xExtent" },
-                yExtent: { expr: "yExtent" },
-                debounce: 0,
                 as: ["dx", "dy"],
             },
-            /** @type {any} */ ({ paramRuntime })
+            { paramRuntime, consumeBootstrap: false }
         );
         const output = new Collector();
         source.addChild(transform);
@@ -919,10 +882,6 @@ describe("Displace2DTransform", () => {
         paramRuntime.runInTransaction(() => {
             setWidth(10);
             setHeight(10);
-            setXFactor(-100);
-            setYFactor(-100);
-            setXExtent(undefined);
-            setYExtent(undefined);
         });
         await paramRuntime.whenPropagated();
         expect(repropagate).toHaveBeenCalledOnce();
@@ -933,105 +892,22 @@ describe("Displace2DTransform", () => {
         );
     });
 
-    test("debounces reactive placement changes", async () => {
-        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-        try {
-            const paramRuntime = new ViewParamRuntime();
-            const setHeight = paramRuntime.registerParam({
-                name: "height",
-                value: 20,
-            });
-            const source = new Collector();
-            const transform = new Displace2DTransform(
-                {
-                    type: "displace2d",
-                    x: "x",
-                    y: "y",
-                    width: 20,
-                    height: { expr: "height" },
-                    as: ["dx", "dy"],
-                },
-                /** @type {any} */ ({ paramRuntime })
-            );
-            const output = new Collector();
-            source.addChild(transform);
-            transform.addChild(output);
-            source.handle({ x: 0, y: 0 });
-            source.handle({ x: 0, y: 0 });
-            source.complete();
-            await paramRuntime.whenPropagated();
-
-            const offsets = () =>
-                Array.from(output.getData(), ({ dx, dy }) => [dx, dy]);
-            const initialOffsets = offsets();
-            expectPairSeparated(initialOffsets, 20, 20);
-
-            setHeight(10);
-            await vi.advanceTimersByTimeAsync(49);
-            expect(offsets()).toEqual(initialOffsets);
-
-            await vi.advanceTimersByTimeAsync(1);
-            await paramRuntime.whenPropagated();
-            expectPairSeparated(offsets(), 20, 10);
-        } finally {
-            vi.useRealTimers();
-        }
-    });
-
-    test("clears a disabled reactive extent instead of retaining scaled bounds", async () => {
-        const paramRuntime = new ViewParamRuntime();
-        const setExtent = paramRuntime.registerParam({
-            name: "extent",
-            value: [0, 1],
-        });
-        const source = new Collector();
-        const transform = new Displace2DTransform(
-            {
-                type: "displace2d",
-                x: "x",
-                y: "y",
-                width: 20,
-                height: 20,
-                xPositionFactor: 100,
-                yPositionFactor: 100,
-                xExtent: { expr: "extent" },
-                debounce: 0,
-                as: ["dx", "dy"],
-            },
-            /** @type {any} */ ({ paramRuntime })
-        );
-        const output = new Collector();
-        source.addChild(transform);
-        transform.addChild(output);
-        source.handle({ x: 1.2, y: 0.5 });
-        source.complete();
-        await Promise.resolve();
-
-        expect([...output.getData()][0].dx).toBe(-30);
-
-        setExtent(undefined);
-        await paramRuntime.whenPropagated();
-
-        expect([...output.getData()][0].dx).toBe(0);
-    });
-
     test("cancels the deferred bootstrap replay after disposal", async () => {
         const paramRuntime = new ViewParamRuntime();
-        const setFactor = paramRuntime.registerParam({
-            name: "factor",
-            value: 100,
+        const setHeight = paramRuntime.registerParam({
+            name: "height",
+            value: 10,
         });
         const source = new Collector();
-        const transform = new Displace2DTransform(
+        const transform = createDisplace2D(
             {
                 type: "displace2d",
                 x: "x",
                 y: "y",
                 width: 10,
-                height: 10,
-                xPositionFactor: { expr: "factor" },
+                height: { expr: "height" },
             },
-            /** @type {any} */ ({ paramRuntime })
+            { paramRuntime, consumeBootstrap: false }
         );
         const output = new Collector();
         source.addChild(transform);
@@ -1041,67 +917,10 @@ describe("Displace2DTransform", () => {
         const repropagate = vi.spyOn(source, "repropagate");
         source.complete();
         transform.dispose();
-        setFactor(200);
+        setHeight(20);
         await paramRuntime.whenPropagated();
 
         expect(repropagate).not.toHaveBeenCalled();
-    });
-
-    test("cancels a pending debounced replay after disposal", async () => {
-        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-        try {
-            const paramRuntime = new ViewParamRuntime();
-            const setHeight = paramRuntime.registerParam({
-                name: "height",
-                value: 20,
-            });
-            const source = new Collector();
-            const transform = new Displace2DTransform(
-                {
-                    type: "displace2d",
-                    x: "x",
-                    y: "y",
-                    width: 20,
-                    height: { expr: "height" },
-                },
-                /** @type {any} */ ({ paramRuntime })
-            );
-            const output = new Collector();
-            source.addChild(transform);
-            transform.addChild(output);
-            source.handle({ x: 0, y: 0 });
-
-            const repropagate = vi.spyOn(source, "repropagate");
-            source.complete();
-            await paramRuntime.whenPropagated();
-            repropagate.mockClear();
-
-            setHeight(10);
-            transform.dispose();
-            await vi.advanceTimersByTimeAsync(50);
-
-            expect(repropagate).not.toHaveBeenCalled();
-        } finally {
-            vi.useRealTimers();
-        }
-    });
-
-    test("rejects incompatible scale placement configuration", () => {
-        expect(
-            () =>
-                new Displace2DTransform(
-                    {
-                        type: "displace2d",
-                        x: "x",
-                        y: "y",
-                        width: 10,
-                        height: 10,
-                        scalePositions: true,
-                        xExtent: [0, 1],
-                    },
-                    /** @type {any} */ ({})
-                )
-        ).toThrow("cannot be combined");
     });
 
     test("is available through the transform factory", () => {
@@ -1113,7 +932,8 @@ describe("Displace2DTransform", () => {
                     y: "y",
                     width: 10,
                     height: 10,
-                })
+                }),
+                createTestView()
             )
         ).toBeInstanceOf(Displace2DTransform);
     });

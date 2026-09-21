@@ -1121,10 +1121,10 @@ export interface Displace2DParams extends TransformParamsBase {
      */
     key?: Field;
 
-    /** Field containing the original horizontal rectangle center. */
+    /** Field containing the horizontal position in the view's x-scale domain. */
     x: Field;
 
-    /** Field containing the original vertical rectangle center. */
+    /** Field containing the vertical position in the view's y-scale domain. */
     y: Field;
 
     /**
@@ -1162,59 +1162,6 @@ export interface Displace2DParams extends TransformParamsBase {
      * __Default value:__ `0`
      */
     anchorHeight?: number | Field | ExprRef;
-
-    /**
-     * Maps `x` and `y` through the owning view's positional scales before
-     * placement and uses the logical viewport as the placement extent. This
-     * supports nonlinear and reversed scales without manual pixel-conversion
-     * expressions. Cannot be combined with position factors or explicit
-     * extents.
-     *
-     * __Default value:__ `false`
-     */
-    scalePositions?: boolean;
-
-    /**
-     * Trailing debounce time for re-running placement after reactive scale or
-     * property changes. During continuous zooming, the previous transform output
-     * remains in use until scale updates pause. Set to `0` to update immediately.
-     * Initial and layout-triggered placement are not delayed.
-     *
-     * __Default value:__ `50`
-     */
-    debounce?: number;
-
-    /**
-     * Multiplier that converts horizontal positions to logical pixels. An
-     * expression can react to scale or layout changes. Negative factors are
-     * valid. Nonlinear scales require pixel positions derived upstream.
-     *
-     * __Default value:__ `1`
-     */
-    xPositionFactor?: number | ExprRef;
-
-    /**
-     * Multiplier that converts vertical positions to logical pixels. An
-     * expression can react to scale or layout changes. Negative factors are
-     * valid. Nonlinear scales require pixel positions derived upstream.
-     *
-     * __Default value:__ `1`
-     */
-    yPositionFactor?: number | ExprRef;
-
-    /**
-     * Preferred horizontal outer bounds in the original coordinate system.
-     * Rectangles that exhaust the bounded local search remain non-overlapping
-     * and extend beyond these bounds in a deterministic overflow row. An
-     * expression may evaluate to `undefined` to disable the bounds.
-     */
-    xExtent?: [number, number] | ExprRef;
-
-    /**
-     * Preferred vertical outer bounds in the original coordinate system. An
-     * expression may evaluate to `undefined` to disable the bounds.
-     */
-    yExtent?: [number, number] | ExprRef;
 
     /**
      * Output fields for signed horizontal and vertical pixel displacements.

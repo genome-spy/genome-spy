@@ -103,8 +103,6 @@
           "height": "activeCollisionHeight",
           "anchorWidth": "activeAnchorSize",
           "anchorHeight": "activeAnchorSize",
-          "scalePositions": true,
-          "debounce": 0,
           "as": ["labelDx", "labelDy"]
         },
         {

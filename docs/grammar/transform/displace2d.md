@@ -35,24 +35,25 @@ center. Every displaced rectangle avoids every reserved anchor, including its
 own. Use the rendered point dimensions plus the desired clearance. Setting
 either dimension to zero disables the anchor for that row.
 
-The transform visits rows in input order and places each rectangle at the
-first available candidate in a bounded deterministic sequence around its
-original center. Sorting by a priority field immediately before `displace2d`
-gives important annotations the first choice of positions. The transform always
-preserves every row.
+The transform processes rows in input order and gives earlier rectangles higher
+placement priority. Sorting by a priority field immediately before
+`displace2d` gives important annotations more influence over the result. The
+solver progressively reduces overlap while preferring positions near the
+original centers. Dense or infeasible arrangements may retain overlaps. The
+transform always preserves every row.
 
 Set `key` when upstream transforms may replace row objects or change their
 order or membership between updates. Rows with the same key retain their
 progressive placement through cloning, filtering, and reordering. Without a
 key, placement state follows object identity only.
 
-## Scale-aware placement
+## Position scales
 
-Set `scalePositions` to `true` when `x` and `y` contain values for the view's
-positional scales. The transform maps both fields to logical pixels, follows
-zoom and layout changes, respects reversed and nonlinear scales, and uses the
-viewport as the preferred placement extent. Collision dimensions and output
-offsets remain in logical pixels.
+The transform maps `x` and `y` through the view's positional scales. It follows
+zoom and layout changes, respects reversed and nonlinear scales, places
+categorical positions at the center of their scale bands, and uses the viewport
+as the placement extent. Collision dimensions and output offsets remain in
+logical pixels.
 
 Set the offset channels' scales to `null` so the resulting offsets are applied
 directly:
@@ -62,37 +63,9 @@ directly:
 "yOffset": { "field": "labelDy", "type": "quantitative", "scale": null }
 ```
 
-`scalePositions` cannot be combined with position factors or explicit extents.
-
-## Raw-coordinate placement
-
-By default, `displace2d` treats the `x` and `y` values as coordinates in the
-same logical-pixel space as the collision dimensions. `xPositionFactor` and
-`yPositionFactor` can convert other affine coordinate systems into pixels.
-Negative factors are supported. Nonlinear scales should use `scalePositions`
-instead.
-
-## Preferred bounds and overflow
-
-In raw-coordinate mode, `xExtent` and `yExtent` provide preferred outer bounds
-in the original x and y coordinate systems. When matching position factors are
-configured, reactive domain expressions can keep the preferred bounds at the
-visible plot edges:
-
-```json
-"xExtent": { "expr": "domain('x')" },
-"yExtent": { "expr": "domain('y')" }
-```
-
-Accepted local candidates stay inside every supplied extent. If the bounded
-search cannot place a rectangle there, the transform preserves it in a
-non-overlapping overflow row to the right of the crowded region. Thus, extents
-are preferences rather than a visibility or clipping policy. Downstream marks
-still control clipping, opacity, tooltips, and leader-line styling.
-
-The transform prevents collisions between the supplied rectangles and any
-configured anchors. It does not inspect rendered marks, avoid unrelated points,
-measure text automatically, or route leader lines.
+The transform considers the supplied rectangles and configured anchors only. It
+does not inspect rendered marks, avoid unrelated points, measure text
+automatically, or route leader lines.
 
 ## Viewport participation
 

@@ -419,8 +419,6 @@ describe("generated core schema", () => {
                     y: "y",
                     width: "width",
                     height: { expr: "fontSize" },
-                    xPositionFactor: { expr: "width / 10" },
-                    yExtent: [0, 100],
                     as: ["dx", "dy"],
                 },
             ],
