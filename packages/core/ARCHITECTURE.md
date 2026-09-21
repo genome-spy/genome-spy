@@ -50,6 +50,10 @@ It coordinates four major systems:
   precision.
 - **GPU selections:** interval selections use uniforms and multi-point
   selections use textures.
+- **Columnar-compatible grammar:** the current dataflow processes object-valued
+  rows, but its long-term direction may use columnar data from ingestion through
+  transforms to GPU buffers. Grammar and public data contracts should avoid
+  assumptions that require row objects or per-row mutation.
 
 ## Quick pointers
 

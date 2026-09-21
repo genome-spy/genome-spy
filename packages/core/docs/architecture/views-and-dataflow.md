@@ -205,6 +205,10 @@ state; the routing `GridView` owns pan sessions across child and gap surfaces.
 These are current fragilities and design questions rather than settled
 contracts:
 
+- A future dataflow may operate on columnar batches, enabling a more direct
+  Arrow/Parquet to transforms to GPU-buffer pipeline. New transforms and
+  internal contracts should avoid unnecessarily coupling grammar semantics to
+  mutable JavaScript row objects.
 - A targeted propagation/load mode may eventually populate collectors for
   dynamic insertions without re-propagating existing branches and causing
   redundant updates and renders.
