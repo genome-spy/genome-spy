@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
-
   "description": "Three samples with display names defined by inline identity data.",
 
   "samples": {

@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": "Locus scale example with an explicit genomic domain.",
 
   "assembly": "hg38",

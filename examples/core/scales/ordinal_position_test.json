@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Ordinal positions on positional channels",
     "Maps values to arbitrary positions on positional channels for internal use."

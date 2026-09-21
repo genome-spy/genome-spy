@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Shared Scale Expression Scope",
     "A child slider pushes a size limit to the parameter that owns a shared scale."

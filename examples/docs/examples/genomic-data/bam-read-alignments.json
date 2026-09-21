@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "BAM alignment view for GIAB HG002",
     "Shows an IGV-like BAM alignment view with depth coverage, insertion and mismatch summaries, directional read pileups, CIGAR overlays, and base-quality filtering."

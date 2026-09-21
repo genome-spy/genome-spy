@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Aggregate-driven boxplot of penguin body mass by species.",
     "Quartiles come from the aggregate transform. Whiskers use grouped min/max because Tukey-style outlier filtering would require joinaggregate-style transforms."

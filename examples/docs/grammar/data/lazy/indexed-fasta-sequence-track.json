@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Indexed FASTA Sequence Track",
     "Shows reference bases from an indexed UCSC hg38 FASTA by loading visible sequence chunks, splitting them into base-level rows, and drawing colored nucleotide labels.",

@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Ruler spanning concatenated views",
     "A parent ruler spans a vconcat when child x projections align."

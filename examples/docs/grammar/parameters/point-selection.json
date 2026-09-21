@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Hover and click bar selection",
     "Highlights bars on hover and selects them on click. Inspired by Tableau's interaction style."

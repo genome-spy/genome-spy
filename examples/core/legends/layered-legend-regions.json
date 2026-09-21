@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Layered legend regions",
     "Tests inside-corner and outside-side legend regions in a layered plot."

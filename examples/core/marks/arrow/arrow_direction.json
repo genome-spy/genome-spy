@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": "Forward, reverse, and bidirectional arrows in horizontal, vertical, and diagonal orientations.",
 
   "resolve": {

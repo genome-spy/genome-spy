@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Legend region and entry directions",
     "Side legends stack vertically, top legends horizontally, and the corner region is explicitly overridden. Entry direction is configured independently."

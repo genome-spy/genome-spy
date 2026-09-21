@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Legend test case for a horizontal inside-corner legend.",
     "The right plot uses orient top-right with direction horizontal; the legend should stay inside the plot and align its title and entries cleanly."

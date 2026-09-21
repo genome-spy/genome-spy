@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "HCC1954 Structural Variants and Copy Number",
     "Shows paired Severus somatic SV arcs and Wakhan ploidy-relative copy-number segments for the highly rearranged HCC1954 breast-cancer cell line.",

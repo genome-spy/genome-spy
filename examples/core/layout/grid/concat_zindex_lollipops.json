@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Concat child z-order in a paired lollipop plot",
     "The middle protein track uses zindex to render last and hide both sets of extended stem endpoints."

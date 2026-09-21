@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Responsive legend region wrapping",
     "Resize the window to wrap complete bottom legends into rows."

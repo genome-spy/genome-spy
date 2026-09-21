@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "A crosshair ruler example.",
     "Point mark follows the cursor position and is drawn at the intersection of the x and y rulers."

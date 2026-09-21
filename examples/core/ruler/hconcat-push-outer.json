@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Ruler push-out across sibling views",
     "A child ruler pushes a coordinate to an outer parameter used by a sibling view."

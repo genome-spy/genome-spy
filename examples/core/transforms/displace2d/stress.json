@@ -1,5 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": [
     "Dense displace2d stress test",
     "Exercises 500 deterministic clustered annotations with variable-width labels."

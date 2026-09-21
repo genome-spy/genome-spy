@@ -56,7 +56,12 @@ This section is a style guide for both humans and LLMs editing example specs.
 ### General rules
 
 - Keep JSON valid and compatible with Prettier.
-- Keep `$schema` first and `description` second.
+- Do not add a GenomeSpy `$schema` to maintained source examples. Published
+  copies receive the versioned public schema during docs asset staging, while
+  the repository's VSCode settings use schemas generated from the current
+  checkout.
+- Keep an explicit third-party `$schema` first when an example intentionally
+  uses another grammar, such as Vega-Lite.
 - Add a blank line between major top-level sections to improve scanability.
 - Prefer short files that read well in documentation code blocks.
 - Preserve semantic grouping even when compacting the formatting.
@@ -99,7 +104,9 @@ This section is a style guide for both humans and LLMs editing example specs.
 ### Grouping
 
 - Group related top-level sections with blank lines between them.
-  - Typical order is: `$schema`, `description`, data/setup, shared config, composition, marks/encodings.
+  - Typical source order is: `description`, data/setup, shared config,
+    composition, marks/encodings. An intentional third-party `$schema` comes
+    first.
 - Within arrays such as `layer`, `concat`, `hconcat`, and `vconcat`, separate visually distinct child views with blank lines when the children are more than trivial one-liners.
 - Keep tiny repeated child specs compact.
   - Example: `[{ "mark": "point" }, { "mark": "point" }]`
@@ -120,3 +127,15 @@ This section is a style guide for both humans and LLMs editing example specs.
 - Complex structure should still be visually obvious.
 
 In short: compact, grouped, and readable beats mechanically expanded JSON.
+
+## Schema-assisted editing
+
+Run `npm run build:schemas` from the repository root before editing examples.
+The committed `genome-spy.code-workspace` associates Core and App example paths
+with the schemas generated from the current checkout. Regenerate them after
+changing specification types. See `CONTRIBUTING.md` for editor setup and
+troubleshooting.
+
+Specifications under `private/` are not rewritten or covered by the curated
+example associations. They may declare any suitable `$schema`, including a
+published GenomeSpy URL or a relative path to a generated local schema.

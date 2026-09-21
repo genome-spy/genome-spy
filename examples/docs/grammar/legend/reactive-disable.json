@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Interactive legend visibility",
     "Uses a checkbox to show and hide the legend in a penguin scatterplot."

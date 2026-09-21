@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Select elements when they intersect with the brush",
     "Also shows how to use a brush to filter data in a second chart."

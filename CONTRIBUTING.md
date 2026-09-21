@@ -98,6 +98,40 @@ recommended IDE for GenomeSpy development, as it provides a seamless development
 experience with integrated tools and extensions. However, any IDE that supports
 JavaScript and TypeScript can be used.
 
+After installing dependencies, generate the JSON Schemas used for editing
+GenomeSpy examples:
+
+```sh
+npm ci
+npm run build:schemas
+```
+
+Open `genome-spy.code-workspace` in VSCode and trust the workspace. Its
+committed settings associate Core examples under `examples/core/` and
+`examples/docs/` with `packages/core/dist/schema.json`. App examples under
+`examples/app/` use `packages/app/dist/schema.json`. You can also regenerate
+both schemas with **Tasks: Run Task → Build JSON schemas** from the Command
+Palette. No extension is required for JSON Schema support, and your personal
+`.vscode/` settings remain separate.
+
+Regenerate the schemas after changing specification types in
+`packages/core/src/spec/` or `packages/app/src/spec/`. VSCode normally notices
+the changed schema files automatically. If completion or validation remains
+stale, run the build task and then use **Developer: Reload Window**.
+
+If VSCode reports that a schema cannot be resolved, check that both
+`dist/schema.json` files exist and rerun `npm run build:schemas`. An explicit
+`$schema` in an example takes precedence over the workspace association; this
+is intentional for the small set of examples that use Vega-Lite schemas. Check
+the example's directory if it receives the App schema instead of Core, or vice
+versa.
+
+Other editors can use the same generated schema files. Configure the editor to
+associate the Core and App example paths with their respective files, or add an
+explicit `$schema` to private specifications. For example, a file directly
+under `private/` can use `../packages/core/dist/schema.json` for the current
+checkout.
+
 ### Debugging
 
 The following entry (with a correct `pathMapping`) in VSCode's `launch.json` can

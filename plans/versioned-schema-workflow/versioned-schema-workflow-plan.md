@@ -164,7 +164,7 @@ editing. Its setup section will give a new contributor one linear path:
 1. Install dependencies with `npm ci`.
 2. Open the repository root as the VS Code workspace and trust the workspace.
 3. Generate both schemas with the root schema command, either in a terminal or
-   through a named task in `.vscode/tasks.json`.
+   through a named task in `genome-spy.code-workspace`.
 4. Open representative Core and App examples and verify completion, hover, and
    validation are active.
 
@@ -175,13 +175,15 @@ missing `dist/schema.json`, stale completion, an example receiving the wrong
 Core/App schema, workspace trust or disabled automatic tasks, and an explicit
 third-party `$schema` taking precedence over workspace associations.
 
-The committed `.vscode/settings.json` and task definitions are repository
-configuration, not snippets that each contributor must copy manually. The
-guide will name the relevant files so contributors can inspect the behavior.
-It will also document the editor-independent root commands so contributors are
-not required to use VS Code. `README.md` will add the one-time schema step to
-the short bootstrap path, while `examples/README.md` will explain the
-source-versus-published schema distinction where example authors encounter it.
+The committed `genome-spy.code-workspace` settings and task definitions are
+repository configuration, not snippets that each contributor must copy
+manually. Keeping them in a workspace file preserves the ignored `.vscode/`
+directory for personal configuration. The guide will name the relevant files
+so contributors can inspect the behavior. It will also document the
+editor-independent root commands so contributors are not required to use VS
+Code. `README.md` will add the one-time schema step to the short bootstrap path,
+while `examples/README.md` will explain the source-versus-published schema
+distinction where example authors encounter it.
 
 ### Publish only from stable release events
 
@@ -281,7 +283,7 @@ schema.
 ### Affected areas and downstream consumers
 
 - Root `package.json` schema-generation scripts.
-- `.vscode/settings.json` and, if useful, `.vscode/tasks.json`.
+- `genome-spy.code-workspace` shared settings and schema-generation task.
 - GenomeSpy `$schema` declarations in `examples/core`, `examples/docs`, and
   `examples/app`.
 - `README.md` bootstrap instructions and `CONTRIBUTING.md` editor setup,

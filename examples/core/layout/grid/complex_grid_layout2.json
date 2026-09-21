@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Nested grid with shared axes",
     "Tests nested concatenation with shared x scales and axes."

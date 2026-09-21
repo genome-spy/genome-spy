@@ -1,5 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": [
     "Point and interval selection union",
     "Uses a nominal color scale while either a point selection or interval brush is active."
