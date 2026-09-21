@@ -73,29 +73,17 @@ Core specification:
 SNIPPET grammar/core-schema-spec.json
 
 Use the `@genome-spy/app` schema instead for [sample collection
-specifications](../sample-collections/index.md), using the corresponding
-`https://genomespy.app/schema/app/v<major>.json` URL. The major-version URL is
-recommended for normal use: compatible schema improvements are published at
-the same URL, while a new major remains opt-in. Minor-version and exact-version
-URLs are also available as `v<major>.<minor>.json` and
-`v<major>.<minor>.<patch>.json` when a project needs tighter reproducibility.
+specifications](../sample-collections/index.md):
+`https://genomespy.app/schema/app/v<major>.json`. Major-version URLs are
+recommended because they follow compatible releases. Minor
+(`v1.2.json`) and exact (`v1.2.3.json`) URLs are available when tighter
+reproducibility is needed. Update the URL when upgrading to a new major version;
+for example, change `v0.json` to `v1.json` when upgrading from 0.x to 1.x.
+Schemas are also available from jsDelivr and unpkg.
 
-The schema files are also included in the npm packages and can be loaded from
-jsDelivr. Existing unversioned jsDelivr and unpkg URLs remain supported, but
-they follow the selected npm package version rather than GenomeSpy's public
-major-version policy. The Playground configures the current Core development
-schema automatically, including when a spec uses its current major-version URL.
-
-During the remaining 0.x releases, the `v0.json` alias follows the compatible
-late-v0 grammar used to prepare GenomeSpy 1.0. When upgrading the runtime from
-0.x to 1.x, update `v0.json` to `v1.json` as well. The 1.0 grammar remains
-compatible with late v0, but additions made during 1.x are exposed only by the
-v1 schema.
-
-The inline examples in this documentation omit `$schema` to keep them concise.
-Schema validation checks the structure and configuration values of a
-specification, but it cannot verify external resources, the existence of data
-fields, or expression behavior.
+The Playground selects the Core schema automatically, and inline documentation
+examples omit `$schema`. Schema validation cannot verify external resources,
+data fields, or expression behavior.
 
 ## Unit view reference
 
