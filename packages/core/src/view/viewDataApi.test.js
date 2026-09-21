@@ -256,41 +256,41 @@ test("non-cloneable returned values reject without modifying source data", async
     expect(datum.callback).toBe(callback);
 });
 
-test.each(["A", "B"])(
-    "reads only one collected facet batch (second group: %s)",
-    async (group) => {
-        // The sample encoding groups the terminal collector through normal dataflow.
-        const { view } = await createHeadlessEngine({
-            name: "track",
-            data: {
-                values: [
-                    { x: 1, group: "A" },
-                    { x: 2, group },
-                ],
-            },
-            mark: "point",
-            encoding: {
-                x: { field: "x", type: "quantitative" },
-                sample: { field: "group" },
-            },
-        });
-        const handle = createViewMutationApi({ viewRoot: view }).get({
-            view: "track",
-            scope: [],
-        });
-        expect(handle.describe().dataReady).toBe(true);
-        if (group === "A") {
-            expect(handle.readData({ limit: 2 }).rows).toEqual([
-                { x: 1, group: "A" },
-                { x: 2, group: "A" },
-            ]);
-        } else {
-            expect(() => handle.readData({ limit: 1 })).toThrow(
-                "Faceted data reads are not supported"
-            );
-        }
-    }
-);
+/** @param {string[]} groups */
+async function createFacetedTrack(groups) {
+    // The sample encoding groups the terminal collector through normal dataflow.
+    const { view } = await createHeadlessEngine({
+        name: "track",
+        data: {
+            values: groups.map((group, index) => ({ x: index + 1, group })),
+        },
+        mark: "point",
+        encoding: {
+            x: { field: "x", type: "quantitative" },
+            sample: { field: "group" },
+        },
+    });
+
+    return createViewMutationApi({ viewRoot: view }).root();
+}
+
+test("reads a single facet batch", async () => {
+    const handle = await createFacetedTrack(["A", "A"]);
+
+    expect(handle.describe().dataReady).toBe(true);
+    expect(handle.readData({ limit: 2 }).rows).toEqual([
+        { x: 1, group: "A" },
+        { x: 2, group: "A" },
+    ]);
+});
+
+test("rejects multiple facet batches", async () => {
+    const handle = await createFacetedTrack(["A", "B"]);
+
+    expect(() => handle.readData({ limit: 1 })).toThrow(
+        "Faceted data reads are not supported"
+    );
+});
 
 /** @type {[string, (buffer: SharedArrayBuffer) => unknown][]} */
 const sharedMemoryCases = [
