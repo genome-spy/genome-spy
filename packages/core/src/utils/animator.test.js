@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, test, vi } from "vitest";
-import Animator, {
-    makeLerpSmoother,
-    smoothToTarget,
-} from "./animator.js";
+import Animator, { makeLerpSmoother } from "./animator.js";
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -52,14 +49,6 @@ describe("Animator", () => {
         pendingCallback?.(performance.now());
 
         expect(render).not.toHaveBeenCalled();
-    });
-});
-
-describe("smoothToTarget", () => {
-    test("covers half of the remaining distance per half-life", () => {
-        expect(smoothToTarget(2, 10, 0, 100)).toBe(2);
-        expect(smoothToTarget(2, 10, 100, 100)).toBe(6);
-        expect(smoothToTarget(2, 10, 200, 100)).toBe(8);
     });
 });
 

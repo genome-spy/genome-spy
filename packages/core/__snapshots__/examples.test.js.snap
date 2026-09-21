@@ -14492,7 +14492,7 @@ exports[`shared examples > initializes examples/docs/grammar/transform/displace2
           {
             "baseUrl": "examples/",
             "children": [],
-            "name": "layer0",
+            "name": "scatterplot",
             "type": "UnitView",
           },
           {
@@ -14501,17 +14501,17 @@ exports[`shared examples > initializes examples/docs/grammar/transform/displace2
               {
                 "baseUrl": "examples/",
                 "children": [],
-                "name": "Leader lines",
+                "name": "leader-lines",
                 "type": "UnitView",
               },
               {
                 "baseUrl": "examples/",
                 "children": [],
-                "name": "Labels",
+                "name": "labels",
                 "type": "UnitView",
               },
             ],
-            "name": "layer1",
+            "name": "labels-and-leaders",
             "type": "LayerView",
           },
         ],

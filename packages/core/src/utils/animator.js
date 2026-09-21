@@ -116,21 +116,6 @@ export default class Animator {
 }
 
 /**
- * Moves a scalar towards a target using frame-rate-independent exponential
- * smoothing.
- *
- * Based on: https://twitter.com/FreyaHolmer/status/1757836988495847568
- *
- * @param {number} current
- * @param {number} target
- * @param {number} elapsed Time since the previous update, in milliseconds
- * @param {number} halfLife Time until half of the remaining distance is covered
- */
-export function smoothToTarget(current, target, elapsed, halfLife) {
-    return target + (current - target) * Math.pow(2, -elapsed / halfLife);
-}
-
-/**
  * Returns a lerp smoother that animates a value towards a target value. Lerp smoothing
  * is conceptually similar to easing, but can be used when the current and target
  * values are not known in advance.
@@ -160,6 +145,19 @@ export function makeLerpSmoother(
     let target = current;
 
     /**
+     * Smoother for a scalar.
+     * Based on: https://twitter.com/FreyaHolmer/status/1757836988495847568
+     *
+     * @param {number} current
+     * @param {number} target
+     * @param {number} tD
+     * @param {number} halfLife
+     */
+    function lerpSmooth(current, target, tD, halfLife) {
+        return target + (current - target) * Math.pow(2, -tD / halfLife);
+    }
+
+    /**
      * @param {number} [timestamp]
      */
     function smoothUpdate(timestamp) {
@@ -173,7 +171,7 @@ export function makeLerpSmoother(
 
         for (const key of /** @type {(keyof T)[]} */ (Object.keys(target))) {
             current[key] = /** @type {T[keyof T]}*/ (
-                smoothToTarget(current[key], target[key], tD, halfLife)
+                lerpSmooth(current[key], target[key], tD, halfLife)
             );
         }
 
@@ -238,7 +236,7 @@ export function makeLerpSmoother(
     return setTarget;
 }
 
-export function getCurrentTimelineTime() {
+function getCurrentTimelineTime() {
     const time = globalThis.document?.timeline?.currentTime;
     return typeof time === "number" ? time : performance.now();
 }
