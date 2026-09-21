@@ -92,6 +92,8 @@ The documentation deployment publishes Core and App schemas only for a stable
 GitHub release. It writes immutable exact files and updates the matching minor
 and major aliases under `https://genomespy.app/schema/`. Manual documentation
 deployments and prereleases do not change the public schema tree.
+Manual deployments stop before updating the site if the current Core or App
+major has no published alias yet.
 
 Before advancing a major alias, the release job validates compatible examples
 from the currently deployed documentation against the new schema. A failure

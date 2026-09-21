@@ -6,6 +6,7 @@ import {
     advancesMajorAlias,
     publishSchema,
     validatePreviousExamples,
+    verifyPublishedMajorAlias,
 } from "../../scripts/schema-publication.mjs";
 
 /** @type {string[]} */
@@ -173,6 +174,43 @@ describe("schema release publication", () => {
                 version: "2.0.0",
             })
         ).resolves.toBe(true);
+    });
+
+    test("requires published current-major aliases for manual deployments", async () => {
+        const workspace = await createTemporaryDirectory();
+        const siteDir = path.join(workspace, "site");
+        const schemaPath = path.join(workspace, "schema.json");
+        await writeFile(schemaPath, '{"title":"Published"}');
+
+        await expect(
+            verifyPublishedMajorAlias({
+                siteDir,
+                library: "core",
+                version: "1.0.0-next.1",
+            })
+        ).rejects.toThrow("before its stable schema alias is published");
+
+        await publishSchema({
+            siteDir,
+            library: "core",
+            version: "1.0.0",
+            schemaPath,
+        });
+
+        await expect(
+            verifyPublishedMajorAlias({
+                siteDir,
+                library: "core",
+                version: "1.1.0-next.1",
+            })
+        ).resolves.toBeUndefined();
+        await expect(
+            verifyPublishedMajorAlias({
+                siteDir,
+                library: "core",
+                version: "2.0.0-next.1",
+            })
+        ).rejects.toThrow("before its stable schema alias is published");
     });
 
     test("checks compatible previous examples before aliases advance", async () => {

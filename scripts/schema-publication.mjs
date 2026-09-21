@@ -85,6 +85,49 @@ export async function advancesMajorAlias(options) {
 }
 
 /**
+ * Verify that a manual documentation deployment can refer to an already
+ * published major alias without changing the public schema tree.
+ *
+ * @param {{
+ *   siteDir: string,
+ *   library: "core" | "app",
+ *   version: string,
+ * }} options
+ */
+export async function verifyPublishedMajorAlias(options) {
+    const { siteDir, library, version } = options;
+    const major = parseVersionMajor(version);
+    const schemaDir = path.join(siteDir, "schema", library);
+    const alias = `v${major}`;
+    const aliasPath = path.join(schemaDir, alias + ".json");
+    const manifestPath = path.join(schemaDir, "manifest.json");
+
+    if (!(await exists(aliasPath)) || !(await exists(manifestPath))) {
+        throw new Error(
+            `Cannot deploy ${library} v${major} documentation before its stable schema alias is published`
+        );
+    }
+
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    const targetVersion = manifest.aliases[alias];
+    if (!targetVersion || parseStableVersion(targetVersion).major !== major) {
+        throw new Error(
+            `Published ${library} ${alias} schema alias is missing from its manifest`
+        );
+    }
+
+    const aliasContent = await readFile(aliasPath);
+    const exactContent = await readFile(
+        path.join(schemaDir, `v${targetVersion}.json`)
+    );
+    if (!aliasContent.equals(exactContent)) {
+        throw new Error(
+            `Published ${library} ${alias} schema alias does not match its manifest`
+        );
+    }
+}
+
+/**
  * Validate compatible examples from the currently deployed documentation
  * before an alias advances. A v0 corpus is also checked for the first v1
  * release because GenomeSpy explicitly promises that transition is compatible.
@@ -270,6 +313,21 @@ function compareAliases(a, b) {
     return (
         left[0] - right[0] || left.length - right.length || left[1] - right[1]
     );
+}
+
+/**
+ * Accept prerelease package versions here because the check only selects an
+ * already published major; it does not publish the prerelease schema.
+ *
+ * @param {string} version
+ */
+function parseVersionMajor(version) {
+    const match = /^(0|[1-9]\d*)\./.exec(version);
+    if (!match) {
+        throw new Error("Invalid package version: " + version);
+    }
+
+    return Number(match[1]);
 }
 
 /**
