@@ -66,20 +66,28 @@ model.
 
 ## Schema-assisted editing
 
-GenomeSpy publishes a JSON Schema that JSON-aware editors can use for
-completion, hover documentation, and validation. Add `$schema` to the root of a
-Core specification:
+Misspelled properties, invalid values, and settings in the wrong place are easy
+to overlook in a specification. A JSON-aware editor can catch many of these
+errors as you type. It can also suggest available properties and show their
+documentation.
+
+A schema is a machine-readable description of the properties and values that a
+specification accepts. Enable these editor features by adding `$schema` to the
+root of a Core specification:
 
 SNIPPET grammar/core-schema-spec.json
 
-Use the `@genome-spy/app` schema instead for [sample collection
-specifications](../sample-collections/index.md):
-`https://genomespy.app/schema/app/v<major>.json`. Major-version URLs are
-recommended because they follow compatible releases. Minor
-(`v1.2.json`) and exact (`v1.2.3.json`) URLs are available when tighter
-reproducibility is needed. Update the URL when upgrading to a new major version;
-for example, change `v0.json` to `v1.json` when upgrading from 0.x to 1.x.
+Major-version URLs are recommended because they follow compatible releases.
+Minor (`v1.2.json`) and exact (`v1.2.3.json`) URLs are available when tighter
+reproducibility is needed. Update the URL when upgrading to a new major version.
 Schemas are also available from jsDelivr and unpkg.
+
+GenomeSpy App specifications use a different schema; see [Visualizing Sample
+Collections](../sample-collections/visualizing.md#schema-assisted-editing).
+
+VS Code supports JSON schemas without an extension. Its [JSON
+documentation](https://code.visualstudio.com/docs/languages/json#_json-schemas-and-settings)
+also explains how to associate schemas through workspace or user settings.
 
 The Playground selects the Core schema automatically, and inline documentation
 examples omit `$schema`. Schema validation cannot verify external resources,

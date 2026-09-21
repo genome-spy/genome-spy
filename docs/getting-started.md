@@ -15,6 +15,10 @@ genomic data in web browsers. To visualize data with GenomeSpy, you need to:
    the data
 4. Open the web page with your web browser
 
+When writing a specification as JSON, turn on [editor suggestions and error
+checking](grammar/index.md#schema-assisted-editing). It catches many common
+mistakes as you type and shows the available properties and their documentation.
+
 You can get started with GenomeSpy using the Playground app, Python, Observable
 notebooks, or by embedding GenomeSpy on HTML pages. More advanced users can use
 GenomeSpy as a visualization library in web applications.
