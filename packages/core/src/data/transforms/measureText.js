@@ -41,7 +41,7 @@ export default class MeasureTextTransform extends Transform {
         this.handle = (datum) => {
             const text = accessor(datum);
             if (text !== undefined) {
-                datum[as] = this.font.metrics.measureWidth(text, size);
+                datum[as] = this.fontMeasurement.measureWidth(text, size);
             } else {
                 datum[as] = 0;
             }
@@ -50,9 +50,9 @@ export default class MeasureTextTransform extends Transform {
     }
 
     initialize() {
-        const fontManager = this.paramRuntimeProvider.context.fontManager;
+        const textMetrics = this.paramRuntimeProvider.context.textMetrics;
         // Resolve the font during flow initialization so viewDataInit's global
         // font wait also covers measureText before any rows are propagated.
-        this.font = requestFont(fontManager, this.params);
+        this.fontMeasurement = requestFont(textMetrics, this.params);
     }
 }

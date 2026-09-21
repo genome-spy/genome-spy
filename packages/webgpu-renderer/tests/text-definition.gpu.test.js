@@ -14,18 +14,17 @@ test("text mark indexes logical series from glyph instances", async ({
             { createRenderer },
             { textMark },
             { linearScale },
-            { default: getMetrics },
+            { createTrueTypeFont },
         ] = await Promise.all([
             import("/src/index.js"),
             import("/src/marks/text.js"),
             import("/src/scales/linear.js"),
-            import("/src/fonts/bmFontMetrics.js"),
+            import("/src/fonts/trueTypeFont.js"),
         ]);
-        const fontJson = await fetch("/src/fonts/Lato-Regular.json").then(
-            (response) => response.json()
-        );
-        const bitmap = await createImageBitmap(
-            new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
+        const font = createTrueTypeFont(
+            await fetch("/src/fonts/DefaultFont.ttf").then((response) =>
+                response.arrayBuffer()
+            )
         );
 
         const canvas = document.createElement("canvas");
@@ -38,7 +37,7 @@ test("text mark indexes logical series from glyph instances", async ({
         renderer.device.pushErrorScope("validation");
         const mark = renderer.createMark(textMark, {
             count: 2,
-            fontResource: { metrics: getMetrics(fontJson), bitmap },
+            font,
             channels: {
                 uniqueId: {
                     data: new Uint32Array([41, 42]),
@@ -83,4 +82,580 @@ test("text mark indexes logical series from glyph instances", async ({
     expect(result.validationError).toBeNull();
     expect(result.before).toHaveLength(2);
     expect(result.after).toHaveLength(2);
+});
+
+test("text mark renders supersampled RGBA16F TrueType outlines", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 2 });
+        renderer.device.pushErrorScope("validation");
+        const mark = renderer.createMark(textMark, {
+            count: 1,
+            font,
+            fontSize: 32,
+            channels: {
+                uniqueId: { value: 71, type: "u32" },
+                text: { value: "AV" },
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 32 },
+                fill: { value: [0.2, 0.5, 0.9, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 1.5 },
+            },
+        });
+        renderer.render({ draws: [{ mark }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        let hit = null;
+        for (let y = 16; y <= 48 && hit === null; y += 4) {
+            for (let x = 8; x <= 56 && hit === null; x += 4) {
+                hit = await renderer.pick(x, y);
+            }
+        }
+        const program = renderer._marks.get(mark.markId);
+        const atlas = program._extraTextures.get("fontAtlas");
+        const validationError = await renderer.device.popErrorScope();
+        renderer.destroy();
+        canvas.remove();
+        return {
+            hit,
+            atlasFormat: atlas.format,
+            validationError: validationError?.message ?? null,
+        };
+    });
+
+    expect(result).toEqual({
+        hit: 71,
+        atlasFormat: "rgba16float",
+        validationError: null,
+    });
+});
+
+test("TrueType text renders label-major outline and SDF shadow layers", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const dpr = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = 128 * dpr;
+        canvas.height = 128 * dpr;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 128, dpr });
+        renderer.device.pushErrorScope("validation");
+        const mark = renderer.createMark(textMark, {
+            font,
+            fontSize: 48,
+            channels: {
+                uniqueId: { value: 91, type: "u32" },
+                text: { value: "H" },
+                x: { value: 58, scale: identityScale() },
+                y: { value: 58, scale: identityScale() },
+                size: { value: 48 },
+                fill: { value: [0.2, 0.5, 0.9, 1] },
+                stroke: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 8 },
+                shadowColor: { value: [0.9, 0.2, 0.2, 1] },
+                shadowOpacity: { value: 0.8 },
+                shadowOffsetX: { value: 12 },
+                shadowOffsetY: { value: 8 },
+                shadowBlur: { value: 4 },
+            },
+        });
+        renderer.render({
+            draws: [{ mark }],
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+        });
+        await renderer.device.queue.onSubmittedWorkDone();
+
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const context = new OffscreenCanvas(
+            canvas.width,
+            canvas.height
+        ).getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        ).data;
+        bitmap.close();
+
+        const findPixel = (predicate) => {
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const offset = (y * canvas.width + x) * 4;
+                    if (predicate(pixels.subarray(offset, offset + 4))) {
+                        return [x / dpr, y / dpr];
+                    }
+                }
+            }
+            return null;
+        };
+        const fillPixel = findPixel(
+            ([r, g, b, a]) => a > 200 && b > r + 80 && b > g + 40
+        );
+        const outlinePixel = findPixel(
+            ([r, g, b, a]) => a > 200 && r < 24 && g < 24 && b < 24
+        );
+        const shadowPixel = findPixel(
+            ([r, g, b, a]) => a > 32 && r > g + 70 && r > b + 70
+        );
+        const program = renderer._marks.get(mark.markId);
+        const picks = await Promise.all(
+            [fillPixel, outlinePixel, shadowPixel].map((position) =>
+                position ? renderer.pick(position[0], position[1]) : null
+            )
+        );
+        const validationError = await renderer.device.popErrorScope();
+        const drawCount = program.drawCount;
+        const expandedInstances = program.resolveDrawRange(0, 1).instanceCount;
+        const hasRenderItems = program._extraBuffers.has("renderItems");
+        renderer.destroy();
+        canvas.remove();
+        return {
+            found: [fillPixel, outlinePixel, shadowPixel].map(Boolean),
+            picks,
+            drawCount,
+            expandedInstances,
+            hasRenderItems,
+            validationError: validationError?.message ?? null,
+        };
+    });
+
+    expect(result).toEqual({
+        found: [true, true, true],
+        picks: [91, null, null],
+        drawCount: 1,
+        expandedInstances: 3,
+        hasRenderItems: true,
+        validationError: null,
+    });
+});
+
+test("TrueType bottom baseline places glyph ink above its anchor", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const dpr = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = 64 * dpr;
+        canvas.height = 64 * dpr;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr });
+        const mark = renderer.createMark(textMark, {
+            font,
+            fontSize: 32,
+            channels: {
+                text: { value: "H" },
+                x: { value: 32, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 32 },
+                baseline: { value: 3, type: "u32" },
+                fill: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 0 },
+            },
+        });
+        renderer.render({
+            draws: [{ mark }],
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+        });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const context = new OffscreenCanvas(
+            canvas.width,
+            canvas.height
+        ).getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        ).data;
+        let lastInkRow = -1;
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                if (pixels[(y * canvas.width + x) * 4 + 3] > 16) {
+                    lastInkRow = y;
+                    break;
+                }
+            }
+        }
+        bitmap.close();
+        renderer.destroy();
+        canvas.remove();
+        return {
+            lastInkY: lastInkRow / dpr,
+            expectedBottomY: 32 + (font.descender * 32) / font.unitsPerEm,
+        };
+    });
+
+    expect(Math.abs(result.lastInkY - result.expectedBottomY)).toBeLessThan(1);
+});
+
+test("TrueType logo letters fit their visible outlines to the cell", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const bounds = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 128, dpr: 1 });
+        const mark = renderer.createMark(textMark, {
+            font,
+            fontSize: 32,
+            logoLetters: true,
+            channels: {
+                text: { value: "H" },
+                x: { value: 16, scale: identityScale() },
+                x2: { value: 112, scale: identityScale() },
+                y: { value: 112, scale: identityScale() },
+                y2: { value: 16, scale: identityScale() },
+                size: { value: 32 },
+                fill: { value: [0, 0, 0, 1] },
+                strokeWidth: { value: 0 },
+            },
+        });
+        renderer.render({
+            draws: [{ mark }],
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+        });
+        await renderer.device.queue.onSubmittedWorkDone();
+        const bitmap = await createImageBitmap(
+            await (await fetch(canvas.toDataURL("image/png"))).blob()
+        );
+        const context = new OffscreenCanvas(128, 128).getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(0, 0, 128, 128).data;
+        let left = 128;
+        let top = 128;
+        let right = -1;
+        let bottom = -1;
+        for (let y = 0; y < 128; y++) {
+            for (let x = 0; x < 128; x++) {
+                if (pixels[(y * 128 + x) * 4 + 3] > 16) {
+                    left = Math.min(left, x);
+                    top = Math.min(top, y);
+                    right = Math.max(right, x);
+                    bottom = Math.max(bottom, y);
+                }
+            }
+        }
+        bitmap.close();
+        renderer.destroy();
+        canvas.remove();
+        return { left, top, right, bottom };
+    });
+
+    expect(bounds.left).toBeGreaterThanOrEqual(12);
+    expect(bounds.top).toBeGreaterThanOrEqual(12);
+    expect(bounds.right).toBeLessThanOrEqual(115);
+    expect(bounds.bottom).toBeLessThanOrEqual(115);
+    expect(bounds.right - bounds.left).toBeGreaterThanOrEqual(94);
+    expect(bounds.bottom - bounds.top).toBeGreaterThanOrEqual(94);
+    expect(bounds.right - bounds.left).toBeLessThanOrEqual(102);
+    expect(bounds.bottom - bounds.top).toBeLessThanOrEqual(102);
+});
+
+test("outline text applies fill gamma without a zero-width stroke", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+
+        /**
+         * @param {number[]} fill
+         * @param {number[]} stroke
+         */
+        const render = async (fill, stroke) => {
+            const dpr = 2;
+            const canvas = document.createElement("canvas");
+            canvas.width = 96 * dpr;
+            canvas.height = 64 * dpr;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width: 96, height: 64, dpr });
+            const mark = renderer.createMark(textMark, {
+                font,
+                fontSize: 40,
+                channels: {
+                    text: { value: "M+" },
+                    x: { value: 48, scale: identityScale() },
+                    y: { value: 32, scale: identityScale() },
+                    size: { value: 40 },
+                    fill: { value: fill },
+                    stroke: { value: stroke },
+                    strokeWidth: { value: 0 },
+                },
+            });
+            renderer.render({
+                draws: [{ mark }],
+                clearColor: { r: 0, g: 0, b: 0, a: 0 },
+            });
+            await renderer.device.queue.onSubmittedWorkDone();
+            const bitmap = await createImageBitmap(
+                await (await fetch(canvas.toDataURL("image/png"))).blob()
+            );
+            const copy = new OffscreenCanvas(canvas.width, canvas.height);
+            const context = copy.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            const pixels = Array.from(
+                context.getImageData(0, 0, canvas.width, canvas.height).data
+            );
+            bitmap.close();
+            renderer.destroy();
+            canvas.remove();
+            return pixels;
+        };
+
+        const blue = [0.1, 0.4, 0.9, 1];
+        const redStroke = await render(blue, [1, 0, 0, 1]);
+        const greenStroke = await render(blue, [0, 1, 0, 1]);
+        const whiteFill = await render([1, 1, 1, 1], [0, 0, 0, 1]);
+        const blackFill = await render([0, 0, 0, 1], [0, 0, 0, 1]);
+        let maximumDifference = 0;
+        for (let index = 0; index < redStroke.length; index++) {
+            maximumDifference = Math.max(
+                maximumDifference,
+                Math.abs(redStroke[index] - greenStroke[index])
+            );
+        }
+        let whiteAlpha = 0;
+        let blackAlpha = 0;
+        for (let index = 3; index < whiteFill.length; index += 4) {
+            whiteAlpha += whiteFill[index];
+            blackAlpha += blackFill[index];
+        }
+        return { maximumDifference, whiteAlpha, blackAlpha };
+    });
+
+    expect(result.maximumDifference).toBe(0);
+    expect(result.whiteAlpha).toBeGreaterThan(result.blackAlpha);
+});
+
+test("TrueType atlases grow across marks and accept new replacement glyphs", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createTrueTypeFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/src/fonts/trueTypeFont.js"),
+        ]);
+        const bytes = await fetch("/src/fonts/DefaultFont.ttf").then(
+            (response) => response.arrayBuffer()
+        );
+        const font = createTrueTypeFont(bytes);
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 64, dpr: 2 });
+        renderer.device.pushErrorScope("validation");
+        const first = renderer.createMark(textMark, {
+            font,
+            fontSize: 32,
+            channels: {
+                uniqueId: { value: 81, type: "u32" },
+                text: { value: "A" },
+                x: { value: 24, scale: identityScale() },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 32 },
+            },
+        });
+        const firstProgram = renderer._marks.get(first.markId);
+        const atlas = firstProgram._outlineAtlas;
+        const initialVersion = atlas.version;
+        const initialTexture = atlas.texture;
+        const aGlyph = font.getGlyph("A");
+        const initialEntry = { ...atlas.ensure([aGlyph])[0] };
+
+        const ascii = Array.from({ length: 95 }, (_, index) =>
+            String.fromCodePoint(index + 32)
+        ).join("");
+        const second = renderer.createMark(textMark, {
+            font,
+            fontSize: 20,
+            channels: {
+                text: { value: ascii },
+                x: { value: 64, scale: identityScale() },
+                y: { value: 16, scale: identityScale() },
+                size: { value: 20 },
+            },
+        });
+        const secondProgram = renderer._marks.get(second.markId);
+        const preservedEntry = atlas.ensure([aGlyph])[0];
+        const firstBoundAtlas =
+            firstProgram._extraTextures.get("fontAtlas").texture;
+        const atlasScaleEntry =
+            secondProgram._uniformBufferState.entries.get("uAtlasScale");
+        const secondAtlasScale = Array.from(
+            new Float32Array(
+                secondProgram._uniformBufferState.data,
+                atlasScaleEntry.offset,
+                2
+            )
+        );
+
+        renderer.render({ draws: [{ mark: first }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        let preservedHit = null;
+        for (let y = 16; y <= 48 && preservedHit === null; y += 2) {
+            for (let x = 8; x <= 48 && preservedHit === null; x += 2) {
+                preservedHit = await renderer.pick(x, y);
+            }
+        }
+
+        first.series.replace({ text: "Ω−" }, 1);
+        renderer.render({ draws: [{ mark: first }] });
+        await renderer.device.queue.onSubmittedWorkDone();
+        let hit = null;
+        for (let y = 16; y <= 48 && hit === null; y += 2) {
+            for (let x = 8; x <= 48 && hit === null; x += 2) {
+                hit = await renderer.pick(x, y);
+            }
+        }
+        const validationError = await renderer.device.popErrorScope();
+        const value = {
+            sharedAtlas: secondProgram._outlineAtlas === atlas,
+            grew: atlas.version > initialVersion,
+            replacedTexture: atlas.texture !== initialTexture,
+            reboundFirstMark: firstBoundAtlas === atlas.texture,
+            secondAtlasScale,
+            atlasDimensions: [atlas.width, atlas.height],
+            preservedEntry:
+                JSON.stringify(preservedEntry) === JSON.stringify(initialEntry),
+            preservedHit,
+            hit,
+            validationError: validationError?.message ?? null,
+        };
+        renderer.destroy();
+        canvas.remove();
+        return value;
+    });
+
+    expect(result).toMatchObject({
+        sharedAtlas: true,
+        grew: true,
+        replacedTexture: true,
+        reboundFirstMark: true,
+        preservedEntry: true,
+        preservedHit: 81,
+        hit: 81,
+        validationError: null,
+    });
+    expect(result.secondAtlasScale[0]).toBeCloseTo(
+        1 / result.atlasDimensions[0]
+    );
+    expect(result.secondAtlasScale[1]).toBeCloseTo(
+        1 / result.atlasDimensions[1]
+    );
 });

@@ -114,6 +114,11 @@ export default class ScaleResolution {
     /** @type {Set<ScaleResolutionMember>} The involved views */
     #members = new Set();
 
+    #disposed = false;
+
+    /** @type {Set<() => void>} */
+    #disposers = new Set();
+
     /** @type {Set<ScaleResolutionMember>} */
     #dataDomainMembers = new Set();
 
@@ -167,6 +172,12 @@ export default class ScaleResolution {
     /** @type {import("../paramRuntime/types.js").WritableParamRef<number> | undefined} */
     #configurationRef;
 
+    /** @type {import("../paramRuntime/types.js").WritableParamRef<number> | undefined} */
+    #zoomRevisionRef;
+
+    /** @type {import("../paramRuntime/types.js").ComputedParamRef<number> | undefined} */
+    #zoomLevelRef;
+
     get #runtime() {
         return (this.#paramRuntime ??= new ViewParamRuntime(
             () => this.#resolutionView.paramRuntime
@@ -186,6 +197,9 @@ export default class ScaleResolution {
         this.name = undefined;
 
         this.#hostView = hostView;
+        if (this.isExplicitlyOwned()) {
+            hostView.registerDisposer(() => this.dispose());
+        }
 
         this.#scaleManager = new ScaleInstanceManager({
             getRuntime: () => this.#runtime,
@@ -198,7 +212,9 @@ export default class ScaleResolution {
         });
 
         this.#interactionController = new ScaleInteractionController({
-            getScale: () => this.getScale(),
+            // Zoom level does not depend on the range, so an initialized scale
+            // is safe to read while its range expression is being configured.
+            getScale: () => this.#scaleManager.scale ?? this.getScale(),
             navigate: (domain, duration, renderImmediately = false) =>
                 this.#commitDomainUpdate(
                     {
@@ -229,6 +245,17 @@ export default class ScaleResolution {
             throw new Error("ScaleResolution has no members!");
         }
         return first.view;
+    }
+
+    /** Whether the host declares a typed scale independently of encodings. */
+    isExplicitlyOwned() {
+        const type =
+            this.#hostView?.spec.scales?.[
+                /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                    this.channel
+                )
+            ]?.type;
+        return !!type && type !== "null";
     }
 
     get #resolutionView() {
@@ -285,6 +312,21 @@ export default class ScaleResolution {
 
             throw this.#createParameterScopeError(match[1], error);
         }
+    }
+
+    // TODO: Replace this scale-specific traversal with generic graph cycle
+    // validation if zoom publication becomes an ordinary graph dependency.
+    /**
+     * @param {ScaleResolution} target
+     * @returns {boolean}
+     */
+    #hasZoomInputPathTo(target) {
+        if (this === target) {
+            return true;
+        }
+        return Array.from(this.#domainInputs?.zoomLevelResolutions ?? []).some(
+            (dependency) => dependency.#hasZoomInputPathTo(target)
+        );
     }
 
     /**
@@ -570,7 +612,7 @@ export default class ScaleResolution {
         }
 
         if (!adapt) {
-            if (!this.type) {
+            if (!this.type || this.#members.size === 0) {
                 this.type = type;
             } else if (type !== this.type && !isSecondaryChannel(channel)) {
                 // TODO: Revisit shared discrete positional scales when
@@ -594,10 +636,16 @@ export default class ScaleResolution {
     }
 
     #syncMembers() {
+        // Host disposal can precede its own encoding member unregistration.
+        if (this.#disposed) return;
+
         this.#invalidateOrderedMembers();
         this.#invalidateMergedScaleProps();
 
-        if (this.#scaleManager.scale && this.#members.size > 0) {
+        if (
+            this.#scaleManager.scale &&
+            (this.#members.size > 0 || this.isExplicitlyOwned())
+        ) {
             this.reconfigure();
         }
     }
@@ -726,7 +774,9 @@ export default class ScaleResolution {
                 this.#dataDomainMembers.delete(registeredMember);
                 this.#onMembersChanged();
             }
-            return removed && this.#members.size === 0;
+            return (
+                removed && this.#members.size === 0 && !this.isExplicitlyOwned()
+            );
         };
     }
 
@@ -895,7 +945,22 @@ export default class ScaleResolution {
         );
     }
 
+    /**
+     * Registers cleanup for consumers whose lifetime is bounded by this scale.
+     * @param {() => void} disposer
+     * @returns {() => void}
+     */
+    registerDisposer(disposer) {
+        this.#disposers.add(disposer);
+        return () => {
+            this.#disposers.delete(disposer);
+        };
+    }
+
     dispose() {
+        this.#disposed = true;
+        for (const disposer of this.#disposers) disposer();
+        this.#disposers.clear();
         this.#domainInputs?.dispose();
         this.#zoomExtentListeners.clear();
         this.#listeners.domain.clear();
@@ -925,7 +990,12 @@ export default class ScaleResolution {
         }
 
         const scale = this.#scaleManager.scale;
-        if (!scale || scale.type === "null" || !this.#members.size) return;
+        if (
+            !scale ||
+            scale.type === "null" ||
+            (!this.#members.size && !this.isExplicitlyOwned())
+        )
+            return;
 
         const members = new Set(
             this.#members
@@ -945,7 +1015,7 @@ export default class ScaleResolution {
         // Pass resolved participants/configuration and scope-aware readers into
         // one replaceable binding. It derives source snapshots for the owner;
         // creating it does not itself request an initial source publication.
-        this.#domainInputs = createDomainInputs({
+        const inputs = createDomainInputs({
             owner: this.#domainRuntime,
             manager: this.#scaleManager,
             props,
@@ -969,6 +1039,16 @@ export default class ScaleResolution {
             ignoreSelectionInitial: this.#ignoreSelectionInitial,
             lastVisible,
         });
+        const cycle = Array.from(inputs.zoomLevelResolutions).find(
+            (dependency) => dependency.#hasZoomInputPathTo(this)
+        );
+        if (cycle) {
+            inputs.dispose();
+            throw new Error(
+                `Scale zoom dependency cycle: ${this.channel} domain reads the zoom level of ${cycle.channel}.`
+            );
+        }
+        this.#domainInputs = inputs;
     }
 
     /**
@@ -1340,6 +1420,11 @@ export default class ScaleResolution {
                             this.#viewContext.renderImmediately(),
                         notifyDomain: () => this.#notifyListeners("domain"),
                         publishZoom: () => {
+                            if (this.#zoomRevisionRef) {
+                                this.#zoomRevisionRef.set(
+                                    this.#zoomRevisionRef.get() + 1
+                                );
+                            }
                             for (const listener of this.#zoomExtentListeners)
                                 listener();
                         },
@@ -1548,7 +1633,33 @@ export default class ScaleResolution {
      * be generalized to other quantitative channels such as color, opacity, size, etc.
      */
     getZoomLevel() {
+        if (!this.isZoomable()) {
+            return 1.0;
+        }
         return this.#interactionController.getZoomLevel();
+    }
+
+    /**
+     * Returns a stable reactive reference to the current zoom level.
+     * The producer is allocated only when an expression consumes it.
+     *
+     * @returns {import("../paramRuntime/types.js").ParamRef<number>}
+     */
+    getZoomLevelRef() {
+        if (!this.#zoomLevelRef) {
+            // TODO: Replace this revision bridge with a DomainRuntime zoom ref
+            // if the complete zoom state becomes graph-native.
+            this.#zoomRevisionRef = this.#runtime.signal(
+                "zoom publication revision",
+                0
+            );
+            this.#zoomLevelRef = this.#runtime.computed(
+                "scale zoom level",
+                [this.#zoomRevisionRef, this.getConfigurationRef()],
+                () => this.getZoomLevel()
+            );
+        }
+        return this.#zoomLevelRef;
     }
 
     /**

@@ -330,6 +330,36 @@ describe("WebGpuSurface", () => {
         expect(onRenderInvalidated).not.toHaveBeenCalled();
     });
 
+    test("recreates a retained mark when its program key changes", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {any} */ ({});
+        const definition = /** @type {any} */ ({
+            type: "point",
+            getProgramKey: (/** @type {any} */ config) => config.shape,
+        });
+        configureMockMark(mark, definition);
+
+        surface.updateMark(mark, definition, {
+            ...createConfig(0),
+            shape: "circle",
+        });
+        surface.updateMark(mark, definition, {
+            ...createConfig(0),
+            shape: "square",
+        });
+
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(2);
+        expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
+    });
+
     test("replaces logical text and position series on retained text marks", async () => {
         const container = document.createElement("div");
         const surface = new WebGpuSurface(

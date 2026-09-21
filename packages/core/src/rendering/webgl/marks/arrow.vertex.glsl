@@ -87,7 +87,8 @@ float effectiveHeadSlope(
     float stemHalfWidth,
     float configuredRHeadSlope,
     float configuredRHeadNotchSlope,
-    bool headRepeat
+    bool headRepeat,
+    bool bidirectional
 ) {
     if (
         headRepeat ||
@@ -97,7 +98,7 @@ float effectiveHeadSlope(
     }
 
     if (uHeadPlacement == HEAD_PLACEMENT_OUTSIDE) {
-        if (!uStartNotch || stemHalfWidth <= 0.0) {
+        if (bidirectional || !uStartNotch || stemHalfWidth <= 0.0) {
             return configuredRHeadSlope;
         }
 
@@ -117,10 +118,13 @@ float effectiveHeadSlope(
         return configuredRHeadSlope;
     }
 
-    float maxJoinLength = max(
+    float availableJoinLength = max(
         halfLength * 2.0 - uMinStemLength,
         0.0
     );
+    float maxJoinLength = bidirectional
+        ? availableJoinLength * 0.5
+        : availableJoinLength;
     float configuredJoinLength = triangleHeadStemJoinLength(
         stemHalfWidth,
         headHalfWidth,
@@ -172,9 +176,13 @@ float getOutsideHeadOffset(
 vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
     // Expansion is stored as negative/positive arrow-axis growth. In the
     // canonical reverse direction, the head is on the negative side.
-    return direction == DIRECTION_REVERSE
-        ? vec2(outsideHeadOffset, 0.0)
-        : vec2(0.0, outsideHeadOffset);
+    if (direction == DIRECTION_REVERSE) {
+        return vec2(outsideHeadOffset, 0.0);
+    } else if (direction == DIRECTION_FORWARD) {
+        return vec2(0.0, outsideHeadOffset);
+    } else {
+        return vec2(outsideHeadOffset);
+    }
 }
 
 void main(void) {
@@ -189,6 +197,7 @@ void main(void) {
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
     );
     float direction = getScaled_direction();
+    bool bidirectional = direction == DIRECTION_BOTH;
 
     vec2 segmentInPixels = (b - a) * uViewportSize;
     float segmentLength = length(segmentInPixels);
@@ -210,13 +219,15 @@ void main(void) {
         : 0.0;
     float configuredRHeadSlope = 1.0 / uHeadSlope;
     float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
+    bool headRepeat = uHeadSpacing >= 0.0 && !bidirectional;
     float rHeadSlope = effectiveHeadSlope(
         segmentLength * 0.5,
         headHalfWidth,
         stemHalfWidth,
         configuredRHeadSlope,
         configuredRHeadNotchSlope,
-        uHeadSpacing >= 0.0
+        headRepeat,
+        bidirectional
     );
     float rHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
         ? rHeadSlope
@@ -272,7 +283,7 @@ void main(void) {
     vHeadStrokeWidth = headStrokeWidth;
     vRHeadSlope = rHeadSlope;
     vRHeadNotchSlope = rHeadNotchSlope;
-    vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
+    vRStartNotchSlope = uStartNotch && !bidirectional ? vRHeadSlope : 0.0;
     vDirection = direction;
     vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
@@ -280,7 +291,7 @@ void main(void) {
         vHeadStrokeWidth,
         vHalfStrokeWidth
     );
-    vHeadSpacing = uHeadSpacing >= 0.0 ? uHeadSpacing * arrowSize : -1.0;
+    vHeadSpacing = headRepeat ? uHeadSpacing * arrowSize : -1.0;
     vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 
     gl_Position = unitToNdc(p);

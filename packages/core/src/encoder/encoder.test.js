@@ -110,6 +110,27 @@ describe("shape channel", () => {
     });
 });
 
+describe("direction channel", () => {
+    test("maps the stable direction codes", () => {
+        const mapper = getDiscreteRangeMapper("direction");
+
+        expect(getDiscreteRange("direction")).toEqual([
+            "forward",
+            "reverse",
+            "both",
+        ]);
+        expect(mapper("forward")).toBe(0);
+        expect(mapper("reverse")).toBe(1);
+        expect(mapper("both")).toBe(2);
+    });
+
+    test("rejects unknown directions", () => {
+        expect(() => getDiscreteRangeMapper("direction")("sideways")).toThrow(
+            'Invalid value for "direction" channel: sideways'
+        );
+    });
+});
+
 describe("Conditional encoder with a field and a conditional value", () => {
     const pm = new ViewParamRuntime();
     const setter = pm.allocateSetter("p", createSinglePointSelection(null));

@@ -365,7 +365,8 @@ export interface ZoomParams {
      * fixed boundaries. Locus scales do not support unbounded zoom.
      *
      * With an unbounded extent, the initial scale domain is used as the
-     * reference for the `zoomLevel` expression parameter.
+     * reference for the `zoomLevel()` expression helper and its
+     * channel-specific form, such as `zoomLevel("x")`.
      *
      * __Default value:__ The initial scale domain, except the whole genome for
      * locus scales.

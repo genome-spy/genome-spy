@@ -17,6 +17,8 @@ import {
  * @prop {ArrowPoint} tip
  * @prop {ArrowPoint} tangent
  * @prop {ArrowPoint} normal
+ * @prop {ArrowPoint} reverseTangent
+ * @prop {ArrowPoint} reverseNormal
  * @prop {number} size
  * @prop {number} stemHalfWidth
  * @prop {number} headHalfWidth
@@ -27,6 +29,7 @@ import {
  * @prop {number} repeatSpacing
  * @prop {number} headRepeatFootprint
  * @prop {number} geometryLength
+ * @prop {boolean} bidirectional
  * @prop {boolean} stemContainsHead
  * @prop {"triangle" | "open"} renderedHeadShape
  * @prop {boolean} headShapeFallback
@@ -88,18 +91,19 @@ export function visitArrowInstances(mark, properties, options, visitor) {
                       skeleton.normal,
                       skeleton.stemHalfWidth,
                       skeleton.rHeadSlope,
-                      properties.startNotch
+                      properties.startNotch && !skeleton.bidirectional,
+                      skeleton.bidirectional
                   )
                 : null;
             const polygons = stemPolygon ? [stemPolygon] : [];
-            visitArrowHeadPositions(skeleton, (x, y) => {
+            visitArrowHeadPositions(skeleton, (x, y, tangent, normal) => {
                 const repeatedTip = { x, y };
                 polygons.push(
                     skeleton.renderedHeadShape == "open"
                         ? createOpenHeadPolygon(
                               repeatedTip,
-                              skeleton.tangent,
-                              skeleton.normal,
+                              tangent,
+                              normal,
                               skeleton.headHalfWidth,
                               skeleton.rHeadSlope,
                               skeleton.rHeadNotchSlope,
@@ -107,8 +111,8 @@ export function visitArrowInstances(mark, properties, options, visitor) {
                           )
                         : createTriangleHeadPolygon(
                               repeatedTip,
-                              skeleton.tangent,
-                              skeleton.normal,
+                              tangent,
+                              normal,
                               skeleton.headHalfWidth,
                               skeleton.rHeadSlope,
                               skeleton.rHeadNotchSlope
@@ -178,6 +182,8 @@ export function visitArrowSkeletonInstances(
         tip: { x: 0, y: 0 },
         tangent: { x: 0, y: 0 },
         normal: { x: 0, y: 0 },
+        reverseTangent: { x: 0, y: 0 },
+        reverseNormal: { x: 0, y: 0 },
         size: 0,
         stemHalfWidth: 0,
         headHalfWidth: 0,
@@ -188,6 +194,7 @@ export function visitArrowSkeletonInstances(
         repeatSpacing: Infinity,
         headRepeatFootprint: 0,
         geometryLength: 0,
+        bidirectional: false,
         stemContainsHead: false,
         renderedHeadShape: "triangle",
         headShapeFallback: false,
@@ -197,9 +204,11 @@ export function visitArrowSkeletonInstances(
     for (const datum of data) {
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
-        const reverse = encodeString(encoders.direction, datum) == "reverse";
-        const tailX = reverse ? xRange[1] : xRange[0];
-        const tailY = reverse ? yRange[1] : yRange[0];
+        const direction = resolveDirection(encoders.direction, datum);
+        const reverse = direction == "reverse";
+        const bidirectional = direction == "both";
+        let tailX = reverse ? xRange[1] : xRange[0];
+        let tailY = reverse ? yRange[1] : yRange[0];
         const endpointX = reverse ? xRange[0] : xRange[1];
         const endpointY = reverse ? yRange[0] : yRange[1];
         const segmentX = endpointX - tailX;
@@ -223,11 +232,12 @@ export function visitArrowSkeletonInstances(
             stemHalfWidth: properties.stem ? stemHalfWidth : -stemHalfWidth,
             configuredRHeadSlope: properties.configuredRHeadSlope,
             configuredRHeadNotchSlope: properties.configuredRHeadNotchSlope,
-            headRepeat: properties.repeatHeads,
+            headRepeat: properties.repeatHeads && !bidirectional,
             headPlacement: properties.headPlacement,
-            startNotch: properties.startNotch,
+            startNotch: properties.startNotch && !bidirectional,
             minStemLength: properties.minStemLength,
             headShape: properties.headShape,
+            bidirectional,
         });
         const rHeadNotchSlope =
             properties.headShape == "open"
@@ -245,6 +255,10 @@ export function visitArrowSkeletonInstances(
                 : 0;
         const tipX = endpointX + tangentX * outsideHeadOffset;
         const tipY = endpointY + tangentY * outsideHeadOffset;
+        if (bidirectional) {
+            tailX -= tangentX * outsideHeadOffset;
+            tailY -= tangentY * outsideHeadOffset;
+        }
         const headAxisLength = headHalfWidth * rHeadSlope;
         const headNormalLength = Math.hypot(headHalfWidth, headAxisLength);
         const openHeadAxisInset =
@@ -255,6 +269,12 @@ export function visitArrowSkeletonInstances(
             tipX - tangentX * (headAxisLength + openHeadAxisInset);
         const headBackY =
             tipY - tangentY * (headAxisLength + openHeadAxisInset);
+        const tailHeadBackX = bidirectional
+            ? tailX + tangentX * (headAxisLength + openHeadAxisInset)
+            : tailX;
+        const tailHeadBackY = bidirectional
+            ? tailY + tangentY * (headAxisLength + openHeadAxisInset)
+            : tailY;
         const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
         const transversePadding =
             Math.max(properties.stem ? stemHalfWidth : 0, headHalfWidth) +
@@ -262,10 +282,10 @@ export function visitArrowSkeletonInstances(
         if (
             !intersectsBounds(
                 visibleBounds,
-                Math.min(tailX, tipX, headBackX),
-                Math.min(tailY, tipY, headBackY),
-                Math.max(tailX, tipX, headBackX),
-                Math.max(tailY, tipY, headBackY),
+                Math.min(tailX, tipX, headBackX, tailHeadBackX),
+                Math.min(tailY, tipY, headBackY, tailHeadBackY),
+                Math.max(tailX, tipX, headBackX, tailHeadBackX),
+                Math.max(tailY, tipY, headBackY, tailHeadBackY),
                 transversePadding
             )
         ) {
@@ -284,18 +304,21 @@ export function visitArrowSkeletonInstances(
             headAxisLength +
             headStrokeWidth / Math.hypot(rHeadSlope, 1) +
             strokeWidth;
-        const repeatSpacing = !properties.repeatHeads
-            ? Infinity
-            : Math.max(
-                  (properties.headSpacing ?? 0) * size,
-                  headRepeatFootprint
-              );
+        const repeatSpacing =
+            !properties.repeatHeads || bidirectional
+                ? Infinity
+                : Math.max(
+                      (properties.headSpacing ?? 0) * size,
+                      headRepeatFootprint
+                  );
 
         instance.datum = datum;
         setPoint(instance.tail, tailX, tailY);
         setPoint(instance.tip, tipX, tipY);
         setPoint(instance.tangent, tangentX, tangentY);
         setPoint(instance.normal, -tangentY, tangentX);
+        setPoint(instance.reverseTangent, -tangentX, -tangentY);
+        setPoint(instance.reverseNormal, tangentY, -tangentX);
         instance.size = size;
         instance.stemHalfWidth = stemHalfWidth;
         instance.headHalfWidth = headHalfWidth;
@@ -306,10 +329,11 @@ export function visitArrowSkeletonInstances(
         instance.repeatSpacing = repeatSpacing;
         instance.headRepeatFootprint = headRepeatFootprint;
         instance.geometryLength = Math.hypot(tipX - tailX, tipY - tailY);
+        instance.bidirectional = bidirectional;
         instance.stemContainsHead =
             properties.stem &&
             renderedHeadShape == "triangle" &&
-            !properties.repeatHeads &&
+            (!properties.repeatHeads || bidirectional) &&
             headHalfWidth <= stemHalfWidth;
         instance.renderedHeadShape = renderedHeadShape;
         instance.headShapeFallback = renderedHeadShape != properties.headShape;
@@ -319,10 +343,38 @@ export function visitArrowSkeletonInstances(
 }
 
 /**
+ * @param {import("../../../types/encoder.js").Encoder} encoder
+ * @param {object} datum
+ * @returns {"forward" | "reverse" | "both"}
+ */
+function resolveDirection(encoder, datum) {
+    const direction = encodeString(encoder, datum);
+    switch (direction) {
+        case "forward":
+        case "reverse":
+        case "both":
+            return direction;
+        default:
+            throw new Error(
+                `Invalid value for "direction" channel: ${direction}`
+            );
+    }
+}
+
+/**
  * @param {ArrowSkeletonInstance} instance
- * @param {(x: number, y: number) => void} visitor
+ * @param {(x: number, y: number, tangent: ArrowPoint, normal: ArrowPoint) => void} visitor
  */
 export function visitArrowHeadPositions(instance, visitor) {
+    if (instance.bidirectional && !instance.stemContainsHead) {
+        visitor(
+            instance.tail.x,
+            instance.tail.y,
+            instance.reverseTangent,
+            instance.reverseNormal
+        );
+    }
+
     for (
         let distance = 0;
         !instance.stemContainsHead;
@@ -337,7 +389,9 @@ export function visitArrowHeadPositions(instance, visitor) {
         }
         visitor(
             instance.tip.x - instance.tangent.x * distance,
-            instance.tip.y - instance.tangent.y * distance
+            instance.tip.y - instance.tangent.y * distance,
+            instance.tangent,
+            instance.normal
         );
         if (
             !(instance.repeatSpacing > 0) ||
@@ -386,6 +440,7 @@ function createTriangleHeadPolygon(
  * @param {number} halfWidth
  * @param {number} rHeadSlope
  * @param {boolean} startNotch
+ * @param {boolean} bidirectional
  */
 function createStemPolygon(
     tail,
@@ -394,7 +449,8 @@ function createStemPolygon(
     normal,
     halfWidth,
     rHeadSlope,
-    startNotch
+    startNotch,
+    bidirectional
 ) {
     const headSideLength = halfWidth * rHeadSlope;
     const headTop = add(
@@ -407,6 +463,17 @@ function createStemPolygon(
     );
     const tailTop = add(tail, scale(normal, halfWidth));
     const tailBottom = add(tail, scale(normal, -halfWidth));
+    if (bidirectional) {
+        const tailHeadTop = add(
+            add(tail, scale(tangent, headSideLength)),
+            scale(normal, halfWidth)
+        );
+        const tailHeadBottom = add(
+            add(tail, scale(tangent, headSideLength)),
+            scale(normal, -halfWidth)
+        );
+        return [tip, headTop, tailHeadTop, tail, tailHeadBottom, headBottom];
+    }
     const tailNotch = startNotch
         ? [add(tail, scale(tangent, halfWidth * rHeadSlope))]
         : [];
@@ -441,8 +508,10 @@ function createOpenHeadPolygon(
         scale(normal, -headHalfWidth)
     );
     const normalLength = Math.hypot(headHalfWidth, headLength);
-    const axisInset = (thickness * headHalfWidth) / normalLength;
-    const sideInset = (thickness * headLength) / normalLength;
+    const axisInset =
+        normalLength > 0 ? (thickness * headHalfWidth) / normalLength : 0;
+    const sideInset =
+        normalLength > 0 ? (thickness * headLength) / normalLength : 0;
     const innerTop = add(
         add(outerTop, scale(tangent, -axisInset)),
         scale(normal, -sideInset)
@@ -469,6 +538,7 @@ function createOpenHeadPolygon(
  * @param {boolean} options.startNotch
  * @param {number} options.minStemLength
  * @param {"triangle" | "open"} options.headShape
+ * @param {boolean} options.bidirectional
  */
 function effectiveHeadSlope({
     segmentLength,
@@ -481,6 +551,7 @@ function effectiveHeadSlope({
     startNotch,
     minStemLength,
     headShape,
+    bidirectional,
 }) {
     if (headRepeat || stemHalfWidth < 0) {
         return configuredRHeadSlope;
@@ -496,7 +567,8 @@ function effectiveHeadSlope({
         return configuredRHeadSlope;
     }
 
-    const maxJoinLength = Math.max(segmentLength - minStemLength, 0);
+    const maxJoinLength =
+        Math.max(segmentLength - minStemLength, 0) / (bidirectional ? 2 : 1);
     const configuredJoinLength = triangleHeadStemJoinLength(
         stemHalfWidth,
         headHalfWidth,

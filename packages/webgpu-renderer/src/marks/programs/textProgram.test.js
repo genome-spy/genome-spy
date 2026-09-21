@@ -1,24 +1,123 @@
+// @ts-expect-error Node types are intentionally absent from the browser package.
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
+import { createTrueTypeFont } from "../../fonts/trueTypeFont.js";
 import { createMockRenderer } from "../../testUtils/mockRenderer.js";
-import "../../fonts/lato.js";
-import BmFontManager from "../../fonts/bmFontManager.js";
 import { identityScale } from "../../scales/identity.js";
 import { indexScale } from "../../scales/index.js";
 import { thresholdScale } from "../../scales/threshold.js";
 import TextProgram from "./textProgram.js";
 
-/**
- * @param {import("../../renderer.js").Renderer} renderer
- * @returns {{ glyphMetrics: GPUBuffer, atlas: { texture: GPUTexture }, upload: (image: ImageBitmap) => void, destroy: () => void }}
- */
-function getOnlyFontResources(renderer) {
-    const [resourcesByBitmap] = renderer._fontResourceCache.values();
-    const [resources] = resourcesByBitmap.values();
-    return /** @type {any} */ (resources);
+const TEST_FONT = createTrueTypeFont(
+    readFileSync(new URL("../../fonts/DefaultFont.ttf", import.meta.url))
+);
+
+class TestTextProgram extends TextProgram {
+    /** @param {any} layout @param {any} font */
+    _initializeOutlineFontResources(layout, font) {
+        const texture = this.device.createTexture({
+            size: [128, 128],
+            format: "rgba16float",
+            usage: GPUTextureUsage.TEXTURE_BINDING,
+        });
+        const atlas = {
+            texture,
+            sampler: this.device.createSampler(),
+            width: 128,
+            height: 128,
+            ensure: (/** @type {any[]} */ glyphs) =>
+                glyphs.map((/** @type {any} */ glyph) => ({
+                    x: 0.5,
+                    y: 0.5,
+                    width: glyph.tileWidth - 1,
+                    height: glyph.tileHeight - 1,
+                })),
+            subscribe: () => () => {},
+        };
+        this._outlineAtlas = /** @type {any} */ (atlas);
+        this._updateOutlineGlyphMetrics(
+            layout,
+            font,
+            /** @type {any} */ (atlas)
+        );
+        this._extraTextures.set("fontAtlas", {
+            texture,
+            sampler: atlas.sampler,
+            width: atlas.width,
+            height: atlas.height,
+            format: "rgba16float",
+        });
+        this._borrowedExtraTextures.add("fontAtlas");
+        this._sdfNumeratorBase = 28;
+    }
+}
+
+/** @param {import("../../renderer.js").Renderer} renderer @param {any} config */
+function createTextProgram(renderer, config) {
+    return new TestTextProgram(renderer, { ...config, font: TEST_FONT });
 }
 
 describe("TextProgram series replacement", () => {
+    it("keeps effect-free text on the direct glyph path", () => {
+        const getShaderBody = Object.getOwnPropertyDescriptor(
+            TextProgram.prototype,
+            "shaderBody"
+        ).get;
+        const shaderBody = getShaderBody.call({});
+        const resourceDefs = TextProgram.prototype.getExtraResourceDefs.call({
+            _markConfig: {
+                effects: { enabled: false, shadow: false, outline: false },
+            },
+        });
+
+        expect(shaderBody).toContain("let glyph = glyphs[i];");
+        expect(shaderBody).not.toContain("let renderItem = renderItems[i];");
+        expect(
+            resourceDefs.map(
+                (/** @type {{ name: string }} */ definition) => definition.name
+            )
+        ).not.toContain("renderItems");
+    });
+
+    it("compiles effect text with render-item indirection", () => {
+        const getShaderBody = Object.getOwnPropertyDescriptor(
+            TextProgram.prototype,
+            "shaderBody"
+        ).get;
+        const context = {
+            _markConfig: {
+                effects: { enabled: true, shadow: true, outline: true },
+            },
+        };
+        const shaderBody = getShaderBody.call(context);
+        const resourceDefs =
+            TextProgram.prototype.getExtraResourceDefs.call(context);
+
+        expect(shaderBody).toContain("let renderItem = renderItems[i];");
+        expect(shaderBody).toContain("sampleTrueDistance(uv)");
+        expect(shaderBody).toContain("in.layer == TEXT_LAYER_SHADOW");
+        expect(
+            resourceDefs.map(
+                (/** @type {{ name: string }} */ definition) => definition.name
+            )
+        ).toContain("renderItems");
+    });
+
+    it("rejects text without an outline font", () => {
+        expect(
+            () =>
+                new TextProgram(createMockRenderer(), {
+                    channels: {
+                        text: { value: "x" },
+                        x: { value: 0, scale: identityScale() },
+                        y: { value: 0, scale: identityScale() },
+                        strokeWidth: { value: 1 },
+                    },
+                })
+        ).toThrow("require a TrueType outline font");
+    });
+
     it("fits ranged text after applying facet placement", () => {
         const shaderBody = Object.getOwnPropertyDescriptor(
             TextProgram.prototype,
@@ -51,7 +150,7 @@ describe("TextProgram series replacement", () => {
             "return shadeBase(in, clamp(in.edgeFadeOpacity, 0.0, 1.0));"
         );
         expect(shaderBody).toContain(
-            "let localPixel = localAnchor + rotated;\n    let pixel = anchor + rotated"
+            "let localPixel = localAnchor + rotated + effectOffset;\n    let pixel = anchor + rotated + effectOffset"
         );
         expect(shaderBody).toContain(
             "let localUnit = localPixel / viewportSize;"
@@ -62,11 +161,27 @@ describe("TextProgram series replacement", () => {
         expect(shaderBody).toContain(
             "fn shade(in: VSOut) -> vec4<f32> {\n    return shadeBase(in, 1.0);"
         );
+        expect(shaderBody).toContain("let coverage = sampleSuperOutline(");
+        expect(shaderBody).toContain(
+            "coverage.x,\n            getGammaForColor(fillColor.rgb)"
+        );
+        expect(shaderBody).toContain(
+            "coverage.y,\n            getGammaForColor(strokeColor.rgb)"
+        );
+        expect(shaderBody).toContain("fn freeTypeLikeStemDarkening");
+        expect(shaderBody).toContain(
+            "let estimatedStemWidth = deviceFontSize * 0.075;"
+        );
+        expect(shaderBody).toContain(
+            "out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);"
+        );
+        expect(shaderBody).toContain("in.stemDarkening");
+        expect(shaderBody).not.toContain("uOutlineFont");
     });
 
     it("updates coupled text uniforms through semantic properties", () => {
         const renderer = createMockRenderer();
-        const program = new TextProgram(renderer, {
+        const program = createTextProgram(renderer, {
             channels: {
                 text: { value: "x" },
                 x: { value: 0, scale: identityScale() },
@@ -86,7 +201,7 @@ describe("TextProgram series replacement", () => {
     });
 
     it("updates viewport edge fade vectors through semantic properties", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             viewportEdgeFadeWidth: [1, 2, 3, 4],
             viewportEdgeFadeDistance: [-5, -6, -7, -8],
             channels: {
@@ -111,156 +226,9 @@ describe("TextProgram series replacement", () => {
         ]);
     });
 
-    it("uses Core-provided font metrics and atlas resources", () => {
-        const renderer = createMockRenderer();
-        const fontEntry = new BmFontManager().getDefaultFont();
-        const program = new TextProgram(renderer, {
-            font: "Test Sans",
-            fontResource: {
-                metrics: fontEntry.metrics,
-                bitmap: /** @type {any} */ ({}),
-            },
-            channels: {
-                text: { value: "x" },
-                x: { value: 0, scale: identityScale() },
-                y: { value: 0, scale: identityScale() },
-            },
-        });
-
-        expect(
-            program._fontManager.getFont("Test Sans", "normal", 400).metrics
-        ).toBe(fontEntry.metrics);
-        // The uploaded per-glyph arrays must not remain reachable through config.
-        expect(program._markConfig.textLayout).toBeUndefined();
-    });
-
-    it("shares immutable font GPU resources between text programs", () => {
-        const renderer = createMockRenderer();
-        const createBuffer = vi.spyOn(renderer.device, "createBuffer");
-        const createTexture = vi.spyOn(renderer.device, "createTexture");
-        const createSampler = vi.spyOn(renderer.device, "createSampler");
-        const writeTexture = vi.spyOn(renderer.device.queue, "writeTexture");
-        const config = {
-            channels: {
-                text: { value: "x" },
-                x: { value: 0, scale: identityScale() },
-                y: { value: 0, scale: identityScale() },
-            },
-        };
-
-        const first = new TextProgram(renderer, config);
-        const second = new TextProgram(renderer, config);
-
-        expect(second._extraBuffers.get("glyphMetrics")).toBe(
-            first._extraBuffers.get("glyphMetrics")
-        );
-        expect(second._extraTextures.get("fontAtlas")?.texture).toBe(
-            first._extraTextures.get("fontAtlas")?.texture
-        );
-        expect(second._extraBuffers.get("glyphs")).not.toBe(
-            first._extraBuffers.get("glyphs")
-        );
-        expect(createTexture).toHaveBeenCalledOnce();
-        expect(createSampler).toHaveBeenCalledOnce();
-        expect(writeTexture).toHaveBeenCalledOnce();
-        expect(
-            createBuffer.mock.calls.filter(([descriptor]) =>
-                descriptor.label?.endsWith(": glyph metrics")
-            )
-        ).toHaveLength(1);
-    });
-
-    it("does not share different font bitmap resources", () => {
-        const renderer = createMockRenderer();
-        const metrics = new BmFontManager().getDefaultFont().metrics;
-        const create = (/** @type {string} */ bitmap) =>
-            new TextProgram(renderer, {
-                font: "Test Sans",
-                fontResource: { metrics, bitmap },
-                channels: {
-                    text: { value: "x" },
-                    x: { value: 0, scale: identityScale() },
-                    y: { value: 0, scale: identityScale() },
-                },
-            });
-
-        const first = create("first.png");
-        const second = create("second.png");
-
-        expect(second._extraTextures.get("fontAtlas")?.texture).not.toBe(
-            first._extraTextures.get("fontAtlas")?.texture
-        );
-    });
-
-    it("uploads a shared atlas in place while the renderer is alive", () => {
-        const renderer = createMockRenderer();
-        renderer._invalidate = vi.fn();
-        const program = new TextProgram(renderer, {
-            channels: {
-                text: { value: "x" },
-                x: { value: 0, scale: identityScale() },
-                y: { value: 0, scale: identityScale() },
-            },
-        });
-        const resources = getOnlyFontResources(renderer);
-        const atlas = program._extraTextures.get("fontAtlas");
-        const copyAtlas = vi.spyOn(
-            renderer.device.queue,
-            "copyExternalImageToTexture"
-        );
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-        resources.upload(/** @type {ImageBitmap} */ ({ width: 1, height: 1 }));
-        expect(copyAtlas).not.toHaveBeenCalled();
-        expect(warn).toHaveBeenCalledOnce();
-
-        resources.upload(
-            /** @type {ImageBitmap} */ ({
-                width: atlas.width,
-                height: atlas.height,
-            })
-        );
-
-        expect(renderer._invalidate).toHaveBeenCalledOnce();
-        expect(copyAtlas).toHaveBeenCalledOnce();
-
-        renderer._isAlive = () => false;
-        resources.upload(
-            /** @type {ImageBitmap} */ ({
-                width: atlas.width,
-                height: atlas.height,
-            })
-        );
-        expect(renderer._invalidate).toHaveBeenCalledOnce();
-        warn.mockRestore();
-    });
-
-    it("keeps shared font resources alive until the renderer releases them", () => {
-        const renderer = createMockRenderer();
-        const program = new TextProgram(renderer, {
-            channels: {
-                text: { value: "x" },
-                x: { value: 0, scale: identityScale() },
-                y: { value: 0, scale: identityScale() },
-            },
-        });
-        const resources = getOnlyFontResources(renderer);
-        const destroyMetrics = vi.spyOn(resources.glyphMetrics, "destroy");
-        const destroyAtlas = vi.spyOn(resources.atlas.texture, "destroy");
-
-        program.destroy();
-        expect(destroyMetrics).not.toHaveBeenCalled();
-        expect(destroyAtlas).not.toHaveBeenCalled();
-
-        resources.destroy();
-        resources.destroy();
-        expect(destroyMetrics).toHaveBeenCalledOnce();
-        expect(destroyAtlas).toHaveBeenCalledOnce();
-    });
-
     it("rebuilds glyph layout from logical strings without recreating the pipeline", () => {
         const renderer = createMockRenderer();
-        const program = new TextProgram(renderer, {
+        const program = createTextProgram(renderer, {
             count: 2,
             channels: {
                 text: { data: ["0", "0"] },
@@ -286,7 +254,7 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program.count).toBe(2);
-        expect(program._glyphOffsets).toEqual(new Uint32Array([0, 2, 3]));
+        expect(program._drawOffsets).toEqual(new Uint32Array([0, 2, 3]));
         expect(program._channels.x.data).toEqual(new Float32Array([10, 20]));
         expect(program._channels.y.data).toEqual(new Float32Array([30, 40]));
         expect(program._pipeline).toBe(pipeline);
@@ -297,7 +265,7 @@ describe("TextProgram series replacement", () => {
 
     it("rebuilds its bind group only when text layout buffers grow", () => {
         const renderer = createMockRenderer();
-        const program = new TextProgram(renderer, {
+        const program = createTextProgram(renderer, {
             count: 2,
             channels: {
                 text: { data: ["aa", "bb"] },
@@ -326,7 +294,7 @@ describe("TextProgram series replacement", () => {
     });
 
     it("requires a count when replacing scalar text", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 1,
             channels: {
                 text: { value: "x" },
@@ -341,12 +309,12 @@ describe("TextProgram series replacement", () => {
 
         program.getSlotHandles().series.replace({ text: "y" }, 2);
         expect(program.drawCount).toBe(2);
-        expect(program._glyphOffsets).toEqual(new Uint32Array([0, 1, 2]));
+        expect(program._drawOffsets).toEqual(new Uint32Array([0, 1, 2]));
     });
 
     it("preserves aliases between logical per-string arrays", () => {
         const shared = new Float32Array([1, 2]);
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 2,
             channels: {
                 text: { data: ["aa", "b"] },
@@ -369,7 +337,7 @@ describe("TextProgram series replacement", () => {
     });
 
     it("keeps and replaces per-string placement indices", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 2,
             placementIndex: {
                 data: new Uint32Array([5, 8]),
@@ -415,7 +383,7 @@ describe("TextProgram series replacement", () => {
             (_, index) => `Sample label ${index.toString().padStart(4, "0")}`
         );
         const placementIndices = Uint32Array.from(labels, (_, index) => index);
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: labels.length,
             placementIndex: { data: placementIndices, type: "u32" },
             channels: {
@@ -441,7 +409,7 @@ describe("TextProgram series replacement", () => {
     });
 
     it("keeps scalar scale inputs logical for vector color outputs", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 2,
             channels: {
                 text: { data: ["aa", "b"] },
@@ -475,7 +443,7 @@ describe("TextProgram series replacement", () => {
     });
 
     it("keeps logical Float64 index values before high-precision packing", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 2,
             channels: {
                 text: { data: ["aa", "b"] },
@@ -500,7 +468,7 @@ describe("TextProgram series replacement", () => {
     });
 
     it("rejects glyph-length arrays in the logical replacement API", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 2,
             channels: {
                 text: { data: ["a", "b"] },
@@ -522,25 +490,24 @@ describe("TextProgram series replacement", () => {
     });
 
     it("rejects glyph-length arrays in the initial logical config", () => {
-        expect(
-            () =>
-                new TextProgram(createMockRenderer(), {
-                    count: 2,
-                    channels: {
-                        text: { data: ["ab", "cd"] },
-                        x: {
-                            data: new Float32Array([1, 2, 3, 4]),
-                            type: "f32",
-                            scale: identityScale(),
-                        },
-                        y: { value: 0, scale: identityScale() },
+        expect(() =>
+            createTextProgram(createMockRenderer(), {
+                count: 2,
+                channels: {
+                    text: { data: ["ab", "cd"] },
+                    x: {
+                        data: new Float32Array([1, 2, 3, 4]),
+                        type: "f32",
+                        scale: identityScale(),
                     },
-                })
+                    y: { value: 0, scale: identityScale() },
+                },
+            })
         ).toThrow("Text series data count (4) does not match text count (2).");
     });
 
     it("supports logical strings that produce no glyphs", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 2,
             channels: {
                 text: { data: ["", ""] },
@@ -568,7 +535,7 @@ describe("TextProgram series replacement", () => {
     });
 
     it("keeps and replaces a conditional series by logical name", () => {
-        const program = new TextProgram(createMockRenderer(), {
+        const program = createTextProgram(createMockRenderer(), {
             count: 2,
             channels: {
                 uniqueId: {

@@ -85,6 +85,46 @@ describe("SVG arrow renderer", () => {
         expect(warnings).toEqual([]);
     });
 
+    test("exports bidirectional heads and ignores one-way decorations", async () => {
+        /** @param {boolean} decorated */
+        const createPath = async (decorated) => {
+            const { view } = await createHeadlessEngine({
+                data: { values: [{}] },
+                mark: {
+                    type: "arrow",
+                    direction: /** @type {any} */ ("both"),
+                    size: 10,
+                    headWidth: 2,
+                    startNotch: decorated,
+                    headSpacing: decorated ? 2 : null,
+                    fill: "black",
+                    stroke: null,
+                },
+                encoding: {
+                    x: { value: 0.2 },
+                    x2: { value: 0.8 },
+                    y: { value: 0.5 },
+                },
+            });
+            return (
+                createSvg({
+                    viewRoot: view,
+                    logicalWidth: 100,
+                    logicalHeight: 100,
+                    background: null,
+                })
+                    .svg.querySelector('[data-mark-type="arrow"] path')
+                    ?.getAttribute("d") ?? ""
+            );
+        };
+        const decorated = await createPath(true);
+
+        expect(decorated).toContain("20 50");
+        expect(decorated).toContain("80 50");
+        expect(decorated.match(/\bM /g)).toHaveLength(3);
+        expect(decorated).toBe(await createPath(false));
+    });
+
     test("exports diagonal arrow geometry", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.2, y: 0.2, x2: 0.8, y2: 0.8 }] },

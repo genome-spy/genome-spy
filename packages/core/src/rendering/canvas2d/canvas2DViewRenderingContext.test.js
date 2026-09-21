@@ -7,6 +7,7 @@ import Rectangle from "../../view/layout/rectangle.js";
 import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
 import { createSvg } from "../svg/index.js";
+import NativeTextMetricsProvider from "../nativeTextMetrics.js";
 
 afterEach(() => {
     const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
@@ -135,7 +136,13 @@ function createRecordingContext() {
                     calls.drawImageRects.push(destination);
                 }
             ),
-        measureText: vi.fn(() => ({ width: 0.5 })),
+        measureText: vi.fn(() => ({
+            width: 0.5,
+            actualBoundingBoxLeft: 0,
+            actualBoundingBoxRight: 0.5,
+            actualBoundingBoxAscent: 0.79,
+            actualBoundingBoxDescent: 0.21,
+        })),
         fillText: (
             /** @type {string} */ text,
             /** @type {number} */ x,
@@ -184,7 +191,8 @@ function createRecordingContext() {
 function render(
     /** @type {import("../../view/view.js").default} */ view,
     /** @type {CanvasRenderingContext2D} */ context,
-    /** @type {import("./canvasXIndexManager.js").default} */ xIndexManager = undefined
+    /** @type {import("./canvasXIndexManager.js").default} */ xIndexManager = undefined,
+    /** @type {import("../../fonts/textMetrics.js").TextMetricsProvider | undefined} */ textMetrics = undefined
 ) {
     view.arrange(
         new Canvas2DViewRenderingContext(
@@ -197,6 +205,7 @@ function render(
                 background: null,
                 paint: true,
                 xIndexManager,
+                textMetrics,
             }
         ),
         Rectangle.create(0, 0, 100, 100),
@@ -1372,11 +1381,52 @@ describe("Canvas2DViewRenderingContext", () => {
 
         render(view, recording.context);
 
-        expect(recording.calls.translates).toEqual([[50, 50]]);
+        expect(recording.calls.translates).toEqual([
+            [50, 50],
+            [3, 4],
+        ]);
         expect(recording.calls.rotations).toEqual([Math.PI / 2]);
-        expect(recording.calls.fillTexts[0].slice(0, 3)).toEqual(["T", 3, 4]);
+        expect(recording.calls.fillTexts[0].slice(0, 3)).toEqual(["T", 0, 0]);
         expect(recording.context.textAlign).toBe("right");
         expect(recording.context.textBaseline).toBe("top");
+    });
+
+    test("squeezes ranged text with a uniform transform", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ label: "A fitted label" }] },
+            mark: { type: "text", size: 20, paddingX: 2, squeeze: true },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.4 },
+                y: { value: 0.5 },
+                text: { field: "label" },
+                color: { value: "black" },
+            },
+        });
+        const recording = createRecordingContext();
+        /** @type {import("../../fonts/textMetrics.js").TextMetricsProvider} */
+        const textMetrics = {
+            requestFont: () => ({
+                measureWidth: () => 100,
+                getHeight: () => 20,
+            }),
+            waitUntilReady: async () => undefined,
+        };
+
+        render(view, recording.context, undefined, textMetrics);
+
+        expect(recording.calls.translates).toEqual([
+            [30, 50],
+            [0, 0],
+        ]);
+        expect(recording.calls.scales[0][0]).toBeCloseTo(0.1731);
+        expect(recording.calls.scales[0][1]).toBeCloseTo(0.1731);
+        expect(recording.calls.fillTexts).toEqual([
+            ["A fitted label", 0, 0, undefined],
+        ]);
+        expect(
+            recording.calls.fonts.some((font) => font.includes("20px"))
+        ).toBe(true);
     });
 
     test("uses the configured native font with portable fallbacks", async () => {
@@ -1485,6 +1535,36 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.context.fill).toHaveBeenCalledTimes(1);
     });
 
+    test("records both bidirectional arrowheads", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                direction: /** @type {any} */ ("both"),
+                size: 10,
+                headWidth: 2,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+            },
+        });
+        const recording = createRecordingContext();
+
+        render(view, recording.context);
+
+        expect(recording.calls.moves).toEqual([
+            [80, 50],
+            [20, 50],
+            [80, 50],
+        ]);
+        expect(recording.calls.closes).toBe(3);
+        expect(recording.context.fill).toHaveBeenCalledOnce();
+    });
+
     test("normalizes reversed logo-letter cells by the measured glyph width", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },
@@ -1500,12 +1580,16 @@ describe("Canvas2DViewRenderingContext", () => {
             },
         });
         const recording = createRecordingContext();
+        const textMetrics = new NativeTextMetricsProvider(recording.context);
 
-        render(view, recording.context);
+        render(view, recording.context, undefined, textMetrics);
 
         expect(recording.context.measureText).toHaveBeenCalledWith("A");
         expect(recording.calls.scales[0][0]).toBeCloseTo(-120);
-        expect(recording.calls.fillTexts).toEqual([["A", 0, 0.35, undefined]]);
+        expect(recording.calls.scales[0][1]).toBeCloseTo(60);
+        expect(recording.calls.translates.at(-1)?.[0]).toBeCloseTo(-0.25);
+        expect(recording.calls.translates.at(-1)?.[1]).toBeCloseTo(0.29);
+        expect(recording.calls.fillTexts).toEqual([["A", 0, 0, undefined]]);
         expect(recording.context.textBaseline).toBe("alphabetic");
     });
 });

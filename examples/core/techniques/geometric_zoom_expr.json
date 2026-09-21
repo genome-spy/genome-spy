@@ -38,7 +38,7 @@
       "field": "z",
       "type": "quantitative",
       "scale": {
-        "range": [{ "expr": "0" }, { "expr": "zoomLevel * 200" }]
+        "range": [{ "expr": "0" }, { "expr": "zoomLevel() * 200" }]
       }
     },
     "color": {

@@ -1,3 +1,7 @@
+---
+title: Getting Started with GenomeSpy
+---
+
 # Getting Started
 
 GenomeSpy is a visualization toolkit for genomic data. More specifically, it is
@@ -11,8 +15,8 @@ genomic data in web browsers. To visualize data with GenomeSpy, you need to:
    the data
 4. Open the web page with your web browser
 
-You can get started with GenomeSpy in three ways: the Playground app, Observable
-notebooks, and embedding GenomeSpy on HTML pages. More advanced users can use
+You can get started with GenomeSpy using the Playground app, Python, Observable
+notebooks, or by embedding GenomeSpy on HTML pages. More advanced users can use
 GenomeSpy as a visualization library in web applications.
 
 ## Playground
@@ -24,6 +28,15 @@ load data from publicly accessible web servers or from your computer. The app is
 still rudimentary and does not support saving or sharing visualizations. The
 toolbar includes an [Inspector](api/inspector.md) button for looking at the live
 view hierarchy and dataflow while editing a specification.
+
+## Python
+
+The [genome-spy-python](https://genomespy.app/genome-spy-python/) package builds
+validated GenomeSpy specifications from Python chart definitions and displays
+them in notebooks or web pages. Its chart API uses the same visualization
+grammar documented here. See the package's
+[getting-started guide](https://genomespy.app/genome-spy-python/getting-started.html)
+to install it and create your first chart.
 
 ## Observable notebooks
 

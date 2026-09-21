@@ -6,31 +6,23 @@ import MeasureTextTransform from "./measureText.js";
 test("MeasureTextTransform uses configured font metrics", () => {
     const provider = makeParamRuntimeProvider();
 
-    const fontManager = /** @type {any} */ ({
-        getFont: (
-            /** @type {string} */ family,
-            /** @type {import("../../spec/font.js").FontStyle | undefined} */ style,
-            /** @type {import("../../spec/font.js").FontWeight | undefined} */ weight
-        ) => {
-            expect(family).toBe("Roboto Condensed");
-            expect(style).toBe("italic");
-            expect(weight).toBe("bold");
+    const textMetrics = /** @type {any} */ ({
+        requestFont: (/** @type {any} */ config) => {
+            expect(config).toMatchObject({
+                font: "Roboto Condensed",
+                fontStyle: "italic",
+                fontWeight: "bold",
+            });
             return {
-                texture: /** @type {WebGLTexture | undefined} */ (undefined),
-                metrics: /** @type {any} */ ({
-                    /** Match the signature used by bmFont metrics. */
-                    measureWidth: (
-                        /** @type {string} */ text,
-                        /** @type {number} */ size
-                    ) => text.length * size * 2,
-                }),
+                measureWidth: (
+                    /** @type {string} */ text,
+                    /** @type {number} */ size
+                ) => text.length * size * 2,
+                getHeight: () => 0,
             };
         },
-        getDefaultFont: () => {
-            throw new Error("Default font should not be used.");
-        },
     });
-    provider.context = /** @type {any} */ ({ fontManager });
+    provider.context = /** @type {any} */ ({ textMetrics });
 
     const transform = new MeasureTextTransform(
         {
@@ -54,16 +46,13 @@ test("MeasureTextTransform uses configured font metrics", () => {
 
 test("MeasureTextTransform preserves style when using the default family", () => {
     const provider = makeParamRuntimeProvider();
-    const getFont = vi.fn(() => ({
-        texture: /** @type {WebGLTexture | undefined} */ (undefined),
-        metrics: /** @type {any} */ ({ measureWidth: () => 10 }),
+    const requestFont = vi.fn(() => ({
+        measureWidth: () => 10,
+        getHeight: () => 0,
     }));
     provider.context = /** @type {any} */ ({
-        fontManager: {
-            getFont,
-            getDefaultFont: () => {
-                throw new Error("Style-aware font lookup must be used.");
-            },
+        textMetrics: {
+            requestFont,
         },
     });
 
@@ -81,26 +70,23 @@ test("MeasureTextTransform preserves style when using the default family", () =>
 
     transform.initialize();
 
-    expect(getFont).toHaveBeenCalledWith(undefined, "italic", "bold");
+    expect(requestFont).toHaveBeenCalledWith(
+        expect.objectContaining({ fontStyle: "italic", fontWeight: "bold" })
+    );
 });
 
 test("MeasureTextTransform reacts to changed expression-backed font size", () => {
     const provider = makeParamRuntimeProvider();
     const setFontSize = provider.paramRuntime.allocateSetter("fontSize", 5);
     provider.context = /** @type {any} */ ({
-        fontManager: {
-            getFont: () => ({
-                texture: /** @type {WebGLTexture | undefined} */ (undefined),
-                metrics: {
-                    measureWidth: (
-                        /** @type {string} */ text,
-                        /** @type {number} */ size
-                    ) => text.length * size,
-                },
+        textMetrics: {
+            requestFont: () => ({
+                measureWidth: (
+                    /** @type {string} */ text,
+                    /** @type {number} */ size
+                ) => text.length * size,
+                getHeight: () => 0,
             }),
-            getDefaultFont: () => {
-                throw new Error("Default font should not be used.");
-            },
         },
     });
 

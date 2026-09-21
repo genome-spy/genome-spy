@@ -161,6 +161,14 @@ the input and reverses by Unicode code point rather than UTF-16 code unit.
 These helpers are analogous to Vega's scale helper functions, but GenomeSpy
 resolves scales by channel instead of by named scale.
 
+They are available in `formula` and `filter` transforms, in dynamic expression
+properties, and in scale `ExprRef` properties. They are reactive: when a
+referenced scale changes, dependent expressions update.
+
+When a helper is used in a scale `ExprRef`, it resolves from the view that owns
+the scale resolution. For a shared scale, declare the expression in
+`scales.<channel>` on the composed view that owns the resolution.
+
 <a name="scale" href="#scale">#</a>
 <b>scale</b>(<i>channel</i>, <i>value</i>)<br/>
 Maps a value through the scale for the given channel, such as `"x"`, `"y"`,
@@ -188,11 +196,39 @@ Returns the current bandwidth of a band-like scale for the given channel. The
 value uses the same units as the scale range. For positional scales, multiply
 the result by `width` or `height` to convert it to pixels.
 
-These helpers are available in `formula` and `filter` transforms, in dynamic
-expression properties, and in scale `ExprRef` properties. They are reactive:
-when the referenced scale changes, dependent expressions update.
+<a name="zoomLevel" href="#zoomLevel">#</a>
+<b>zoomLevel</b>()<br/>
+Returns the geometric zoom level of the zoomable x and y scales that are
+resolvable from the expression scope. A missing or non-zoomable axis contributes
+`1`, so the result is `sqrt(xZoom * yZoom)` and is `1` when neither axis is
+zoomable. The function discovers the resolvable x and y scales when the
+expression is bound.
+
+<a name="zoomLevel-channel" href="#zoomLevel-channel">#</a>
+<b>zoomLevel</b>(<i>channel</i>)<br/>
+Returns the zoom level of one scale, such as `zoomLevel("x")`. The channel must
+be a literal string. The value is the reference-domain span divided by the
+current displayed-domain span. A non-zoomable scale returns `1`.
+
+Compose separate calls when a formula needs multiple explicit scales. For
+example, `sqrt(zoomLevel("x") * zoomLevel("y"))` is the explicit equivalent of
+the automatic two-dimensional metric. Other formulas can use `min`, `max`, or
+ordinary arithmetic.
+
+A scale domain (including its initial domain), zoom extent, or zoom
+configuration cannot read that same scale's zoom level. Cross-scale dependency
+cycles are also rejected. A scale range may read its own zoom level because
+range changes do not determine magnification.
 
 ### Other functions
+
+<a name="tickStep" href="#tickStep">#</a>
+<b>tickStep</b>(<i>start</i>, <i>stop</i>, <i>count</i>)<br/>
+Returns a nicely rounded step of `1`, `2`, or `5` times a power of ten for
+approximately _count_ intervals between _start_ and _stop_. For example,
+`tickStep(0, 12000000, 2)` returns `5000000`. Descending intervals produce a
+negative step.
+See [D3's tickStep documentation](https://d3js.org/d3-array/ticks#tickStep).
 
 <a name="mapHasKey" href="#mapHasKey">#</a>
 <b>mapHasKey</b>(<i>map</i>, <i>key</i>)<br/>

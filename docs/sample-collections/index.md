@@ -1,20 +1,46 @@
-# Working with Sample Collections
+---
+title: Interactive Genomic Sample Analysis with GenomeSpy App
+description: "Explore large genomic sample collections with GenomeSpy App: find cohort-wide patterns, inspect outliers, compare groups, and share reproducible findings."
+---
 
-The **app** package of the GenomeSpy toolkit enables an interactive analysis of
-large sample collections. It builds upon the core package, which allows
-developers to build tailored visualizations using the visualization grammar and
-high-performance WebGL renderer. A Canvas2D compatibility renderer is available
-when WebGL is unavailable. The app extends the grammar with a _facet_
-operator that makes it possible to repeat a single visualization for thousands
-of samples. The end users of the visualization have access to several
-interactions that facilitate the exploration of such sample collections.
+# GenomeSpy App for Genomic Sample Collections
 
-![App Teaser](../img/app-teaser.png)
+GenomeSpy App is a configurable visual analysis environment for exploring
+genomic data across large sample collections, such as cancer cohorts. It builds
+on GenomeSpy Core and its declarative visualization grammar, allowing
+visualization authors to combine genomic measurements, clinical variables, and
+other metadata in views tailored to a research question. End users can then
+explore those views in the browser without modifying the visualization
+specification.
 
-The documentation of the app package is split into two parts serving different
-audiences:
+## What you can do with GenomeSpy App
 
-1. [Visualizing Sample Collections](visualizing.md) (for method developers)
-2. [Configuring Metadata Sources](metadata-sources.md) (for method developers)
-3. [Analyzing Sample Collections](analyzing.md) (for end users)
-4. [Importing Metadata](importing-metadata.md) (for end users)
+- scan hundreds or thousands of samples for cohort-wide patterns, then open a
+  close-up view to inspect interesting samples and outliers;
+- navigate the genome and examine genomic measurements alongside sample
+  metadata;
+- sort, filter, and group samples through incremental, reversible actions;
+- compare groups using summaries that update with the visible samples;
+- add metadata during an analysis and control which tracks and attributes are
+  visible; and
+- save and share findings as bookmarks that preserve the view, analysis steps,
+  and optional notes.
+
+![GenomeSpy App showing genomic tracks and metadata across a sample collection](../img/app-teaser.png)
+
+## Choose your documentation
+
+The App documentation serves two audiences:
+
+For end users analyzing sample collections:
+
+1. [Analyzing Sample Collections](analyzing.md)
+2. [Importing Metadata](importing-metadata.md)
+
+For visualization authors creating and configuring tailored applications:
+
+1. [Visualizing Sample Collections](visualizing.md)
+2. [Configuring App Features](app-features.md)
+3. [Configuring Metadata Sources](metadata-sources.md)
+4. [Sample View Parameters](sample-view-parameters.md)
+5. [Aggregating Samples](aggregating-samples.md)

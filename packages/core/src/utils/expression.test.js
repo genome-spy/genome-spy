@@ -5,6 +5,13 @@ import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { bindExpression } from "../paramRuntime/expressionRef.js";
 
 describe("expression helpers", () => {
+    test("computes nicely rounded tick steps", () => {
+        expect(createFunction("tickStep(0, 12000000, 2)")()).toBe(5000000);
+        expect(createFunction("tickStep(0, 3000000, 2)")()).toBe(2000000);
+        expect(createFunction("tickStep(0, 0.8, 2)")()).toBe(0.5);
+        expect(createFunction("tickStep(10, 0, 2)")()).toBe(-5);
+    });
+
     test("analyzes scale helpers and referenced globals", () => {
         expect(analyzeExpression("width * scale('x', step)")).toEqual({
             usesScaleHelper: true,
@@ -13,6 +20,10 @@ describe("expression helpers", () => {
         expect(analyzeExpression("domain('y')[offset]")).toEqual({
             usesScaleHelper: true,
             globals: ["offset"],
+        });
+        expect(analyzeExpression("zoomLevel() * zoomLevel('x')")).toEqual({
+            usesScaleHelper: true,
+            globals: [],
         });
         expect(analyzeExpression("datum.value + scaleFactor")).toEqual({
             usesScaleHelper: false,
@@ -167,6 +178,55 @@ describe("expression helpers", () => {
         expect(expr({ value: { chromOffset: 100, pos: 7 } })).toBe(107);
         expect(expr({ value: null })).toBeNull();
     });
+
+    test("supports automatic and channel-specific zoom levels", () => {
+        const x = createFakeScaleResolution([0, 10], (value) => value);
+        const y = createFakeScaleResolution([0, 10], (value) => value);
+        const resolveScaleResolution = (/** @type {string} */ channel) =>
+            channel == "x" ? x : channel == "y" ? y : undefined;
+        const automatic = bindExpression("zoomLevel()", () => undefined, {
+            resolveScaleResolution,
+        }).expression;
+        const explicit = bindExpression("zoomLevel('x')", () => undefined, {
+            resolveScaleResolution,
+        }).expression;
+
+        let calls = 0;
+        automatic.subscribe(() => {
+            calls += 1;
+        });
+
+        expect(automatic()).toBe(1);
+        expect(explicit()).toBe(1);
+
+        x.setZoomLevel(4);
+        y.setZoomLevel(9);
+
+        expect(automatic()).toBe(6);
+        expect(explicit()).toBe(4);
+        expect(calls).toBe(2);
+    });
+
+    test("validates zoom level channels statically", () => {
+        const resolution = createFakeScaleResolution([0, 10], (value) => value);
+        const options = {
+            resolveScaleResolution: (/** @type {string} */ channel) =>
+                channel == "x" ? resolution : undefined,
+        };
+
+        expect(createFunction("zoomLevel()", {}, options)()).toBe(1);
+        expect(() => createFunction("zoomLevel(channel)", {}, options)).toThrow(
+            'Scale helper "zoomLevel" requires a literal channel name.'
+        );
+        expect(() =>
+            createFunction("zoomLevel('x', 'y')", {}, options)
+        ).toThrow(
+            'Scale helper "zoomLevel" accepts zero arguments or one literal channel name.'
+        );
+        expect(() => createFunction("zoomLevel('y')", {}, options)).toThrow(
+            'Unknown scale channel "y" in expression helper "zoomLevel".'
+        );
+    });
 });
 
 /**
@@ -182,11 +242,14 @@ function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
     const domainRef = runtime.signal("domain", domain);
     const mapping = runtime.signal("mapping revision", 0);
     const configuration = runtime.signal("configuration revision", 0);
+    const zoomLevel = runtime.signal("zoom level", 1);
 
     return {
         getDomainRef: () => domainRef,
         getMappingRef: () => mapping,
         getConfigurationRef: () => configuration,
+        getZoomLevelRef: () => zoomLevel,
+        getZoomLevel: () => zoomLevel.get(),
         getDomain() {
             return domain;
         },
@@ -208,6 +271,9 @@ function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
         setRange(/** @type {number[]} */ nextRange) {
             range = nextRange;
             mapping.set(mapping.get() + 1);
+        },
+        setZoomLevel(/** @type {number} */ nextZoomLevel) {
+            zoomLevel.set(nextZoomLevel);
         },
     };
 }

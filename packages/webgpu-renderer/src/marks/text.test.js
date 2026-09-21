@@ -1,0 +1,68 @@
+import { describe, expect, test } from "vitest";
+
+import { textMark } from "./text.js";
+
+const font = {
+    unitsPerEm: 1000,
+    getGlyph() {},
+    getPairAdjustment() {},
+};
+
+describe("textMark program identity", () => {
+    test("reuses outline programs when text content changes", () => {
+        const config = /** @type {any} */ ({
+            font,
+            channels: { text: { data: ["AB"] } },
+        });
+
+        expect(textMark.getProgramKey(config)).toBe(
+            textMark.getProgramKey(config)
+        );
+        expect(textMark.getProgramKey(config)).toBe(
+            textMark.getProgramKey({
+                ...config,
+                channels: { text: { data: ["BA"] } },
+            })
+        );
+    });
+
+    test("does not inspect text data while resolving program identity", () => {
+        const text = new Proxy([], {
+            get() {
+                throw new Error("Text content was inspected.");
+            },
+        });
+
+        expect(() =>
+            textMark.getProgramKey(
+                /** @type {any} */ ({
+                    font,
+                    channels: { text: { data: text } },
+                })
+            )
+        ).not.toThrow();
+    });
+
+    test("separates effect-free and effect-enabled outline programs", () => {
+        const config = /** @type {any} */ ({
+            font,
+            channels: { text: { value: "AB" } },
+        });
+
+        expect(textMark.getProgramKey(config)).not.toBe(
+            textMark.getProgramKey({
+                ...config,
+                channels: {
+                    ...config.channels,
+                    strokeWidth: { value: 0, dynamic: true },
+                },
+            })
+        );
+    });
+
+    test("rejects fonts without TrueType outlines", () => {
+        expect(() =>
+            textMark.getProgramKey(/** @type {any} */ ({ font: "Lato" }))
+        ).toThrow("require a TrueType outline font");
+    });
+});

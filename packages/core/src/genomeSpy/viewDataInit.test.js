@@ -47,7 +47,7 @@ describe("viewDataInit", () => {
         await initializeViewData(
             root,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
@@ -103,7 +103,7 @@ describe("viewDataInit", () => {
         await initializeViewData(
             rootView,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
@@ -121,7 +121,7 @@ describe("viewDataInit", () => {
         await initializeVisibleViewData(
             root,
             context.dataFlow,
-            context.fontManager
+            context.textMetrics
         );
 
         expect(hiddenView?.flowHandle?.collector).toBeDefined();
@@ -204,7 +204,7 @@ describe("viewDataInit", () => {
             await initializeViewData(
                 root,
                 context.dataFlow,
-                context.fontManager,
+                context.textMetrics,
                 () => undefined
             );
 
@@ -212,7 +212,7 @@ describe("viewDataInit", () => {
             await initializeVisibleViewData(
                 root,
                 context.dataFlow,
-                context.fontManager
+                context.textMetrics
             );
 
             // The side branch has a formula between its source and collector.
@@ -255,7 +255,7 @@ describe("viewDataInit", () => {
         await initializeViewData(
             root,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
@@ -274,7 +274,7 @@ describe("viewDataInit", () => {
         await initializeVisibleViewData(
             root,
             context.dataFlow,
-            context.fontManager
+            context.textMetrics
         );
 
         expect(initializeSpy).toHaveBeenCalledTimes(1);
@@ -284,40 +284,31 @@ describe("viewDataInit", () => {
     test("waits for measureText custom fonts before loading data", async () => {
         const context = createTestViewContext();
 
-        const fontEntry = /** @type {any} */ ({
-            metrics: undefined,
-            texture: undefined,
-        });
+        let ready = false;
         /** @type {(() => void) | undefined} */
         let resolveFont;
         let fontRequest;
         const fontReady = new Promise((resolve) => {
             resolveFont = () => {
-                fontEntry.metrics = /** @type {any} */ ({
-                    measureWidth: (
-                        /** @type {string} */ text,
-                        /** @type {number} */ size
-                    ) => text.length * size,
-                });
+                ready = true;
                 resolve();
             };
         });
 
-        const fontManager = /** @type {any} */ ({
-            getFont: (
-                /** @type {string} */ family,
-                /** @type {import("../spec/font.js").FontStyle | undefined} */ style,
-                /** @type {import("../spec/font.js").FontWeight | undefined} */ weight
-            ) => {
-                fontRequest = { family, style, weight };
-                return fontEntry;
-            },
-            getDefaultFont: () => {
-                throw new Error("Default font should not be used.");
+        const textMetrics = /** @type {any} */ ({
+            requestFont: (/** @type {any} */ config) => {
+                fontRequest = config;
+                return {
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => (ready ? text.length * size : 0),
+                    getHeight: () => 0,
+                };
             },
             waitUntilReady: () => fontReady,
         });
-        context.fontManager = fontManager;
+        context.textMetrics = textMetrics;
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -343,14 +334,18 @@ describe("viewDataInit", () => {
         const initPromise = initializeViewData(
             root,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
         expect(fontRequest).toEqual({
-            family: "Roboto Condensed",
-            style: "italic",
-            weight: "bold",
+            type: "measureText",
+            field: "label",
+            font: "Roboto Condensed",
+            fontStyle: "italic",
+            fontWeight: "bold",
+            fontSize: 6,
+            as: "width",
         });
 
         let initialized = false;
@@ -375,14 +370,13 @@ describe("viewDataInit", () => {
 
     test("invalidates layout size cache after fonts become ready", async () => {
         const context = createTestViewContext();
-        const fontManager = /** @type {any} */ ({
-            getDefaultFont: context.fontManager.getDefaultFont.bind(
-                context.fontManager
+        const textMetrics = /** @type {any} */ ({
+            requestFont: context.textMetrics.requestFont.bind(
+                context.textMetrics
             ),
-            getFont: context.fontManager.getFont.bind(context.fontManager),
             waitUntilReady: vi.fn(async () => undefined),
         });
-        context.fontManager = fontManager;
+        context.textMetrics = textMetrics;
 
         /** @type {import("../spec/view.js").VConcatSpec} */
         const spec = {
@@ -407,11 +401,11 @@ describe("viewDataInit", () => {
         await initializeViewData(
             root,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
-        expect(fontManager.waitUntilReady).toHaveBeenCalled();
+        expect(textMetrics.waitUntilReady).toHaveBeenCalled();
         expect(invalidateSizeCache).toHaveBeenCalled();
     });
 
@@ -437,7 +431,7 @@ describe("viewDataInit", () => {
         await initializeViewData(
             root,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
@@ -473,7 +467,7 @@ describe("viewDataInit", () => {
         await initializeViewData(
             rootView,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
@@ -521,7 +515,7 @@ describe("viewDataInit", () => {
         await initializeVisibleViewData(
             rootView,
             context.dataFlow,
-            context.fontManager
+            context.textMetrics
         );
 
         // The new collector should have data even though the data source
@@ -608,7 +602,7 @@ describe("viewDataInit", () => {
             await initializeViewData(
                 root,
                 context.dataFlow,
-                context.fontManager,
+                context.textMetrics,
                 () => undefined
             );
 
@@ -620,7 +614,7 @@ describe("viewDataInit", () => {
             await initializeVisibleViewData(
                 root,
                 context.dataFlow,
-                context.fontManager
+                context.textMetrics
             );
 
             // Hidden branch initializes once; visible branch is not reinitialized.
@@ -667,7 +661,7 @@ describe("viewDataInit", () => {
         await initializeViewData(
             root,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 

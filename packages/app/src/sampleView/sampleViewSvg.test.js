@@ -43,7 +43,7 @@ describe("SampleView SVG export", () => {
         await initializeViewData(
             view,
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
 
@@ -54,7 +54,7 @@ describe("SampleView SVG export", () => {
         });
         const texts = Array.from(svg.querySelectorAll("text"), (text) => ({
             value: text.textContent,
-            y: +text.getAttribute("y"),
+            y: getTranslateY(text),
             clip: text
                 .closest('[data-mark-type="text"]')
                 ?.getAttribute("clip-path"),
@@ -70,3 +70,14 @@ describe("SampleView SVG export", () => {
         expect(warnings).toEqual([]);
     });
 });
+
+/** @param {SVGTextElement} text */
+function getTranslateY(text) {
+    const match = text
+        .getAttribute("transform")
+        ?.match(/^translate\(-?\d+(?:\.\d+)? (-?\d+(?:\.\d+)?)\)/);
+    if (!match) {
+        throw new Error("Expected a leading SVG translate transform.");
+    }
+    return +match[1];
+}

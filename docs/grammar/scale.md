@@ -1,4 +1,8 @@
-# Scale
+---
+title: Scales for Genomic Data Visualization
+---
+
+# Scales
 
 Scales are
 [functions](https://observablehq.com/@mkfreeman/animated-scale-diagram) that map
@@ -202,6 +206,43 @@ each channel.
 
 EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
 
+## Nested offset scales
+
+A discrete field, datum, or expression on the `xOffset` or `yOffset`
+[channel](mark/index.md#offset-channels) creates a nested band scale when the
+matching primary position uses a band scale. The offset range is measured in
+logical pixels and spans the primary band. Point-like marks use subgroup
+centers, while rectangles cover subgroup band extents.
+
+The primary scale's `paddingInner` and `paddingOuter` control spacing between
+groups and default to `0.2` when a nested offset scale is present. The offset
+scale's padding controls spacing between marks within each group. Explicit
+padding values override the defaults.
+
+```json title="Nested bands for grouped bars"
+{
+  "width": { "step": 12 },
+  "mark": "rect",
+  "encoding": {
+    "x": { "field": "category", "type": "nominal" },
+    "xOffset": {
+      "field": "group",
+      "type": "nominal",
+      "scale": { "paddingInner": 0.15 }
+    }
+  }
+}
+```
+
+As described in [Step sizing](composition/concat.md#step-sizing), a step-based
+width or height normally describes a positional scale step. When a discrete
+offset scale is present, it describes each offset step by default. Use
+`{ "step": 12, "for": "position" }` to make the step describe each primary
+category instead. An explicit offset-scale `range` remains a pixel range and is
+not replaced by nested-band inference.
+
+See the [grouped bar example](mark/rect.md#grouped-bars).
+
 ## Viewport autoscaling
 
 Enable autoscaling by setting `domain` to `{ "source": "viewport" }`. GenomeSpy
@@ -366,6 +407,11 @@ shared scale properties for that view subtree. If the subtree has multiple
 independent scales for the same channel, place `scales.<channel>` closer to the
 intended subtree or make the sharing explicit with `resolve.scale`.
 
+A declaration with an explicit `type` creates a scale even when no encoding
+uses it. This allows a container to start without tracks. With
+`resolve.scale.x: "shared"`, added tracks share the scale, and removing them
+preserves its zoom state.
+
 A view-level scale declaration is exclusive. When nested declarations target
 the same scale resolution, the ancestor declaration shadows the whole
 descendant declaration; their properties are not merged. Declarations in
@@ -379,25 +425,38 @@ Do not mix view-level `scales.<channel>` with participating
 `encoding.<channel>.type` on member encodings; it describes the encoded data and
 drives default scale type inference.
 
-## Reactive scale parameters
+## Reactive scale properties
 
-Scale properties can depend on parameters through expression references in
-`domain` and `range`, or through a selection-parameter reference in `domain`.
-Both forms use the same parameter scope.
+Scale `domain` and `range` properties can contain expression references that
+depend on parameters. When a parameter changes, the scale and visualization
+update automatically. A scale domain can also be linked directly to an interval
+selection parameter.
+
+### Expression-driven domains and ranges
+
+Use an expression reference where a scale property accepts a dynamic value. For
+example, the upper end of this size range follows the `maxSize` parameter:
+
+```json
+{
+  "params": [{ "name": "maxSize", "value": 800 }],
+  "mark": "point",
+  "encoding": {
+    "size": {
+      "field": "value",
+      "type": "quantitative",
+      "scale": { "range": [20, { "expr": "maxSize" }] }
+    }
+  }
+}
+```
 
 ### Parameter scope
 
-Every parameter name used by a scale normally resolves from the view that owns
-the scale resolution. An independent scale is owned by its unit view. A shared
-scale is owned by the composed view where the child scales are resolved
-together. Parameters on that owner or its ancestors are visible to the scale;
-parameters declared only in a child are not.
-
-For compatibility, a composed scale resolution used by only one plot unit and
-with no view-level `scales.<channel>` declaration uses that unit's parameter
-scope. Do not rely on this fallback in new specifications: make the scale
-independent or declare the parameter on the resolution owner. The fallback is
-planned for removal in GenomeSpy 2.0.
+An independent scale resolves parameter names from its unit view or an ancestor.
+A shared scale resolves them from the composed view that owns the scale
+resolution or an ancestor of that view. Parameters declared only in a child are
+not visible to the scale.
 
 Declare reactive shared-scale properties and their controlling parameters on
 the owning view. If an interaction or input in a child needs to update the
@@ -405,23 +464,13 @@ parameter, declare a same-named child parameter with `"push": "outer"`:
 
 EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
 
-Genuinely shared scales do not fall back to a child declaration scope. Move a
-child-only parameter to the resolution owner and use `"push": "outer"` when the
-child must write it.
+!!! note "Compatibility behavior"
 
-### Scale-dependent expressions
-
-An expression parameter can read a scale and drive another scale's domain or
-range. For example, `{"name": "cnDomain", "expr": "domain('y')"}` can drive an
-excluded depth scale with
-`"domain": {"expr": "[cnDomain[0] * 14.012 + 0.1, cnDomain[1] * 14.012 + 0.1]"}`.
-Declare the parameter where `domain('y')` resolves to the primary copy-number
-scale, and keep it visible to the depth scale using the scope rules above.
-
-The derived domain follows the primary scale's effective domain, including
-transition frames. Expression-driven domains do not start a separate transition
-by default. Set `zero` and `nice` to `false` when the calibrated bounds must be
-preserved exactly. Dependencies must be acyclic.
+    A composed scale resolution used by only one plot unit and with no
+    view-level `scales.<channel>` declaration currently uses that unit's
+    parameter scope. Do not rely on this fallback in new specifications. Make
+    the scale independent or declare the parameter on the resolution owner. The
+    fallback is planned for removal in GenomeSpy 2.0.
 
 ### Domain from Selection Parameters
 
@@ -458,6 +507,40 @@ For detailed brushing-and-linking guidance and interactive examples, see
 #### Properties
 
 SCHEMA SelectionDomainRef
+
+## Scale-dependent expressions
+
+Expressions can read current scale state using functions such as `domain`,
+`range`, `bandwidth`, and `zoomLevel`. These expressions are reactive: they are
+reevaluated when the referenced scale changes. See [Scale
+Functions](expressions.md#scale-functions) for the available functions.
+
+An expression parameter can expose the result to mark properties or to
+properties of another scale.
+
+### Responsive genomic scale bars
+
+A scale bar is a practical use of a scale-dependent expression. The example
+reads the visible span of a shared locus scale, uses `tickStep` to choose a
+rounded distance, formats the label, and drives arrow and text properties with
+the resulting parameters. Zoom the scale to see the bar update while remaining centered at roughly half
+the viewport width.
+
+EXAMPLE examples/docs/grammar/scale/scale-bar.json height=100
+
+### Derived scale domains and ranges
+
+A scale-dependent parameter can drive the domain or range of another scale.
+This is useful when two measurements have a known conversion. Declare the
+parameter where the source scale can be resolved, and ensure that the dependent
+scale can see the parameter according to the [parameter scope](#parameter-scope)
+rules above.
+
+The dependent value follows the source scale's effective state, including
+transition frames. An expression-driven domain does not start a separate
+transition by default. Set `zero` and `nice` to `false` when an exact converted
+domain must be preserved. Scale and parameter dependencies must be acyclic; a
+scale cannot directly or indirectly depend on itself.
 
 ## Named scales
 

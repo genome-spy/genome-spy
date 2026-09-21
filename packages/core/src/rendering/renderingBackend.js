@@ -33,6 +33,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {import("./svg/svgViewRenderingContext.js").SvgRasterRun[]} runs
  * @property {import("../view/view.js").default} viewRoot
  * @property {import("../view/layout/layoutResult.js").default} [layoutResult]
+ * @property {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @property {number} logicalWidth
  * @property {number} logicalHeight
  * @property {number} pixelRatio
@@ -41,9 +42,8 @@ import { renderingModules } from "./renderingModuleRegistry.js";
 /**
  * @typedef {object} RenderingBackend
  * @property {RenderingSurface} surface
+ * @property {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @property {undefined} [glHelper] Legacy field retained for the unchanged WebGPU adapter.
- * @property {string} [defaultFontBitmapUrl]
- * @property {(bitmapUrl: string) => Promise<void>} [prepareFontBitmap]
  * @property {(mark: import("../marks/mark.js").default) => import("../types/viewContext.js").MarkRenderingDebugState} [getMarkRenderingDebugState]
  * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
@@ -61,6 +61,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {() => void} onCanvasResize
  * @property {() => void} [onRenderInvalidated]
  * @property {(error: Error) => void} [onError]
+ * @property {import("../types/embedApi.js").FontCatalogEntry[]} [fontCatalog]
  */
 
 /**

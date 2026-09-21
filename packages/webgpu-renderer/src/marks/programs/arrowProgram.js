@@ -60,6 +60,8 @@ const {
 
 const ARROW_SHADER_BODY = /* wgsl */ `
 const DIRECTION_FORWARD: u32 = 0u;
+const DIRECTION_REVERSE: u32 = 1u;
+const DIRECTION_BOTH: u32 = 2u;
 const HEAD_TRIANGLE: u32 = 0u;
 const HEAD_OPEN: u32 = 1u;
 const PLACEMENT_INSIDE: u32 = 0u;
@@ -129,7 +131,8 @@ fn stemDistance(
     p: vec2<f32>,
     halfLength: f32,
     halfWidth: f32,
-    headSlope: f32
+    headSlope: f32,
+    bidirectional: bool
 ) -> f32 {
     if (halfWidth <= 0.0) {
         return 1e20;
@@ -140,6 +143,19 @@ fn stemDistance(
         startNotchLength = min(
             halfWidth * headSlope,
             max(2.0 * halfLength - params.uMinStemLength, 0.0)
+        );
+    }
+    if (bidirectional) {
+        return polygonDistance(
+            p,
+            array<vec2<f32>, 6>(
+                vec2<f32>(halfLength, 0.0),
+                vec2<f32>(halfLength - headSideLength, halfWidth),
+                vec2<f32>(-halfLength + headSideLength, halfWidth),
+                vec2<f32>(-halfLength, 0.0),
+                vec2<f32>(-halfLength + headSideLength, -halfWidth),
+                vec2<f32>(halfLength - headSideLength, -halfWidth)
+            )
         );
     }
     return polygonDistance(
@@ -262,13 +278,18 @@ fn effectiveHeadSlope(
     stemHalfWidth: f32,
     configuredHeadSlope: f32,
     configuredNotchSlope: f32,
-    headRepeat: bool
+    headRepeat: bool,
+    bidirectional: bool
 ) -> f32 {
     if (headRepeat || stemHalfWidth < 0.0) {
         return configuredHeadSlope;
     }
     if (params.uHeadPlacement != PLACEMENT_INSIDE) {
-        if (params.uStartNotch == 0u || stemHalfWidth <= 0.0) {
+        if (
+            bidirectional
+            || params.uStartNotch == 0u
+            || stemHalfWidth <= 0.0
+        ) {
             return configuredHeadSlope;
         }
         let maxStartNotchLength = max(
@@ -281,9 +302,14 @@ fn effectiveHeadSlope(
         return configuredHeadSlope;
     }
 
-    let maxJoinLength = max(
+    let availableJoinLength = max(
         halfLength * 2.0 - params.uMinStemLength,
         0.0
+    );
+    let maxJoinLength = select(
+        availableJoinLength,
+        availableJoinLength * 0.5,
+        bidirectional
     );
     let configuredJoinLength = triangleHeadStemJoinLength(
         stemHalfWidth,
@@ -309,7 +335,8 @@ fn effectiveHeadSlope(
 
 fn shade(in: VSOut) -> vec4<f32> {
     var p = in.local;
-    if (in.direction != DIRECTION_FORWARD) {
+    let bidirectional = in.direction == DIRECTION_BOTH;
+    if (in.direction == DIRECTION_REVERSE) {
         p.x = -p.x;
     }
 
@@ -320,7 +347,8 @@ fn shade(in: VSOut) -> vec4<f32> {
             p,
             in.halfLength,
             in.stemHalfWidth,
-            in.headSlope
+            in.headSlope,
+            bidirectional
         );
     }
 
@@ -363,6 +391,19 @@ fn shade(in: VSOut) -> vec4<f32> {
             in.notchSlope,
             in.headStrokeWidth
         );
+        if (bidirectional) {
+            head = min(
+                head,
+                headDistance(
+                    vec2<f32>(-p.x, p.y),
+                    in.halfLength,
+                    in.headHalfWidth,
+                    in.headSlope,
+                    in.notchSlope,
+                    in.headStrokeWidth
+                )
+            );
+        }
     }
 
     let d = min(stem, head);
@@ -387,21 +428,24 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     var tangent = b - a;
     let lengthInPixels = length(tangent);
     if (lengthInPixels == 0.0) {
-        tangent = vec2<f32>(1, 0);
+        return culledArrow();
     }
     let axis = normalize(tangent);
     let normal = vec2<f32>(-axis.y, axis.x);
     let arrowSize = max(getScaled_size(i), params.uMinSize);
     let headHalfWidth = max(params.uHeadWidth * arrowSize * 0.5, 0.0);
     let stemHalfWidth = select(-arrowSize * 0.5, arrowSize * 0.5, params.uStem != 0u);
-    let headRepeat = params.uHeadSpacing >= 0.0;
+    let direction = u32(getScaled_direction(i));
+    let bidirectional = direction == DIRECTION_BOTH;
+    let headRepeat = params.uHeadSpacing >= 0.0 && !bidirectional;
     let headSlope = effectiveHeadSlope(
         lengthInPixels * 0.5,
         headHalfWidth,
         stemHalfWidth,
         params.uHeadSlope,
         params.uHeadNotchSlope,
-        headRepeat
+        headRepeat,
+        bidirectional
     );
     let notchSlope = select(
         min(params.uHeadNotchSlope, headSlope),
@@ -420,8 +464,20 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         params.uHeadPlacement != PLACEMENT_INSIDE
     );
     let padding = 1.0 / globals.dpr + getScaled_strokeWidth(i) * 0.5 + max(headHalfWidth, abs(stemHalfWidth));
-    let geometryHalfLength = lengthInPixels * 0.5 + outsideHeadOffset * 0.5;
-    let geometryCenter = outsideHeadOffset * 0.5;
+    var startExpansion = 0.0;
+    var endExpansion = 0.0;
+    if (direction == DIRECTION_REVERSE) {
+        startExpansion = outsideHeadOffset;
+    } else if (direction == DIRECTION_FORWARD) {
+        endExpansion = outsideHeadOffset;
+    } else {
+        startExpansion = outsideHeadOffset;
+        endExpansion = outsideHeadOffset;
+    }
+    let geometryStart = -lengthInPixels * 0.5 - startExpansion;
+    let geometryEnd = lengthInPixels * 0.5 + endExpansion;
+    let geometryHalfLength = (geometryEnd - geometryStart) * 0.5;
+    let geometryCenter = (geometryStart + geometryEnd) * 0.5;
     let quadHalfLength = geometryHalfLength + padding;
     let centre = (a + b) * 0.5;
     let axisPosition = geometryCenter + (local.x - 0.5) * (quadHalfLength * 2.0);
@@ -444,8 +500,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.fill = vec4<f32>(fill.rgb, fill.a * getScaled_fillOpacity(i));
     out.stroke = vec4<f32>(stroke.rgb, stroke.a * getScaled_strokeOpacity(i));
     out.strokeWidth = getScaled_strokeWidth(i);
-    out.direction = u32(getScaled_direction(i));
-    out.headSpacing = select(-1.0, params.uHeadSpacing * arrowSize, params.uHeadSpacing >= 0.0);
+    out.direction = direction;
+    out.headSpacing = select(-1.0, params.uHeadSpacing * arrowSize, headRepeat);
     out.headStrokeWidth = headStrokeWidth;
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)

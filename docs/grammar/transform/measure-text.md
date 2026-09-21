@@ -10,6 +10,9 @@ It can also provide variable collision widths for the
 Custom fonts can be configured with the same `font`, `fontStyle`, and
 `fontWeight` properties as the [`text`](../mark/text.md) mark.
 
+Measurements use the active renderer's text geometry, keeping downstream
+filtering and collision layout consistent with live text.
+
 For an usage example, check the [Annotation
 Tracks](https://observablehq.com/@tuner/annotation-tracks?collection=@tuner/genomespy)
 notebook.

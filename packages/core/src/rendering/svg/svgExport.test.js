@@ -54,7 +54,7 @@ describe("SVG export", () => {
             })
         );
 
-        const analysis = analyzeSvgExport({
+        const analysis = await analyzeSvgExport({
             viewRoot: view,
             logicalWidth: 100,
             logicalHeight: 100,
@@ -269,16 +269,19 @@ describe("SVG export", () => {
         expect(line?.hasAttribute("stroke")).toBe(false);
         expect(ruleGroup?.getAttribute("stroke")).toBe("#123456");
         expect(ruleGroup?.getAttribute("stroke-dasharray")).toBe("2 3");
-        expect(text?.getAttribute("x")).toBe("160");
+        expect(text?.getAttribute("x")).toBe("0");
+        expect(text?.getAttribute("y")).toBe("0");
         expect(text?.hasAttribute("font-family")).toBe(false);
         expect(textGroup?.getAttribute("font-family")).toBe(
             "'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
         );
         expect(textGroup?.getAttribute("font-size")).toBe("12");
-        expect(Number(text?.getAttribute("textLength"))).toBeGreaterThan(0);
-        expect(text?.getAttribute("dx")).toBe("3");
-        expect(text?.getAttribute("dy")).toBe("2.2");
-        expect(text?.hasAttribute("transform")).toBe(false);
+        expect(text?.hasAttribute("textLength")).toBe(false);
+        expect(text?.hasAttribute("dx")).toBe(false);
+        expect(text?.getAttribute("dy")).toBe("4.2");
+        expect(text?.getAttribute("transform")).toBe(
+            "translate(160 75) translate(3 -2)"
+        );
         expect(svg.querySelectorAll('[data-mark-type="rule"]')).toHaveLength(1);
         expect(svg.querySelectorAll('[data-mark-type="text"]')).toHaveLength(1);
         expect(warnings).toEqual([]);

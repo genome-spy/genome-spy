@@ -288,7 +288,12 @@ export default class WebGpuSurface {
 
         this.#registerMarkOwner(mark);
         let retained = this.#marks.get(mark);
-        if (!retained || retained.definition !== definition) {
+        const programKey = definition.getProgramKey?.(config);
+        if (
+            !retained ||
+            retained.definition !== definition ||
+            !Object.is(retained.programKey, programKey)
+        ) {
             if (retained) {
                 this.#renderer.destroyMark(retained.handle.markId);
             }
@@ -297,6 +302,7 @@ export default class WebGpuSurface {
             });
             retained = {
                 definition,
+                programKey,
                 handle,
                 config,
                 properties,
@@ -820,6 +826,7 @@ function getLogicalChannelSeries(channel) {
 /**
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
+ * @prop {unknown} programKey
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
  * @prop {Record<string, {value: any}>} properties

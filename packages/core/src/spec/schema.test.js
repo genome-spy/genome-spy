@@ -828,6 +828,7 @@ describe("generated core schema", () => {
                 values: [
                     { start: 20, end: 80, direction: "+" },
                     { start: 20, end: 80, direction: "-" },
+                    { start: 20, end: 80, direction: "both" },
                 ],
             },
             mark: "arrow",
@@ -839,8 +840,8 @@ describe("generated core schema", () => {
                     field: "direction",
                     type: "nominal",
                     scale: {
-                        domain: ["+", "-"],
-                        range: ["forward", "reverse"],
+                        domain: ["+", "-", "both"],
+                        range: ["forward", "reverse", "both"],
                     },
                 },
             },
@@ -849,5 +850,31 @@ describe("generated core schema", () => {
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
         );
+    });
+
+    test("accepts bidirectional arrow values and rejects unknown directions", () => {
+        const schema = createCoreSchema();
+        const validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+
+        const markValueSpec = {
+            data: { values: [{ start: 20, end: 80 }] },
+            mark: { type: "arrow", direction: "both" },
+            encoding: {
+                x: { field: "start", type: "quantitative" },
+                x2: { field: "end" },
+                direction: { value: "both" },
+            },
+        };
+        expect(
+            validate(markValueSpec),
+            JSON.stringify(validate.errors, null, 2)
+        ).toBe(true);
+
+        markValueSpec.mark.direction = "sideways";
+        expect(validate(markValueSpec)).toBe(false);
     });
 });

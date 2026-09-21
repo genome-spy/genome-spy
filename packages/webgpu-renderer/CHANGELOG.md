@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
+
+### Features
+
+* support conditional draw order and foreground arc rendering ([#521](https://github.com/genome-spy/genome-spy/issues/521)) ([ffa0b07](https://github.com/genome-spy/genome-spy/commit/ffa0b07ffa5307f596ad9dac2a261a077e08d9ff)) by @tuner
+* support selection unions in conditional encodings ([#520](https://github.com/genome-spy/genome-spy/issues/520)) ([a71a15f](https://github.com/genome-spy/genome-spy/commit/a71a15f8db39b89590af4e26fbb40f3c09ed6d65)) by @tuner
+
 # [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
 
 ### Bug Fixes

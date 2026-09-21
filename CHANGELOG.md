@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.88.1](https://github.com/genome-spy/genome-spy/compare/v0.88.0...v0.88.1) (2026-09-16)
+
+### Bug Fixes
+
+* **core:** preserve conditional order in production shaders ([e57e870](https://github.com/genome-spy/genome-spy/commit/e57e87076c20a53b1f52494a4815af0156e655de)) by @
+* **playground:** improve search metadata ([b5bd566](https://github.com/genome-spy/genome-spy/commit/b5bd566e64434156699a606dbfdcbc0ac27acaa9)) by @tuner
+
+# [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
+
+### Bug Fixes
+
+* **core:** avoid excessive axis label precision during initial layout ([17e2a28](https://github.com/genome-spy/genome-spy/commit/17e2a2872d07a1f8a86a1efaf95263a98565ed01)) by @tuner
+* **core:** register view-level scale names ([44c3929](https://github.com/genome-spy/genome-spy/commit/44c392933263a5bd189aabdcf01559ddc84cbfc6)) by @tuner
+* **core:** tolerate fractional-DPR track alignment ([491e632](https://github.com/genome-spy/genome-spy/commit/491e632a0533d6bb551246b09cb8bdfb7c860ef2)) by @tuner
+
+### Features
+
+* **core:** expose reactive zoom levels to expressions ([#530](https://github.com/genome-spy/genome-spy/issues/530)) ([fde79f7](https://github.com/genome-spy/genome-spy/commit/fde79f79c7773612c2b256c0c5310d564b2f6c7e)) by @tuner
+* **embed-examples:** reorganize examples and publish live docs ([b14c2b3](https://github.com/genome-spy/genome-spy/commit/b14c2b347303f95721b7488b0c76953786b80011)) by @tuner
+* **embed:** add scoped interaction and selection integrations ([#525](https://github.com/genome-spy/genome-spy/issues/525)) ([e4bfd0e](https://github.com/genome-spy/genome-spy/commit/e4bfd0eb158c043010c2b6271fb9248babd886f5)) by @tuner
+* support conditional draw order and foreground arc rendering ([#521](https://github.com/genome-spy/genome-spy/issues/521)) ([ffa0b07](https://github.com/genome-spy/genome-spy/commit/ffa0b07ffa5307f596ad9dac2a261a077e08d9ff)) by @tuner
+* support selection unions in conditional encodings ([#520](https://github.com/genome-spy/genome-spy/issues/520)) ([a71a15f](https://github.com/genome-spy/genome-spy/commit/a71a15f8db39b89590af4e26fbb40f3c09ed6d65)) by @tuner
+
 # [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
 
 ### Bug Fixes

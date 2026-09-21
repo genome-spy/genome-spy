@@ -30,6 +30,7 @@ import { isInChromeSubtree } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
+import { warnOnce } from "../utils/warning.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -248,6 +249,19 @@ export default class View {
             context.animator,
             { snapTransitionedUpdates: true }
         );
+
+        if ("mark" in spec) {
+            // TODO(v2.0): Remove this alias and its lazy-name plumbing after
+            // bare zoomLevel compatibility ends.
+            this.paramRuntime.registerLazyExpression(
+                "zoomLevel",
+                "zoomLevel()",
+                () =>
+                    warnOnce(
+                        'The automatic zoomLevel parameter is deprecated. Use zoomLevel() or an explicit channel such as zoomLevel("x") instead.'
+                    )
+            );
+        }
 
         const params = [
             ...(spec.params ?? []),

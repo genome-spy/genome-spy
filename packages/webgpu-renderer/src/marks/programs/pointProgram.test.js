@@ -7,14 +7,15 @@ const shaderBody = Object.getOwnPropertyDescriptor(
 ).get();
 
 describe("PointProgram", () => {
-    it("suppresses invisible strokes for filled shapes", () => {
-        expect(shaderBody).toContain(
-            "if (strokeOpacity <= 0.0 && shape != X && shape != PLUS)"
-        );
+    it("suppresses invisible circle strokes", () => {
+        expect(shaderBody).toContain("if (strokeOpacity <= 0.0)");
         expect(shaderBody).toContain("strokeWidth = 0.0;");
     });
 
-    it("retains invisible stroke width for line-only shapes", () => {
-        expect(shaderBody).toContain("shape != X && shape != PLUS");
+    it("does not read a per-instance shape on the analytic route", () => {
+        expect(shaderBody).not.toContain("getScaled_shape");
+        expect(shaderBody).not.toContain("fn square");
+        expect(shaderBody).not.toContain("fn crossShape");
+        expect(shaderBody).toContain("let d = circle(p, r);");
     });
 });

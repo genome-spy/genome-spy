@@ -1,84 +1,62 @@
 import { describe, expect, test } from "vitest";
 import {
     getProjectedTextExtent,
-    getTextHeight,
     measureText,
     requestFont,
 } from "./textMetrics.js";
 
-function createMetrics() {
-    return /** @type {import("./bmFontMetrics.js").BMFontMetrics} */ ({
-        common: { base: 10 },
-        capHeight: 7,
-        descent: 2,
+function createMeasurement() {
+    return /** @type {import("./textMetrics.js").FontMeasurement} */ ({
         measureWidth: (
             /** @type {string} */ text,
             /** @type {number} */ size
         ) => text.length * size,
+        getHeight: (/** @type {number} */ size) => size * 0.9,
     });
 }
 
-function createFontManager() {
-    return /** @type {import("./textMetrics.js").FontManagerLike} */ ({
-        getDefaultFont: () => ({ metrics: createMetrics() }),
-        getFont: (
-            /** @type {string} */ family,
-            /** @type {import("../spec/font.js").FontStyle | undefined} */ fontStyle,
-            /** @type {import("../spec/font.js").FontWeight | undefined} */ fontWeight
-        ) => ({
-            family,
-            fontStyle,
-            fontWeight,
-            metrics: createMetrics(),
-        }),
+function createProvider() {
+    return /** @type {import("./textMetrics.js").TextMetricsProvider} */ ({
+        requestFont: (config) => Object.assign(createMeasurement(), { config }),
+        waitUntilReady: async () => undefined,
     });
 }
 
 describe("textMetrics", () => {
     test("requests the font manager default when no family is configured", () => {
-        const font = requestFont(createFontManager(), {});
+        const font = requestFont(createProvider(), {});
 
-        expect(font).toMatchObject({
-            family: undefined,
-            fontStyle: undefined,
-            fontWeight: undefined,
-        });
+        expect(font).toMatchObject({ config: {} });
     });
 
     test("requests configured weight from default family", () => {
-        const font = requestFont(createFontManager(), {
+        const font = requestFont(createProvider(), {
             fontWeight: "bold",
         });
 
-        expect(font).toMatchObject({
-            family: undefined,
-            fontStyle: undefined,
-            fontWeight: "bold",
-        });
+        expect(font).toMatchObject({ config: { fontWeight: "bold" } });
     });
 
     test("requests configured font properties", () => {
-        const font = requestFont(createFontManager(), {
+        const font = requestFont(createProvider(), {
             font: "Lato",
             fontStyle: "italic",
             fontWeight: "bold",
         });
 
         expect(font).toMatchObject({
-            family: "Lato",
-            fontStyle: "italic",
-            fontWeight: "bold",
+            config: {
+                font: "Lato",
+                fontStyle: "italic",
+                fontWeight: "bold",
+            },
         });
     });
 
-    test("measures text width and height from BMFont metrics", () => {
-        const size = measureText(createMetrics(), "ABC", 10);
+    test("measures text width and height from a measurement handle", () => {
+        const size = measureText(createMeasurement(), "ABC", 10);
 
         expect(size).toEqual({ width: 30, height: 9 });
-    });
-
-    test("computes text height from cap height and descent", () => {
-        expect(getTextHeight(createMetrics(), 20)).toBe(18);
     });
 
     test("projects text extent for horizontal and vertical layout directions", () => {

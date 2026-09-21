@@ -1,4 +1,6 @@
-{% extends "base.html" %} {% block extrahead %} {{ super() }}
+{% extends "base.html" %}
+{% block extrahead %}
+{{ super() }}
 <meta name="base_url" content="{{ base_url }}" />
 
 {% if page.meta and page.meta.title %}
@@ -14,12 +16,15 @@
 {% if page.canonical_url %}
 <meta property="og:url" content="{{ page.canonical_url | e }}" />
 {% endif %}
+{% set page_description = config.site_description %}
 {% if page.meta and page.meta.og_description %}
-<meta property="og:description" content="{{ page.meta.og_description | e }}" />
+  {% set page_description = page.meta.og_description %}
 {% elif page.meta and page.meta.description %}
-<meta property="og:description" content="{{ page.meta.description | e }}" />
-{% elif config.site_description %}
-<meta property="og:description" content="{{ config.site_description | e }}" />
+  {% set page_description = page.meta.description %}
+{% endif %}
+{% if page_description %}
+<meta name="description" content="{{ page_description | e }}" />
+<meta property="og:description" content="{{ page_description | e }}" />
 {% endif %}
 <meta property="og:site_name" content="{{ config.site_name | e }}" />
 {% if page.meta and page.meta.og_image %}

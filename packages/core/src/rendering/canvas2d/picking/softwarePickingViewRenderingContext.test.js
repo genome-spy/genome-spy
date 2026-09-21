@@ -174,6 +174,33 @@ describe("SoftwarePickingViewRenderingContext", () => {
         expect(buffer.read(50, 15)).toBe(0);
     });
 
+    test("picks both bidirectional arrowheads with outside placement", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "arrow",
+                direction: /** @type {any} */ ("both"),
+                headPlacement: "outside",
+                size: 10,
+                headWidth: 2,
+                fill: "black",
+                stroke: null,
+            },
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+            },
+        });
+        const buffer = render(view);
+        const startHeadId = buffer.read(10, 50);
+
+        expect(startHeadId).toBeGreaterThan(0);
+        expect(buffer.read(50, 50)).toBe(startHeadId);
+        expect(buffer.read(90, 50)).toBe(startHeadId);
+        expect(buffer.read(50, 40)).toBe(0);
+    });
+
     test("skips nonparticipating marks without allocating", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

@@ -112,12 +112,12 @@ test("leaves text marks pending until font metrics are ready", () => {
     const resources = new WebGLRendererResources(createGlHelper());
     const fixture = createMark("text");
     fixture.mark.getType = () => "text";
-    fixture.mark.font = { metrics: undefined };
+    fixture.font.metrics = undefined;
 
     resources.prepareMarks([fixture.mark]);
     expect(resources.getMarkEntry(fixture.mark)).toBeUndefined();
 
-    fixture.mark.font.metrics = {};
+    fixture.font.metrics = {};
     resources.prepareMarks([fixture.mark]);
     expect(resources.getMarkEntry(fixture.mark)).toBeDefined();
 });
@@ -144,6 +144,42 @@ test("synchronizes mark data only when encoded inputs change", () => {
     resources.synchronize([entry]);
 
     expect(mocks.delegates[0].updateCount).toBe(4);
+});
+
+test("rebuilds text graphics when an expression-valued label changes", async () => {
+    const { view } = await createHeadlessEngine({
+        params: [{ name: "label", value: "5 Mb" }],
+        data: { values: [{}] },
+        mark: "text",
+        encoding: { text: { value: { expr: "label" } } },
+    });
+    const resources = new WebGLRendererResources(createGlHelper());
+    const mark = /** @type {import("../../view/unitView.js").default} */ (view)
+        .mark;
+    // The graphics delegate is mocked; only font readiness is needed here.
+    Object.assign(view.context.textMetrics, {
+        getFont: () => ({ metrics: {} }),
+    });
+
+    try {
+        resources.prepareMarks([mark]);
+        const entry = resources.getMarkEntry(mark);
+        resources.synchronize([entry]);
+        expect(mocks.delegates[0].updateCount).toBe(1);
+
+        view.paramRuntime.setValue("label", "2 Mb");
+        await view.paramRuntime.whenPropagated();
+        expect(mark.encoders.text({})).toBe("2 Mb");
+
+        // Updating the CPU encoder alone must not leave stale GPU glyphs.
+        resources.synchronize([entry]);
+        expect(mocks.delegates[0].updateCount).toBe(2);
+        resources.synchronize([entry]);
+        expect(mocks.delegates[0].updateCount).toBe(2);
+    } finally {
+        resources.dispose();
+        view.disposeSubtree();
+    }
 });
 
 test("shares scale-resolution subscriptions across marks", () => {
@@ -321,15 +357,18 @@ function createGlHelper() {
 /** @param {string} name */
 function createMark(name) {
     const collector = { completed: true, dataRevision: 0 };
+    const font = { metrics: {} };
     /** @type {(() => void)[]} */
     const disposers = [];
     const fixture = {
         collector,
+        font,
         configurationRevision: 0,
         encodedDataRevision: 0,
         mark: /** @type {any} */ ({
             name,
             encoders: {},
+            properties: {},
             getType: () => "point",
             initializeRenderingRevisions: vi.fn(),
             getRenderingRevision: () => fixture.configurationRevision,
@@ -338,6 +377,9 @@ function createMark(name) {
                 getCollector: () => collector,
                 registerDisposer: (/** @type {() => void} */ disposer) =>
                     disposers.push(disposer),
+                context: {
+                    textMetrics: { getFont: () => font },
+                },
             },
         }),
         dispose() {

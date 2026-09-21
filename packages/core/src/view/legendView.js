@@ -1902,29 +1902,19 @@ function getTitleWidth(legend, context) {
         return 0;
     }
 
-    const font = requestFont(context.fontManager, {
+    const measurement = requestFont(context.textMetrics, {
         font: legend.titleFont,
         fontStyle: legend.titleFontStyle,
         fontWeight: legend.titleFontWeight,
     });
-    // Generated legend title width is materialized into the child spec before
-    // asynchronous font loading has necessarily completed. Use fallback metrics
-    // to avoid a padding-only title extent. TODO: Recompute generated legend
-    // specs or make title extent lazy when requested font metrics become ready.
-    const metrics =
-        font.metrics ?? context.fontManager.getDefaultFont().metrics;
-    if (!metrics) {
-        return 0;
-    }
-
     const fontSize = legend.titleFontSize ?? 11;
     const text = truncateText(
         legend.title,
         legend.titleLimit,
-        (text, fontSize) => measureText(metrics, text, fontSize).width,
+        (text, size) => measurement.measureWidth(text, size),
         fontSize,
         "..."
     );
 
-    return measureText(metrics, text, fontSize).width;
+    return measureText(measurement, text, fontSize).width;
 }

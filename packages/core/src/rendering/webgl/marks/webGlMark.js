@@ -59,6 +59,7 @@ import {
     isSinglePointSelection,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
+import { getWebGlTextFont } from "../textFont.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -68,6 +69,20 @@ const ORDER_PASS_VALUES = {
     matching: 1,
     nonmatching: 2,
 };
+
+/**
+ * Replaces the conditional-order insertion point without relying on the
+ * whitespace retained by the GLSL build plugin.
+ *
+ * @param {string} shaderCode
+ * @param {string} guardCode
+ */
+export function replaceOrderGuard(shaderCode, guardCode) {
+    return shaderCode.replace(
+        /#pragma orderGuard(?:[ \t]*\r?\n){0,2}/,
+        guardCode
+    );
+}
 
 /**
  * @typedef {import("../../../types/rendering.js").ClipOptions} ClipOptions
@@ -148,7 +163,7 @@ export default class WebGLMark {
     }
 
     get font() {
-        return /** @type {any} */ (this.mark).font;
+        return getWebGlTextFont(this.mark);
     }
 
     get opaque() {
@@ -714,8 +729,8 @@ export default class WebGLMark {
                 dynamicMarkUniforms.join("\n")
             );
         const addOrderGuard = (/** @type {string} */ shaderCode) =>
-            shaderCode.replace(
-                "#pragma orderGuard\n\n",
+            replaceOrderGuard(
+                shaderCode,
                 order
                     ? "    if (uOrderMode != 0 &&\n" +
                           "        (((uOrderMode & 3) == 1) != isOrderMatch())) {\n" +

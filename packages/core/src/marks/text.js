@@ -19,8 +19,20 @@ export default class TextMark extends Mark {
                 "Reactive text fitToBand changes are not supported.",
                 (dispose) => unitView.registerDisposer(dispose)
             ) ?? false;
-        this.font = requestFont(unitView.context.fontManager, this.properties);
-        this.watchEncodedDataExpressions(["text", "logoLetters"]);
+        this.fontMeasurement = requestFont(
+            unitView.context.textMetrics,
+            this.properties
+        );
+    }
+
+    initializeEncoders() {
+        const firstInitialization = !this.encoders;
+        super.initializeEncoders();
+
+        // Property expressions may depend on scales contributed by sibling views.
+        if (firstInitialization) {
+            this.watchEncodedDataExpressions(["text", "logoLetters"]);
+        }
     }
 
     /** @returns {import("../spec/channel.js").Channel[]} */

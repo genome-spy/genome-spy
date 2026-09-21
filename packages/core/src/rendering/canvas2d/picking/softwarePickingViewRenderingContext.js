@@ -45,6 +45,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
      *     height: number,
      *     devicePixelRatio: number,
      *     getRasterizer: () => import("./softwarePickingRasterizer.js").default,
+     *     textMetrics?: import("../../../fonts/textMetrics.js").TextMetricsProvider,
      *     xIndexManager?: import("../canvasXIndexManager.js").default
      * }} options
      */
@@ -54,6 +55,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
         this.height = options.height;
         this.devicePixelRatio = options.devicePixelRatio;
         this.getRasterizer = options.getRasterizer;
+        this.textMetrics = options.textMetrics;
         this.#profiler = getPerformanceProfiler();
         this.#xIndexManager = options.xIndexManager;
     }
@@ -170,6 +172,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
                     visibleBounds,
                     anchorCullBounds,
                     viewOpacity,
+                    textMetrics: this.textMetrics,
                 });
             },
             (facetIndex) =>

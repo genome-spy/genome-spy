@@ -47,3 +47,30 @@ test("quantize textures use the scale's resolved color range", () => {
     );
     expect(colorTextureMocks.createSchemeTexture).not.toHaveBeenCalled();
 });
+
+test("direction textures preserve the bidirectional code", () => {
+    /** @type {import("../../../spec/scale.js").Scale} */
+    const scaleProps = {
+        type: "ordinal",
+        domain: ["forward", "reverse", "both"],
+        range: ["forward", "reverse", "both"],
+    };
+    const directionScale = scale(scaleProps);
+    directionScale.props = scaleProps;
+    const helper = Object.create(WebGLHelper.prototype);
+    helper.gl = {};
+    helper.rangeTextures = new WeakMap();
+    helper._ownedTextures = new Set();
+
+    helper.createRangeTexture({
+        channel: "direction",
+        getScale: () => directionScale,
+    });
+
+    expect(colorTextureMocks.createDiscreteTexture).toHaveBeenCalledWith(
+        [0, 1, 2],
+        helper.gl,
+        3,
+        undefined
+    );
+});

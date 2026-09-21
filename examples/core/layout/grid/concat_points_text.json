@@ -47,12 +47,12 @@
           "title": "The magnificent y axis!"
         },
         "size": {
-          "value": { "expr": "400 * pow(min(1, zoomLevel / 25), 1.8)" },
+          "value": { "expr": "400 * pow(min(1, zoomLevel() / 25), 1.8)" },
           "condition": {
             "param": "pointSelection",
             "empty": false,
             "value": {
-              "expr": "clamp(1600 * pow(min(1, zoomLevel / 25), 1.8), 100, 1600)"
+              "expr": "clamp(1600 * pow(min(1, zoomLevel() / 25), 1.8), 100, 1600)"
             }
           }
         },

@@ -37,70 +37,27 @@ export default class AxisResolution {
 
     /**
      * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {import("./scaleResolution.js").default} scaleResolution
+     * @param {import("../view/view.js").default} hostView
      */
-    constructor(channel) {
+    constructor(channel, scaleResolution, hostView) {
         this.channel = channel;
-    }
-
-    get scaleResolution() {
-        const first = this.#members.values().next().value;
-        return first?.view.getScaleResolution(this.channel);
-    }
-
-    /**
-     * N.B. This is expected to be called in depth-first order, AFTER the
-     * scales have been resolved.
-     *
-     * @param {AxisResolutionMember} newMember
-     */
-    #addMember(newMember) {
-        const { view } = newMember;
-        const newScaleResolution = view.getScaleResolution(this.channel);
-
-        if (!newScaleResolution) {
-            throw new Error("Cannot find a scale resolution!");
-        }
-
-        if (
-            this.scaleResolution &&
-            newScaleResolution !== this.scaleResolution
-        ) {
-            throw new Error(
-                `Shared axes must have a shared scale! Channel: ${
-                    this.channel
-                }, existing views: [${Array.from(this.#members)
-                    .map((m) => m.view.getPathString())
-                    .join(", ")}], new view: ${view.getPathString()}.`
-            );
-        }
-
-        this.#members.add(newMember);
-        invalidate(this, "axisProps");
+        this.scaleResolution = scaleResolution;
+        this.hostView = hostView;
     }
 
     /**
      * @param {AxisResolutionMember} member
-     * @returns {() => boolean}
+     * @returns {() => void}
      */
     registerMember(member) {
         this.#assertNoMixing(member);
-        this.#addMember(member);
+        this.#members.add(member);
+        invalidate(this, "axisProps");
         return () => {
-            const removed = this.removeMember(member);
-            return removed && this.#members.size === 0;
-        };
-    }
-
-    /**
-     * @param {AxisResolutionMember} member
-     * @returns {boolean}
-     */
-    removeMember(member) {
-        const removed = this.#members.delete(member);
-        if (removed) {
+            this.#members.delete(member);
             invalidate(this, "axisProps");
-        }
-        return removed;
+        };
     }
 
     /**
@@ -116,14 +73,23 @@ export default class AxisResolution {
         return false;
     }
 
+    /** Whether this guide has a visible authored source. */
+    isVisible() {
+        return (
+            this.hostView.isVisible() &&
+            ((this.scaleResolution.isExplicitlyOwned() &&
+                this.scaleResolution
+                    .getViewLevelScaleProps()
+                    .view.isVisible()) ||
+                this.hasVisibleNonChromeMember())
+        );
+    }
+
     getDebugState() {
         return {
             kind: "axis",
             channel: this.channel,
-            hostView:
-                this.scaleResolution?.getDebugState().hostView ??
-                this.#viewLevelAxisProps?.view ??
-                this.#members.values().next().value?.view,
+            hostView: this.hostView,
             scaleResolution: this.scaleResolution,
             title: this.getTitle(),
             axisProps: this.getAxisProps(),
@@ -151,7 +117,7 @@ export default class AxisResolution {
             } else {
                 const members = this.#getNonChromeMembers();
                 if (!members.length) {
-                    return null;
+                    return this.scaleResolution.isExplicitlyOwned() ? {} : null;
                 }
                 propArray = members.map((member) => {
                     const channelDef =

@@ -130,6 +130,11 @@ Exported text uses the configured font followed by a list of system-font
 fallbacks. The exact appearance can vary when the configured font is not
 available in the application that opens the SVG.
 
+SVG export loads requested browser fonts before measuring and generating text.
+Fitting, squeezing, and sequence-logo placement therefore follow the SVG
+destination font. Data transforms are not rerun, so cross-renderer exports may
+retain filtering and spacing decisions made using the live renderer's metrics.
+
 ### Downloading the SVG
 
 Use the returned `Blob` with the browser's download APIs or pass it directly to

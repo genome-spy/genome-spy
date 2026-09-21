@@ -38,6 +38,14 @@ test("launches with a rendering backend that has no retained resources", async (
 
     mocks.createRenderingBackend.mockImplementation((options) => {
         options.container.appendChild(canvas);
+        /** @type {import("./fonts/textMetrics.js").TextMetricsProvider} */
+        const textMetrics = {
+            requestFont: () => ({
+                measureWidth: () => 0,
+                getHeight: () => 0,
+            }),
+            waitUntilReady: async () => undefined,
+        };
         return {
             surface: {
                 canvas,
@@ -46,6 +54,7 @@ test("launches with a rendering backend that has no retained resources", async (
                 getDevicePixelRatio: () => 1,
                 finalize,
             },
+            textMetrics,
             createRenderCoordinator: () => ({
                 computeLayout: /** @returns {void} */ () => undefined,
                 renderAll: /** @returns {void} */ () => undefined,
@@ -77,6 +86,32 @@ test("launches with a rendering backend that has no retained resources", async (
 
     genomeSpy.destroy();
     expect(finalize).toHaveBeenCalledOnce();
+});
+
+test("forwards a font catalog to the selected rendering backend", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const fontCatalog = [
+        { family: "Study Sans", source: "https://example.test/study.ttf" },
+    ];
+    mocks.createRenderingBackend.mockImplementation(createMockBackend);
+    const genomeSpy = new GenomeSpy(
+        container,
+        {
+            width: 100,
+            height: 100,
+            data: { values: [{}] },
+            mark: "rect",
+        },
+        { renderer: "webgpu", fontCatalog }
+    );
+
+    expect(await genomeSpy.launch()).toBe(true);
+    expect(mocks.createRenderingBackend).toHaveBeenCalledWith(
+        expect.objectContaining({ renderer: "webgpu", fontCatalog })
+    );
+
+    genomeSpy.destroy();
 });
 
 test("reports a backend error once and fails an in-progress launch", async () => {
@@ -203,6 +238,13 @@ function createMockBackend(options) {
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
             getDevicePixelRatio: () => 1,
             finalize: vi.fn(),
+        },
+        textMetrics: {
+            requestFont: () => ({
+                measureWidth: () => 0,
+                getHeight: () => 0,
+            }),
+            waitUntilReady: async () => undefined,
         },
         createRenderCoordinator: () => ({
             computeLayout: /** @returns {void} */ () => undefined,

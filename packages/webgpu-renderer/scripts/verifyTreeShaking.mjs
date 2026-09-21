@@ -18,7 +18,8 @@ const packageName = "@genome-spy/webgpu-renderer";
 const publicEntries = new Map([
     ["", "src/index.js"],
     ["debug", "src/debug.js"],
-    ["fonts/lato", "src/fonts/lato.js"],
+    ["fonts/default", "src/fonts/defaultFont.js"],
+    ["fonts/truetype", "src/fonts/trueTypeFont.js"],
     ["high-precision", "src/utils/highPrecision.js"],
     ["scale-authoring", "src/marks/scales/scale-authoring.js"],
     ["marks/arrow", "src/marks/arrow.js"],
@@ -45,8 +46,9 @@ const fixtures = [
     "pointLinear",
     "pointOrdinal",
     "customIdentityMark",
+    "fontTrueType",
+    "fontDefault",
     "textCustomFont",
-    "textLato",
 ];
 
 function resolveSelfImport(source) {
@@ -149,15 +151,31 @@ async function bundleFixture(name) {
 }
 
 function assertTreeShaking(result) {
-    if (result.name === "textLato") {
+    if (result.name === "fontTrueType") {
         for (const id of [
-            "src/marks/programs/textProgram.js",
-            "src/fonts/lato.js",
-            "src/fonts/Lato-Regular.json",
-            "src/fonts/Lato-Regular.png",
+            "src/fonts/trueTypeFont.js",
+            "src/vendor/textShaper/font/trueType.js",
+            "src/vendor/textShaper/font/positioning.js",
         ]) {
             if (!result.modules.has(id)) {
-                throw new Error(`Lato bundle is missing required module: ${id}`);
+                throw new Error(`TrueType bundle is missing module: ${id}`);
+            }
+        }
+        if (result.modules.has("src/fonts/defaultFont.js")) {
+            throw new Error(
+                "TrueType construction unexpectedly includes Default Font."
+            );
+        }
+        return;
+    }
+
+    if (result.name === "fontDefault") {
+        for (const id of [
+            "src/fonts/defaultFont.js",
+            "src/fonts/trueTypeFont.js",
+        ]) {
+            if (!result.modules.has(id)) {
+                throw new Error(`Default Font bundle is missing module: ${id}`);
             }
         }
         return;
@@ -167,6 +185,7 @@ function assertTreeShaking(result) {
         for (const id of [
             "src/marks/text.js",
             "src/marks/programs/textProgram.js",
+            "src/fonts/trueTypeFont.js",
         ]) {
             if (!result.modules.has(id)) {
                 throw new Error(
@@ -174,14 +193,9 @@ function assertTreeShaking(result) {
                 );
             }
         }
-        if (result.modules.has("src/fonts/lato.js")) {
+        if (result.modules.has("src/fonts/defaultFont.js")) {
             throw new Error(
-                "Custom-font bundle unexpectedly includes the Lato preset."
-            );
-        }
-        if (!result.minifiedCode.includes("Custom Sans")) {
-            throw new Error(
-                "Custom-font bundle does not retain the configured font family."
+                "Custom TrueType bundle unexpectedly includes Default Font."
             );
         }
         return;
@@ -232,6 +246,11 @@ function assertTreeShaking(result) {
     for (const id of result.modules) {
         if (id.startsWith("src/fonts/")) {
             throw new Error(`Point/linear bundle includes font support: ${id}`);
+        }
+        if (id.startsWith("tests/oracles/msdfgen/")) {
+            throw new Error(
+                `Point/linear bundle includes the canonical WASM backend: ${id}`
+            );
         }
     }
 }

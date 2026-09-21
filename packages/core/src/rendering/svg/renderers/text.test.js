@@ -34,9 +34,12 @@ describe("SVG text renderer", () => {
         const text = svg.querySelector('[data-mark-type="text"] text');
         const textGroup = svg.querySelector('[data-mark-type="text"]');
 
-        expect(text?.getAttribute("x")).toBe("60");
-        expect(+text?.getAttribute("font-size")).toBeLessThan(20);
-        expect(+text?.getAttribute("textLength")).toBeLessThanOrEqual(40);
+        expect(text?.getAttribute("x")).toBe("0");
+        expect(text?.hasAttribute("font-size")).toBe(false);
+        expect(text?.hasAttribute("textLength")).toBe(false);
+        expect(text?.getAttribute("transform")).toMatch(
+            /^translate\(60 50\) scale\(0\.\d+\)$/
+        );
         expect(textGroup?.getAttribute("font-family")).toBe(
             "'Lato', 'Avenir Next', 'Avenir', 'Segoe UI', 'Ubuntu', 'Noto Sans', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
         );
@@ -98,8 +101,12 @@ describe("SVG text renderer", () => {
 
         expect(labels).toHaveLength(2);
         expect(labels.map((label) => label.getAttribute("x"))).toEqual([
-            "50",
-            "150",
+            "0",
+            "0",
+        ]);
+        expect(labels.map((label) => label.getAttribute("transform"))).toEqual([
+            "translate(50 50)",
+            "translate(150 50)",
         ]);
         expect(warnings).toEqual([]);
     });
@@ -133,11 +140,12 @@ describe("SVG text renderer", () => {
         const text = svg.querySelector('[data-mark-type="text"] text');
 
         expect(text?.textContent).toBe("A");
-        expect(text?.getAttribute("font-size")).toBe("1");
-        expect(text?.getAttribute("text-anchor")).toBe("middle");
-        expect(text?.getAttribute("dy")).toBe("0.35");
+        expect(text?.getAttribute("font-size")).toBe("100");
+        expect(text?.getAttribute("text-anchor")).toBe("start");
+        expect(text?.hasAttribute("dy")).toBe(false);
+        expect(text?.hasAttribute("textLength")).toBe(false);
         expect(text?.getAttribute("transform")).toBe(
-            "translate(60 50) translate(2 -3) scale(40 77.7)"
+            "translate(60 50) translate(2 -3) scale(0.6 0.7) translate(-34.3 45.4)"
         );
         expect(warnings).toEqual([]);
     });
@@ -220,8 +228,8 @@ describe("SVG text renderer", () => {
                 (text) => text.getAttribute("transform")
             )
         ).toEqual([
-            "translate(50 50) scale(100 64.8)",
-            "translate(150 50) scale(100 62.9)",
+            "translate(50 50) scale(1.5 0.6) translate(-34.3 45.4)",
+            "translate(150 50) scale(1.5 0.6) translate(-33.8 45.4)",
         ]);
         expect(warnings).toEqual([]);
     });
@@ -249,7 +257,7 @@ describe("SVG text renderer", () => {
         const text = svg.querySelector('[data-mark-type="text"] text');
 
         expect(text?.getAttribute("transform")).toBe(
-            "translate(100 50) scale(-120 -77.7)"
+            "translate(100 50) scale(-2 -0.7) translate(-29.9 45.4)"
         );
         expect(warnings).toEqual([]);
     });
@@ -283,7 +291,7 @@ describe("SVG text renderer", () => {
             .getSvg()
             .querySelector('[data-mark-type="text"] text');
         expect(text?.getAttribute("transform")).toBe(
-            "translate(60 40) scale(40 25.2)"
+            "translate(60 40) scale(0.5 0.2) translate(-37 45.4)"
         );
     });
 
@@ -379,12 +387,11 @@ describe("SVG text renderer", () => {
         expect(
             context.getSvg().querySelectorAll('[data-mark-type="text"] text')
         ).toHaveLength(1);
-        expect(
-            context
-                .getSvg()
-                .querySelector('[data-mark-type="text"] text')
-                ?.getAttribute("y")
-        ).toBe("50");
+        const text = context
+            .getSvg()
+            .querySelector('[data-mark-type="text"] text');
+        expect(text?.getAttribute("y")).toBe("0");
+        expect(text?.getAttribute("transform")).toBe("translate(50 50)");
     });
 
     test("reuses one viewport-edge fade mask for all text in a view", async () => {

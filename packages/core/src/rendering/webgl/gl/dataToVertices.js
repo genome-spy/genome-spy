@@ -2,7 +2,7 @@ import { InternMap } from "internmap";
 import { format } from "d3-format";
 import { isString } from "vega-util";
 import ArrayBuilder from "./arrayBuilder.js";
-import { SDF_PADDING } from "../../../fonts/bmFontMetrics.js";
+import { SDF_PADDING } from "../fonts/bmFontMetrics.js";
 import {
     getEncoderDataAccessor,
     isValueDef,
@@ -497,7 +497,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {import("../../../fonts/bmFontMetrics.js").BMFontMetrics} object.fontMetrics
+     * @param {import("../fonts/bmFontMetrics.js").BMFontMetrics} object.fontMetrics
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
      * @param {boolean} [object.logoLetters]

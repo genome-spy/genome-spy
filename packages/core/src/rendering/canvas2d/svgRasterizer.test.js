@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe("Canvas2D SVG rasterizer", () => {
-    test("renders selected marks transparently and embeds a cropped PNG", () => {
+    test("renders selected marks transparently and embeds a cropped PNG", async () => {
         const contexts = installCanvasMocks();
         const selectedMark = /** @type {any} */ ({});
         const otherMark = /** @type {any} */ ({});
@@ -32,10 +32,11 @@ describe("Canvas2D SVG rasterizer", () => {
         });
         const rasterizeSvgRuns = createCanvas2DSvgRasterizer();
 
-        rasterizeSvgRuns({
+        await rasterizeSvgRuns({
             runs: [run],
-            viewRoot: /** @type {any} */ ({}),
+            viewRoot: /** @type {any} */ ({ visit: vi.fn() }),
             layoutResult: /** @type {any} */ ({}),
+            textMetrics,
             logicalWidth: 100,
             logicalHeight: 80,
             pixelRatio: 1,
@@ -74,7 +75,7 @@ describe("Canvas2D SVG rasterizer", () => {
         );
     });
 
-    test("uses physical crop coordinates at the requested pixel ratio", () => {
+    test("uses physical crop coordinates at the requested pixel ratio", async () => {
         const contexts = installCanvasMocks();
         const run = createRun(new Set(), {
             x1: 1.25,
@@ -83,9 +84,13 @@ describe("Canvas2D SVG rasterizer", () => {
             y2: 12.6,
         });
 
-        createCanvas2DSvgRasterizer()({
+        await createCanvas2DSvgRasterizer()({
             runs: [run],
-            viewRoot: /** @type {any} */ ({ arrange: vi.fn() }),
+            viewRoot: /** @type {any} */ ({
+                visit: vi.fn(),
+                arrange: vi.fn(),
+            }),
+            textMetrics,
             logicalWidth: 100,
             logicalHeight: 80,
             pixelRatio: 2,
@@ -121,7 +126,7 @@ describe("Canvas2D SVG rasterizer", () => {
         expect(mocks.renderCanvas2D).not.toHaveBeenCalled();
     });
 
-    test("propagates rendering failures", () => {
+    test("propagates rendering failures", async () => {
         installCanvasMocks();
         const failure = new Error("paint failed");
         mocks.renderCanvas2D.mockImplementation(() => {
@@ -129,7 +134,7 @@ describe("Canvas2D SVG rasterizer", () => {
         });
         const rasterizeSvgRuns = createCanvas2DSvgRasterizer();
 
-        expect(() =>
+        await expect(
             rasterizeSvgRuns({
                 runs: [
                     createRun(new Set(), {
@@ -139,15 +144,25 @@ describe("Canvas2D SVG rasterizer", () => {
                         y2: 10,
                     }),
                 ],
-                viewRoot: /** @type {any} */ ({}),
+                viewRoot: /** @type {any} */ ({ visit: vi.fn() }),
                 layoutResult: /** @type {any} */ ({}),
+                textMetrics,
                 logicalWidth: 100,
                 logicalHeight: 80,
                 pixelRatio: 1,
             })
-        ).toThrow(failure);
+        ).rejects.toBe(failure);
     });
 });
+
+/** @type {import("../../fonts/textMetrics.js").TextMetricsProvider} */
+const textMetrics = {
+    requestFont: () => ({
+        measureWidth: () => 0,
+        getHeight: () => 0,
+    }),
+    waitUntilReady: async () => undefined,
+};
 
 function installCanvasMocks() {
     /** @type {ReturnType<typeof createContext>[]} */

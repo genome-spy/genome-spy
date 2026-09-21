@@ -1,3 +1,7 @@
+---
+title: HCC1954 Structural Variant and Copy-Number Visualization
+---
+
 # HCC1954 Structural Variants and Copy Number
 
 This example combines somatic structural variants (SVs) and copy-number (CN)

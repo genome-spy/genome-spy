@@ -85,6 +85,9 @@ export default class ViewParamRuntime {
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
+    /** @type {Set<string>} */
+    #lazyExpressionNames = new Set();
+
     /** @type {Map<string, Set<import("../types/interactionApi.d.ts").IntervalSelectionControllerApi>>} */
     #selectionControllers = new Map();
 
@@ -142,6 +145,12 @@ export default class ViewParamRuntime {
         }
     }
 
+    get #expressionOptions() {
+        return {
+            resolveScaleResolution: this.#scaleResolutionResolver,
+        };
+    }
+
     /**
      * Registers a parameter definition into this runtime scope.
      *
@@ -159,7 +168,10 @@ export default class ViewParamRuntime {
         const name = param.name;
         validateParameterName(name);
 
-        if (this.#paramConfigs.has(name)) {
+        if (
+            this.#paramConfigs.has(name) ||
+            this.#lazyExpressionNames.has(name)
+        ) {
             throw new Error(
                 'Parameter "' + name + '" already registered in this scope.'
             );
@@ -181,6 +193,28 @@ export default class ViewParamRuntime {
         }
 
         return this.#registerParamValue(param);
+    }
+
+    /**
+     * Reserves an internal read-only expression parameter and binds it only
+     * when name resolution first consumes it.
+     *
+     * @param {string} name
+     * @param {string} expr
+     * @param {() => void} [onMaterialize]
+     */
+    registerLazyExpression(name, expr, onMaterialize) {
+        this.#runtime.registerInitializer(this.#scopeId, name, () => {
+            onMaterialize?.();
+            const ref = this.#runtime.registerDerived(
+                this.#scopeId,
+                name,
+                expr,
+                this.#expressionOptions
+            );
+            this.#localRefs.set(name, ref);
+        });
+        this.#lazyExpressionNames.add(name);
     }
 
     /**
@@ -211,7 +245,7 @@ export default class ViewParamRuntime {
                 expr,
                 {
                     expressionScope: source.#scopeId,
-                    resolveScaleResolution: source.#scaleResolutionResolver,
+                    ...source.#expressionOptions,
                 }
             );
             this.#localRefs.set(name, ref);
@@ -289,9 +323,7 @@ export default class ViewParamRuntime {
                     this.#scopeId,
                     name,
                     param.expr,
-                    {
-                        resolveScaleResolution: this.#scaleResolutionResolver,
-                    }
+                    this.#expressionOptions
                 );
                 this.#localRefs.set(name, ref);
             }
@@ -489,6 +521,7 @@ export default class ViewParamRuntime {
         const config = this.#paramConfigs.get(paramName);
         return (
             this.#localRefs.has(paramName) ||
+            this.#lazyExpressionNames.has(paramName) ||
             (config !== undefined && "expr" in config)
         );
     }
@@ -635,9 +668,11 @@ export default class ViewParamRuntime {
      * @param {string} expr
      */
     createExpression(expr) {
-        return this.#runtime.createExpression(this.#scopeId, expr, {
-            resolveScaleResolution: this.#scaleResolutionResolver,
-        });
+        return this.#runtime.createExpression(
+            this.#scopeId,
+            expr,
+            this.#expressionOptions
+        );
     }
 
     /**
@@ -929,6 +964,7 @@ export default class ViewParamRuntime {
         this.#allocatedSetters.clear();
         this.#localRefs.clear();
         this.#paramConfigs.clear();
+        this.#lazyExpressionNames.clear();
         this.#selectionControllers.clear();
         this.#transitionStates.clear();
     }

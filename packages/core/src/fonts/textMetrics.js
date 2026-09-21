@@ -1,57 +1,40 @@
 /**
- * @typedef {import("./bmFontManager.js").BMFontMetrics} BMFontMetrics
  * @typedef {import("../spec/font.js").FontStyle} FontStyle
  * @typedef {import("../spec/font.js").FontWeight} FontWeight
- * @typedef {{ metrics?: BMFontMetrics, bitmapUrl?: string }} FontEntryLike
  * @typedef {{
  *     font?: string,
  *     fontStyle?: FontStyle,
  *     fontWeight?: FontWeight,
  * }} FontConfig
  * @typedef {{
- *     getDefaultFont: () => FontEntryLike,
- *     getFont: (
- *         family?: string,
- *         style?: FontStyle,
- *         weight?: FontWeight
- *     ) => FontEntryLike,
- * }} FontManagerLike
+ *     measureWidth: (text: string, fontSize: number) => number,
+ *     getHeight: (fontSize: number) => number,
+ * }} FontMeasurement
+ * @typedef {{
+ *     requestFont: (config: FontConfig) => FontMeasurement,
+ *     waitUntilReady: () => Promise<void>,
+ * }} TextMetricsProvider
  */
 
 /**
  * Requests a font entry and registers asynchronous loading for custom fonts.
  *
- * @param {FontManagerLike} fontManager
+ * @param {TextMetricsProvider} provider
  * @param {FontConfig} config
- * @returns {FontEntryLike}
  */
-export function requestFont(fontManager, config) {
-    return fontManager.getFont(
-        config.font,
-        config.fontStyle,
-        config.fontWeight
-    );
+export function requestFont(provider, config) {
+    return provider.requestFont(config);
 }
 
 /**
- * @param {BMFontMetrics} metrics
- * @param {number} fontSize
- */
-export function getTextHeight(metrics, fontSize) {
-    return (
-        ((metrics.capHeight + metrics.descent) / metrics.common.base) * fontSize
-    );
-}
-
-/**
- * @param {BMFontMetrics} metrics
+ * @param {FontMeasurement} measurement
  * @param {string} text
  * @param {number} fontSize
  */
-export function measureText(metrics, text, fontSize) {
+export function measureText(measurement, text, fontSize) {
     return {
-        width: metrics.measureWidth(text, fontSize),
-        height: getTextHeight(metrics, fontSize),
+        width: measurement.measureWidth(text, fontSize),
+        height: measurement.getHeight(fontSize),
     };
 }
 

@@ -45,13 +45,17 @@ const layer1 = /** @type {import("../spec/view.js").UnitSpec} */ (
 
 describe("Axes resolve properly", () => {
     test("Chrome members do not suppress non-chrome axes", () => {
-        const scaleResolution = {};
+        const scaleResolution = { isExplicitlyOwned: () => false };
         const chromeAncestor = {};
         markViewAsChrome(/** @type {any} */ (chromeAncestor), {
             skipSubtree: true,
         });
 
-        const resolution = new AxisResolution("x");
+        const resolution = new AxisResolution(
+            "x",
+            /** @type {any} */ (scaleResolution),
+            /** @type {any} */ ({ resolutions: { scale: {} } })
+        );
         resolution.registerMember(
             makeAxisResolutionMember({
                 scaleResolution,
@@ -75,13 +79,17 @@ describe("Axes resolve properly", () => {
     });
 
     test("Chrome-only members do not create axes", () => {
-        const scaleResolution = {};
+        const scaleResolution = { isExplicitlyOwned: () => false };
         const chromeAncestor = {};
         markViewAsChrome(/** @type {any} */ (chromeAncestor), {
             skipSubtree: true,
         });
 
-        const resolution = new AxisResolution("x");
+        const resolution = new AxisResolution(
+            "x",
+            /** @type {any} */ (scaleResolution),
+            /** @type {any} */ ({ resolutions: { scale: {} } })
+        );
         resolution.registerMember(
             makeAxisResolutionMember({
                 scaleResolution,
@@ -98,13 +106,17 @@ describe("Axes resolve properly", () => {
     });
 
     test("Chrome members do not conflict with view-level axes", () => {
-        const scaleResolution = {};
+        const scaleResolution = { isExplicitlyOwned: () => false };
         const chromeAncestor = {};
         markViewAsChrome(/** @type {any} */ (chromeAncestor), {
             skipSubtree: true,
         });
 
-        const resolution = new AxisResolution("x");
+        const resolution = new AxisResolution(
+            "x",
+            /** @type {any} */ (scaleResolution),
+            /** @type {any} */ ({ resolutions: { scale: {} } })
+        );
         resolution.registerMember(
             makeAxisResolutionMember({
                 scaleResolution,
@@ -131,13 +143,17 @@ describe("Axes resolve properly", () => {
     });
 
     test("View-level axes do not conflict with existing chrome members", () => {
-        const scaleResolution = {};
+        const scaleResolution = { isExplicitlyOwned: () => false };
         const chromeAncestor = {};
         markViewAsChrome(/** @type {any} */ (chromeAncestor), {
             skipSubtree: true,
         });
 
-        const resolution = new AxisResolution("x");
+        const resolution = new AxisResolution(
+            "x",
+            /** @type {any} */ (scaleResolution),
+            /** @type {any} */ ({ resolutions: { scale: {} } })
+        );
         resolution.registerMember(
             makeAxisResolutionMember({
                 scaleResolution,

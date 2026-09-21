@@ -29,6 +29,8 @@ import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 import { LEGACY_LABEL_TITLE_TEXT_WARNING } from "./sampleViewSpecNormalizer.js";
 import WebGpuViewRenderingContext from "@genome-spy/core/rendering/webgpu/webGpuViewRenderingContext.js";
 import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
+import HeadlessTextMetricsProvider from "@genome-spy/core/fonts/headlessTextMetrics.js";
+import OutlineTextMetricsProvider from "@genome-spy/core/rendering/webgpu/outlineTextMetrics.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -950,7 +952,7 @@ describe("sample label column", () => {
         await initializeVisibleViewData(
             coreView,
             context.dataFlow,
-            context.fontManager
+            context.textMetrics
         );
 
         expect(view.sampleLabelView.flowHandle?.collector.getItemCount()).toBe(
@@ -2175,7 +2177,23 @@ describe("axis layout and visibility", () => {
             { sample, start: 0, end: 40, value: index },
             { sample, start: 40, end: 100, value: -index },
         ]);
-        const testContext = createTestViewContext();
+        const testContext = createTestViewContext(
+            {},
+            {
+                textMetrics: /** @type {any} */ (
+                    new OutlineTextMetricsProvider(
+                        async () =>
+                            /** @type {any} */ ({
+                                unitsPerEm: 1,
+                                capHeight: 1,
+                                descender: 0,
+                                getGlyph() {},
+                            }),
+                        new HeadlessTextMetricsProvider()
+                    )
+                ),
+            }
+        );
         testContext.isViewConfiguredVisible = (candidate) =>
             candidate.spec.name !== "sample-labels";
         const { view, context } = await createSampleViewForTest({
@@ -2201,7 +2219,7 @@ describe("axis layout and visibility", () => {
                 /** @type {unknown} */ (view)
             ),
             context.dataFlow,
-            context.fontManager,
+            context.textMetrics,
             () => undefined
         );
         view.sampleGroupView.updateGroups();
@@ -2818,7 +2836,7 @@ describe("axis layout and visibility", () => {
                 /** @type {unknown} */ (view)
             ),
             context.dataFlow,
-            context.fontManager
+            context.textMetrics
         );
 
         const renderBSpy = vi.spyOn(axisB, "arrange");

@@ -4,6 +4,7 @@ import View from "../../view/view.js";
 import UnitView from "../../view/unitView.js";
 import { createAndInitialize } from "../../view/testUtils.js";
 import { createWebGLMark } from "./rendererResources.js";
+import { replaceOrderGuard } from "./marks/webGlMark.js";
 
 const VERTEX_SHADER = 0x8b31;
 const FRAGMENT_SHADER = 0x8b30;
@@ -172,6 +173,14 @@ async function captureShaderSources(spec, unitName) {
 }
 
 describe("generated shader snapshots", () => {
+    test("order guard survives production GLSL minification", () => {
+        const shader = "void main(void) {\n#pragma orderGuard\nfloat x = 0.0;}";
+        const result = replaceOrderGuard(shader, "if (hidden) return;");
+
+        expect(result).toContain("if (hidden) return;");
+        expect(result).not.toContain("#pragma orderGuard");
+    });
+
     test("scaled offset channels generate both endpoint accessors", async () => {
         const sources = await captureShaderSources({
             data: {
@@ -448,14 +457,40 @@ describe("generated shader snapshots", () => {
         const sources = await captureShaderSources(
             loadSpec(
                 "../../../../../examples/core/marks/arrow/arrow_direction.json"
-            )
+            ),
+            "horizontal-arrows"
         );
 
         expect(sources).toMatchSnapshot();
         expect(sources.vertex).toContain("getScaled_direction()");
         expect(sources.vertex).toContain("uRangeTexture_direction");
         expect(sources.fragment).toContain("vDirection");
+        expect(sources.fragment).toContain("DIRECTION_BOTH");
+        expect(sources.fragment).toContain("endHeadDistance");
         expect(sources.fragment).not.toContain("uDirection");
+    });
+
+    test("bidirectional arrow compiles to the dedicated shader branch", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{}] },
+            mark: "arrow",
+            encoding: {
+                x: { value: 0.2 },
+                x2: { value: 0.8 },
+                y: { value: 0.5 },
+                direction: /** @type {any} */ ({ value: "both" }),
+            },
+        });
+
+        expect(sources.vertex).toContain("return float(2.0)");
+        expect(sources.vertex).toContain("direction == DIRECTION_BOTH");
+        expect(sources.vertex).toMatch(/bidirectional\s*\|\|\s*!uStartNotch/);
+        expect(sources.fragment).toContain(
+            "bool bidirectional = vDirection == DIRECTION_BOTH"
+        );
+        expect(sources.fragment).toContain(
+            "headDistance = min(headDistance, endHeadDistance)"
+        );
     });
 
     test("text shader supports visible-range culling", async () => {

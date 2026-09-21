@@ -168,6 +168,15 @@ the grow-only extent. The deprecated public `isDomainInitialized()` query retain
 its historical placeholder heuristic for embedding compatibility; it is not used
 as an internal readiness or axis-measurement condition.
 
+## Axis ownership
+
+An `AxisResolution` references its scale and placement host directly.
+`resolve.axis` controls placement; the scale must be available at that host or
+an ancestor. Encoding members contribute options, titles, and visibility.
+The axis lives until its host or scale is disposed. Explicitly typed scales
+and their shared axes survive an empty container; encoding-inferred scales
+disappear when their last member is removed.
+
 ## Interaction gesture ownership
 
 Document-level mouse drags use `startDocumentDrag`, which owns temporary DOM

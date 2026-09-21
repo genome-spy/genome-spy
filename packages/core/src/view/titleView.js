@@ -157,7 +157,7 @@ function resolveTitleSpec(title, configScopes = []) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  * @returns {{ xOffset: number, yOffset: number }}
  */
 function getTitleOffsets(spec, context) {
@@ -174,7 +174,7 @@ function getTitleOffsets(spec, context) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  * @returns {{ xOffset: number, yOffset: number }}
  */
 function getSubtitleOffsets(spec, context) {
@@ -230,18 +230,18 @@ function getOrientOffset(orient, distance) {
 
 /**
  * @param {import("../spec/title.js").Title | undefined} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  */
 function requestTitleFont(spec, context) {
-    return requestFont(context.fontManager, spec ?? {});
+    return requestFont(context.textMetrics, spec ?? {});
 }
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  */
 function requestSubtitleFont(spec, context) {
-    return requestFont(context.fontManager, getSubtitleFontConfig(spec));
+    return requestFont(context.textMetrics, getSubtitleFontConfig(spec));
 }
 
 /**
@@ -249,7 +249,7 @@ function requestSubtitleFont(spec, context) {
  * layout uses title metrics.
  *
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  */
 function requestTitleFonts(spec, context) {
     requestTitleFont(spec, context);
@@ -260,7 +260,7 @@ function requestTitleFonts(spec, context) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  * @returns {Padding}
  */
 function getTitleOverhang(spec, context) {
@@ -292,7 +292,7 @@ function getTitleOverhang(spec, context) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  */
 function getTitlePerpendicularExtent(spec, context) {
     const titleExtent = getTitleTextPerpendicularExtent(spec, context);
@@ -307,34 +307,27 @@ function getTitlePerpendicularExtent(spec, context) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  */
 function getTitleTextPerpendicularExtent(spec, context) {
-    const font = requestTitleFont(spec, context);
+    const measurement = requestTitleFont(spec, context);
     const fontSize = getFontSize(spec.fontSize, 12);
 
-    return getTextPerpendicularExtent(
-        spec,
-        context,
-        spec.text,
-        font.metrics,
-        fontSize
-    );
+    return getTextPerpendicularExtent(spec, spec.text, measurement, fontSize);
 }
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  */
 function getSubtitleTextPerpendicularExtent(spec, context) {
-    const font = requestSubtitleFont(spec, context);
+    const measurement = requestSubtitleFont(spec, context);
     const fontSize = getFontSize(spec.subtitleFontSize, 11);
 
     return getTextPerpendicularExtent(
         spec,
-        context,
         spec.subtitle,
-        font.metrics,
+        measurement,
         fontSize
     );
 }
@@ -349,12 +342,11 @@ function getFontSize(fontSize, fallback) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
  * @param {string | import("../spec/parameter.js").ExprRef} text
- * @param {import("../fonts/textMetrics.js").FontEntryLike["metrics"]} metrics
+ * @param {import("../fonts/textMetrics.js").FontMeasurement} measurement
  * @param {number} fontSize
  */
-function getTextPerpendicularExtent(spec, context, text, metrics, fontSize) {
+function getTextPerpendicularExtent(spec, text, measurement, fontSize) {
     const angle = isExprRef(spec.angle) ? 0 : (spec.angle ?? 0);
     const direction =
         spec.orient == "top" || spec.orient == "bottom"
@@ -362,7 +354,7 @@ function getTextPerpendicularExtent(spec, context, text, metrics, fontSize) {
             : "horizontal";
 
     return getProjectedTextExtent(
-        measureTextWithFallback(text, context, metrics, fontSize),
+        measureTextValue(text, measurement, fontSize),
         angle,
         direction
     );
@@ -381,32 +373,13 @@ function getSubtitleFontConfig(spec) {
 }
 
 /**
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
  * @param {string | import("../spec/parameter.js").ExprRef} text
- * @param {import("../fonts/textMetrics.js").FontEntryLike["metrics"]} metrics
+ * @param {import("../fonts/textMetrics.js").FontMeasurement} measurement
  * @param {number} fontSize
  */
-function measureTextWithFallback(text, context, metrics, fontSize) {
-    if (metrics) {
-        return measureTextValue(text, metrics, fontSize);
-    }
-
-    const fallbackMetrics = context.fontManager.getDefaultFont().metrics;
-    if (fallbackMetrics) {
-        return measureTextValue(text, fallbackMetrics, fontSize);
-    }
-
-    return { width: 0, height: fontSize };
-}
-
-/**
- * @param {string | import("../spec/parameter.js").ExprRef} text
- * @param {import("../fonts/bmFontManager.js").BMFontMetrics} metrics
- * @param {number} fontSize
- */
-function measureTextValue(text, metrics, fontSize) {
+function measureTextValue(text, measurement, fontSize) {
     const value = typeof text == "string" ? text : String(text.expr);
-    return measureText(metrics, value, fontSize);
+    return measureText(measurement, value, fontSize);
 }
 
 /**
@@ -442,7 +415,7 @@ function createTitleTextMark(spec, xy, offsets, subtitle) {
 
 /**
  * @param {import("../spec/title.js").Title} titleSpec
- * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
+ * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  * @returns {import("../spec/view.js").UnitSpec[]}
  */
 function createTitleUnitSpecs(titleSpec, context) {

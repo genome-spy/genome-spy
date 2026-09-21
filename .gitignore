@@ -41,3 +41,8 @@ dist/
 lerna-debug.log
 
 **/test-results/
+
+# Downloaded development-only canonical MSDF oracle release assets
+/packages/webgpu-renderer/tests/oracles/msdfgen/runtime/msdfgen-oracle.mjs
+/packages/webgpu-renderer/tests/oracles/msdfgen/runtime/manifest.json
+/packages/webgpu-renderer/tests/oracles/msdfgen/runtime/LICENSE-msdfgen.txt

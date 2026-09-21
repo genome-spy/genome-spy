@@ -45,13 +45,12 @@ adjust the point size and visibility based on the zoom level.
 
 Geometric zoom automatically changes the size of points as you zoom in or out.
 In the example below, the `size` property is set using an
-[expression](../expressions.md) that references the `zoomLevel`
-[parameter](../parameters.md). The expression `min(0.5 * pow(zoomLevel, 1.5), 200)`
-means that as you zoom in, point size increases, but the growth rate is
-controlled by the exponent. This helps keep points visible and reduces overlap
-at higher zoom levels, while preventing them from becoming too large. You can
-adjust the expression to fine-tune how point size responds to zooming for your
-specific visualization.
+[expression](../expressions.md) that calls `zoomLevel()`. The expression
+`min(0.5 * pow(zoomLevel(), 1.5), 200)` means that as you zoom in, point size
+increases, but the growth rate is controlled by the exponent. This helps keep
+points visible and reduces overlap at higher zoom levels, while preventing them
+from becoming too large. Use `zoomLevel("x")` when only horizontal zoom should
+affect the size.
 
 EXAMPLE examples/docs/grammar/mark/point/geometric-zoom.json
 

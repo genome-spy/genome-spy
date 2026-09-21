@@ -131,6 +131,24 @@ tracks.
 The BigWig source loads data for the current genomic interval from each resolved
 file and attaches the sample field to the returned rows.
 
+### App Example
+
+This App example defines five samples and uses `visibleSamples` to load one
+H3K27ac BigWig per visible row. The initial domain shows a ten-megabase region
+of the mm10 genome. See the [full mouse fetal-development
+example](https://genomespy.app/examples/encode-mouse-fetal-development-mm10/)
+for the complete 24-sample visualization with metadata and annotations.
+
+EXAMPLE examples/app/multi-url-bigwig.json runtime=app height=260 spechidden
+
+!!! disclaimer ""
+
+    These regional BigWigs retain H3K27ac values from [five released ENCODE
+    files](https://www.encodeproject.org/search/?type=File&accession=ENCFF549YDI&accession=ENCFF539MQF&accession=ENCFF587ZRD&accession=ENCFF724HYE&accession=ENCFF896KSI)
+    produced by the Bing Ren laboratory for [Gorkin et al.
+    (2020)](https://doi.org/10.1038/s41586-020-2093-3). Only the displayed 10 Mb
+    mm10 region was retained.
+
 ## Indexed Files
 
 Formats such as Tabix-backed TSV, GFF3, and VCF use an index file. Keep

@@ -4923,6 +4923,70 @@ exports[`shared examples > initializes examples/core/marks/arrow/arrow_direction
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -4939,16 +5003,28 @@ exports[`shared examples > initializes examples/core/marks/arrow/arrow_direction
     },
   ],
   "hierarchy": {
-    "baseUrl": null,
+    "baseUrl": "examples/",
     "children": [
       {
         "baseUrl": "examples/",
         "children": [],
-        "name": "grid0",
+        "name": "horizontal-arrows",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid2",
         "type": "UnitView",
       },
     ],
-    "name": "implicitRoot",
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }
@@ -13757,6 +13833,58 @@ exports[`shared examples > initializes examples/docs/grammar/scale/range-indices
             "baseUrl": "examples/",
             "children": [],
             "name": "layer1",
+            "type": "UnitView",
+          },
+        ],
+        "name": "grid0",
+        "type": "LayerView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/scale/scale-bar.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "scale-bar",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "scale-label",
             "type": "UnitView",
           },
         ],

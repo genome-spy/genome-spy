@@ -29,8 +29,6 @@ export function createMockRenderer() {
             format: "rgba8unorm",
             pickFormat: "rgba8unorm",
             _programTemplateCache: new ProgramTemplateCache(() => {}),
-            _fontResourceCache: new Map(),
-            _nextFontResourceId: 1,
             _globalBindGroupLayout: {},
             _globalBindGroup: {},
             _placementBindGroupLayout: {},

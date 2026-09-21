@@ -7,11 +7,9 @@
     "email": "kari.lavikka@helsinki.fi"
   },
   "license": "MIT",
-  "version": "0.87.0",
+  "version": "0.88.0",
   "type": "module",
-  "sideEffects": [
-    "src/fonts/lato.js"
-  ],
+  "sideEffects": false,
   "types": "src/index.d.ts",
   "exports": {
     ".": {
@@ -90,9 +88,13 @@
       "types": "./src/debug.d.ts",
       "default": "./src/debug.js"
     },
-    "./fonts/lato": {
-      "types": "./src/fonts/lato.d.ts",
-      "default": "./src/fonts/lato.js"
+    "./fonts/truetype": {
+      "types": "./src/fonts/trueTypeFont.d.ts",
+      "default": "./src/fonts/trueTypeFont.js"
+    },
+    "./fonts/default": {
+      "types": "./src/fonts/defaultFont.d.ts",
+      "default": "./src/fonts/defaultFont.js"
     },
     "./high-precision": {
       "types": "./src/utils/highPrecision.d.ts",
@@ -116,7 +118,18 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "benchmark:resources": "node scripts/resourceSharingBenchmark/run.mjs",
+    "build:default-font": "uv run scripts/buildDefaultFont.py",
+    "fetch:msdf-oracle": "node scripts/fetchMsdfgenOracle.mjs",
+    "pretest:msdf-oracle": "npm run fetch:msdf-oracle",
+    "test:msdf-oracle": "vitest run --config vitest.oracle.config.js && playwright test -c playwright.config.js tests/oracles/msdfgen/pathAtlas.gpu.test.js tests/acute-path-strokes.gpu.test.js",
+    "pretest:gpu": "npm run fetch:msdf-oracle",
+    "precompare:path-points": "npm run fetch:msdf-oracle",
+    "precompare:path-text": "npm run fetch:msdf-oracle",
+    "prestorybook": "npm run fetch:msdf-oracle",
+    "prebuild-storybook": "npm run fetch:msdf-oracle",
+    "compare:path-points": "node scripts/comparePathText.mjs --scene path-points",
+    "compare:path-text": "node scripts/comparePathText.mjs",
+    "benchmark:font-atlas": "node scripts/fontAtlasBenchmark/run.mjs",
     "dev": "vite",
     "lint": "eslint .",
     "storybook": "storybook dev -p 6006",

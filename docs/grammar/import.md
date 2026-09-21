@@ -24,7 +24,8 @@ SCHEMA TemplateImport
 ## Importing from a URL
 
 Views can be imported from relative and absolute URLs. Relative URLs are
-imported with respect to the current [`baseUrl`](./index.md#properties).
+imported with respect to the current
+[`baseUrl`](./index.md#unit-view-reference).
 
 The imported specification may contain a single, concatenated, or layered view.
 The `baseUrl` of the imported specification is updated to match the directory of

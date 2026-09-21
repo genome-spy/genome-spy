@@ -182,6 +182,7 @@ function createSvgOptions() {
     return {
         runs: [],
         viewRoot: /** @type {any} */ ({}),
+        textMetrics: /** @type {any} */ ({}),
         logicalWidth: 100,
         logicalHeight: 50,
         pixelRatio: 2,

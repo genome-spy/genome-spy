@@ -76,7 +76,7 @@ async function createAndInitializeRoot(spec, context) {
     await initializeViewData(
         root,
         context.dataFlow,
-        context.fontManager,
+        context.textMetrics,
         () => undefined
     );
 

@@ -12,7 +12,6 @@ import {
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
-import { getTextHeight } from "../fonts/textMetrics.js";
 import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import { isDataReady } from "../data/dataReadiness.js";
@@ -114,7 +113,7 @@ async function createAndInitializeRoot(spec, context) {
     await initializeViewData(
         root,
         context.dataFlow,
-        context.fontManager,
+        context.textMetrics,
         () => undefined
     );
 
@@ -275,15 +274,12 @@ describe("Axis extent measurement", () => {
 
     test("axis extent uses the font loaded by the text mark", async () => {
         const context = createBroadcastingTestViewContext();
-        const defaultFont = context.fontManager.getDefaultFont();
-        const metrics = {
-            ...defaultFont.metrics,
-            capHeight: defaultFont.metrics.common.base * 2,
-            descent: 0,
+        const configuredMeasurement = {
+            measureWidth: (/** @type {string} */ text) => text.length * 10,
+            getHeight: (/** @type {number} */ size) => size * 2,
         };
-        const configuredFont = { ...defaultFont, metrics };
-        vi.spyOn(context.fontManager, "getFont").mockReturnValue(
-            configuredFont
+        vi.spyOn(context.textMetrics, "requestFont").mockReturnValue(
+            configuredMeasurement
         );
 
         const root = await createAndInitializeRoot(
@@ -316,7 +312,7 @@ describe("Axis extent measurement", () => {
         await settleLayout(root, context);
 
         const expectedLabelExtent = Math.ceil(
-            getTextHeight(metrics, Number(textMark.properties.size))
+            configuredMeasurement.getHeight(Number(textMark.properties.size))
         );
         expect(axis.getPerpendicularSize()).toBe(
             axis.axisProps.tickSize +

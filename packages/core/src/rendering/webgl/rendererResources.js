@@ -10,6 +10,7 @@ import WebGLPointMark from "./marks/point.js";
 import WebGLRectMark from "./marks/rect.js";
 import WebGLRuleMark from "./marks/rule.js";
 import WebGLTextMark from "./marks/text.js";
+import { getWebGlTextFont } from "./textFont.js";
 
 const markTypes = {
     point: WebGLPointMark,
@@ -121,10 +122,8 @@ export default class WebGLRendererResources {
         let firstError;
         for (const mark of new Set(marks)) {
             try {
-                const font = /** @type {{ metrics?: unknown } | undefined} */ (
-                    /** @type {any} */ (mark).font
-                );
-                const fontReady = mark.getType() != "text" || font?.metrics;
+                const fontReady =
+                    mark.getType() != "text" || getWebGlTextFont(mark).metrics;
                 if (
                     !this.#markEntries.has(mark) &&
                     mark.encoders &&

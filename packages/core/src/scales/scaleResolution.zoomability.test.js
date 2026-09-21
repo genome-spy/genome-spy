@@ -34,6 +34,43 @@ function createMember({ path, channel = "x", type = "index", zoom }) {
 }
 
 describe("scale resolution zoomability", () => {
+    test("automatic zoom expressions follow effective zoomability changes", async () => {
+        const spec = /** @type {import("../spec/view.js").UnitSpec} */ ({
+            params: [{ name: "autoZoom", expr: "zoomLevel()" }],
+            data: { values: [{ value: 0 }, { value: 10 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: false },
+                },
+            },
+        });
+        const { view } = await createHeadlessEngine(spec);
+        const resolution = view.getScaleResolution("x");
+        const x = /** @type {import("../spec/channel.js").PositionFieldDef} */ (
+            spec.encoding.x
+        );
+        const scale = /** @type {import("../spec/scale.js").Scale} */ (x.scale);
+
+        expect(view.paramRuntime.getValue("autoZoom")).toBe(1);
+
+        scale.zoom = true;
+        resolution.reconfigure();
+        resolution.scale.domain([0, 5]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(view.paramRuntime.getValue("autoZoom")).toBeCloseTo(
+            Math.sqrt(2)
+        );
+
+        scale.zoom = false;
+        resolution.reconfigure();
+        expect(view.paramRuntime.getValue("autoZoom")).toBe(1);
+        view.disposeSubtree();
+    });
+
     test("reuses merged scale props across repeated zoomability checks", () => {
         const orderSpy = vi.spyOn(
             resolutionMemberOrder,

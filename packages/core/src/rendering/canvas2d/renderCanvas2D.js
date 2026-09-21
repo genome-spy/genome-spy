@@ -11,6 +11,7 @@ import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
  * @param {number} options.devicePixelRatio
  * @param {string | null} options.background
  * @param {boolean} options.paint
+ * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
  * @param {(mark: import("../../marks/mark.js").default) => boolean} [options.markPredicate]
  * @param {import("./canvasXIndexManager.js").default} [options.xIndexManager]
  * @param {CanvasRenderingContext2D[]} [options.opacityLayers]
