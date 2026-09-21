@@ -23,6 +23,7 @@
 
   "layer": [
     {
+      "name": "scatterplot",
       "mark": { "type": "point", "filled": true, "size": 45 },
       "encoding": {
         "x": {
@@ -39,6 +40,7 @@
     },
 
     {
+      "name": "labels-and-leaders",
       "transform": [
         {
           "type": "measureText",
@@ -50,7 +52,7 @@
         {
           "type": "formula",
           "expr": "datum._labelWidth + 10",
-          "as": "_collisionWidth"
+          "as": "_labelWidth"
         },
         {
           "type": "collect",
@@ -65,15 +67,15 @@
           "key": "label",
           "x": "x",
           "y": "y",
-          "width": "_collisionWidth",
-          "height": 20,
+          "width": "_labelWidth",
+          "height": 18,
           "anchorWidth": 10,
           "anchorHeight": 10,
           "as": ["_labelDx", "_labelDy"]
         },
         {
           "type": "formula",
-          "expr": "max(0, 1 - min(datum._collisionWidth / 2 / max(abs(datum._labelDx), 1e-6), 8 / max(abs(datum._labelDy), 1e-6)))",
+          "expr": "max(0, 1 - min(datum._labelWidth / 2 / max(abs(datum._labelDx), 1e-6), 8 / max(abs(datum._labelDy), 1e-6)))",
           "as": "_leaderScale"
         },
         {
@@ -93,7 +95,7 @@
       },
       "layer": [
         {
-          "name": "Leader lines",
+          "name": "leader-lines",
           "mark": { "type": "rule", "color": "#606770", "size": 1 },
           "encoding": {
             "x2": { "field": "x" },
@@ -111,7 +113,7 @@
           }
         },
         {
-          "name": "Labels",
+          "name": "labels",
           "mark": {
             "type": "text",
             "align": "center",

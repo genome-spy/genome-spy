@@ -19,7 +19,7 @@ Zoom the scatterplot to see the labels recompute and move smoothly. Leader
 lines stop at the edge of the centered text instead of continuing underneath
 it.
 
-EXAMPLE examples/docs/grammar/transform/displace2d/displace2d-labels.json height=420
+EXAMPLE examples/docs/grammar/transform/displace2d/displace2d-labels.json height=300
 
 ## Placement model
 
@@ -70,3 +70,11 @@ and eases displayed positions toward the evolving placement. It resumes after
 data, scale, or layout changes and stops requesting frames after settling.
 Headless rendering and disabled transitions solve the same constraints
 synchronously.
+
+## Algorithm
+
+Each solver sweep pulls rectangles toward their anchors, keeps them within the
+viewport, and projects overlapping pairs apart along their shallowest axis.
+Occasional deterministic searches help escape poor local arrangements. Because
+every sweep compares every pair of rectangles, the work grows quadratically
+with the number of rows and is best suited to a moderate number of annotations.
