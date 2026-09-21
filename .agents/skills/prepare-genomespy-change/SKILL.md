@@ -49,6 +49,23 @@ description: Prepare GenomeSpy commits and pull requests for delivery. Use when 
 
 - Use a Conventional Commit-style PR title.
 - Write Markdown notes.
-- Start with a short prose rationale.
-- Follow with concise key points focused on user-visible benefits; omit minor
-  refactoring details.
+- Do not hard-wrap prose in PR notes. Keep each paragraph on one source line and
+  let GitHub wrap it when rendering HTML. Use line breaks only for Markdown
+  structure, such as paragraphs, lists, headings, and code blocks.
+- Before drafting the notes, establish why the change is necessary: the current
+  behavior, its concrete consequence, and the affected audience. Use the task
+  context, linked issue, plan, documentation, and branch diff as evidence. If
+  they do not provide enough information, ask the user for clarification. Do
+  not invent a rationale or substitute a goal or implementation summary for it.
+- Start with a self-contained opening for a reviewer who has not read the
+  originating task, issue, or design discussion. Explain the problem before the
+  solution, and include important compatibility or rollout boundaries.
+- For a feature or fix, make the opening useful and understandable to affected
+  users as well as maintainers. Describe the limitation or failure and its
+  practical effect in plain language before adding implementation context.
+- For a refactor or other internal change, explain the engineering problem and
+  maintenance benefit without inventing user-facing impact. For mixed changes,
+  lead with the user-visible reason and then explain the supporting internal
+  work.
+- Follow with concise key points, verification, and any remaining operational
+  follow-ups. Omit minor implementation details.
