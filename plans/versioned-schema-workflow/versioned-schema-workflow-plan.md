@@ -1,5 +1,25 @@
 # Versioned Schema Workflow Plan
 
+## Final implementation status
+
+All three implementation milestones are complete:
+
+- Local Core and App schemas are generated with one command and associated with
+  maintained examples through the committed VS Code workspace.
+- Published example copies receive canonical major-version URLs, while the
+  Playground resolves matching Core URLs to its bundled schema.
+- Stable releases publish immutable exact schemas and monotonic minor and major
+  aliases. Manual deployments require existing aliases and cannot publish them.
+
+The optional automatic workspace-open task and schema watcher were discarded
+for the initial workflow; the documented command and manual VS Code task keep
+generation explicit. Prerelease schema publication and schema `$id` values were
+also deferred because neither is required for the stable-release workflow.
+
+External URL checks remain a release-time operation. The next stable v0.x
+release must publish and verify the first canonical URLs before v1.0; this
+cannot be completed as part of the implementation branch.
+
 ## Context
 
 GenomeSpy currently publishes the generated Core and App JSON Schemas inside
