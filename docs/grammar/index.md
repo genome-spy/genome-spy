@@ -70,20 +70,27 @@ GenomeSpy publishes a JSON Schema that JSON-aware editors can use for
 completion, hover documentation, and validation. Add `$schema` to the root of a
 Core specification:
 
-```json
-{
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "data": { "url": "data/example.csv" },
-  "mark": "point",
-  "encoding": {}
-}
-```
+SNIPPET grammar/core-schema-spec.json
 
 Use the `@genome-spy/app` schema instead for [sample collection
-specifications](../sample-collections/index.md). For reproducible editing, pin
-the schema to the same package version as the GenomeSpy runtime by adding
-`@VERSION` after the package name. The Playground configures the Core schema
-automatically.
+specifications](../sample-collections/index.md), using the corresponding
+`https://genomespy.app/schema/app/v<major>.json` URL. The major-version URL is
+recommended for normal use: compatible schema improvements are published at
+the same URL, while a new major remains opt-in. Minor-version and exact-version
+URLs are also available as `v<major>.<minor>.json` and
+`v<major>.<minor>.<patch>.json` when a project needs tighter reproducibility.
+
+The schema files are also included in the npm packages and can be loaded from
+jsDelivr. Existing unversioned jsDelivr and unpkg URLs remain supported, but
+they follow the selected npm package version rather than GenomeSpy's public
+major-version policy. The Playground configures the current Core development
+schema automatically, including when a spec uses its current major-version URL.
+
+During the remaining 0.x releases, the `v0.json` alias follows the compatible
+late-v0 grammar used to prepare GenomeSpy 1.0. When upgrading the runtime from
+0.x to 1.x, update `v0.json` to `v1.json` as well. The 1.0 grammar remains
+compatible with late v0, but additions made during 1.x are exposed only by the
+v1 schema.
 
 The inline examples in this documentation omit `$schema` to keep them concise.
 Schema validation checks the structure and configuration values of a
