@@ -230,6 +230,7 @@ describe("schema release publication", () => {
             path.join(coreDir, "vega-lite.json"),
             JSON.stringify({
                 $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+                mark: "point",
             })
         );
         await writeFile(
@@ -252,7 +253,7 @@ describe("schema release publication", () => {
                 version: "1.0.0",
                 schemaPath,
             })
-        ).resolves.toEqual({ checked: 1, skipped: 1 });
+        ).resolves.toEqual({ checked: 2, skipped: 0 });
 
         await writeFile(
             schemaPath,

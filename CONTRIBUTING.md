@@ -149,11 +149,10 @@ the changed schema files automatically. If completion or validation remains
 stale, run the build task and then use **Developer: Reload Window**.
 
 If VSCode reports that a schema cannot be resolved, check that both
-`dist/schema.json` files exist and rerun `npm run build:schemas`. An explicit
-`$schema` in an example takes precedence over the workspace association; this
-is intentional for the small set of examples that use Vega-Lite schemas. Check
-the example's directory if it receives the App schema instead of Core, or vice
-versa.
+`dist/schema.json` files exist and rerun `npm run build:schemas`. Maintained
+examples should not declare `$schema`, because it takes precedence over the
+workspace association. Check the example's directory if it receives the App
+schema instead of Core, or vice versa.
 
 Other editors can use the same generated schema files. Configure the editor to
 associate the Core and App example paths with their respective files, or add an

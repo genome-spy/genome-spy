@@ -42,17 +42,9 @@ describe("schema publication workflow", () => {
         ).toContain("https://genomespy.app/schema/app/v1.json");
     });
 
-    test("preserves allowlisted third-party schemas", () => {
-        const source =
-            '{\n  "$schema": "https://vega.github.io/schema/vega-lite/v4.json"\n}\n';
-
-        expect(
-            preparePublishedExample("core/first.json", source, versions)
-        ).toBe(source);
-    });
-
     test("rejects unexpected explicit schemas", () => {
-        const source = '{\n  "$schema": "https://example.com/schema.json"\n}\n';
+        const source =
+            '{\n  "$schema": "https://vega.github.io/schema/vega-lite/v5.json"\n}\n';
 
         expect(() =>
             preparePublishedExample("core/example.json", source, versions)

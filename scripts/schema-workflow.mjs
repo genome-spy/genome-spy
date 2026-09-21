@@ -1,17 +1,5 @@
 const SCHEMA_ORIGIN = "https://genomespy.app/schema";
 
-const THIRD_PARTY_SCHEMA_EXAMPLES = new Set([
-    "core/first.json",
-    "core/layout/grid/concat.json",
-    "core/legends/redundant-encoding.json",
-    "core/marks/rect/bar.json",
-    "core/scales/diverging_test.json",
-    "core/scales/piecewise_test.json",
-    "core/scales/threshold_test.json",
-    "core/selection/bars.json",
-    "core/selection/bars_shift.json",
-]);
-
 /**
  * @param {string} version
  */
@@ -68,15 +56,6 @@ export function preparePublishedExample(relativePath, content, versions) {
     }
 
     if ("$schema" in spec) {
-        if (
-            THIRD_PARTY_SCHEMA_EXAMPLES.has(relativePath) &&
-            /^https:\/\/vega\.github\.io\/schema\/vega-lite\/v\d+\.json$/.test(
-                spec.$schema
-            )
-        ) {
-            return content;
-        }
-
         throw new Error(
             "Unexpected explicit $schema in maintained example: " + relativePath
         );

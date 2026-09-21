@@ -56,12 +56,10 @@ This section is a style guide for both humans and LLMs editing example specs.
 ### General rules
 
 - Keep JSON valid and compatible with Prettier.
-- Do not add a GenomeSpy `$schema` to maintained source examples. Published
-  copies receive the versioned public schema during docs asset staging, while
-  the repository's VSCode settings use schemas generated from the current
-  checkout.
-- Keep an explicit third-party `$schema` first when an example intentionally
-  uses another grammar, such as Vega-Lite.
+- Do not add `$schema` to maintained source examples. They are GenomeSpy specs:
+  published copies receive the versioned public schema during docs asset
+  staging, while the repository's VSCode settings use schemas generated from
+  the current checkout.
 - Add a blank line between major top-level sections to improve scanability.
 - Prefer short files that read well in documentation code blocks.
 - Preserve semantic grouping even when compacting the formatting.
@@ -105,8 +103,7 @@ This section is a style guide for both humans and LLMs editing example specs.
 
 - Group related top-level sections with blank lines between them.
   - Typical source order is: `description`, data/setup, shared config,
-    composition, marks/encodings. An intentional third-party `$schema` comes
-    first.
+    composition, marks/encodings.
 - Within arrays such as `layer`, `concat`, `hconcat`, and `vconcat`, separate visually distinct child views with blank lines when the children are more than trivial one-liners.
 - Keep tiny repeated child specs compact.
   - Example: `[{ "mark": "point" }, { "mark": "point" }]`

@@ -166,11 +166,6 @@ export async function validatePreviousExamples(options) {
             const spec = JSON.parse(await readFile(examplePath, "utf8"));
             const declaredSchema = spec.$schema;
 
-            if (isThirdPartySchema(declaredSchema)) {
-                skipped++;
-                continue;
-            }
-
             const declared = parseCanonicalSchema(declaredSchema);
             if (declared && declared.library !== library) {
                 throw new Error(
@@ -328,13 +323,6 @@ function parseVersionMajor(version) {
     }
 
     return Number(match[1]);
-}
-
-/**
- * @param {string | undefined} uri
- */
-function isThirdPartySchema(uri) {
-    return Boolean(uri?.startsWith("https://vega.github.io/schema/vega-lite/"));
 }
 
 /**
