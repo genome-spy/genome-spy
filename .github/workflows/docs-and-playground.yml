@@ -67,6 +67,12 @@ jobs:
                   path: deploy-site
                   ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
 
+            - name: Publish versioned schemas
+              if: github.event_name == 'release' && github.event.release.prerelease == false
+              run: |
+                  node scripts/publish-schemas.mjs --site-dir deploy-site
+                  git -C deploy-site add schema
+
             - name: Update site contents
               run: |
                   rm -rf deploy-site/docs deploy-site/playground

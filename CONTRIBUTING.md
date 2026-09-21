@@ -86,6 +86,33 @@ The check resolves imports, loads data, and waits for rendering to settle. It
 does not write screenshots. Network access is required by examples that use
 remote data.
 
+### Publishing versioned schemas
+
+The documentation deployment publishes Core and App schemas only for a stable
+GitHub release. It writes immutable exact files and updates the matching minor
+and major aliases under `https://genomespy.app/schema/`. Manual documentation
+deployments and prereleases do not change the public schema tree.
+
+Before advancing a major alias, the release job validates compatible examples
+from the currently deployed documentation against the new schema. A failure
+means the schema or specification types must be corrected, or the change must
+move to a new major version. The late-v0 corpus is also checked for the first v1
+release because that transition is intentionally compatible.
+
+To exercise publication without touching the live site, build both schemas and
+run the publisher against a temporary copy or empty directory:
+
+```sh
+npm run build:schemas
+node scripts/publish-schemas.mjs --site-dir /path/to/site-copy
+```
+
+Inspect `schema/core/` and `schema/app/` in that directory. Each contains exact,
+minor, and major files plus a manifest that records alias targets. Reusing an
+exact version with different content fails, rerunning the same release is
+idempotent, and publishing an older release cannot move aliases backward. Core
+and App package versions are handled independently.
+
 ## How to Contribute
 
 Before making contributions, please familiarize yourself with the following
