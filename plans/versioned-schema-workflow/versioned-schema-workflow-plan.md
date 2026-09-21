@@ -43,6 +43,8 @@ is copied; the referenced schema repository is BSD-3-Clause licensed.
   schema alias exists.
 - Make schema generation and refresh discoverable and low-friction for
   contributors.
+- Document first-time editor initialization, routine schema refresh, and
+  troubleshooting for VS Code and other editors.
 
 ## Non-goals
 
@@ -130,6 +132,33 @@ The workflow must give a clear error or setup instruction when a generated
 schema is missing. A watcher is worthwhile only if generation is fast and the
 existing development servers cannot cheaply regenerate schemas when relevant
 specification type files change.
+
+### Document editor initialization and maintenance
+
+`CONTRIBUTING.md` will be the canonical developer guide for schema-assisted
+editing. Its setup section will give a new contributor one linear path:
+
+1. Install dependencies with `npm ci`.
+2. Open the repository root as the VS Code workspace and trust the workspace.
+3. Generate both schemas with the root schema command, either in a terminal or
+   through a named task in `.vscode/tasks.json`.
+4. Open representative Core and App examples and verify completion, hover, and
+   validation are active.
+
+The same section will explain when regeneration is required after changes to
+Core or App specification types, how to run any adopted watch task, and how to
+refresh VS Code if it retains a stale schema. Troubleshooting will cover a
+missing `dist/schema.json`, stale completion, an example receiving the wrong
+Core/App schema, workspace trust or disabled automatic tasks, and an explicit
+third-party `$schema` taking precedence over workspace associations.
+
+The committed `.vscode/settings.json` and task definitions are repository
+configuration, not snippets that each contributor must copy manually. The
+guide will name the relevant files so contributors can inspect the behavior.
+It will also document the editor-independent root commands so contributors are
+not required to use VS Code. `README.md` will add the one-time schema step to
+the short bootstrap path, while `examples/README.md` will explain the
+source-versus-published schema distinction where example authors encounter it.
 
 ### Publish only from stable release events
 
@@ -230,6 +259,8 @@ schema.
 - `.vscode/settings.json` and, if useful, `.vscode/tasks.json`.
 - GenomeSpy `$schema` declarations in `examples/core`, `examples/docs`, and
   `examples/app`.
+- `README.md` bootstrap instructions and `CONTRIBUTING.md` editor setup,
+  refresh, and troubleshooting guidance.
 - `examples/README.md` contributor guidance.
 - Core and App schema build outputs consumed by documentation and Playground
   builds.
@@ -238,6 +269,9 @@ schema.
 
 - On a clean checkout, run the documented setup command and confirm both schema
   files are generated.
+- Follow the documented VS Code initialization from a clean checkout without
+  relying on unrecorded user settings, then verify Core and App completion,
+  hover, and validation.
 - Add a temporary Core specification property on a development branch and
   confirm VS Code completion and validation update after regeneration without a
   public schema change.
@@ -246,13 +280,20 @@ schema.
   schema, then confirm the workspace mappings do not change their validation
   behavior.
 - Confirm a missing generated schema produces actionable setup guidance.
+- Follow the documented stale-schema recovery and confirm VS Code begins using
+  a regenerated schema without editing example `$schema` properties.
+- Run the documented schema commands outside VS Code and confirm they provide
+  the same generated artifacts.
 
 ### Documentation and migration
 
-Replace the current blanket “keep `$schema` first” rule in the examples
-contributor guide. Document the local schema workflow, the third-party
-declaration exception, why public GenomeSpy declarations are added during
-publication, and where users should obtain copyable published examples.
+Add the one-time schema-generation step to the root bootstrap instructions and
+add a dedicated schema-assisted editing section to `CONTRIBUTING.md`. Replace
+the current blanket “keep `$schema` first” rule in the examples contributor
+guide. Document the local schema workflow, schema refresh and troubleshooting,
+the third-party declaration exception, why public GenomeSpy declarations are
+added during publication, and where users should obtain copyable published
+examples.
 
 ### Tentative commit
 
@@ -361,7 +402,8 @@ checks.
 Before releasing v1.0:
 
 1. Generate local schemas and confirm current Core and App examples validate in
-   VS Code from a clean checkout.
+   VS Code from a clean checkout by following only the committed developer
+   documentation.
 2. Build the documentation from the v1.0 release candidate and inspect the
    staged example JSON, rendered schema guidance, and generated schema files.
 3. Run the existing curated-example browser smoke suite.
@@ -384,8 +426,9 @@ declaration.
 ## Risks and mitigations
 
 - **Generated local schemas become stale.** Provide one obvious command,
-  actionable missing-schema guidance, and an optional editor task. Consider a
-  watcher only after measuring generation cost.
+  actionable missing-schema guidance, a named editor task, and documented
+  refresh and recovery steps. Consider a watcher only after measuring
+  generation cost.
 - **An example is assigned the wrong schema.** Classify known example roots,
   preserve explicit third-party declarations, and fail on ambiguous cases.
 - **A preview overwrites a stable alias.** Gate canonical publication on stable
@@ -427,6 +470,11 @@ declaration.
   exact and minor alternatives.
 - VS Code validates repository examples against locally generated schemas from
   the current checkout, including an unreleased next-major branch.
+- A new contributor can initialize schema assistance from the root README and
+  `CONTRIBUTING.md`, and can refresh or troubleshoot it without private editor
+  settings or undocumented commands.
+- Non-VS-Code contributors can generate and refresh the same schemas through
+  documented root commands.
 - Production Playground schema assistance works for canonical versioned URLs
   without depending on a remote fetch.
 - A stable release publishes exact, minor, and major schema files for Core and
