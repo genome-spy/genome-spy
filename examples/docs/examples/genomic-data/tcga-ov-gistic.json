@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape",
     "Shows recurrent GISTIC2 copy-number amplifications and deletions across the TCGA ovarian serous cystadenocarcinoma cohort."

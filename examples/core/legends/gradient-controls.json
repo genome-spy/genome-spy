@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Gradient legend controls",
     "Horizontal and vertical ramps demonstrate length, thickness, opacity, borders, and tick density."

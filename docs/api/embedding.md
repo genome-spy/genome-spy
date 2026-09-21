@@ -7,6 +7,9 @@ title: Embedding GenomeSpy in Web Applications
 ## Embedding
 
 See the [getting started](../getting-started.md) page.
+For specifications stored as JSON files, turn on [editor suggestions and error
+checking](../grammar/index.md#schema-assisted-editing) to catch many common
+mistakes before the specification reaches the browser.
 
 ## Entry points
 

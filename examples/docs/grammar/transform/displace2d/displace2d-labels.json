@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Displaced scatterplot labels",
     "Measures and separates overlapping labels while leader lines preserve their connection to the original points."

@@ -1,0 +1,31 @@
+{
+  "folders": [{ "path": "." }],
+  "settings": {
+    "json.schemas": [
+      {
+        "fileMatch": ["/examples/core/**/*.json", "/examples/docs/**/*.json"],
+        "url": "./packages/core/dist/schema.json"
+      },
+      {
+        "fileMatch": ["/examples/app/**/*.json"],
+        "url": "./packages/app/dist/schema.json"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Build JSON schemas",
+        "type": "npm",
+        "script": "build:schemas",
+        "problemMatcher": [],
+        "group": "build",
+        "presentation": {
+          "clear": true,
+          "reveal": "silent"
+        }
+      }
+    ]
+  }
+}

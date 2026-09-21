@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Zoomable brushing and linking with hierarchical params.",
     "The top view pushes interval selection to an outer param.",

@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Canvas renderer dense rectangles",
     "A fixed 50,000-instance zoom and pan benchmark for the Canvas2D compatibility renderer."

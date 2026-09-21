@@ -11,6 +11,10 @@ import {
 import { constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+    parseStableVersion,
+    preparePublishedExample,
+} from "./schema-workflow.mjs";
 
 const console = globalThis.console;
 
@@ -144,8 +148,9 @@ function getExampleAssetRelativePath(relativePath) {
 /**
  * @param {string} sourceDir
  * @param {string} targetDir
+ * @param {{ core: string, app: string }} versions
  */
-async function stageExampleAssets(sourceDir, targetDir) {
+async function stageExampleAssets(sourceDir, targetDir, versions) {
     for (const sourcePath of await getExampleAssetFiles(sourceDir)) {
         const relativePath = path.relative(sourceDir, sourcePath);
         const targetPath = path.join(
@@ -154,7 +159,16 @@ async function stageExampleAssets(sourceDir, targetDir) {
         );
 
         await mkdir(path.dirname(targetPath), { recursive: true });
-        await copyFile(sourcePath, targetPath);
+        if (path.extname(sourcePath) === ".json") {
+            const portableRelativePath = relativePath.split(path.sep).join("/");
+            const content = await readFile(sourcePath, "utf8");
+            await writeFile(
+                targetPath,
+                preparePublishedExample(portableRelativePath, content, versions)
+            );
+        } else {
+            await copyFile(sourcePath, targetPath);
+        }
     }
 }
 
@@ -185,10 +199,14 @@ const appPackage = JSON.parse(await readFile(appPackageSource, "utf8"));
 const inspectorPackage = JSON.parse(
     await readFile(inspectorPackageSource, "utf8")
 );
+const coreVersion = parseStableVersion(corePackage.version);
+const appVersion = parseStableVersion(appPackage.version);
 
 const snippetReplacements = {
     CORE_VERSION: corePackage.version,
+    CORE_MAJOR_VERSION: String(coreVersion.major),
     APP_VERSION: appPackage.version,
+    APP_MAJOR_VERSION: String(appVersion.major),
     INSPECTOR_VERSION: inspectorPackage.version,
 };
 
@@ -198,7 +216,10 @@ await rm(docsAppDir, { recursive: true, force: true });
 await rm(docsExampleSpecsDir, { recursive: true, force: true });
 await rm(docsGeneratedSnippetsDir, { recursive: true, force: true });
 await cp(docEmbedDistDir, docsAppDir, { recursive: true });
-await stageExampleAssets(examplesSourceDir, docsExampleSpecsDir);
+await stageExampleAssets(examplesSourceDir, docsExampleSpecsDir, {
+    core: corePackage.version,
+    app: appPackage.version,
+});
 await cp(vegaDatasetsSourceDir, docsVegaDatasetsDir, { recursive: true });
 await cp(coreSchemaSource, coreSchemaTarget);
 await cp(appSchemaSource, appSchemaTarget);

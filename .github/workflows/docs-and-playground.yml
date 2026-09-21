@@ -67,6 +67,16 @@ jobs:
                   path: deploy-site
                   ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
 
+            - name: Verify published schema aliases
+              if: github.event_name == 'workflow_dispatch'
+              run: node scripts/verify-schema-aliases.mjs --site-dir deploy-site
+
+            - name: Publish versioned schemas
+              if: github.event_name == 'release' && github.event.release.prerelease == false
+              run: |
+                  node scripts/publish-schemas.mjs --site-dir deploy-site
+                  git -C deploy-site add schema
+
             - name: Update site contents
               run: |
                   rm -rf deploy-site/docs deploy-site/playground

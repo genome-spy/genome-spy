@@ -1,5 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": [
     "Zoom-responsive genomic scale bars",
     "Zoom the shared genomic scale to change the distance represented by the arrow. A static dummy datum and expression-driven mark properties keep the scale bar centered at roughly half the viewport width."

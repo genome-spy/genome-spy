@@ -1,5 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": [
     "Reversed-axis displace2d test",
     "Exercises annotation displacement with both positional scales reversed."

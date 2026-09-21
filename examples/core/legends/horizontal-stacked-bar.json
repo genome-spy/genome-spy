@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Horizontal stacked barley bars",
     "Adapts Vega-Lite's barley example to test a horizontal color legend."

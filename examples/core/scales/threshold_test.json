@@ -1,6 +1,4 @@
 {
-  "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-
   "description": "Threshold scales for size, color, and shape",
 
   "data": {

@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Zoomable Multiple Sequence Alignment with a Sequence Logo",
     "Visualizes NCBI's 16SRNA_Deino_87seq alignment as a zoomable sequence logo.",

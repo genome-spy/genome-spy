@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "GENCODE Gene Annotations from GFF3",
     "Displays GENCODE release 43 transcript annotations from a tabix-indexed GFF3 file with packed transcript lanes, exons, UTR/CDS intervals, and transcript labels.",

@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": "Text mark example positioned inside ranges.",
 
   "data": { "values": ["A", "B", "C", "D", "E", "F", "G"] },

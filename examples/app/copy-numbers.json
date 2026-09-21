@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
-
   "description": "Aggregated copy-number-style segments with logR values across a toy genome indexed from 0 to 100.",
 
   "data": {

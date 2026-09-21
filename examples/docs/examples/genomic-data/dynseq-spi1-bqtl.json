@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "SPI1 Binding-QTL Dynseq Track",
     "Compares per-base projected DeepSHAP contribution scores for the reference C and alternate G alleles of rs5764238 in GM12878 SPI1 ChIP-seq BPNet predictions.",

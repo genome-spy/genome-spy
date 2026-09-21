@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Text mark rendering quality",
     "Renders varied text sizes, letters, and digits for visual inspection."

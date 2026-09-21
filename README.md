@@ -42,7 +42,12 @@ how to embed GenomeSpy in web applications and use the
 1. `git clone git@github.com:genome-spy/genome-spy.git`
 2. `cd genome-spy`
 3. `npm ci`
-4. `npm start` (starts a development server with the app package)
+4. `npm run build:schemas` (enables schema-assisted example editing)
+5. `npm start` (starts a development server with the app package)
+
+VSCode users should open `genome-spy.code-workspace` to enable the shared JSON
+Schema associations and schema-generation task without changing personal
+`.vscode/` settings.
 
 The repo-root `examples/` directory contains curated shared example
 specifications that can be accessed through URLs like
