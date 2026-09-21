@@ -1,10 +1,10 @@
-# Progressive two-dimensional displacement PoC
+# Progressive two-dimensional displacement
 
 ## Status
 
-The force-relaxation baseline is preserved in commit `ae17eb4c2`. The current
-working tree replaces it with an uncommitted position-based constraint solver
-for visual evaluation. Neither experiment is ready for production integration.
+Implemented and verified. The position-based constraint solver was selected as
+the production implementation. The force-relaxation baseline remains available
+in commit `ae17eb4c2` for historical comparison.
 
 ## Motivation
 
@@ -188,7 +188,7 @@ Documentation or migration: none; experimental grammar is unchanged.
 
 Commit: `feat(core): prototype progressive label relaxation`
 
-### 2. Evaluate position-based constraint projection
+### 2. Evaluate position-based constraint projection — completed
 
 Intended outcome: remove the greedy initializer and velocity integration, keep
 new placements local, and preserve offsets through pan and zoom.
@@ -204,7 +204,7 @@ Documentation or migration: record findings here. Do not update public
 specification documentation until an algorithm and saturation policy are
 selected.
 
-Tentative commit: `feat(core): try position-based label constraints`
+Implementation commit: `feat(core): prototype progressive constraint label placement`
 
 ## Acceptance criteria for the experiment
 
@@ -223,7 +223,8 @@ Tentative commit: `feat(core): try position-based label constraints`
 - Animation stops at convergence or the iteration cap and cancels on disposal.
 - Facets remain independent and batch boundaries survive animation.
 - Interactive and headless paths use the same numerical method.
-- `Displace2DParams` and its generated schema remain unchanged.
+- `Displace2DParams` and its generated schema expose only the selected
+  scale-aware placement contract.
 
 ## Evidence
 
@@ -265,12 +266,19 @@ Recorded on 2026-09-20:
   grew by 13 lines; a follow-up V8 profile attributes the remaining time to
   the actual pairwise sweep and radial repair rather than overlap measurement.
 
-## Remaining evaluation
+## Final disposition
 
-- Maintainer judgment on whether the much shorter leader lines justify the
-  current overlap rate.
-- Decide whether to improve constraint projection or move directly to an
-  alternating VPSC experiment.
-- Evaluate a spatial index only if this numerical method is selected for
-  production; current profiling does not justify that added PoC complexity.
-- Decide on stable identity and saturation semantics before production work.
+- The constraint-projection result was accepted as materially better than the
+  greedy baseline. Alternating VPSC and further global optimization were
+  discarded for this change.
+- A spatial index was discarded after profiling showed that useful annotation
+  counts did not justify the additional machinery.
+- Stable identity is explicit through the optional `key` field. Without it,
+  state follows row identity.
+- Dense or infeasible layouts use best-effort placement and may retain overlap;
+  the transform does not send labels to a distant overflow row.
+- The public grammar was intentionally simplified after the experiment:
+  positions always use the owning view's scales, and raw position factors,
+  explicit extents, debounce, and the `scalePositions` switch were removed.
+- The transform now owns progressive display interpolation, so the separate
+  keyed `transition` transform and the obsolete greedy solver were removed.

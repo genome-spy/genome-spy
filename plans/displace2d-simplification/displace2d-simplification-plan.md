@@ -1,6 +1,6 @@
 # Displace2D simplification plan
 
-Status: implemented and verified; retained for final delivery reconciliation
+Status: implemented and verified; later superseded as recorded below
 
 ## Problem interpretation
 
@@ -367,3 +367,18 @@ lint, schema/documentation checks, and browser smoke tests for the canonical and
 acid-test examples. Compare example size and interaction timing against the
 pre-change baseline. Reconcile every item in this plan as completed or
 discarded, commit that record, and remove the plan in a later cleanup commit.
+
+## Final reconciliation
+
+This plan's scale-aware adapter and smoothing refactor were implemented and
+verified at their original milestones. Subsequent evaluation simplified the
+design further before publication:
+
+- Scale mapping became the only position contract. The `scalePositions` switch,
+  raw-coordinate factors, explicit extents, and debounce were removed.
+- The constraint solver replaced the greedy solver, which is no longer retained
+  as an alternate implementation.
+- `displace2d` now buffers rows and interpolates its own progressive output. The
+  separate keyed `transition` transform was therefore removed.
+- The final examples, schema, documentation, unit tests, and browser smoke tests
+  cover the selected contract. No tasks from this plan remain open.
