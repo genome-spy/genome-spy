@@ -52,7 +52,7 @@ The row bound does not bound the size of an individual nested datum.
 
 ### getScaleResolution
 
-> **getScaleResolution**: (`channel`) => [`ScaleResolutionApi`](ScaleResolutionApi.md)
+> **getScaleResolution**: (`channel`) => [`ScaleResolutionApi`](ScaleResolutionApi.md) \| `undefined`
 
 Returns the resolved positional scale, including unnamed scales, or undefined if absent.
 Throws for invalid channels, removed views, or finalized embeds.
@@ -65,7 +65,7 @@ Throws for invalid channels, removed views, or finalized embeds.
 
 #### Returns
 
-[`ScaleResolutionApi`](ScaleResolutionApi.md)
+[`ScaleResolutionApi`](ScaleResolutionApi.md) \| `undefined`
 
 ***
 
@@ -82,7 +82,7 @@ bookmark or serialization format.
 
 ### name
 
-> `readonly` **name**: `string`
+> `readonly` **name**: `string` \| `undefined`
 
 Explicit view name, if the view has one.
 
@@ -90,7 +90,7 @@ Explicit view name, if the view has one.
 
 ### selector
 
-> `readonly` **selector**: `ViewSelector`
+> `readonly` **selector**: `ViewSelector` \| `undefined`
 
 Selector for this view, if the view is addressable by selector.
 
@@ -118,13 +118,13 @@ Returns whether the referenced view is still part of the live hierarchy.
 
 ### parent
 
-> **parent**: () => `ViewHandle`
+> **parent**: () => `ViewHandle` \| `undefined`
 
 Returns a handle to the layout parent, if the view has one.
 
 #### Returns
 
-`ViewHandle`
+`ViewHandle` \| `undefined`
 
 ***
 

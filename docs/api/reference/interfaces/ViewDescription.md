@@ -6,7 +6,7 @@
 
 ### title
 
-> **title**: `string` \| `string`[]
+> **title**: `string` \| `string`[] \| `null`
 
 View title text, or null when absent.
 
@@ -14,7 +14,7 @@ View title text, or null when absent.
 
 ### description
 
-> **description**: `string` \| `string`[]
+> **description**: `string` \| `string`[] \| `null`
 
 Authored view description, or null when absent.
 
