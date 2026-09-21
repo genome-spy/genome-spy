@@ -1106,6 +1106,74 @@ export interface Displace1DParams extends TransformParamsBase {
     as?: string;
 }
 
+/**
+ * Progressively displaces axis-aligned rectangles to reduce overlap while
+ * keeping them close to positions mapped through the view's x and y scales.
+ * Every input row receives signed pixel offsets. Earlier rows have higher
+ * placement priority.
+ */
+export interface Displace2DParams extends TransformParamsBase {
+    type: "displace2d";
+
+    /**
+     * Field containing a unique string or finite numeric identifier. Use a key
+     * to preserve placement when upstream transforms replace, filter, or
+     * reorder rows. Without a key, placement state follows row object identity.
+     */
+    key?: Field;
+
+    /** Field containing the anchor value mapped through the view's x scale. */
+    x: Field;
+
+    /** Field containing the anchor value mapped through the view's y scale. */
+    y: Field;
+
+    /**
+     * Collision width in logical pixels, including any desired horizontal
+     * spacing. A number or expression supplies one value for all rows; a field
+     * supplies per-row values. Values must be non-negative. Setting either
+     * collision dimension to zero disables displacement for that row.
+     */
+    width: number | Field | ExprRef;
+
+    /**
+     * Collision height in logical pixels, including any desired vertical
+     * spacing. A number or expression supplies one value for all rows; a field
+     * supplies per-row values. Values must be non-negative. Setting either
+     * collision dimension to zero disables displacement for that row.
+     */
+    height: number | Field | ExprRef;
+
+    /**
+     * Width in logical pixels of an obstacle centered on the anchor. A number
+     * or expression supplies one value for all rows; a field supplies per-row
+     * values. Setting either anchor dimension to zero disables the obstacle for
+     * that row.
+     *
+     * __Default value:__ `0`
+     */
+    anchorWidth?: number | Field | ExprRef;
+
+    /**
+     * Height in logical pixels of an obstacle centered on the anchor. A number
+     * or expression supplies one value for all rows; a field supplies per-row
+     * values. Setting either anchor dimension to zero disables the obstacle for
+     * that row.
+     *
+     * __Default value:__ `0`
+     */
+    anchorHeight?: number | Field | ExprRef;
+
+    /**
+     * Names of the output fields for signed horizontal and vertical pixel
+     * offsets. Positive values move right and down, respectively. Neither name
+     * may overwrite `key`.
+     *
+     * __Default value:__ `["xDisplacement", "yDisplacement"]`
+     */
+    as?: [string, string];
+}
+
 export interface FlattenCompressedExonsParams extends TransformParamsBase {
     type: "flattenCompressedExons";
 
@@ -1139,6 +1207,7 @@ export type TransformParams =
     | CoordinateLookupParams
     | CrossParams
     | Displace1DParams
+    | Displace2DParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams

@@ -7,6 +7,7 @@ import {
     isRegExp,
     isString,
     ascending,
+    inrange,
     lerp,
     span,
 } from "vega-util";
@@ -56,6 +57,8 @@ const functionContext = {
     ) {
         return sequence(seq).indexOf(value, start);
     },
+
+    inrange,
 
     lastindexof(
         /** @type {any} */ seq,
