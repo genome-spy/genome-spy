@@ -63,9 +63,17 @@ is copied; the referenced schema repository is BSD-3-Clause licensed.
 The documented canonical URLs will be:
 
 ```text
+https://genomespy.app/schema/core/v0.json
+https://genomespy.app/schema/core/v0.88.json
+https://genomespy.app/schema/core/v0.88.1.json
+
 https://genomespy.app/schema/core/v1.json
 https://genomespy.app/schema/core/v1.2.json
 https://genomespy.app/schema/core/v1.2.3.json
+
+https://genomespy.app/schema/app/v0.json
+https://genomespy.app/schema/app/v0.88.json
+https://genomespy.app/schema/app/v0.88.1.json
 
 https://genomespy.app/schema/app/v1.json
 https://genomespy.app/schema/app/v1.2.json
@@ -78,12 +86,27 @@ published independently even while the monorepo releases them in lockstep.
 - An exact URL is immutable.
 - A minor alias is replaced by the newest stable patch in that minor line.
 - A major alias is replaced by the newest stable release in that major line.
-- Old exact files and old major aliases remain available indefinitely.
+- Old exact files and old minor and major aliases remain available
+  indefinitely.
 
 Examples and normal documentation use the major alias. Exact URLs exist for
 archival and reproducibility needs but are not the default recommendation.
 jsDelivr remains an automatic mirror of every package's exact and ranged
 versions.
+
+The full publication workflow will begin during v0.x rather than waiting for
+1.0. The next stable v0.x release after implementation will publish exact,
+minor, and major aliases, and its public examples will use `v0.json`. Although
+SemVer permits breaking changes between v0 minor releases, GenomeSpy intends no
+schema-breaking change between adoption of this workflow and v1.0. Advancing
+`v0.json` is therefore subject to the same compatibility check as later major
+aliases.
+
+When v1.0 is released, the v0 aliases freeze at the final v0.x schema and new
+published examples switch to `v1.json`. Because v1.0 stabilizes the compatible
+late-v0 grammar, specifications copied with `v0.json` remain valid but will not
+receive completion for features added only to v1. Documentation will recommend
+updating the schema URL when the runtime is upgraded to v1.
 
 ### Separate repository validation from published declarations
 
@@ -186,12 +209,13 @@ the incoming stable version is newer than its recorded target. Rerunning the
 same release is idempotent, while an older release cannot roll an alias back.
 Core and App apply this comparison independently.
 
-Before 1.0, staged examples will continue receiving the current unversioned
-jsDelivr declarations even though repository sources use local associations.
-Canonical `genomespy.app` URLs become the staging default only when the
-corresponding package version reaches 1.0. This lets the workflow land and be
-tested during 0.x without creating an undocumented `v0.json` contract. The
-schema documentation follows the same conditional publication rule.
+The first v0.x release using this workflow replaces unversioned jsDelivr
+declarations in maintained public examples and documentation with the
+canonical `v0.json` URLs. Unversioned GenomeSpy schema URLs become legacy at
+that point. They remain recognized by the Playground for existing copied
+specifications, but documentation no longer recommends them. The v1.0 release
+notes will repeat the migration instruction because old unversioned URLs will
+otherwise eventually resolve to a breaking v2 schema.
 
 ### Keep editor resolution local where possible
 
@@ -203,7 +227,8 @@ This keeps completion aligned with the Playground runtime and supports preview
 builds whose public alias has not been released yet. A declaration for another
 major is fetched from its public URL rather than silently validated against the
 wrong bundled grammar. Existing unversioned jsDelivr and unpkg URLs remain
-mapped to the bundle during the pre-v1 transition.
+mapped to the bundle as a legacy compatibility path for previously copied
+specifications.
 
 The App schema is used for App specification editing and documentation, but the
 current Playground is a Core editor. App URL handling should be added only to
@@ -319,8 +344,8 @@ editing uses the schema bundled with its matching release.
 ### Verification
 
 - Unit-test Core and App URL generation for stable, minor, and patch versions.
-- Unit-test the pre-v1 path so 0.x builds retain unversioned jsDelivr URLs and
-  do not imply a public `v0.json` contract.
+- Unit-test v0 URL generation so current builds emit `v0.json`, `v0.<minor>`,
+  and exact-version targets through the same code paths used after v1.
 - Unit-test staging so formatting is preserved, the schema stays first, and
   allowlisted third-party `$schema` declarations are not replaced.
 - Build documentation and inspect representative staged examples:
@@ -341,7 +366,8 @@ editing uses the schema bundled with its matching release.
 
 Document major aliases as the default, explain exact-version URLs as an
 optional reproducibility tool, and identify jsDelivr as a mirror rather than
-the canonical URL.
+the canonical URL. Mark unversioned jsDelivr and unpkg declarations as legacy
+and explain both the v0 adoption and v0-to-v1 update paths.
 
 ### Tentative commit
 
@@ -367,7 +393,8 @@ schemas during manual or preview deployments.
 ### Verification
 
 - Exercise publication logic against a temporary site checkout for a sequence
-  such as 1.0.0, 1.0.1, 1.1.0, and 2.0.0, including an out-of-order rerun.
+  such as 0.88.1, 0.88.2, 1.0.0, 1.1.0, and 2.0.0, including an out-of-order
+  rerun.
 - Verify exact files never change, minor aliases advance only within their
   minor line, major aliases advance only within their major line, and old tags
   cannot move either alias backward.
@@ -384,14 +411,15 @@ schemas during manual or preview deployments.
   published by the previous matching release against the new schema. Treat a
   failure as a compatibility regression requiring either a correction or a
   deliberate major-version release.
-- After the v1.0 release, fetch all six initial Core/App exact, minor, and major
-  URLs and validate representative specifications with them.
+- On the first participating v0.x release and again on v1.0, fetch all six
+  Core/App exact, minor, and major URLs and validate representative
+  specifications with them.
 
 ### Documentation and migration
 
 Add the schema publication and immutability rules to the release documentation.
-Record the compatible late-v0 to v1 transition, without adding runtime version
-checks.
+Record the initial v0 publication, deprecation of unversioned URLs, and the
+compatible late-v0 to v1 transition, without adding runtime version checks.
 
 ### Tentative commit
 
@@ -399,12 +427,13 @@ checks.
 
 ## Integration verification
 
-Before releasing v1.0:
+Before releasing v1.0, exercise the workflow on at least one stable v0.x
+release:
 
 1. Generate local schemas and confirm current Core and App examples validate in
    VS Code from a clean checkout by following only the committed developer
    documentation.
-2. Build the documentation from the v1.0 release candidate and inspect the
+2. Build the documentation from the v0.x release candidate and inspect the
    staged example JSON, rendered schema guidance, and generated schema files.
 3. Run the existing curated-example browser smoke suite.
 4. Open `point-mark.json` from the documentation in the Playground and verify
@@ -414,8 +443,10 @@ Before releasing v1.0:
    and confirm its URL identifies the App schema.
 6. Dry-run publication into a temporary copy of the site repository and verify
    retention, monotonic alias advancement, and exact-file immutability.
-7. After publishing v1.0, fetch the canonical URLs from an external client and
-   compare the exact schemas with the npm package artifacts.
+7. Publish the v0.x release, fetch the canonical URLs from an external client,
+   and compare the exact schemas with the npm package artifacts.
+8. Repeat the publication dry run for v1.0 and verify the v0 aliases freeze,
+   the v1 aliases are created, and maintained examples switch to `v1.json`.
 
 Review gates are appropriate after the local/public schema boundary is
 implemented and again after release publication is integrated. The final review
@@ -464,8 +495,13 @@ declaration.
 
 ## Acceptance criteria
 
+- At least one stable v0.x release publishes and exercises the exact, minor,
+  and major Core and App schema URLs before v1.0.
 - Public Core and App examples use their respective `v<major>.json` canonical
   schema URLs.
+- Maintained v0.x examples and documentation no longer recommend unversioned
+  jsDelivr or unpkg schema URLs, while the Playground still recognizes them for
+  legacy specifications.
 - Documentation recommends the same major aliases and accurately explains
   exact and minor alternatives.
 - VS Code validates repository examples against locally generated schemas from
@@ -480,7 +516,10 @@ declaration.
 - A stable release publishes exact, minor, and major schema files for Core and
   App from that release tag.
 - Exact files are immutable, aliases advance only within their declared range,
-  and old major schemas survive subsequent documentation deployments.
+  and old exact, minor, and major schemas survive subsequent documentation
+  deployments.
+- Publishing v1.0 freezes the final v0 aliases, creates v1 aliases, and switches
+  maintained examples and documentation to `v1.json`.
 - Preview and manual documentation builds cannot update canonical schema
   aliases.
 - Prereleases and out-of-order release reruns cannot update canonical aliases,
