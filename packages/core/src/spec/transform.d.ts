@@ -1107,65 +1107,67 @@ export interface Displace1DParams extends TransformParamsBase {
 }
 
 /**
- * Places generic axis-aligned rectangles in stable input order. Every input row
- * receives signed pixel offsets; earlier rows have placement priority.
+ * Progressively displaces axis-aligned rectangles to reduce overlap while
+ * keeping them close to positions mapped through the view's x and y scales.
+ * Every input row receives signed pixel offsets. Earlier rows have higher
+ * placement priority.
  */
 export interface Displace2DParams extends TransformParamsBase {
     type: "displace2d";
 
     /**
-     * Field containing a unique string or finite numeric key. A key preserves
-     * progressive placement when upstream transforms replace, filter, or
-     * reorder row objects. Without a key, placement state is retained only
-     * while the input row objects retain their identity.
+     * Field containing a unique string or finite numeric identifier. Use a key
+     * to preserve placement when upstream transforms replace, filter, or
+     * reorder rows. Without a key, placement state follows row object identity.
      */
     key?: Field;
 
-    /** Field containing the horizontal position in the view's x-scale domain. */
+    /** Field containing the anchor value mapped through the view's x scale. */
     x: Field;
 
-    /** Field containing the vertical position in the view's y-scale domain. */
+    /** Field containing the anchor value mapped through the view's y scale. */
     y: Field;
 
     /**
-     * Full collision width in logical pixels, including any desired spacing. A
-     * number is shared by all rows, a field supplies per-row values, and an
-     * expression supplies a reactive scalar shared by all rows. Values must be
-     * non-negative.
+     * Collision width in logical pixels, including any desired horizontal
+     * spacing. A number or expression supplies one value for all rows; a field
+     * supplies per-row values. Values must be non-negative. Setting either
+     * collision dimension to zero disables displacement for that row.
      */
     width: number | Field | ExprRef;
 
     /**
-     * Full collision height in logical pixels, including any desired spacing.
-     * A number is shared by all rows, a field supplies per-row values, and an
-     * expression supplies a reactive scalar shared by all rows. Values must be
-     * non-negative.
+     * Collision height in logical pixels, including any desired vertical
+     * spacing. A number or expression supplies one value for all rows; a field
+     * supplies per-row values. Values must be non-negative. Setting either
+     * collision dimension to zero disables displacement for that row.
      */
     height: number | Field | ExprRef;
 
     /**
-     * Full width of a preplaced obstacle centered at each row's original
-     * position. A number is shared by all rows, a field supplies per-row
-     * values, and an expression supplies a reactive scalar shared by all rows.
-     * Set either anchor dimension to zero to disable the obstacle for that row.
+     * Width in logical pixels of an obstacle centered on the anchor. A number
+     * or expression supplies one value for all rows; a field supplies per-row
+     * values. Setting either anchor dimension to zero disables the obstacle for
+     * that row.
      *
      * __Default value:__ `0`
      */
     anchorWidth?: number | Field | ExprRef;
 
     /**
-     * Full height of a preplaced obstacle centered at each row's original
-     * position. A number is shared by all rows, a field supplies per-row
-     * values, and an expression supplies a reactive scalar shared by all rows.
-     * Set either anchor dimension to zero to disable the obstacle for that row.
+     * Height in logical pixels of an obstacle centered on the anchor. A number
+     * or expression supplies one value for all rows; a field supplies per-row
+     * values. Setting either anchor dimension to zero disables the obstacle for
+     * that row.
      *
      * __Default value:__ `0`
      */
     anchorHeight?: number | Field | ExprRef;
 
     /**
-     * Output fields for signed horizontal and vertical pixel displacements.
-     * Positive values move right and down, respectively.
+     * Names of the output fields for signed horizontal and vertical pixel
+     * offsets. Positive values move right and down, respectively. Neither name
+     * may overwrite `key`.
      *
      * __Default value:__ `["xDisplacement", "yDisplacement"]`
      */
