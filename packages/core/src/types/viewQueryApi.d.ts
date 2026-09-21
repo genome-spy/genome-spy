@@ -1,6 +1,11 @@
 import type { ViewAddress } from "./embedApi.js";
 
-/** Optional inspection of the live hierarchy owned by one view API. */
+/**
+ * Optional inspection of the live hierarchy owned by one view API.
+ *
+ * Import this type and `createViewQuery()` from `@genome-spy/core/view-query`.
+ * Create the query object with `createViewQuery(api.views)`.
+ */
 export interface ViewQueryApi {
     /** Returns detached metadata. Throws for a removed view or finalized embed. */
     describe: (address: ViewAddress) => ViewDescription;

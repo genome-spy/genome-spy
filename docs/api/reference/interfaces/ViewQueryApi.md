@@ -4,6 +4,9 @@
 
 Optional inspection of the live hierarchy owned by one view API.
 
+Import this type and `createViewQuery()` from `@genome-spy/core/view-query`.
+Create the query object with `createViewQuery(api.views)`.
+
 ## Properties
 
 ### describe
