@@ -95,7 +95,21 @@ if (tracks.isAlive()) {
 
 ## Describing and reading a track
 
-`describe()` returns detached title, description, authored and inherited encoding,
+Load the optional query module when an application needs track metadata or
+bounded row inspection. Create it with the embedded instance's view API:
+
+```js
+const { createViewQuery } = await import("@genome-spy/core/view-query");
+const query = createViewQuery(api.views);
+```
+
+Core and the query module must come from the same installed Core module instance.
+This works with the default, minimal and full module entry points. Mixing a
+standalone `@genome-spy/core/browser` bundle with a separately bundled query
+module is not supported. Core does not load or include the query module unless
+the application imports it.
+
+`query.describe(address)` returns detached title, description, authored and inherited encoding,
 and data readiness metadata. Encoding excludes mark defaults and runtime
 adjustments. `dataReady` reports unit-view data readiness for the current viewport;
 it is false for containers. A unit view also supports bounded reads of its loaded,
@@ -103,10 +117,14 @@ transformed rows:
 
 ```js
 const track = api.views.get({ scope: [], view: "track" });
-console.log(track.describe());
-const result = track.readData({ limit: 100 });
+console.log(query.describe(track));
+const result = query.readData(track, { limit: 100 });
 console.log(result.rows, result.truncated, result.rowsExamined);
 ```
+
+Both query methods accept a handle from this embed, a scoped selector, or
+`"root"`. A selector resolves the current view on each call; a handle continues
+to refer to its original view and becomes stale when that view is removed.
 
 The limit must be an integer from 0 to 1000. A read examines at most `limit + 1`
 rows, including lookahead for truncation. Rows follow the current data collector
@@ -123,11 +141,20 @@ transformed rows were returned; it does not establish full source coverage for
 lazy data. Reads reject unready data, containers, stale handles, and multiple
 facet batches, including empty batches. Readiness concerns data, not completion
 of a rendered frame.
-All three accessors reject a finalized embed with `staleEmbed` and a removed
-view with `staleHandle`.
+Query operations reject a finalized embed with `staleEmbed` and a removed
+handle with `staleHandle`. A successful read has no separate `ready` flag.
+Bounded reads serve inspection and small examples; repeated reads are not an
+API for computing statistics over a large collection.
 
-`track.getScaleResolution("x")` (or `"y"`) returns the view's resolved positional
-scale, including unnamed scales, or `undefined` if absent. This is the same
+## Accessing a view's scales
+
+`track.getScaleResolution(channel)` returns the view's resolved scale, including
+unnamed scales, or `undefined` if absent. It accepts scale-backed encoding
+channels such as `x`, `y`, `color` and `size`; secondary channels such as `x2`
+resolve the primary scale. Invalid channels, including the internal `sample`
+channel, throw. This accessor stays on the handle and does not require the query
+module. It rejects removed handles and finalized embeds. Check `isZoomable()`
+before using a scale for navigation. This is the same
 [scale API](runtime-state.md#named-scales) used for named scales. Its locus `zoomTo()`
 input has an inclusive upper endpoint; `getDomain()` reports the internal
 half-open domain. For example, `zoomTo([100, 299])` displays `[100, 300)`.

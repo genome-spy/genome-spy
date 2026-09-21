@@ -565,45 +565,6 @@ export interface DatasetApi {
 // belong here under resource namespaces, while hierarchy-wide lookup and
 // structural mutations remain on ViewApi.
 
-export interface ViewDescription {
-    /** View title text, or null when absent. */
-    title: string | string[] | null;
-
-    /** Authored view description, or null when absent. */
-    description: string | string[] | null;
-
-    /** Authored encoding combined with inherited encoding, detached from the specification. */
-    encoding: import("../spec/channel.js").Encoding;
-
-    /**
-     * Unit-view data readiness for the current viewport; false for containers.
-     * Does not imply a rendered frame.
-     */
-    dataReady: boolean;
-}
-
-export interface ViewDataReadOptions {
-    /** Maximum returned rows, from 0 to 1000. Examines at most limit + 1 rows. */
-    limit: number;
-}
-
-export interface ViewDataReadResult {
-    /** Detached values in collector order, excluding Core picking identifiers. */
-    rows: Record<string, unknown>[];
-
-    /** Number of visited rows, including at most one lookahead row. */
-    rowsExamined: number;
-
-    /** More currently loaded transformed rows exist beyond the returned rows. */
-    truncated: boolean;
-
-    /** Loaded transformed rows, not viewport-filtered marks or all source rows. */
-    scope: "loaded-transformed";
-
-    /** Always true: reads reject data that is not ready. */
-    ready: true;
-}
-
 /**
  * Live handle to a view in the embedded GenomeSpy instance.
  *
@@ -619,22 +580,14 @@ export interface ViewDataReadResult {
  * on a stale handle also fail rather than silently operating on another view.
  */
 export interface ViewHandle {
-    /** Returns detached metadata. Throws for a removed view or finalized embed. */
-    describe: () => ViewDescription;
-
     /**
-     * Returns a bounded detached read from one ready unit view with at most one facet batch.
-     * Throws for unready data, containers, removed views, finalized embeds,
-     * multiple facet batches, non-cloneable returned values, or shared memory.
-     * The row bound does not bound the size of an individual nested datum.
-     */
-    readData: (options: ViewDataReadOptions) => ViewDataReadResult;
-
-    /**
-     * Returns the resolved positional scale, including unnamed scales, or undefined if absent.
+     * Returns the resolved scale, including unnamed scales, or undefined if absent.
+     * Secondary channels such as x2 use their primary channel's scale.
      * Throws for invalid channels, removed views, or finalized embeds.
      */
-    getScaleResolution: (channel: "x" | "y") => ScaleResolutionApi | undefined;
+    getScaleResolution: (
+        channel: import("../spec/channel.js").ChannelWithScale
+    ) => ScaleResolutionApi | undefined;
 
     /**
      * Runtime-stable id for this handle.

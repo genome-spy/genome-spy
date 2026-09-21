@@ -23,9 +23,6 @@ Public TypeScript API for `@genome-spy/core`.
 - [MoveViewOptions](interfaces/MoveViewOptions.md)
 - [BinaryDatasetFormat](interfaces/BinaryDatasetFormat.md)
 - [DatasetApi](interfaces/DatasetApi.md)
-- [ViewDescription](interfaces/ViewDescription.md)
-- [ViewDataReadOptions](interfaces/ViewDataReadOptions.md)
-- [ViewDataReadResult](interfaces/ViewDataReadResult.md)
 - [ViewHandle](interfaces/ViewHandle.md)
 - [ViewApi](interfaces/ViewApi.md)
 - [EmbedDebugApi](interfaces/EmbedDebugApi.md)
@@ -45,6 +42,10 @@ Public TypeScript API for `@genome-spy/core`.
 - [ScaleResolutionEvent](interfaces/ScaleResolutionEvent.md)
 - [ZoomToOptions](interfaces/ZoomToOptions.md)
 - [ScaleResolutionApi](interfaces/ScaleResolutionApi.md)
+- [ViewQueryApi](interfaces/ViewQueryApi.md)
+- [ViewDescription](interfaces/ViewDescription.md)
+- [ViewDataReadOptions](interfaces/ViewDataReadOptions.md)
+- [ViewDataReadResult](interfaces/ViewDataReadResult.md)
 
 ## Type Aliases
 

@@ -1,4 +1,5 @@
-import { describeView, readViewData } from "./viewDataApi.js";
+import { viewQueryResolvers } from "./viewQueryAccess.js";
+import { isChannelWithScale } from "../encoder/encoder.js";
 import ConcatView from "./concatView.js";
 import GridView from "./gridView/gridView.js";
 import LayerView from "./layerView.js";
@@ -297,11 +298,6 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
             return handle;
         }
 
-        const ensureReadable = () => {
-            ensureEmbedIsActive(isActive);
-            ensureViewIsLive(view);
-        };
-
         const id = getViewIdentityRegistry(getRootView()).getId(view);
 
         handle = {
@@ -338,20 +334,17 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 return children.map((child) => getHandle(child));
             },
 
-            describe: () => {
-                ensureReadable();
-                return describeView(view);
-            },
-
-            readData: (options) => {
-                ensureReadable();
-                return readViewData(view, options);
-            },
-
             getScaleResolution: (channel) => {
-                ensureReadable();
-                if (channel !== "x" && channel !== "y") {
-                    throw new Error("Expected positional channel x or y.");
+                ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
+                // Internal sample domains are not public scale resolutions.
+                if (
+                    /** @type {string} */ (channel) === "sample" ||
+                    !isChannelWithScale(channel)
+                ) {
+                    throw new Error(
+                        "Expected a scale-backed encoding channel."
+                    );
                 }
 
                 return view.getScaleResolution(channel);
@@ -1072,6 +1065,11 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 ? runTransaction(callback)
                 : enqueueTopLevelOperation(() => runTransaction(callback)),
     };
+
+    viewQueryResolvers.set(api, (address) => {
+        ensureEmbedIsActive(isActive);
+        return getView(address);
+    });
 
     return api;
 }

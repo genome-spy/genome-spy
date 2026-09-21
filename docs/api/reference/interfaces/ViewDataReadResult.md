@@ -33,11 +33,3 @@ More currently loaded transformed rows exist beyond the returned rows.
 > **scope**: `"loaded-transformed"`
 
 Loaded transformed rows, not viewport-filtered marks or all source rows.
-
-***
-
-### ready
-
-> **ready**: `true`
-
-Always true: reads reject data that is not ready.

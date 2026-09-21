@@ -6,7 +6,7 @@ import { buildReadinessRequest } from "./dataReadiness.js";
 /**
  * Detached metadata with authored and inherited encoding, not runtime mark adjustments.
  * @param {import("./view.js").default} view
- * @returns {import("../types/embedApi.js").ViewDescription}
+ * @returns {import("../types/viewQueryApi.js").ViewDescription}
  */
 export function describeView(view) {
     const collector =
@@ -27,8 +27,8 @@ export function describeView(view) {
  * Reads at most limit + 1 rows; the extra row establishes truncation.
  * This does not filter by viewport or claim complete source coverage.
  * @param {import("./view.js").default} view
- * @param {import("../types/embedApi.js").ViewDataReadOptions} options
- * @returns {import("../types/embedApi.js").ViewDataReadResult}
+ * @param {import("../types/viewQueryApi.js").ViewDataReadOptions} options
+ * @returns {import("../types/viewQueryApi.js").ViewDataReadResult}
  */
 export function readViewData(view, options) {
     if (!options || typeof options !== "object" || Array.isArray(options)) {
@@ -75,7 +75,6 @@ export function readViewData(view, options) {
         rowsExamined,
         truncated,
         scope: "loaded-transformed",
-        ready: true,
     };
 }
 

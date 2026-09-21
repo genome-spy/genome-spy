@@ -1,10 +1,11 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
+import { createViewQuery } from "../viewQuery.js";
 
 /** @param {Record<string, any>[]} rows */
 async function setup(rows) {
@@ -18,45 +19,49 @@ async function setup(rows) {
             x: { field: "x", type: "quantitative", scale: { zoom: true } },
         },
     });
-    return createViewMutationApi({ viewRoot: engine.view }).get({
-        view: "track",
-        scope: [],
-    });
+    const api = createViewMutationApi({ viewRoot: engine.view });
+    return {
+        handle: api.get({ view: "track", scope: [] }),
+        query: createViewQuery(api),
+    };
 }
 
 describe("public view data reads", () => {
     test("reads transformed data with bounded lookahead and detached nested values", async () => {
-        const handle = await setup([{ x: 1, nested: { value: 2 } }, { x: 3 }]);
-        expect(handle.describe().dataReady).toBe(true);
+        const { handle, query } = await setup([
+            { x: 1, nested: { value: 2 } },
+            { x: 3 },
+        ]);
+        expect(query.describe(handle).dataReady).toBe(true);
 
-        const result = handle.readData({ limit: 1 });
+        const result = query.readData(handle, { limit: 1 });
         expect(result.rows[0].doubled).toBe(2);
         expect(result.rowsExamined).toBe(2);
         expect(result.truncated).toBe(true);
 
         /** @type {any} */ (result.rows[0].nested).value = 99;
-        expect(handle.readData({ limit: 2 }).rows[0].nested).toEqual({
+        expect(query.readData(handle, { limit: 2 }).rows[0].nested).toEqual({
             value: 2,
         });
-        expect(handle.readData({ limit: 2 })).toMatchObject({
+        expect(query.readData(handle, { limit: 2 })).toMatchObject({
             rowsExamined: 2,
             truncated: false,
         });
 
-        expect(handle.readData({ limit: 0 })).toMatchObject({
+        expect(query.readData(handle, { limit: 0 })).toMatchObject({
             rows: [],
             rowsExamined: 1,
             truncated: true,
         });
 
-        const before = handle.readData({ limit: 2 }).rows;
+        const before = query.readData(handle, { limit: 2 }).rows;
         await handle.getScaleResolution("x").zoomTo([1, 2]);
-        expect(handle.readData({ limit: 2 }).rows).toEqual(before);
+        expect(query.readData(handle, { limit: 2 }).rows).toEqual(before);
     });
 
     test("handles empty data and rejects invalid limits", async () => {
-        const handle = await setup([]);
-        expect(handle.readData({ limit: 0 })).toMatchObject({
+        const { handle, query } = await setup([]);
+        expect(query.readData(handle, { limit: 0 })).toMatchObject({
             rows: [],
             rowsExamined: 0,
             truncated: false,
@@ -65,13 +70,13 @@ describe("public view data reads", () => {
         /** @type {unknown[]} */
         const invalidOptions = [undefined, null, [], 1];
         for (const options of invalidOptions) {
-            expect(() => handle.readData(/** @type {any} */ (options))).toThrow(
-                "Data read options with a limit are required."
-            );
+            expect(() =>
+                query.readData(handle, /** @type {any} */ (options))
+            ).toThrow("Data read options with a limit are required.");
         }
 
         for (const limit of [undefined, -1, 1.5, 1001]) {
-            expect(() => handle.readData({ limit })).toThrow();
+            expect(() => query.readData(handle, { limit })).toThrow();
         }
     });
 
@@ -79,9 +84,10 @@ describe("public view data reads", () => {
         const { view } = await createHeadlessViewHierarchy({ vconcat: [] });
         let active = true;
         const api = createViewMutationApi({ viewRoot: view }, () => active);
-        expect(() => api.root().readData({ limit: 1 })).toThrow();
+        const query = createViewQuery(api);
+        expect(() => query.readData("root", { limit: 1 })).toThrow();
         active = false;
-        expect(() => api.root().describe()).toThrow();
+        expect(() => query.describe("root")).toThrow();
     });
 });
 
@@ -102,8 +108,9 @@ test("describes inherited encoding and detaches nested metadata", async () => {
         ],
     });
     const api = createViewMutationApi({ viewRoot: view });
+    const query = createViewQuery(api);
     const handle = api.get({ view: "track", scope: [] });
-    const description = handle.describe();
+    const description = query.describe(handle);
 
     expect(description).toMatchObject({
         title: "Test track",
@@ -112,15 +119,15 @@ test("describes inherited encoding and detaches nested metadata", async () => {
         dataReady: false,
     });
     expect(description.encoding).not.toHaveProperty("color");
-    expect(api.root().describe().dataReady).toBe(false);
+    expect(query.describe("root").dataReady).toBe(false);
 
     /** @type {string[]} */ (description.description).push("changed");
     const x = /** @type {import("../spec/channel.js").PositionFieldDef} */ (
         description.encoding.x
     );
     x.scale.domain = [99, 100];
-    expect(handle.describe().description).toEqual(["Test description"]);
-    expect(handle.describe().encoding.x).toMatchObject({
+    expect(query.describe(handle).description).toEqual(["Test description"]);
+    expect(query.describe(handle).encoding.x).toMatchObject({
         scale: { domain: [0, 10] },
     });
 });
@@ -130,7 +137,9 @@ test("metadata cloning reads source getters once and rejects shared memory", asy
         mark: "point",
         encoding: { x: { field: "x", type: "quantitative" } },
     });
-    const handle = createViewMutationApi({ viewRoot: view }).root();
+    const api = createViewMutationApi({ viewRoot: view });
+    const query = createViewQuery(api);
+    const handle = api.root();
     let reads = 0;
     /** @type {unknown} */
     let title = "X";
@@ -143,11 +152,11 @@ test("metadata cloning reads source getters once and rejects shared memory", asy
         },
     });
 
-    expect(handle.describe().encoding.x).toHaveProperty("title", "X");
+    expect(query.describe(handle).encoding.x).toHaveProperty("title", "X");
     expect(reads).toBe(1);
 
     title = new SharedArrayBuffer(1);
-    expect(() => handle.describe()).toThrow("Shared memory");
+    expect(() => query.describe(handle)).toThrow("Shared memory");
 });
 
 test("reads reject a view before data initialization", async () => {
@@ -157,12 +166,14 @@ test("reads reject a view before data initialization", async () => {
         mark: "point",
         encoding: { x: { field: "x", type: "quantitative" } },
     });
-    const unready = createViewMutationApi({ viewRoot: view }).get({
+    const api = createViewMutationApi({ viewRoot: view });
+    const query = createViewQuery(api);
+    const unready = api.get({
         view: "unready",
         scope: [],
     });
-    expect(unready.describe().dataReady).toBe(false);
-    expect(() => unready.readData({ limit: 1 })).toThrow("not ready");
+    expect(query.describe(unready).dataReady).toBe(false);
+    expect(() => query.readData(unready, { limit: 1 })).toThrow("not ready");
 });
 
 describe("view read lifecycle", () => {
@@ -181,8 +192,9 @@ describe("view read lifecycle", () => {
             });
             let active = true;
             const api = createViewMutationApi({ viewRoot: view }, () => active);
+            const query = createViewQuery(api);
             const handle = api.get({ view: "track", scope: [] });
-            expect(handle.readData({ limit: 1 }).rows).toHaveLength(1);
+            expect(query.readData(handle, { limit: 1 }).rows).toHaveLength(1);
 
             if (state === "removed") {
                 await /** @type {import("./layerView.js").default} */ (
@@ -193,8 +205,8 @@ describe("view read lifecycle", () => {
             }
 
             for (const read of [
-                () => handle.describe(),
-                () => handle.readData({ limit: 1 }),
+                () => query.describe(handle),
+                () => query.readData(handle, { limit: 1 }),
                 () => handle.getScaleResolution("x"),
             ]) {
                 expect(read).toThrow(
@@ -208,22 +220,33 @@ describe("view read lifecycle", () => {
     );
 });
 
-test("returns existing unnamed scales, absent scales, and rejects invalid channels", async () => {
+test("resolves public scale channels and rejects internal or invalid channels", async () => {
     const { view } = await createHeadlessEngine({
-        name: "track",
-        data: { values: [{ x: 1 }] },
+        data: { values: [{ x: 1, category: "A" }] },
         mark: "point",
-        encoding: { x: { field: "x", type: "quantitative" } },
+        encoding: {
+            x: { field: "x", type: "quantitative" },
+            color: { field: "category", type: "nominal" },
+            size: { field: "x", type: "quantitative" },
+        },
     });
-    const api = createViewMutationApi({ viewRoot: view });
-    const handle = api.get({ view: "track", scope: [] });
-    expect(handle.getScaleResolution("x")).toBe(view.getScaleResolution("x"));
-    expect(handle.getScaleResolution("x")).toBeDefined();
+    const handle = createViewMutationApi({ viewRoot: view }).root();
+
+    for (const channel of /** @type {const} */ (["x", "color", "size"])) {
+        expect(handle.getScaleResolution(channel)).toBeDefined();
+        expect(handle.getScaleResolution(channel)).toBe(
+            view.getScaleResolution(channel)
+        );
+    }
+    expect(handle.getScaleResolution("x2")).toBe(
+        handle.getScaleResolution("x")
+    );
     expect(handle.getScaleResolution("y")).toBeUndefined();
-    for (const channel of ["color", undefined]) {
+    expect(handle.getScaleResolution("y2")).toBeUndefined();
+    for (const channel of ["sample", "text", "unknown", undefined, null]) {
         expect(() =>
             handle.getScaleResolution(/** @type {any} */ (channel))
-        ).toThrow("Expected positional channel");
+        ).toThrow("Expected a scale-backed encoding channel");
     }
 });
 
@@ -234,7 +257,9 @@ test("non-cloneable returned values reject without modifying source data", async
         mark: "point",
         encoding: { x: { field: "x", type: "quantitative" } },
     });
-    const handle = createViewMutationApi({ viewRoot: view }).get({
+    const api = createViewMutationApi({ viewRoot: view });
+    const query = createViewQuery(api);
+    const handle = api.get({
         view: "track",
         scope: [],
     });
@@ -247,10 +272,10 @@ test("non-cloneable returned values reject without modifying source data", async
         .next().value;
     const callback = () => 42;
     datum.callback = callback;
-    expect(handle.describe().dataReady).toBe(true);
+    expect(query.describe(handle).dataReady).toBe(true);
     // An empty read only looks ahead; it does not clone the unreturned datum.
-    expect(handle.readData({ limit: 0 }).truncated).toBe(true);
-    expect(() => handle.readData({ limit: 1 })).toThrow(
+    expect(query.readData(handle, { limit: 0 }).truncated).toBe(true);
+    expect(() => query.readData(handle, { limit: 1 })).toThrow(
         expect.objectContaining({ name: "DataCloneError" })
     );
     expect(datum.callback).toBe(callback);
@@ -271,23 +296,25 @@ async function createFacetedTrack(groups) {
         },
     });
 
-    return createViewMutationApi({ viewRoot: view }).root();
+    const api = createViewMutationApi({ viewRoot: view });
+    const query = createViewQuery(api);
+    return { handle: api.root(), query };
 }
 
 test("reads a single facet batch", async () => {
-    const handle = await createFacetedTrack(["A", "A"]);
+    const { handle, query } = await createFacetedTrack(["A", "A"]);
 
-    expect(handle.describe().dataReady).toBe(true);
-    expect(handle.readData({ limit: 2 }).rows).toEqual([
+    expect(query.describe(handle).dataReady).toBe(true);
+    expect(query.readData(handle, { limit: 2 }).rows).toEqual([
         { x: 1, group: "A" },
         { x: 2, group: "A" },
     ]);
 });
 
 test("rejects multiple facet batches", async () => {
-    const handle = await createFacetedTrack(["A", "B"]);
+    const { handle, query } = await createFacetedTrack(["A", "B"]);
 
-    expect(() => handle.readData({ limit: 1 })).toThrow(
+    expect(() => query.readData(handle, { limit: 1 })).toThrow(
         "Faceted data reads are not supported"
     );
 });
@@ -307,11 +334,15 @@ test.each(sharedMemoryCases)(
     "rejects shared memory in a returned %s",
     async (_, wrap) => {
         const buffer = new SharedArrayBuffer(1);
-        const handle = await setup([{ x: 1, payload: wrap(buffer) }]);
+        const { handle, query } = await setup([
+            { x: 1, payload: wrap(buffer) },
+        ]);
 
         // Lookahead does not expose the row, so only a nonempty read rejects it.
-        expect(handle.readData({ limit: 0 }).truncated).toBe(true);
-        expect(() => handle.readData({ limit: 1 })).toThrow("Shared memory");
+        expect(query.readData(handle, { limit: 0 }).truncated).toBe(true);
+        expect(() => query.readData(handle, { limit: 1 })).toThrow(
+            "Shared memory"
+        );
         expect(new Uint8Array(buffer)[0]).toBe(0);
     }
 );
@@ -321,11 +352,11 @@ test("keeps ordinary buffers detached through cyclic maps and sets", async () =>
     const payload = new Map();
     payload.set("self", payload);
     payload.set("values", new Set([bytes]));
-    const handle = await setup([{ x: 1, payload }]);
+    const { handle, query } = await setup([{ x: 1, payload }]);
 
     const read = () =>
         /** @type {Map<string, any>} */ (
-            handle.readData({ limit: 1 }).rows[0].payload
+            query.readData(handle, { limit: 1 }).rows[0].payload
         );
     const result = read();
     expect(result.get("self")).toBe(result);
@@ -339,8 +370,10 @@ test.runIf(structuredClone(new AggregateError([])) instanceof AggregateError)(
     "rejects shared memory in an aggregate error collection",
     async () => {
         const payload = new AggregateError([new SharedArrayBuffer(1)]);
-        const handle = await setup([{ x: 1, payload }]);
-        expect(() => handle.readData({ limit: 1 })).toThrow("Shared memory");
+        const { handle, query } = await setup([{ x: 1, payload }]);
+        expect(() => query.readData(handle, { limit: 1 })).toThrow(
+            "Shared memory"
+        );
     }
 );
 
@@ -357,7 +390,9 @@ test("returns transformed gene rows without Core picking identifiers", async () 
             x2: { field: "end" },
         },
     });
-    const handle = createViewMutationApi({ viewRoot: view }).root();
+    const api = createViewMutationApi({ viewRoot: view });
+    const query = createViewQuery(api);
+    const handle = api.root();
     const datum = /** @type {import("./unitView.js").default} */ (view)
         .getCollector()
         .getData()
@@ -366,7 +401,7 @@ test("returns transformed gene rows without Core picking identifiers", async () 
     const pickingId = datum[UNIQUE_ID_KEY];
     expect(pickingId).toBeTypeOf("number");
 
-    expect(handle.readData({ limit: 1 }).rows).toEqual([
+    expect(query.readData(handle, { limit: 1 }).rows).toEqual([
         { symbol: "TP53", start: 10, end: 20, span: 10 },
     ]);
     expect(datum[UNIQUE_ID_KEY]).toBe(pickingId);
@@ -378,7 +413,84 @@ test("rejects shared WebAssembly memory in returned data", async () => {
         maximum: 1,
         shared: true,
     });
-    const handle = await setup([{ x: 1, payload }]);
+    const { handle, query } = await setup([{ x: 1, payload }]);
 
-    expect(() => handle.readData({ limit: 1 })).toThrow("Shared memory");
+    expect(() => query.readData(handle, { limit: 1 })).toThrow("Shared memory");
+});
+
+test("queries resolve replacements and reject foreign handles and unknown APIs", async () => {
+    const spec = {
+        name: "track",
+        data: { values: [{ x: 1 }] },
+        mark: /** @type {const} */ ("point"),
+    };
+    const first = await createHeadlessEngine(spec);
+    const replacement = await createHeadlessEngine({
+        ...spec,
+        data: { values: [{ x: 2 }] },
+    });
+    // A root swap checks that selectors resolve current state, while handles
+    // remain attached to their original view instance.
+    const runtime = { viewRoot: first.view };
+    const api = createViewMutationApi(runtime);
+    const query = createViewQuery(api);
+    /** @type {import("../types/embedApi.js").ViewAddress} */
+    const selector = { scope: [], view: "track" };
+    const oldHandle = api.get(selector);
+    const foreign = createViewMutationApi({
+        viewRoot: replacement.view,
+    }).root();
+
+    expect(() => query.describe(foreign)).toThrow(
+        expect.objectContaining({ code: "unresolvedAddress" })
+    );
+    expect(() => query.readData(foreign, { limit: 1 })).toThrow();
+    expect(() => createViewQuery(/** @type {any} */ ({}))).toThrow(
+        "same module instance"
+    );
+
+    runtime.viewRoot = replacement.view;
+    expect(query.readData(selector, { limit: 1 }).rows).toEqual([{ x: 2 }]);
+    expect(query.readData("root", { limit: 1 }).rows).toEqual([{ x: 2 }]);
+    expect(() => query.describe(oldHandle)).toThrow(
+        expect.objectContaining({ code: "staleHandle" })
+    );
+    expect(() => query.readData(oldHandle, { limit: 1 })).toThrow();
+    expect(query.describe(api.get(selector))).toEqual(query.describe(selector));
+});
+
+test("queries created before or after finalization reject reads and descriptions", async () => {
+    const { view } = await createHeadlessEngine({
+        mark: "point",
+        data: { values: [] },
+    });
+    let active = true;
+    const api = createViewMutationApi({ viewRoot: view }, () => active);
+    const query = createViewQuery(api);
+    const handle = api.root();
+    expect(handle).not.toHaveProperty("describe");
+    expect(handle).not.toHaveProperty("readData");
+    expect(query.readData(handle, { limit: 1 })).not.toHaveProperty("ready");
+
+    active = false;
+    for (const reader of [query, createViewQuery(api)]) {
+        for (const address of /** @type {const} */ ([handle, "root"])) {
+            expect(() => reader.describe(address)).toThrow(
+                expect.objectContaining({ code: "staleEmbed" })
+            );
+            expect(() => reader.readData(address, { limit: 1 })).toThrow(
+                expect.objectContaining({ code: "staleEmbed" })
+            );
+        }
+    }
+});
+
+test("rejects a query module loaded from a separate Core instance", async () => {
+    const { view } = await createHeadlessViewHierarchy({ mark: "point" });
+    const api = createViewMutationApi({ viewRoot: view });
+    vi.resetModules();
+    const separate = await import("../viewQuery.js");
+
+    expect(() => separate.createViewQuery(api)).toThrow("same module instance");
+    expect(createViewQuery(api).describe("root").dataReady).toBe(false);
 });
