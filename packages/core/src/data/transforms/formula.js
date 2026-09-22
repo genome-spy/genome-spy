@@ -25,7 +25,7 @@ export default class FormulaTransform extends Transform {
     initialize() {
         this.fn = this.paramRuntime.watchExpression(
             this.params.expr,
-            () => this.requestRepropagate(),
+            () => this.requestReactiveRepropagate(),
             {
                 scopeOwned: false,
                 registerDisposer: (disposer) => this.registerDisposer(disposer),

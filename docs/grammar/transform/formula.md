@@ -45,4 +45,10 @@ the closest [collector](./collect.md) or [data source](../data/index.md) in the
 data pipeline and triggers a re-propagation of the data, resulting in a
 re-evaluation of the formula expression.
 
+Use `debounce` to delay this reactive replay until the dependencies have
+stopped changing for the specified number of milliseconds. New input data is
+not delayed and is evaluated immediately using current parameter values. Place
+a [`collect`](./collect.md) transform before an expensive reactive formula to
+cache the rows used for replay.
+
 EXAMPLE examples/docs/grammar/transform/formula/formula-with-parameters.json height=300

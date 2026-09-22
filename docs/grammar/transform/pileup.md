@@ -54,7 +54,8 @@ Labels drawn beside segments also occupy horizontal space. The following
 example measures each label in pixels, projects its width into index coordinates,
 and uses the resulting occupied endpoint when assigning lanes. The intermediate
 `"collect"` transform caches the measured, start-sorted rows for
-scale-dependent replay. Debouncing `pixelsPerBase` avoids continuously
-recomputing the pileup during zoom gestures.
+scale-dependent replay. Debouncing the formula transform avoids continuously
+recomputing the pileup during zoom gestures while allowing new data to use the
+current `pixelsPerBase` value immediately.
 
 EXAMPLE examples/docs/grammar/transform/pileup/pileup-projected-labels.json height=200

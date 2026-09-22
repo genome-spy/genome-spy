@@ -28,6 +28,10 @@ SCHEMA SelectionFilterParams
 The example above passes through all rows for which the field `p` is less than
 or equal to 0.05.
 
+When a predicate depends on parameters, `debounce` can delay replay until the
+dependencies have stopped changing for the specified number of milliseconds.
+New input data is still filtered immediately using current parameter values.
+
 ### Filtering by a Selection Predicate
 
 Interval selections in GenomeSpy are defined by their data extent along the x

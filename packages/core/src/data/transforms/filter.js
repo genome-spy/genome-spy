@@ -37,7 +37,7 @@ export default class FilterTransform extends Transform {
 
         this.predicate = this.paramRuntime.watchExpression(
             expression,
-            () => this.requestRepropagate(),
+            () => this.requestReactiveRepropagate(),
             {
                 scopeOwned: false,
                 registerDisposer: (disposer) => this.registerDisposer(disposer),

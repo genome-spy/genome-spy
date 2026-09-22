@@ -14,10 +14,18 @@ function makeFilter(runtime) {
     );
 }
 
-/** @param {ViewParamRuntime} runtime */
-function makeFormula(runtime) {
+/**
+ * @param {ViewParamRuntime} runtime
+ * @param {Partial<import("../spec/transform.js").FormulaParams>} [options]
+ */
+function makeFormula(runtime, options = {}) {
     return new FormulaTransform(
-        { type: "formula", expr: "datum.x * factor", as: "y" },
+        {
+            type: "formula",
+            expr: "datum.x * factor",
+            as: "y",
+            ...options,
+        },
         { paramRuntime: runtime }
     );
 }
@@ -75,6 +83,94 @@ describe("parameter-triggered streaming replay", () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    test("debounced transforms coalesce reactive replay", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = makeRuntime();
+            const source = new Collector();
+            const formula = makeFormula(runtime, { debounce: 50 });
+            const output = new Collector();
+            source.addChild(formula);
+            formula.addChild(output);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            runtime.setValue("factor", 2);
+            vi.advanceTimersByTime(40);
+            runtime.setValue("factor", 3);
+            vi.advanceTimersByTime(49);
+
+            expect(replay).not.toHaveBeenCalled();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([1, 2, 3]);
+
+            vi.advanceTimersByTime(1);
+
+            expect(replay).toHaveBeenCalledOnce();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([3, 6, 9]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test.each([
+        { empty: false, label: "nonempty" },
+        { empty: true, label: "empty" },
+    ])("a new $label batch consumes pending transform replay", ({ empty }) => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = makeRuntime();
+            const source = new Collector();
+            const formula = makeFormula(runtime, { debounce: 50 });
+            const output = new Collector();
+            source.addChild(formula);
+            formula.addChild(output);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            runtime.setValue("factor", 2);
+            source.reset();
+            if (empty) source.complete();
+            else publish(source);
+            vi.advanceTimersByTime(50);
+
+            expect(replay).not.toHaveBeenCalled();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual(
+                empty ? [] : [2, 4, 6]
+            );
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("disposing a transform cancels pending debounced replay", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = makeRuntime();
+            const source = new Collector();
+            const formula = makeFormula(runtime, { debounce: 50 });
+            source.addChild(formula);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            runtime.setValue("factor", 2);
+            formula.dispose();
+            vi.advanceTimersByTime(50);
+
+            expect(replay).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("rejects invalid transform debounce", () => {
+        expect(() => makeFormula(makeRuntime(), { debounce: -1 })).toThrow(
+            "must be a non-negative finite number"
+        );
     });
 
     test.each([false, true])(

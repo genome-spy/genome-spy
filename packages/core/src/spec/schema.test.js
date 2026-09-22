@@ -332,6 +332,36 @@ describe("generated core schema", () => {
         expect(selectionFilterParams.properties.description).toBeTruthy();
     });
 
+    test("accepts debounce only on reactive transforms", () => {
+        const validate = createCoreValidator();
+        const spec = /** @type {any} */ ({
+            data: { values: [{ x: 1 }] },
+            transform: [
+                {
+                    type: "formula",
+                    expr: "datum.x * factor",
+                    as: "y",
+                    debounce: 50,
+                },
+            ],
+            mark: "point",
+            encoding: { x: { field: "y", type: "quantitative" } },
+        });
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+        spec.transform[0].debounce = -1;
+        expect(validate(spec)).toBe(false);
+        spec.transform[0] = {
+            type: "pileup",
+            start: "start",
+            end: "end",
+            debounce: 50,
+        };
+        expect(validate(spec)).toBe(false);
+    });
+
     test("accepts expression-based scaled mark property encodings", () => {
         const validate = createCoreValidator();
         /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */

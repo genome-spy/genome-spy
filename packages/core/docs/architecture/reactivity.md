@@ -66,6 +66,12 @@ remains streaming. Async reload dispatch cannot subsume a cached descendant's
 replay. `whenPropagated` includes synchronous replay and resulting graph work,
 but excludes network completion and future animation frames.
 
+Formula and filter transforms may debounce replay caused by reactive expression
+changes while keeping the expression values current. Each completed incoming
+batch records the expression revision it consumed, so a batch arriving during
+the delay suppresses an otherwise redundant replay. The timer remains temporal
+work outside `whenPropagated()` and is canceled with the transform.
+
 Streaming jobs may declare prerequisite callbacks. Only pending prerequisites
 participate: a queued publisher of a foreign collector runs before the primary
 replay that consumes it. Prerequisites derive from optimized FlowNode side edges;

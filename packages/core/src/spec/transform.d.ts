@@ -27,6 +27,20 @@ export interface TransformParamsBase {
     description?: string;
 }
 
+/** Options for transforms whose predicates or expressions can trigger replay. */
+export interface ReactiveTransformParams {
+    /**
+     * Trailing-edge delay in milliseconds for replay triggered by reactive
+     * expression changes. Incoming data is still processed immediately using
+     * current parameter values.
+     *
+     * @minimum 0
+     *
+     * __Default value:__ no delay
+     */
+    debounce?: number;
+}
+
 /** Common exact-match and output options for lookup transforms. */
 interface LookupMatchParams {
     /**
@@ -72,14 +86,16 @@ export interface IdentifierParams extends TransformParamsBase {
      */
     as?: string;
 }
-export interface ExprFilterParams extends TransformParamsBase {
+export interface ExprFilterParams
+    extends TransformParamsBase, ReactiveTransformParams {
     type: "filter";
 
     /** An expression string. The row is removed if the expression evaluates to false. */
     expr: string;
 }
 
-export interface SelectionFilterParams extends TransformParamsBase {
+export interface SelectionFilterParams
+    extends TransformParamsBase, ReactiveTransformParams {
     type: "filter";
 
     /**
@@ -103,7 +119,8 @@ export interface SelectionFilterParams extends TransformParamsBase {
 
 export type FilterParams = ExprFilterParams | SelectionFilterParams;
 
-export interface FormulaParams extends TransformParamsBase {
+export interface FormulaParams
+    extends TransformParamsBase, ReactiveTransformParams {
     type: "formula";
 
     /** An expression string */
