@@ -196,10 +196,11 @@ normalized mark accessors; categorical and pixel-valued positions are unsupporte
 
 Scanning yields cooperatively and rejects cancellation, removed views, data
 publications, readiness changes or changed scope. Matching row references are
-buffered for the existing aggregate operations, whose final computation is
-synchronous. Output cloning and each aggregate pass are not hard-preemptible;
-this API does not promise constant-memory or hard real-time execution. It never
-reports a partial scan as an exact answer.
+buffered for the existing aggregate operations. The query yields and revalidates
+its scope between aggregate passes, but output cloning and each individual pass
+are synchronous and not hard-preemptible. This API does not promise
+constant-memory or hard real-time execution. It never reports a partial scan as
+an exact answer.
 
 ## Accessing a view's scales
 

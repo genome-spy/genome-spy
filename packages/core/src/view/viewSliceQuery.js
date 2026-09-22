@@ -87,6 +87,10 @@ export async function queryViewData(resolve, options) {
     }
 
     for (const { op, as, accessor } of operations) {
+        // Aggregate operations reuse synchronous transform implementations.
+        // Yield between passes so cancellation and chart changes remain observable.
+        await new Promise((done) => setTimeout(done, 0));
+        assertCurrent();
         Object.defineProperty(result.aggregates, as, {
             value: AGGREGATE_OPS[op](matched, accessor) ?? null,
             enumerable: true,

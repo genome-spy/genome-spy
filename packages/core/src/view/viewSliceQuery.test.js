@@ -162,6 +162,44 @@ describe("scoped loaded-data queries", () => {
         expect(result.rowsMatched).toBe(4);
     });
 
+    test("cancellation between aggregate passes prevents later work", async () => {
+        const { query, handle, view } = await setup([
+            { x: 1, first: 2, second: 3 },
+        ]);
+        const [row] = /** @type {any} */ (
+            Array.from(/** @type {any} */ (view).getCollector().getData())
+        );
+        const controller = new AbortController();
+        let secondRead = false;
+        Object.defineProperties(row, {
+            first: {
+                get() {
+                    setTimeout(() => controller.abort(), 0);
+                    return 2;
+                },
+            },
+            second: {
+                get() {
+                    secondRead = true;
+                    return 3;
+                },
+            },
+        });
+
+        await expect(
+            query.queryData(handle, {
+                ...request,
+                limit: 0,
+                aggregate: [
+                    { op: "mean", field: "first", as: "first" },
+                    { op: "mean", field: "second", as: "second" },
+                ],
+                signal: controller.signal,
+            })
+        ).rejects.toMatchObject({ name: "AbortError" });
+        expect(secondRead).toBe(false);
+    });
+
     test("detaches nonnumeric extrema and rejects shared memory in aggregate-only results", async () => {
         const { query, handle, view } = await setup([
             { x: 1, value: { nested: [7] } },

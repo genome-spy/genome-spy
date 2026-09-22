@@ -17,9 +17,10 @@ It coordinates four major systems:
 - `src/viewQuery.js` is the optional `@genome-spy/core/view-query` entry.
   It owns detached metadata, bounded loaded-row previews and cooperative
   viewport/interval slice queries. Scope filtering precedes row output limits;
-  exact loaded-data aggregates reuse the existing aggregate operations. A module-local
-  WeakMap in `src/view/viewQueryAccess.js` connects it to the view API's existing
-  checked address resolver; both entries must share one Core module instance.
+  exact loaded-data aggregates reuse the existing aggregate operations and yield
+  between passes. A module-local WeakMap in `src/view/viewQueryAccess.js` connects
+  it to the view API's existing checked address resolver; both entries must share
+  one Core module instance.
   Default, minimal and full entry points do not import the query implementation.
   View handles retain scale access and visualization control.
 - `src/genomeSpy.js` is the central orchestrator. It builds the view hierarchy,
