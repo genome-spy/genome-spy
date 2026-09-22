@@ -14,19 +14,33 @@ mistakes before the specification reaches the browser.
 ## Entry points
 
 When embedding GenomeSpy into a web application, you can choose between two
-entry points for importing the `embed` function:
+entry points for importing the `embed` function.
+
+### Default
 
 `@genome-spy/core` is the default entry point. It includes the standard
 GenomeSpy runtime and the built-in data source and format registrations.
+
+```js
+import { embed } from "@genome-spy/core";
+
+const spec = {
+  // view specification
+};
+
+const api = await embed(document.body, spec);
+```
+
+### Minimal
 
 `@genome-spy/core/minimal` provides the same `embed` API without built-in
 renderers or optional data loaders. Import at least one live renderer and any
 data source or format modules you need explicitly:
 
 ```js
+import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
 import "@genome-spy/core/rendering/canvas.js";
-import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/data/formats/parquet.js";
 import "@genome-spy/core/data/sources/lazy/bigBedSource.js";
 
@@ -37,13 +51,14 @@ const spec = {
 const api = await embed(document.body, spec);
 ```
 
-The `webgl.js` import enables WebGL2. The `canvas.js` import enables Canvas2D
-with software datum picking, plus a fallback for raster export and hybrid SVG
-rasterization. Software picking is included automatically and needs no separate
-import. Import `@genome-spy/core/rendering/svg.js` when using SVG export or
-analysis. You can omit any renderer capability the host application does not
-use; Core reports the required import if an unavailable capability is
-requested.
+See
+the [full runtime entry point](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/genomeSpy.js)
+for the complete list of optional modules.
+
+The `webgl.js` import enables WebGL2. The `canvas.js` import enables Canvas2D.
+Import `svg.js` when using SVG export. You can omit
+any renderer capability the host application does not use; Core reports the
+required import if an unavailable capability is requested.
 
 ## API object
 
