@@ -110,7 +110,7 @@ module is not supported. Core does not load or include the query module unless
 the application imports it.
 
 `query.describe(address)` returns detached title, description, authored and inherited encoding,
-and data readiness metadata. Encoding excludes mark defaults and runtime
+data readiness and collector `dataRevision` metadata (null without a collector). Encoding excludes mark defaults and runtime
 adjustments. `dataReady` reports unit-view data readiness for the current viewport;
 it is false for containers. A unit view also supports bounded reads of its loaded,
 transformed rows:
@@ -122,7 +122,7 @@ const result = query.readData(track, { limit: 100 });
 console.log(result.rows, result.truncated, result.rowsExamined);
 ```
 
-Both query methods accept a handle from this embed, a scoped selector, or
+Query methods accept a handle from this embed, a scoped selector, or
 `"root"`. A selector resolves the current view on each call; a handle continues
 to refer to its original view and becomes stale when that view is removed.
 
@@ -145,6 +145,60 @@ Query operations reject a finalized embed with `staleEmbed` and a removed
 handle with `staleHandle`. A successful read has no separate `ready` flag.
 Bounded reads serve inspection and small examples; repeated reads are not an
 API for computing statistics over a large collection.
+
+## Querying the current slice
+
+`query.queryData()` filters loaded transformed data to the current data-space
+viewport **before** limiting returned rows or computing aggregates. Navigate or
+set an interval selection, wait for data readiness, then query the relevant axes:
+
+```js
+const result = await query.queryData(track, {
+  channels: ["x"],
+  limit: 10,
+  fields: ["logR"],
+  aggregate: [
+    { op: "count", as: "count" },
+    { op: "mean", field: "logR", as: "meanLogR" },
+  ],
+  signal: controller.signal,
+});
+console.log(result.rows, result.aggregates, result.scope);
+```
+
+The limit (0–1000) bounds output rows, not the matching population. `rowsExamined`
+counts all visited loaded rows; `rowsMatched` counts all rows in the slice.
+`truncated` concerns only row output; aggregates use every matching loaded row.
+Setting `limit: 0` computes aggregates without copying any source rows.
+Operations `count`, `valid`, `sum`, `min`, `max`, `mean` and `variance` share the
+aggregate transform's numeric semantics. Undefined results, such as an empty
+mean, are returned as null. Count includes rows with missing field values;
+`valid` counts numeric values using the existing aggregate operation. Min/max
+retain input values (including nonnumeric values) exactly as the transform does;
+all returned aggregate values are detached and shared memory is rejected.
+
+Each requested axis uses its captured numeric or locus scale domain. Points use
+half-open containment; ranged positions overlap the half-open slice. Locus values
+are already linearized by Core, including encoding offsets. Optional
+`selection: "region"` intersects the viewport with the named interval parameter
+in the queried view's scope. Inactive dimensions do not constrain active ones;
+a wholly cleared selection matches no rows. Selection axes
+not listed in `channels` still constrain the result. This is a data-space query;
+it does not account for pixel occlusion, clipping or mark size.
+
+The result records domains, selection state, collector revision and the
+`loaded-transformed` data scope. Source coverage remains `unknown`: readiness for
+the viewport does not prove full source coverage. The query rejects unready data,
+multiple facet batches and positions expressed with dynamic expressions or
+conditional encodings. Ordinary field and numeric datum positions use Core's
+normalized mark accessors; categorical and pixel-valued positions are unsupported.
+
+Scanning yields cooperatively and rejects cancellation, removed views, data
+publications, readiness changes or changed scope. Matching row references are
+buffered for the existing aggregate operations, whose final computation is
+synchronous. Output cloning and each aggregate pass are not hard-preemptible;
+this API does not promise constant-memory or hard real-time execution. It never
+reports a partial scan as an exact answer.
 
 ## Accessing a view's scales
 

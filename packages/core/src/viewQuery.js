@@ -1,3 +1,4 @@
+import { queryViewData } from "./view/viewSliceQuery.js";
 import { viewQueryResolvers } from "./view/viewQueryAccess.js";
 import { describeView, readViewData } from "./view/viewDataApi.js";
 
@@ -5,6 +6,10 @@ import { describeView, readViewData } from "./view/viewDataApi.js";
 /** @typedef {import("./types/viewQueryApi.js").ViewDescription} ViewDescription */
 /** @typedef {import("./types/viewQueryApi.js").ViewDataReadOptions} ViewDataReadOptions */
 /** @typedef {import("./types/viewQueryApi.js").ViewDataReadResult} ViewDataReadResult */
+
+/** @typedef {import("./types/viewQueryApi.js").ViewSliceQueryOptions} ViewSliceQueryOptions */
+/** @typedef {import("./types/viewQueryApi.js").ViewSliceQueryResult} ViewSliceQueryResult */
+/** @typedef {import("./types/viewQueryApi.js").ViewSliceAggregate} ViewSliceAggregate */
 
 /**
  * Creates optional data inspection for a view API from the same Core module instance.
@@ -23,5 +28,7 @@ export function createViewQuery(views) {
     return {
         describe: (address) => describeView(resolve(address)),
         readData: (address, options) => readViewData(resolve(address), options),
+        queryData: (address, options) =>
+            queryViewData(() => resolve(address), options),
     };
 }

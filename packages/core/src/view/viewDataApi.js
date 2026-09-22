@@ -16,6 +16,7 @@ export function describeView(view) {
         title: view.getTitleText() ?? null,
         description: view.spec.description ?? null,
         encoding: view.getEncoding(),
+        dataRevision: collector?.dataRevision ?? null,
         dataReady: Boolean(
             collector &&
             isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
@@ -39,20 +40,8 @@ export function readViewData(view, options) {
     if (!Number.isInteger(limit) || limit < 0 || limit > 1000) {
         throw new Error("Data read limit must be an integer from 0 to 1000.");
     }
-    if (!(view instanceof UnitView)) {
-        throw new Error("Data reads require a unit view.");
-    }
 
-    const collector = view.getCollector();
-    if (
-        !collector ||
-        !isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
-    ) {
-        throw new Error("View data is not ready.");
-    }
-    if (collector.facetBatches.size > 1) {
-        throw new Error("Faceted data reads are not supported.");
-    }
+    const collector = getReadyCollector(view);
 
     const rows = [];
     let rowsExamined = 0;
@@ -79,13 +68,36 @@ export function readViewData(view, options) {
 }
 
 /**
+ * Shared readiness and facet contract for previews and scoped queries.
+ * @param {import("./view.js").default} view
+ */
+export function getReadyCollector(view) {
+    if (!(view instanceof UnitView)) {
+        throw new Error("Data reads require a unit view.");
+    }
+
+    const collector = view.getCollector();
+    if (
+        !collector ||
+        !isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
+    ) {
+        throw new Error("View data is not ready.");
+    }
+    if (collector.facetBatches.size > 1) {
+        throw new Error("Faceted data reads are not supported.");
+    }
+
+    return collector;
+}
+
+/**
  * Structured cloning retains shared memory. Inspect the clone so source getters
  * run only once, and reject shared buffers before exposing a result.
  * @template T
  * @param {T} value
  * @returns {T}
  */
-function cloneDetached(value) {
+export function cloneDetached(value) {
     const clone = structuredClone(value);
     /** @type {unknown[]} */
     const pending = [clone];

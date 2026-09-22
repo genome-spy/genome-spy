@@ -4,6 +4,14 @@
 
 ## Properties
 
+### dataRevision
+
+> **dataRevision**: `number` \| `null`
+
+Current collector publication revision, or null without a collector.
+
+***
+
 ### title
 
 > **title**: `string` \| `string`[] \| `null`

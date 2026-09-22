@@ -10,6 +10,12 @@ export interface ViewQueryApi {
     /** Returns detached metadata. Throws for a removed view or finalized embed. */
     describe: (address: ViewAddress) => ViewDescription;
 
+    /** Queries the current data-space viewport, optionally intersected with an interval selection. */
+    queryData: (
+        address: ViewAddress,
+        options: ViewSliceQueryOptions
+    ) => Promise<ViewSliceQueryResult>;
+
     /**
      * Returns a bounded detached read from one ready unit view with at most one facet batch.
      * Throws for unready data, containers, removed views, finalized embeds,
@@ -23,6 +29,9 @@ export interface ViewQueryApi {
 }
 
 export interface ViewDescription {
+    /** Current collector publication revision, or null without a collector. */
+    dataRevision: number | null;
+
     /** View title text, or null when absent. */
     title: string | string[] | null;
 
@@ -56,4 +65,51 @@ export interface ViewDataReadResult {
 
     /** Loaded transformed rows, not viewport-filtered marks or all source rows. */
     scope: "loaded-transformed";
+}
+
+/** Exact operations reuse Core aggregate-transform numeric semantics. */
+export interface ViewSliceAggregate {
+    op: "count" | "valid" | "sum" | "min" | "max" | "mean" | "variance";
+    /** Required except for count. Supports the same field paths as aggregate transforms. */
+    field?: string;
+    /** Unique result property. */
+    as: string;
+}
+
+export interface ViewSliceQueryOptions {
+    /** Numeric or locus viewport axes to intersect. No pixel visibility is implied. */
+    channels: ("x" | "y")[];
+    /** Named interval selection in this view's parameter scope. A wholly cleared selection matches no rows. */
+    selection?: string;
+    /** Returned fields. Omit to return whole detached rows. */
+    fields?: string[];
+    /** Maximum returned rows, 0–1000. Does not limit scanning or aggregation. */
+    limit: number;
+    /** Compute each operation over all matching loaded rows, even when rows are truncated. */
+    aggregate?: ViewSliceAggregate[];
+    signal?: AbortSignal;
+}
+
+export interface ViewSliceQueryResult {
+    rows: Record<string, unknown>[];
+    /** All loaded rows examined, before scope filtering. */
+    rowsExamined: number;
+    /** All loaded rows matching the scope. */
+    rowsMatched: number;
+    truncated: boolean;
+    /** Detached aggregate-transform values. Undefined results (for example empty mean) are null. */
+    aggregates: Record<string, unknown>;
+    scope: {
+        type: "viewport";
+        /** Captured numeric domains; locus coordinates use Core's linearized genome. */
+        domains: Partial<Record<"x" | "y", number[]>>;
+        selection?: {
+            name: string;
+            value: import("./selectionTypes.js").IntervalSelection;
+        };
+        dataRevision: number;
+        data: "loaded-transformed";
+        /** Ready for the viewport does not prove full lazy-source coverage. */
+        sourceCoverage: "unknown";
+    };
 }

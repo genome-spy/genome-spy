@@ -27,6 +27,25 @@ Returns detached metadata. Throws for a removed view or finalized embed.
 
 ***
 
+### queryData
+
+> **queryData**: (`address`, `options`) => `Promise`<[`ViewSliceQueryResult`](ViewSliceQueryResult.md)\>
+
+Queries the current data-space viewport, optionally intersected with an interval selection.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `address` | [`ViewAddress`](../type-aliases/ViewAddress.md) |
+| `options` | [`ViewSliceQueryOptions`](ViewSliceQueryOptions.md) |
+
+#### Returns
+
+`Promise`<[`ViewSliceQueryResult`](ViewSliceQueryResult.md)\>
+
+***
+
 ### readData
 
 > **readData**: (`address`, `options`) => [`ViewDataReadResult`](ViewDataReadResult.md)
