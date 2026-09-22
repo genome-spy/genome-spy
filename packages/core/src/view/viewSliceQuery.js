@@ -303,12 +303,12 @@ function makePredicates(view, scope) {
             if (typeof a !== "number" || !Number.isFinite(a)) return false;
             if (!end) return a >= lo && a < hi;
             const b = end(row);
-            return (
-                typeof b === "number" &&
-                Number.isFinite(b) &&
-                Math.min(a, b) < hi &&
-                Math.max(a, b) > lo
-            );
+            if (typeof b !== "number" || !Number.isFinite(b)) return false;
+
+            // Rule marks repeat the scalar coordinate on their perpendicular
+            // axis. Equal endpoints therefore use point containment.
+            if (a === b) return a >= lo && a < hi;
+            return Math.min(a, b) < hi && Math.max(a, b) > lo;
         };
     });
 }

@@ -178,7 +178,8 @@ retain input values (including nonnumeric values) exactly as the transform does;
 all returned aggregate values are detached and shared memory is rejected.
 
 Each requested axis uses its captured numeric or locus scale domain. Points use
-half-open containment; ranged positions overlap the half-open slice. Locus values
+half-open containment; ranged positions overlap the half-open slice. Equal
+endpoints use point containment, including the scalar axis of a rule. Locus values
 are already linearized by Core, including encoding offsets. Optional
 `selection: "region"` intersects the viewport with the named interval parameter
 in the queried view's scope. Inactive dimensions do not constrain active ones;

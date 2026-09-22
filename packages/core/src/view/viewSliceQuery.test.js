@@ -94,6 +94,35 @@ describe("scoped loaded-data queries", () => {
         ]);
     });
 
+    test("horizontal rules include the lower scalar-axis boundary", async () => {
+        const { query, handle } = await setup(
+            [
+                { x: 1, end: 3, y: 0 },
+                { x: 1, end: 3, y: 6 },
+            ],
+            {
+                mark: "rule",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 5], nice: false },
+                    },
+                    x2: { field: "end" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 6], nice: false },
+                    },
+                },
+            }
+        );
+        expect(
+            (await query.queryData(handle, { channels: ["x", "y"], limit: 10 }))
+                .rows
+        ).toEqual([{ x: 1, end: 3, y: 0 }]);
+    });
+
     test("matches aggregate transform semantics without cloning source payloads", async () => {
         // Uncloneable payloads prove an aggregate-only query doesn't copy input rows.
         const rows = [
