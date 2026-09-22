@@ -30,13 +30,18 @@ export interface TransformParamsBase {
 /** Options for transforms whose predicates or expressions can trigger replay. */
 export interface ReactiveTransformParams {
     /**
-     * Trailing-edge delay in milliseconds for replay triggered by reactive
-     * expression changes. Incoming data is still processed immediately using
-     * current parameter values.
+     * Trailing-edge delay in milliseconds before requesting dataflow replay
+     * after a reactive expression dependency changes. Repeated changes restart
+     * the delay.
      *
-     * @minimum 0
+     * Parameter updates and incoming data are not delayed. Incoming batches use
+     * current parameter values, and a completed batch satisfies any pending
+     * reactive replay. The delay does not wait for independently scheduled lazy
+     * data loads.
      *
      * __Default value:__ no delay
+     *
+     * @minimum 0
      */
     debounce?: number;
 }
