@@ -1,0 +1,105 @@
+{
+  "description": [
+    "Pileup with projected label extents",
+    "Projects measured label widths into coordinate units before assigning lanes."
+  ],
+
+  "params": [
+    { "name": "labelGap", "value": 5 },
+    {
+      "name": "pixelsPerBase",
+      "expr": "width * abs(scale('x', 1) - scale('x', 0))",
+      "debounce": 50
+    }
+  ],
+
+  "data": {
+    "values": [
+      { "start": 20, "end": 105, "label": "kirre" },
+      { "start": 20, "end": 105, "label": "kirre" },
+      { "start": 20, "end": 105, "label": "kirre" },
+      { "start": 110, "end": 225, "label": "N" },
+      { "start": 230, "end": 234, "label": "CG18508" },
+      { "start": 238, "end": 242, "label": "Fcp3C" },
+      { "start": 246, "end": 250, "label": "CG3939" },
+      { "start": 430, "end": 434, "label": "CG14265" },
+      { "start": 446, "end": 450, "label": "ng2" },
+      { "start": 455, "end": 459, "label": "ng3" },
+      { "start": 464, "end": 468, "label": "ng1" },
+      { "start": 475, "end": 479, "label": "ng4" },
+      { "start": 490, "end": 494, "label": "Pig1" },
+      { "start": 505, "end": 510, "label": "Sgs4" },
+      { "start": 525, "end": 790, "label": "dnc" },
+      { "start": 690, "end": 805, "label": "CR44886" },
+      { "start": 695, "end": 775, "label": "dnc" },
+      { "start": 805, "end": 850, "label": "dm" },
+      { "start": 860, "end": 880, "label": "CG10793" }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "measureText",
+      "field": "label",
+      "fontSize": 11,
+      "as": "_labelWidth"
+    },
+    {
+      "type": "collect",
+      "sort": { "field": "start", "order": "ascending" },
+      "description": "Caches label measurements before scale-dependent replay."
+    },
+    {
+      "type": "formula",
+      "expr": "datum.end + (datum._labelWidth + labelGap * 2) / max(pixelsPerBase, 1e-6)",
+      "as": "_occupiedEnd"
+    },
+    {
+      "type": "pileup",
+      "start": "start",
+      "end": "_occupiedEnd",
+      "as": "lane",
+      "spacing": 0
+    }
+  ],
+
+  "height": { "step": 24 },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "index",
+      "scale": { "domain": [0, 1000] }
+    },
+    "y": {
+      "field": "lane",
+      "type": "ordinal",
+      "scale": { "padding": 0.3 }
+    }
+  },
+
+  "layer": [
+    {
+      "mark": {
+        "type": "rect",
+        "fill": "#2c7fb8",
+        "stroke": "black",
+        "strokeWidth": 1
+      },
+      "encoding": { "x2": { "field": "end" } }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "align": "left",
+        "baseline": "middle",
+        "dx": 5
+      },
+      "encoding": {
+        "x": { "field": "end", "type": "index", "band": 0 },
+        "text": { "field": "label" },
+        "color": { "value": "black" }
+      }
+    }
+  ]
+}

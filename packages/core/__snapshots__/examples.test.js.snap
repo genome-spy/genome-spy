@@ -8553,6 +8553,44 @@ exports[`shared examples > initializes examples/core/transforms/pileup.json 1`] 
 }
 `;
 
+exports[`shared examples > initializes examples/core/transforms/pileup-labels.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer0",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer1",
+            "type": "UnitView",
+          },
+        ],
+        "name": "grid0",
+        "type": "LayerView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/examples/genomic-data/ASCAT-algorithm.json 1`] = `
 {
   "assemblies": [
@@ -14783,6 +14821,68 @@ exports[`shared examples > initializes examples/docs/grammar/transform/pileup/pi
       },
     ],
     "name": "viewRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/transform/pileup/pileup-projected-labels.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer0",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer1",
+            "type": "UnitView",
+          },
+        ],
+        "name": "grid0",
+        "type": "LayerView",
+      },
+    ],
+    "name": "implicitRoot",
     "type": "ConcatView",
   },
 }
