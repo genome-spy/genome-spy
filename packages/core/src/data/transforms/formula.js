@@ -18,19 +18,12 @@ export default class FormulaTransform extends Transform {
 
         this.as = params.as;
 
-        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
+        /** @type {(datum?: import("../flowNode.js").Datum) => any} */
         this.fn = undefined;
     }
 
     initialize() {
-        this.fn = this.paramRuntime.watchExpression(
-            this.params.expr,
-            () => this.requestReactiveRepropagate(),
-            {
-                scopeOwned: false,
-                registerDisposer: (disposer) => this.registerDisposer(disposer),
-            }
-        );
+        this.fn = this.watchSnapshottedExpression(this.params.expr);
     }
 
     /**

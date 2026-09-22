@@ -5,6 +5,7 @@ import FilterTransform from "./transforms/filter.js";
 import FormulaTransform from "./transforms/formula.js";
 import InlineSource from "./sources/inlineSource.js";
 import DataSource from "./sources/dataSource.js";
+import FlowNode from "./flowNode.js";
 
 /** @param {ViewParamRuntime} runtime */
 function makeFilter(runtime) {
@@ -253,6 +254,38 @@ describe("parameter-triggered streaming replay", () => {
                 [2, 3],
                 [2, 3],
             ],
+        ]);
+    });
+
+    test("a notifying write during replay affects following rows and queues a final replay", () => {
+        const runtime = makeRuntime();
+        const source = new Collector();
+        const formula = makeFormula(runtime);
+        const output = new Collector();
+        let armed = false;
+        const writer = new (class extends FlowNode {
+            /** @param {import("./flowNode.js").Datum} datum */
+            handle(datum) {
+                if (armed) {
+                    armed = false;
+                    runtime.setValue("factor", 10);
+                }
+                this._propagate(datum);
+            }
+        })();
+        source.addChild(formula);
+        formula.addChild(writer);
+        writer.addChild(output);
+        formula.initialize();
+        publish(source);
+        const replay = vi.spyOn(source, "repropagate");
+
+        armed = true;
+        runtime.setValue("factor", 2);
+
+        expect(replay).toHaveBeenCalledTimes(2);
+        expect(Array.from(output.getData(), (datum) => datum.y)).toEqual([
+            10, 20, 30,
         ]);
     });
 

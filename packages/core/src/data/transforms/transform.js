@@ -23,6 +23,12 @@ export default class Transform extends FlowNode {
     #replayTimeout;
 
     /**
+     * Snapshot refreshers owned by expressions used by this transform.
+     * @type {(() => void)[]}
+     */
+    #expressionSnapshotRefreshers = [];
+
+    /**
      * @param {import("../../spec/transform.js").TransformParamsBase} params
      * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
@@ -56,6 +62,20 @@ export default class Transform extends FlowNode {
             clearTimeout(this.#replayTimeout);
             this.#replayTimeout = undefined;
         }
+    }
+
+    reset() {
+        // A reset starts a new replay boundary, so no datum observes stale
+        // parameter values from the preceding propagation.
+        this.#refreshExpressionSnapshots();
+        super.reset();
+    }
+
+    /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
+    beginBatch(flowBatch) {
+        // Sources can publish a fresh batch without resetting the dataflow.
+        this.#refreshExpressionSnapshots();
+        super.beginBatch(flowBatch);
     }
 
     /**
@@ -126,5 +146,40 @@ export default class Transform extends FlowNode {
         }
 
         return /** @type {ExprRefReader<T>} */ (() => value);
+    }
+
+    /**
+     * Watches an expression while evaluating batch-stable parameters through a
+     * plain snapshot. Passive or otherwise unknown refs retain live getters.
+     *
+     * @param {string} expr
+     * @returns {((datum?: import("../flowNode.js").Datum) => any) & { refresh: () => void }}
+     */
+    watchSnapshottedExpression(expr) {
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
+        let expression;
+        /** @type {ReturnType<NonNullable<import("../../paramRuntime/types.js").ExprRefFunction["createSnapshotEvaluator"]>>} */
+        let evaluator;
+
+        expression = this.paramRuntime.watchExpression(
+            expr,
+            () => {
+                // Make direct incoming batches observe the new value even if
+                // the requested replay is delayed by debounce.
+                evaluator.refresh();
+                this.requestReactiveRepropagate();
+            },
+            {
+                scopeOwned: false,
+                registerDisposer: (disposer) => this.registerDisposer(disposer),
+            }
+        );
+        evaluator = expression.createSnapshotEvaluator();
+        this.#expressionSnapshotRefreshers.push(evaluator.refresh);
+        return evaluator;
+    }
+
+    #refreshExpressionSnapshots() {
+        for (const refresh of this.#expressionSnapshotRefreshers) refresh();
     }
 }

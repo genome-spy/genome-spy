@@ -72,6 +72,12 @@ batch records the expression revision it consumed, so a batch arriving during
 the delay suppresses an otherwise redundant replay. The timer remains temporal
 work outside `whenPropagated()` and is canceled with the transform.
 
+Formula and filter expressions evaluate notifying parameter refs through a
+stable plain-object snapshot that is refreshed on dependency notifications and
+dataflow boundaries. Passive and unknown refs retain live getters, while scale
+helpers remain live closures over their resolution. The evaluator and globals
+object retain their identity so the per-row call sites stay monomorphic.
+
 Streaming jobs may declare prerequisite callbacks. Only pending prerequisites
 participate: a queued publisher of a foreign collector runs before the primary
 replay that consumes it. Prerequisites derive from optimized FlowNode side edges;

@@ -83,6 +83,50 @@ export function bindExpression(expr, resolve, options = {}) {
         activeSubscriptions.clear();
     };
 
+    /**
+     * Creates an evaluator optimized for repeated calls over a dataflow batch.
+     * The evaluator and its globals object retain their identities; `refresh()`
+     * copies batch-stable parameter values into that object before propagation.
+     *
+     * @returns {import("./types.js").SnapshotExpressionEvaluator}
+     */
+    expression.createSnapshotEvaluator = () => {
+        /** @type {Record<string, any>} */
+        const snapshot = {};
+
+        for (const name of Object.keys(globalObject)) {
+            if (!refsForParams.has(name)) {
+                // Scale helpers and other non-parameter globals stay live. Their
+                // functions already read the current runtime state when called.
+                snapshot[name] = globalObject[name];
+            }
+        }
+        for (const [name, ref] of refsForParams) {
+            if (!ref.batchStable) {
+                // Passive refs may change without triggering a refresh, so they
+                // must retain the original per-datum lookup semantics.
+                Object.defineProperty(snapshot, name, {
+                    enumerable: true,
+                    get: () => ref.get(),
+                });
+            }
+        }
+
+        const evaluator = Object.assign(expression.createEvaluator(snapshot), {
+            refresh() {
+                for (const [name, ref] of refsForParams) {
+                    if (ref.batchStable) {
+                        // Plain data properties keep expression access cheap and
+                        // monomorphic throughout the batch.
+                        snapshot[name] = ref.get();
+                    }
+                }
+            },
+        });
+        evaluator.refresh();
+        return evaluator;
+    };
+
     // Include dependency identities to avoid collisions between structurally
     // identical expressions in different scopes.
     expression.identifier = () =>

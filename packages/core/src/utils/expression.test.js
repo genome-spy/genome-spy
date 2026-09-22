@@ -98,6 +98,7 @@ describe("expression helpers", () => {
             resolveScaleResolution: (channel) =>
                 channel == "x" ? resolution : undefined,
         }).expression;
+        const snapshot = expr.createSnapshotEvaluator();
 
         let calls = 0;
         const unsubscribe = expr.subscribe(() => {
@@ -105,10 +106,12 @@ describe("expression helpers", () => {
         });
 
         expect(expr()).toEqual([1, 5]);
+        expect(snapshot()).toEqual([1, 5]);
 
         resolution.setDomain([2, 6]);
         expect(calls).toBe(1);
         expect(expr()).toEqual([2, 6]);
+        expect(snapshot()).toEqual([2, 6]);
 
         unsubscribe();
     });
