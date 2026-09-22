@@ -69,17 +69,17 @@ const LEGEND_GUIDE = {
  */
 export function attachViewLevelAxisProps(root) {
     visitNonChromeViews(root, (view) => {
-        for (const channel of /** @type {PrimaryPositionalChannel[]} */ ([
-            "x",
-            "y",
-        ])) {
-            const scale = view.resolutions.scale[channel];
-            if (scale?.isExplicitlyOwned())
+        for (const channel of /** @type {PrimaryPositionalChannel[]} */ (
+            Object.keys(view.spec.axes ?? {})
+        )) {
+            const scale = view.getScaleResolution(channel);
+            if (scale) {
                 ensureAxisResolution(
                     getResolutionView(view, "axis", channel),
                     channel,
                     scale
                 );
+            }
         }
     });
     return /** @type {ViewLevelAxisPropsMapping[]} */ (

@@ -281,6 +281,8 @@ export interface ViewSpecBase extends ResolveSpec {
 
     /**
      * Defines properties for scale resolutions used by this view subtree.
+     * A scale declaration does not create an axis; declare the corresponding
+     * `axes` property when an axis is needed without a positional encoding.
      *
      * Use this when a composed view shares a scale across child views and the
      * scale settings, such as the visible domain, belong to the composed view
@@ -294,6 +296,8 @@ export interface ViewSpecBase extends ResolveSpec {
 
     /**
      * Defines properties for axis resolutions used by this view subtree.
+     * When a positional scale is declared at the view level, an axis can be
+     * created explicitly by declaring the corresponding channel here.
      *
      * Use this when a composed view shares an axis across child views and the
      * axis settings belong to the composed view rather than an individual

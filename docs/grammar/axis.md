@@ -2,8 +2,9 @@
 
 Axes explain how positional channels such as `x` and `y` map data values to
 positions. GenomeSpy creates axes automatically for positional field and
-expression encodings, and for positional view-level scale declarations with an
-explicit `type`.
+expression encodings. A view-level scale declaration does not create an axis by
+itself; use `axes.<channel>` when an axis is needed without a positional
+encoding.
 
 ## Configuration
 

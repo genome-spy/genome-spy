@@ -7,6 +7,7 @@
   "assembly": "hg38",
 
   "scales": { "x": { "type": "locus" } },
+  "axes": { "x": {} },
 
   "data": { "values": [{}] },
 
