@@ -1,5 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
+import Genome from "../genome/genome.js";
+// Register Core's locus scale before exercising its public navigation semantics.
+import "./scaleResolution.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
 
 /**
@@ -29,6 +32,7 @@ function createLinearScale(domain, props = {}) {
  * @param {() => void} [options.renderImmediately]
  * @param {() => number[]} [options.getGenomeExtent]
  * @param {() => number[] | undefined} [options.getDataZoomExtent]
+ * @param {(domain: any) => number[]} [options.fromComplexInterval]
  */
 function createController({
     scale,
@@ -36,6 +40,7 @@ function createController({
     renderImmediately,
     getGenomeExtent,
     getDataZoomExtent,
+    fromComplexInterval,
 } = {}) {
     scale ??= createLinearScale([0, 10]);
     return new ScaleInteractionController({
@@ -48,9 +53,8 @@ function createController({
         getInitialDomainSnapshot: () => [0, 10],
         getDataZoomExtent: getDataZoomExtent ?? (() => [0, 10]),
         getResetDomain: () => [0, 10],
-        fromComplexInterval: /** @returns {number[]} */ (
-            /** @type {any} */ interval
-        ) => interval,
+        fromComplexInterval:
+            fromComplexInterval ?? ((/** @type {any} */ interval) => interval),
         getGenomeExtent: getGenomeExtent ?? (() => [0, 10]),
         renderImmediately: renderImmediately ?? (() => undefined),
     });
@@ -211,5 +215,87 @@ describe("ScaleInteractionController", () => {
         ).rejects.toThrow(
             "renderImmediately is not supported for animated zooms."
         );
+    });
+});
+
+describe("genomic navigation bounds", () => {
+    const genome = new Genome({
+        name: "test-genome",
+        contigs: [
+            { name: "chr1", size: 100 },
+            { name: "chr2", size: 80 },
+        ],
+    });
+
+    function setupGenomic() {
+        const scale = createLinearScale([0, 180], { type: "locus" });
+        const navigate = vi.fn(async (domain) => {
+            scale.domain(domain);
+        });
+        return {
+            scale,
+            navigate,
+            controller: createController({
+                scale,
+                navigate,
+                fromComplexInterval: (domain) =>
+                    genome.toContinuousInterval(domain),
+            }),
+        };
+    }
+
+    test.each([
+        [
+            { chrom: "chr1", pos: 100 },
+            { chrom: "chr1", pos: 110 },
+        ],
+        [
+            { chrom: "chr1", pos: 90 },
+            { chrom: "chr1", pos: 100 },
+        ],
+        [
+            { chrom: "chr2", pos: 10 },
+            { chrom: "chr1", pos: 90 },
+        ],
+        [
+            { chrom: "chr1", pos: -1 },
+            { chrom: "chr2", pos: 1 },
+        ],
+        [
+            { chrom: "chr1", pos: 0 },
+            { chrom: "chr2", pos: -2 },
+        ],
+    ])(
+        "rejects invalid endpoints before changing the chart: %j",
+        async (start, end) => {
+            const { controller, navigate, scale } = setupGenomic();
+            await expect(
+                controller.zoomTo([start, end], { duration: 0 })
+            ).rejects.toThrow(/chromosome|increasing/);
+            expect(navigate).not.toHaveBeenCalled();
+            expect(scale.domain()).toEqual([0, 180]);
+        }
+    );
+
+    test("preserves whole chromosomes, inclusive endpoints and a next-chromosome zero boundary", async () => {
+        const { controller, scale } = setupGenomic();
+        await controller.zoomTo([{ chrom: "chr2" }], { duration: 0 });
+        expect(scale.domain()).toEqual([100, 180]);
+        await controller.zoomTo(
+            [
+                { chrom: "chr1", pos: 90 },
+                { chrom: "chr2", pos: -1 },
+            ],
+            { duration: 0 }
+        );
+        expect(scale.domain()).toEqual([90, 100]);
+        await controller.zoomTo(
+            [
+                { chrom: "chr1", pos: 99 },
+                { chrom: "chr2", pos: 0 },
+            ],
+            { duration: 0 }
+        );
+        expect(scale.domain()).toEqual([99, 101]);
     });
 });
