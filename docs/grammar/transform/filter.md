@@ -8,11 +8,11 @@ The `"filter"` transform removes rows based on a predicate
 
 ### Predicate Expression
 
-SCHEMA ExprFilterParams
+SCHEMA ExprFilterParams expr debounce description
 
 ### Selection Predicate
 
-SCHEMA SelectionFilterParams
+SCHEMA SelectionFilterParams param empty fields debounce description
 
 ## Example
 
@@ -27,6 +27,13 @@ SCHEMA SelectionFilterParams
 
 The example above passes through all rows for which the field `p` is less than
 or equal to 0.05.
+
+When a predicate depends on parameters, `debounce` can delay replay until the
+dependencies have stopped changing for the specified number of milliseconds.
+It delays only dependency-triggered replay: parameter updates and new input
+data remain immediate. A completed input batch uses current parameter values
+and makes any pending replay unnecessary. The delay does not wait for an
+independently scheduled lazy load.
 
 ### Filtering by a Selection Predicate
 

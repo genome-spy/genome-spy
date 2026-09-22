@@ -60,10 +60,11 @@ only the latest value after the quiet period:
 }
 ```
 
-Use debouncing when an expression drives expensive dataflow operations that
-should not repeat on every interaction or animation frame. Rendering can keep
-using live scale values while the dependent dataflow retains its previous
-result, then recomputes once after scale updates pause.
+Parameter debouncing is useful when every consumer should retain the previous
+value until the dependencies settle. To keep values current while delaying only
+expensive dataflow replay, use `debounce` on a reactive
+[`formula`](./transform/formula.md) or [`filter`](./transform/filter.md)
+transform instead.
 
 Debounce timers represent future work. The runtime propagation barrier waits
 for updates that have already been published, but it does not wait for a

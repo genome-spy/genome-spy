@@ -8,8 +8,7 @@
     { "name": "labelGap", "value": 5 },
     {
       "name": "pixelsPerBase",
-      "expr": "width * abs(scale('x', 1) - scale('x', 0))",
-      "debounce": 50
+      "expr": "width * abs(scale('x', 1) - scale('x', 0))"
     }
   ],
 
@@ -52,7 +51,8 @@
     {
       "type": "formula",
       "expr": "datum.end + (datum._labelWidth + labelGap * 2) / max(pixelsPerBase, 1e-6)",
-      "as": "_occupiedEnd"
+      "as": "_occupiedEnd",
+      "debounce": 50
     },
     {
       "type": "pileup",

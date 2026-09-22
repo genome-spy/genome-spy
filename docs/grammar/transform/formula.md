@@ -5,7 +5,7 @@ and add a new field to each row.
 
 ## Parameters
 
-SCHEMA FormulaParams
+SCHEMA FormulaParams expr as debounce description
 
 ## Example
 
@@ -44,5 +44,14 @@ Under the hood, when any of the parameters change, the formula transform finds
 the closest [collector](./collect.md) or [data source](../data/index.md) in the
 data pipeline and triggers a re-propagation of the data, resulting in a
 re-evaluation of the formula expression.
+
+Use `debounce` to delay this reactive replay until the dependencies have
+stopped changing for the specified number of milliseconds. It delays only
+dependency-triggered replay: parameter updates and new input data remain
+immediate. If an input batch completes during the delay, it uses current
+parameter values and makes the pending replay unnecessary. The delay does not
+wait for an independently scheduled lazy load. Place a
+[`collect`](./collect.md) transform before an expensive reactive formula to
+cache the rows used for replay.
 
 EXAMPLE examples/docs/grammar/transform/formula/formula-with-parameters.json height=300
