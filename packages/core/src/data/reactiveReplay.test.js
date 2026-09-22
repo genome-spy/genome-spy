@@ -38,6 +38,45 @@ function publish(collector) {
 }
 
 describe("parameter-triggered streaming replay", () => {
+    test("debounced expression params coalesce downstream replay", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = new ViewParamRuntime();
+            const setTarget = runtime.registerParam({
+                name: "targetFactor",
+                value: 1,
+            });
+            runtime.registerParam({
+                name: "factor",
+                expr: "targetFactor",
+                debounce: 50,
+            });
+            const source = new Collector();
+            const formula = makeFormula(runtime);
+            const output = new Collector();
+            source.addChild(formula);
+            formula.addChild(output);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            setTarget(2);
+            vi.advanceTimersByTime(40);
+            setTarget(3);
+            vi.advanceTimersByTime(49);
+
+            expect(replay).not.toHaveBeenCalled();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([1, 2, 3]);
+
+            vi.advanceTimersByTime(1);
+
+            expect(replay).toHaveBeenCalledOnce();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([3, 6, 9]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     test.each([false, true])(
         "chained filter/formula publishes once (intermediate collector: %s)",
         async (intermediate) => {

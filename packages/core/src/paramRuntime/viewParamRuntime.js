@@ -55,6 +55,10 @@ export default class ViewParamRuntime {
      * @prop {((target: { value: number }) => void) & { stop: () => void, snap: (target: { value: number }) => void }} smoother
      * @prop {() => void} dispose
      *
+     * @typedef {object} DebounceState
+     * @prop {any} target
+     * @prop {ReturnType<typeof setTimeout> | undefined} timeout
+     *
      * @typedef {object} SetValueOptions
      * @prop {boolean} [animate=true]
      *
@@ -94,6 +98,9 @@ export default class ViewParamRuntime {
     /** @type {Map<string, TransitionState>} */
     #transitionStates = new Map();
 
+    /** @type {Map<string, DebounceState>} */
+    #debounceStates = new Map();
+
     /** @type {() => ViewParamRuntime} */
     #parentFinder;
 
@@ -104,7 +111,7 @@ export default class ViewParamRuntime {
     #animator;
 
     /**
-     * True when transitioned updates should snap instead of animate.
+     * True when transitioned and debounced targets should publish immediately.
      * View-owned runtimes start in this mode because upstream scale/config
      * finalization may correct expression values that were first evaluated
      * against placeholder scale state.
@@ -114,7 +121,7 @@ export default class ViewParamRuntime {
      *
      * @type {boolean}
      */
-    #snapTransitionedUpdates;
+    #settleTemporalUpdatesImmediately;
 
     #disposed = false;
 
@@ -125,15 +132,15 @@ export default class ViewParamRuntime {
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
      * @param {import("../utils/animator.js").default} [animator]
-     * @param {{ snapTransitionedUpdates?: boolean }} [options]
+     * @param {{ settleTemporalUpdatesImmediately?: boolean }} [options]
      */
     constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
         this.#scaleResolutionResolver =
             scaleResolutionResolver ?? (() => undefined);
         this.#animator = animator;
-        this.#snapTransitionedUpdates =
-            options.snapTransitionedUpdates ?? false;
+        this.#settleTemporalUpdatesImmediately =
+            options.settleTemporalUpdatesImmediately ?? false;
 
         const parent = this.#parentFinder();
         if (parent) {
@@ -318,6 +325,12 @@ export default class ViewParamRuntime {
                     param.expr,
                     param.transition
                 );
+            } else if ("debounce" in param) {
+                this.#registerDebouncedExpression(
+                    name,
+                    param.expr,
+                    param.debounce
+                );
             } else {
                 const ref = this.#runtime.registerDerived(
                     this.#scopeId,
@@ -451,8 +464,9 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * Gets the target value for a local parameter. Non-transitioned parameters
-     * use their current value as the target.
+     * Gets the target value for a local parameter. Transitioned and debounced
+     * parameters expose their latest target; other parameters use their current
+     * value.
      *
      * @param {string} paramName
      */
@@ -460,6 +474,7 @@ export default class ViewParamRuntime {
         validateParameterName(paramName);
         return (
             this.#transitionStates.get(paramName)?.target ??
+            this.#debounceStates.get(paramName)?.target ??
             this.getValue(paramName)
         );
     }
@@ -648,7 +663,9 @@ export default class ViewParamRuntime {
                 writable: this.#allocatedSetters.has(name),
                 configured: Boolean(config),
                 config: config ? structuredClone(config) : undefined,
-                target: this.#transitionStates.get(name)?.target,
+                target:
+                    this.#transitionStates.get(name)?.target ??
+                    this.#debounceStates.get(name)?.target,
             });
         }
 
@@ -843,10 +860,59 @@ export default class ViewParamRuntime {
         );
         const unsubscribe = expression.subscribe(() => {
             this.#setTransitionTarget(name, state, expression(null), {
-                animate: !this.#snapTransitionedUpdates,
+                animate: !this.#settleTemporalUpdatesImmediately,
             });
         });
         this.#runtime.addScopeDisposer(this.#scopeId, unsubscribe);
+    }
+
+    /**
+     * @param {string} name
+     * @param {string} expr
+     * @param {number} wait
+     */
+    #registerDebouncedExpression(name, expr, wait) {
+        const expression = this.createExpression(expr);
+        const initialValue = expression(null);
+        const ref = this.#runtime.registerBase(
+            this.#scopeId,
+            name,
+            initialValue
+        );
+        this.#localRefs.set(name, ref);
+
+        /** @type {DebounceState} */
+        const state = {
+            target: initialValue,
+            timeout: undefined,
+        };
+
+        const publish = () => {
+            state.timeout = undefined;
+            ref.set(state.target);
+            this.#runtime.flushNow();
+        };
+        const unsubscribe = expression.subscribe(() => {
+            state.target = expression(null);
+            clearTimeout(state.timeout);
+            state.timeout = undefined;
+
+            if (state.target !== ref.get()) {
+                if (this.#settleTemporalUpdatesImmediately) {
+                    publish();
+                } else {
+                    state.timeout = setTimeout(publish, wait);
+                }
+            }
+        });
+        const dispose = () => {
+            clearTimeout(state.timeout);
+            unsubscribe();
+            this.#debounceStates.delete(name);
+        };
+
+        this.#debounceStates.set(name, state);
+        this.#runtime.addScopeDisposer(this.#scopeId, dispose);
     }
 
     /**
@@ -948,10 +1014,10 @@ export default class ViewParamRuntime {
 
     /**
      * Marks this runtime scope as fully prepared for interactive updates.
-     * Later expression changes animate according to the parameter transition.
+     * Later expression changes use their configured temporal publication policy.
      */
     finalizeInitialization() {
-        this.#snapTransitionedUpdates = false;
+        this.#settleTemporalUpdatesImmediately = false;
     }
 
     dispose() {
@@ -967,6 +1033,7 @@ export default class ViewParamRuntime {
         this.#lazyExpressionNames.clear();
         this.#selectionControllers.clear();
         this.#transitionStates.clear();
+        this.#debounceStates.clear();
     }
 
     /**
@@ -1031,6 +1098,26 @@ function validateParameterShape(param) {
         throw new Error(
             `The parameter "${name}" must not have both expr and bind properties!`
         );
+    }
+
+    if ("debounce" in param) {
+        if (!("expr" in param) || param.push === "outer") {
+            throw new Error(
+                `The debounced parameter "${name}" must have an expr property and must not use push.`
+            );
+        }
+
+        if ("transition" in param) {
+            throw new Error(
+                `The parameter "${name}" must not use debounce and transition together.`
+            );
+        }
+
+        if (!Number.isFinite(param.debounce) || param.debounce < 0) {
+            throw new Error(
+                `The debounce for parameter "${name}" must be a non-negative finite number.`
+            );
+        }
     }
 
     if (!("transition" in param)) {

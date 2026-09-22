@@ -205,6 +205,10 @@ SCHEMA DataFormat
 
 SCHEMA DataSource
 
+## DebouncedExprParameter
+
+SCHEMA DebouncedExprParameter
+
 ## DirectionDef
 
 SCHEMA DirectionDef
@@ -609,6 +613,10 @@ SCHEMA ParseValue
 
 See the [PileupParams documentation](transform/pileup.md#parameters).
 
+## PlainExprParameter
+
+SCHEMA PlainExprParameter
+
 ## PlainValueParameter
 
 SCHEMA PlainValueParameter
@@ -928,6 +936,10 @@ SCHEMA TooltipDef
 ## TransformParams
 
 SCHEMA TransformParams
+
+## TransitionedExprParameter
+
+SCHEMA TransitionedExprParameter
 
 ## TransitionedMultiscaleStops
 

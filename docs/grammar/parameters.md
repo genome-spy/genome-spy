@@ -45,6 +45,30 @@ parameters change.
 
 EXAMPLE examples/docs/grammar/parameters/expressions.json height=150
 
+### Debounced Expressions
+
+Expression parameters can delay updates until their dependencies have remained
+unchanged for a specified number of milliseconds. The initial value is
+available immediately. Later changes use a trailing-edge debounce and publish
+only the latest value after the quiet period:
+
+```json
+{
+  "name": "settledPixelsPerBase",
+  "expr": "width * abs(scale('x', 1) - scale('x', 0))",
+  "debounce": 150
+}
+```
+
+Use debouncing when an expression drives expensive dataflow operations that
+should not repeat on every interaction or animation frame. Rendering can keep
+using live scale values while the dependent dataflow retains its previous
+result, then recomputes once after scale updates pause.
+
+Debounce timers represent future work. The runtime propagation barrier waits
+for updates that have already been published, but it does not wait for a
+pending debounce timer. `debounce` cannot be combined with `transition`.
+
 ## Pushing Parameters to an Outer Scope
 
 A child view can update a parameter owned by an ancestor. Declare the writable

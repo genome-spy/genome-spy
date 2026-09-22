@@ -643,6 +643,49 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts debounced expression parameters", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1 }] },
+            params: [
+                {
+                    name: "settledX",
+                    expr: "x",
+                    debounce: 150,
+                },
+            ],
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
+    test("rejects incompatible expression update policies", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1 }] },
+            params: [
+                {
+                    name: "settledX",
+                    expr: "x",
+                    debounce: 150,
+                    transition: { type: "lerp" },
+                },
+            ],
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        };
+
+        expect(validate(spec)).toBe(false);
+
+        delete spec.params[0].transition;
+        spec.params[0].debounce = -1;
+        expect(validate(spec)).toBe(false);
+    });
+
     test("rejects bound expression parameters", () => {
         const validate = createCoreValidator();
         const spec = {

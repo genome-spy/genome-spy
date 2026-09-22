@@ -10,6 +10,15 @@
 - DAG propagation is transaction-aware through `runInTransaction` and provides
   `whenPropagated` as a deterministic synchronization barrier.
 
+Expression parameters may opt into trailing-edge debounce. Their initial value
+is published synchronously, while later expression targets restart a
+scope-owned timer and keep the previous published value stable. Timer expiry
+publishes through the normal graph and flushes downstream work. Pending timers
+are temporal work outside transactions and the `whenPropagated` barrier;
+disposing the parameter scope cancels them. View initialization publishes
+temporal parameter targets immediately so scale and layout calibration settle
+before the first render.
+
 ### Coherent synchronous updates
 
 `ParamRuntime` and `ViewParamRuntime` expose owner-bound anonymous `signal` refs, `computed` refs and

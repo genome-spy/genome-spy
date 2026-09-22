@@ -247,7 +247,7 @@ export default class View {
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
             context.animator,
-            { snapTransitionedUpdates: true }
+            { settleTemporalUpdatesImmediately: true }
         );
 
         if ("mark" in spec) {
