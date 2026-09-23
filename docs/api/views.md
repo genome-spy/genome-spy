@@ -232,10 +232,6 @@ before using a scale for navigation. This is the same
 [scale API](runtime-state.md#named-scales) used for named scales. Its locus `zoomTo()`
 input has an inclusive upper endpoint; `getDomain()` reports the internal
 half-open domain. For example, `zoomTo([100, 299])` displays `[100, 300)`.
-Named positions outside their chromosome and reversed genomic intervals reject
-before navigation. An upper endpoint `{ chrom: "chr2", pos: -1 }` denotes the
-boundary immediately before chr2; this preserves half-open intervals ending at
-chr2 position zero when adapting to inclusive endpoints.
 
 ## Marks and scoped interaction
 

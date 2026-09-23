@@ -7,7 +7,7 @@ const protoRe = /^([A-Za-z]+:)?\/\//;
  * If the base part has no trailing slash, it is assumed to be a file and
  * only the directory part is used.
  *
- * @param {string | (() => string) | undefined} base
+ * @param {string | (() => string)} base
  * @param {string} append
  */
 export function concatUrl(base, append) {

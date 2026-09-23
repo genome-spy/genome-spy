@@ -171,20 +171,11 @@ export default class ScaleInteractionController {
         }
 
         const scale = this.#getScale();
-        const genomic =
-            scale.type === "locus" && isChromosomalLocusInterval(domain);
-        if (genomic) {
-            validateGenomicNavigation(domain, this.#fromComplexInterval);
-        }
         const to = normalizeInteractionInterval(
             /** @type {import("../spec/scale.js").ScaleType} */ (scale.type),
             domain,
             this.#fromComplexInterval
         );
-
-        if (genomic && (!to.every(Number.isFinite) || to[0] >= to[1])) {
-            throw new Error("Genomic navigation endpoints must be increasing.");
-        }
 
         // TODO: Intersect the domain with zoom extent
 
@@ -412,35 +403,4 @@ function normalizeInteractionInterval(type, interval, fromComplexInterval) {
  */
 function isZoomParams(zoom) {
     return isObject(zoom);
-}
-
-/**
- * Validate named coordinates before linearization can spill into another chromosome.
- * Whole-chromosome conversion supplies authoritative bounds for this scale's assembly.
- * @param {import("../spec/genome.js").ChromosomalLocus[]} interval
- * @param {(domain: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
- */
-function validateGenomicNavigation(interval, fromComplexInterval) {
-    if (interval.length < 1 || interval.length > 2) {
-        throw new Error("Genomic navigation requires one or two endpoints.");
-    }
-    for (const [index, endpoint] of interval.entries()) {
-        const [start, end] = fromComplexInterval([{ chrom: endpoint.chrom }]);
-        if (endpoint.pos === undefined) continue;
-
-        // Inclusive -1 on the upper endpoint denotes the boundary immediately
-        // before a chromosome, preserving a half-open range ending at its zero.
-        const minimum = index === 1 ? -1 : 0;
-        if (
-            !Number.isSafeInteger(endpoint.pos) ||
-            endpoint.pos < minimum ||
-            endpoint.pos >= end - start
-        ) {
-            throw new Error(
-                "Navigation position is outside chromosome " +
-                    endpoint.chrom +
-                    "."
-            );
-        }
-    }
 }

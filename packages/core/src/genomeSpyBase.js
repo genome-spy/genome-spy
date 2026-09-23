@@ -260,9 +260,6 @@ export default class GenomeSpy {
         this.#extraBroadcastListeners.emit(type, message);
     }
 
-    // Installed once the view's DPR parameter and render coordinator exist.
-    #onCanvasResize = () => {};
-
     #setupDpr() {
         this.dpr = this.#surface.getDevicePixelRatio();
 
@@ -279,8 +276,6 @@ export default class GenomeSpy {
             // Render immediately, without RAF
             this.renderAll();
         };
-
-        this.#onCanvasResize = resizeCallback;
 
         if (this.viewRoot.getSize().isGrowing()) {
             // TODO: Size should be observed only if the content is not absolutely sized
@@ -324,9 +319,9 @@ export default class GenomeSpy {
                     ? calculateCanvasSize(this.viewRoot)
                     : { width: undefined, height: undefined },
             powerPreference: this.options.powerPreference ?? "default",
-            // Buffered drawing and picking commands capture DPR during layout.
-            // A backing-store resize must rebuild them before repainting.
-            onCanvasResize: () => this.#onCanvasResize(),
+            // Physical backing-store changes do not affect layout, but they
+            // clear the canvas and require repainting the existing render batch.
+            onCanvasResize: () => this.#renderCoordinator?.renderAll(),
             onRenderInvalidated: () => this.animator.requestRender(),
             onError: (error) => this.#reportRuntimeError(error),
             ...(this.options.fontCatalog === undefined

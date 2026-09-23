@@ -21,7 +21,7 @@ export default class CanvasSizeHelper {
         this._logicalCanvasSize = undefined;
 
         /**
-         * @type {{ physical: {width: number, height: number}, logical: {width: number, height: number}, dpr: number } | undefined}
+         * @type {{ width: number, height: number } | undefined}
          */
         this._devicePixelContentBoxSize = undefined;
 
@@ -35,6 +35,7 @@ export default class CanvasSizeHelper {
 
     invalidate() {
         this._logicalCanvasSize = undefined;
+        this._devicePixelContentBoxSize = undefined;
     }
 
     finalize() {
@@ -49,20 +50,15 @@ export default class CanvasSizeHelper {
      * @param {{ width: number, height: number }} [logicalSize]
      */
     getPhysicalCanvasSize(logicalSize) {
-        logicalSize = logicalSize || this.getLogicalCanvasSize();
-        const dpr = window.devicePixelRatio ?? 1;
-        const observed = this._devicePixelContentBoxSize;
-        // Keep exact device pixels through layout invalidation, but never reuse
-        // a measurement from a different CSS size or display scale.
-        if (
-            observed &&
-            observed.logical.width == logicalSize.width &&
-            observed.logical.height == logicalSize.height &&
-            observed.dpr == dpr
-        ) {
-            return observed.physical;
+        // devicePixelContentBox gives the actual backing-store pixel size.
+        // Prefer it whenever available to avoid fractional DPR drift.
+        // https://web.dev/articles/device-pixel-content-box
+        if (this._devicePixelContentBoxSize) {
+            return this._devicePixelContentBoxSize;
         }
 
+        const dpr = window.devicePixelRatio ?? 1;
+        logicalSize = logicalSize || this.getLogicalCanvasSize();
         return {
             width: Math.round(logicalSize.width * dpr),
             height: Math.round(logicalSize.height * dpr),
@@ -173,31 +169,24 @@ export default class CanvasSizeHelper {
                 return;
             }
 
-            const observed = {
-                physical: {
-                    width: contentBoxSize.inlineSize,
-                    height: contentBoxSize.blockSize,
-                },
-                logical: {
-                    width: entry.contentRect.width,
-                    height: entry.contentRect.height,
-                },
-                dpr: window.devicePixelRatio ?? 1,
+            // ResizeObserver reports device pixels directly, which is exactly what
+            // canvas width/height expect.
+            const nextPhysicalSize = {
+                width: contentBoxSize.inlineSize,
+                height: contentBoxSize.blockSize,
             };
-            const previous = this._devicePixelContentBoxSize;
-            this._devicePixelContentBoxSize = observed;
 
             if (
-                previous &&
-                previous.physical.width == observed.physical.width &&
-                previous.physical.height == observed.physical.height &&
-                previous.logical.width == observed.logical.width &&
-                previous.logical.height == observed.logical.height &&
-                previous.dpr == observed.dpr
+                this._devicePixelContentBoxSize &&
+                this._devicePixelContentBoxSize.width ==
+                    nextPhysicalSize.width &&
+                this._devicePixelContentBoxSize.height ==
+                    nextPhysicalSize.height
             ) {
                 return;
             }
 
+            this._devicePixelContentBoxSize = nextPhysicalSize;
             this._onPhysicalSizeChange();
         });
 

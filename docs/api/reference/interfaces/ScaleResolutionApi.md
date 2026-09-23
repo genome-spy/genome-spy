@@ -130,11 +130,6 @@ such as genomic coordinates.
 
 > **zoomTo**(`domain`, `options?`): `Promise`<`void`\>
 
-Navigate to a numeric or genomic interval. Explicit locus upper positions are
-inclusive. Named positions must lie within their chromosome; the second
-endpoint alone may use -1 to denote the boundary before that chromosome.
-Invalid or reversed genomic intervals reject before navigation.
-
 ##### Parameters
 
 | Parameter | Type |

@@ -77,12 +77,6 @@ export interface ScaleResolutionApi {
 
     isZoomable(): boolean;
 
-    /**
-     * Navigate to a numeric or genomic interval. Explicit locus upper positions are
-     * inclusive. Named positions must lie within their chromosome; the second
-     * endpoint alone may use -1 to denote the boundary before that chromosome.
-     * Invalid or reversed genomic intervals reject before navigation.
-     */
     zoomTo(
         domain: number[] | ComplexDomain,
         options?: ZoomToOptions
