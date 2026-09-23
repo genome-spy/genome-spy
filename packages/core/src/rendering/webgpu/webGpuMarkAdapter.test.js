@@ -1439,8 +1439,14 @@ describe("WebGPU mark adapter", () => {
 
         expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
             ...["first", "second"].map((selection) => ({
-                selectionUnion: [{ selection, type: "single" }],
-                empty: false,
+                any: [
+                    {
+                        all: [
+                            { selection, type: "single", empty: true },
+                            { selectionActive: { selection, type: "single" } },
+                        ],
+                    },
+                ],
             })),
             {
                 compare: ">=",
@@ -2014,11 +2020,21 @@ describe("WebGPU mark adapter", () => {
             /** @type {any} */ (translated).config.channels.fill.conditions[0]
                 .when
         ).toEqual({
-            selectionUnion: [
-                { selection: "first", type: "single" },
-                { selection: "second", type: "single" },
+            any: [
+                ...["first", "second"].map((selection) => ({
+                    all: [
+                        { selection, type: "single", empty: true },
+                        { selectionActive: { selection, type: "single" } },
+                    ],
+                })),
+                {
+                    not: {
+                        any: ["first", "second"].map((selection) => ({
+                            selectionActive: { selection, type: "single" },
+                        })),
+                    },
+                },
             ],
-            empty: true,
         });
     });
 
@@ -2065,7 +2081,10 @@ describe("WebGPU mark adapter", () => {
         expect(x.conditions[0].when).toEqual({
             selection: "brush",
             type: "interval",
-            targets: [{ input: "x" }, { input: "y" }],
+            projections: [
+                { component: "x", input: "x" },
+                { component: "y", input: "y" },
+            ],
             empty: true,
         });
         expect(x.conditions[0].channel.data).toEqual(new Float32Array([1, 2]));
@@ -2105,8 +2124,8 @@ describe("WebGPU mark adapter", () => {
 
         expect(
             /** @type {any} */ (translated).config.channels[channel]
-                .conditions[0].when.targets
-        ).toEqual([{ input: channel }]);
+                .conditions[0].when.projections
+        ).toEqual([{ component: channel, input: channel }]);
     });
 
     test("carries secondary endpoint hit testing for ranged marks", () => {
@@ -2164,9 +2183,14 @@ describe("WebGPU mark adapter", () => {
 
         expect(
             /** @type {any} */ (translated).config.channels.fill.conditions[0]
-                .when.targets
+                .when.projections
         ).toEqual([
-            { input: "x", secondaryInput: "x2", hitTest: "intersects" },
+            {
+                component: "x",
+                input: "x",
+                secondaryInput: "x2",
+                hitTest: "intersects",
+            },
         ]);
     });
 

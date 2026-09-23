@@ -64,7 +64,7 @@ describe("BaseProgram slot handles", () => {
                             when: {
                                 selection: "brush",
                                 type: "interval",
-                                targets: [{ input: "x" }],
+                                projections: [{ component: "x", input: "x" }],
                             },
                             value: [1, 0, 0, 1],
                         },
@@ -85,7 +85,7 @@ describe("BaseProgram slot handles", () => {
         if (slot.type !== "interval") {
             throw new Error("Expected an interval selection slot.");
         }
-        expect(slot.targets).toEqual(["x"]);
+        expect(slot.components).toEqual(["x"]);
 
         slot.set({ x: [4, 1] });
 
@@ -103,7 +103,7 @@ describe("BaseProgram slot handles", () => {
         writeBuffer.mockClear();
         markPickingDirty.mockClear();
         expect(() => slot.set({ unknown: [0, 1] })).toThrow(
-            'cannot update unknown target "unknown"'
+            'cannot update unknown component "unknown"'
         );
         expect(writeBuffer).not.toHaveBeenCalled();
         expect(markPickingDirty).not.toHaveBeenCalled();

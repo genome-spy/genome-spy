@@ -999,7 +999,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {{ name: string, type: import("../../../index.d.ts").SelectionType, targets?: Array<{ input: string }> }} def
+     * @param {{ name: string, type: import("../../../index.d.ts").SelectionType, components?: string[] }} def
      * @returns {import("../../../index.d.ts").SelectionSlotHandle}
      */
     _createSelectionSlot(def) {
@@ -1030,7 +1030,7 @@ export default class BaseProgram {
         }
         return {
             type: "interval",
-            targets: (def.targets ?? []).map((target) => target.input),
+            components: def.components ?? [],
             set: (intervals) => update({ type: "interval", intervals }),
         };
     }
@@ -1097,7 +1097,10 @@ export default class BaseProgram {
             (def) => def.type === "interval"
         );
         const details = intervalDefs
-            .map((def) => `"${def.name}" (${def.targets?.length ?? 0} targets)`)
+            .map(
+                (def) =>
+                    `"${def.name}" (${def.components?.length ?? 0} components)`
+            )
             .join(", ");
         throw new Error(
             `Uniform buffer for interval selection ${details || "mark"} requires ${byteLength} bytes, exceeding the device limit of ${limit} bytes.`

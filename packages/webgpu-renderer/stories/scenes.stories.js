@@ -14,7 +14,7 @@ import runLinkScene from "../examples/linkScene.js";
 import runArrowScene from "../examples/arrowScene.js";
 import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
-import runSelectionUnionScene from "../examples/selectionUnionScene.js";
+import runSelectionPredicateScene from "../examples/selectionPredicateScene.js";
 import runConditionalOrderScene from "../examples/conditionalOrderScene.js";
 import runGroupScene from "../examples/groupScene.js";
 import {
@@ -212,9 +212,13 @@ export const RangedText = withSource(
     }
 );
 
-export const SelectionUnion = withSource("runSelectionUnionScene", null, {
-    render: (args) => renderScene(runSelectionUnionScene, args),
-});
+export const SelectionPredicates = withSource(
+    "runSelectionPredicateScene",
+    null,
+    {
+        render: (args) => renderScene(runSelectionPredicateScene, args),
+    }
+);
 
 export const ConditionalOrder = withSource("runConditionalOrderScene", null, {
     render: (args) => renderScene(runConditionalOrderScene, args),

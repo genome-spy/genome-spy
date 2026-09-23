@@ -377,8 +377,8 @@ function createBranchEncoder(mark, encoder, branch) {
 function createSelectionCondition(mark, selectionInfo) {
     const { params, empty, singleParam } = selectionInfo;
 
-    /** @param {string} param @param {boolean} [empty] */
-    const createLeaf = (param, empty) => {
+    /** @param {string} param @param {boolean} [leafEmpty] @returns {import("@genome-spy/webgpu-renderer").SelectionPredicateLeaf} */
+    const createLeaf = (param, leafEmpty) => {
         const selection = mark.unitView.paramRuntime.findValue(param);
         if (
             !selection ||
@@ -389,50 +389,73 @@ function createSelectionCondition(mark, selectionInfo) {
                 `Selection "${param}" is not available for WebGPU.`
             );
         }
-        /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
-        const leaf = { selection: param, type: selection.type };
-        if (empty !== undefined) {
-            leaf.empty = empty;
-        }
-
-        if (selection.type == "interval") {
-            const intervalWhen = /** @type {any} */ (leaf);
-            intervalWhen.targets = Object.keys(selection.intervals).map(
+        if (selection.type === "interval") {
+            const projections = Object.keys(selection.intervals).map(
                 (input) => {
-                    if (input != "x" && input != "y") {
+                    if (input !== "x" && input !== "y") {
                         throw unsupported(
                             mark,
                             `Interval selection "${param}" has unsupported target "${String(input)}".`
                         );
                     }
-
                     assertScalarIntervalInput(mark, param, input);
-
                     const secondaryInput = getSecondaryChannel(input);
-                    const target = { input };
                     if (mark.encoders[secondaryInput]) {
                         assertScalarIntervalInput(mark, param, secondaryInput);
                         return {
-                            ...target,
+                            component: input,
+                            input,
                             secondaryInput,
                             hitTest: mark.defaultHitTestMode,
                         };
                     }
-                    return target;
+                    return { component: input, input };
                 }
             );
+            return {
+                selection: param,
+                type: "interval",
+                projections:
+                    /** @type {[import("@genome-spy/webgpu-renderer").IntervalSelectionProjection, ...import("@genome-spy/webgpu-renderer").IntervalSelectionProjection[]]} */ (
+                        projections
+                    ),
+                ...(leafEmpty !== undefined ? { empty: leafEmpty } : {}),
+            };
         }
-        return leaf;
+        return {
+            selection: param,
+            type: selection.type,
+            ...(leafEmpty !== undefined ? { empty: leafEmpty } : {}),
+        };
     };
 
-    if (!singleParam) {
-        return {
-            selectionUnion: params.map((param) => createLeaf(param)),
-            empty,
-        };
+    if (singleParam) {
+        return createLeaf(params[0], empty);
     }
 
-    return createLeaf(params[0], empty);
+    const leaves = params.map((param) => createLeaf(param, true));
+    /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate[]} */
+    const activities = leaves.map((leaf) => ({
+        selectionActive:
+            leaf.type === "interval"
+                ? {
+                      selection: leaf.selection,
+                      type: "interval",
+                      components: /** @type {[string, ...string[]]} */ (
+                          leaf.projections.map(
+                              (projection) => projection.component
+                          )
+                      ),
+                  }
+                : { selection: leaf.selection, type: leaf.type },
+    }));
+    /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate[]} */
+    const members = leaves.map((leaf, index) => ({
+        all: [leaf, activities[index]],
+    }));
+    return {
+        any: empty ? [...members, { not: { any: activities } }] : members,
+    };
 }
 
 /**

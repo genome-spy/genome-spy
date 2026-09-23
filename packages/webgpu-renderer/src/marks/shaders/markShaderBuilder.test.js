@@ -360,7 +360,7 @@ const placementSentinel = 1u;
                             when: {
                                 selection: "brush",
                                 type: "interval",
-                                targets: [{ input: "x" }],
+                                projections: [{ component: "x", input: "x" }],
                             },
                             value: [0, 1, 0, 1],
                         },
@@ -397,7 +397,16 @@ const placementSentinel = 1u;
                 {
                     name: "brush",
                     type: "interval",
-                    targets: [{ input: "x", scalarType: "f32" }],
+                    components: ["x"],
+                    projections: [
+                        {
+                            component: "x",
+                            input: "x",
+                            scalarType: "f32",
+                            inputComponents: 1,
+                            hitTest: "intersects",
+                        },
+                    ],
                 },
             ],
         });
@@ -432,15 +441,64 @@ const placementSentinel = 1u;
                     conditions: [
                         {
                             when: {
-                                selectionUnion: [
-                                    { selection: "picked", type: "single" },
+                                any: [
                                     {
-                                        selection: "brush",
-                                        type: "interval",
-                                        targets: [{ input: "x" }],
+                                        all: [
+                                            {
+                                                selection: "picked",
+                                                type: "single",
+                                                empty: true,
+                                            },
+                                            {
+                                                selectionActive: {
+                                                    selection: "picked",
+                                                    type: "single",
+                                                },
+                                            },
+                                        ],
+                                    },
+                                    {
+                                        all: [
+                                            {
+                                                selection: "brush",
+                                                type: "interval",
+                                                projections: [
+                                                    {
+                                                        component: "x",
+                                                        input: "x",
+                                                    },
+                                                ],
+                                                empty: true,
+                                            },
+                                            {
+                                                selectionActive: {
+                                                    selection: "brush",
+                                                    type: "interval",
+                                                    components: ["x"],
+                                                },
+                                            },
+                                        ],
+                                    },
+                                    {
+                                        not: {
+                                            any: [
+                                                {
+                                                    selectionActive: {
+                                                        selection: "picked",
+                                                        type: "single",
+                                                    },
+                                                },
+                                                {
+                                                    selectionActive: {
+                                                        selection: "brush",
+                                                        type: "interval",
+                                                        components: ["x"],
+                                                    },
+                                                },
+                                            ],
+                                        },
                                     },
                                 ],
-                                empty: true,
                             },
                             value: [1, 0, 0, 1],
                         },
@@ -468,18 +526,25 @@ const placementSentinel = 1u;
                 {
                     name: "brush",
                     type: "interval",
-                    targets: [{ input: "x", scalarType: "f32" }],
+                    components: ["x"],
+                    projections: [
+                        {
+                            component: "x",
+                            input: "x",
+                            scalarType: "f32",
+                            inputComponents: 1,
+                            hitTest: "intersects",
+                        },
+                    ],
                 },
             ],
         });
 
-        expect(shaderCode).toContain("isSelectionMember_picked");
-        expect(shaderCode).toContain("isSelectionMember_brush");
+        expect(shaderCode).toContain("checkSelection_picked");
+        expect(shaderCode).toContain("checkSelection_brush_p0");
         expect(shaderCode).toContain("isSelectionEmpty_picked");
         expect(shaderCode).toContain("isSelectionEmpty_brush");
-        expect(shaderCode).toContain(
-            "isSelectionMember_picked(i) || isSelectionMember_brush(i)"
-        );
+        expect(shaderCode).toContain("checkSelection_picked(i, true)");
     });
 
     it("emits visibility predicates over scalar inputs and slots", () => {
@@ -544,11 +609,18 @@ const placementSentinel = 1u;
                         ],
                     },
                     {
-                        selectionUnion: [
-                            { selection: "first", type: "single" },
-                            { selection: "second", type: "single" },
+                        any: [
+                            {
+                                selection: "first",
+                                type: "single",
+                                empty: false,
+                            },
+                            {
+                                selection: "second",
+                                type: "single",
+                                empty: false,
+                            },
                         ],
-                        empty: false,
                     },
                 ],
             },
@@ -558,7 +630,7 @@ const placementSentinel = 1u;
         expect(shaderCode).toContain("read_score(i)");
         expect(shaderCode).toContain("params.u_scalar_threshold");
         expect(shaderCode).toContain(
-            "isSelectionMember_first(i) || isSelectionMember_second(i)"
+            "checkSelection_first(i, false) || checkSelection_second(i, false)"
         );
         expect(shaderCode).toContain(">=");
         expect(shaderCode).toContain("<");
@@ -618,13 +690,14 @@ const placementSentinel = 1u;
                             when: {
                                 selection: "brush",
                                 type: "interval",
-                                targets: [
+                                projections: [
                                     {
+                                        component: "x",
                                         input: "x",
                                         secondaryInput: "x2",
                                         hitTest: "endpoints",
                                     },
-                                    { input: "y" },
+                                    { component: "y", input: "y" },
                                 ],
                             },
                             value: 1,
@@ -659,13 +732,23 @@ const placementSentinel = 1u;
                 {
                     name: "brush",
                     type: "interval",
-                    targets: [
+                    components: ["x", "y"],
+                    projections: [
                         {
+                            component: "x",
                             input: "x",
                             secondaryInput: "x2",
+                            scalarType: "f32",
+                            inputComponents: 1,
                             hitTest: "endpoints",
                         },
-                        { input: "y" },
+                        {
+                            component: "y",
+                            input: "y",
+                            scalarType: "u32",
+                            inputComponents: 1,
+                            hitTest: "intersects",
+                        },
                     ],
                 },
             ],
@@ -673,10 +756,10 @@ const placementSentinel = 1u;
 
         expect(shaderCode).toContain("params.uSelection_brush_0_active");
         expect(shaderCode).toContain("params.uSelection_brush_1_active");
-        expect(shaderCode).toContain("matches = matches && allowEmpty");
-        expect(shaderCode).toContain("uSelection_brush_0_d0");
-        expect(shaderCode).toContain("uSelection_brush_0_d1");
-        expect(shaderCode).toContain("uSelection_brush_1_lo");
+        expect(shaderCode).toContain("return allowEmpty");
+        expect(shaderCode).toContain("let datum0 =");
+        expect(shaderCode).toContain("let datum1 =");
+        expect(shaderCode).toContain("checkSelection_brush_p1(i, true)");
     });
 
     it("throws when updating non-dynamic uniforms", () => {

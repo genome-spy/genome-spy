@@ -122,3 +122,128 @@ for (const matching of /** @type {const} */ (["first", "last"])) {
         expect(result.implicitPicked).toBe(42);
     });
 }
+
+test("logical order combines two independently updated interval components", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { linearScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/linear.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 128;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
+        renderer.context.configure({
+            device: renderer.device,
+            format: renderer.format,
+            alphaMode: "premultiplied",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+        renderer.updateGlobals({ width: 128, height: 128, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
+        const mark = renderer.createMark(pointMark, {
+            count: 2,
+            channels: {
+                x: {
+                    value: 64,
+                    scale: linearScale({ domain: [0, 128], range: [0, 128] }),
+                },
+                y: {
+                    value: 64,
+                    scale: linearScale({ domain: [0, 128], range: [0, 128] }),
+                },
+                size: { value: 1600 },
+                fill: {
+                    data: new Float32Array([1, 0, 0, 1, 0, 0, 1, 1]),
+                    type: "f32",
+                    components: 4,
+                },
+                fillOpacity: { value: 0.5 },
+                strokeWidth: { value: 0 },
+            },
+            inputs: {
+                source: { data: new Float32Array([1, 2]), type: "f32" },
+                target: { data: new Float32Array([5, 6]), type: "f32" },
+            },
+            order: {
+                when: {
+                    all: [
+                        {
+                            selection: "from",
+                            type: "interval",
+                            projections: [
+                                { component: "range0", input: "source" },
+                            ],
+                        },
+                        {
+                            selection: "to",
+                            type: "interval",
+                            projections: [
+                                { component: "range0", input: "target" },
+                            ],
+                        },
+                    ],
+                },
+                matching: "last",
+            },
+        });
+        const read = async () => {
+            renderer.render({
+                draws: [{ mark }],
+                clearColor: { r: 0, g: 0, b: 0, a: 0 },
+            });
+            const buffer = renderer.device.createBuffer({
+                size: 128 * 128 * 4,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            });
+            const encoder = renderer.device.createCommandEncoder();
+            encoder.copyTextureToBuffer(
+                { texture: renderer.context.getCurrentTexture() },
+                { buffer, bytesPerRow: 128 * 4 },
+                { width: 128, height: 128 }
+            );
+            renderer.device.queue.submit([encoder.finish()]);
+            await buffer.mapAsync(GPUMapMode.READ);
+            const pixel = Array.from(
+                new Uint8Array(buffer.getMappedRange()).slice(
+                    (64 * 128 + 64) * 4,
+                    (64 * 128 + 64) * 4 + 4
+                )
+            );
+            buffer.unmap();
+            buffer.destroy();
+            return pixel;
+        };
+        const empty = await read();
+        mark.selections.from.set({ range0: [1, 1] });
+        const fromOnly = await read();
+        mark.selections.to.set({ range0: [5, 5] });
+        const both = await read();
+        mark.selections.from.set({});
+        const toOnly = await read();
+        mark.selections.to.set({});
+        const cleared = await read();
+        const validation = await renderer.device.popErrorScope();
+        renderer.destroy();
+        canvas.remove();
+        return {
+            empty,
+            fromOnly,
+            both,
+            toOnly,
+            cleared,
+            validation: validation?.message,
+        };
+    });
+    expect(result.validation).toBeUndefined();
+    expect(result.empty[2]).toBeGreaterThan(result.empty[0]);
+    for (const pixel of [result.fromOnly, result.both, result.toOnly]) {
+        expect(pixel[0]).toBeGreaterThan(pixel[2]);
+    }
+    expect(result.cleared).toEqual(result.empty);
+});

@@ -664,7 +664,7 @@ describe("WebGpuSurface", () => {
         mocks.handle.selections = {
             brush: {
                 type: "interval",
-                targets: ["x", "y"],
+                components: ["x", "y"],
                 set: selectionSet,
             },
         };
@@ -730,7 +730,7 @@ describe("WebGpuSurface", () => {
         mocks.handle.selections = {
             brush: {
                 type: "interval",
-                targets: ["x", "y"],
+                components: ["x", "y"],
                 set: selectionSet,
             },
         };
@@ -770,7 +770,10 @@ describe("WebGpuSurface", () => {
                             when: {
                                 selection: "brush",
                                 type: "interval",
-                                targets: [{ input: "x" }, { input: "y" }],
+                                projections: [
+                                    { component: "x", input: "x" },
+                                    { component: "y", input: "y" },
+                                ],
                             },
                             value: [1, 0, 0, 1],
                         },

@@ -16,6 +16,11 @@ import {
 import { ensureWebGPU, packTextureData } from "./gpuTestUtils.js";
 import { runScaleCase } from "./scaleShaderTestUtils.js";
 import { SELECTION_BUFFER_PREFIX } from "../src/wgsl/prefixes.js";
+import {
+    packHighPrecisionU32Array,
+    packHighPrecisionU32,
+} from "../src/utils/highPrecision.js";
+import { indexScale } from "../src/scales/index.js";
 
 globalThis.GPUShaderStage ??= {
     VERTEX: 0x1,
@@ -736,7 +741,7 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
                     when: {
                         selection: "brush",
                         type: "interval",
-                        targets: [{ input: "x" }],
+                        projections: [{ component: "x", input: "x" }],
                     },
                     value: 1,
                 },
@@ -751,7 +756,16 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
         {
             name: "brush",
             type: "interval",
-            targets: [{ input: "x", scalarType: "f32" }],
+            components: ["x"],
+            projections: [
+                {
+                    component: "x",
+                    input: "x",
+                    scalarType: "f32",
+                    inputComponents: 1,
+                    hitTest: "intersects",
+                },
+            ],
         },
     ];
     const output = await runScaleCase(page, {
@@ -791,7 +805,10 @@ test("markShaderBuilder combines N interval targets with explicit empty state", 
                     when: {
                         selection: "brush",
                         type: "interval",
-                        targets: [{ input: "x" }, { input: "y" }],
+                        projections: [
+                            { component: "x", input: "x" },
+                            { component: "y", input: "y" },
+                        ],
                     },
                     value: 1,
                 },
@@ -808,9 +825,22 @@ test("markShaderBuilder combines N interval targets with explicit empty state", 
         {
             name: "brush",
             type: "interval",
-            targets: [
-                { input: "x", scalarType: "f32" },
-                { input: "y", scalarType: "u32" },
+            components: ["x", "y"],
+            projections: [
+                {
+                    component: "x",
+                    input: "x",
+                    scalarType: "f32",
+                    inputComponents: 1,
+                    hitTest: "intersects",
+                },
+                {
+                    component: "y",
+                    input: "y",
+                    scalarType: "u32",
+                    inputComponents: 1,
+                    hitTest: "intersects",
+                },
             ],
         },
     ];
@@ -930,8 +960,9 @@ test("markShaderBuilder applies all ranged interval hit-test modes", async ({
                     when: {
                         selection: "span",
                         type: "interval",
-                        targets: [
+                        projections: [
                             {
+                                component: "x",
                                 input: "x",
                                 secondaryInput: "x2",
                                 hitTest: "intersects",
@@ -963,8 +994,9 @@ test("markShaderBuilder applies all ranged interval hit-test modes", async ({
                             when: {
                                 selection: "span",
                                 type: "interval",
-                                targets: [
+                                projections: [
                                     {
+                                        component: "x",
                                         input: "x",
                                         secondaryInput: "x2",
                                         hitTest,
@@ -988,10 +1020,13 @@ test("markShaderBuilder applies all ranged interval hit-test modes", async ({
                 {
                     name: "span",
                     type: "interval",
-                    targets: [
+                    components: ["x"],
+                    projections: [
                         {
+                            component: "x",
                             input: "x",
                             secondaryInput: "x2",
+                            inputComponents: 1,
                             hitTest,
                             scalarType: "f32",
                         },
@@ -1072,11 +1107,56 @@ test("markShaderBuilder applies flat selection unions and group emptiness", asyn
             conditions: [
                 {
                     when: {
-                        selectionUnion: [
-                            { selection: "first", type: "single" },
-                            { selection: "second", type: "single" },
+                        any: [
+                            {
+                                all: [
+                                    {
+                                        selection: "first",
+                                        type: "single",
+                                        empty: true,
+                                    },
+                                    {
+                                        selectionActive: {
+                                            selection: "first",
+                                            type: "single",
+                                        },
+                                    },
+                                ],
+                            },
+                            {
+                                all: [
+                                    {
+                                        selection: "second",
+                                        type: "single",
+                                        empty: true,
+                                    },
+                                    {
+                                        selectionActive: {
+                                            selection: "second",
+                                            type: "single",
+                                        },
+                                    },
+                                ],
+                            },
+                            {
+                                not: {
+                                    any: [
+                                        {
+                                            selectionActive: {
+                                                selection: "first",
+                                                type: "single",
+                                            },
+                                        },
+                                        {
+                                            selectionActive: {
+                                                selection: "second",
+                                                type: "single",
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
                         ],
-                        empty: true,
                     },
                     value: 1,
                 },
@@ -1145,11 +1225,10 @@ test("markShaderBuilder culls points with selection-union visibility", async ({
             uniforms: { uSelection_first, uSelection_second },
             selectionDefs,
             visibleWhen: {
-                selectionUnion: [
-                    { selection: "first", type: "single" },
-                    { selection: "second", type: "single" },
+                any: [
+                    { selection: "first", type: "single", empty: false },
+                    { selection: "second", type: "single", empty: false },
                 ],
-                empty: false,
             },
             dumpLabel: test.info().title,
         });
@@ -1186,8 +1265,9 @@ test("markShaderBuilder applies interval selections over ranged channels", async
                     when: {
                         selection: "span",
                         type: "interval",
-                        targets: [
+                        projections: [
                             {
+                                component: "x",
                                 input: "x",
                                 secondaryInput: "x2",
                             },
@@ -1206,10 +1286,14 @@ test("markShaderBuilder applies interval selections over ranged channels", async
         {
             name: "span",
             type: "interval",
-            targets: [
+            components: ["x"],
+            projections: [
                 {
+                    component: "x",
                     input: "x",
                     secondaryInput: "x2",
+                    inputComponents: 1,
+                    hitTest: "intersects",
                     scalarType: "f32",
                 },
             ],
@@ -1231,6 +1315,291 @@ test("markShaderBuilder applies interval selections over ranged channels", async
     });
 
     expect(output).toEqual([0, 0, 1, 1]);
+});
+
+test("logical conditions combine two interval selections and hover", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const source = new Float32Array([1, 2, 3, 4]);
+    const target = new Float32Array([5, 6, 7, 8]);
+    const channels = {
+        uniqueId: {
+            data: new Uint32Array([10, 11, 12, 13]),
+            type: "u32",
+            components: 1,
+        },
+        source: { data: source, type: "f32", components: 1 },
+        target: { data: target, type: "f32", components: 1 },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        any: [
+                            {
+                                selection: "hover",
+                                type: "single",
+                                empty: false,
+                            },
+                            {
+                                all: [
+                                    {
+                                        selection: "from",
+                                        type: "interval",
+                                        projections: [
+                                            {
+                                                component: "range0",
+                                                input: "source",
+                                            },
+                                        ],
+                                    },
+                                    {
+                                        selection: "to",
+                                        type: "interval",
+                                        projections: [
+                                            {
+                                                component: "range0",
+                                                input: "target",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const selectionDefs = [
+        { name: "hover", type: "single" },
+        {
+            name: "from",
+            type: "interval",
+            components: ["range0"],
+            projections: [
+                {
+                    component: "range0",
+                    input: "source",
+                    hitTest: "intersects",
+                    scalarType: "f32",
+                    inputComponents: 1,
+                },
+            ],
+        },
+        {
+            name: "to",
+            type: "interval",
+            components: ["range0"],
+            projections: [
+                {
+                    component: "range0",
+                    input: "target",
+                    hitTest: "intersects",
+                    scalarType: "f32",
+                    inputComponents: 1,
+                },
+            ],
+        },
+    ];
+    const uniformLayout = [
+        { name: "uSelection_hover", type: "u32", components: 1 },
+        { name: "uSelection_from_0_active", type: "u32", components: 1 },
+        { name: "uSelection_from_0", type: "f32", components: 2 },
+        { name: "uSelection_to_0_active", type: "u32", components: 1 },
+        { name: "uSelection_to_0", type: "f32", components: 2 },
+    ];
+    const run = (fromActive, toActive) =>
+        runScaleCase(page, {
+            channels,
+            channelName: "fill",
+            outputType: "f32",
+            outputLength: source.length,
+            outputComponents: 1,
+            uniformLayout,
+            uniforms: {
+                uSelection_hover: 13,
+                uSelection_from_0_active: fromActive,
+                uSelection_from_0: [2, 3],
+                uSelection_to_0_active: toActive,
+                uSelection_to_0: [6, 7],
+            },
+            selectionDefs,
+            dumpLabel: test.info().title,
+        });
+    expect(await run(1, 1)).toEqual([0, 1, 1, 1]);
+    expect(await run(1, 0)).toEqual([0, 1, 1, 1]);
+    expect(await run(0, 0)).toEqual([1, 1, 1, 1]);
+});
+
+test("activity and not distinguish active nonmembers from empty selections", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const ids = new Uint32Array([10, 11, 12]);
+    const run = (selected) =>
+        runScaleCase(page, {
+            channels: { uniqueId: { data: ids, type: "u32", components: 1 } },
+            channelName: "uniqueId",
+            outputType: "f32",
+            outputLength: ids.length,
+            outputComponents: 1,
+            readVisibility: true,
+            uniformLayout: [
+                { name: "uSelection_picked", type: "u32", components: 1 },
+            ],
+            uniforms: { uSelection_picked: selected },
+            selectionDefs: [{ name: "picked", type: "single" }],
+            visibleWhen: {
+                all: [
+                    {
+                        selectionActive: {
+                            selection: "picked",
+                            type: "single",
+                        },
+                    },
+                    {
+                        not: {
+                            selection: "picked",
+                            type: "single",
+                            empty: false,
+                        },
+                    },
+                ],
+            },
+            dumpLabel: test.info().title,
+        });
+    expect(await run(11)).toEqual([1, 0, 1]);
+    expect(await run(0)).toEqual([0, 0, 0]);
+});
+
+test("one interval component tests two inputs and packed numeric bounds", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const boundary = 2 ** 32;
+    const values = [boundary - 1, boundary, boundary + 1, boundary + 2];
+    const channels = {
+        a: {
+            data: packHighPrecisionU32Array(values),
+            type: "u32",
+            components: 1,
+            inputComponents: 2,
+            scale: indexScale({
+                domain: [boundary - 1, boundary + 3],
+                range: [0, 1],
+                band: 0,
+            }),
+        },
+        b: {
+            data: packHighPrecisionU32Array(values.map((value) => value + 1)),
+            type: "u32",
+            components: 1,
+            inputComponents: 2,
+            scale: indexScale({
+                domain: [boundary - 1, boundary + 3],
+                range: [0, 1],
+                band: 0,
+            }),
+        },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        all: [
+                            {
+                                selection: "range",
+                                type: "interval",
+                                projections: [
+                                    { component: "range0", input: "a" },
+                                ],
+                            },
+                            {
+                                selection: "range",
+                                type: "interval",
+                                projections: [
+                                    { component: "range0", input: "b" },
+                                ],
+                            },
+                        ],
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const selectionDefs = [
+        {
+            name: "range",
+            type: "interval",
+            components: ["range0"],
+            projections: ["a", "b"].map((input) => ({
+                component: "range0",
+                input,
+                hitTest: "intersects",
+                scalarType: "u32",
+                inputComponents: 2,
+            })),
+        },
+    ];
+    const output = await runScaleCase(page, {
+        channels,
+        channelName: "fill",
+        outputType: "f32",
+        outputLength: values.length,
+        outputComponents: 1,
+        uniformLayout: [
+            { name: "uDomain_a", type: "f32", components: 1, arrayLength: 3 },
+            { name: "uRange_a", type: "f32", components: 1, arrayLength: 2 },
+            { name: "uDomain_b", type: "f32", components: 1, arrayLength: 3 },
+            { name: "uRange_b", type: "f32", components: 1, arrayLength: 2 },
+            ...["a", "b"].flatMap((name) => [
+                {
+                    name: `uScalePaddingInner_${name}`,
+                    type: "f32",
+                    components: 1,
+                },
+                {
+                    name: `uScalePaddingOuter_${name}`,
+                    type: "f32",
+                    components: 1,
+                },
+                { name: `uScaleAlign_${name}`, type: "f32", components: 1 },
+                { name: `uScaleBand_${name}`, type: "f32", components: 1 },
+            ]),
+            { name: "uSelection_range_0_active", type: "u32", components: 1 },
+            { name: "uSelection_range_0", type: "u32", components: 4 },
+        ],
+        uniforms: {
+            uDomain_a: [0, 1, 2],
+            uRange_a: [0, 1],
+            uDomain_b: [0, 1, 2],
+            uRange_b: [0, 1],
+            uScalePaddingInner_a: 0,
+            uScalePaddingOuter_a: 0,
+            uScaleAlign_a: 0.5,
+            uScaleBand_a: 0,
+            uScalePaddingInner_b: 0,
+            uScalePaddingOuter_b: 0,
+            uScaleAlign_b: 0.5,
+            uScaleBand_b: 0,
+            uSelection_range_0_active: 1,
+            uSelection_range_0: [
+                ...packHighPrecisionU32(boundary),
+                ...packHighPrecisionU32(boundary + 1),
+            ],
+        },
+        selectionDefs,
+        dumpLabel: test.info().title,
+    });
+    expect(output).toEqual([0, 1, 0, 0]);
 });
 
 test("markShaderBuilder applies multi selections via hash tables", async ({
