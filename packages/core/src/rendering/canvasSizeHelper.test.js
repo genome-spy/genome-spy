@@ -144,7 +144,9 @@ test("retains exact observed pixels only for the matching layout and display", (
         () => logical,
         changed
     );
-    // Browser emulation can report exact physical pixels unlike window DPR.
+    // Display-scale emulation can make the observed backing-store size differ
+    // from logical size * window.devicePixelRatio. Use the observed size as the
+    // effective scale for canvas drawing.
     /** @param {number} width @param {number} height */
     const report = (width, height) =>
         notify(
