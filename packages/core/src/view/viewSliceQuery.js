@@ -9,6 +9,8 @@ import { isDataReady } from "../data/dataReadiness.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import AGGREGATE_OPS from "../data/transforms/aggregateOps.js";
 import { field } from "../utils/field.js";
+import { makeSelectionUnionTestExpression } from "../selection/selection.js";
+import createFunction from "../utils/expression.js";
 
 /** @typedef {import("./unitView.js").default} UnitView */
 /** @typedef {import("../types/viewQueryApi.js").ViewSliceQueryOptions} Options */
@@ -195,31 +197,7 @@ function captureScope(view, options) {
         sourceCoverage: "unknown",
     };
     for (const channel of options.channels) {
-        const resolution = view.getScaleResolution(channel);
-        const scaleType = resolution?.getScale().type;
-        if (!isContinuous(scaleType) || isDiscrete(scaleType)) {
-            throw new QuerySupportError(
-                "unsupported-scale",
-                "Slice queries require a continuous scale on " + channel + "."
-            );
-        }
-        const domain = resolution.getDomain();
-        if (
-            !domain ||
-            domain.length !== 2 ||
-            !domain.every(
-                (value) => typeof value === "number" && Number.isFinite(value)
-            ) ||
-            domain[0] === domain[1]
-        ) {
-            throw new QuerySupportError(
-                "unsupported-scale",
-                "Slice queries require a finite numeric or locus domain on " +
-                    channel +
-                    "."
-            );
-        }
-        scope.domains[channel] = Array.from(domain);
+        scope.domains[channel] = continuousDomain(view, channel);
     }
     if (options.selection !== undefined) {
         const value = view.paramRuntime.findValue(options.selection);
@@ -251,6 +229,35 @@ function captureScope(view, options) {
     return scope;
 }
 
+/** @param {UnitView} view @param {Channel} channel */
+function continuousDomain(view, channel) {
+    const resolution = view.getScaleResolution(channel);
+    const scaleType = resolution?.getScale().type;
+    if (!isContinuous(scaleType) || isDiscrete(scaleType)) {
+        throw new QuerySupportError(
+            "unsupported-scale",
+            "Slice queries require a continuous scale on " + channel + "."
+        );
+    }
+    const domain = resolution.getDomain();
+    if (
+        !domain ||
+        domain.length !== 2 ||
+        !domain.every(
+            (value) => typeof value === "number" && Number.isFinite(value)
+        ) ||
+        domain[0] === domain[1]
+    ) {
+        throw new QuerySupportError(
+            "unsupported-scale",
+            "Slice queries require a finite numeric or locus domain on " +
+                channel +
+                "."
+        );
+    }
+    return Array.from(domain);
+}
+
 /**
  * The mark's normalized encoders already incorporate genomic linearization,
  * offsets and supported inherited channels. Scope uses these data coordinates;
@@ -260,55 +267,96 @@ function captureScope(view, options) {
  * @returns {((row: Datum) => boolean)[]}
  */
 function makePredicates(view, scope) {
-    /** @type {Partial<Record<Channel, number[] | null>>} */
-    const domains = Object.fromEntries(
-        Object.entries(scope.domains).map(([channel, domain]) => [
-            channel,
-            ordered(domain),
-        ])
+    if (
+        scope.selection &&
+        !Object.values(scope.selection.value.intervals).some(Boolean)
+    ) {
+        return [() => false];
+    }
+    const predicates = Object.entries(scope.domains).map(
+        ([channel, domain]) => {
+            const [lo, hi] = ordered(domain);
+            const start = positionAccessor(
+                view,
+                /** @type {Channel} */ (channel)
+            );
+            const endChannel = /** @type {"x2" | "y2"} */ (channel + "2");
+            const end = view.mark.encoders[endChannel]
+                ? positionAccessor(view, endChannel)
+                : undefined;
+
+            return (/** @type {Datum} */ row) => {
+                if (lo >= hi) return false;
+                const a = start(row);
+                if (typeof a !== "number" || !Number.isFinite(a)) return false;
+                if (!end) return a >= lo && a < hi;
+                const b = end(row);
+                if (typeof b !== "number" || !Number.isFinite(b)) return false;
+
+                // Rule marks repeat the scalar coordinate on their perpendicular
+                // axis. Equal endpoints therefore use point containment.
+                if (a === b) return a >= lo && a < hi;
+                return Math.min(a, b) < hi && Math.max(a, b) > lo;
+            };
+        }
     );
     if (scope.selection) {
-        const intervals = /** @type {[Channel, number[]][]} */ (
-            Object.entries(scope.selection.value.intervals).filter(
-                ([, interval]) => interval !== null
-            )
-        );
-        if (!intervals.length) {
-            return [() => false];
-        }
-        for (const [channel, interval] of intervals) {
-            const [lo, hi] = ordered(interval);
-            const viewport = domains[channel];
-            domains[channel] = viewport
-                ? [
-                      Math.max(Math.min(...viewport), lo),
-                      Math.min(Math.max(...viewport), hi),
-                  ]
-                : [lo, hi];
-        }
+        predicates.push(selectionPredicate(view, scope.selection.value));
     }
-    return Object.entries(domains).map(([channel, domain]) => {
-        const [lo, hi] = domain;
-        const start = positionAccessor(view, /** @type {Channel} */ (channel));
-        const endChannel = /** @type {"x2" | "y2"} */ (channel + "2");
-        const end = view.mark.encoders[endChannel]
-            ? positionAccessor(view, endChannel)
-            : undefined;
+    return predicates;
+}
 
-        return (row) => {
-            if (lo >= hi) return false;
+/**
+ * Apply Core's selection membership separately from viewport clipping. Selection
+ * boundaries are inclusive, and cleared dimensions follow Core's union semantics.
+ * @param {UnitView} view
+ * @param {import("../types/selectionTypes.js").IntervalSelection} selection
+ */
+function selectionPredicate(view, selection) {
+    /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, string>>} */
+    const fields = {};
+    const positions = Object.entries(selection.intervals)
+        .filter(([, interval]) => interval !== null)
+        .map(([name]) => {
+            const channel = /** @type {Channel} */ (name);
+            const start = positionAccessor(view, channel);
+            continuousDomain(view, channel);
+            const secondary = /** @type {"x2" | "y2"} */ (channel + "2");
+            const end = view.mark.encoders[secondary]
+                ? positionAccessor(view, secondary)
+                : start;
+            fields[channel] = channel;
+            fields[secondary] = secondary;
+            return { channel, secondary, start, end };
+        });
+    const test = createFunction(
+        makeSelectionUnionTestExpression(
+            [{ param: "region", selection, fields }],
+            false
+        ),
+        { region: selection }
+    );
+
+    // The compiled membership expression reads this record synchronously.
+    /** @type {Record<string, number>} */
+    const point = {};
+
+    return (/** @type {Datum} */ row) => {
+        for (const { channel, secondary, start, end } of positions) {
             const a = start(row);
-            if (typeof a !== "number" || !Number.isFinite(a)) return false;
-            if (!end) return a >= lo && a < hi;
             const b = end(row);
-            if (typeof b !== "number" || !Number.isFinite(b)) return false;
-
-            // Rule marks repeat the scalar coordinate on their perpendicular
-            // axis. Equal endpoints therefore use point containment.
-            if (a === b) return a >= lo && a < hi;
-            return Math.min(a, b) < hi && Math.max(a, b) > lo;
-        };
-    });
+            if (
+                typeof a !== "number" ||
+                typeof b !== "number" ||
+                !Number.isFinite(a) ||
+                !Number.isFinite(b)
+            )
+                return false;
+            point[channel] = Math.min(a, b);
+            point[secondary] = Math.max(a, b);
+        }
+        return test(point);
+    };
 }
 
 /** @param {number[]} values @returns {number[]} */

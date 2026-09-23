@@ -199,8 +199,12 @@ Each requested axis uses its captured numeric or locus scale domain. Points use
 half-open containment; ranged positions overlap the half-open slice. Equal
 endpoints use point containment, including the scalar axis of a rule. Locus values
 are already linearized by Core, including encoding offsets. Optional
-`selection: "region"` intersects the viewport with the named interval parameter
-in the queried view's scope. Inactive dimensions do not constrain active ones;
+`selection: "region"` also requires each row to match the named interval selection
+in the queried view's scope, using Core's inclusive membership boundaries. A ranged
+row can overlap the viewport and selection in different places; the two regions
+do not need to overlap each other.
+Active selection axes must also have continuous numeric or locus scales.
+Inactive dimensions do not constrain active ones;
 a wholly cleared selection matches no rows. Selection axes
 not listed in `channels` still constrain the result. This is a data-space query;
 it does not account for pixel occlusion, clipping or mark size.

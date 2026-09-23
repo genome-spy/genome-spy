@@ -4,6 +4,8 @@ import { createViewMutationApi } from "./viewMutationApi.js";
 import { createViewQuery } from "../viewQuery.js";
 import { processData } from "../data/flowTestUtils.js";
 import AggregateTransform from "../data/transforms/aggregate.js";
+import { makeSelectionUnionTestExpression } from "../selection/selection.js";
+import createFunction from "../utils/expression.js";
 
 /** @param {any[]} rows @param {Record<string, any>} [spec] */
 async function setup(rows, spec = {}) {
@@ -288,6 +290,151 @@ describe("scoped loaded-data queries", () => {
                 .rowsMatched
         ).toBe(0);
     });
+
+    test.each([false, true])(
+        "selection boundaries match Core membership (ranged: %s)",
+        async (ranged) => {
+            const rows = [
+                { x: 0, end: 1 },
+                { x: 1, end: 2 },
+                { x: 2, end: 3 },
+                { x: 3, end: 4 },
+            ];
+            const { query, handle } = await setup(rows, {
+                mark: ranged ? "rule" : "point",
+                params: [
+                    {
+                        name: "region",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [-1, 5], nice: false },
+                    },
+                    ...(ranged ? { x2: { field: "end" } } : {}),
+                },
+            });
+            const selection =
+                /** @type {import("../types/selectionTypes.js").IntervalSelection} */ ({
+                    type: "interval",
+                    intervals: { x: [1, 2] },
+                });
+            handle.params.get("region").setValue(selection);
+            const membership = createFunction(
+                makeSelectionUnionTestExpression(
+                    [
+                        {
+                            param: "region",
+                            selection,
+                            fields: ranged ? { x: "x", x2: "end" } : { x: "x" },
+                        },
+                    ],
+                    false
+                ),
+                { region: selection }
+            );
+            const result = await query.queryData(handle, {
+                ...request,
+                selection: "region",
+                limit: 10,
+            });
+            expect(result.rows).toEqual(
+                rows.filter(membership).map(({ x, end }) => ({ x, end }))
+            );
+            expect(result.rows.map((row) => row.x)).toEqual(
+                ranged ? [0, 1, 2] : [1, 2]
+            );
+        }
+    );
+
+    test("ranged rows must independently match viewport and selection membership", async () => {
+        const { query, handle } = await setup(
+            [
+                { x: 0, end: 10 },
+                { x: 0, end: 1 },
+                { x: 8, end: 10 },
+            ],
+            {
+                mark: "rule",
+                params: [
+                    {
+                        name: "region",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 2], nice: false },
+                    },
+                    x2: { field: "end" },
+                },
+            }
+        );
+        handle.params
+            .get("region")
+            .setValue({ type: "interval", intervals: { x: [8, 10] } });
+
+        // A long mark can be visible and selected in different parts of its span.
+        const result = await query.queryData(handle, {
+            ...request,
+            selection: "region",
+        });
+        expect(result.rows).toEqual([{ x: 0, end: 10 }]);
+    });
+
+    test.each(["x", "y"])(
+        "selection-only categorical %s axes cannot bypass scale validation",
+        async (channel) => {
+            const viewport = channel === "x" ? "y" : "x";
+            const { query, handle } = await setup(
+                [
+                    { x: 1, y: 1 },
+                    { x: 2, y: 2 },
+                ],
+                {
+                    params: [
+                        {
+                            name: "region",
+                            select: { type: "interval", encodings: [channel] },
+                        },
+                    ],
+                    encoding: {
+                        [viewport]: {
+                            field: viewport,
+                            type: "quantitative",
+                            scale: { domain: [0, 5], nice: false },
+                        },
+                        [channel]: {
+                            field: channel,
+                            type: "nominal",
+                            scale: { domain: [1, 2] },
+                        },
+                    },
+                }
+            );
+            handle.params.get("region").setValue({
+                type: "interval",
+                intervals: { [channel]: [1, 2] },
+            });
+            const scoped = {
+                channels: [/** @type {"x" | "y"} */ (viewport)],
+                selection: "region",
+                limit: 10,
+            };
+            expect(query.assessQuery(handle, scoped)).toEqual({
+                status: "unsupported",
+                reason: "unsupported-scale",
+            });
+            await expect(query.queryData(handle, scoped)).rejects.toMatchObject(
+                { reason: "unsupported-scale" }
+            );
+        }
+    );
 
     test("inactive dimensions of an interval selection do not constrain active dimensions", async () => {
         const { query, handle } = await setup(
