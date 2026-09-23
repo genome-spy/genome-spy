@@ -651,3 +651,24 @@ test("assessment preserves non-unit and finalized handle distinctions", async ()
         expect.objectContaining({ code: "staleEmbed" })
     );
 });
+
+test("assessment and execution reject conditional positions identically", async () => {
+    const { query, handle } = await setup([{ x: 1 }], {
+        params: [{ name: "p" }],
+        encoding: {
+            x: {
+                field: "x",
+                type: "quantitative",
+                scale: { domain: [0, 3] },
+                condition: { param: "p", datum: 2 },
+            },
+        },
+    });
+    expect(query.assessQuery(handle, request)).toEqual({
+        status: "unsupported",
+        reason: "unsupported-position",
+    });
+    await expect(query.queryData(handle, request)).rejects.toMatchObject({
+        reason: "unsupported-position",
+    });
+});
