@@ -2,6 +2,10 @@
 
 # Interface: ViewSliceQueryOptions
 
+## Extends
+
+- [`ViewQueryScopeOptions`](ViewQueryScopeOptions.md)
+
 ## Properties
 
 ### channels
@@ -10,6 +14,10 @@
 
 Numeric or locus viewport axes to intersect. No pixel visibility is implied.
 
+#### Inherited from
+
+[`ViewQueryScopeOptions`](ViewQueryScopeOptions.md).[`channels`](ViewQueryScopeOptions.md#channels)
+
 ***
 
 ### selection?
@@ -17,6 +25,10 @@ Numeric or locus viewport axes to intersect. No pixel visibility is implied.
 > `optional` **selection?**: `string`
 
 Named interval selection in this view's parameter scope. A wholly cleared selection matches no rows.
+
+#### Inherited from
+
+[`ViewQueryScopeOptions`](ViewQueryScopeOptions.md).[`selection`](ViewQueryScopeOptions.md#selection)
 
 ***
 

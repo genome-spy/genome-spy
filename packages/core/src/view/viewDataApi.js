@@ -73,7 +73,10 @@ export function readViewData(view, options) {
  */
 export function getReadyCollector(view) {
     if (!(view instanceof UnitView)) {
-        throw new Error("Data reads require a unit view.");
+        throw new QuerySupportError(
+            "non-unit",
+            "Data reads require a unit view."
+        );
     }
 
     const collector = view.getCollector();
@@ -81,10 +84,16 @@ export function getReadyCollector(view) {
         !collector ||
         !isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
     ) {
-        throw new Error("View data is not ready.");
+        throw new QuerySupportError(
+            "data-not-ready",
+            "View data is not ready."
+        );
     }
     if (collector.facetBatches.size > 1) {
-        throw new Error("Faceted data reads are not supported.");
+        throw new QuerySupportError(
+            "multiple-facets",
+            "Faceted data reads are not supported."
+        );
     }
 
     return collector;
@@ -142,4 +151,15 @@ export function cloneDetached(value) {
     }
 
     return clone;
+}
+
+/** Expected query restrictions; unexpected failures must still propagate. */
+export class QuerySupportError extends Error {
+    /** @param {import("../types/viewQueryApi.js").QuerySupportReason} reason
+     * @param {string} message
+     */
+    constructor(reason, message) {
+        super(message);
+        this.reason = reason;
+    }
 }

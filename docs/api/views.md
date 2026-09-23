@@ -166,6 +166,24 @@ const result = await query.queryData(track, {
 console.log(result.rows, result.aggregates, result.scope);
 ```
 
+Before offering a query control, assess its exact axes and optional selection:
+
+```js
+const scope = { channels: ["y"], selection: "region" };
+const assessment = query.assessQuery(track, scope);
+if (assessment.status === "ready") {
+  const result = await query.queryData(track, { ...scope, limit: 10 });
+}
+```
+
+Assessment shares query preparation without scanning rows or triggering loading.
+`pending` means data is not ready and support is not yet established; `unsupported`
+includes a reason such as `multiple-facets` or `unsupported-position`. Support is
+specific to this scope, including axes added by a selection. A cleared selection
+retains its empty-result semantics. Invalid requests, stale handles and unexpected
+errors throw normally. Assessment does not validate aggregate fields or guarantee
+row cloneability. Execution always checks again because chart state may change.
+
 The limit (0–1000) bounds output rows, not the matching population. `rowsExamined`
 counts all visited loaded rows; `rowsMatched` counts all rows in the slice.
 `truncated` concerns only row output; aggregates use every matching loaded row.

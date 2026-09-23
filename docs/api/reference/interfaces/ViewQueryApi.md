@@ -27,6 +27,25 @@ Returns detached metadata. Throws for a removed view or finalized embed.
 
 ***
 
+### assessQuery
+
+> **assessQuery**: (`address`, `options`) => [`ViewQueryAssessment`](../type-aliases/ViewQueryAssessment.md)
+
+Assesses the requested scope without scanning rows. Execution rechecks it.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `address` | [`ViewAddress`](../type-aliases/ViewAddress.md) |
+| `options` | [`ViewQueryScopeOptions`](ViewQueryScopeOptions.md) |
+
+#### Returns
+
+[`ViewQueryAssessment`](../type-aliases/ViewQueryAssessment.md)
+
+***
+
 ### queryData
 
 > **queryData**: (`address`, `options`) => `Promise`<[`ViewSliceQueryResult`](ViewSliceQueryResult.md)\>

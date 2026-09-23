@@ -490,3 +490,164 @@ describe("scoped loaded-data queries", () => {
         );
     });
 });
+
+describe("query assessment", () => {
+    test("assesses without scanning and execution repeats the same checks", async () => {
+        const { query, handle, view } = await setup([{ x: 1 }]);
+        const collector = /** @type {any} */ (view).getCollector();
+        const getData = collector.getData;
+        collector.getData = () => {
+            throw new Error("Unexpected scan");
+        };
+        expect(query.assessQuery(handle, request)).toEqual({ status: "ready" });
+        collector.getData = getData;
+        expect((await query.queryData(handle, request)).rowsMatched).toBe(1);
+        collector.reset();
+        expect(query.assessQuery(handle, request)).toEqual({
+            status: "pending",
+            reason: "data-not-ready",
+        });
+        await expect(query.queryData(handle, request)).rejects.toMatchObject({
+            reason: "data-not-ready",
+        });
+        collector.complete();
+        expect(query.assessQuery(handle, request)).toEqual({ status: "ready" });
+    });
+
+    test("mixed categorical x and quantitative y support only the requested compatible scope", async () => {
+        const { query, handle } = await setup([{ x: "a", y: 1 }], {
+            encoding: {
+                x: { field: "x", type: "nominal", scale: { domain: ["a"] } },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: [0, 2] },
+                },
+            },
+        });
+        expect(query.assessQuery(handle, { channels: ["y"] })).toEqual({
+            status: "ready",
+        });
+        expect(
+            (await query.queryData(handle, { ...request, channels: ["y"] }))
+                .rowsMatched
+        ).toBe(1);
+        expect(query.assessQuery(handle, request)).toEqual({
+            status: "unsupported",
+            reason: "unsupported-scale",
+        });
+        await expect(query.queryData(handle, request)).rejects.toMatchObject({
+            reason: "unsupported-scale",
+        });
+    });
+
+    test("facets are unsupported rather than pending", async () => {
+        const { query, handle } = await setup(
+            [
+                { x: 1, group: "a" },
+                { x: 2, group: "b" },
+            ],
+            {
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    sample: { field: "group" },
+                },
+            }
+        );
+        expect(query.assessQuery(handle, request)).toEqual({
+            status: "unsupported",
+            reason: "multiple-facets",
+        });
+        await expect(query.queryData(handle, request)).rejects.toMatchObject({
+            reason: "multiple-facets",
+        });
+    });
+
+    test("invalid arguments and unexpected failures propagate", async () => {
+        const { query, handle, view } = await setup([{ x: 1 }]);
+        expect(() => query.assessQuery(handle, { channels: [] })).toThrow(
+            /unique/
+        );
+        expect(() =>
+            query.assessQuery({ view: "missing", scope: [] }, request)
+        ).toThrow();
+        const collector = /** @type {any} */ (view).getCollector();
+        Object.defineProperty(collector, "facetBatches", {
+            get() {
+                throw new Error("Unexpected failure");
+            },
+        });
+        expect(() => query.assessQuery(handle, request)).toThrow(
+            "Unexpected failure"
+        );
+    });
+
+    test("selection-added axes share encoder validation; cleared selections keep empty semantics", async () => {
+        const { query, handle } = await setup([{ x: 1 }], {
+            params: [
+                {
+                    name: "region",
+                    select: { type: "interval", encodings: ["y"] },
+                },
+            ],
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 2] },
+                },
+                y: { value: 10 },
+            },
+        });
+        handle.params
+            .get("region")
+            .setValue({ type: "interval", intervals: { y: [0, 20] } });
+        const scoped = { ...request, selection: "region" };
+        expect(query.assessQuery(handle, scoped)).toEqual({
+            status: "unsupported",
+            reason: "unsupported-position",
+        });
+        await expect(query.queryData(handle, scoped)).rejects.toMatchObject({
+            reason: "unsupported-position",
+        });
+        handle.params
+            .get("region")
+            .setValue({ type: "interval", intervals: { y: null } });
+        expect(query.assessQuery(handle, scoped)).toEqual({ status: "ready" });
+        expect((await query.queryData(handle, scoped)).rowsMatched).toBe(0);
+        expect(
+            query.assessQuery(handle, { ...request, selection: "missing" })
+        ).toEqual({ status: "unsupported", reason: "unsupported-selection" });
+    });
+});
+
+test("assessment preserves non-unit and finalized handle distinctions", async () => {
+    const { view } = await createHeadlessEngine({
+        layer: [
+            {
+                name: "track",
+                mark: "point",
+                data: { values: [{ x: 1 }] },
+                encoding: { x: { field: "x", type: "quantitative" } },
+            },
+        ],
+    });
+    let active = true;
+    const api = createViewMutationApi({ viewRoot: view }, () => active);
+    const query = createViewQuery(api);
+    expect(query.assessQuery(api.root(), request)).toEqual({
+        status: "unsupported",
+        reason: "non-unit",
+    });
+    const handle = api.get({ view: "track", scope: [] });
+    await /** @type {import("./layerView.js").default} */ (view).removeChildAt(
+        0
+    );
+    expect(() => query.assessQuery(handle, request)).toThrow(
+        expect.objectContaining({ code: "staleHandle" })
+    );
+    active = false;
+    expect(() => query.assessQuery(api.root(), request)).toThrow(
+        expect.objectContaining({ code: "staleEmbed" })
+    );
+});

@@ -1,5 +1,9 @@
 import { isContinuous, isDiscrete } from "vega-scale";
-import { cloneDetached, getReadyCollector } from "./viewDataApi.js";
+import {
+    cloneDetached,
+    getReadyCollector,
+    QuerySupportError,
+} from "./viewDataApi.js";
 import { buildReadinessRequest } from "./dataReadiness.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
@@ -30,11 +34,8 @@ export async function queryViewData(resolve, options) {
     options.signal?.throwIfAborted();
 
     const view = /** @type {UnitView} */ (resolve());
-    const collector = getReadyCollector(view);
-
-    const scope = captureScope(view, options);
+    const { collector, scope, predicates } = prepareQuery(view, options);
     const stamp = JSON.stringify(scope);
-    const predicates = makePredicates(view, scope);
     const fields = options.fields?.map((name) => ({
         name,
         accessor: field(name),
@@ -127,20 +128,7 @@ function validateOptions(options) {
     ) {
         throw new Error("Slice query limit must be an integer from 0 to 1000.");
     }
-    if (
-        !Array.isArray(options.channels) ||
-        !options.channels.length ||
-        options.channels.some((c) => c !== "x" && c !== "y") ||
-        new Set(options.channels).size !== options.channels.length
-    ) {
-        throw new Error("Slice query channels must be unique x/y axes.");
-    }
-    if (
-        options.selection !== undefined &&
-        (typeof options.selection !== "string" || !options.selection.length)
-    ) {
-        throw new Error("Slice selection must be a parameter name.");
-    }
+    validateScopeOptions(options);
     if (
         options.fields !== undefined &&
         (!Array.isArray(options.fields) ||
@@ -194,7 +182,7 @@ function validateOptions(options) {
 /**
  * Captures the exact state against which the scan is evaluated.
  * @param {UnitView} view
- * @param {Options} options
+ * @param {import("../types/viewQueryApi.js").ViewQueryScopeOptions} options
  * @returns {Result["scope"]}
  */
 function captureScope(view, options) {
@@ -210,7 +198,8 @@ function captureScope(view, options) {
         const resolution = view.getScaleResolution(channel);
         const scaleType = resolution?.getScale().type;
         if (!isContinuous(scaleType) || isDiscrete(scaleType)) {
-            throw new Error(
+            throw new QuerySupportError(
+                "unsupported-scale",
                 "Slice queries require a continuous scale on " + channel + "."
             );
         }
@@ -223,7 +212,8 @@ function captureScope(view, options) {
             ) ||
             domain[0] === domain[1]
         ) {
-            throw new Error(
+            throw new QuerySupportError(
+                "unsupported-scale",
                 "Slice queries require a finite numeric or locus domain on " +
                     channel +
                     "."
@@ -234,7 +224,8 @@ function captureScope(view, options) {
     if (options.selection !== undefined) {
         const value = view.paramRuntime.findValue(options.selection);
         if (value?.type !== "interval") {
-            throw new Error(
+            throw new QuerySupportError(
+                "unsupported-selection",
                 "Slice queries require a named interval selection."
             );
         }
@@ -246,7 +237,10 @@ function captureScope(view, options) {
                         interval.length !== 2 ||
                         !interval.every(Number.isFinite)))
             ) {
-                throw new Error("Unsupported interval selection coordinates.");
+                throw new QuerySupportError(
+                    "unsupported-selection",
+                    "Unsupported interval selection coordinates."
+                );
             }
         }
         scope.selection = {
@@ -343,11 +337,62 @@ function positionAccessor(view, channel) {
         ) ||
         ("scale" in def && def.scale === null)
     ) {
-        throw new Error(
+        throw new QuerySupportError(
+            "unsupported-position",
             "Slice queries require unconditional data-space positions on " +
                 channel +
                 "."
         );
     }
     return branch.accessor;
+}
+
+/** Check the same preparation used by execution, without scanning data.
+ * @param {import("./view.js").default} view
+ * @param {import("../types/viewQueryApi.js").ViewQueryScopeOptions} options
+ * @returns {import("../types/viewQueryApi.js").ViewQueryAssessment}
+ */
+export function assessViewQuery(view, options) {
+    validateScopeOptions(options);
+    try {
+        prepareQuery(/** @type {UnitView} */ (view), options);
+        return { status: "ready" };
+    } catch (error) {
+        if (!(error instanceof QuerySupportError)) throw error;
+        return error.reason === "data-not-ready"
+            ? { status: "pending", reason: error.reason }
+            : { status: "unsupported", reason: error.reason };
+    }
+}
+
+/** One source of truth for assessment and execution prerequisites.
+ * @param {UnitView} view
+ * @param {import("../types/viewQueryApi.js").ViewQueryScopeOptions} options
+ */
+function prepareQuery(view, options) {
+    const collector = getReadyCollector(view);
+    const scope = captureScope(view, options);
+    const predicates = makePredicates(view, scope);
+    return { collector, scope, predicates };
+}
+
+/** @param {import("../types/viewQueryApi.js").ViewQueryScopeOptions} options */
+function validateScopeOptions(options) {
+    if (!options || typeof options !== "object" || Array.isArray(options)) {
+        throw new Error("Query scope options are required.");
+    }
+    if (
+        !Array.isArray(options.channels) ||
+        !options.channels.length ||
+        options.channels.some((c) => c !== "x" && c !== "y") ||
+        new Set(options.channels).size !== options.channels.length
+    ) {
+        throw new Error("Slice query channels must be unique x/y axes.");
+    }
+    if (
+        options.selection !== undefined &&
+        (typeof options.selection !== "string" || !options.selection.length)
+    ) {
+        throw new Error("Slice selection must be a parameter name.");
+    }
 }

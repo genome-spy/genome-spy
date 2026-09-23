@@ -10,6 +10,12 @@ export interface ViewQueryApi {
     /** Returns detached metadata. Throws for a removed view or finalized embed. */
     describe: (address: ViewAddress) => ViewDescription;
 
+    /** Assesses the requested scope without scanning rows. Execution rechecks it. */
+    assessQuery: (
+        address: ViewAddress,
+        options: ViewQueryScopeOptions
+    ) => ViewQueryAssessment;
+
     /** Queries the current data-space viewport, optionally intersected with an interval selection. */
     queryData: (
         address: ViewAddress,
@@ -76,11 +82,31 @@ export interface ViewSliceAggregate {
     as: string;
 }
 
-export interface ViewSliceQueryOptions {
+export interface ViewQueryScopeOptions {
     /** Numeric or locus viewport axes to intersect. No pixel visibility is implied. */
     channels: ("x" | "y")[];
     /** Named interval selection in this view's parameter scope. A wholly cleared selection matches no rows. */
     selection?: string;
+}
+
+export type QuerySupportReason =
+    | "data-not-ready"
+    | "non-unit"
+    | "multiple-facets"
+    | "unsupported-scale"
+    | "unsupported-position"
+    | "unsupported-selection";
+
+/** A snapshot of scope support, not a guarantee of later execution or row cloneability. */
+export type ViewQueryAssessment =
+    | { status: "ready" }
+    | { status: "pending"; reason: "data-not-ready" }
+    | {
+          status: "unsupported";
+          reason: Exclude<QuerySupportReason, "data-not-ready">;
+      };
+
+export interface ViewSliceQueryOptions extends ViewQueryScopeOptions {
     /** Returned fields. Omit to return whole detached rows. */
     fields?: string[];
     /** Maximum returned rows, 0–1000. Does not limit scanning or aggregation. */

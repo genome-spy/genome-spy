@@ -16,7 +16,9 @@ It coordinates four major systems:
 - `src/index.js` exports `embed()` and `GenomeSpy`.
 - `src/viewQuery.js` is the optional `@genome-spy/core/view-query` entry.
   It owns detached metadata, bounded loaded-row previews and cooperative
-  viewport/interval slice queries. Scope filtering precedes row output limits;
+  viewport/interval slice queries. Request-specific assessment and execution share
+  preparation, including collector, scope and positional-accessor checks.
+  Assessment does not scan rows or guarantee later success. Scope filtering precedes row output limits;
   exact loaded-data aggregates reuse the existing aggregate operations and yield
   between passes. A module-local WeakMap in `src/view/viewQueryAccess.js` connects
   it to the view API's existing checked address resolver; both entries must share
