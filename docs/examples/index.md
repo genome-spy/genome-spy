@@ -15,8 +15,10 @@ EXAMPLE_GALLERY examples/docs/examples/genomic-data
 - [ASCAT Copy-Number Segmentation](genomic-data/ascat.md) ASCAT.json
 - [Interactive ASCAT-like Purity/Ploidy Fitting](genomic-data/ascat-algorithm.md) ASCAT-algorithm.json
 - [HCC1954 Structural Variants and Copy Number](genomic-data/hcc1954-sv-cnv.md) hcc1954-sv-cnv.json
-- [TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape](genomic-data/tcga-ov-gistic.md) tcga-ov-gistic.json
 - [Sashimi Plot from Splice Junctions](genomic-data/sashimi-plot.md) sashimi-plot.json
+- [PISA Squid Plot](genomic-data/bpreveal-pisa-squid.md) bpreveal-pisa-squid.json
+- [PISA Interaction Matrix](genomic-data/bpreveal-pisa-matrix.md) bpreveal-pisa-matrix.json
+- [TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape](genomic-data/tcga-ov-gistic.md) tcga-ov-gistic.json
 - [PIK3CA Mutation Lollipop Plot](genomic-data/pik3ca-tcga-brca-lollipop.md) pik3ca-tcga-brca-lollipop.json
 - [ClinVar Small-Variant Classifications](genomic-data/clinvar-variants.md) clinvar-variants.json
 - [GENCODE Gene Annotations from GFF3](genomic-data/gencode-gff3-gene-annotations.md) gff3-gene-annotations.json
