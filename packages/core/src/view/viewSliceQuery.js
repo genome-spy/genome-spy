@@ -1,4 +1,5 @@
 import { isContinuous, isDiscrete } from "vega-scale";
+import { splitAccessPath } from "vega-util";
 import {
     cloneDetached,
     getReadyCollector,
@@ -133,13 +134,7 @@ function validateOptions(options) {
     validateScopeOptions(options);
     if (
         options.fields !== undefined &&
-        (!Array.isArray(options.fields) ||
-            options.fields.some(
-                (name) =>
-                    typeof name !== "string" ||
-                    !name.length ||
-                    name === UNIQUE_ID_KEY
-            ))
+        (!Array.isArray(options.fields) || !options.fields.every(isPublicField))
     ) {
         throw new Error("Slice fields must be public field names.");
     }
@@ -169,16 +164,24 @@ function validateOptions(options) {
                 "Invalid slice aggregate operation, field or result name."
             );
         }
-        if (
-            item.field !== undefined &&
-            (typeof item.field !== "string" ||
-                !item.field.length ||
-                item.field === UNIQUE_ID_KEY)
-        ) {
+        if (item.field !== undefined && !isPublicField(item.field)) {
             throw new Error("Aggregate fields must be public field names.");
         }
         names.add(item.as);
     }
+}
+
+/**
+ * Parse field paths with the accessor's grammar so quoting and escaping cannot
+ * expose Core's root metadata. Nested fields remain ordinary user data.
+ * @param {unknown} name
+ */
+function isPublicField(name) {
+    if (typeof name !== "string" || !name.length) {
+        return false;
+    }
+    const path = splitAccessPath(name);
+    return path.length > 0 && path[0] !== UNIQUE_ID_KEY;
 }
 
 /**
@@ -332,7 +335,8 @@ function selectionPredicate(view, selection) {
     const test = createFunction(
         makeSelectionUnionTestExpression(
             [{ param: "region", selection, fields }],
-            false
+            false,
+            view.mark.defaultHitTestMode
         ),
         { region: selection }
     );

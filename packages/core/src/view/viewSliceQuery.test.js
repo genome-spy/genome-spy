@@ -350,6 +350,62 @@ describe("scoped loaded-data queries", () => {
         }
     );
 
+    test("link slice membership matches the mark's conditional encoder", async () => {
+        const rows = [
+            { x: 0, end: 10 },
+            { x: 4, end: 10 },
+            { x: 0, end: 6 },
+            { x: 10, end: 4 },
+        ];
+        const { query, handle, view } = await setup(rows, {
+            mark: "link",
+            params: [
+                {
+                    name: "region",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [-1, 11], nice: false },
+                },
+                x2: { field: "end" },
+                opacity: {
+                    value: 0,
+                    condition: {
+                        param: { or: ["region"] },
+                        empty: false,
+                        value: 1,
+                    },
+                },
+            },
+        });
+        handle.params.get("region").setValue({
+            type: "interval",
+            intervals: { x: [4, 6] },
+        });
+        const mark = /** @type {import("./unitView.js").default} */ (view).mark;
+        const selected = rows
+            .filter((row) => mark.encoders.opacity(row) === 1)
+            .map(({ x, end }) => ({ x, end }));
+        expect(selected).toEqual([
+            { x: 4, end: 10 },
+            { x: 0, end: 6 },
+            { x: 10, end: 4 },
+        ]);
+        expect(
+            (
+                await query.queryData(handle, {
+                    ...request,
+                    selection: "region",
+                    limit: 10,
+                })
+            ).rows
+        ).toEqual(selected);
+    });
+
     test("ranged rows must independently match viewport and selection membership", async () => {
         const { query, handle } = await setup(
             [
@@ -619,12 +675,62 @@ describe("scoped loaded-data queries", () => {
         }
     );
 
+    test.each([
+        "__uniqueId",
+        '["__uniqueId"]',
+        "['__uniqueId']",
+        "__unique\\Id",
+        "__uniqueId.value",
+        ".",
+        "..",
+    ])(
+        "rejects private or identity field path %s in previews and aggregates",
+        async (name) => {
+            const { query, handle } = await setup([{ x: 1 }]);
+            await expect(
+                query.queryData(handle, {
+                    ...request,
+                    fields: [name],
+                })
+            ).rejects.toThrow("public field names");
+            await expect(
+                query.queryData(handle, {
+                    ...request,
+                    aggregate: [{ op: "sum", field: name, as: "total" }],
+                })
+            ).rejects.toThrow("public field names");
+        }
+    );
+
+    test("preserves ordinary nested and escaped user field paths", async () => {
+        const { query, handle } = await setup([
+            { x: 1, nested: { __uniqueId: 7 }, "a.b": 3 },
+        ]);
+        const result = await query.queryData(handle, {
+            ...request,
+            fields: ["nested.__uniqueId", 'nested["__uniqueId"]', "a\\.b"],
+            aggregate: [
+                { op: "sum", field: 'nested["__uniqueId"]', as: "total" },
+            ],
+        });
+        expect(result.rows).toEqual([
+            {
+                "nested.__uniqueId": 7,
+                'nested["__uniqueId"]': 7,
+                "a\\.b": 3,
+            },
+        ]);
+        expect(result.aggregates).toEqual({ total: 7 });
+    });
+
     test("rejects unready, malformed and unsupported requests", async () => {
         const { query, handle, view } = await setup([{ x: 1 }]);
         for (const invalid of [
             {},
             { ...request, channels: [] },
             { ...request, limit: -1 },
+            { ...request, fields: ["["] },
+            { ...request, aggregate: [{ op: "sum", as: "sum", field: "[" }] },
             { ...request, aggregate: [{ op: "median", as: "m", field: "x" }] },
         ]) {
             await expect(
