@@ -254,7 +254,6 @@ describe("logical selection predicates", () => {
             "access",
             "score",
         ]);
-        expect(Object.isFrozen(tree)).toBe(true);
         expect(selectionPredicateMatchesWhenEmpty(tree)).toBe(false);
         expect(() =>
             normalizeSelectionPredicateTree(

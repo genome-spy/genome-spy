@@ -75,13 +75,11 @@ export function normalizeSelectionPredicateTree(condition) {
                         );
                     }
                 }
-                return Object.freeze({
+                return {
                     param: validateParameterName(node.param),
                     empty: node.empty ?? true,
-                    ...(node.project
-                        ? { project: Object.freeze({ ...node.project }) }
-                        : {}),
-                });
+                    ...(node.project ? { project: { ...node.project } } : {}),
+                };
             }
             if (
                 !node.param ||
@@ -103,37 +101,24 @@ export function normalizeSelectionPredicateTree(condition) {
             const names = Array.from(
                 new Set(node.param.or.map(validateParameterName))
             );
-            const activities = names.map((selectionActive) =>
-                Object.freeze({ selectionActive })
-            );
-            const members = names.map((param, index) =>
-                Object.freeze({
-                    all: Object.freeze([
-                        Object.freeze({ param, empty: true }),
-                        activities[index],
-                    ]),
-                })
-            );
-            return Object.freeze({
-                any: Object.freeze(
+            const activities = names.map((selectionActive) => ({
+                selectionActive,
+            }));
+            const members = names.map((param, index) => ({
+                all: [{ param, empty: true }, activities[index]],
+            }));
+            return {
+                any:
                     node.empty === false
                         ? members
-                        : [
-                              ...members,
-                              Object.freeze({
-                                  not: Object.freeze({
-                                      any: Object.freeze(activities),
-                                  }),
-                              }),
-                          ]
-                ),
-            });
+                        : [...members, { not: { any: activities } }],
+            };
         }
         if (Object.keys(node).length !== 1) {
             throw new Error("Selection predicate operators cannot be mixed.");
         }
         if (operator === "not") {
-            return Object.freeze({ not: parse(node.not) });
+            return { not: parse(node.not) };
         }
         const operands = node[operator];
         if (!Array.isArray(operands) || operands.length === 0) {
@@ -141,10 +126,8 @@ export function normalizeSelectionPredicateTree(condition) {
                 `Selection test "${operator}" must be a nonempty array.`
             );
         }
-        const children = Object.freeze(operands.map(parse));
-        return operator === "and"
-            ? Object.freeze({ all: children })
-            : Object.freeze({ any: children });
+        const children = operands.map(parse);
+        return operator === "and" ? { all: children } : { any: children };
     };
 
     return parse(operand);
