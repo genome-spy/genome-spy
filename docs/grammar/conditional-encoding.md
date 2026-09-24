@@ -177,13 +177,15 @@ screen coordinates, so different visual ranges or zoom levels do not change
 membership. This use-site mapping does not change the selection's stored
 interval, and it does not define selection fields.
 
-The example below uses separate source and target brushes. A link matches the
-conjunction when its source is inside the source brush and its target is inside
-the target brush. Hovering a link also brings it forward. Clear either brush
-to let the other brush determine the matching links; clear both to restore all
-links.
+The example below places links between target and source tracks. The upper
+brush tests each link's `x2` (target), and the lower brush tests its `x`
+(source). A link keeps its color when it matches both brushes. An empty brush
+leaves its endpoint unconstrained.
 
-EXAMPLE examples/docs/grammar/conditional-encoding/endpoint-brushes.json height=270
+EXAMPLE examples/docs/grammar/conditional-encoding/endpoint-brushes.json height=200 spechidden
+
+For a fuller example with endpoint brushes, hover, and multiple conditional
+channels, see the [PISA Squid Plot](../examples/genomic-data/bpreveal-pisa-squid.md).
 
 ## Multiple Conditions
 

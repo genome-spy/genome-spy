@@ -6,7 +6,6 @@ import UnitView from "../view/unitView.js";
 import { createAndInitialize } from "../view/testUtils.js";
 import Rectangle from "../view/layout/rectangle.js";
 import { createWebGpuMarkConfig } from "../rendering/webgpu/webGpuMarkAdapter.js";
-import { createSinglePointSelection } from "./selection.js";
 import {
     activeMatchResolvedSelectionPredicate,
     compileSelectionPredicateTree,
@@ -52,7 +51,7 @@ const interval = (name) => ({
 });
 
 describe("logical selection predicates", () => {
-    test("public endpoint example covers both brushes, clearing, and hover", async () => {
+    test("public endpoint example combines brushes and restores links on clear", async () => {
         const root = await createAndInitialize(
             /** @type {any} */ (endpointBrushes),
             View
@@ -67,8 +66,6 @@ describe("logical selection predicates", () => {
         expect(links).toBeDefined();
         const rows = links.getCollector().facetBatches.get(undefined);
         const color = links.mark.encoders.color.branches[0].predicate;
-        const opacity = links.mark.encoders.opacity.branches[0].predicate;
-        const order = links.mark.getOrder().predicate;
         const translated = createWebGpuMarkConfig(
             links.mark,
             {},
@@ -82,58 +79,41 @@ describe("logical selection predicates", () => {
             /** @type {any} */ (translated.config).channels.color.conditions[0]
                 .when
         ).toMatchObject({
-            any: [
-                { selection: "hover" },
+            all: [
                 {
-                    all: [
-                        {
-                            selection: "sourceBrush",
-                            projections: [{ input: "x" }],
-                        },
-                        {
-                            selection: "targetBrush",
-                            projections: [{ input: "x2" }],
-                        },
-                    ],
+                    selection: "targetBrush",
+                    projections: [{ input: "x2" }],
+                },
+                {
+                    selection: "sourceBrush",
+                    projections: [{ input: "x" }],
                 },
             ],
         });
         const selectedSources = (/** @type {(datum: any) => boolean} */ test) =>
             rows.filter(test).map((row) => row.source);
 
-        expect(selectedSources(color)).toEqual([10, 20, 30, 40]);
-        root.paramRuntime.setValue("sourceBrush", {
-            type: "interval",
-            intervals: { x: [15, 35] },
-        });
-        expect(selectedSources(color)).toEqual([20, 30]);
+        expect(selectedSources(color)).toEqual([80, 230, 380, 530, 680, 830]);
         root.paramRuntime.setValue("targetBrush", {
             type: "interval",
-            intervals: { x: [70, 80] },
+            intervals: { x: [200, 650] },
         });
-        expect(selectedSources(color)).toEqual([20]);
-        expect(selectedSources(opacity)).toEqual([20]);
-        expect(selectedSources(order)).toEqual([20]);
-
-        root.paramRuntime.setValue(
-            "hover",
-            createSinglePointSelection(rows[3])
-        );
-        expect(selectedSources(color)).toEqual([20, 40]);
-        expect(selectedSources(order)).toEqual([20, 40]);
-        expect(selectedSources(opacity)).toEqual([20]);
-
-        root.paramRuntime.setValue("hover", createSinglePointSelection(null));
+        expect(selectedSources(color)).toEqual([230, 530, 680]);
         root.paramRuntime.setValue("sourceBrush", {
             type: "interval",
-            intervals: { x: null },
+            intervals: { x: [350, 750] },
         });
-        expect(selectedSources(color)).toEqual([20]);
+        expect(selectedSources(color)).toEqual([530, 680]);
         root.paramRuntime.setValue("targetBrush", {
             type: "interval",
             intervals: { x: null },
         });
-        expect(selectedSources(color)).toEqual([10, 20, 30, 40]);
+        expect(selectedSources(color)).toEqual([380, 530, 680]);
+        root.paramRuntime.setValue("sourceBrush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+        expect(selectedSources(color)).toEqual([80, 230, 380, 530, 680, 830]);
     });
 
     test("resolves sibling pushed brushes through their parent's value slots", async () => {
