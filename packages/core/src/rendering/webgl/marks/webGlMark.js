@@ -13,6 +13,7 @@ import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import {
     dedupeEncodingFields,
     generateConditionalEncoderGlsl,
+    emitSelectionPredicateGlsl,
     generateConstantValueGlsl,
     generateDataGlsl,
     generateDatumGlslAndUniform,
@@ -59,6 +60,10 @@ import {
     isSinglePointSelection,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
+import {
+    activeMatchResolvedSelectionPredicate,
+    getSelectionPredicateTreeParams,
+} from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
@@ -231,23 +236,53 @@ export default class WebGLMark {
 
         const dedupedEncodingFields = dedupeEncodingFields(encoders);
 
+        /** @param {string} channel */
+        const getSelectionAttributeName = (channel) => {
+            for (const [key, channels] of dedupedEncodingFields.entries()) {
+                if (
+                    key[1] &&
+                    channels.includes(/** @type {Channel} */ (channel))
+                ) {
+                    return makeAttributeName(channels);
+                }
+            }
+            return makeAttributeName(/** @type {Channel} */ (channel));
+        };
+
         /** @type {string[]} */
         const dynamicMarkUniforms = [];
 
         const appearanceSelections = collectAppearanceSelections(encoders);
-        const selectionParams = new Set(appearanceSelections.keys());
+        const selectionParams = new Set(
+            appearanceSelections.flatMap(getSelectionPredicateTreeParams)
+        );
         for (const param of order?.params ?? []) {
             selectionParams.add(param);
         }
-        const selectionUnionParams = new Set(
-            appearanceSelections
-                .keys()
-                .filter((param) => appearanceSelections.get(param))
-        );
-        if (order && !order.predicate.selection.singleParam) {
-            for (const param of order.params) {
-                selectionUnionParams.add(param);
-            }
+        const selectionUnionParams = selectionParams;
+
+        if (
+            Array.from(selectionParams).some((param) => {
+                const selection = this.unitView.paramRuntime.findValue(param);
+                return (
+                    isIntervalSelection(selection) &&
+                    Object.keys(selection.intervals).some(
+                        (channel) =>
+                            getAttributeAndArrayTypes(
+                                this.unitView
+                                    .getScaleResolution(
+                                        /** @type {"x" | "y"} */ (channel)
+                                    )
+                                    .getScale(),
+                                /** @type {Channel} */ (channel)
+                            ).largeHp
+                    )
+                );
+            })
+        ) {
+            scaleCode.push(
+                "bool selectionLeq(uvec2 a, uvec2 b) { return a.x < b.x || (a.x == b.x && a.y <= b.y); }"
+            );
         }
 
         if (order) {
@@ -388,11 +423,23 @@ export default class WebGLMark {
                         validateParameterName(param) +
                         `_${channel}`;
 
-                    // TODO: High precision scales
-                    const { attributeType } = getAttributeAndArrayTypes(
-                        this.unitView.getScaleResolution(channel).getScale(),
-                        channel
-                    );
+                    const { attributeType, largeHp } =
+                        getAttributeAndArrayTypes(
+                            this.unitView
+                                .getScaleResolution(channel)
+                                .getScale(),
+                            channel
+                        );
+                    const leq = (
+                        /** @type {string} */ a,
+                        /** @type {string} */ b
+                    ) =>
+                        largeHp ? `selectionLeq(${a}, ${b})` : `${a} <= ${b}`;
+                    const gt = (
+                        /** @type {string} */ a,
+                        /** @type {string} */ b
+                    ) =>
+                        largeHp ? `!selectionLeq(${a}, ${b})` : `${a} > ${b}`;
 
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
@@ -404,42 +451,37 @@ export default class WebGLMark {
                             { expr: param },
                             (
                                 /** @type {import("../../../types/selectionTypes.js").IntervalSelection} */ selection
-                            ) => selection.intervals[channel] ?? [1, 0]
+                            ) => {
+                                const bounds = selection.intervals[channel] ?? [
+                                    1, 0,
+                                ];
+                                return largeHp
+                                    ? bounds.flatMap((value) =>
+                                          splitLargeHighPrecision(value)
+                                      )
+                                    : bounds;
+                            }
                         );
                     });
 
-                    const getAttributeName = (
-                        /** @type {Channel} */ channel
-                    ) => {
-                        for (const [
-                            k,
-                            channels,
-                        ] of dedupedEncodingFields.entries()) {
-                            if (k[1] && channels.includes(channel)) {
-                                return makeAttributeName(channels);
-                            }
-                        }
-                        return makeAttributeName(channel);
-                    };
-
-                    const c = getAttributeName(channel);
+                    const c = getSelectionAttributeName(channel);
                     const u = uniformName + "[0]";
                     const u2 = uniformName + "[1]";
                     const secondaryChannel = getSecondaryChannel(channel);
                     if (this.encoding[secondaryChannel]) {
-                        const c2 = getAttributeName(secondaryChannel);
+                        const c2 = getSelectionAttributeName(secondaryChannel);
                         const mode = this.defaultHitTestMode;
                         if (mode == "endpoints") {
                             testSnippets.push(
-                                `((${u} <= ${c} && ${c} <= ${u2}) || (${u} <= ${c2} && ${c2} <= ${u2}))`
+                                `((${leq(u, c)} && ${leq(c, u2)}) || (${leq(u, c2)} && ${leq(c2, u2)}))`
                             );
                         } else if (mode == "encloses") {
                             testSnippets.push(
-                                `(${u} <= ${c} && ${c2} <= ${u2})`
+                                `(${leq(u, c)} && ${leq(c2, u2)})`
                             );
                         } else if (mode == "intersects") {
                             testSnippets.push(
-                                `(${u} <= ${c2} && ${c} <= ${u2})`
+                                `(${leq(u, c2)} && ${leq(c, u2)})`
                             );
                         } else {
                             throw new ViewError(
@@ -448,10 +490,10 @@ export default class WebGLMark {
                             );
                         }
                     } else {
-                        testSnippets.push(`(${u} <= ${c} && ${c} <= ${u2})`);
+                        testSnippets.push(`(${leq(u, c)} && ${leq(c, u2)})`);
                     }
 
-                    emptySnippets.push(`${u} > ${u2}`);
+                    emptySnippets.push(gt(u, u2));
                 }
 
                 scaleCode.push(
@@ -482,6 +524,54 @@ export default class WebGLMark {
                 );
             }
         }
+
+        /**
+         * @param {Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>} leaf
+         */
+        const emitSelectionLeaf = (leaf) => {
+            const { param, empty } = leaf;
+            if (leaf.type !== "interval") {
+                return `(${SELECTION_MEMBERSHIP_PREFIX}${param}() || (${empty} && ${SELECTION_EMPTY_PREFIX}${param}()))`;
+            }
+            const dimensions = leaf.projections.map((projection) => {
+                const uniform =
+                    PARAM_PREFIX + param + `_${projection.component}`;
+                const lo = uniform + "[0]";
+                const hi = uniform + "[1]";
+                const first = getSelectionAttributeName(projection.input);
+                const second = projection.secondaryInput
+                    ? getSelectionAttributeName(projection.secondaryInput)
+                    : undefined;
+                const { largeHp } = getAttributeAndArrayTypes(
+                    this.unitView
+                        .getScaleResolution(
+                            /** @type {"x" | "y"} */ (projection.component)
+                        )
+                        .getScale(),
+                    /** @type {Channel} */ (projection.component)
+                );
+                const leq = (
+                    /** @type {string} */ a,
+                    /** @type {string} */ b
+                ) => (largeHp ? `selectionLeq(${a}, ${b})` : `${a} <= ${b}`);
+                const inside = (/** @type {string} */ value) =>
+                    `(${leq(lo, value)} && ${leq(value, hi)})`;
+                const test =
+                    second === undefined
+                        ? inside(first)
+                        : projection.hitTest === "endpoints"
+                          ? `(${inside(first)} || ${inside(second)})`
+                          : projection.hitTest === "encloses"
+                            ? `(${leq(lo, first)} && ${leq(second, hi)})`
+                            : `(${leq(lo, second)} && ${leq(first, hi)})`;
+                const inactive = largeHp
+                    ? `!selectionLeq(${lo}, ${hi})`
+                    : `${lo} > ${hi}`;
+                return `(${inactive} || ${test})`;
+            });
+            const active = `!${SELECTION_EMPTY_PREFIX}${param}()`;
+            return `((${active} && ${dimensions.join(" && ")}) || (${empty} && !${active}))`;
+        };
 
         /**
          * @param {Channel} channel
@@ -684,14 +774,21 @@ export default class WebGLMark {
 
             // Generate conditional encoder -------------------------------
 
-            scaleCode.push(generateConditionalEncoderGlsl(channel, branches));
+            scaleCode.push(
+                generateConditionalEncoderGlsl(
+                    channel,
+                    branches,
+                    emitSelectionLeaf
+                )
+            );
         }
 
         // Check membership in any selection referenced by conditional encoders.
-        const conditions = Array.from(
-            appearanceSelections,
-            ([param, partialIntervals]) =>
-                `${partialIntervals ? SELECTION_MEMBERSHIP_PREFIX : SELECTION_CHECKER_PREFIX}${param}(${partialIntervals ? "" : "false"})`
+        const conditions = appearanceSelections.map((root) =>
+            emitSelectionPredicateGlsl(
+                activeMatchResolvedSelectionPredicate(root),
+                emitSelectionLeaf
+            )
         );
 
         scaleCode.push(
@@ -703,18 +800,12 @@ export default class WebGLMark {
         );
 
         if (order) {
-            const checks = order.params.map((param) => {
-                const selectionUnion = !order.predicate.selection.singleParam;
-                return `${
-                    selectionUnion
-                        ? SELECTION_MEMBERSHIP_PREFIX
-                        : SELECTION_CHECKER_PREFIX
-                }${param}(${selectionUnion ? "" : String(order.predicate.selection.empty)})`;
-            });
+            const expression = emitSelectionPredicateGlsl(
+                order.predicate.selection,
+                emitSelectionLeaf
+            );
             scaleCode.push(
-                "bool isOrderMatch() {\n" +
-                    `    return ${checks.join(" || ")};\n` +
-                    "}"
+                "bool isOrderMatch() {\n" + `    return ${expression};\n` + "}"
             );
         }
 

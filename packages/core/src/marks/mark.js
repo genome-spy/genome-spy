@@ -410,7 +410,8 @@ export default class Mark {
                 this.encoding.order,
                 this.encoding,
                 this.unitView.paramRuntime,
-                this.defaultHitTestMode
+                this.defaultHitTestMode,
+                (channel) => this.unitView.getScaleResolution(channel)?.type
             );
             this.#orderInitialized = true;
         }

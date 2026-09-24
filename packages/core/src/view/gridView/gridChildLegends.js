@@ -1,4 +1,8 @@
 import { findChannelDefWithScale, isValueDef } from "../../encoder/encoder.js";
+import {
+    normalizeSelectionPredicateTree,
+    selectionPredicateMatchesWhenEmpty,
+} from "../../selection/selectionPredicateTree.js";
 import { getConfiguredLegendRegionLayout } from "../../config/legendConfig.js";
 import {
     activateExprRefProps,
@@ -149,10 +153,9 @@ function getEmptySelectionValueDef(channelDef) {
             ? channelDef.condition
             : [channelDef.condition];
         for (const condition of conditions) {
-            const empty =
-                "test" in condition
-                    ? (condition.test.empty ?? true)
-                    : (condition.empty ?? true);
+            const empty = selectionPredicateMatchesWhenEmpty(
+                normalizeSelectionPredicateTree(condition)
+            );
             if (empty && "value" in condition) {
                 return { value: condition.value };
             }

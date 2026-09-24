@@ -6,6 +6,10 @@ import {
 import { validateParameterName } from "../paramRuntime/paramUtils.js";
 import { field } from "../utils/field.js";
 import { asEventConfig } from "../utils/interactionConfig.js";
+import {
+    getSelectionPredicateTreeParams,
+    normalizeSelectionPredicateTree,
+} from "./selectionPredicateTree.js";
 
 /**
  * @param {import("../data/flowNode.js").Datum} datum
@@ -232,11 +236,7 @@ export function makeSelectionTestExpression(params, selection) {
 }
 
 /**
- * Normalized representation of a selection predicate used by conditional
- * encodings. Keeping the names together lets renderers and other consumers
- * discover every dependency of a union without inspecting its expression.
- *
- * @typedef {{ params: string[], empty: boolean, singleParam: boolean }} SelectionPredicateInfo
+ * @typedef {import("./selectionPredicateTree.js").SelectionPredicateTree} SelectionPredicateInfo
  */
 
 /**
@@ -249,21 +249,7 @@ export function normalizeSelectionPredicate(condition) {
     if (!("param" in condition) && !("test" in condition)) {
         return undefined;
     }
-
-    const predicate = "test" in condition ? condition.test : condition;
-    const { param, empty = true } = predicate;
-    if (typeof param === "string") {
-        return {
-            params: [validateParameterName(param)],
-            empty,
-            singleParam: true,
-        };
-    }
-    if (param.or.length === 0) {
-        throw new Error('Selection test "or" must be a nonempty array.');
-    }
-    const params = Array.from(new Set(param.or.map(validateParameterName)));
-    return { params, empty, singleParam: false };
+    return normalizeSelectionPredicateTree(condition);
 }
 
 /**
@@ -273,139 +259,30 @@ export function normalizeSelectionPredicate(condition) {
  * @returns {string[]}
  */
 export function getSelectionPredicateParams(predicate) {
-    return predicate?.selection?.params ?? [];
+    return predicate?.selection
+        ? getSelectionPredicateTreeParams(predicate.selection)
+        : [];
 }
 
 /**
- * Collects appearance selections once per parameter. Union membership wins when
- * a parameter also appears in a single-param condition: with empty=false its
- * partial-interval membership includes the single-param membership.
- *
  * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
- * @returns {Map<string, boolean>} Parameter to partial-interval semantics.
+ * @returns {import("./selectionPredicateTree.js").ResolvedSelectionPredicate[]}
  */
 export function collectAppearanceSelections(encoders) {
-    const selections = new Map();
-    for (const encoder of Object.values(encoders)) {
-        for (const { predicate } of encoder.branches) {
-            const info = predicate.selection;
-            if (info) {
-                for (const param of info.params) {
-                    selections.set(
-                        param,
-                        selections.get(param) || !info.singleParam
-                    );
-                }
-            }
-        }
-    }
-    return selections;
-}
-
-/**
- * Creates the expression for the active state of one selection.
- *
- * @param {string} param
- * @param {import("../types/selectionTypes.js").Selection} selection
- * @returns {string}
- */
-function makeSelectionEmptyExpression(param, selection) {
-    if (isSinglePointSelection(selection)) {
-        return `${param}.uniqueId == null`;
-    }
-    if (isMultiPointSelection(selection)) {
-        return `${param}.data.size == 0`;
-    }
-    if (isIntervalSelection(selection)) {
-        const channels = Object.keys(selection.intervals);
-        return channels.length == 0
-            ? "true"
-            : `!(${channels.map((channel) => `${param}.intervals.${channel}`).join(" || ")})`;
-    }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
-}
-
-/**
- * Creates a selection-membership expression using the union's partial interval
- * semantics: inactive dimensions do not constrain an active interval.
- *
- * @param {string} param
- * @param {import("../types/selectionTypes.js").Selection} selection
- * @param {Partial<Record<import("../spec/channel.js").PositionalChannel, string>>} fields
- * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
- * @returns {string}
- */
-function makeSelectionMembershipExpression(
-    param,
-    selection,
-    fields,
-    hitTestMode
-) {
-    if (isSinglePointSelection(selection)) {
-        return `${param}.uniqueId != null && ${param}.uniqueId === datum[${JSON.stringify(
-            UNIQUE_ID_KEY
-        )}]`;
-    }
-    if (isMultiPointSelection(selection)) {
-        return `${param}.data.size != 0 && mapHasKey(${param}.data, datum[${JSON.stringify(
-            UNIQUE_ID_KEY
-        )}])`;
-    }
-    if (isIntervalSelection(selection)) {
-        const channels = Object.keys(selection.intervals);
-        if (channels.length == 0) {
-            return "false";
-        }
-        const access = (/** @type {string} */ f) =>
-            `datum[${JSON.stringify(f)}]`;
-        const dimensions = channels.map((channel) => {
-            const secondary = getSecondaryChannel(channel);
-            const f = fields[channel];
-            const f2 = fields[secondary] ?? fields[channel];
-            const interval = `${param}.intervals.${channel}`;
-            const test =
-                hitTestMode == "endpoints"
-                    ? `((${interval}[0] <= ${access(f)} && ${access(f)} <= ${interval}[1]) || (${interval}[0] <= ${access(f2)} && ${access(f2)} <= ${interval}[1]))`
-                    : hitTestMode == "encloses"
-                      ? `(${interval}[0] <= ${access(f)} && ${access(f2)} <= ${interval}[1])`
-                      : `(${interval}[0] <= ${access(f2)} && ${access(f)} <= ${interval}[1])`;
-            return `(!${interval} || ${test})`;
-        });
-        const active = channels
-            .map((channel) => `${param}.intervals.${channel}`)
-            .join(" || ");
-        return `!!(${active}) && (${dimensions.join(" && ")})`;
-    }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
-}
-
-/**
- * Creates a union predicate expression. The `empty` option applies to the
- * group as a whole, so it only matches when every selection is empty.
- *
- * @param {{param: string, selection: import("../types/selectionTypes.js").Selection, fields: Partial<Record<import("../spec/channel.js").PositionalChannel, string>>}[]} entries
- * @param {boolean} empty
- * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
- * @returns {string}
- */
-export function makeSelectionUnionTestExpression(
-    entries,
-    empty,
-    hitTestMode = "intersects"
-) {
-    const membership = entries.map(({ param, selection, fields }) =>
-        makeSelectionMembershipExpression(param, selection, fields, hitTestMode)
-    );
-    const anyMembership = `(${membership.join(" || ")})`;
-    if (!empty) {
-        return anyMembership;
-    }
-    const allEmpty = entries
-        .map(({ param, selection }) =>
-            makeSelectionEmptyExpression(param, selection)
+    const roots = Object.values(encoders).flatMap((encoder) =>
+        encoder.branches.flatMap(({ predicate }) =>
+            predicate.selection ? [predicate.selection] : []
         )
-        .join(" && ");
-    return `((${allEmpty}) || ${anyMembership})`;
+    );
+    const seen = new Set();
+    return roots.filter((root) => {
+        const key = JSON.stringify(root);
+        if (seen.has(key)) {
+            return false;
+        }
+        seen.add(key);
+        return true;
+    });
 }
 
 /**
@@ -465,7 +342,11 @@ export function asSelectionConfig(typeOrConfig) {
               : asEventConfig(config.clear);
 
     // Set some default
-    if (isPointSelectionConfig(config) && config.on.type === "click") {
+    if (
+        isPointSelectionConfig(config) &&
+        config.on.type === "click" &&
+        config.toggle === undefined
+    ) {
         config.toggle = true;
     }
 

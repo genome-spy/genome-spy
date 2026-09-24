@@ -10,6 +10,50 @@ import {
     getWebGpuMarkResourceRevision,
 } from "./webGpuMarkAdapter.js";
 
+/** @param {string} param @param {boolean} empty @param {"single" | "multi" | "interval"} [type] @param {Omit<import("../../selection/selectionPredicateTree.js").SelectionProjection, "field">[]} [projections] */
+function mockSelection(param, empty, type = "single", projections) {
+    return type === "interval"
+        ? {
+              param,
+              type,
+              empty,
+              projections: (
+                  projections ?? [{ component: "x", input: "x" }]
+              ).map((projection) => ({
+                  field: projection.input,
+                  ...projection,
+              })),
+          }
+        : { param, type, empty };
+}
+
+/** @param {string[]} names @param {boolean} empty */
+function mockFlatUnion(names, empty) {
+    const activities = names.map((param) => ({
+        selectionActive: {
+            param,
+            type: /** @type {const} */ ("single"),
+            components: /** @type {string[]} */ ([]),
+        },
+    }));
+    const members = names.map((param, index) => ({
+        all: [mockSelection(param, true), activities[index]],
+    }));
+    return {
+        any: empty ? [...members, { not: { any: activities } }] : members,
+    };
+}
+
+/** @param {string} selection @param {"single" | "multi"} type @param {boolean} empty */
+function expectedActiveMatch(selection, type, empty) {
+    return {
+        all: [
+            { selection, type, empty },
+            { any: [{ selectionActive: { selection, type } }] },
+        ],
+    };
+}
+
 describe("WebGPU mark adapter", () => {
     test("translates conditional order into declarative renderer config", () => {
         const mark = createMark("point", [{ id: 17 }], {
@@ -18,11 +62,7 @@ describe("WebGPU mark adapter", () => {
         mark.getOrder = /** @type {any} */ (
             () => ({
                 predicate: {
-                    selection: {
-                        params: ["picked"],
-                        empty: false,
-                        singleParam: true,
-                    },
+                    selection: mockSelection("picked", false),
                 },
                 params: ["picked"],
                 passes: ["matching", "nonmatching"],
@@ -295,11 +335,7 @@ describe("WebGPU mark adapter", () => {
                     { field: "x" }
                 ),
                 predicate: {
-                    selection: {
-                        params: ["selected"],
-                        empty: false,
-                        singleParam: true,
-                    },
+                    selection: mockSelection("selected", false),
                 },
             },
             {
@@ -1249,11 +1285,7 @@ describe("WebGPU mark adapter", () => {
                         true
                     ),
                     predicate: {
-                        selection: {
-                            params: ["selected"],
-                            empty: true,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("selected", true, "multi"),
                     },
                 },
                 {
@@ -1289,11 +1321,7 @@ describe("WebGPU mark adapter", () => {
         });
         expect(config.visibleWhen).toEqual({
             any: [
-                {
-                    selection: "selected",
-                    type: "multi",
-                    empty: false,
-                },
+                expectedActiveMatch("selected", "multi", true),
                 {
                     compare: ">=",
                     left: { input: "semanticScoreInput" },
@@ -1329,11 +1357,7 @@ describe("WebGPU mark adapter", () => {
                         true
                     ),
                     predicate: {
-                        selection: {
-                            params: ["first"],
-                            empty: false,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("first", false),
                     },
                 },
                 {
@@ -1343,11 +1367,7 @@ describe("WebGPU mark adapter", () => {
                         true
                     ),
                     predicate: {
-                        selection: {
-                            params: ["second"],
-                            empty: false,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("second", false),
                     },
                 },
                 {
@@ -1372,8 +1392,8 @@ describe("WebGPU mark adapter", () => {
 
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
         expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
-            { selection: "first", type: "single", empty: false },
-            { selection: "second", type: "single", empty: false },
+            expectedActiveMatch("first", "single", false),
+            expectedActiveMatch("second", "single", false),
             {
                 compare: ">=",
                 left: { input: "semanticScoreInput" },
@@ -1394,11 +1414,7 @@ describe("WebGPU mark adapter", () => {
                         true
                     ),
                     predicate: {
-                        selection: {
-                            params: ["first"],
-                            empty: false,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("first", false),
                     },
                 },
                 {
@@ -1408,11 +1424,7 @@ describe("WebGPU mark adapter", () => {
                         true
                     ),
                     predicate: {
-                        selection: {
-                            params: ["first", "second"],
-                            empty: false,
-                            singleParam: false,
-                        },
+                        selection: mockFlatUnion(["first", "second"], false),
                     },
                 },
                 {
@@ -1437,17 +1449,24 @@ describe("WebGPU mark adapter", () => {
 
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
 
+        const activities = ["first", "second"].map((selection) => ({
+            selectionActive: { selection, type: "single" },
+        }));
         expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
-            ...["first", "second"].map((selection) => ({
-                any: [
+            expectedActiveMatch("first", "single", false),
+            {
+                all: [
                     {
-                        all: [
-                            { selection, type: "single", empty: true },
-                            { selectionActive: { selection, type: "single" } },
-                        ],
+                        any: ["first", "second"].map((selection, index) => ({
+                            all: [
+                                { selection, type: "single", empty: true },
+                                activities[index],
+                            ],
+                        })),
                     },
+                    { any: activities },
                 ],
-            })),
+            },
             {
                 compare: ">=",
                 left: { input: "semanticScoreInput" },
@@ -1937,11 +1956,7 @@ describe("WebGPU mark adapter", () => {
                         { field: "color" }
                     ),
                     predicate: {
-                        selection: {
-                            params: ["chosen"],
-                            empty: false,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("chosen", false),
                     },
                 },
                 {
@@ -1993,11 +2008,7 @@ describe("WebGPU mark adapter", () => {
                         { field: "color" }
                     ),
                     predicate: {
-                        selection: {
-                            params: ["first", "second"],
-                            empty: true,
-                            singleParam: false,
-                        },
+                        selection: mockFlatUnion(["first", "second"], true),
                     },
                 },
                 {
@@ -2051,11 +2062,10 @@ describe("WebGPU mark adapter", () => {
                         }
                     ),
                     predicate: {
-                        selection: {
-                            params: ["brush"],
-                            empty: true,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("brush", true, "interval", [
+                            { component: "x", input: "x" },
+                            { component: "y", input: "y" },
+                        ]),
                     },
                 },
                 {
@@ -2100,11 +2110,9 @@ describe("WebGPU mark adapter", () => {
                         { field: channel }
                     ),
                     predicate: {
-                        selection: {
-                            params: ["brush"],
-                            empty: false,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("brush", false, "interval", [
+                            { component: channel, input: channel },
+                        ]),
                     },
                 },
                 {
@@ -2149,11 +2157,19 @@ describe("WebGPU mark adapter", () => {
                             { field: "color" }
                         ),
                         predicate: {
-                            selection: {
-                                params: ["brush"],
-                                empty: true,
-                                singleParam: true,
-                            },
+                            selection: mockSelection(
+                                "brush",
+                                true,
+                                "interval",
+                                [
+                                    {
+                                        component: "x",
+                                        input: "x",
+                                        secondaryInput: "x2",
+                                        hitTest: "intersects",
+                                    },
+                                ]
+                            ),
                         },
                     },
                     {
@@ -2194,7 +2210,73 @@ describe("WebGPU mark adapter", () => {
         ]);
     });
 
-    test("rejects a two-component interval target contextually", () => {
+    test("binds one interval component to two inputs independently", () => {
+        const mark = createMark("rect", [{ x: 1, x2: 3, y: 1, y2: 2 }], {
+            x: createEncoder((datum) => datum.x),
+            x2: createEncoder((datum) => datum.x2),
+            y: createEncoder((datum) => datum.y),
+            y2: createEncoder((datum) => datum.y2),
+            xOffset: createConstantEncoder(0),
+            x2Offset: createConstantEncoder(0),
+            yOffset: createConstantEncoder(0),
+            y2Offset: createConstantEncoder(0),
+            fill: createConditionalEncoder([
+                {
+                    accessor: createAccessor(
+                        () => "red",
+                        { value: "red" },
+                        true
+                    ),
+                    predicate: {
+                        selection: mockSelection("brush", false, "interval", [
+                            { component: "x", input: "x" },
+                        ]),
+                    },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "blue",
+                        { value: "blue" },
+                        true
+                    ),
+                    predicate: {
+                        selection: mockSelection("brush", false, "interval", [
+                            { component: "x", input: "x2" },
+                        ]),
+                    },
+                },
+                {
+                    accessor: createAccessor(
+                        () => "gray",
+                        { value: "gray" },
+                        true
+                    ),
+                    predicate: {},
+                },
+            ]),
+            stroke: createConstantEncoder(null),
+            fillOpacity: createConstantEncoder(1),
+            strokeOpacity: createConstantEncoder(1),
+            strokeWidth: createConstantEncoder(0),
+        });
+        /** @type {any} */ (mark.unitView).paramRuntime = {
+            findValue: () => ({ type: "interval", intervals: { x: [1, 3] } }),
+        };
+
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const conditions = /** @type {any} */ (translated).config.channels.fill
+            .conditions;
+        expect(
+            conditions.map(
+                (/** @type {any} */ condition) => condition.when.projections[0]
+            )
+        ).toEqual([
+            { component: "x", input: "x" },
+            { component: "x", input: "x2" },
+        ]);
+    });
+
+    test("translates a two-component interval target", () => {
         const mark = createMark("point", [{ x: 1, color: "red" }], {
             x: createEncoder((datum) => datum.x, {
                 scale: {
@@ -2213,11 +2295,7 @@ describe("WebGPU mark adapter", () => {
                         { field: "color" }
                     ),
                     predicate: {
-                        selection: {
-                            params: ["brush"],
-                            empty: true,
-                            singleParam: true,
-                        },
+                        selection: mockSelection("brush", true, "interval"),
                     },
                 },
                 {
@@ -2237,9 +2315,17 @@ describe("WebGPU mark adapter", () => {
             }),
         };
 
-        expect(() => createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)).toThrow(
-            'cannot target two-component channel "x"'
-        );
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const config = /** @type {any} */ (translated).config;
+        expect(config.channels.x.inputComponents).toBe(2);
+        expect(config.channels.fill.conditions[0].when.projections).toEqual([
+            {
+                component: "x",
+                input: "x",
+                secondaryInput: undefined,
+                hitTest: undefined,
+            },
+        ]);
     });
 });
 

@@ -1,4 +1,5 @@
 import { collectAppearanceSelections } from "../../selection/selection.js";
+import { activeMatchResolvedSelectionPredicate } from "../../selection/selectionPredicateTree.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
 import {
@@ -30,11 +31,7 @@ import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
-import {
-    getSecondaryChannel,
-    isDatumDef,
-    isValueDef,
-} from "../../encoder/encoder.js";
+import { isDatumDef, isValueDef } from "../../encoder/encoder.js";
 
 const SHAPE_NAMES = [
     "circle",
@@ -371,114 +368,65 @@ function createBranchEncoder(mark, encoder, branch) {
  * Converts a Core selection predicate to the renderer's selection contract.
  *
  * @param {import("../../marks/mark.js").default} mark
- * @param {import("../../selection/selection.js").SelectionPredicateInfo} selectionInfo
+ * @param {import("../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate
  * @returns {import("@genome-spy/webgpu-renderer").SelectionPredicate}
  */
-function createSelectionCondition(mark, selectionInfo) {
-    const { params, empty, singleParam } = selectionInfo;
-
-    /** @param {string} param @param {boolean} [leafEmpty] @returns {import("@genome-spy/webgpu-renderer").SelectionPredicateLeaf} */
-    const createLeaf = (param, leafEmpty) => {
-        const selection = mark.unitView.paramRuntime.findValue(param);
-        if (
-            !selection ||
-            !["single", "multi", "interval"].includes(selection.type)
-        ) {
-            throw unsupported(
-                mark,
-                `Selection "${param}" is not available for WebGPU.`
-            );
-        }
-        if (selection.type === "interval") {
-            const projections = Object.keys(selection.intervals).map(
-                (input) => {
-                    if (input !== "x" && input !== "y") {
-                        throw unsupported(
-                            mark,
-                            `Interval selection "${param}" has unsupported target "${String(input)}".`
-                        );
-                    }
-                    assertScalarIntervalInput(mark, param, input);
-                    const secondaryInput = getSecondaryChannel(input);
-                    if (mark.encoders[secondaryInput]) {
-                        assertScalarIntervalInput(mark, param, secondaryInput);
-                        return {
-                            component: input,
+function createSelectionCondition(mark, predicate) {
+    if ("all" in predicate) {
+        return {
+            all: predicate.all.map((child) =>
+                createSelectionCondition(mark, child)
+            ),
+        };
+    }
+    if ("any" in predicate) {
+        return {
+            any: predicate.any.map((child) =>
+                createSelectionCondition(mark, child)
+            ),
+        };
+    }
+    if ("not" in predicate) {
+        return { not: createSelectionCondition(mark, predicate.not) };
+    }
+    if ("selectionActive" in predicate) {
+        const { param, type, components } = predicate.selectionActive;
+        return {
+            selectionActive:
+                type === "interval"
+                    ? {
+                          selection: param,
+                          type,
+                          components: /** @type {[string, ...string[]]} */ (
+                              components
+                          ),
+                      }
+                    : { selection: param, type },
+        };
+    }
+    if (predicate.type === "interval") {
+        return {
+            selection: predicate.param,
+            type: "interval",
+            projections:
+                /** @type {[import("@genome-spy/webgpu-renderer").IntervalSelectionProjection, ...import("@genome-spy/webgpu-renderer").IntervalSelectionProjection[]]} */ (
+                    predicate.projections.map(
+                        ({ component, input, secondaryInput, hitTest }) => ({
+                            component,
                             input,
                             secondaryInput,
-                            hitTest: mark.defaultHitTestMode,
-                        };
-                    }
-                    return { component: input, input };
-                }
-            );
-            return {
-                selection: param,
-                type: "interval",
-                projections:
-                    /** @type {[import("@genome-spy/webgpu-renderer").IntervalSelectionProjection, ...import("@genome-spy/webgpu-renderer").IntervalSelectionProjection[]]} */ (
-                        projections
-                    ),
-                ...(leafEmpty !== undefined ? { empty: leafEmpty } : {}),
-            };
-        }
-        return {
-            selection: param,
-            type: selection.type,
-            ...(leafEmpty !== undefined ? { empty: leafEmpty } : {}),
+                            hitTest,
+                        })
+                    )
+                ),
+            empty: predicate.empty,
         };
-    };
-
-    if (singleParam) {
-        return createLeaf(params[0], empty);
     }
-
-    const leaves = params.map((param) => createLeaf(param, true));
-    /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate[]} */
-    const activities = leaves.map((leaf) => ({
-        selectionActive:
-            leaf.type === "interval"
-                ? {
-                      selection: leaf.selection,
-                      type: "interval",
-                      components: /** @type {[string, ...string[]]} */ (
-                          leaf.projections.map(
-                              (projection) => projection.component
-                          )
-                      ),
-                  }
-                : { selection: leaf.selection, type: leaf.type },
-    }));
-    /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate[]} */
-    const members = leaves.map((leaf, index) => ({
-        all: [leaf, activities[index]],
-    }));
     return {
-        any: empty ? [...members, { not: { any: activities } }] : members,
+        selection: predicate.param,
+        type: predicate.type,
+        empty: predicate.empty,
     };
-}
-
-/**
- * Large index and locus values use two packed u32 components in ordinary
- * rendering, but interval predicates currently require one scalar component.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} selectionName
- * @param {string} channel
- */
-function assertScalarIntervalInput(mark, selectionName, channel) {
-    const encoder = /** @type {Record<string, any>} */ (mark.encoders)[channel];
-    const scale = encoder?.scale;
-    if (
-        scale &&
-        (scale.type == "index" || scale.type == "locus") &&
-        isLargeIndexDomain(scale.domain().map(Number))
-    ) {
-        throw unsupported(
-            mark,
-            `Interval selection "${selectionName}" cannot target two-component channel "${channel}".`
-        );
-    }
 }
 
 /**
@@ -751,14 +699,11 @@ function createPointVisibilitySelections(mark) {
         return [];
     }
 
-    return Array.from(
-        collectAppearanceSelections(mark.encoders),
-        ([param, partialIntervals]) =>
-            createSelectionCondition(mark, {
-                params: [param],
-                empty: false,
-                singleParam: !partialIntervals,
-            })
+    return collectAppearanceSelections(mark.encoders).map((root) =>
+        createSelectionCondition(
+            mark,
+            activeMatchResolvedSelectionPredicate(root)
+        )
     );
 }
 

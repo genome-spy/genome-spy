@@ -903,6 +903,77 @@ describe("Nested ViewParamRuntimes", () => {
         expect(child.findValue("foo")).toBe(2);
     });
 
+    test("resolves compatible pushed selection declarations by value slot", () => {
+        const parent = new ViewParamRuntime();
+        parent.registerParam({ name: "brush", value: null });
+
+        /** @param {string} name @param {"index" | "locus"} type */
+        const addBrush = (name, type) => {
+            const child = new ViewParamRuntime(() => parent);
+            child.setSelectionSource(
+                /** @type {any} */ ({
+                    name,
+                    getScaleResolution: () => ({ type }),
+                })
+            );
+            child.registerParam({
+                name: "brush",
+                push: "outer",
+                select: { type: "interval", encodings: ["x"] },
+            });
+            return child;
+        };
+
+        const first = addBrush("first", "index");
+        const second = addBrush("second", "index");
+        expect(parent.findSelectionCapability("brush")).toMatchObject({
+            type: "interval",
+            components: [{ component: "x", type: "index" }],
+        });
+
+        const incompatible = addBrush("incompatible", "locus");
+        expect(() => parent.findSelectionCapability("brush")).toThrow(
+            /first.*incompatible/
+        );
+        incompatible.dispose();
+        expect(parent.findSelectionCapability("brush").components).toEqual([
+            { component: "x", type: "index" },
+        ]);
+        first.dispose();
+        second.dispose();
+        expect(parent.findSelectionCapability("brush")).toBeUndefined();
+    });
+
+    test("rejects pushed declarations with different selection kinds or components", () => {
+        const parent = new ViewParamRuntime();
+        parent.registerParam({ name: "brush", value: null });
+
+        const first = new ViewParamRuntime(() => parent);
+        first.registerParam({
+            name: "brush",
+            push: "outer",
+            select: { type: "interval", encodings: ["x"] },
+        });
+
+        const differentKind = new ViewParamRuntime(() => parent);
+        expect(() =>
+            differentKind.registerParam({
+                name: "brush",
+                push: "outer",
+                select: "point",
+            })
+        ).toThrow(/Conflicting selection declarations/);
+
+        const differentComponents = new ViewParamRuntime(() => parent);
+        expect(() =>
+            differentComponents.registerParam({
+                name: "brush",
+                push: "outer",
+                select: { type: "interval", encodings: ["y"] },
+            })
+        ).toThrow(/Conflicting selection declarations/);
+    });
+
     test("Pushing to outer parameter rejects duplicate registration in child scope", () => {
         const parent = new ViewParamRuntime();
         const child = new ViewParamRuntime(() => parent);

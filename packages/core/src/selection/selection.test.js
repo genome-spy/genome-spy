@@ -95,33 +95,19 @@ describe("key-based selection helpers", () => {
     });
 });
 
-// Membership bypasses ignore empty=true and must not depend on condition order.
-it.each([false, true])(
-    "collects appearance membership with union precedence (reverse=%s)",
-    (reverse) => {
-        const selections = [
-            { params: ["brush", "other"], singleParam: false, empty: true },
-            { params: ["brush"], singleParam: true, empty: false },
-            { params: ["picked"], singleParam: true, empty: true },
-        ];
-        if (reverse) selections.reverse();
-        const encoders = /** @type {any} */ ({
-            color: {
-                branches: selections.map((selection) => ({
-                    predicate: { selection },
-                })),
-            },
-            size: { branches: [{ predicate: {} }] },
-        });
-        expect(collectAppearanceSelections(encoders)).toEqual(
-            new Map([
-                ["brush", true],
-                ["other", true],
-                ["picked", false],
-            ])
-        );
-    }
-);
+it("collects complete appearance predicate roots", () => {
+    const roots = [
+        { all: [{ param: "brush", type: "interval", empty: true }] },
+        { param: "picked", type: "single", empty: false },
+    ];
+    const encoders = /** @type {any} */ ({
+        color: {
+            branches: roots.map((selection) => ({ predicate: { selection } })),
+        },
+        size: { branches: [{ predicate: {} }] },
+    });
+    expect(collectAppearanceSelections(encoders)).toEqual(roots);
+});
 
 it("normalizes direct and structured singleton selection predicates identically", () => {
     const direct = normalizeSelectionPredicate({
@@ -134,8 +120,7 @@ it("normalizes direct and structured singleton selection predicates identically"
 
     expect(structured).toEqual(direct);
     expect(structured).toEqual({
-        params: ["picked"],
+        param: "picked",
         empty: false,
-        singleParam: true,
     });
 });

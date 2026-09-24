@@ -262,7 +262,9 @@ describe("SvgViewRenderingContext", () => {
     test("appends SVG order partitions in ascending level order", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.25 }, { x: 0.75 }] },
-            params: [{ name: "picked", select: "point" }],
+            params: [
+                { name: "picked", select: { type: "point", toggle: false } },
+            ],
             mark: "point",
             encoding: {
                 x: {
