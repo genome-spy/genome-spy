@@ -30,17 +30,18 @@
         "style": "overlay-title"
       },
       "height": { "grow": 0.16 },
+      "cursor": "text",
       "params": [
         {
           "name": "accessibilityRegion",
           "push": "outer",
           "persist": false,
-          "description": "Shift-drag to select affected output positions; double-click to clear.",
+          "description": "Drag to select affected output positions; bars outside an active brush turn gray. Double-click to clear.",
           "select": {
             "type": "interval",
             "encodings": ["x"],
             "extent": "view",
-            "on": "mousedown[event.shiftKey]",
+            "on": "mousedown",
             "clear": "dblclick",
             "zoom": false
           }
@@ -53,7 +54,7 @@
       "transform": [
         { "type": "filter", "expr": "datum.track == 'prediction'" }
       ],
-      "mark": { "type": "rect", "color": "#332288", "minOpacity": 1 },
+      "mark": { "type": "rect", "minOpacity": 1 },
       "encoding": {
         "x": {
           "field": "position",
@@ -67,6 +68,10 @@
           "axis": null
         },
         "y2": { "datum": 0 },
+        "color": {
+          "condition": { "param": "accessibilityRegion", "value": "#332288" },
+          "value": "#d8dbe0"
+        },
         "tooltip": [
           { "field": "position", "title": "Output position" },
           { "field": "value", "title": "Prediction", "format": ".4g" }
@@ -78,13 +83,17 @@
       "layer": [
         {
           "name": "pisa-links",
-          "description": "Links matching the active endpoint brushes or hover retain their effect encoding and are drawn above muted links. With no active selection, all links look normal.",
+          "description": "Links matching the active endpoint brushes or Shift-hover retain their effect encoding and are drawn above muted links. With no active selection, all links look normal.",
           "params": [
             {
               "name": "pisaLinkHover",
               "push": "outer",
               "persist": false,
-              "select": { "type": "point", "on": "pointerover" }
+              "select": {
+                "type": "point",
+                "on": "pointerover[event.shiftKey]",
+                "clear": "mousemove[!event.shiftKey]"
+              }
             }
           ],
           "data": {
@@ -106,41 +115,44 @@
             "size": 1.5,
             "minPickingSize": 2
           },
-          "encoding": {
-            "order": {
-              "condition": {
-                "test": {
-                  "or": [
-                    { "param": "pisaLinkHover", "empty": false },
+          "predicates": {
+            "highlightedLink": {
+              "or": [
+                { "param": "pisaLinkHover", "empty": false },
+                {
+                  "and": [
                     {
-                      "and": [
+                      "param": "accessibilityRegion",
+                      "project": { "x": "x2" }
+                    },
+                    {
+                      "param": "contributionRegion",
+                      "project": { "x": "x" }
+                    },
+                    {
+                      "or": [
+                        { "param": "pisaLinkHover" },
                         {
                           "param": "accessibilityRegion",
-                          "project": { "x": "x2" }
+                          "project": { "x": "x2" },
+                          "empty": false
                         },
                         {
                           "param": "contributionRegion",
-                          "project": { "x": "x" }
-                        },
-                        {
-                          "or": [
-                            { "param": "pisaLinkHover" },
-                            {
-                              "param": "accessibilityRegion",
-                              "project": { "x": "x2" },
-                              "empty": false
-                            },
-                            {
-                              "param": "contributionRegion",
-                              "project": { "x": "x" },
-                              "empty": false
-                            }
-                          ]
+                          "project": { "x": "x" },
+                          "empty": false
                         }
                       ]
                     }
                   ]
-                },
+                }
+              ]
+            }
+          },
+          "encoding": {
+            "order": {
+              "condition": {
+                "test": { "ref": "highlightedLink" },
                 "value": 1
               },
               "value": 0
@@ -161,38 +173,7 @@
             "y2": { "datum": 1 },
             "color": {
               "condition": {
-                "test": {
-                  "or": [
-                    { "param": "pisaLinkHover", "empty": false },
-                    {
-                      "and": [
-                        {
-                          "param": "accessibilityRegion",
-                          "project": { "x": "x2" }
-                        },
-                        {
-                          "param": "contributionRegion",
-                          "project": { "x": "x" }
-                        },
-                        {
-                          "or": [
-                            { "param": "pisaLinkHover" },
-                            {
-                              "param": "accessibilityRegion",
-                              "project": { "x": "x2" },
-                              "empty": false
-                            },
-                            {
-                              "param": "contributionRegion",
-                              "project": { "x": "x" },
-                              "empty": false
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
+                "test": { "ref": "highlightedLink" },
                 "field": "effect",
                 "type": "quantitative",
                 "scale": {
@@ -230,38 +211,7 @@
             },
             "opacity": {
               "condition": {
-                "test": {
-                  "or": [
-                    { "param": "pisaLinkHover", "empty": false },
-                    {
-                      "and": [
-                        {
-                          "param": "accessibilityRegion",
-                          "project": { "x": "x2" }
-                        },
-                        {
-                          "param": "contributionRegion",
-                          "project": { "x": "x" }
-                        },
-                        {
-                          "or": [
-                            { "param": "pisaLinkHover" },
-                            {
-                              "param": "accessibilityRegion",
-                              "project": { "x": "x2" },
-                              "empty": false
-                            },
-                            {
-                              "param": "contributionRegion",
-                              "project": { "x": "x" },
-                              "empty": false
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
+                "test": { "ref": "highlightedLink" },
                 "field": "absEffect",
                 "type": "quantitative",
                 "scale": {
@@ -360,17 +310,18 @@
         "style": "overlay-title"
       },
       "height": { "grow": 0.16 },
+      "cursor": "text",
       "params": [
         {
           "name": "contributionRegion",
           "push": "outer",
           "persist": false,
-          "description": "Shift-drag to select influential input positions; double-click to clear.",
+          "description": "Drag to select influential input positions; bars and letters outside an active brush turn gray. Double-click to clear.",
           "select": {
             "type": "interval",
             "encodings": ["x"],
             "extent": "view",
-            "on": "mousedown[event.shiftKey]",
+            "on": "mousedown",
             "clear": "dblclick",
             "zoom": false
           }
@@ -411,7 +362,16 @@
       "multiscale": [
         {
           "name": "Contribution bars",
-          "mark": { "type": "rect", "color": "#332288", "minOpacity": 1 }
+          "mark": { "type": "rect", "minOpacity": 1 },
+          "encoding": {
+            "color": {
+              "condition": {
+                "param": "contributionRegion",
+                "value": "#332288"
+              },
+              "value": "#d8dbe0"
+            }
+          }
         },
         {
           "name": "Contribution sequence logo",
@@ -429,14 +389,24 @@
           "encoding": {
             "text": { "field": "base" },
             "color": {
-              "field": "base",
-              "type": "nominal",
-              "scale": {
-                "type": "ordinal",
-                "domain": ["A", "C", "G", "T", "N"],
-                "range": ["#009E73", "#0072B2", "#F0E442", "#D55E00", "#BDBDBD"]
+              "condition": {
+                "param": "contributionRegion",
+                "field": "base",
+                "type": "nominal",
+                "scale": {
+                  "type": "ordinal",
+                  "domain": ["A", "C", "G", "T", "N"],
+                  "range": [
+                    "#009E73",
+                    "#0072B2",
+                    "#F0E442",
+                    "#D55E00",
+                    "#BDBDBD"
+                  ]
+                },
+                "legend": null
               },
-              "legend": null
+              "value": "#d8dbe0"
             }
           }
         }

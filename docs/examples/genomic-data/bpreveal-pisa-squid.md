@@ -32,15 +32,17 @@ more opaque, making the most influential connections stand out without hiding
 the surrounding effect structure. Motif intervals are overlaid near the bottom
 of the link view.
 
-Shift-drag on Accessibility to select output positions, or on Contribution
-score to select input positions. Links matching both active brushes retain
-their normal encoding and are drawn above muted links. An empty brush leaves
-its endpoint unconstrained. Hovering also highlights a link, including one
-outside the brushed regions; links matching neither the brushes nor hover are
-muted. With no active brush or hover, all links look normal. Double-click a
-track to clear its brush. Pan and zoom normally to inspect the locus at
-different scales. Zoom in to reveal base-colored sequence letters in the
-contribution track.
+Drag on Accessibility to select output positions, or on Contribution
+score to select input positions. While a track's brush is active, bars or
+letters outside it turn gray. Links matching both active brushes retain their
+normal encoding and are drawn above muted links. An empty brush leaves
+its endpoint unconstrained. Hold Shift and hover to highlight a link, including
+one outside the brushed regions; links matching neither the brushes nor
+Shift-hover are muted. With no active brush or Shift-hover, all links look
+normal. Double-click a track to clear its brush. Pan and zoom normally to
+inspect the locus at different scales. Zoom in to reveal base-colored sequence
+letters in the contribution track. The link view uses one named predicate for
+color, opacity, and draw order.
 
 The full effect field can also be explored as a dense [PISA interaction
 matrix](bpreveal-pisa-matrix.md).
