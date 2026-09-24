@@ -31,7 +31,6 @@ export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 export const PARAM_PREFIX = "uParam_";
-export const SELECTION_CHECKER_PREFIX = "checkSelection_";
 export const SELECTION_MEMBERSHIP_PREFIX = "isSelectionMember_";
 export const SELECTION_EMPTY_PREFIX = "isSelectionEmpty_";
 

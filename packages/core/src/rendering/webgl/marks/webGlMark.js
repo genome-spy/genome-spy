@@ -25,7 +25,6 @@ import {
     makeAttributeName,
     PARAM_PREFIX,
     RANGE_TEXTURE_PREFIX,
-    SELECTION_CHECKER_PREFIX,
     SELECTION_EMPTY_PREFIX,
     SELECTION_MEMBERSHIP_PREFIX,
     splitLargeHighPrecision,
@@ -33,7 +32,6 @@ import {
 } from "../gl/glslScaleGenerator.js";
 import {
     findChannelDefWithScale,
-    getSecondaryChannel,
     isChannelWithScale,
     isDatumDef,
     isExprDef,
@@ -259,8 +257,6 @@ export default class WebGLMark {
         for (const param of order?.params ?? []) {
             selectionParams.add(param);
         }
-        const selectionUnionParams = selectionParams;
-
         if (
             Array.from(selectionParams).some((param) => {
                 const selection = this.unitView.paramRuntime.findValue(param);
@@ -325,22 +321,15 @@ export default class WebGLMark {
                     );
                 });
                 scaleCode.push(
-                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                        `    return ${PARAM_PREFIX}${param} == ${uniqueIdAttr} || (empty && ${PARAM_PREFIX}${param} == 0u);\n` +
+                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                        `    return ${PARAM_PREFIX}${param} != 0u && ${PARAM_PREFIX}${param} == ${uniqueIdAttr};\n` +
                         `}`
                 );
-                if (selectionUnionParams.has(param)) {
-                    scaleCode.push(
-                        `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
-                            `    return ${PARAM_PREFIX}${param} != 0u && ${PARAM_PREFIX}${param} == ${uniqueIdAttr};\n` +
-                            `}`
-                    );
-                    scaleCode.push(
-                        `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
-                            `    return ${PARAM_PREFIX}${param} == 0u;\n` +
-                            `}`
-                    );
-                }
+                scaleCode.push(
+                    `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                        `    return ${PARAM_PREFIX}${param} == 0u;\n` +
+                        `}`
+                );
             } else if (isMultiPointSelection(selection)) {
                 // We need a texture for each multi-selection parameter.
                 // The texture stores an open-addressing hash table of selected uniqueIds.
@@ -371,22 +360,15 @@ export default class WebGLMark {
 
                 const texName = SELECTION_TEXTURE_PREFIX + param;
                 scaleCode.push(
-                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                        `   return hashContainsTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyHashTexture(${texName}));\n` +
+                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                        `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
                         `}`
                 );
-                if (selectionUnionParams.has(param)) {
-                    scaleCode.push(
-                        `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
-                            `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
-                            `}`
-                    );
-                    scaleCode.push(
-                        `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
-                            `    return isEmptyHashTexture(${texName});\n` +
-                            `}`
-                    );
-                }
+                scaleCode.push(
+                    `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                        `    return isEmptyHashTexture(${texName});\n` +
+                        `}`
+                );
 
                 // Create the initial texture
                 glHelper.createSelectionTexture(selection);
@@ -411,9 +393,6 @@ export default class WebGLMark {
                 }
 
                 /** @type {string[]} */
-                const testSnippets = [];
-
-                /** @type {string[]} */
                 const emptySnippets = [];
 
                 // Handle both channels separately
@@ -430,17 +409,6 @@ export default class WebGLMark {
                                 .getScale(),
                             channel
                         );
-                    const leq = (
-                        /** @type {string} */ a,
-                        /** @type {string} */ b
-                    ) =>
-                        largeHp ? `selectionLeq(${a}, ${b})` : `${a} <= ${b}`;
-                    const gt = (
-                        /** @type {string} */ a,
-                        /** @type {string} */ b
-                    ) =>
-                        largeHp ? `!selectionLeq(${a}, ${b})` : `${a} > ${b}`;
-
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
                         `    uniform highp ${attributeType}[2] ${uniformName};`
@@ -464,54 +432,12 @@ export default class WebGLMark {
                         );
                     });
 
-                    const c = getSelectionAttributeName(channel);
                     const u = uniformName + "[0]";
                     const u2 = uniformName + "[1]";
-                    const secondaryChannel = getSecondaryChannel(channel);
-                    if (this.encoding[secondaryChannel]) {
-                        const c2 = getSelectionAttributeName(secondaryChannel);
-                        const mode = this.defaultHitTestMode;
-                        if (mode == "endpoints") {
-                            testSnippets.push(
-                                `((${leq(u, c)} && ${leq(c, u2)}) || (${leq(u, c2)} && ${leq(c2, u2)}))`
-                            );
-                        } else if (mode == "encloses") {
-                            testSnippets.push(
-                                `(${leq(u, c)} && ${leq(c2, u2)})`
-                            );
-                        } else if (mode == "intersects") {
-                            testSnippets.push(
-                                `(${leq(u, c2)} && ${leq(c, u2)})`
-                            );
-                        } else {
-                            throw new ViewError(
-                                `Unsupported hit test mode "${mode}" for interval selection!`,
-                                this.unitView
-                            );
-                        }
-                    } else {
-                        testSnippets.push(`(${leq(u, c)} && ${leq(c, u2)})`);
-                    }
-
-                    emptySnippets.push(gt(u, u2));
+                    emptySnippets.push(
+                        largeHp ? `!selectionLeq(${u}, ${u2})` : `${u} > ${u2}`
+                    );
                 }
-
-                scaleCode.push(
-                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                        `    return ${testSnippets.join(" && ")} || (empty && (${emptySnippets.join(" || ")}));\n` +
-                        `}`
-                );
-                if (!selectionUnionParams.has(param)) {
-                    continue;
-                }
-                const partialTests = testSnippets.map(
-                    (test, index) => `(${emptySnippets[index]} || ${test})`
-                );
-                scaleCode.push(
-                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
-                        `    return (!(${emptySnippets.join(" && ")})) && (${partialTests.join(" && ")});\n` +
-                        `}`
-                );
                 scaleCode.push(
                     `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
                         `    return ${emptySnippets.join(" && ")};\n` +

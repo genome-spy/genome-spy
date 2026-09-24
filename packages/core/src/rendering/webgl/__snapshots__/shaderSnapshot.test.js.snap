@@ -3428,14 +3428,6 @@ in highp uint attr_uniqueId;
 in highp float attr_x;
 in highp float attr_y;
 
-bool checkSelection_brush(bool empty) {
-    return (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) || (empty && (uParam_brush_x[0] > uParam_brush_x[1]));
-}
-
-bool isSelectionMember_brush() {
-    return (!(uParam_brush_x[0] > uParam_brush_x[1])) && ((uParam_brush_x[0] > uParam_brush_x[1] || (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])));
-}
-
 bool isSelectionEmpty_brush() {
     return uParam_brush_x[0] > uParam_brush_x[1];
 }
@@ -5673,14 +5665,6 @@ in highp float attr_x;
 in highp float attr_y;
 in highp uint attr_stroke;
 in highp uint attr_fill;
-
-bool checkSelection_brush(bool empty) {
-    return (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1]) || (empty && (uParam_brush_x[0] > uParam_brush_x[1] || uParam_brush_y[0] > uParam_brush_y[1]));
-}
-
-bool isSelectionMember_brush() {
-    return (!(uParam_brush_x[0] > uParam_brush_x[1] && uParam_brush_y[0] > uParam_brush_y[1])) && ((uParam_brush_x[0] > uParam_brush_x[1] || (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) && (uParam_brush_y[0] > uParam_brush_y[1] || (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1])));
-}
 
 bool isSelectionEmpty_brush() {
     return uParam_brush_x[0] > uParam_brush_x[1] && uParam_brush_y[0] > uParam_brush_y[1];
@@ -8040,20 +8024,12 @@ in highp uint attr_x2;
 // Selection texture
 uniform highp usampler2D uSelectionTexture_select;
 
-bool checkSelection_select(bool empty) {
-   return hashContainsTexture(uSelectionTexture_select, attr_uniqueId) || (empty && isEmptyHashTexture(uSelectionTexture_select));
-}
-
 bool isSelectionMember_select() {
     return hashContainsTexture(uSelectionTexture_select, attr_uniqueId);
 }
 
 bool isSelectionEmpty_select() {
     return isEmptyHashTexture(uSelectionTexture_select);
-}
-
-bool checkSelection_highlight(bool empty) {
-    return uParam_highlight == attr_uniqueId || (empty && uParam_highlight == 0u);
 }
 
 bool isSelectionMember_highlight() {
