@@ -7,6 +7,7 @@ import {
     FacetFieldDef,
     NonPositionalChannelWithScale,
     PrimaryPositionalChannel,
+    SelectionPredicateDefinition,
 } from "./channel.js";
 import { MarkProps, MarkType, RuleProps } from "./mark.js";
 import { ExprRef, Parameter, ParamTransition } from "./parameter.js";
@@ -416,6 +417,18 @@ export interface DynamicOpacitySpec {
 }
 
 export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
+    /**
+     * Define a selection test once instead of repeating it across this unit's
+     * conditional encodings, including conditional draw order. Use
+     * `test: { ref: "name" }` in a condition to reference it.
+     *
+     * Definitions are local to this unit and are not inherited. An inherited
+     * encoding may reference a name if each consuming unit defines it.
+     * Selection parameters and projected channels resolve in this unit.
+     * Filter transforms do not use these definitions.
+     */
+    predicates?: Record<string, SelectionPredicateDefinition>;
+
     /**
      * The background of the view, including fill, stroke, and stroke width.
      */

@@ -11,6 +11,21 @@ import { field } from "../utils/field.js";
  */
 
 /**
+ * @param {import("../spec/channel.js").ParameterPredicate | import("../spec/channel.js").TestPredicate} condition
+ * @param {Record<string, import("../spec/channel.js").SelectionPredicateDefinition>} predicates
+ */
+export function expandNamedPredicateCondition(condition, predicates) {
+    if (!("test" in condition) || !("ref" in condition.test)) {
+        return condition;
+    }
+    const name = condition.test.ref;
+    if (!Object.hasOwn(predicates, name)) {
+        throw new Error(`Unknown predicate "${name}" in unit view.`);
+    }
+    return { ...condition, test: predicates[name] };
+}
+
+/**
  * Parses the public predicate grammar and lowers the flat-union shorthand into
  * membership and activity atoms. The resulting tree has no use-site bindings.
  *

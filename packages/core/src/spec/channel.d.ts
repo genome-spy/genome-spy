@@ -327,9 +327,18 @@ export interface SelectionUnionTest {
     empty?: boolean;
 }
 
+/** Reference to a named selection predicate in the consuming unit view. */
+export interface NamedSelectionPredicateRef {
+    ref: string;
+}
+
+/** A selection test; definitions cannot refer to other named predicates. */
+export type SelectionPredicateDefinition =
+    SelectionPredicateOperand | SelectionUnionTest;
+
 /** A structured selection predicate for a conditional encoding. */
 export interface TestPredicate {
-    test: SelectionPredicateOperand | SelectionUnionTest;
+    test: SelectionPredicateDefinition | NamedSelectionPredicateRef;
     empty?: never;
     param?: never;
 }

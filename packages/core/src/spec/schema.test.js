@@ -284,6 +284,35 @@ describe("generated core schema", () => {
         expect(validate(base)).toBe(false);
     });
 
+    test("accepts unit predicates referenced by conditional encodings", () => {
+        const validate = createCoreValidator();
+        const spec = /** @type {any} */ ({
+            mark: "point",
+            predicates: {
+                highlighted: {
+                    or: [{ param: "hover", empty: false }, { param: "brush" }],
+                },
+            },
+            encoding: {
+                color: {
+                    condition: { test: { ref: "highlighted" }, value: "red" },
+                    value: "gray",
+                },
+            },
+        });
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+
+        spec.predicates.highlighted = { ref: "other" };
+        expect(validate(spec)).toBe(false);
+
+        spec.predicates.highlighted = { param: "hover" };
+        spec.encoding.color.condition.test.empty = false;
+        expect(validate(spec)).toBe(false);
+    });
+
     test("accepts the indexed FASTA six-frame translation example", () => {
         const spec = JSON.parse(
             fs.readFileSync(

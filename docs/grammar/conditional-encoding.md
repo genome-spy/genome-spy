@@ -123,6 +123,41 @@ The flat union's `or` list and logical `and`/`or` arrays must be nonempty.
 `empty` belongs on leaves or on the flat union, not on the surrounding
 condition.
 
+## Reusing Tests in a Unit View
+
+When several channels use the same selection test, define it once in the unit
+view's `predicates` and refer to it by name. A reference replaces the whole
+`test` in a condition, including a conditional `order` definition:
+
+```json
+{
+  "mark": "point",
+  "predicates": {
+    "highlighted": {
+      "or": [
+        { "param": "hover", "empty": false },
+        { "param": "brush", "empty": false }
+      ]
+    }
+  },
+  "encoding": {
+    "fillOpacity": {
+      "condition": { "test": { "ref": "highlighted" }, "value": 1 },
+      "value": 0.2
+    },
+    "order": {
+      "condition": { "test": { "ref": "highlighted" }, "value": 1 },
+      "value": 0
+    }
+  }
+}
+```
+
+Names are local to the unit view; predicate definitions are not inherited. An
+inherited encoding may contain a reference, but each consuming unit must define
+that name. Selection parameters and projected channels resolve in the consuming
+unit. Definitions cannot refer to other named predicates.
+
 ## Testing Different Link Endpoints
 
 An interval selection normally tests the mark's primary positional channel.

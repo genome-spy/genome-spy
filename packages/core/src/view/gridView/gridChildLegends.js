@@ -1,8 +1,10 @@
 import { findChannelDefWithScale, isValueDef } from "../../encoder/encoder.js";
 import {
+    expandNamedPredicateCondition,
     normalizeSelectionPredicateTree,
     selectionPredicateMatchesWhenEmpty,
 } from "../../selection/selectionPredicateTree.js";
+import { asArray } from "../../utils/arrayUtils.js";
 import { getConfiguredLegendRegionLayout } from "../../config/legendConfig.js";
 import {
     activateExprRefProps,
@@ -145,16 +147,17 @@ export function getOrderedLegendEntries(legendOwners) {
 
 /**
  * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef
+ * @param {Record<string, import("../../spec/channel.js").SelectionPredicateDefinition>} predicates
  * @returns {import("../../spec/channel.js").ValueDef | undefined}
  */
-function getEmptySelectionValueDef(channelDef) {
+function getEmptySelectionValueDef(channelDef, predicates) {
     if (channelDef && "condition" in channelDef) {
-        const conditions = Array.isArray(channelDef.condition)
-            ? channelDef.condition
-            : [channelDef.condition];
+        const conditions = asArray(channelDef.condition);
         for (const condition of conditions) {
             const empty = selectionPredicateMatchesWhenEmpty(
-                normalizeSelectionPredicateTree(condition)
+                normalizeSelectionPredicateTree(
+                    expandNamedPredicateCondition(condition, predicates)
+                )
             );
             if (empty && "value" in condition) {
                 return { value: condition.value };
@@ -326,7 +329,10 @@ function createInheritedSymbolStyle(
 
     const colorDef = sourceView.spec.encoding?.color;
     const filled = sourceProps.filled;
-    const colorValueDef = getEmptySelectionValueDef(colorDef);
+    const colorValueDef = getEmptySelectionValueDef(
+        colorDef,
+        sourceView.spec.predicates ?? {}
+    );
     if (colorValueDef && !scaledChannels.has("color")) {
         if (filled) {
             styleEncoding.fill = colorValueDef;
@@ -349,7 +355,10 @@ function createInheritedSymbolStyle(
         }
 
         const channelDef = sourceView.spec.encoding?.[channel];
-        const valueDef = getEmptySelectionValueDef(channelDef);
+        const valueDef = getEmptySelectionValueDef(
+            channelDef,
+            sourceView.spec.predicates ?? {}
+        );
         if (valueDef) {
             styleEncoding[channel] = valueDef;
         }
