@@ -78,7 +78,7 @@
       "layer": [
         {
           "name": "pisa-links",
-          "description": "Links matching both active endpoint brushes, or the hovered link, retain their effect color and magnitude opacity and are drawn above muted links.",
+          "description": "Links matching the active endpoint brushes or hover retain their effect encoding and are drawn above muted links. With no active selection, all links look normal.",
           "params": [
             {
               "name": "pisaLinkHover",
@@ -121,6 +121,21 @@
                         {
                           "param": "contributionRegion",
                           "project": { "x": "x" }
+                        },
+                        {
+                          "or": [
+                            { "param": "pisaLinkHover" },
+                            {
+                              "param": "accessibilityRegion",
+                              "project": { "x": "x2" },
+                              "empty": false
+                            },
+                            {
+                              "param": "contributionRegion",
+                              "project": { "x": "x" },
+                              "empty": false
+                            }
+                          ]
                         }
                       ]
                     }
@@ -158,6 +173,21 @@
                         {
                           "param": "contributionRegion",
                           "project": { "x": "x" }
+                        },
+                        {
+                          "or": [
+                            { "param": "pisaLinkHover" },
+                            {
+                              "param": "accessibilityRegion",
+                              "project": { "x": "x2" },
+                              "empty": false
+                            },
+                            {
+                              "param": "contributionRegion",
+                              "project": { "x": "x" },
+                              "empty": false
+                            }
+                          ]
                         }
                       ]
                     }
@@ -212,6 +242,21 @@
                         {
                           "param": "contributionRegion",
                           "project": { "x": "x" }
+                        },
+                        {
+                          "or": [
+                            { "param": "pisaLinkHover" },
+                            {
+                              "param": "accessibilityRegion",
+                              "project": { "x": "x2" },
+                              "empty": false
+                            },
+                            {
+                              "param": "contributionRegion",
+                              "project": { "x": "x" },
+                              "empty": false
+                            }
+                          ]
                         }
                       ]
                     }
