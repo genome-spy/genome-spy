@@ -568,9 +568,9 @@ export class SelectionResourceManager {
                 return { active, bounds };
             });
 
-            let anyActive = false;
+            let allActive = true;
             for (const [index, { active, bounds }] of prepared.entries()) {
-                anyActive ||= active;
+                allActive &&= active;
                 this._setUniformValue(
                     intervalSelectionActiveName(name, index),
                     active ? 1 : 0
@@ -582,7 +582,7 @@ export class SelectionResourceManager {
                     );
                 }
             }
-            this._setOrderSelectionActive(name, anyActive);
+            this._setOrderSelectionActive(name, allActive);
         } else if (update.type === "multi") {
             const bufferName = SELECTION_BUFFER_PREFIX + name;
             const existing = this._selectionBuffers.get(name);

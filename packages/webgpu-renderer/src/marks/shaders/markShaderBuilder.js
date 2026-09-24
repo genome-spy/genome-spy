@@ -340,8 +340,8 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
     let datumHi = select(datum0, datum1, ${le("datum0", "datum1")});`
                             : "";
                         return /* wgsl */ `
-fn ${fnName}_p${projectionIndex}(i: u32, allowEmpty: bool) -> bool {
-    if (params.${active} == 0u) { return allowEmpty; }
+fn ${fnName}_p${projectionIndex}(i: u32) -> bool {
+    if (params.${active} == 0u) { return false; }
 ${boundsSetup}
 ${datumSetup}
     return ${test};
@@ -351,7 +351,7 @@ ${datumSetup}
                 );
                 return /* wgsl */ `
 fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
-    return ${components.map((_, index) => `params.${intervalSelectionActiveName(def.name, index)} == 0u`).join(" && ") || "true"};
+    return ${components.map((_, index) => `params.${intervalSelectionActiveName(def.name, index)} == 0u`).join(" || ") || "true"};
 }
 ${projectionFns.join("\n")}
 `;

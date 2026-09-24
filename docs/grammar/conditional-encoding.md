@@ -91,6 +91,10 @@ Vega-Lite selection predicates. The default `empty: true` is evaluated for each
 leaf before the Boolean operators; set `empty: false` on a leaf when an unused
 selection should not satisfy that part of the test.
 
+A brush declared on both axes is empty until both intervals are active. A
+partially active two-axis brush therefore follows its `empty` setting rather
+than testing just one axis. Declare a one-axis brush to select on one axis.
+
 GenomeSpy also retains its flat union shorthand for an `or` of selection
 names:
 
@@ -116,8 +120,8 @@ The branch matches when at least one selection contains the row. With
 `empty: true` (the default), it also matches all rows while every selection in
 the group is empty. Once any member is active, the union matches rows selected
 by any active member. Set `empty: false` inside `test` to keep the fallback
-active until one selection is populated. Interval unions allow an active
-dimension to constrain the row while inactive dimensions impose no constraint.
+active until one selection is populated. A two-axis brush participates in the
+union only when both intervals are active.
 
 The flat union's `or` list and logical `and`/`or` arrays must be nonempty.
 `empty` belongs on leaves or on the flat union, not on the surrounding

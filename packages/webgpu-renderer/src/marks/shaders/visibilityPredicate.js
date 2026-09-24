@@ -211,9 +211,10 @@ export function emitPredicateExpression(node, selectionDefs, emitComparison) {
                     `Selection "${def.name}" has an unknown projection.`
                 );
             }
-            return `${SELECTION_CHECKER_PREFIX}${def.name}_p${index}(i, ${node.empty !== false ? "true" : "false"})`;
+            return `${SELECTION_CHECKER_PREFIX}${def.name}_p${index}(i)`;
         });
-        return `(${checks.join(" && ")})`;
+        const isEmpty = `${SELECTION_EMPTY_PREFIX}${def.name}(i)`;
+        return `(select(${checks.join(" && ")}, ${node.empty !== false ? "true" : "false"}, ${isEmpty}))`;
     }
     return `${SELECTION_CHECKER_PREFIX}${def.name}(i, ${node.empty !== false ? "true" : "false"})`;
 }

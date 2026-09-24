@@ -358,7 +358,7 @@ describe("createConditionalBranches", () => {
         ).toEqual(["a", "b"]);
     });
 
-    test("Selection unions support partial interval dimensions", () => {
+    test("Selection unions require complete interval brushes", () => {
         const intervalRuntime = new ViewParamRuntime(() => undefined);
         const setX = intervalRuntime.allocateSetter(
             "xBrush",
@@ -390,11 +390,15 @@ describe("createConditionalBranches", () => {
         )[0].predicate;
 
         setX({ type: "interval", intervals: { x: [1, 2], y: null } });
-        expect(predicate({ x: 1.5, y: 100 })).toBe(true);
+        expect(predicate({ x: 1.5, y: 100 })).toBe(false);
         expect(predicate({ x: 3, y: 100 })).toBe(false);
         setY({ type: "interval", intervals: { x: null, y: [4, 5] } });
-        expect(predicate({ x: 100, y: 4.5 })).toBe(true);
+        expect(predicate({ x: 100, y: 4.5 })).toBe(false);
         expect(predicate({ x: 100, y: 8 })).toBe(false);
+
+        setX({ type: "interval", intervals: { x: [1, 2], y: [0, 1] } });
+        expect(predicate({ x: 1.5, y: 0.5 })).toBe(true);
+        expect(predicate({ x: 1.5, y: 100 })).toBe(false);
     });
 
     test("Selection union interval predicates use the requested endpoint hit test", () => {

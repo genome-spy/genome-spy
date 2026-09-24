@@ -544,14 +544,14 @@ mark.selections.brush.set({ x: [0, 10], y: [2, 8] });
 ```
 
 Interval slots expose their stable component order. A complete replacement may
-omit a component or set it to `null` to make it inactive; unknown components are
-rejected.
+omit a component or set it to `null` to make it inactive. An interval selection
+is empty until all its components are active; unknown components are rejected.
 
 Conditional channels, visibility, and order accept recursive `all`, `any`, and
 `not` predicates. Selection leaves test membership and default to
-`empty: true`. A `selectionActive` atom reads whether a selection has any
-retained state, without testing an input. It is useful when empty membership
-must be distinguished from active membership:
+`empty: true`. A `selectionActive` atom reads whether all components of an
+interval selection are active, without testing an input. It is useful when
+empty membership must be distinguished from active membership:
 
 ```js
 {

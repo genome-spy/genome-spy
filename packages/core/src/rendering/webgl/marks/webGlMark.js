@@ -440,7 +440,7 @@ export default class WebGLMark {
                 }
                 scaleCode.push(
                     `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
-                        `    return ${emptySnippets.join(" && ")};\n` +
+                        `    return ${emptySnippets.join(" || ")};\n` +
                         `}`
                 );
             } else {
@@ -490,10 +490,7 @@ export default class WebGLMark {
                           : projection.hitTest === "encloses"
                             ? `(${leq(lo, first)} && ${leq(second, hi)})`
                             : `(${leq(lo, second)} && ${leq(first, hi)})`;
-                const inactive = largeHp
-                    ? `!selectionLeq(${lo}, ${hi})`
-                    : `${lo} > ${hi}`;
-                return `(${inactive} || ${test})`;
+                return test;
             });
             const active = `!${SELECTION_EMPTY_PREFIX}${param}()`;
             return `((${active} && ${dimensions.join(" && ")}) || (${empty} && !${active}))`;

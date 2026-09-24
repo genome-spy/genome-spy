@@ -3638,7 +3638,7 @@ vec3 accessor_fill_1() {
 }
 
 vec3 getScaled_fill() {
-    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] > uParam_brush_x[1] || (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]))) || (true && !!isSelectionEmpty_brush()))) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) || (true && !!isSelectionEmpty_brush()))) {
         return accessor_fill_0();
     }
     else {
@@ -3661,7 +3661,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] > uParam_brush_x[1] || (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]))) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
+    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
 }
 
 
@@ -5667,7 +5667,7 @@ in highp uint attr_stroke;
 in highp uint attr_fill;
 
 bool isSelectionEmpty_brush() {
-    return uParam_brush_x[0] > uParam_brush_x[1] && uParam_brush_y[0] > uParam_brush_y[1];
+    return uParam_brush_x[0] > uParam_brush_x[1] || uParam_brush_y[0] > uParam_brush_y[1];
 }
 
 
@@ -5864,7 +5864,7 @@ vec3 scale_stroke(uint value) {
 }
 
 vec3 getScaled_stroke() {
-    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] > uParam_brush_x[1] || (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) && (uParam_brush_y[0] > uParam_brush_y[1] || (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush()))) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush()))) {
         return scale_stroke(accessor_stroke_0());
     }
     else {
@@ -5911,7 +5911,7 @@ vec3 scale_fill(uint value) {
 }
 
 vec3 getScaled_fill() {
-    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] > uParam_brush_x[1] || (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) && (uParam_brush_y[0] > uParam_brush_y[1] || (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush()))) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush()))) {
         return scale_fill(accessor_fill_0());
     }
     else {
@@ -5934,7 +5934,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] > uParam_brush_x[1] || (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) && (uParam_brush_y[0] > uParam_brush_y[1] || (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
+    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
 }
 
 

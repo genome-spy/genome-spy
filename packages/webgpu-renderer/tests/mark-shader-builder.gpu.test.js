@@ -891,7 +891,7 @@ test("markShaderBuilder combines N interval targets with explicit empty state", 
             uSelection_brush_1: [0, 0],
         },
     });
-    expect(onlyX).toEqual([0, 1, 1, 0]);
+    expect(onlyX).toEqual([1, 1, 1, 1]);
 
     const onlyXRejected = await runScaleCase(page, {
         ...base,

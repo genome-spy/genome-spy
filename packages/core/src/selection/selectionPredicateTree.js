@@ -442,15 +442,13 @@ export function compileSelectionPredicateTree(tree, getSelection) {
             /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
                 getSelection(param)
             );
-        let active = false;
+        if (!isActive(selection)) {
+            return empty;
+        }
         for (const input of inputs) {
-            const interval = /** @type {Record<string, number[] | null>} */ (
+            const interval = /** @type {Record<string, number[]>} */ (
                 selection.intervals
             )[input.component];
-            if (!interval) {
-                continue;
-            }
-            active = true;
             const first = input.read(datum);
             const second = input.readSecondary?.(datum);
             const [lo, hi] = interval;
@@ -467,7 +465,7 @@ export function compileSelectionPredicateTree(tree, getSelection) {
                 return false;
             }
         }
-        return active || empty;
+        return true;
     };
 }
 
@@ -480,7 +478,7 @@ function isActive(selection) {
         return selection.data.size !== 0;
     }
     if (selection.type === "interval") {
-        return Object.values(selection.intervals).some(
+        return Object.values(selection.intervals).every(
             (interval) => !!interval
         );
     }

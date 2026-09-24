@@ -756,10 +756,14 @@ const placementSentinel = 1u;
 
         expect(shaderCode).toContain("params.uSelection_brush_0_active");
         expect(shaderCode).toContain("params.uSelection_brush_1_active");
-        expect(shaderCode).toContain("return allowEmpty");
+        expect(shaderCode).toContain(
+            "params.uSelection_brush_0_active == 0u || params.uSelection_brush_1_active == 0u"
+        );
         expect(shaderCode).toContain("let datum0 =");
         expect(shaderCode).toContain("let datum1 =");
-        expect(shaderCode).toContain("checkSelection_brush_p1(i, true)");
+        expect(shaderCode).toContain(
+            "select(checkSelection_brush_p0(i) && checkSelection_brush_p1(i), true, isSelectionEmpty_brush(i))"
+        );
     });
 
     it("throws when updating non-dynamic uniforms", () => {

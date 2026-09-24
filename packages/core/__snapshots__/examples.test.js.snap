@@ -10719,46 +10719,6 @@ exports[`shared examples > initializes examples/docs/grammar/conditional-encodin
     },
     {
       "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -10784,13 +10744,13 @@ exports[`shared examples > initializes examples/docs/grammar/conditional-encodin
       {
         "baseUrl": "examples/",
         "children": [],
-        "name": "links",
+        "name": "grid0",
         "type": "UnitView",
       },
       {
         "baseUrl": "examples/",
         "children": [],
-        "name": "grid1",
+        "name": "links",
         "type": "UnitView",
       },
       {

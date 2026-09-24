@@ -484,7 +484,7 @@ describe("logical selection predicates", () => {
         }
     );
 
-    test("ignores an inactive dimension while testing an active one", () => {
+    test("treats a partially active two-axis brush as empty", () => {
         /** @type {{brush: import("../types/selectionTypes.js").IntervalSelection}} */
         const values = {
             brush: {
@@ -492,32 +492,46 @@ describe("logical selection predicates", () => {
                 intervals: { x: [10, 20], y: null },
             },
         };
-        const tree = normalizeSelectionPredicateTree({ param: "brush" });
-        const resolved = resolveSelectionPredicateTree(
-            tree,
-            {
-                x: { field: "x", type: "quantitative" },
-                y: { field: "y", type: "quantitative" },
-            },
-            {
-                findValue: () => values.brush,
-                findSelectionCapability: () => ({
-                    type: "interval",
-                    components: [
-                        { component: "x", type: "quantitative" },
-                        { component: "y", type: "quantitative" },
-                    ],
-                }),
-            },
-            "intersects"
-        );
+        const resolve = (/** @type {boolean} */ empty) =>
+            resolveSelectionPredicateTree(
+                normalizeSelectionPredicateTree({ param: "brush", empty }),
+                {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+                {
+                    findValue: () => values.brush,
+                    findSelectionCapability: () => ({
+                        type: "interval",
+                        components: [
+                            { component: "x", type: "quantitative" },
+                            { component: "y", type: "quantitative" },
+                        ],
+                    }),
+                },
+                "intersects"
+            );
         const matches = compileSelectionPredicateTree(
-            resolved,
+            resolve(true),
+            () => values.brush
+        );
+        const matchesNonempty = compileSelectionPredicateTree(
+            resolve(false),
+            () => values.brush
+        );
+        const activeMatch = compileSelectionPredicateTree(
+            activeMatchResolvedSelectionPredicate(resolve(true)),
             () => values.brush
         );
         expect(matches({ x: 15, y: 100 })).toBe(true);
-        expect(matches({ x: 25, y: 100 })).toBe(false);
-        values.brush.intervals.x = null;
         expect(matches({ x: 25, y: 100 })).toBe(true);
+        expect(matchesNonempty({ x: 15, y: 100 })).toBe(false);
+        expect(activeMatch({ x: 15, y: 100 })).toBe(false);
+
+        values.brush.intervals.y = [90, 110];
+        expect(matches({ x: 15, y: 100 })).toBe(true);
+        expect(matchesNonempty({ x: 15, y: 100 })).toBe(true);
+        expect(activeMatch({ x: 15, y: 100 })).toBe(true);
+        expect(matches({ x: 25, y: 100 })).toBe(false);
     });
 });

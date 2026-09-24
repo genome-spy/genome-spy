@@ -225,7 +225,7 @@ describe("SelectionResourceManager", () => {
     });
 
     it("caches activity for the selections referenced by order", () => {
-        const channels = makeIntervalChannels([{ input: "x" }]);
+        const channels = makeIntervalChannels([{ input: "x" }, { input: "y" }]);
         channels.uniqueId = { value: 1, type: "u32", components: 1 };
         channels.fill.conditions = [
             {
@@ -236,7 +236,10 @@ describe("SelectionResourceManager", () => {
                 when: {
                     selection: "brush",
                     type: "interval",
-                    projections: [{ component: "x", input: "x" }],
+                    projections: [
+                        { component: "x", input: "x" },
+                        { component: "y", input: "y" },
+                    ],
                 },
                 value: 1,
             },
@@ -252,7 +255,10 @@ describe("SelectionResourceManager", () => {
                         {
                             selection: "brush",
                             type: "interval",
-                            projections: [{ component: "x", input: "x" }],
+                            projections: [
+                                { component: "x", input: "x" },
+                                { component: "y", input: "y" },
+                            ],
                         },
                     ],
                 },
@@ -298,6 +304,12 @@ describe("SelectionResourceManager", () => {
         manager.updateSelection(
             "brush",
             { type: "interval", intervals: { x: [0, 1] } },
+            extraBuffers
+        );
+        expect(manager.orderActive).toBe(false);
+        manager.updateSelection(
+            "brush",
+            { type: "interval", intervals: { x: [0, 1], y: [0, 1] } },
             extraBuffers
         );
         expect(manager.orderActive).toBe(true);
