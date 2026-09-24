@@ -363,7 +363,6 @@ export class SelectionResourceManager {
         setUniformValue,
     }) {
         this._device = device;
-        this._channels = channels;
         this._label = label;
         this._setUniformValue = setUniformValue;
 
@@ -485,44 +484,23 @@ export class SelectionResourceManager {
     initializeSelections(extraBuffers) {
         for (const def of this._selectionDefs.values()) {
             if (def.type === "single") {
-                this._setUniformValue(SELECTION_PREFIX + def.name, 0);
-            } else if (def.type === "interval") {
-                for (const [index, component] of (
-                    def.components ?? []
-                ).entries()) {
-                    this._setUniformValue(
-                        intervalSelectionActiveName(def.name, index),
-                        0
-                    );
-                    if (def.representations?.has(component)) {
-                        this._setUniformValue(
-                            intervalSelectionBoundsName(def.name, index),
-                            def.representations.get(component)
-                                ?.inputComponents === 2
-                                ? [0, 0, 0, 0]
-                                : INACTIVE_INTERVAL_BOUNDS
-                        );
-                    }
-                }
-            } else if (def.type === "multi") {
-                this._setUniformValue(SELECTION_COUNT_PREFIX + def.name, 0);
-                const bufferName = SELECTION_BUFFER_PREFIX + def.name;
-                const { table } = buildHashTableSet([]);
-                const buffer = this._device.createBuffer({
-                    label: gpuLabel(this._label, `selection ${def.name}`),
-                    size: table.byteLength,
-                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-                });
-                this._device.queue.writeBuffer(
-                    buffer,
-                    0,
-                    asGpuBufferSource(table)
+                this.updateSelection(
+                    def.name,
+                    { type: "single", id: 0 },
+                    extraBuffers
                 );
-                extraBuffers.set(bufferName, buffer);
-                this._selectionBuffers.set(def.name, {
-                    buffer,
-                    byteLength: table.byteLength,
-                });
+            } else if (def.type === "interval") {
+                this.updateSelection(
+                    def.name,
+                    { type: "interval", intervals: {} },
+                    extraBuffers
+                );
+            } else if (def.type === "multi") {
+                this.updateSelection(
+                    def.name,
+                    { type: "multi", ids: new Uint32Array() },
+                    extraBuffers
+                );
             } else {
                 throw new Error(
                     `Selection "${def.name}" has unsupported type "${def.type}".`

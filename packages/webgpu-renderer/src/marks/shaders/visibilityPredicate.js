@@ -25,6 +25,7 @@ function validatePredicate(predicate, allowComparison) {
         throw new Error("Predicate nodes must be objects.");
     }
     const node = /** @type {Record<string, unknown>} */ (predicate);
+    const keys = Object.keys(node);
     const variants = [
         "compare",
         "selection",
@@ -43,14 +44,14 @@ function validatePredicate(predicate, allowComparison) {
         if (!Array.isArray(children) || children.length === 0) {
             throw new Error(`Predicate ${kind} nodes must not be empty.`);
         }
-        if (Object.keys(node).length !== 1) {
+        if (keys.length !== 1) {
             throw new Error(
                 `Predicate ${kind} nodes cannot mix variants or leaf properties.`
             );
         }
         children.forEach((child) => validatePredicate(child, allowComparison));
     } else if (kind === "not") {
-        if (Object.keys(node).length !== 1) {
+        if (keys.length !== 1) {
             throw new Error(
                 "Predicate not nodes cannot mix variants or leaf properties."
             );
@@ -60,29 +61,22 @@ function validatePredicate(predicate, allowComparison) {
         if (!allowComparison) {
             throw new Error("Selection predicates cannot contain comparisons.");
         }
-        if (
-            Object.keys(node).some(
-                (key) => !["compare", "left", "right"].includes(key)
-            )
-        ) {
+        if (keys.some((key) => !["compare", "left", "right"].includes(key))) {
             throw new Error(
                 "Comparison predicates cannot mix variants or leaf properties."
             );
         }
     } else if (kind === "selectionActive") {
         const reference = node.selectionActive;
-        if (
-            !reference ||
-            typeof reference !== "object" ||
-            Object.keys(node).length !== 1
-        ) {
+        if (!reference || typeof reference !== "object" || keys.length !== 1) {
             throw new Error("Selection activity requires a state reference.");
         }
         const state = /** @type {Record<string, unknown>} */ (reference);
         if (typeof state.selection !== "string" || !state.selection) {
             throw new Error("Selection activity requires a selection name.");
         }
-        if (state.type === "interval") {
+        const interval = state.type === "interval";
+        if (interval) {
             if (
                 !Array.isArray(state.components) ||
                 !state.components.length ||
@@ -95,23 +89,18 @@ function validatePredicate(predicate, allowComparison) {
                     "Interval selection activity requires distinct components."
                 );
             }
-            if (
-                Object.keys(state).some(
-                    (key) => !["selection", "type", "components"].includes(key)
-                )
-            ) {
-                throw new Error(
-                    "Interval selection activity has unsupported properties."
-                );
-            }
         } else if (state.type !== "single" && state.type !== "multi") {
             throw new Error("Selection activity has an invalid type.");
-        } else if (
-            Object.keys(state).some(
-                (key) => !["selection", "type"].includes(key)
-            )
-        ) {
-            throw new Error("Selection activity has unsupported properties.");
+        }
+        const allowed = interval
+            ? ["selection", "type", "components"]
+            : ["selection", "type"];
+        if (Object.keys(state).some((key) => !allowed.includes(key))) {
+            throw new Error(
+                interval
+                    ? "Interval selection activity has unsupported properties."
+                    : "Selection activity has unsupported properties."
+            );
         }
     } else {
         if (typeof node.selection !== "string" || !node.selection) {
@@ -120,25 +109,14 @@ function validatePredicate(predicate, allowComparison) {
         if (node.empty !== undefined && typeof node.empty !== "boolean") {
             throw new Error("Selection empty policy must be boolean.");
         }
-        if (node.type === "interval") {
+        const interval = node.type === "interval";
+        if (interval) {
             if (
                 !Array.isArray(node.projections) ||
                 node.projections.length === 0
             ) {
                 throw new Error(
                     "Interval selections require non-empty projections."
-                );
-            }
-            if (
-                Object.keys(node).some(
-                    (key) =>
-                        !["selection", "type", "projections", "empty"].includes(
-                            key
-                        )
-                )
-            ) {
-                throw new Error(
-                    "Interval selection predicates cannot mix variants or leaf properties."
                 );
             }
         } else if (
@@ -148,13 +126,15 @@ function validatePredicate(predicate, allowComparison) {
             throw new Error(
                 "Selection predicates have an invalid type or projections."
             );
-        } else if (
-            Object.keys(node).some(
-                (key) => !["selection", "type", "empty"].includes(key)
-            )
-        ) {
+        }
+        const allowed = interval
+            ? ["selection", "type", "projections", "empty"]
+            : ["selection", "type", "empty"];
+        if (keys.some((key) => !allowed.includes(key))) {
             throw new Error(
-                "Selection predicates cannot mix variants or leaf properties."
+                interval
+                    ? "Interval selection predicates cannot mix variants or leaf properties."
+                    : "Selection predicates cannot mix variants or leaf properties."
             );
         }
     }
