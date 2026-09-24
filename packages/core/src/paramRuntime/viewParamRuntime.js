@@ -188,16 +188,14 @@ export default class ViewParamRuntime {
             location: declaration.source?.name ?? name,
         }));
         const first = capabilities[0];
-        for (const other of capabilities.slice(1)) {
-            if (
-                first.type !== other.type ||
-                JSON.stringify(first.components) !==
-                    JSON.stringify(other.components)
-            ) {
-                throw new Error(
-                    `Conflicting selection declarations for "${name}" in "${first.location}" and "${other.location}".`
-                );
-            }
+        const signature = JSON.stringify(first.components);
+        const conflict = capabilities.find(
+            ({ components }) => JSON.stringify(components) !== signature
+        );
+        if (conflict) {
+            throw new Error(
+                `Conflicting selection declarations for "${name}" in "${first.location}" and "${conflict.location}".`
+            );
         }
         return first;
     }
@@ -228,23 +226,21 @@ export default class ViewParamRuntime {
             components,
             source: this.#selectionSource,
         };
-        let declarations = owner.#selectionDeclarations.get(param.name);
-        if (!declarations) {
-            declarations = new Set();
-            owner.#selectionDeclarations.set(param.name, declarations);
-        }
-        for (const existing of declarations) {
-            if (
-                existing.kind !== kind ||
+        const declarations =
+            owner.#selectionDeclarations.get(param.name) ?? new Set();
+        const existing = declarations.values().next().value;
+        if (
+            existing &&
+            (existing.kind !== kind ||
                 JSON.stringify(existing.components) !==
-                    JSON.stringify(components)
-            ) {
-                throw new Error(
-                    `Conflicting selection declarations for "${param.name}" in "${existing.source?.name ?? param.name}" and "${this.#selectionSource?.name ?? param.name}".`
-                );
-            }
+                    JSON.stringify(components))
+        ) {
+            throw new Error(
+                `Conflicting selection declarations for "${param.name}" in "${existing.source?.name ?? param.name}" and "${this.#selectionSource?.name ?? param.name}".`
+            );
         }
         declarations.add(declaration);
+        owner.#selectionDeclarations.set(param.name, declarations);
         this.#runtime.addScopeDisposer(this.#scopeId, () => {
             declarations.delete(declaration);
         });
