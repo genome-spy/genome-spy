@@ -55,18 +55,28 @@ selection contains data:
 }
 ```
 
-## Structured Selection Tests
+## Combining Selections
 
-Use a structured test for a selection condition when you want the predicate
-to be explicit. A structured singleton has the same behavior as the direct
-`param` shorthand:
+Use `test` to combine selection predicates with `and`, `or`, and `not`. The
+operators can be nested. Each leaf names a selection and can set its own
+`empty` policy:
 
 ```json
 {
   "encoding": {
     "color": {
       "condition": {
-        "test": { "param": "select", "empty": false },
+        "test": {
+          "or": [
+            { "param": "hover", "empty": false },
+            {
+              "and": [
+                { "param": "sourceBrush" },
+                { "not": { "param": "excluded", "empty": false } }
+              ]
+            }
+          ]
+        },
         "value": "#3a86ff"
       },
       "value": "#d9d9d9"
@@ -75,11 +85,14 @@ to be explicit. A structured singleton has the same behavior as the direct
 }
 ```
 
-The direct `param` form remains the concise spelling for a singleton
-selection condition. The structured singleton follows the Vega-Lite predicate
-shape; GenomeSpy extends it with a flat union of selection names. Use a
-selection union when one branch should apply to rows selected by any of several
-point or interval selections:
+A structured singleton, such as `"test": { "param": "brush" }`, behaves like
+the direct `param` shorthand. Logical composition and per-leaf `empty` follow
+Vega-Lite selection predicates. The default `empty: true` is evaluated for each
+leaf before the Boolean operators; set `empty: false` on a leaf when an unused
+selection should not satisfy that part of the test.
+
+GenomeSpy also retains its flat union shorthand for an `or` of selection
+names:
 
 ```json
 {
@@ -106,9 +119,36 @@ by any active member. Set `empty: false` inside `test` to keep the fallback
 active until one selection is populated. Interval unions allow an active
 dimension to constrain the row while inactive dimensions impose no constraint.
 
-The `or` list must contain at least one selection name. A structured group test
-is flat; nested tests and condition-level `empty` are not supported. Direct
-`param` conditions continue to support `empty` as described above.
+The flat union's `or` list and logical `and`/`or` arrays must be nonempty.
+`empty` belongs on leaves or on the flat union, not on the surrounding
+condition.
+
+## Testing Different Link Endpoints
+
+An interval selection normally tests the mark's primary positional channel.
+On a ranged mark, it also tests the corresponding secondary endpoint according
+to the mark's hit-test mode. Use `project` on an interval predicate to test one
+specific mark input instead. For example, `"project": { "x": "x2" }` tests
+the selected x range against `x2` alone. Two predicates can use the same
+selection with different targets.
+
+`project` is a GenomeSpy extension to the Vega-Lite-shaped predicate syntax.
+It binds a selection's existing x or y component to the current mark's x,
+x2, y, or y2 field. Include every component declared by the interval
+selection. The target must be an unconditional field encoding on the same axis
+and have exactly the same data type as the selection component. Quantitative,
+index, and locus types are supported. Comparisons use raw data values, not
+screen coordinates, so different visual ranges or zoom levels do not change
+membership. This use-site mapping does not change the selection's stored
+interval, and it does not define selection fields.
+
+The example below uses separate source and target brushes. A link matches the
+conjunction when its source is inside the source brush and its target is inside
+the target brush. Hovering a link also brings it forward. Clear either brush
+to let the other brush determine the matching links; clear both to restore all
+links.
+
+EXAMPLE examples/docs/grammar/conditional-encoding/endpoint-brushes.json height=270
 
 ## Multiple Conditions
 

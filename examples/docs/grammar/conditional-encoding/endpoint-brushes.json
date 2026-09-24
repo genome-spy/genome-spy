@@ -1,0 +1,133 @@
+{
+  "description": [
+    "Independent link endpoint brushes",
+    "Brush the source and target tracks separately. A link is highlighted when both endpoints match, or while it is hovered."
+  ],
+
+  "data": {
+    "values": [
+      { "source": 10, "target": 65, "effect": 0.9 },
+      { "source": 20, "target": 75, "effect": 0.6 },
+      { "source": 30, "target": 85, "effect": 0.4 },
+      { "source": 40, "target": 95, "effect": 0.8 }
+    ]
+  },
+  "params": [
+    { "name": "sourceBrush", "value": null },
+    { "name": "targetBrush", "value": null },
+    { "name": "hover", "value": null }
+  ],
+  "resolve": { "scale": { "x": "shared" } },
+  "spacing": 4,
+
+  "vconcat": [
+    {
+      "name": "links",
+      "height": 110,
+      "params": [
+        {
+          "name": "hover",
+          "push": "outer",
+          "select": { "type": "point", "on": "pointerover" },
+          "persist": false
+        }
+      ],
+      "mark": { "type": "link", "linkShape": "arc", "size": 3 },
+      "encoding": {
+        "x": {
+          "field": "source",
+          "type": "index",
+          "scale": { "domain": [0, 100], "zoom": true }
+        },
+        "x2": { "field": "target" },
+        "y": { "datum": 0, "type": "quantitative" },
+        "y2": { "datum": 1 },
+        "color": {
+          "condition": {
+            "test": {
+              "or": [
+                { "param": "hover", "empty": false },
+                {
+                  "and": [
+                    { "param": "sourceBrush", "project": { "x": "x" } },
+                    { "param": "targetBrush", "project": { "x": "x2" } }
+                  ]
+                }
+              ]
+            },
+            "value": "#2962a3"
+          },
+          "value": "#c7ced8"
+        },
+        "opacity": {
+          "condition": {
+            "test": {
+              "and": [
+                { "param": "sourceBrush", "project": { "x": "x" } },
+                { "param": "targetBrush", "project": { "x": "x2" } }
+              ]
+            },
+            "value": 1
+          },
+          "value": 0.25
+        },
+        "order": {
+          "condition": {
+            "test": {
+              "or": [
+                { "param": "hover", "empty": false },
+                {
+                  "and": [
+                    { "param": "sourceBrush", "project": { "x": "x" } },
+                    { "param": "targetBrush", "project": { "x": "x2" } }
+                  ]
+                }
+              ]
+            },
+            "value": 1
+          },
+          "value": 0
+        },
+        "tooltip": [
+          { "field": "source", "title": "Source" },
+          { "field": "target", "title": "Target" },
+          { "field": "effect", "title": "Effect" }
+        ]
+      }
+    },
+
+    {
+      "title": "Brush sources",
+      "height": 45,
+      "params": [
+        {
+          "name": "sourceBrush",
+          "push": "outer",
+          "select": { "type": "interval", "encodings": ["x"] }
+        }
+      ],
+      "mark": { "type": "point", "size": 90 },
+      "encoding": {
+        "x": { "field": "source", "type": "index" },
+        "y": { "value": 0.5 }
+      }
+    },
+
+    {
+      "title": "Brush targets",
+      "height": 45,
+      "params": [
+        {
+          "name": "targetBrush",
+          "push": "outer",
+          "select": { "type": "interval", "encodings": ["x"] }
+        }
+      ],
+      "mark": { "type": "point", "size": 90 },
+      "encoding": {
+        "x": { "field": "target", "type": "index" },
+        "y": { "value": 0.5 }
+      }
+    }
+  ]
+}

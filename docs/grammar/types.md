@@ -817,6 +817,10 @@ SCHEMA SelectionInitIntervalMapping
 
 See the [SelectionParameter documentation](parameters.md#selection-parameters).
 
+## SelectionPredicateOperand
+
+SCHEMA SelectionPredicateOperand
+
 ## SelectionType
 
 SCHEMA SelectionType

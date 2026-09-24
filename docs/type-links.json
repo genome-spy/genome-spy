@@ -239,6 +239,7 @@
   "SecondaryPositionalChannel": "/grammar/types/#secondarypositionalchannel",
   "SelectionExtent": "/grammar/types/#selectionextent",
   "SelectionInitIntervalMapping": "/grammar/types/#selectioninitintervalmapping",
+  "SelectionPredicateOperand": "/grammar/types/#selectionpredicateoperand",
   "SelectionType": "/grammar/types/#selectiontype",
   "SelectionUnionTest": "/grammar/types/#selectionuniontest",
   "SeparatorProps": "/grammar/types/#separatorprops",

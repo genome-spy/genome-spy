@@ -37,9 +37,11 @@ lowers its existing flat selection union before calling the renderer, so the
 renderer has no compatibility union operator.
 
 The renderer contract, retained updates, scalar and packed comparisons, GPU
-tests, and the compatibility Core adapter are complete. Core's public grammar,
-WebGL and immediate-renderer parity, and user-facing examples remain to be
-integrated.
+tests, and Core adapter are complete. Core now resolves the recursive grammar
+and endpoint projections before translating them to this renderer; WebGL and
+immediate renderers use the same predicate semantics. The existing selection
+predicate Storybook scene demonstrates nested tests and retained updates.
+User-facing examples and cross-backend integration checks are being completed.
 
 ## Active integration: GPU MSDF paths and outline fonts
 

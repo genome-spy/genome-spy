@@ -1,8 +1,12 @@
 import { describe, expect, test } from "vitest";
+import endpointBrushes from "../../../../examples/docs/grammar/conditional-encoding/endpoint-brushes.json" with { type: "json" };
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import View from "../view/view.js";
 import UnitView from "../view/unitView.js";
 import { createAndInitialize } from "../view/testUtils.js";
+import Rectangle from "../view/layout/rectangle.js";
+import { createWebGpuMarkConfig } from "../rendering/webgpu/webGpuMarkAdapter.js";
+import { createSinglePointSelection } from "./selection.js";
 import {
     activeMatchResolvedSelectionPredicate,
     compileSelectionPredicateTree,
@@ -48,6 +52,90 @@ const interval = (name) => ({
 });
 
 describe("logical selection predicates", () => {
+    test("public endpoint example covers both brushes, clearing, and hover", async () => {
+        const root = await createAndInitialize(
+            /** @type {any} */ (endpointBrushes),
+            View
+        );
+        /** @type {UnitView | undefined} */
+        let links;
+        root.visit((view) => {
+            if (view instanceof UnitView && view.name === "links") {
+                links = view;
+            }
+        });
+        expect(links).toBeDefined();
+        const rows = links.getCollector().facetBatches.get(undefined);
+        const color = links.mark.encoders.color.branches[0].predicate;
+        const opacity = links.mark.encoders.opacity.branches[0].predicate;
+        const order = links.mark.getOrder().predicate;
+        const translated = createWebGpuMarkConfig(
+            links.mark,
+            {},
+            Rectangle.create(0, 0, 400, 110)
+        );
+        if (!translated) {
+            throw new Error("Expected the link mark to translate to WebGPU.");
+        }
+        expect(translated.definition.type).toBe("link");
+        expect(
+            /** @type {any} */ (translated.config).channels.color.conditions[0]
+                .when
+        ).toMatchObject({
+            any: [
+                { selection: "hover" },
+                {
+                    all: [
+                        {
+                            selection: "sourceBrush",
+                            projections: [{ input: "x" }],
+                        },
+                        {
+                            selection: "targetBrush",
+                            projections: [{ input: "x2" }],
+                        },
+                    ],
+                },
+            ],
+        });
+        const selectedSources = (/** @type {(datum: any) => boolean} */ test) =>
+            rows.filter(test).map((row) => row.source);
+
+        expect(selectedSources(color)).toEqual([10, 20, 30, 40]);
+        root.paramRuntime.setValue("sourceBrush", {
+            type: "interval",
+            intervals: { x: [15, 35] },
+        });
+        expect(selectedSources(color)).toEqual([20, 30]);
+        root.paramRuntime.setValue("targetBrush", {
+            type: "interval",
+            intervals: { x: [70, 80] },
+        });
+        expect(selectedSources(color)).toEqual([20]);
+        expect(selectedSources(opacity)).toEqual([20]);
+        expect(selectedSources(order)).toEqual([20]);
+
+        root.paramRuntime.setValue(
+            "hover",
+            createSinglePointSelection(rows[3])
+        );
+        expect(selectedSources(color)).toEqual([20, 40]);
+        expect(selectedSources(order)).toEqual([20, 40]);
+        expect(selectedSources(opacity)).toEqual([20]);
+
+        root.paramRuntime.setValue("hover", createSinglePointSelection(null));
+        root.paramRuntime.setValue("sourceBrush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+        expect(selectedSources(color)).toEqual([20]);
+        root.paramRuntime.setValue("targetBrush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+        expect(selectedSources(color)).toEqual([10, 20, 30, 40]);
+    });
+
     test("resolves sibling pushed brushes through their parent's value slots", async () => {
         const spec = /** @type {any} */ ({
             data: { values: [{ source: 15, target: 25, y: 1 }] },
