@@ -262,125 +262,110 @@ export function resolveSelectionPredicateTree(
         return undefined;
     };
 
-    if ("all" in tree) {
-        return {
-            all: tree.all.map((child) =>
-                resolveSelectionPredicateTree(
-                    child,
-                    encoding,
-                    runtime,
-                    hitTestMode,
-                    getType
-                )
-            ),
-        };
-    }
-    if ("any" in tree) {
-        return {
-            any: tree.any.map((child) =>
-                resolveSelectionPredicateTree(
-                    child,
-                    encoding,
-                    runtime,
-                    hitTestMode,
-                    getType
-                )
-            ),
-        };
-    }
-    if ("not" in tree) {
-        return {
-            not: resolveSelectionPredicateTree(
-                tree.not,
-                encoding,
-                runtime,
-                hitTestMode,
-                getType
-            ),
-        };
-    }
-    const name = "param" in tree ? tree.param : tree.selectionActive;
-    const declared = capability(name);
-    if ("selectionActive" in tree) {
-        return {
-            selectionActive: {
-                param: name,
-                type: declared.type,
-                components: declared.components.map(
-                    ({ component }) => component
-                ),
-            },
-        };
-    }
-    if (tree.project && declared.type !== "interval") {
-        throw new Error(
-            `Selection "${name}" is not an interval selection; project is invalid.`
-        );
-    }
-    if (declared.type !== "interval") {
-        return { param: name, type: declared.type, empty: tree.empty };
-    }
-    const components = declared.components.map(({ component }) => component);
-    if (
-        tree.project &&
-        (Object.keys(tree.project).length !== components.length ||
-            components.some((component) => !(component in tree.project)))
-    ) {
-        throw new Error(
-            `Selection "${name}" project must cover its declared components: ${components.join(", ")}.`
-        );
-    }
-    const projections = declared.components.map(({ component, type }) => {
-        const input =
-            /** @type {Record<string, string> | undefined} */ (tree.project)?.[
-                component
-            ] ?? component;
-        if (!["x", "x2", "y", "y2"].includes(input)) {
+    /** @param {SelectionPredicateTree} node @returns {ResolvedSelectionPredicate} */
+    const resolve = (node) => {
+        if ("all" in node) {
+            return { all: node.all.map(resolve) };
+        }
+        if ("any" in node) {
+            return { any: node.any.map(resolve) };
+        }
+        if ("not" in node) {
+            return { not: resolve(node.not) };
+        }
+        const name = "param" in node ? node.param : node.selectionActive;
+        const declared = capability(name);
+        if ("selectionActive" in node) {
+            return {
+                selectionActive: {
+                    param: name,
+                    type: declared.type,
+                    components: declared.components.map(
+                        ({ component }) => component
+                    ),
+                },
+            };
+        }
+        if (node.project && declared.type !== "interval") {
             throw new Error(
-                `Selection "${name}" has unsupported component "${component}".`
+                `Selection "${name}" is not an interval selection; project is invalid.`
             );
         }
-        const definition = definitions[input];
-        if (tree.project && (!definition || !("field" in definition))) {
+        if (declared.type !== "interval") {
+            return { param: name, type: declared.type, empty: node.empty };
+        }
+        const components = declared.components.map(
+            ({ component }) => component
+        );
+        if (
+            node.project &&
+            (Object.keys(node.project).length !== components.length ||
+                components.some((component) => !(component in node.project)))
+        ) {
             throw new Error(
-                `Selection "${name}" project target "${input}" must be an unconditional field encoding.`
+                `Selection "${name}" project must cover its declared components: ${components.join(", ")}.`
             );
         }
-        const inputField = fieldForInput(input);
-        if (!inputField) {
-            throw new Error(`Selection "${name}" has no field for "${input}".`);
-        }
-        if (tree.project) {
-            const inputType =
-                getType?.(/** @type {"x" | "x2" | "y" | "y2"} */ (input)) ??
-                ("type" in definition ? definition.type : undefined) ??
-                ("type" in definitions[component]
-                    ? definitions[component].type
-                    : undefined);
-            if (
-                !["quantitative", "index", "locus"].includes(type) ||
-                inputType !== type
-            ) {
+        const projections = declared.components.map(({ component, type }) => {
+            const input =
+                /** @type {Record<string, string> | undefined} */ (
+                    node.project
+                )?.[component] ?? component;
+            if (!["x", "x2", "y", "y2"].includes(input)) {
                 throw new Error(
-                    `Selection "${name}" project target "${input}" must have matching quantitative, index, or locus type (${type} vs ${inputType}).`
+                    `Selection "${name}" has unsupported component "${component}".`
                 );
             }
-        }
-        const secondaryInput = component + "2";
-        const secondaryField =
-            tree.project || !definitions[secondaryInput]
+            const definition = definitions[input];
+            if (node.project && (!definition || !("field" in definition))) {
+                throw new Error(
+                    `Selection "${name}" project target "${input}" must be an unconditional field encoding.`
+                );
+            }
+            const inputField = fieldForInput(input);
+            if (!inputField) {
+                throw new Error(
+                    `Selection "${name}" has no field for "${input}".`
+                );
+            }
+            if (node.project) {
+                const inputType =
+                    getType?.(/** @type {"x" | "x2" | "y" | "y2"} */ (input)) ??
+                    ("type" in definition ? definition.type : undefined) ??
+                    ("type" in definitions[component]
+                        ? definitions[component].type
+                        : undefined);
+                if (
+                    !["quantitative", "index", "locus"].includes(type) ||
+                    inputType !== type
+                ) {
+                    throw new Error(
+                        `Selection "${name}" project target "${input}" must have matching quantitative, index, or locus type (${type} vs ${inputType}).`
+                    );
+                }
+            }
+            const secondaryInput = component + "2";
+            const secondaryField = node.project
                 ? undefined
                 : fieldForInput(secondaryInput);
+            return {
+                component,
+                input,
+                field: inputField,
+                ...(secondaryField
+                    ? { secondaryInput, secondaryField, hitTest: hitTestMode }
+                    : {}),
+            };
+        });
         return {
-            component,
-            input,
-            field: inputField,
-            ...(secondaryField
-                ? { secondaryInput, secondaryField, hitTest: hitTestMode }
-                : {}),
+            param: name,
+            type: "interval",
+            empty: node.empty,
+            projections,
         };
-    });
-    return { param: name, type: "interval", empty: tree.empty, projections };
+    };
+
+    return resolve(tree);
 }
 
 /**
@@ -391,17 +376,13 @@ export function resolveSelectionPredicateTree(
  * @returns {(datum: import("../data/flowNode.js").Datum) => boolean}
  */
 export function compileSelectionPredicateTree(tree, getSelection) {
-    if ("all" in tree) {
-        const children = tree.all.map((child) =>
+    if ("all" in tree || "any" in tree) {
+        const children = ("all" in tree ? tree.all : tree.any).map((child) =>
             compileSelectionPredicateTree(child, getSelection)
         );
-        return (datum) => children.every((child) => child(datum));
-    }
-    if ("any" in tree) {
-        const children = tree.any.map((child) =>
-            compileSelectionPredicateTree(child, getSelection)
-        );
-        return (datum) => children.some((child) => child(datum));
+        return "all" in tree
+            ? (datum) => children.every((child) => child(datum))
+            : (datum) => children.some((child) => child(datum));
     }
     if ("not" in tree) {
         const child = compileSelectionPredicateTree(tree.not, getSelection);
