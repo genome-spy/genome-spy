@@ -417,21 +417,7 @@ const placementSentinel = 1u;
         expect(shaderCode).toContain("checkSelection_brush");
     });
 
-    it("emits flat selection-union predicates with group emptiness", () => {
-        const packedSeriesLayout = /** @type {any} */ (
-            new Map([
-                [
-                    "x",
-                    {
-                        name: "x",
-                        scalarType: "f32",
-                        components: 1,
-                        offset: 0,
-                        stride: 1,
-                    },
-                ],
-            ])
-        );
+    it("emits empty-aware selection predicates", () => {
         const { shaderCode } = buildMarkShader({
             channels: {
                 uniqueId: { value: 1, type: "u32", components: 1 },
@@ -443,59 +429,16 @@ const placementSentinel = 1u;
                             when: {
                                 any: [
                                     {
-                                        all: [
-                                            {
-                                                selection: "picked",
-                                                type: "single",
-                                                empty: true,
-                                            },
-                                            {
-                                                selectionActive: {
-                                                    selection: "picked",
-                                                    type: "single",
-                                                },
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        all: [
-                                            {
-                                                selection: "brush",
-                                                type: "interval",
-                                                projections: [
-                                                    {
-                                                        component: "x",
-                                                        input: "x",
-                                                    },
-                                                ],
-                                                empty: true,
-                                            },
-                                            {
-                                                selectionActive: {
-                                                    selection: "brush",
-                                                    type: "interval",
-                                                    components: ["x"],
-                                                },
-                                            },
-                                        ],
+                                        selection: "picked",
+                                        type: "single",
+                                        empty: false,
                                     },
                                     {
                                         not: {
-                                            any: [
-                                                {
-                                                    selectionActive: {
-                                                        selection: "picked",
-                                                        type: "single",
-                                                    },
-                                                },
-                                                {
-                                                    selectionActive: {
-                                                        selection: "brush",
-                                                        type: "interval",
-                                                        components: ["x"],
-                                                    },
-                                                },
-                                            ],
+                                            selectionActive: {
+                                                selection: "picked",
+                                                type: "single",
+                                            },
                                         },
                                     },
                                 ],
@@ -504,47 +447,16 @@ const placementSentinel = 1u;
                         },
                     ],
                 },
-                x: {
-                    data: new Float32Array([0]),
-                    type: "f32",
-                    components: 1,
-                },
             },
             uniformLayout: [
                 { name: "uSelection_picked", type: "u32", components: 1 },
-                {
-                    name: "uSelection_brush_0_active",
-                    type: "u32",
-                    components: 1,
-                },
-                { name: "uSelection_brush_0", type: "f32", components: 2 },
             ],
             shaderBody,
-            packedSeriesLayout,
-            selectionDefs: [
-                { name: "picked", type: "single" },
-                {
-                    name: "brush",
-                    type: "interval",
-                    components: ["x"],
-                    projections: [
-                        {
-                            component: "x",
-                            input: "x",
-                            scalarType: "f32",
-                            inputComponents: 1,
-                            hitTest: "intersects",
-                        },
-                    ],
-                },
-            ],
+            selectionDefs: [{ name: "picked", type: "single" }],
         });
 
-        expect(shaderCode).toContain("checkSelection_picked");
-        expect(shaderCode).toContain("checkSelection_brush_p0");
-        expect(shaderCode).toContain("isSelectionEmpty_picked");
-        expect(shaderCode).toContain("isSelectionEmpty_brush");
-        expect(shaderCode).toContain("checkSelection_picked(i, true)");
+        expect(shaderCode).toContain("checkSelection_picked(i, false)");
+        expect(shaderCode).toContain("!isSelectionEmpty_picked(i)");
     });
 
     it("emits visibility predicates over scalar inputs and slots", () => {

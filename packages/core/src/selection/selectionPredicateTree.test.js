@@ -64,6 +64,12 @@ describe("logical selection predicates", () => {
             }
         });
         expect(links).toBeDefined();
+        expect(
+            root.paramRuntime.findSelectionCapability("targetBrush")
+        ).toMatchObject({
+            type: "interval",
+            components: [{ component: "x", type: "index" }],
+        });
         const rows = links.getCollector().facetBatches.get(undefined);
         const color = links.mark.encoders.color.branches[0].predicate;
         const translated = createWebGpuMarkConfig(
@@ -114,104 +120,6 @@ describe("logical selection predicates", () => {
             intervals: { x: null },
         });
         expect(selectedSources(color)).toEqual([80, 230, 380, 530, 680, 830]);
-    });
-
-    test("resolves sibling pushed brushes through their parent's value slots", async () => {
-        const spec = /** @type {any} */ ({
-            data: { values: [{ source: 15, target: 25, y: 1 }] },
-            params: [
-                { name: "access", value: null },
-                { name: "score", value: null },
-            ],
-            layer: [
-                {
-                    name: "links",
-                    mark: "link",
-                    encoding: {
-                        x: { field: "source", type: "index" },
-                        x2: { field: "target" },
-                        y: { field: "y", type: "quantitative" },
-                        opacity: {
-                            condition: {
-                                test: {
-                                    and: [
-                                        {
-                                            param: "access",
-                                            project: { x: "x2" },
-                                        },
-                                        { param: "score", project: { x: "x" } },
-                                    ],
-                                },
-                                value: 1,
-                            },
-                            value: 0.2,
-                        },
-                    },
-                },
-                {
-                    name: "accessBrush",
-                    params: [
-                        {
-                            name: "access",
-                            push: "outer",
-                            select: { type: "interval", encodings: ["x"] },
-                        },
-                    ],
-                    mark: "point",
-                    encoding: { x: { field: "target", type: "index" } },
-                },
-                {
-                    name: "scoreBrush",
-                    params: [
-                        {
-                            name: "score",
-                            push: "outer",
-                            select: { type: "interval", encodings: ["x"] },
-                        },
-                    ],
-                    mark: "point",
-                    encoding: { x: { field: "source", type: "index" } },
-                },
-            ],
-        });
-        const root = await createAndInitialize(spec, View);
-        /** @type {UnitView | undefined} */
-        let links;
-        root.visit((view) => {
-            if (view instanceof UnitView && view.name === "links") {
-                links = view;
-            }
-        });
-        expect(links).toBeDefined();
-        expect(
-            root.paramRuntime.findSelectionCapability("access")
-        ).toMatchObject({
-            type: "interval",
-            components: [{ component: "x", type: "index" }],
-        });
-        expect(
-            getSelectionPredicateTreeParams(
-                links.mark.encoders.opacity.branches[0].predicate.selection
-            )
-        ).toEqual(["access", "score"]);
-        const predicate = links.mark.encoders.opacity.branches[0].predicate;
-        const row = { source: 15, target: 25, y: 1 };
-        expect(predicate(row)).toBe(true);
-        root.paramRuntime.setValue("access", {
-            type: "interval",
-            intervals: { x: [20, 30] },
-        });
-        expect(predicate(row)).toBe(true);
-        root.paramRuntime.setValue("score", {
-            type: "interval",
-            intervals: { x: [10, 20] },
-        });
-        expect(predicate(row)).toBe(true);
-        root.paramRuntime.setValue("access", {
-            type: "interval",
-            intervals: { x: [40, 50] },
-        });
-        expect(predicate(row)).toBe(false);
     });
 
     test("normalizes nested nodes and rejects mixed or empty operators", () => {

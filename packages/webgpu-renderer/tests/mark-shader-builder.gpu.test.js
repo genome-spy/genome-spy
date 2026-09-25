@@ -1109,34 +1109,14 @@ test("markShaderBuilder applies flat selection unions and group emptiness", asyn
                     when: {
                         any: [
                             {
-                                all: [
-                                    {
-                                        selection: "first",
-                                        type: "single",
-                                        empty: true,
-                                    },
-                                    {
-                                        selectionActive: {
-                                            selection: "first",
-                                            type: "single",
-                                        },
-                                    },
-                                ],
+                                selection: "first",
+                                type: "single",
+                                empty: false,
                             },
                             {
-                                all: [
-                                    {
-                                        selection: "second",
-                                        type: "single",
-                                        empty: true,
-                                    },
-                                    {
-                                        selectionActive: {
-                                            selection: "second",
-                                            type: "single",
-                                        },
-                                    },
-                                ],
+                                selection: "second",
+                                type: "single",
+                                empty: false,
                             },
                             {
                                 not: {

@@ -2136,7 +2136,7 @@ describe("WebGPU mark adapter", () => {
         ).toEqual([{ component: channel, input: channel }]);
     });
 
-    test("carries secondary endpoint hit testing for ranged marks", () => {
+    test("translates ranged hit testing and independent interval projections", () => {
         const mark = createMark(
             "rect",
             [{ x: 1, x2: 3, y: 1, y2: 3, color: "red" }],
@@ -2169,6 +2169,21 @@ describe("WebGPU mark adapter", () => {
                                         hitTest: "intersects",
                                     },
                                 ]
+                            ),
+                        },
+                    },
+                    {
+                        accessor: createAccessor(
+                            () => "blue",
+                            { value: "blue" },
+                            true
+                        ),
+                        predicate: {
+                            selection: mockSelection(
+                                "brush",
+                                false,
+                                "interval",
+                                [{ component: "x", input: "x2" }]
                             ),
                         },
                     },
@@ -2208,72 +2223,10 @@ describe("WebGPU mark adapter", () => {
                 hitTest: "intersects",
             },
         ]);
-    });
-
-    test("binds one interval component to two inputs independently", () => {
-        const mark = createMark("rect", [{ x: 1, x2: 3, y: 1, y2: 2 }], {
-            x: createEncoder((datum) => datum.x),
-            x2: createEncoder((datum) => datum.x2),
-            y: createEncoder((datum) => datum.y),
-            y2: createEncoder((datum) => datum.y2),
-            xOffset: createConstantEncoder(0),
-            x2Offset: createConstantEncoder(0),
-            yOffset: createConstantEncoder(0),
-            y2Offset: createConstantEncoder(0),
-            fill: createConditionalEncoder([
-                {
-                    accessor: createAccessor(
-                        () => "red",
-                        { value: "red" },
-                        true
-                    ),
-                    predicate: {
-                        selection: mockSelection("brush", false, "interval", [
-                            { component: "x", input: "x" },
-                        ]),
-                    },
-                },
-                {
-                    accessor: createAccessor(
-                        () => "blue",
-                        { value: "blue" },
-                        true
-                    ),
-                    predicate: {
-                        selection: mockSelection("brush", false, "interval", [
-                            { component: "x", input: "x2" },
-                        ]),
-                    },
-                },
-                {
-                    accessor: createAccessor(
-                        () => "gray",
-                        { value: "gray" },
-                        true
-                    ),
-                    predicate: {},
-                },
-            ]),
-            stroke: createConstantEncoder(null),
-            fillOpacity: createConstantEncoder(1),
-            strokeOpacity: createConstantEncoder(1),
-            strokeWidth: createConstantEncoder(0),
-        });
-        /** @type {any} */ (mark.unitView).paramRuntime = {
-            findValue: () => ({ type: "interval", intervals: { x: [1, 3] } }),
-        };
-
-        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
-        const conditions = /** @type {any} */ (translated).config.channels.fill
-            .conditions;
         expect(
-            conditions.map(
-                (/** @type {any} */ condition) => condition.when.projections[0]
-            )
-        ).toEqual([
-            { component: "x", input: "x" },
-            { component: "x", input: "x2" },
-        ]);
+            /** @type {any} */ (translated).config.channels.fill.conditions[1]
+                .when.projections
+        ).toEqual([{ component: "x", input: "x2" }]);
     });
 
     test("translates a two-component interval target", () => {
