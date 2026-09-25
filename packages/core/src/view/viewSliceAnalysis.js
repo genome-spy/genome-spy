@@ -183,7 +183,7 @@ function column(name) {
 }
 
 /**
- * Source projection tolerates missing values while retaining the normal public
+ * Source projection normalizes missing values to null while retaining the normal public
  * field-path grammar. Detachment is performed by the query before transforms.
  * @param {Datum} row
  * @param {string[]} fields
@@ -195,7 +195,7 @@ export function projectAnalysisRow(row, fields) {
             splitAccessPath(name).reduce(
                 (value, part) => (value == null ? undefined : value[part]),
                 row
-            ),
+            ) ?? null,
         ])
     );
 }

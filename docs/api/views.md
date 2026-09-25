@@ -274,8 +274,9 @@ output columns. An aggregate stage replaces the table with its grouping columns
 and named outputs. A window stage retains columns and adds unique output names;
 its output names cannot overwrite existing columns. Aggregate output names cannot
 overwrite grouping columns. Private metadata and prototype-related output names
-are rejected. Input field paths, such as `nested.score`, become literal column
-names in this table; use that exact string in subsequent stages.
+are rejected. Missing disclosed input values become null. Input field paths, such as
+`nested.score`, become literal column names in this table; use that exact string
+in subsequent stages.
 
 `rowsMatched` remains the number of source rows in the captured slice.
 `outputRows` counts the analysis output before limiting, and `truncated` reports

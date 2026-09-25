@@ -1089,6 +1089,15 @@ describe("scoped analysis", () => {
     test("empty pipelines, populations and limit zero retain output counts", async () => {
         const { query, handle } = await setup([{ x: 1, value: 4 }]);
         expect(
+            (
+                await query.queryData(handle, {
+                    ...request,
+                    fields: ["value", "missing", "nested.missing"],
+                    analysis: [],
+                })
+            ).rows
+        ).toEqual([{ value: 4, missing: null, "nested.missing": null }]);
+        expect(
             await query.queryData(handle, {
                 ...request,
                 fields: ["value"],
