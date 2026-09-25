@@ -210,8 +210,9 @@ export function normalizeIntervalForSelection(
     }
 
     if (options.roundToIntegers) {
-        min = Math.ceil(min);
-        max = Math.ceil(max);
+        // Half-integer band centers are the threshold for snapping each edge.
+        min = Math.round(min);
+        max = Math.round(max);
         min = Math.max(zoomExtent[0], min);
         max = Math.min(zoomExtent[1], max);
         if (min > max) {

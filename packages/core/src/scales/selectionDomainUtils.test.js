@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import {
     findIntervalSelectionBindingOwners,
+    normalizeIntervalForSelection,
     resolveIntervalSelectionBinding,
 } from "./selectionDomainUtils.js";
 
@@ -58,6 +59,20 @@ class FakeView {
 }
 
 describe("selectionDomainUtils", () => {
+    test("index brush edges snap at band centers in either drag direction", () => {
+        /** @param {[number, number]} interval */
+        const snap = (interval) =>
+            normalizeIntervalForSelection(interval, [0, 20], {
+                roundToIntegers: true,
+            });
+
+        expect(snap([6.2, 6.4])).toEqual([6, 6]);
+        expect(snap([6.2, 6.6])).toEqual([6, 7]);
+        expect(snap([6.8, 6.4])).toEqual([6, 7]);
+        expect(snap([6.8, 7.4])).toEqual([7, 7]);
+        expect(snap([6.8, 7.6])).toEqual([7, 8]);
+    });
+
     test("resolves same-named interval bindings by runtime identity instead of name", () => {
         const root = new FakeView(undefined, "root");
         root.paramRuntime.registerParam({ name: "brush", value: null });
@@ -112,7 +127,9 @@ describe("selectionDomainUtils", () => {
         );
 
         expect(rootBinding.runtime).toBe(root.paramRuntime);
-        expect(rootOwners.map((owner) => owner.view.name)).toEqual(["overview"]);
+        expect(rootOwners.map((owner) => owner.view.name)).toEqual([
+            "overview",
+        ]);
 
         expect(localBinding.runtime).toBe(otherPanel.paramRuntime);
         expect(localOwners.map((owner) => owner.view.name)).toEqual([
