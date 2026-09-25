@@ -47,6 +47,9 @@ rearranged regions, including chromosome 8q and chromosome 5-8 events. The
 tooltips expose detailed SV annotations, phased haplotype information, and
 supporting-read counts directly from the VCF.
 
+See the [Wakhan Explorer](https://genomespy.app/examples/wakhan-explorer/)
+example for haplotype-specific copy numbers.
+
 ## GenomeSpy features
 
 This example combines:
