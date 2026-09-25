@@ -7,6 +7,8 @@ import type { ViewAddress } from "./embedApi.js";
  * Create the query object with `createViewQuery(api.views)`.
  */
 export interface ViewQueryApi {
+    assessAnnotations: (address: ViewAddress) => ViewAnnotationAssessment;
+    annotations: ViewAnnotations;
     /** Returns detached metadata. Throws for a removed view or finalized embed. */
     describe: (address: ViewAddress) => ViewDescription;
 
@@ -145,10 +147,14 @@ export interface ViewSliceQueryOptions extends ViewQueryScopeOptions {
     aggregate?: ViewSliceAggregate[];
     /** Transform all scoped rows before limiting. Requires fields; excludes aggregate. */
     analysis?: ViewSliceAnalysisStage[];
+    /** Return temporary opaque references for row-preserving point queries. */
+    includeAnnotationTargets?: boolean;
     signal?: AbortSignal;
 }
 
 export interface ViewSliceQueryResult {
+    /** References aligned with rows; valid until the next target-producing query. */
+    annotationTargets?: string[];
     rows: Record<string, unknown>[];
     /** All loaded rows examined, before scope filtering. */
     rowsExamined: number;
@@ -174,4 +180,33 @@ export interface ViewSliceQueryResult {
         /** Ready for the viewport does not prove full lazy-source coverage. */
         sourceCoverage: "unknown";
     };
+}
+
+export type ViewAnnotationAssessment =
+    | { status: "ready" }
+    | {
+          status: "pending" | "unsupported";
+          reason: string;
+      };
+
+export interface ViewAnnotationSet {
+    targets: { reference: string; text?: string }[];
+    emphasis?: "purple" | "orange" | "blue";
+    connectors?: boolean;
+}
+
+export interface ViewAnnotationState {
+    activeTargets: number;
+    sourceRevision: number | null;
+    invalidated: boolean;
+}
+
+export interface ViewAnnotations {
+    replace: (
+        set: ViewAnnotationSet,
+        options?: { signal?: AbortSignal }
+    ) => Promise<void>;
+    clear: () => Promise<void>;
+    inspect: () => ViewAnnotationState;
+    dispose: () => void;
 }

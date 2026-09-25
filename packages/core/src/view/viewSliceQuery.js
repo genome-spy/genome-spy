@@ -29,10 +29,21 @@ import createFunction from "../utils/expression.js";
  * references; analysis projects and detaches inputs before transform passes.
  * @param {() => import("./view.js").default} resolve
  * @param {Options} options
+ * @param {(view: UnitView, rows: Datum[]) => string[]} [captureTargets]
  * @returns {Promise<Result>}
  */
-export async function queryViewData(resolve, options) {
+export async function queryViewData(resolve, options, captureTargets) {
     validateOptions(options);
+    if (
+        options.includeAnnotationTargets &&
+        (!captureTargets ||
+            options.aggregate?.length ||
+            options.analysis?.some((stage) => stage.type === "aggregate"))
+    ) {
+        throw new Error(
+            "Annotation targets require a row-preserving query and an annotation controller."
+        );
+    }
     options = {
         ...options,
         channels: [...options.channels],
@@ -74,6 +85,13 @@ export async function queryViewData(resolve, options) {
 
     /** @type {Datum[]} */
     let analyzed = [];
+    // Row-preserving transforms retain detached object identity. Keep the
+    // source association out of the projected values and public table.
+    /** @type {WeakMap<Datum, Datum>} */
+    const origins = new WeakMap();
+
+    /** @type {Datum[]} */
+    const targetRows = [];
 
     for (const row of collector.getData()) {
         if (result.rowsExamined > 0 && result.rowsExamined % 1024 === 0) {
@@ -91,9 +109,11 @@ export async function queryViewData(resolve, options) {
             matched.push(row);
         }
         if (options.analysis !== undefined) {
-            analyzed.push(
-                cloneDetached(projectAnalysisRow(row, options.fields))
+            const projected = cloneDetached(
+                projectAnalysisRow(row, options.fields)
             );
+            analyzed.push(projected);
+            if (options.includeAnnotationTargets) origins.set(projected, row);
         } else if (result.rows.length < options.limit) {
             const output = fields
                 ? Object.fromEntries(
@@ -103,6 +123,7 @@ export async function queryViewData(resolve, options) {
             const detached = cloneDetached(output);
             delete detached[UNIQUE_ID_KEY];
             result.rows.push(detached);
+            if (options.includeAnnotationTargets) targetRows.push(row);
         }
     }
 
@@ -123,7 +144,10 @@ export async function queryViewData(resolve, options) {
             analyzed = runAnalysisStage(analyzed, stage);
         }
         result.outputRows = analyzed.length;
-        result.rows = cloneDetached(analyzed.slice(0, options.limit));
+        const preview = analyzed.slice(0, options.limit);
+        result.rows = cloneDetached(preview);
+        if (options.includeAnnotationTargets)
+            targetRows.push(...preview.map((row) => origins.get(row)));
         result.scope.analysis = options.analysis;
     }
     // min/max may return source objects; aggregation must detach them too.
@@ -131,6 +155,8 @@ export async function queryViewData(resolve, options) {
     result.truncated =
         (result.outputRows ?? result.rowsMatched) > result.rows.length;
     assertCurrent();
+    if (options.includeAnnotationTargets)
+        result.annotationTargets = captureTargets(view, targetRows);
     return result;
 
     function assertCurrent() {
@@ -157,6 +183,12 @@ function validateOptions(options) {
         options.limit > 1000
     ) {
         throw new Error("Slice query limit must be an integer from 0 to 1000.");
+    }
+    if (
+        options.includeAnnotationTargets !== undefined &&
+        typeof options.includeAnnotationTargets !== "boolean"
+    ) {
+        throw new Error("includeAnnotationTargets must be boolean.");
     }
     validateScopeOptions(options);
     if (

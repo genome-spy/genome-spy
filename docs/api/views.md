@@ -287,6 +287,58 @@ All results retain the captured viewport and unknown source coverage. The query
 rechecks cancellation and scope between transform passes; each pass remains
 synchronous, with no hard real-time or constant-memory guarantee.
 
+### Annotating queried points
+
+`query.assessAnnotations(track)` reports whether a point track supports temporary
+visual annotations. The initial contract accepts one facet with unconditional
+numeric or locus positions. Ranged, displaced, conditional and parameter-dependent
+point geometry and expression-driven mark properties are unsupported. An annotation adds a text label, optional connector
+and/or colored outline; it preserves the original mark colors and data.
+
+```js
+const result = await query.queryData(track, {
+  channels: ["x", "y"],
+  fields: ["name", "score"],
+  limit: 20,
+  includeAnnotationTargets: true,
+});
+
+await query.annotations.replace({
+  targets: result.annotationTargets.map((reference, i) => ({
+    reference,
+    text: String(result.rows[i].name),
+  })),
+  emphasis: "purple", // purple, orange or blue; omit for labels alone
+  connectors: true,
+});
+
+await query.annotations.clear();
+```
+
+References are opaque, separate from disclosed values, and aligned with returned
+rows. Filters and window/rank analysis preserve references; aggregation cannot
+produce point targets. A truncated result supplies targets for its preview only.
+The next successful target-producing query expires previous references, while an
+already applied set remains visible. Ordinary queries do not expire references.
+
+Annotations follow pan, zoom and resize and clip to the source plotting area.
+A new source publication or view removal clears the applied set. `inspect()` returns
+`activeTargets`, `sourceRevision` and `invalidated`. Invalid replacement arguments
+leave the previous valid set unchanged. An abort before commit prevents publication;
+after commit the applied set remains. Clear and disposal prevent unfinished older
+replacements from publishing.
+
+Replacement and clear promises resolve after Core submits the updated rendering
+commands. This does not promise browser paint completion or animated transitions.
+Generated point, rule and text marks do not change scale domains, source collectors,
+measurement queries, legends or normal picking. Labels currently have fixed offsets;
+there is no automatic collision avoidance.
+
+Query clients created from the same `api.views` share one annotation controller.
+`dispose()` releases its references, subscriptions and generated marks; disposing
+one client therefore ends annotation use for those clients. Creating a new query
+client afterward creates a fresh controller. Embed finalization also disposes it.
+
 ## Accessing a view's scales
 
 `track.getScaleResolution(channel)` returns the view's resolved scale, including
