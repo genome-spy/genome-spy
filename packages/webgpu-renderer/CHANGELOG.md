@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
+
+### Bug Fixes
+
+* **core:** align interval predicates with half-open brushes ([6b678ee](https://github.com/genome-spy/genome-spy/commit/6b678eea19d782984d3347dca27baaccb73bc774)) by @tuner
+
+### Features
+
+* **core:** add bidirectional arrow support ([#535](https://github.com/genome-spy/genome-spy/issues/535)) ([6a6b28a](https://github.com/genome-spy/genome-spy/commit/6a6b28a402818c9c9d59cc425262928586d44b28)) by @tuner
+* **core:** compose selection predicates and project interval endpoints ([#543](https://github.com/genome-spy/genome-spy/issues/543)) ([a40bc23](https://github.com/genome-spy/genome-spy/commit/a40bc23794cf16ae7b95a43304638c45b23ffc8f)) by @tuner
+* **webgpu:** add GPU path and outline font rendering ([#533](https://github.com/genome-spy/genome-spy/issues/533)) ([f4a44d6](https://github.com/genome-spy/genome-spy/commit/f4a44d60eb23d00b75867eb752ee24e898716a45)) by @tuner
+
 # [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
 
 ### Features
