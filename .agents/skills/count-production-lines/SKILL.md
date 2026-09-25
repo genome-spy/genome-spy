@@ -17,7 +17,8 @@ declarations must be handled explicitly.
 2. Identify the scope and file policy. For a production-code count, exclude
    test files and usually count runtime source files only. Report declaration
    files separately unless the user explicitly includes them.
-3. Run `scripts/count-production-lines.mjs` from the repository root. It uses
+3. Run `.agents/skills/count-production-lines/scripts/count-production-lines.mjs`
+   from the repository root. It uses
    the Git diff and the repository's TypeScript-aware parser to identify code
    tokens without treating comment markers inside strings, templates, or
    regular expressions as comments.
@@ -34,7 +35,7 @@ do not substitute whole-file line totals. The comparison is against committed
 Example:
 
 ```sh
-node /Users/klavikka/.codex/skills/count-production-lines/scripts/count-production-lines.mjs \
+node .agents/skills/count-production-lines/scripts/count-production-lines.mjs \
   --base origin/master \
   --path packages/core/src \
   --extensions .js

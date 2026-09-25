@@ -2,8 +2,8 @@
 
 ## Architecture and workflows
 
-- Read `ARCHITECTURE.md` and only the linked architecture document relevant to
-  the affected subsystem.
+- For changes involving subsystem architecture or interactions, read
+  `ARCHITECTURE.md` and only the linked document relevant to the change.
 - Use the repository `test-genomespy-views` skill for generated specifications,
   rendered hierarchy inspection, and layout snapshots.
 - Use the repository `write-genomespy-docs` skill when changing specification

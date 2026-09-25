@@ -10,18 +10,19 @@ description: Prepare GenomeSpy commits and pull requests for delivery. Use when 
 - Inspect the exact diff the message describes: staged changes for a commit,
   working-tree changes for an uncommitted proposal, or the branch diff for a PR.
 - Base the message on everything included, not only the latest edits.
-- Keep commits focused. On feature branches, casual intermediate commits and an
-  omitted scope are acceptable when the user wants them.
+- Keep commits focused. Casual intermediate commits are acceptable on feature
+  branches when the user wants them.
 
 ## Write commits
 
-- Follow Conventional Commits: `<type>(<scope>): <subject>`.
+- Follow Conventional Commits: `<type>: <subject>` or
+  `<type>(<scope>): <subject>`.
 - Keep the complete header at most 100 characters, including type and scope.
 - Keep every body and footer line at most 100 characters as required by the
   active commitlint configuration. Check line lengths before committing so the
   hook does not need to reject the message.
-- Use the monorepo package name as the scope when one workspace is clearly
-  affected, for example `core` or `app`.
+- Scopes are optional and can generally be omitted on feature branches. Add the
+  monorepo package name, such as `core` or `app`, when it clarifies the change.
 - Reserve `feat` and `fix` mainly for user-facing features and bug fixes.
 - Reserve `docs` for user-facing documentation that should appear in generated
   changelogs. Use `chore` for internal documentation, including agent
