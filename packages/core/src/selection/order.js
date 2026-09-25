@@ -1,5 +1,6 @@
 import { createSelectionPredicate } from "../encoder/encoder.js";
 import { isSelectionActive, normalizeSelectionPredicate } from "./selection.js";
+import { getSelectionPredicateTreeParams } from "./selectionPredicateTree.js";
 
 /**
  * @typedef {"matching" | "nonmatching"} OrderPass
@@ -18,13 +19,15 @@ import { isSelectionActive, normalizeSelectionPredicate } from "./selection.js";
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
+ * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @returns {ConditionalOrder | undefined}
  */
 export function normalizeOrderDefinition(
     definition,
     encoding,
     paramRuntime,
-    hitTestMode
+    hitTestMode,
+    getType
 ) {
     if (definition === undefined) {
         return undefined;
@@ -45,8 +48,10 @@ export function normalizeOrderDefinition(
         selectionInfo,
         encoding,
         paramRuntime,
-        hitTestMode
+        hitTestMode,
+        getType
     );
+    const params = getSelectionPredicateTreeParams(predicate.selection);
 
     /** @type {[OrderPass, OrderPass]} */
     const passes =
@@ -56,10 +61,10 @@ export function normalizeOrderDefinition(
 
     return {
         predicate,
-        params: selectionInfo.params,
+        params,
         passes,
         isActive: () =>
-            selectionInfo.params.some((param) =>
+            params.some((param) =>
                 isSelectionActive(paramRuntime.findValue(param))
             ),
     };

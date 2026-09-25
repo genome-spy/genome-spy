@@ -3428,8 +3428,8 @@ in highp uint attr_uniqueId;
 in highp float attr_x;
 in highp float attr_y;
 
-bool checkSelection_brush(bool empty) {
-    return (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) || (empty && (uParam_brush_x[0] > uParam_brush_x[1]));
+bool isSelectionEmpty_brush() {
+    return uParam_brush_x[0] > uParam_brush_x[1];
 }
 
 
@@ -3638,7 +3638,7 @@ vec3 accessor_fill_1() {
 }
 
 vec3 getScaled_fill() {
-    if (checkSelection_brush(true)) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) || (true && !!isSelectionEmpty_brush()))) {
         return accessor_fill_0();
     }
     else {
@@ -3661,7 +3661,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return checkSelection_brush(false);
+    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1])) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
 }
 
 
@@ -5666,8 +5666,8 @@ in highp float attr_y;
 in highp uint attr_stroke;
 in highp uint attr_fill;
 
-bool checkSelection_brush(bool empty) {
-    return (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1]) || (empty && (uParam_brush_x[0] > uParam_brush_x[1] || uParam_brush_y[0] > uParam_brush_y[1]));
+bool isSelectionEmpty_brush() {
+    return uParam_brush_x[0] > uParam_brush_x[1] || uParam_brush_y[0] > uParam_brush_y[1];
 }
 
 
@@ -5864,7 +5864,7 @@ vec3 scale_stroke(uint value) {
 }
 
 vec3 getScaled_stroke() {
-    if (checkSelection_brush(true)) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush()))) {
         return scale_stroke(accessor_stroke_0());
     }
     else {
@@ -5911,7 +5911,7 @@ vec3 scale_fill(uint value) {
 }
 
 vec3 getScaled_fill() {
-    if (checkSelection_brush(true)) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush()))) {
         return scale_fill(accessor_fill_0());
     }
     else {
@@ -5934,7 +5934,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return checkSelection_brush(false);
+    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
 }
 
 
@@ -8024,12 +8024,20 @@ in highp uint attr_x2;
 // Selection texture
 uniform highp usampler2D uSelectionTexture_select;
 
-bool checkSelection_select(bool empty) {
-   return hashContainsTexture(uSelectionTexture_select, attr_uniqueId) || (empty && isEmptyHashTexture(uSelectionTexture_select));
+bool isSelectionMember_select() {
+    return hashContainsTexture(uSelectionTexture_select, attr_uniqueId);
 }
 
-bool checkSelection_highlight(bool empty) {
-    return uParam_highlight == attr_uniqueId || (empty && uParam_highlight == 0u);
+bool isSelectionEmpty_select() {
+    return isEmptyHashTexture(uSelectionTexture_select);
+}
+
+bool isSelectionMember_highlight() {
+    return uParam_highlight != 0u && uParam_highlight == attr_uniqueId;
+}
+
+bool isSelectionEmpty_highlight() {
+    return uParam_highlight == 0u;
 }
 
 
@@ -8110,10 +8118,10 @@ float accessor_strokeWidth_2() {
 }
 
 float getScaled_strokeWidth() {
-    if (checkSelection_select(false)) {
+    if ((isSelectionMember_select() || (false && isSelectionEmpty_select()))) {
         return accessor_strokeWidth_0();
     }
-    else if (checkSelection_highlight(false)) {
+    else if ((isSelectionMember_highlight() || (false && isSelectionEmpty_highlight()))) {
         return accessor_strokeWidth_1();
     }
     else {
@@ -8186,7 +8194,7 @@ float accessor_fillOpacity_1() {
 }
 
 float getScaled_fillOpacity() {
-    if (checkSelection_select(true)) {
+    if ((isSelectionMember_select() || (true && isSelectionEmpty_select()))) {
         return accessor_fillOpacity_0();
     }
     else {
@@ -8281,7 +8289,7 @@ return accessor_y2Offset_0();
 #define y2Offset_DEFINED
 
 bool isDatumSelected() {
-    return checkSelection_select(false) || checkSelection_highlight(false);
+    return ((isSelectionMember_select() || (false && isSelectionEmpty_select())) && ((!isSelectionEmpty_select()))) || ((isSelectionMember_highlight() || (false && isSelectionEmpty_highlight())) && ((!isSelectionEmpty_highlight()))) || ((isSelectionMember_select() || (true && isSelectionEmpty_select())) && ((!isSelectionEmpty_select())));
 }
 
 

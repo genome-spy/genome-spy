@@ -27,6 +27,22 @@ contains only current work that still has a concrete renderer or Core consumer.
 - Adding registries, a renderer scene graph, per-facet marks, or speculative
   backend abstractions.
 
+## Active integration: selection predicate composition
+
+The renderer uses one recursive predicate tree for channel conditions,
+visibility, and order. Interval selection state is retained by opaque component
+name; each predicate occurrence binds a component to one mark input through
+`projections`. Activity atoms read retained state without a mark input. Core
+lowers its existing flat selection union before calling the renderer, so the
+renderer has no compatibility union operator.
+
+The renderer contract, retained updates, scalar and packed comparisons, GPU
+tests, and Core adapter are complete. Core now resolves the recursive grammar
+and endpoint projections before translating them to this renderer; WebGL and
+immediate renderers use the same predicate semantics. The existing selection
+predicate Storybook scene demonstrates nested tests and retained updates.
+User-facing examples and cross-backend integration checks are being completed.
+
 ## Active integration: GPU MSDF paths and outline fonts
 
 The production point mark accepts built-in names and closed SVG paths while a

@@ -273,11 +273,44 @@ export interface ParameterPredicate {
     param: string;
 
     /**
+     * Bind interval selection components to positional channels of this mark.
+     * For example, `{ "x": "x2" }` tests the selected x interval against x2
+     * alone. Each selected component must be mapped when this is provided.
+     * The target must be an unconditional field encoding of the same data type.
+     */
+    project?: {
+        x?: "x" | "x2";
+        y?: "y" | "y2";
+    };
+
+    /**
      * For selection parameters, the predicate of empty selections returns true by default.
      * Override this behavior, by setting this property `empty: false`.
      */
     empty?: boolean;
 }
+
+/** Selection predicates may be combined under a condition's `test` property. */
+export type SelectionPredicateOperand =
+    | ParameterPredicate
+    | {
+          and: [SelectionPredicateOperand, ...SelectionPredicateOperand[]];
+          or?: never;
+          not?: never;
+          param?: never;
+      }
+    | {
+          or: [SelectionPredicateOperand, ...SelectionPredicateOperand[]];
+          and?: never;
+          not?: never;
+          param?: never;
+      }
+    | {
+          not: SelectionPredicateOperand;
+          and?: never;
+          or?: never;
+          param?: never;
+      };
 
 /** A flat union of named selection parameters used by a conditional encoding. */
 export interface SelectionUnionTest {
@@ -294,9 +327,18 @@ export interface SelectionUnionTest {
     empty?: boolean;
 }
 
+/** Reference to a named selection predicate in the consuming unit view. */
+export interface NamedSelectionPredicateRef {
+    ref: string;
+}
+
+/** A selection test; definitions cannot refer to other named predicates. */
+export type SelectionPredicateDefinition =
+    SelectionPredicateOperand | SelectionUnionTest;
+
 /** A structured selection predicate for a conditional encoding. */
 export interface TestPredicate {
-    test: ParameterPredicate | SelectionUnionTest;
+    test: SelectionPredicateDefinition | NamedSelectionPredicateRef;
     empty?: never;
     param?: never;
 }

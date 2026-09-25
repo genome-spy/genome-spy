@@ -1,122 +1,227 @@
 import {
     SELECTION_CHECKER_PREFIX,
     SELECTION_EMPTY_PREFIX,
-    SELECTION_MEMBERSHIP_PREFIX,
 } from "../../wgsl/prefixes.js";
 
 /**
+ * @typedef {import("../../index.d.ts").VisibilityPredicate} VisibilityPredicate
+ * @typedef {import("../../index.d.ts").SelectionPredicate} SelectionPredicate
+ * @typedef {import("../../index.d.ts").ScalarOperand} ScalarOperand
  * @typedef {import("../../index.d.ts").ScalarSlotConfig} ScalarSlotConfig
  * @typedef {import("./channelIR.js").ChannelIR} ChannelIR
- * @typedef {import("../../index.d.ts").VisibilityPredicate} VisibilityPredicate
- * @typedef {import("../../index.d.ts").ScalarOperand} ScalarOperand
  */
 
 /**
- * @param {string} name
- * @returns {string}
+ * @param {unknown} predicate
+ * @param {boolean} allowComparison
+ * @returns {VisibilityPredicate}
  */
-export function scalarSlotUniformName(name) {
-    return `u_scalar_${name}`;
+function validatePredicate(predicate, allowComparison) {
+    if (
+        !predicate ||
+        typeof predicate !== "object" ||
+        Array.isArray(predicate)
+    ) {
+        throw new Error("Predicate nodes must be objects.");
+    }
+    const node = /** @type {Record<string, unknown>} */ (predicate);
+    const keys = Object.keys(node);
+    const variants = [
+        "compare",
+        "selection",
+        "selectionActive",
+        "all",
+        "any",
+        "not",
+    ];
+    const kinds = variants.filter((key) => Object.hasOwn(node, key));
+    if (kinds.length !== 1) {
+        throw new Error("Predicate nodes must specify exactly one variant.");
+    }
+    const kind = kinds[0];
+    if (kind === "all" || kind === "any") {
+        const children = node[kind];
+        if (!Array.isArray(children) || children.length === 0) {
+            throw new Error(`Predicate ${kind} nodes must not be empty.`);
+        }
+        if (keys.length !== 1) {
+            throw new Error(
+                `Predicate ${kind} nodes cannot mix variants or leaf properties.`
+            );
+        }
+        children.forEach((child) => validatePredicate(child, allowComparison));
+    } else if (kind === "not") {
+        if (keys.length !== 1) {
+            throw new Error(
+                "Predicate not nodes cannot mix variants or leaf properties."
+            );
+        }
+        validatePredicate(node.not, allowComparison);
+    } else if (kind === "compare") {
+        if (!allowComparison) {
+            throw new Error("Selection predicates cannot contain comparisons.");
+        }
+        if (keys.some((key) => !["compare", "left", "right"].includes(key))) {
+            throw new Error(
+                "Comparison predicates cannot mix variants or leaf properties."
+            );
+        }
+    } else if (kind === "selectionActive") {
+        const reference = node.selectionActive;
+        if (!reference || typeof reference !== "object" || keys.length !== 1) {
+            throw new Error("Selection activity requires a state reference.");
+        }
+        const state = /** @type {Record<string, unknown>} */ (reference);
+        if (typeof state.selection !== "string" || !state.selection) {
+            throw new Error("Selection activity requires a selection name.");
+        }
+        const interval = state.type === "interval";
+        if (interval) {
+            if (
+                !Array.isArray(state.components) ||
+                !state.components.length ||
+                state.components.some(
+                    (component) => typeof component !== "string" || !component
+                ) ||
+                new Set(state.components).size !== state.components.length
+            ) {
+                throw new Error(
+                    "Interval selection activity requires distinct components."
+                );
+            }
+        } else if (state.type !== "single" && state.type !== "multi") {
+            throw new Error("Selection activity has an invalid type.");
+        }
+        const allowed = interval
+            ? ["selection", "type", "components"]
+            : ["selection", "type"];
+        if (Object.keys(state).some((key) => !allowed.includes(key))) {
+            throw new Error(
+                interval
+                    ? "Interval selection activity has unsupported properties."
+                    : "Selection activity has unsupported properties."
+            );
+        }
+    } else {
+        if (typeof node.selection !== "string" || !node.selection) {
+            throw new Error("Selection predicates require a selection name.");
+        }
+        if (node.empty !== undefined && typeof node.empty !== "boolean") {
+            throw new Error("Selection empty policy must be boolean.");
+        }
+        const interval = node.type === "interval";
+        if (interval) {
+            if (
+                !Array.isArray(node.projections) ||
+                node.projections.length === 0
+            ) {
+                throw new Error(
+                    "Interval selections require non-empty projections."
+                );
+            }
+        } else if (
+            (node.type !== "single" && node.type !== "multi") ||
+            Object.hasOwn(node, "projections")
+        ) {
+            throw new Error(
+                "Selection predicates have an invalid type or projections."
+            );
+        }
+        const allowed = interval
+            ? ["selection", "type", "projections", "empty"]
+            : ["selection", "type", "empty"];
+        if (keys.some((key) => !allowed.includes(key))) {
+            throw new Error(
+                interval
+                    ? "Interval selection predicates cannot mix variants or leaf properties."
+                    : "Selection predicates cannot mix variants or leaf properties."
+            );
+        }
+    }
+    return /** @type {VisibilityPredicate} */ (predicate);
 }
 
 /**
- * Validate the structural union shape before any predicate consumer traverses it.
- *
  * @param {VisibilityPredicate | undefined} predicate
  * @returns {VisibilityPredicate | undefined}
  */
 export function normalizeVisibilityPredicate(predicate) {
-    if (predicate === undefined) {
-        return undefined;
-    }
-
-    /**
-     * @param {unknown} node
-     * @returns {VisibilityPredicate}
-     */
-    function normalizeNode(node) {
-        if (!node || typeof node !== "object" || Array.isArray(node)) {
-            throw new Error("Visibility predicate nodes must be objects.");
-        }
-
-        const nodeRecord = /** @type {Record<string, unknown>} */ (node);
-        const kinds = [
-            "compare",
-            "selection",
-            "selectionUnion",
-            "all",
-            "any",
-        ].filter((key) => Object.hasOwn(nodeRecord, key));
-        if (kinds.length !== 1) {
-            throw new Error(
-                "Visibility predicate nodes must specify exactly one of compare, selection, selectionUnion, all, or any."
-            );
-        }
-
-        const kind = kinds[0];
-        if (kind === "all" || kind === "any") {
-            const children = nodeRecord[kind];
-            if (!Array.isArray(children) || children.length === 0) {
-                throw new Error(
-                    `Visibility predicate ${kind} nodes must not be empty.`
-                );
-            }
-            children.forEach(normalizeNode);
-        } else if (kind === "selectionUnion") {
-            const leaves = nodeRecord.selectionUnion;
-            if (!Array.isArray(leaves) || leaves.length === 0) {
-                throw new Error(
-                    "Visibility selection unions must not be empty."
-                );
-            }
-            if (
-                nodeRecord.empty !== undefined &&
-                typeof nodeRecord.empty !== "boolean"
-            ) {
-                throw new Error(
-                    "Visibility selection union empty policy must be boolean."
-                );
-            }
-            if (
-                leaves.some(
-                    (leaf) =>
-                        !leaf ||
-                        typeof leaf !== "object" ||
-                        Array.isArray(leaf) ||
-                        !Object.hasOwn(leaf, "selection") ||
-                        Object.hasOwn(leaf, "selectionUnion") ||
-                        Object.hasOwn(leaf, "empty")
-                )
-            ) {
-                throw new Error(
-                    "Visibility selection union leaves must be single selections without empty flags."
-                );
-            }
-            leaves.forEach(normalizeNode);
-        }
-        return /** @type {VisibilityPredicate} */ (node);
-    }
-
-    return normalizeNode(predicate);
+    return predicate === undefined
+        ? undefined
+        : validatePredicate(predicate, true);
 }
 
 /**
- * @param {import("../../index.d.ts").SelectionPredicate | undefined} predicate
- * @returns {import("../../index.d.ts").SelectionPredicate | undefined}
+ * @param {SelectionPredicate | undefined} predicate
+ * @returns {SelectionPredicate | undefined}
  */
 export function normalizeSelectionPredicate(predicate) {
-    const normalized = normalizeVisibilityPredicate(predicate);
-    if (normalized === undefined) {
-        return undefined;
+    return predicate === undefined
+        ? undefined
+        : /** @type {SelectionPredicate} */ (
+              validatePredicate(predicate, false)
+          );
+}
+
+/**
+ * @param {VisibilityPredicate} node
+ * @param {ReadonlyMap<string, import("../programs/internal/selectionResources.js").SelectionDef>} selectionDefs
+ * @param {(node: import("../../index.d.ts").ScalarComparisonPredicate) => string} [emitComparison]
+ * @returns {string}
+ */
+export function emitPredicateExpression(node, selectionDefs, emitComparison) {
+    if ("all" in node || "any" in node) {
+        const operator = "all" in node ? "&&" : "||";
+        const children = "all" in node ? node.all : node.any;
+        return `(${children.map((child) => emitPredicateExpression(child, selectionDefs, emitComparison)).join(` ${operator} `)})`;
     }
-    if (!("selection" in normalized) && !("selectionUnion" in normalized)) {
+    if ("not" in node) {
+        return `(!${emitPredicateExpression(node.not, selectionDefs, emitComparison)})`;
+    }
+    if ("compare" in node) {
+        if (!emitComparison) {
+            throw new Error(
+                "Comparisons are only available in visibility predicates."
+            );
+        }
+        return emitComparison(node);
+    }
+
+    const reference = "selectionActive" in node ? node.selectionActive : node;
+    const def = selectionDefs.get(reference.selection);
+    if (!def || def.type !== reference.type) {
         throw new Error(
-            "Selection predicates must be a selection or selection union."
+            `Predicate references unknown or incompatible selection "${reference.selection}".`
         );
     }
-    return /** @type {import("../../index.d.ts").SelectionPredicate} */ (
-        normalized
-    );
+    if ("selectionActive" in node) {
+        return `(!${SELECTION_EMPTY_PREFIX}${def.name}(i))`;
+    }
+    if (node.type === "interval") {
+        const checks = node.projections.map((projection) => {
+            const index = def.projections?.findIndex(
+                (item) =>
+                    item.component === projection.component &&
+                    item.input === projection.input &&
+                    item.secondaryInput === projection.secondaryInput &&
+                    item.hitTest === (projection.hitTest ?? "intersects")
+            );
+            if (index === undefined || index < 0) {
+                throw new Error(
+                    `Selection "${def.name}" has an unknown projection.`
+                );
+            }
+            return `${SELECTION_CHECKER_PREFIX}${def.name}_p${index}(i)`;
+        });
+        const isEmpty = `${SELECTION_EMPTY_PREFIX}${def.name}(i)`;
+        return `(select(${checks.join(" && ")}, ${node.empty !== false ? "true" : "false"}, ${isEmpty}))`;
+    }
+    return `${SELECTION_CHECKER_PREFIX}${def.name}(i, ${node.empty !== false ? "true" : "false"})`;
+}
+
+/** @param {string} name @returns {string} */
+export function scalarSlotUniformName(name) {
+    return `u_scalar_${name}`;
 }
 
 /**
@@ -126,13 +231,11 @@ export function normalizeSelectionPredicate(predicate) {
  * @property {ReadonlySet<string>} channelNames
  * @property {ReadonlySet<string>} inputNames
  * @property {Record<string, ScalarSlotConfig>} scalarSlots
- * @property {Array<{ name: string, type: import("../../index.d.ts").SelectionType, targets?: Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints", scalarType?: import("../../types.js").ScalarType, secondaryScalarType?: import("../../types.js").ScalarType }> }>} selectionDefs
+ * @property {Array<import("../programs/internal/selectionResources.js").SelectionDef>} selectionDefs
  * @property {string} [functionName]
  */
 
 /**
- * Validate and emit the immutable point visibility predicate tree.
- *
  * @param {VisibilityBuildParams} params
  * @returns {string}
  */
@@ -148,7 +251,7 @@ export function buildVisibilityPredicate({
     const channelIRByName = new Map(
         channelIRs.map((channelIR) => [channelIR.name, channelIR])
     );
-    const selectionNames = new Set(selectionDefs.map((def) => def.name));
+    const defs = new Map(selectionDefs.map((def) => [def.name, def]));
 
     /**
      * @param {ScalarOperand} operand
@@ -164,33 +267,12 @@ export function buildVisibilityPredicate({
                 "Visibility predicate operands must specify exactly one namespace."
             );
         }
-
         const key = keys[0];
-        const operandRecord = /** @type {Record<string, unknown>} */ (operand);
-        const name = operandRecord[key];
-        if (typeof name !== "string" || name.length === 0) {
+        const name = /** @type {Record<string, string>} */ (operand)[key];
+        if (typeof name !== "string" || !name) {
             throw new Error(
                 `Visibility predicate ${key} operands require a name.`
             );
-        }
-
-        if (key === "channel") {
-            if (!channelNames.has(name)) {
-                throw new Error(
-                    `Visibility predicate references unknown channel "${name}".`
-                );
-            }
-            const channelIR = channelIRByName.get(name);
-            return emitChannelOperand(name, channelIR);
-        }
-        if (key === "input") {
-            if (!inputNames.has(name)) {
-                throw new Error(
-                    `Visibility predicate references unknown input "${name}".`
-                );
-            }
-            const channelIR = channelIRByName.get(name);
-            return emitChannelOperand(name, channelIR);
         }
         if (key === "slot") {
             const slot = scalarSlots[name];
@@ -204,106 +286,49 @@ export function buildVisibilityPredicate({
                 type: slot.type,
             };
         }
-
+        if (
+            (key === "channel" && channelNames.has(name)) ||
+            (key === "input" && inputNames.has(name))
+        ) {
+            const channelIR = channelIRByName.get(name);
+            if (!channelIR || channelIR.inputComponents !== 1) {
+                throw new Error(
+                    `Visibility predicate input "${name}" must be scalar.`
+                );
+            }
+            return {
+                expression: channelIR.rawValueExpr,
+                type: channelIR.scalarType,
+            };
+        }
         throw new Error(
-            `Visibility predicate has unsupported operand namespace "${key}".`
+            `Visibility predicate references unknown ${key} "${name}".`
         );
     }
 
     /**
-     * @param {string} name
-     * @param {ChannelIR | undefined} channelIR
-     * @returns {{ expression: string, type: import("../../types.js").ScalarType }}
-     */
-    function emitChannelOperand(name, channelIR) {
-        if (!channelIR) {
-            throw new Error(
-                `Visibility predicate references unavailable input "${name}".`
-            );
-        }
-        if (channelIR.inputComponents !== 1) {
-            throw new Error(
-                `Visibility predicate input "${name}" must be scalar, got ${channelIR.inputComponents} components.`
-            );
-        }
-        return {
-            expression: channelIR.rawValueExpr,
-            type: channelIR.scalarType,
-        };
-    }
-
-    /**
-     * @param {VisibilityPredicate} node
+     * @param {import("../../index.d.ts").ScalarComparisonPredicate} node
      * @returns {string}
      */
-    function emitNode(node) {
-        if ("compare" in node) {
-            if (
-                node.compare !== "<" &&
-                node.compare !== "<=" &&
-                node.compare !== ">" &&
-                node.compare !== ">="
-            ) {
-                throw new Error(
-                    `Visibility predicate has unsupported comparison "${node.compare}".`
-                );
-            }
-            const left = emitOperand(node.left);
-            const right = emitOperand(node.right);
-            if (left.type !== right.type) {
-                throw new Error(
-                    `Visibility predicate comparison types must match: ${left.type} and ${right.type}.`
-                );
-            }
-            return `(${left.expression} ${node.compare} ${right.expression})`;
+    function emitComparison(node) {
+        if (!["<", "<=", ">", ">="].includes(node.compare)) {
+            throw new Error(
+                `Visibility predicate has unsupported comparison "${node.compare}".`
+            );
         }
-
-        if ("selection" in node) {
-            if (
-                typeof node.selection !== "string" ||
-                !selectionNames.has(node.selection)
-            ) {
-                throw new Error(
-                    `Visibility predicate references unknown selection "${node.selection}".`
-                );
-            }
-            if (node.empty !== undefined && typeof node.empty !== "boolean") {
-                throw new Error(
-                    `Visibility predicate selection "${node.selection}" empty policy must be boolean.`
-                );
-            }
-            return `${SELECTION_CHECKER_PREFIX}${node.selection}(i, ${node.empty === true ? "true" : "false"})`;
+        const left = emitOperand(node.left);
+        const right = emitOperand(node.right);
+        if (left.type !== right.type) {
+            throw new Error(
+                `Visibility predicate comparison types must match: ${left.type} and ${right.type}.`
+            );
         }
-
-        if ("selectionUnion" in node) {
-            const leaves = node.selectionUnion;
-            const names = leaves.map((leaf) => {
-                if (!selectionNames.has(leaf.selection)) {
-                    throw new Error(
-                        `Visibility predicate references unknown selection "${leaf.selection}".`
-                    );
-                }
-                return leaf.selection;
-            });
-            const membership = names
-                .map((name) => `${SELECTION_MEMBERSHIP_PREFIX}${name}(i)`)
-                .join(" || ");
-            const allEmpty = names
-                .map((name) => `${SELECTION_EMPTY_PREFIX}${name}(i)`)
-                .join(" && ");
-            return `(${membership}${node.empty === true ? ` || (${allEmpty})` : ""})`;
-        }
-
-        if ("all" in node || "any" in node) {
-            const operator = "all" in node ? "&&" : "||";
-            const children = "all" in node ? node.all : node.any;
-            return `(${children.map(emitNode).join(` ${operator} `)})`;
-        }
-
-        throw new Error("Visibility predicate has an unsupported node shape.");
+        return `(${left.expression} ${node.compare} ${right.expression})`;
     }
 
-    const expression = predicate ? emitNode(predicate) : "true";
+    const expression = predicate
+        ? emitPredicateExpression(predicate, defs, emitComparison)
+        : "true";
     return /* wgsl */ `
 fn ${functionName}(i: u32) -> bool {
     return ${expression};

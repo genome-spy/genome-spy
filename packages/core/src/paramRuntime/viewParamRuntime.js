@@ -6,6 +6,7 @@ import {
     isSelectionParameter,
     validateParameterName,
 } from "./paramUtils.js";
+import { asSelectionConfig } from "../selection/selection.js";
 
 export {
     activateExprRefProps,
@@ -95,6 +96,12 @@ export default class ViewParamRuntime {
     /** @type {Map<string, Set<import("../types/interactionApi.d.ts").IntervalSelectionControllerApi>>} */
     #selectionControllers = new Map();
 
+    /** @type {import("../view/view.js").default | undefined} */
+    #selectionSource;
+
+    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval", components: string[], source: import("../view/view.js").default | undefined}>>} */
+    #selectionDeclarations = new Map();
+
     /** @type {Map<string, TransitionState>} */
     #transitionStates = new Map();
 
@@ -150,6 +157,93 @@ export default class ViewParamRuntime {
             this.#runtime = new ParamRuntime();
             this.#scopeId = this.#runtime.createScope();
         }
+    }
+
+    /** @param {import("../view/view.js").default} view */
+    setSelectionSource(view) {
+        this.#selectionSource = view;
+    }
+
+    /**
+     * Returns the capability of the visible value slot, including compatible
+     * selection declarations that push values into that slot from descendants.
+     *
+     * @param {string} name
+     */
+    findSelectionCapability(name) {
+        const owner = this.findRuntimeForParam(name);
+        const declarations = owner && owner.#selectionDeclarations.get(name);
+        if (!declarations?.size) {
+            return undefined;
+        }
+
+        const capabilities = Array.from(declarations, (declaration) => ({
+            type: declaration.kind,
+            components: declaration.components.map((component) => ({
+                component,
+                type: declaration.source?.getScaleResolution(
+                    /** @type {"x" | "y"} */ (component)
+                )?.type,
+            })),
+            location: declaration.source?.name ?? name,
+        }));
+        const first = capabilities[0];
+        const signature = JSON.stringify(first.components);
+        const conflict = capabilities.find(
+            ({ components }) => JSON.stringify(components) !== signature
+        );
+        if (conflict) {
+            throw new Error(
+                `Conflicting selection declarations for "${name}" in "${first.location}" and "${conflict.location}".`
+            );
+        }
+        return first;
+    }
+
+    /** @param {Parameter} param */
+    #registerSelectionCapability(param) {
+        if (!("select" in param)) {
+            return;
+        }
+        const select = asSelectionConfig(param.select);
+        /** @type {"single" | "multi" | "interval"} */
+        const kind =
+            select.type === "interval"
+                ? "interval"
+                : select.toggle
+                  ? "multi"
+                  : "single";
+        const components =
+            select.type === "interval"
+                ? Array.from(new Set(select.encodings)).sort()
+                : [];
+        const owner =
+            param.push === "outer"
+                ? this.findRuntimeForParam(param.name)
+                : this;
+        const declaration = {
+            kind,
+            components,
+            source: this.#selectionSource,
+        };
+        const declarations =
+            owner.#selectionDeclarations.get(param.name) ?? new Set();
+        const existing = declarations.values().next().value;
+        if (
+            existing &&
+            (existing.kind !== kind ||
+                JSON.stringify(existing.components) !==
+                    JSON.stringify(components))
+        ) {
+            throw new Error(
+                `Conflicting selection declarations for "${param.name}" in "${existing.source?.name ?? param.name}" and "${this.#selectionSource?.name ?? param.name}".`
+            );
+        }
+        declarations.add(declaration);
+        owner.#selectionDeclarations.set(param.name, declarations);
+        this.#runtime.addScopeDisposer(this.#scopeId, () => {
+            declarations.delete(declaration);
+        });
     }
 
     get #expressionOptions() {
@@ -368,6 +462,8 @@ export default class ViewParamRuntime {
         }
 
         this.#paramConfigs.set(name, param);
+
+        this.#registerSelectionCapability(param);
 
         return setter;
     }

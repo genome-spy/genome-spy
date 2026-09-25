@@ -537,6 +537,10 @@ See the [NamedData documentation](data/eager.md#named-data).
 
 SCHEMA NamedGenomeConfig
 
+## NamedSelectionPredicateRef
+
+SCHEMA NamedSelectionPredicateRef
+
 ## NumericDomain
 
 SCHEMA NumericDomain
@@ -816,6 +820,14 @@ SCHEMA SelectionInitIntervalMapping
 ## SelectionParameter
 
 See the [SelectionParameter documentation](parameters.md#selection-parameters).
+
+## SelectionPredicateDefinition
+
+SCHEMA SelectionPredicateDefinition
+
+## SelectionPredicateOperand
+
+SCHEMA SelectionPredicateOperand
 
 ## SelectionType
 

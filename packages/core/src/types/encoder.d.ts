@@ -97,7 +97,7 @@ export interface Predicate {
     (datum: Datum): boolean;
 
     /** Selection metadata; absent for unconditional branches. */
-    selection?: import("../selection/selection.js").SelectionPredicateInfo;
+    selection?: import("../selection/selectionPredicateTree.js").ResolvedSelectionPredicate;
 }
 
 export interface EncodingBranch {

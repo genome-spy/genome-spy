@@ -15,6 +15,8 @@ import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
 import { getSelectionPredicateParams } from "../selection/selection.js";
 import { normalizeOrderDefinition } from "../selection/order.js";
+import { expandNamedPredicateCondition } from "../selection/selectionPredicateTree.js";
+import { asArray } from "../utils/arrayUtils.js";
 
 /**
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
@@ -368,6 +370,28 @@ export default class Mark {
                 encoding.x.buildIndex ??= this.properties.buildIndex ?? true;
             }
 
+            const predicates = this.unitView.spec.predicates ?? {};
+            for (const [channel, channelDef] of Object.entries(encoding)) {
+                if (!channelDef || !("condition" in channelDef)) {
+                    continue;
+                }
+
+                const conditions = asArray(channelDef.condition);
+                const expanded = conditions.map((condition) =>
+                    expandNamedPredicateCondition(condition, predicates)
+                );
+                if (
+                    expanded.some((condition, i) => condition !== conditions[i])
+                ) {
+                    internalEncoding[channel] = {
+                        ...channelDef,
+                        condition: Array.isArray(channelDef.condition)
+                            ? expanded
+                            : expanded[0],
+                    };
+                }
+            }
+
             return encoding;
         });
     }
@@ -410,7 +434,8 @@ export default class Mark {
                 this.encoding.order,
                 this.encoding,
                 this.unitView.paramRuntime,
-                this.defaultHitTestMode
+                this.defaultHitTestMode,
+                (channel) => this.unitView.getScaleResolution(channel)?.type
             );
             this.#orderInitialized = true;
         }

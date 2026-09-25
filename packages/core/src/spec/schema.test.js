@@ -208,9 +208,40 @@ describe("generated core schema", () => {
             empty: false,
         };
         expect(validate(base)).toBe(true);
+        condition.test = {
+            and: [
+                { param: "selected", empty: false },
+                { not: { param: "brush", project: { x: "x2" } } },
+            ],
+        };
+        expect(validate(base), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+        condition.test.and = [];
+        expect(validate(base)).toBe(false);
+        condition.test.and = [{ param: "selected" }];
+        condition.test.or = [{ param: "brush" }];
+        expect(validate(base)).toBe(false);
+        delete condition.test.or;
+        condition.test.and[0].project = { x: "y" };
+        expect(validate(base)).toBe(false);
         delete condition.test;
         condition.param = { or: ["selected"] };
         expect(validate(base)).toBe(false);
+
+        delete condition.param;
+        condition.test = { param: "selected" };
+        base.params = [
+            {
+                name: "brush",
+                select: { type: "interval", encodings: ["x"], fields: ["id"] },
+            },
+        ];
+        expect(validate(base)).toBe(false);
+        delete base.params[0].select.fields;
+        expect(validate(base), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
     });
 
     test("accepts restricted conditional order and rejects unsupported forms", () => {
@@ -251,6 +282,35 @@ describe("generated core schema", () => {
         expect(validate(base)).toBe(false);
         base.encoding.order = { value: { expr: "level" } };
         expect(validate(base)).toBe(false);
+    });
+
+    test("accepts unit predicates referenced by conditional encodings", () => {
+        const validate = createCoreValidator();
+        const spec = /** @type {any} */ ({
+            mark: "point",
+            predicates: {
+                highlighted: {
+                    or: [{ param: "hover", empty: false }, { param: "brush" }],
+                },
+            },
+            encoding: {
+                color: {
+                    condition: { test: { ref: "highlighted" }, value: "red" },
+                    value: "gray",
+                },
+            },
+        });
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+
+        spec.predicates.highlighted = { ref: "other" };
+        expect(validate(spec)).toBe(false);
+
+        spec.predicates.highlighted = { param: "hover" };
+        spec.encoding.color.condition.test.empty = false;
+        expect(validate(spec)).toBe(false);
     });
 
     test("accepts the indexed FASTA six-frame translation example", () => {

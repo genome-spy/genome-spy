@@ -138,13 +138,13 @@ Available mark subpaths are `marks/point`, `marks/rect`, `marks/rule`,
 
 Advanced helpers have their own typed subpaths:
 
-| Subpath           | Purpose                                                        |
-| ----------------- | -------------------------------------------------------------- |
-| `high-precision`  | Pack large integer series and index-scale domains.             |
-| `scale-authoring` | Experimental WGSL scale-emission helpers.                      |
-| `debug`           | Enable renderer resource logging.                              |
-| `fonts/default`   | Load the compact built-in TrueType font on demand.              |
-| `fonts/truetype` | Parse and load static TrueType fonts.                          |
+| Subpath           | Purpose                                            |
+| ----------------- | -------------------------------------------------- |
+| `high-precision`  | Pack large integer series and index-scale domains. |
+| `scale-authoring` | Experimental WGSL scale-emission helpers.          |
+| `debug`           | Enable renderer resource logging.                  |
+| `fonts/default`   | Load the compact built-in TrueType font on demand. |
+| `fonts/truetype`  | Parse and load static TrueType fonts.              |
 
 Importing one mark or scale does not include unrelated marks, scales, or font
 assets.
@@ -454,10 +454,11 @@ the selected rectangle.
 
 ### Visibility predicates
 
-Every built-in mark accepts an immutable `visibleWhen` predicate. It can
-compare scalar channels, non-visual `inputs`, and retained `scalarSlots`, and
-combine leaves with non-empty `all` and `any` nodes. The same predicate runs in
-normal and picking vertex pipelines.
+Every built-in mark accepts an immutable `visibleWhen` predicate. It can test
+selections or compare scalar channels, non-visual `inputs`, and retained
+`scalarSlots`. Tests can be combined with non-empty `all` and `any` nodes or
+negated with `not`. The same predicate runs in normal and picking vertex
+pipelines.
 
 ```js
 const mark = renderer.createMark(pointMark, {
@@ -529,34 +530,50 @@ Supported selection types are:
 
 - `single`: one selected `uniqueId` in a u32 uniform;
 - `multi`: selected IDs in a GPU hash table; and
-- `interval`: one or more scalar input ranges combined with AND semantics.
+- `interval`: one or more retained components whose projections test numeric
+  inputs.
 
-An interval target can name a ranged-datum endpoint and use `intersects`,
-`encloses`, or `endpoints` hit testing. For a mark configured with an interval
-selection named `brush`, update its state through the corresponding slot:
+An interval predicate binds a retained component to an input through
+`projections`. A projection can also name a second ranged-datum endpoint and
+use `intersects`, `encloses`, or `endpoints` hit testing. The same component can
+be tested against several inputs without duplicating selection state. For a
+mark configured with an interval selection named `brush`, update its state by
+component name:
 
 ```js
 mark.selections.brush.set({ x: [0, 10], y: [2, 8] });
 ```
 
-Interval slots expose their stable target order. A complete replacement may
-omit a target or set it to `null` to make it inactive; unknown targets are
-rejected.
+Interval slots expose their stable component order. A complete replacement may
+omit a component or set it to `null` to make it inactive. An interval selection
+is empty until all its components are active; unknown components are rejected.
 
-Conditional channels can also use a flat union of named selections. A union
-matches when any selection contains the datum; with `empty: true`, it also
-matches when every member is empty. Union leaves share the selection kind and
-interval target rules of ordinary selection conditions:
+Conditional channels, visibility, and order accept recursive `all`, `any`, and
+`not` predicates. Selection leaves test membership and default to
+`empty: true`. A `selectionActive` atom reads whether all components of an
+interval selection are active, without testing an input. It is useful when
+empty membership must be distinguished from active membership:
 
 ```js
 {
-  selectionUnion: [
-    { selection: "picked", type: "single" },
-    { selection: "brush", type: "interval", targets: [{ input: "x" }] },
+  any: [
+    { selection: "picked", type: "single", empty: false },
+    {
+      all: [
+        { selection: "brush", type: "interval",
+          projections: [{ component: "range0", input: "source" }] },
+        { selectionActive: { selection: "brush", type: "interval",
+          components: ["range0"] } },
+      ],
+    },
   ],
-  empty: false,
 }
 ```
+
+Inputs may be scalar `f32`, `u32`, or `i32`, or packed two-component `u32`
+values. One component must use the same comparison representation in every
+projection. Components referenced only by `selectionActive` retain activity
+state without allocating bound storage or requiring an input.
 
 Conditional branches are normalized to private synthetic channels for shader
 generation. When a logical channel has exactly one series-backed branch,

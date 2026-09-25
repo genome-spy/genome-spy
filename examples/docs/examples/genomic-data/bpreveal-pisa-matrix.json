@@ -387,7 +387,7 @@
       "description": "Use compact bars in the overview and reveal the contributing reference bases as a Dynseq logo once each one-base band is at least 12 pixels wide.",
       "stops": {
         "channel": "x",
-        "values": [0.08333333333333333],
+        "values": [0.15],
         "transition": { "type": "lerp", "halfLife": 60 }
       },
       "multiscale": [

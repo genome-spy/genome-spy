@@ -183,6 +183,14 @@ export function initializeViewSubtree(
         (view) => view instanceof UnitView
     );
 
+    for (const view of viewsToInitialize) {
+        for (const [name, param] of view.paramRuntime.paramConfigs) {
+            if ("select" in param) {
+                view.paramRuntime.findSelectionCapability(name);
+            }
+        }
+    }
+
     for (const view of unitViews) {
         const mark = view.mark;
         mark.initializeEncoders();

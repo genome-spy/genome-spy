@@ -313,10 +313,11 @@ describe("generated shader snapshots", () => {
             },
         });
 
-        // The single-param helper requires an empty-policy argument.
-        expect(sources.vertex).toMatch(
-            /bool isDatumSelected\(\) \{\s*return checkSelection_picked\(false\);/
-        );
+        const selected = sources.vertex.match(
+            /bool isDatumSelected\(\) \{([^}]+)\}/
+        )?.[1];
+        expect(selected).toContain("isSelectionMember_picked()");
+        expect(selected).toContain("isSelectionEmpty_picked()");
     });
 
     test("point mark includes the stroke-only x shape", async () => {
@@ -417,6 +418,84 @@ describe("generated shader snapshots", () => {
         });
 
         expect(sources).toMatchSnapshot();
+    });
+
+    test("one interval component tests separate link endpoints", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{ source: 2, target: 8, y: 3 }] },
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            mark: "link",
+            encoding: {
+                x: { field: "source", type: "quantitative" },
+                x2: { field: "target" },
+                y: { field: "y", type: "quantitative" },
+                opacity: {
+                    condition: {
+                        test: {
+                            and: [
+                                { param: "brush", project: { x: "x" } },
+                                { param: "brush", project: { x: "x2" } },
+                            ],
+                        },
+                        value: 1,
+                    },
+                    value: 0.2,
+                },
+            },
+        });
+        const opacity = sources.vertex.match(
+            /getScaled_opacity\(\) \{([\s\S]*?)\n\}/
+        )?.[1];
+        expect(opacity).toContain(
+            "uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]"
+        );
+        expect(opacity).toContain(
+            "uParam_brush_x[0] <= attr_x2 && attr_x2 <= uParam_brush_x[1]"
+        );
+    });
+
+    test("high-precision interval projection uses packed WebGL comparisons", async () => {
+        const large = 2 ** 32 + 20;
+        const sources = await captureShaderSources({
+            data: { values: [{ source: large - 8, target: large - 4, y: 1 }] },
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            mark: "link",
+            encoding: {
+                x: {
+                    field: "source",
+                    type: "index",
+                    scale: { domain: [0, large] },
+                },
+                x2: { field: "target" },
+                y: { field: "y", type: "quantitative" },
+                opacity: {
+                    condition: {
+                        test: { param: "brush", project: { x: "x2" } },
+                        value: 1,
+                    },
+                    value: 0.2,
+                },
+            },
+        });
+        expect(sources.vertex).toContain(
+            "uniform highp uvec2[2] uParam_brush_x;"
+        );
+        expect(sources.vertex).toContain(
+            "selectionLeq(uParam_brush_x[0], attr_x2)"
+        );
+        expect(sources.vertex).toContain(
+            "selectionLeq(attr_x2, uParam_brush_x[1])"
+        );
     });
 
     test("arrow mark playground spec", async () => {

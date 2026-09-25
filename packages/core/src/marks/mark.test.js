@@ -1,9 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 
 import UnitView from "../view/unitView.js";
-import { create } from "../view/testUtils.js";
+import { create, createAndInitialize } from "../view/testUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import LayerView from "../view/layerView.js";
+import { createMultiPointSelection } from "../selection/selection.js";
 
 describe("mark factory", () => {
     test("creates arrow marks", async () => {
@@ -37,6 +38,71 @@ describe("mark factory", () => {
             yOffset: { value: 0 },
             uniqueId: { field: UNIQUE_ID_KEY },
         });
+    });
+});
+
+describe("unit view predicates", () => {
+    test("shares a named test across appearance and order conditions", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [{ x: 1 }, { x: 2 }] },
+                params: [{ name: "picked", select: "point" }],
+                predicates: { highlighted: { param: "picked", empty: false } },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    fillOpacity: {
+                        condition: {
+                            test: { ref: "highlighted" },
+                            value: 1,
+                        },
+                        value: 0.2,
+                    },
+                    order: {
+                        condition: {
+                            test: { ref: "highlighted" },
+                            value: 1,
+                        },
+                        value: 0,
+                    },
+                },
+            },
+            UnitView
+        );
+        view.mark.initializeEncoders();
+
+        const [picked, other] = Array.from(view.getCollector().getData());
+        const opacityPredicate =
+            view.mark.encoders.fillOpacity.branches[0].predicate;
+        const orderPredicate = view.mark.getOrder().predicate;
+        expect(opacityPredicate(picked)).toBe(false);
+        expect(orderPredicate(picked)).toBe(false);
+
+        view.paramRuntime.setValue(
+            "picked",
+            createMultiPointSelection([picked])
+        );
+        expect(opacityPredicate(picked)).toBe(true);
+        expect(orderPredicate(picked)).toBe(true);
+        expect(opacityPredicate(other)).toBe(false);
+        expect(orderPredicate(other)).toBe(false);
+    });
+
+    test("rejects references missing from the unit view", async () => {
+        await expect(
+            create(
+                {
+                    mark: "point",
+                    encoding: {
+                        fillOpacity: {
+                            condition: { test: { ref: "missing" }, value: 1 },
+                            value: 0.2,
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow('Unknown predicate "missing" in unit view.');
     });
 });
 

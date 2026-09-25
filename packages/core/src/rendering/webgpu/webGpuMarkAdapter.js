@@ -1,4 +1,5 @@
 import { collectAppearanceSelections } from "../../selection/selection.js";
+import { activeMatchResolvedSelectionPredicate } from "../../selection/selectionPredicateTree.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
 import {
@@ -30,11 +31,7 @@ import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
-import {
-    getSecondaryChannel,
-    isDatumDef,
-    isValueDef,
-} from "../../encoder/encoder.js";
+import { isDatumDef, isValueDef } from "../../encoder/encoder.js";
 
 const SHAPE_NAMES = [
     "circle",
@@ -371,91 +368,65 @@ function createBranchEncoder(mark, encoder, branch) {
  * Converts a Core selection predicate to the renderer's selection contract.
  *
  * @param {import("../../marks/mark.js").default} mark
- * @param {import("../../selection/selection.js").SelectionPredicateInfo} selectionInfo
+ * @param {import("../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate
  * @returns {import("@genome-spy/webgpu-renderer").SelectionPredicate}
  */
-function createSelectionCondition(mark, selectionInfo) {
-    const { params, empty, singleParam } = selectionInfo;
-
-    /** @param {string} param @param {boolean} [empty] */
-    const createLeaf = (param, empty) => {
-        const selection = mark.unitView.paramRuntime.findValue(param);
-        if (
-            !selection ||
-            !["single", "multi", "interval"].includes(selection.type)
-        ) {
-            throw unsupported(
-                mark,
-                `Selection "${param}" is not available for WebGPU.`
-            );
-        }
-        /** @type {import("@genome-spy/webgpu-renderer").SelectionPredicate} */
-        const leaf = { selection: param, type: selection.type };
-        if (empty !== undefined) {
-            leaf.empty = empty;
-        }
-
-        if (selection.type == "interval") {
-            const intervalWhen = /** @type {any} */ (leaf);
-            intervalWhen.targets = Object.keys(selection.intervals).map(
-                (input) => {
-                    if (input != "x" && input != "y") {
-                        throw unsupported(
-                            mark,
-                            `Interval selection "${param}" has unsupported target "${String(input)}".`
-                        );
-                    }
-
-                    assertScalarIntervalInput(mark, param, input);
-
-                    const secondaryInput = getSecondaryChannel(input);
-                    const target = { input };
-                    if (mark.encoders[secondaryInput]) {
-                        assertScalarIntervalInput(mark, param, secondaryInput);
-                        return {
-                            ...target,
-                            secondaryInput,
-                            hitTest: mark.defaultHitTestMode,
-                        };
-                    }
-                    return target;
-                }
-            );
-        }
-        return leaf;
-    };
-
-    if (!singleParam) {
+function createSelectionCondition(mark, predicate) {
+    if ("all" in predicate) {
         return {
-            selectionUnion: params.map((param) => createLeaf(param)),
-            empty,
+            all: predicate.all.map((child) =>
+                createSelectionCondition(mark, child)
+            ),
         };
     }
-
-    return createLeaf(params[0], empty);
-}
-
-/**
- * Large index and locus values use two packed u32 components in ordinary
- * rendering, but interval predicates currently require one scalar component.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} selectionName
- * @param {string} channel
- */
-function assertScalarIntervalInput(mark, selectionName, channel) {
-    const encoder = /** @type {Record<string, any>} */ (mark.encoders)[channel];
-    const scale = encoder?.scale;
-    if (
-        scale &&
-        (scale.type == "index" || scale.type == "locus") &&
-        isLargeIndexDomain(scale.domain().map(Number))
-    ) {
-        throw unsupported(
-            mark,
-            `Interval selection "${selectionName}" cannot target two-component channel "${channel}".`
-        );
+    if ("any" in predicate) {
+        return {
+            any: predicate.any.map((child) =>
+                createSelectionCondition(mark, child)
+            ),
+        };
     }
+    if ("not" in predicate) {
+        return { not: createSelectionCondition(mark, predicate.not) };
+    }
+    if ("selectionActive" in predicate) {
+        const { param, type, components } = predicate.selectionActive;
+        return {
+            selectionActive:
+                type === "interval"
+                    ? {
+                          selection: param,
+                          type,
+                          components: /** @type {[string, ...string[]]} */ (
+                              components
+                          ),
+                      }
+                    : { selection: param, type },
+        };
+    }
+    if (predicate.type === "interval") {
+        return {
+            selection: predicate.param,
+            type: "interval",
+            projections:
+                /** @type {[import("@genome-spy/webgpu-renderer").IntervalSelectionProjection, ...import("@genome-spy/webgpu-renderer").IntervalSelectionProjection[]]} */ (
+                    predicate.projections.map(
+                        ({ component, input, secondaryInput, hitTest }) => ({
+                            component,
+                            input,
+                            secondaryInput,
+                            hitTest,
+                        })
+                    )
+                ),
+            empty: predicate.empty,
+        };
+    }
+    return {
+        selection: predicate.param,
+        type: predicate.type,
+        empty: predicate.empty,
+    };
 }
 
 /**
@@ -728,14 +699,11 @@ function createPointVisibilitySelections(mark) {
         return [];
     }
 
-    return Array.from(
-        collectAppearanceSelections(mark.encoders),
-        ([param, partialIntervals]) =>
-            createSelectionCondition(mark, {
-                params: [param],
-                empty: false,
-                singleParam: !partialIntervals,
-            })
+    return collectAppearanceSelections(mark.encoders).map((root) =>
+        createSelectionCondition(
+            mark,
+            activeMatchResolvedSelectionPredicate(root)
+        )
     );
 }
 

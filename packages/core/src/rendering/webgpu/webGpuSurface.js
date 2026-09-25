@@ -685,8 +685,8 @@ function updateRetainedSelections(retained, mark) {
             if (!snapshot || snapshot.type != "interval") {
                 /** @type {Record<string, [number, number] | null>} */
                 const intervals = {};
-                for (const target of slot.targets) {
-                    intervals[target] = null;
+                for (const component of slot.components) {
+                    intervals[component] = null;
                 }
                 snapshot = {
                     type: "interval",
@@ -696,9 +696,9 @@ function updateRetainedSelections(retained, mark) {
             }
 
             let changed = false;
-            for (const target of slot.targets) {
-                const interval = selection.intervals?.[target] ?? null;
-                const previous = snapshot.intervals[target];
+            for (const component of slot.components) {
+                const interval = selection.intervals?.[component] ?? null;
+                const previous = snapshot.intervals[component];
                 if (
                     interval == null
                         ? previous != null
@@ -706,7 +706,7 @@ function updateRetainedSelections(retained, mark) {
                           previous[0] != interval[0] ||
                           previous[1] != interval[1]
                 ) {
-                    snapshot.intervals[target] = interval
+                    snapshot.intervals[component] = interval
                         ? [interval[0], interval[1]]
                         : null;
                     changed = true;

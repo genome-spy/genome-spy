@@ -11,6 +11,7 @@ import {
     SELECTION_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
+import { packHighPrecisionU32 } from "../../../utils/highPrecision.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -20,17 +21,6 @@ import { gpuLabel } from "../../../utils/gpuLabel.js";
  *
  * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} SelectionUpdate
  *
- * @typedef {object} IntervalTargetDef
- * @prop {string} input
- * @prop {string} [secondaryInput]
- * @prop {"intersects"|"encloses"|"endpoints"} hitTest
- * @prop {ScalarType} scalarType
- * @prop {ScalarType} [secondaryScalarType]
- *
- * @typedef {object} SelectionDef
- * @prop {string} name
- * @prop {SelectionType} type
- * @prop {IntervalTargetDef[]} [targets]
  */
 
 /**
@@ -48,177 +38,236 @@ function isIntervalBounds(value) {
 
 /** @type {number[]} */
 const INACTIVE_INTERVAL_BOUNDS = [0, 0];
+/** @type {number[]} */
+const INACTIVE_PACKED_BOUNDS = [0, 0, 0, 0];
 
 /**
- * @param {IntervalTargetDef} a
- * @param {IntervalTargetDef} b
- * @returns {boolean}
+ * @typedef {{ scalarType: ScalarType, inputComponents: 1 | 2 }} IntervalRepresentation
+ * @typedef {import("../../../index.d.ts").IntervalSelectionProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
+ * @typedef {{ name: string, type: SelectionType, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean }} SelectionDef
  */
-function sameIntervalTarget(a, b) {
-    return (
-        a.input === b.input &&
-        a.secondaryInput === b.secondaryInput &&
-        a.hitTest === b.hitTest
-    );
-}
 
 /**
- * @param {IntervalTargetDef[]} a
- * @param {IntervalTargetDef[]} b
- * @returns {boolean}
- */
-function sameIntervalTargets(a, b) {
-    return (
-        a.length === b.length &&
-        a.every((target, index) => sameIntervalTarget(target, b[index]))
-    );
-}
-
-/**
- * Resolve and validate one interval predicate's target descriptors.
- *
  * @param {string} selectionName
- * @param {import("../../../index.d.ts").SelectionPredicateLeaf} when
+ * @param {import("../../../index.d.ts").IntervalSelectionProjection} projection
  * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
- * @returns {IntervalTargetDef[]}
+ * @returns {IntervalProjectionDef}
  */
-function resolveIntervalTargets(selectionName, when, getAnalysis) {
-    if (when.type !== "interval") {
-        throw new Error(`Selection "${selectionName}" is not an interval.`);
-    }
-    if (!Array.isArray(when.targets) || when.targets.length === 0) {
+function resolveProjection(selectionName, projection, getAnalysis) {
+    if (
+        !projection ||
+        typeof projection.component !== "string" ||
+        !projection.component
+    ) {
         throw new Error(
-            `Interval selection "${selectionName}" must specify a non-empty targets array.`
+            `Interval selection "${selectionName}" projections require a component.`
         );
     }
-
-    const names = new Set();
-    return when.targets.map((target) => {
-        if (names.has(target.input)) {
+    if (typeof projection.input !== "string" || !projection.input) {
+        throw new Error(
+            `Interval selection "${selectionName}" projections require an input.`
+        );
+    }
+    if (
+        Object.keys(projection).some(
+            (key) =>
+                !["component", "input", "secondaryInput", "hitTest"].includes(
+                    key
+                )
+        )
+    ) {
+        throw new Error(
+            `Interval selection "${selectionName}" projection has unsupported properties.`
+        );
+    }
+    const analysis = getAnalysis(projection.input);
+    if (
+        analysis.inputComponents !== 1 &&
+        !(analysis.inputComponents === 2 && analysis.scalarType === "u32")
+    ) {
+        throw new Error(
+            `Interval selection "${selectionName}" requires a scalar or packed numeric input "${projection.input}".`
+        );
+    }
+    if (projection.secondaryInput !== undefined) {
+        const secondary = getAnalysis(projection.secondaryInput);
+        if (
+            secondary.inputComponents !== analysis.inputComponents ||
+            secondary.scalarType !== analysis.scalarType
+        ) {
             throw new Error(
-                `Interval selection "${selectionName}" cannot target "${target.input}" more than once.`
+                `Interval selection "${selectionName}" requires matching representations for inputs "${projection.input}" and "${projection.secondaryInput}".`
             );
         }
-        names.add(target.input);
-
-        const analysis = getAnalysis(target.input);
-        if (analysis.inputComponents !== 1) {
-            throw new Error(
-                `Interval selection "${selectionName}" requires scalar input "${target.input}".`
-            );
-        }
-
-        let secondaryScalarType;
-        if (target.secondaryInput !== undefined) {
-            const secondaryAnalysis = getAnalysis(target.secondaryInput);
-            if (secondaryAnalysis.inputComponents !== 1) {
-                throw new Error(
-                    `Interval selection "${selectionName}" requires scalar input "${target.secondaryInput}".`
-                );
-            }
-            if (secondaryAnalysis.scalarType !== analysis.scalarType) {
-                throw new Error(
-                    `Interval selection "${selectionName}" requires matching scalar types for inputs "${target.input}" and "${target.secondaryInput}".`
-                );
-            }
-            secondaryScalarType = secondaryAnalysis.scalarType;
-        }
-
-        return {
-            input: target.input,
-            secondaryInput: target.secondaryInput,
-            hitTest: target.hitTest ?? "intersects",
-            scalarType: analysis.scalarType,
-            secondaryScalarType,
-        };
-    });
+    }
+    if (
+        projection.hitTest !== undefined &&
+        (!projection.secondaryInput ||
+            !["intersects", "encloses", "endpoints"].includes(
+                projection.hitTest
+            ))
+    ) {
+        throw new Error(
+            `Interval selection "${selectionName}" has an invalid hit-test mode.`
+        );
+    }
+    return {
+        ...projection,
+        hitTest: projection.hitTest ?? "intersects",
+        scalarType: analysis.scalarType,
+        inputComponents: /** @type {1 | 2} */ (analysis.inputComponents),
+    };
 }
 
 /**
- * Add one selection declaration to the normalized definition map.
- *
  * @param {Map<string, SelectionDef>} defs
- * @param {import("../../../index.d.ts").SelectionPredicate} when
- * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
- * @returns {void}
+ * @param {import("../../../index.d.ts").SelectionStateReference | import("../../../index.d.ts").SelectionPredicateLeaf} reference
+ * @returns {SelectionDef}
  */
-function addSelectionDef(defs, when, getAnalysis) {
-    if ("selectionUnion" in when) {
-        for (const leaf of when.selectionUnion) {
-            addSelectionDef(defs, leaf, getAnalysis);
-        }
-        return;
+function addSelectionReference(defs, reference) {
+    if (
+        !reference ||
+        typeof reference.selection !== "string" ||
+        !reference.selection ||
+        !["single", "multi", "interval"].includes(reference.type)
+    ) {
+        throw new Error(
+            "Selection predicates require a named selection and type."
+        );
     }
-    const selectionName = when.selection;
-    const type = when.type;
-    const existing = defs.get(selectionName);
+    if (
+        reference.type === "interval" &&
+        "components" in reference &&
+        (!Array.isArray(reference.components) ||
+            reference.components.length === 0 ||
+            reference.components.some(
+                (component) => typeof component !== "string" || !component
+            ) ||
+            new Set(reference.components).size !== reference.components.length)
+    ) {
+        throw new Error(
+            `Interval selection "${reference.selection}" requires distinct components.`
+        );
+    }
+    const existing = defs.get(reference.selection);
     if (existing) {
-        if (existing.type !== type) {
+        if (existing.type !== reference.type) {
             throw new Error(
-                `Selection "${selectionName}" must keep a single type.`
+                `Selection "${reference.selection}" must keep a single type.`
             );
         }
-        if (type === "interval") {
-            const targets = resolveIntervalTargets(
-                selectionName,
-                when,
-                getAnalysis
-            );
+        if (reference.type === "interval" && "components" in reference) {
             if (
-                !existing.targets ||
-                !sameIntervalTargets(existing.targets, targets)
+                existing.declaredComponents &&
+                (existing.declaredComponents.length !==
+                    reference.components.length ||
+                    existing.declaredComponents.some(
+                        (component) => !reference.components.includes(component)
+                    ))
             ) {
                 throw new Error(
-                    `Selection "${selectionName}" must keep the same interval targets.`
+                    `Selection "${reference.selection}" must keep the same components.`
                 );
             }
+            existing.declaredComponents = Array.from(reference.components);
+            for (const component of reference.components) {
+                if (!existing.components?.includes(component)) {
+                    existing.components?.push(component);
+                }
+            }
         }
-        return;
+        return existing;
     }
-
-    if (type === "interval") {
-        defs.set(selectionName, {
-            name: selectionName,
-            type,
-            targets: resolveIntervalTargets(selectionName, when, getAnalysis),
-        });
-    } else {
-        defs.set(selectionName, { name: selectionName, type });
+    /** @type {SelectionDef} */
+    const def = {
+        name: reference.selection,
+        type: reference.type,
+        membershipUsed: false,
+    };
+    if (reference.type === "interval") {
+        def.components =
+            "components" in reference ? Array.from(reference.components) : [];
+        if ("components" in reference) {
+            def.declaredComponents = Array.from(reference.components);
+        }
+        def.representations = new Map();
+        def.projections = [];
     }
+    defs.set(def.name, def);
+    return def;
 }
 
 /**
- * Collect selection leaves from an immutable visibility tree.
- *
- * @param {VisibilityPredicate | undefined} node
+ * @param {import("../../../index.d.ts").VisibilityPredicate | undefined} node
  * @param {Map<string, SelectionDef>} defs
  * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
  * @returns {void}
  */
-function collectVisibilitySelections(node, defs, getAnalysis) {
-    if (!node || typeof node !== "object") {
+function collectSelections(node, defs, getAnalysis) {
+    if (!node) {
         return;
     }
-    if ("selection" in node || "selectionUnion" in node) {
-        addSelectionDef(defs, node, getAnalysis);
-    } else if ("all" in node) {
-        for (const child of node.all) {
-            collectVisibilitySelections(child, defs, getAnalysis);
+    if ("all" in node || "any" in node) {
+        for (const child of "all" in node ? node.all : node.any) {
+            collectSelections(child, defs, getAnalysis);
         }
-    } else if ("any" in node) {
-        for (const child of node.any) {
-            collectVisibilitySelections(child, defs, getAnalysis);
+    } else if ("not" in node) {
+        collectSelections(node.not, defs, getAnalysis);
+    } else if ("selectionActive" in node) {
+        addSelectionReference(defs, node.selectionActive);
+    } else if ("selection" in node) {
+        const def = addSelectionReference(defs, node);
+        def.membershipUsed = true;
+        if (node.type !== "interval") {
+            return;
+        }
+        if (!Array.isArray(node.projections) || !node.projections.length) {
+            throw new Error(
+                `Interval selection "${node.selection}" must specify non-empty projections.`
+            );
+        }
+        for (const projection of node.projections) {
+            const resolved = resolveProjection(
+                node.selection,
+                projection,
+                getAnalysis
+            );
+            if (!def.components?.includes(resolved.component)) {
+                def.components?.push(resolved.component);
+            }
+            const current = def.representations?.get(resolved.component);
+            if (
+                current &&
+                (current.scalarType !== resolved.scalarType ||
+                    current.inputComponents !== resolved.inputComponents)
+            ) {
+                throw new Error(
+                    `Interval selection "${node.selection}" component "${resolved.component}" must keep one comparison representation.`
+                );
+            }
+            def.representations?.set(resolved.component, {
+                scalarType: resolved.scalarType,
+                inputComponents: resolved.inputComponents,
+            });
+            if (
+                !def.projections?.some(
+                    (item) =>
+                        item.component === resolved.component &&
+                        item.input === resolved.input &&
+                        item.secondaryInput === resolved.secondaryInput &&
+                        item.hitTest === resolved.hitTest
+                )
+            ) {
+                def.projections?.push(resolved);
+            }
         }
     }
 }
 
 /**
- * Build a normalized set of selection definitions from channel conditions and
- * visibility predicates.
- *
  * @param {Record<string, ChannelConfigResolved>} channels
  * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} analysisByChannel
- * @param {VisibilityPredicate | undefined} visibleWhen
+ * @param {import("../../../index.d.ts").VisibilityPredicate | undefined} visibleWhen
  * @param {import("../../../index.d.ts").MarkOrder | undefined} order
  * @returns {Map<string, SelectionDef>}
  */
@@ -236,24 +285,58 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen, order) {
 
     for (const channel of Object.values(channels)) {
         for (const condition of channel.conditions ?? []) {
-            addSelectionDef(defs, condition.when, getAnalysis);
+            collectSelections(condition.when, defs, getAnalysis);
         }
     }
-    collectVisibilitySelections(visibleWhen, defs, getAnalysis);
-    collectVisibilitySelections(order?.when, defs, getAnalysis);
+    collectSelections(visibleWhen, defs, getAnalysis);
+    collectSelections(order?.when, defs, getAnalysis);
+
+    for (const def of defs.values()) {
+        if (
+            def.declaredComponents &&
+            def.components?.some(
+                (component) => !def.declaredComponents?.includes(component)
+            )
+        ) {
+            throw new Error(
+                `Selection "${def.name}" projects an undeclared component.`
+            );
+        }
+    }
 
     if (
         !channels.uniqueId &&
         Array.from(defs.values()).some(
-            (def) => def.type === "single" || def.type === "multi"
+            (def) =>
+                def.membershipUsed &&
+                (def.type === "single" || def.type === "multi")
         )
     ) {
         throw new Error(
             'Selections of type "single" or "multi" require the "uniqueId" channel.'
         );
     }
-
     return defs;
+}
+
+/**
+ * @param {import("../../../index.d.ts").SelectionPredicate} node
+ * @param {string} name
+ * @returns {boolean}
+ */
+function predicateReferences(node, name) {
+    if ("all" in node || "any" in node) {
+        return ("all" in node ? node.all : node.any).some((child) =>
+            predicateReferences(child, name)
+        );
+    }
+    if ("not" in node) {
+        return predicateReferences(node.not, name);
+    }
+    if ("selectionActive" in node) {
+        return node.selectionActive.selection === name;
+    }
+    return node.selection === name;
 }
 
 /**
@@ -280,7 +363,6 @@ export class SelectionResourceManager {
         setUniformValue,
     }) {
         this._device = device;
-        this._channels = channels;
         this._label = label;
         this._setUniformValue = setUniformValue;
 
@@ -291,14 +373,13 @@ export class SelectionResourceManager {
             visibleWhen,
             order
         );
-        const orderLeaves = order
-            ? "selectionUnion" in order.when
-                ? order.when.selectionUnion
-                : [order.when]
-            : [];
         /** @type {Map<string, boolean>} */
         this._orderSelectionActive = new Map(
-            orderLeaves.map((leaf) => [leaf.selection, false])
+            Array.from(this._selectionDefs.values())
+                .filter(
+                    (def) => order && predicateReferences(order.when, def.name)
+                )
+                .map((def) => [def.name, false])
         );
         this.orderActive = false;
         /** @type {Map<string, { buffer: GPUBuffer, byteLength: number }>} */
@@ -338,17 +419,23 @@ export class SelectionResourceManager {
                     components: 1,
                 });
             } else if (def.type === "interval") {
-                for (const [index, target] of def.targets.entries()) {
+                for (const [index, component] of (
+                    def.components ?? []
+                ).entries()) {
                     layout.push({
                         name: intervalSelectionActiveName(def.name, index),
                         type: "u32",
                         components: 1,
                     });
-                    layout.push({
-                        name: intervalSelectionBoundsName(def.name, index),
-                        type: target.scalarType,
-                        components: 2,
-                    });
+                    const representation = def.representations?.get(component);
+                    if (representation) {
+                        layout.push({
+                            name: intervalSelectionBoundsName(def.name, index),
+                            type: representation.scalarType,
+                            components:
+                                representation.inputComponents === 2 ? 4 : 2,
+                        });
+                    }
                 }
             } else if (def.type === "multi") {
                 layout.push({
@@ -397,37 +484,23 @@ export class SelectionResourceManager {
     initializeSelections(extraBuffers) {
         for (const def of this._selectionDefs.values()) {
             if (def.type === "single") {
-                this._setUniformValue(SELECTION_PREFIX + def.name, 0);
-            } else if (def.type === "interval") {
-                for (const [index] of def.targets.entries()) {
-                    this._setUniformValue(
-                        intervalSelectionActiveName(def.name, index),
-                        0
-                    );
-                    this._setUniformValue(
-                        intervalSelectionBoundsName(def.name, index),
-                        [0, 0]
-                    );
-                }
-            } else if (def.type === "multi") {
-                this._setUniformValue(SELECTION_COUNT_PREFIX + def.name, 0);
-                const bufferName = SELECTION_BUFFER_PREFIX + def.name;
-                const { table } = buildHashTableSet([]);
-                const buffer = this._device.createBuffer({
-                    label: gpuLabel(this._label, `selection ${def.name}`),
-                    size: table.byteLength,
-                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-                });
-                this._device.queue.writeBuffer(
-                    buffer,
-                    0,
-                    asGpuBufferSource(table)
+                this.updateSelection(
+                    def.name,
+                    { type: "single", id: 0 },
+                    extraBuffers
                 );
-                extraBuffers.set(bufferName, buffer);
-                this._selectionBuffers.set(def.name, {
-                    buffer,
-                    byteLength: table.byteLength,
-                });
+            } else if (def.type === "interval") {
+                this.updateSelection(
+                    def.name,
+                    { type: "interval", intervals: {} },
+                    extraBuffers
+                );
+            } else if (def.type === "multi") {
+                this.updateSelection(
+                    def.name,
+                    { type: "multi", ids: new Uint32Array() },
+                    extraBuffers
+                );
             } else {
                 throw new Error(
                     `Selection "${def.name}" has unsupported type "${def.type}".`
@@ -458,56 +531,58 @@ export class SelectionResourceManager {
             this._setOrderSelectionActive(name, update.id !== 0);
         } else if (update.type === "interval") {
             const intervals = update.intervals ?? {};
-            const targets = def.targets ?? [];
-            for (const input of Object.keys(intervals)) {
-                let declared = false;
-                for (const target of targets) {
-                    if (target.input === input) {
-                        declared = true;
-                        break;
-                    }
-                }
-                if (!declared) {
+            const components = def.components ?? [];
+            for (const component of Object.keys(intervals)) {
+                if (!components.includes(component)) {
                     throw new Error(
-                        `Selection "${name}" cannot update unknown target "${input}".`
+                        `Selection "${name}" cannot update unknown component "${component}".`
                     );
                 }
             }
 
-            for (const target of targets) {
-                const hasInterval = Object.hasOwn(intervals, target.input);
-                const interval = intervals[target.input];
+            const prepared = components.map((component) => {
+                const hasInterval = Object.hasOwn(intervals, component);
+                const interval = intervals[component];
                 if (
                     hasInterval &&
                     interval !== null &&
                     !isIntervalBounds(interval)
                 ) {
                     throw new Error(
-                        `Selection "${name}" target "${target.input}" requires two numeric bounds or null.`
+                        `Selection "${name}" component "${component}" requires two numeric bounds or null.`
+                    );
+                }
+                const active = interval !== undefined && interval !== null;
+                const representation = def.representations?.get(component);
+                const bounds = representation
+                    ? active
+                        ? representation.inputComponents === 2
+                            ? Array.from(interval).flatMap((value) =>
+                                  Array.from(packHighPrecisionU32(value))
+                              )
+                            : Array.from(interval)
+                        : representation.inputComponents === 2
+                          ? INACTIVE_PACKED_BOUNDS
+                          : INACTIVE_INTERVAL_BOUNDS
+                    : undefined;
+                return { active, bounds };
+            });
+
+            let allActive = true;
+            for (const [index, { active, bounds }] of prepared.entries()) {
+                allActive &&= active;
+                this._setUniformValue(
+                    intervalSelectionActiveName(name, index),
+                    active ? 1 : 0
+                );
+                if (bounds) {
+                    this._setUniformValue(
+                        intervalSelectionBoundsName(name, index),
+                        bounds
                     );
                 }
             }
-
-            let anyActive = false;
-            for (const [index, target] of targets.entries()) {
-                const interval = intervals[target.input];
-                const active =
-                    interval !== undefined && interval !== null ? 1 : 0;
-                anyActive ||= active !== 0;
-                this._setUniformValue(
-                    intervalSelectionActiveName(name, index),
-                    active
-                );
-                this._setUniformValue(
-                    intervalSelectionBoundsName(name, index),
-                    active
-                        ? /** @type {number[]} */ (
-                              /** @type {unknown} */ (interval)
-                          )
-                        : INACTIVE_INTERVAL_BOUNDS
-                );
-            }
-            this._setOrderSelectionActive(name, anyActive);
+            this._setOrderSelectionActive(name, allActive);
         } else if (update.type === "multi") {
             const bufferName = SELECTION_BUFFER_PREFIX + name;
             const existing = this._selectionBuffers.get(name);

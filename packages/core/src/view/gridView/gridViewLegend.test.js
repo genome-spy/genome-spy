@@ -2534,6 +2534,43 @@ describe("GridView legends", () => {
             }
         );
 
+        test("uses fallback symbol style with a named predicate", async () => {
+            const view = await createLegendTestView({
+                params: [{ name: "picked", select: "point" }],
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, group: "A" },
+                                { x: 2, group: "B" },
+                            ],
+                        },
+                        mark: "point",
+                        predicates: {
+                            highlighted: { param: "picked", empty: false },
+                        },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            color: { field: "group", type: "nominal" },
+                            strokeWidth: {
+                                condition: {
+                                    test: { ref: "highlighted" },
+                                    value: 3,
+                                },
+                                value: 1,
+                            },
+                        },
+                    },
+                ],
+            });
+            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
+
+            expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+                expect.objectContaining({ strokeWidth: { value: 1 } })
+            );
+        });
+
         test.each([false, true, undefined])(
             "keeps explicit symbol opacity stable with condition empty=%s",
             async (empty) => {

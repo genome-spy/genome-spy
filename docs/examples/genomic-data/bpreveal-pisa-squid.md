@@ -32,11 +32,17 @@ more opaque, making the most influential connections stand out without hiding
 the surrounding effect structure. Motif intervals are overlaid near the bottom
 of the link view.
 
-Shift-drag across any track to select a genomic interval. Links with either
-endpoint inside the interval retain their normal encoding and are drawn above
-the muted links. Double-click to clear the selection. Pan and zoom normally to
+Drag on Accessibility to select output positions, or on Contribution
+score to select input positions. While a track's brush is active, bars or
+letters outside it turn gray. Links matching both active brushes retain their
+normal encoding and are drawn above muted links. An empty brush leaves
+its endpoint unconstrained. Hold Shift and hover to highlight a link, including
+one outside the brushed regions; links matching neither the brushes nor
+Shift-hover are muted. With no active brush or Shift-hover, all links look
+normal. Double-click a track to clear its brush. Pan and zoom normally to
 inspect the locus at different scales. Zoom in to reveal base-colored sequence
-letters in the contribution track.
+letters in the contribution track. The link view uses one named predicate for
+color, opacity, and draw order.
 
 The full effect field can also be explored as a dense [PISA interaction
 matrix](bpreveal-pisa-matrix.md).
@@ -47,8 +53,9 @@ This example combines:
 
 - [`link`](../../grammar/mark/link.md) marks with a diagonal shape for
   input-to-output effects.
-- An interval [selection parameter](../../grammar/parameters.md) shared across
-  vertically concatenated tracks.
+- Independent interval [selection parameters](../../grammar/parameters.md) on
+  the Accessibility and Contribution score tracks, projected to opposite link
+  endpoints.
 - Conditional color, opacity, and draw order to emphasize selected links.
 - [Index scales](../../grammar/scale.md#index-scale) for base-resolution tracks.
 - A multiscale contribution track that changes from bars to a Dynseq logo.
