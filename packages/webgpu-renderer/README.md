@@ -544,6 +544,11 @@ component name:
 mark.selections.brush.set({ x: [0, 10], y: [2, 8] });
 ```
 
+Interval bounds are half-open: `[0, 10)` includes values from 0 up to but not
+including 10. Ranged `intersects` tests exclude ranges that only touch a brush
+boundary; `encloses` accepts a range that shares either boundary with the
+selection.
+
 Interval slots expose their stable component order. A complete replacement may
 omit a component or set it to `null` to make it inactive. An interval selection
 is empty until all its components are active; unknown components are rejected.

@@ -151,6 +151,9 @@ EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 ### Interval Selection
 
 Interval selections allow for selecting a range of rows along one or two axes.
+The selected range includes its start and excludes its end. For example, an
+index brush spanning `[6, 11)` selects positions 6 through 10.
+
 By default, the start gesture depends on whether the brushed channels are
 zoomable:
 

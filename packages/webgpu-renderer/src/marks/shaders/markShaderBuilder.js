@@ -313,6 +313,9 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         /** @param {string} a @param {string} b */
                         const le = (a, b) =>
                             packed ? `hpLessEq(${a}, ${b})` : `(${a} <= ${b})`;
+                        /** @param {string} a @param {string} b */
+                        const lt = (a, b) =>
+                            packed ? `hpLess(${a}, ${b})` : `(${a} < ${b})`;
                         const lo = packed ? "lo" : "min(bound.x, bound.y)";
                         const hi = packed ? "hi" : "max(bound.x, bound.y)";
                         const value = channelIR.rawValueExpr;
@@ -325,13 +328,13 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                             : `    let bound = params.${bounds};`;
                         let test;
                         if (!secondary) {
-                            test = `${le(lo, value)} && ${le(value, hi)}`;
+                            test = `${le(lo, value)} && ${lt(value, hi)}`;
                         } else if (projection.hitTest === "encloses") {
                             test = `${le(lo, "datumLo")} && ${le("datumHi", hi)}`;
                         } else if (projection.hitTest === "endpoints") {
-                            test = `(${le(lo, "datum0")} && ${le("datum0", hi)}) || (${le(lo, "datum1")} && ${le("datum1", hi)})`;
+                            test = `(${le(lo, "datum0")} && ${lt("datum0", hi)}) || (${le(lo, "datum1")} && ${lt("datum1", hi)})`;
                         } else {
-                            test = `${le(lo, "datumHi")} && ${le("datumLo", hi)}`;
+                            test = `${lt(lo, "datumHi")} && ${lt("datumLo", hi)}`;
                         }
                         const datumSetup = secondary
                             ? `    let datum0 = ${value};
@@ -588,6 +591,9 @@ ${clauses.join("\n")}
             selectionFns.push(/* wgsl */ `
 fn hpLessEq(a: vec2<u32>, b: vec2<u32>) -> bool {
     return a.x < b.x || (a.x == b.x && a.y <= b.y);
+}
+fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
+    return a.x < b.x || (a.x == b.x && a.y < b.y);
 }
 `);
         }

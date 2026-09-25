@@ -592,7 +592,7 @@ const placementSentinel = 1u;
             channels: {
                 x: { value: 2, type: "f32", components: 1 },
                 x2: { value: 4, type: "f32", components: 1 },
-                y: { value: 3, type: "u32", components: 1 },
+                y: { value: [0, 3], type: "u32", components: 2 },
                 fill: {
                     value: 0,
                     type: "f32",
@@ -636,7 +636,7 @@ const placementSentinel = 1u;
                 {
                     name: "uSelection_brush_1",
                     type: "u32",
-                    components: 2,
+                    components: 4,
                 },
             ],
             shaderBody,
@@ -658,7 +658,7 @@ const placementSentinel = 1u;
                             component: "y",
                             input: "y",
                             scalarType: "u32",
-                            inputComponents: 1,
+                            inputComponents: 2,
                             hitTest: "intersects",
                         },
                     ],
@@ -673,6 +673,9 @@ const placementSentinel = 1u;
         );
         expect(shaderCode).toContain("let datum0 =");
         expect(shaderCode).toContain("let datum1 =");
+        expect(shaderCode).toContain("(datum0 < max(bound.x, bound.y))");
+        expect(shaderCode).toContain("(datum1 < max(bound.x, bound.y))");
+        expect(shaderCode).toContain("hpLess(vec2<u32>(u32(0), u32(3)), hi)");
         expect(shaderCode).toContain(
             "select(checkSelection_brush_p0(i) && checkSelection_brush_p1(i), true, isSelectionEmpty_brush(i))"
         );

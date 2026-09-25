@@ -45,7 +45,7 @@ function runtime(values) {
 
 /** @param {string} name */
 const interval = (name) => ({
-    type: "interval",
+    type: /** @type {const} */ ("interval"),
     intervals: { x: /** @type {[number, number] | null} */ (null) },
     name,
 });
@@ -120,6 +120,69 @@ describe("logical selection predicates", () => {
             intervals: { x: null },
         });
         expect(selectedSources(color)).toEqual([80, 230, 380, 530, 680, 830]);
+    });
+
+    test("fitted text selects the first index but excludes the upper edge", async () => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [{ pos: 6 }, { pos: 7 }, { pos: 12 }, { pos: 13 }],
+                },
+                params: [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                mark: { type: "text", fitToBand: true },
+                encoding: {
+                    x: { field: "pos", type: "index" },
+                    text: { field: "pos" },
+                    color: {
+                        condition: { param: "brush", value: "red" },
+                        value: "gray",
+                    },
+                },
+            },
+            UnitView
+        );
+        const predicate = view.mark.encoders.color.branches[0].predicate;
+        const rows = view.getCollector().facetBatches.get(undefined);
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [7, 13] },
+        });
+        expect(rows.filter(predicate).map((row) => row.pos)).toEqual([7, 12]);
+    });
+
+    test("ranged interval membership uses half-open boundaries", () => {
+        const values = { brush: interval("brush") };
+        values.brush.intervals.x = [6, 11];
+        const tree = normalizeSelectionPredicateTree({
+            param: "brush",
+            empty: false,
+        });
+        /** @param {"intersects" | "encloses" | "endpoints"} mode */
+        const matches = (mode) =>
+            compileSelectionPredicateTree(
+                resolveSelectionPredicateTree(
+                    tree,
+                    encoding,
+                    runtime(values),
+                    mode,
+                    () => "index"
+                ),
+                () => values.brush
+            );
+
+        expect(matches("intersects")({ source: 4, target: 6 })).toBe(false);
+        expect(matches("intersects")({ source: 10, target: 11 })).toBe(true);
+        expect(matches("intersects")({ source: 11, target: 13 })).toBe(false);
+        expect(matches("intersects")({ source: 12, target: 10 })).toBe(true);
+        expect(matches("encloses")({ source: 11, target: 6 })).toBe(true);
+        expect(matches("endpoints")({ source: 11, target: 13 })).toBe(false);
+        expect(matches("endpoints")({ source: 10, target: 11 })).toBe(true);
     });
 
     test("normalizes nested nodes and rejects mixed or empty operators", () => {

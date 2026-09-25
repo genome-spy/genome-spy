@@ -1,0 +1,55 @@
+{
+  "description": [
+    "Brush an indexed nucleotide sequence",
+    "An empty brush colors every base; an active brush colors only the selected bases."
+  ],
+
+  "height": 30,
+
+  "params": [
+    {
+      "name": "brush",
+      "select": {
+        "type": "interval",
+        "encodings": ["x"],
+        "on": { "type": "mousedown" }
+      }
+    }
+  ],
+
+  "data": { "values": [{ "sequence": "ACGTGCAATTCGAGTACGTA" }] },
+
+  "transform": [{ "type": "flattenSequence", "as": ["pos", "base"] }],
+
+  "mark": {
+    "type": "text",
+    "font": "Source Sans Pro",
+    "fontWeight": 700,
+    "size": 100,
+    "squeeze": true,
+    "fitToBand": true,
+    "y": 0,
+    "y2": 1,
+    "paddingX": 0,
+    "paddingY": 0,
+    "logoLetters": true
+  },
+
+  "encoding": {
+    "x": { "field": "pos", "type": "index" },
+    "text": { "field": "base" },
+    "color": {
+      "condition": {
+        "param": "brush",
+        "field": "base",
+        "type": "nominal",
+        "scale": {
+          "domain": ["A", "C", "G", "T"],
+          "range": ["#38a66b", "#4587d6", "#d69a2d", "#d95f70"]
+        },
+        "legend": null
+      },
+      "value": "#e0e0e0"
+    }
+  }
+}

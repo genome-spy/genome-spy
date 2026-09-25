@@ -279,6 +279,9 @@ export default class WebGLMark {
             scaleCode.push(
                 "bool selectionLeq(uvec2 a, uvec2 b) { return a.x < b.x || (a.x == b.x && a.y <= b.y); }"
             );
+            scaleCode.push(
+                "bool selectionLt(uvec2 a, uvec2 b) { return a.x < b.x || (a.x == b.x && a.y < b.y); }"
+            );
         }
 
         if (order) {
@@ -480,16 +483,32 @@ export default class WebGLMark {
                     /** @type {string} */ a,
                     /** @type {string} */ b
                 ) => (largeHp ? `selectionLeq(${a}, ${b})` : `${a} <= ${b}`);
+                const lt = (
+                    /** @type {string} */ a,
+                    /** @type {string} */ b
+                ) => (largeHp ? `selectionLt(${a}, ${b})` : `${a} < ${b}`);
                 const inside = (/** @type {string} */ value) =>
-                    `(${leq(lo, value)} && ${leq(value, hi)})`;
+                    `(${leq(lo, value)} && ${lt(value, hi)})`;
+                const datumLo =
+                    second === undefined
+                        ? first
+                        : largeHp
+                          ? `(${leq(first, second)} ? ${first} : ${second})`
+                          : `min(${first}, ${second})`;
+                const datumHi =
+                    second === undefined
+                        ? first
+                        : largeHp
+                          ? `(${leq(first, second)} ? ${second} : ${first})`
+                          : `max(${first}, ${second})`;
                 const test =
                     second === undefined
                         ? inside(first)
                         : projection.hitTest === "endpoints"
                           ? `(${inside(first)} || ${inside(second)})`
                           : projection.hitTest === "encloses"
-                            ? `(${leq(lo, first)} && ${leq(second, hi)})`
-                            : `(${leq(lo, second)} && ${leq(first, hi)})`;
+                            ? `(${leq(lo, datumLo)} && ${leq(datumHi, hi)})`
+                            : `(${lt(lo, datumHi)} && ${lt(datumLo, hi)})`;
                 return test;
             });
             const active = `!${SELECTION_EMPTY_PREFIX}${param}()`;

@@ -204,7 +204,7 @@ export type SelectionSlotHandle =
           type: "interval";
           /** Stable retained component declaration order. */
           components: readonly string[];
-          /** Replace the complete interval state; omitted keys are inactive. */
+          /** Replace the complete state with half-open intervals; omitted keys are inactive. */
           set(
               intervals: Readonly<
                   Partial<Record<string, readonly [number, number] | null>>

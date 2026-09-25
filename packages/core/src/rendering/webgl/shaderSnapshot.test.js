@@ -452,10 +452,10 @@ describe("generated shader snapshots", () => {
             /getScaled_opacity\(\) \{([\s\S]*?)\n\}/
         )?.[1];
         expect(opacity).toContain(
-            "uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]"
+            "uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]"
         );
         expect(opacity).toContain(
-            "uParam_brush_x[0] <= attr_x2 && attr_x2 <= uParam_brush_x[1]"
+            "uParam_brush_x[0] <= attr_x2 && attr_x2 < uParam_brush_x[1]"
         );
     });
 
@@ -494,7 +494,33 @@ describe("generated shader snapshots", () => {
             "selectionLeq(uParam_brush_x[0], attr_x2)"
         );
         expect(sources.vertex).toContain(
-            "selectionLeq(attr_x2, uParam_brush_x[1])"
+            "selectionLt(attr_x2, uParam_brush_x[1])"
+        );
+    });
+
+    test("ranged interval shaders require overlap inside both brush edges", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{ start: 4, end: 8 }] },
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            mark: "rect",
+            encoding: {
+                x: { field: "start", type: "index" },
+                x2: { field: "end" },
+                y: { value: 0 },
+                fillOpacity: {
+                    condition: { param: "brush", value: 1 },
+                    value: 0.2,
+                },
+            },
+        });
+
+        expect(sources.vertex).toContain(
+            "uParam_brush_x[0] < max(attr_x, attr_x2) && min(attr_x, attr_x2) < uParam_brush_x[1]"
         );
     });
 

@@ -363,11 +363,13 @@ export function resolveSelectionPredicateTree(
             const secondaryField = node.project
                 ? undefined
                 : fieldForInput(secondaryInput);
+            // Band coverage may synthesize a second endpoint from the same
+            // field; selection membership is still point-like in data space.
             return {
                 component,
                 input,
                 field: inputField,
-                ...(secondaryField
+                ...(secondaryField && secondaryField !== inputField
                     ? { secondaryInput, secondaryField, hitTest: hitTestMode }
                     : {}),
             };
@@ -454,13 +456,15 @@ export function compileSelectionPredicateTree(tree, getSelection) {
             const [lo, hi] = interval;
             const matches =
                 second === undefined
-                    ? lo <= first && first <= hi
+                    ? lo <= first && first < hi
                     : input.hitTest === "endpoints"
-                      ? (lo <= first && first <= hi) ||
-                        (lo <= second && second <= hi)
+                      ? (lo <= first && first < hi) ||
+                        (lo <= second && second < hi)
                       : input.hitTest === "encloses"
-                        ? lo <= first && second <= hi
-                        : lo <= second && first <= hi;
+                        ? lo <= Math.min(first, second) &&
+                          Math.max(first, second) <= hi
+                        : lo < Math.max(first, second) &&
+                          Math.min(first, second) < hi;
             if (!matches) {
                 return false;
             }
