@@ -454,10 +454,11 @@ the selected rectangle.
 
 ### Visibility predicates
 
-Every built-in mark accepts an immutable `visibleWhen` predicate. It can
-compare scalar channels, non-visual `inputs`, and retained `scalarSlots`, and
-combine leaves with non-empty `all` and `any` nodes. The same predicate runs in
-normal and picking vertex pipelines.
+Every built-in mark accepts an immutable `visibleWhen` predicate. It can test
+selections or compare scalar channels, non-visual `inputs`, and retained
+`scalarSlots`. Tests can be combined with non-empty `all` and `any` nodes or
+negated with `not`. The same predicate runs in normal and picking vertex
+pipelines.
 
 ```js
 const mark = renderer.createMark(pointMark, {
