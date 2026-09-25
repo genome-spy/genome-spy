@@ -439,9 +439,11 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     strokeWidth?: number;
 
     /**
-     * Whether the brush rectangle should be clipped to the viewport.
+     * Clip the brush rectangle to the viewport along the selected axes.
+     * An explicit value overrides this direction-based default.
      *
-     * __Default value:__ `true`
+     * __Default value:__ `"x"` for x selections, `"y"` for y selections,
+     * and `true` for x/y selections.
      */
     clip?: boolean | "never";
 
