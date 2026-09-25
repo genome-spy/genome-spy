@@ -12,6 +12,7 @@ import { describeView, readViewData } from "./view/viewDataApi.js";
 
 /** @typedef {import("./types/viewQueryApi.js").ViewSliceQueryOptions} ViewSliceQueryOptions */
 /** @typedef {import("./types/viewQueryApi.js").ViewSliceQueryResult} ViewSliceQueryResult */
+/** @typedef {import("./types/viewQueryApi.js").ViewSliceAnalysisStage} ViewSliceAnalysisStage */
 /** @typedef {import("./types/viewQueryApi.js").ViewSliceAggregate} ViewSliceAggregate */
 
 /**

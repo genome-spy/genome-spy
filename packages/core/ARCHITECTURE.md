@@ -20,7 +20,10 @@ It coordinates four major systems:
   preparation, including collector, scope and positional-accessor checks.
   Assessment does not scan rows or guarantee later success. Scope filtering precedes row output limits;
   exact loaded-data aggregates reuse the existing aggregate operations and yield
-  between passes. A module-local WeakMap in `src/view/viewQueryAccess.js` connects
+  between passes. Restricted scoped analysis projects explicitly disclosed fields
+  and reuses filter, aggregate and full-partition window transforms on detached
+  rows before output limits; it records the pipeline and output population.
+  A module-local WeakMap in `src/view/viewQueryAccess.js` connects
   it to the view API's existing checked address resolver; both entries must share
   one Core module instance.
   Default, minimal and full entry points do not import the query implementation.

@@ -224,6 +224,68 @@ are synchronous and not hard-preemptible. This API does not promise
 constant-memory or hard real-time execution. It never reports a partial scan as
 an exact answer.
 
+### Analyzing a scoped table
+
+An optional `analysis` pipeline filters, groups or ranks the entire matching
+loaded population before the output limit. Supply `fields` to disclose its input
+columns. Analysis cannot be combined with the separate `aggregate` option.
+
+```js
+const result = await query.queryData(track, {
+  channels: ["x"],
+  fields: ["group", "score", "position"],
+  limit: 100,
+  analysis: [
+    { type: "filter", field: "score", op: "gt", value: 2, absolute: true },
+    {
+      type: "aggregate",
+      groupby: ["group"],
+      fields: [null, "position", "position"],
+      ops: ["count", "min", "max"],
+      as: ["count", "start", "end"],
+    },
+  ],
+});
+```
+
+Numeric filters support `gt`, `gte`, `lt`, `lte`, `eq` and `neq`, with optional
+`absolute: true`. Only finite numeric values match; null, missing values, strings,
+NaN and infinities do not match, including for `neq`. Thresholds must be finite.
+Aggregate stages use the operations described above, with aligned `fields`, `ops`
+and `as` arrays. A count field may be null. `groupby` is optional. No matching
+rows produce no aggregate rows, following the existing aggregate transform.
+
+A `window` stage supports `row_number` and `count`, with required full-partition
+`frame: [null, null]`, optional `groupby`, and optional `sort: {field, order}`.
+Sort fields and orders accept a scalar or aligned arrays; order is `ascending`
+by default or `descending`. For example, assign row numbers ordered by a score
+and then filter row number to one to select a representative in each group.
+Include `count` in the same window to retain the group's population before
+representative filtering. Window transforms preserve input output order; sorting
+controls ranks, not the order of returned rows. Equal sort keys use stable input
+order; specify a secondary field for another tie policy. Sorting uses Core's
+comparator, including null ordering; a preceding numeric filter can exclude
+invalid score values before ranking.
+
+Grouping and sorting require scalar string, boolean, finite number or null
+values. Missing grouping/sort values become null. Group rows follow first-seen
+group order. Every stage may reference only disclosed input columns or preceding
+output columns. An aggregate stage replaces the table with its grouping columns
+and named outputs. A window stage retains columns and adds unique output names;
+its output names cannot overwrite existing columns. Aggregate output names cannot
+overwrite grouping columns. Private metadata and prototype-related output names
+are rejected. Input field paths, such as `nested.score`, become literal column
+names in this table; use that exact string in subsequent stages.
+
+`rowsMatched` remains the number of source rows in the captured slice.
+`outputRows` counts the analysis output before limiting, and `truncated` reports
+whether that table was limited. `scope.analysis` records the detached pipeline.
+An empty pipeline returns the projected input table with the same metadata.
+Analysis operates on detached rows and cannot mutate the visualization's data.
+All results retain the captured viewport and unknown source coverage. The query
+rechecks cancellation and scope between transform passes; each pass remains
+synchronous, with no hard real-time or constant-memory guarantee.
+
 ## Accessing a view's scales
 
 `track.getScaleResolution(channel)` returns the view's resolved scale, including

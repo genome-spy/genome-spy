@@ -10,6 +10,11 @@ import { isDataReady } from "../data/dataReadiness.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import AGGREGATE_OPS from "../data/transforms/aggregateOps.js";
 import { field } from "../utils/field.js";
+import {
+    validateAnalysis,
+    projectAnalysisRow,
+    runAnalysisStage,
+} from "./viewSliceAnalysis.js";
 import { makeSelectionUnionTestExpression } from "../selection/selection.js";
 import createFunction from "../utils/expression.js";
 
@@ -20,8 +25,8 @@ import createFunction from "../utils/expression.js";
 /** @typedef {"x" | "y"} Channel */
 
 /**
- * Scans live transformed data cooperatively. Retains matching row references only
- * when aggregation needs them; no input datum is cloned to compute statistics.
+ * Scans live transformed data cooperatively. Scalar aggregation buffers source
+ * references; analysis projects and detaches inputs before transform passes.
  * @param {() => import("./view.js").default} resolve
  * @param {Options} options
  * @returns {Promise<Result>}
@@ -33,6 +38,10 @@ export async function queryViewData(resolve, options) {
         channels: [...options.channels],
         fields: options.fields?.slice(),
         aggregate: options.aggregate?.map((item) => ({ ...item })),
+        analysis:
+            options.analysis === undefined
+                ? undefined
+                : cloneDetached(options.analysis),
     };
     options.signal?.throwIfAborted();
 
@@ -63,6 +72,9 @@ export async function queryViewData(resolve, options) {
         scope,
     };
 
+    /** @type {Datum[]} */
+    let analyzed = [];
+
     for (const row of collector.getData()) {
         if (result.rowsExamined > 0 && result.rowsExamined % 1024 === 0) {
             // Yield to cancellation, navigation and source publications, then
@@ -78,7 +90,11 @@ export async function queryViewData(resolve, options) {
         if (operations.length) {
             matched.push(row);
         }
-        if (result.rows.length < options.limit) {
+        if (options.analysis !== undefined) {
+            analyzed.push(
+                cloneDetached(projectAnalysisRow(row, options.fields))
+            );
+        } else if (result.rows.length < options.limit) {
             const output = fields
                 ? Object.fromEntries(
                       fields.map(({ name, accessor }) => [name, accessor(row)])
@@ -100,9 +116,20 @@ export async function queryViewData(resolve, options) {
             enumerable: true,
         });
     }
+    if (options.analysis !== undefined) {
+        for (const stage of options.analysis) {
+            await new Promise((done) => setTimeout(done, 0));
+            assertCurrent();
+            analyzed = runAnalysisStage(analyzed, stage);
+        }
+        result.outputRows = analyzed.length;
+        result.rows = cloneDetached(analyzed.slice(0, options.limit));
+        result.scope.analysis = options.analysis;
+    }
     // min/max may return source objects; aggregation must detach them too.
     result.aggregates = cloneDetached(result.aggregates);
-    result.truncated = result.rowsMatched > result.rows.length;
+    result.truncated =
+        (result.outputRows ?? result.rowsMatched) > result.rows.length;
     assertCurrent();
     return result;
 
@@ -137,6 +164,11 @@ function validateOptions(options) {
         (!Array.isArray(options.fields) || !options.fields.every(isPublicField))
     ) {
         throw new Error("Slice fields must be public field names.");
+    }
+    if (options.analysis !== undefined) {
+        if (options.aggregate !== undefined)
+            throw new Error("Analysis cannot be combined with aggregate.");
+        validateAnalysis(options.analysis, options.fields);
     }
     const names = new Set();
     if (options.aggregate !== undefined && !Array.isArray(options.aggregate)) {

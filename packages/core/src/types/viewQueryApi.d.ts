@@ -82,6 +82,36 @@ export interface ViewSliceAggregate {
     as: string;
 }
 
+/** Restricted analysis over explicitly disclosed fields in a scoped query. */
+export type ViewSliceAnalysisStage =
+    | {
+          type: "filter";
+          field: string;
+          op: "gt" | "gte" | "lt" | "lte" | "eq" | "neq";
+          value: number;
+          absolute?: boolean;
+      }
+    | {
+          type: "aggregate";
+          groupby?: string[];
+          fields: (string | null)[];
+          ops: ViewSliceAggregate["op"][];
+          as: string[];
+      }
+    | {
+          type: "window";
+          groupby?: string[];
+          sort?: {
+              field: string | string[];
+              order?:
+                  "ascending" | "descending" | ("ascending" | "descending")[];
+          };
+          ops: ("row_number" | "count")[];
+          fields?: null[];
+          as: string[];
+          frame: [null, null];
+      };
+
 export interface ViewQueryScopeOptions {
     /** Numeric or locus viewport axes to intersect. No pixel visibility is implied. */
     channels: ("x" | "y")[];
@@ -107,12 +137,14 @@ export type ViewQueryAssessment =
       };
 
 export interface ViewSliceQueryOptions extends ViewQueryScopeOptions {
-    /** Returned fields. Omit to return whole detached rows. */
+    /** Returned fields, or required input columns for analysis. Omit for whole raw rows. */
     fields?: string[];
     /** Maximum returned rows, 0–1000. Does not limit scanning or aggregation. */
     limit: number;
     /** Compute each operation over all matching loaded rows, even when rows are truncated. */
     aggregate?: ViewSliceAggregate[];
+    /** Transform all scoped rows before limiting. Requires fields; excludes aggregate. */
+    analysis?: ViewSliceAnalysisStage[];
     signal?: AbortSignal;
 }
 
@@ -122,11 +154,15 @@ export interface ViewSliceQueryResult {
     rowsExamined: number;
     /** All loaded rows matching the scope. */
     rowsMatched: number;
+    /** Analysis output population before limit; present only for analysis requests. */
+    outputRows?: number;
     truncated: boolean;
     /** Detached aggregate-transform values. Undefined results (for example empty mean) are null. */
     aggregates: Record<string, unknown>;
     scope: {
         type: "viewport";
+        /** Detached analysis pipeline, in execution order. */
+        analysis?: ViewSliceAnalysisStage[];
         /** Captured numeric domains; locus coordinates use Core's linearized genome. */
         domains: Partial<Record<"x" | "y", number[]>>;
         selection?: {
