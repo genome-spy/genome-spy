@@ -48,7 +48,7 @@
         }
       ],
       "data": {
-        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2cd-atac-tracks.parquet",
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
         "format": { "type": "parquet" }
       },
       "transform": [
@@ -97,7 +97,7 @@
             }
           ],
           "data": {
-            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2c-atac-links.parquet",
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2c-atac-links.parquet",
             "format": { "type": "parquet" }
           },
           "transform": [
@@ -238,7 +238,7 @@
           "name": "motifs",
           "description": "Motif intervals share the genomic x scale with the links. Normalized y values keep the overlay at a fixed pixel height near the bottom of the link view, while ranged text centers each motif name inside its interval.",
           "data": {
-            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2cd-atac-motifs.parquet",
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-motifs.parquet",
             "format": { "type": "parquet" }
           },
           "transform": [
@@ -328,7 +328,7 @@
         }
       ],
       "data": {
-        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2cd-atac-tracks.parquet",
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
         "format": { "type": "parquet" }
       },
       "transform": [

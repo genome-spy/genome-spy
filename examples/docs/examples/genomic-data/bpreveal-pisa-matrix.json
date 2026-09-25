@@ -24,7 +24,7 @@
       "view": { "stroke": "gray" },
       "resolve": { "scale": { "color": "independent" } },
       "data": {
-        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2d-atac-matrix.parquet",
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2d-atac-matrix.parquet",
         "format": { "type": "parquet" }
       },
       "params": [
@@ -143,7 +143,7 @@
           "name": "same-position-diagonal",
           "description": "Dashed reference where an input base and output position have the same genomic coordinate.",
           "data": {
-            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2cd-atac-tracks.parquet",
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
             "format": { "type": "parquet" }
           },
           "transform": [
@@ -242,7 +242,7 @@
           "name": "motifs",
           "description": "Ranged text centers each motif name inside the colored interval overlaid near the bottom of the matrix.",
           "data": {
-            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2cd-atac-motifs.parquet",
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-motifs.parquet",
             "format": { "type": "parquet" }
           },
           "transform": [
@@ -321,7 +321,7 @@
       "width": 60,
       "resolve": { "scale": { "x": "excluded" } },
       "data": {
-        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2cd-atac-tracks.parquet",
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
         "format": { "type": "parquet" }
       },
       "transform": [
@@ -359,7 +359,7 @@
       "height": 60,
       "resolve": { "scale": { "y": "excluded" } },
       "data": {
-        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v2/fig2cd-atac-tracks.parquet",
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
         "format": { "type": "parquet" }
       },
       "transform": [
