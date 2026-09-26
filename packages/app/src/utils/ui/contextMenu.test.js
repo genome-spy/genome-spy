@@ -105,6 +105,7 @@ describe("dropdownMenu", () => {
                 items: [
                     {
                         label: "More",
+                        shortcut: "M",
                         submenu: [{ label: "Do it", callback: vi.fn() }],
                     },
                 ],
@@ -118,6 +119,11 @@ describe("dropdownMenu", () => {
         );
         expect(trigger.getAttribute("aria-expanded")).toBe("true");
         expect(document.querySelectorAll("[role='menu']")).toHaveLength(2);
+        expect(
+            document
+                .querySelectorAll("[role='menu']")[1]
+                .getAttribute("aria-label")
+        ).toBe("More");
         expect(document.activeElement?.textContent?.trim()).toBe("Do it");
 
         document.activeElement.dispatchEvent(
@@ -128,27 +134,29 @@ describe("dropdownMenu", () => {
         expect(document.querySelectorAll("[role='menu']")).toHaveLength(1);
     });
 
-    it("moves focus outside on Tab and Shift+Tab", () => {
+    it("moves focus outside on Tab and Shift+Tab, wrapping at the ends", () => {
         const before = document.createElement("button");
         const opener = document.createElement("button");
         const after = document.createElement("button");
         document.body.append(before, opener, after);
 
-        for (const [key, target] of [
-            [false, after],
-            [true, before],
+        for (const [trigger, shiftKey, target] of [
+            [opener, false, after],
+            [opener, true, before],
+            [after, false, before],
+            [before, true, after],
         ]) {
             dropdownMenu(
                 {
                     mode: "command",
                     items: [{ label: "Run", callback: vi.fn() }],
                 },
-                opener
+                trigger
             );
             document.activeElement.dispatchEvent(
                 new KeyboardEvent("keydown", {
                     key: "Tab",
-                    shiftKey: key,
+                    shiftKey,
                     bubbles: true,
                 })
             );
@@ -359,7 +367,7 @@ describe("dropdownMenu", () => {
         expect(overflow.getAttribute("aria-expanded")).toBe("false");
     });
 
-    it("derives a readable name from rich command labels", () => {
+    it("uses live command text as its accessible name after updates", () => {
         const opener = document.createElement("button");
         document.body.append(opener);
         dropdownMenu(
@@ -368,14 +376,38 @@ describe("dropdownMenu", () => {
                 items: [
                     {
                         label: html`Sort by <em>Sample</em>, ascending`,
+                        shortcut: "S",
                         callback: vi.fn(),
                     },
                 ],
             },
             opener
         );
-        expect(document.activeElement?.getAttribute("aria-label")).toBe(
-            "Sort by Sample, ascending"
+
+        const item = /** @type {HTMLElement} */ (document.activeElement);
+        expect(item.getAttribute("aria-label")).toBeNull();
+        expect(
+            item.firstElementChild?.textContent?.replace(/\s+/g, " ").trim()
+        ).toBe("Sort by Sample, ascending");
+        expect(
+            item.querySelector(".kbd-shortcut")?.getAttribute("aria-hidden")
+        ).toBe("true");
+
+        dropdownMenu(
+            {
+                mode: "command",
+                items: [
+                    {
+                        label: html`Sort by <em>Tumor</em>, descending`,
+                        callback: vi.fn(),
+                    },
+                ],
+            },
+            opener
+        );
+        expect(document.activeElement?.getAttribute("aria-label")).toBeNull();
+        expect(document.activeElement?.textContent?.trim()).toBe(
+            "Sort by Tumor, descending"
         );
     });
 });

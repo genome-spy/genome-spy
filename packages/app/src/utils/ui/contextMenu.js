@@ -268,20 +268,6 @@ function focusCommandItem(menu, end = "first") {
     }
 }
 
-/** @param {HTMLElement} menu */
-function nameCommandItems(menu) {
-    for (const item of menu.querySelectorAll(
-        "[role='menuitem']:not([aria-label])"
-    )) {
-        const label = item.firstElementChild?.textContent
-            ?.replace(/\s+/g, " ")
-            .trim();
-        if (label) {
-            item.setAttribute("aria-label", label);
-        }
-    }
-}
-
 /**
  * @param {MenuItem} item
  * @param {number} level
@@ -452,8 +438,6 @@ function renderCommandLevel(items, opener, level, label, placement, focus) {
         items.map((item) => commandItemToTemplate(item, level)),
         menu
     );
-    nameCommandItems(menu);
-
     mountPopup(menu, opener, level, placement);
     commandLevels[level] = menu;
 
@@ -495,7 +479,9 @@ async function openCommandSubmenu(item, trigger, level, focus) {
         trigger,
         level,
         trigger.getAttribute("aria-label") ||
-            trigger.textContent?.trim() ||
+            trigger.firstElementChild?.textContent
+                ?.replace(/\s+/g, " ")
+                .trim() ||
             "Submenu",
         "right-start",
         focus
@@ -519,7 +505,6 @@ async function openCommandSubmenu(item, trigger, level, focus) {
             items.map((child) => commandItemToTemplate(child, level)),
             menu
         );
-        nameCommandItems(menu);
         if (focusWasInside) {
             focusCommandItem(menu);
         }
@@ -531,7 +516,6 @@ async function openCommandSubmenu(item, trigger, level, focus) {
             commandItemToTemplate({ label: "Could not open submenu." }, level),
             menu
         );
-        nameCommandItems(menu);
     }
 }
 
@@ -599,7 +583,14 @@ function moveFocusOutsideMenu(backwards) {
             getComputedStyle(element).display !== "none"
     );
     const index = candidates.indexOf(anchor);
-    const target = candidates[index + (backwards ? -1 : 1)] ?? anchor;
+    const next =
+        index === -1
+            ? backwards
+                ? candidates.length - 1
+                : 0
+            : (index + (backwards ? -1 : 1) + candidates.length) %
+              candidates.length;
+    const target = candidates[next] ?? anchor;
     clearMenu();
     if (target instanceof HTMLElement) {
         target.focus();
@@ -944,7 +935,6 @@ export function dropdownMenu(options, openerElement, placement) {
                 options.items.map((item) => commandItemToTemplate(item, level)),
                 commandLevels[0]
             );
-            nameCommandItems(commandLevels[0]);
             const replacement = Array.from(
                 commandLevels[0].querySelectorAll(
                     ":scope > li > [role='menuitem']"
