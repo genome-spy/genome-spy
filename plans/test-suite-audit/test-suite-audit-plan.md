@@ -154,11 +154,16 @@ Tentative commit: `test: simplify redundant wrapper coverage`
 
 ## Milestone 3: Replace fragile internal and snapshot checks
 
-Status: in progress. The first pass removed the 15,273-line shared-example
-snapshot. All 204 offline examples still initialize and must contain a visual
-unit; two focused checks cover repeated-template expansion and relative URL
-source wiring. The example test file fell from 183 to 171 lines. Other
-flow-builder, layout, and generated-GLSL decisions remain pending.
+Status: completed. The 15,273-line shared-example and 2,417-line layout
+snapshots were removed. All 204 offline examples still initialize and contain
+a visual unit; two focused checks cover template expansion and relative URL
+wiring. The layout suite now checks representative geometry and shared guides
+across eight examples. Three flow-builder tests assert collected rows, source
+overrides, and branch isolation instead of internal child paths. The cross
+case is covered by the existing headless spec test in `cross.test.js`.
+Generated GLSL snapshots remain because the fake GL helper captures source but
+does not compile it; deleting those variants would lose coverage before a
+reliable compiler or rendering oracle exists.
 
 ### Intended outcome
 
@@ -194,6 +199,13 @@ three SVG example tests selected by the path filter). A temporary change to
 `UrlSource.baseUrl` made the new URL assertion fail; restoring it made the test
 pass. The full unit suite passed 4,420 tests with 1 skipped and 2 todo across
 497 files. Core TypeScript, targeted ESLint, and Prettier checks passed.
+
+Final-pass verification: focused flow-builder, cross-transform, and layout
+suites passed 101 cases before the final full run. Temporarily removing the
+flow builder's defensive clone made the branch-isolation assertion fail with
+an extra `x` field on a sibling row; the source was restored. The full unit
+suite then passed 4,413 tests with 1 skipped and 2 todo across 497 files.
+Core TypeScript and targeted ESLint passed.
 
 Tentative commits: `test(core): assert dataflow outcomes instead of graph paths`
 and `test(core): focus layout and example regression checks`

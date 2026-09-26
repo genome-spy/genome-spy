@@ -1,29 +1,9 @@
 import { expect, test } from "vitest";
-import Collector from "../data/collector.js";
-import CrossTransform from "../data/transforms/cross.js";
-import FilterTransform from "../data/transforms/filter.js";
-import FormulaTransform from "../data/transforms/formula.js";
-import InlineSource from "../data/sources/inlineSource.js";
-import SequenceSource from "../data/sources/sequenceSource.js";
 import { buildDataFlow, linearizeLocusAccess } from "./flowBuilder.js";
 import { create } from "./testUtils.js";
-import CloneTransform from "../data/transforms/clone.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import LayerView from "./layerView.js";
 import UnitView from "./unitView.js";
-
-/** @typedef {import("../data/flowNode.js").default} FlowNode */
-
-/**
- *
- * @param {FlowNode} root
- * @param {number[]} path
- */
-function byPath(root, path) {
-    for (const elem of path) {
-        root = root.children[elem];
-    }
-    return root;
-}
 
 /** @type {import("../spec/mark.js").MarkProps} */
 const mark = {
@@ -86,140 +66,72 @@ test("Collector sorting uses normalized inherited locus encoding", async () => {
     });
 });
 
-test("Trivial flow", async () => {
-    const root = await create(
-        {
-            data: { values: [3.141] },
-            transform: [
-                {
-                    type: "formula",
-                    expr: "datum.data * 2",
-                    as: "x",
-                },
-            ],
-            mark,
-        },
-        UnitView
-    );
+test("a unit receives transformed rows", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [3.141] },
+        transform: [{ type: "formula", expr: "datum.data * 2", as: "x" }],
+        mark,
+    });
 
-    const flow = buildDataFlow(root);
-    const dataSource = flow.dataSources[0];
-
-    expect(dataSource).toBeInstanceOf(InlineSource);
-    expect(byPath(dataSource, [0])).toBeInstanceOf(CloneTransform);
-    expect(byPath(dataSource, [0, 0])).toBeInstanceOf(FormulaTransform);
-    expect(byPath(dataSource, [0, 0, 0])).toBeInstanceOf(Collector);
-
-    expect(flow.collectors[0]).toBe(byPath(dataSource, [0, 0, 0]));
+    expect(Array.from(view.flowHandle.collector.getData())).toEqual([
+        { data: 3.141, x: 6.282 },
+    ]);
 });
 
-test("Branching flow", async () => {
-    const root = await create(
-        {
-            data: { values: [3.141] },
-            layer: [
-                {
-                    transform: [
-                        {
-                            type: "formula",
-                            expr: "datum.data * 2",
-                            as: "x",
-                        },
-                    ],
-                    mark,
-                },
-                {
-                    transform: [
-                        {
-                            type: "filter",
-                            expr: "datum.data > 4",
-                        },
-                    ],
-                    mark,
-                },
-            ],
-        },
-        LayerView
+test("a modifying branch does not change sibling rows", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [3, 5] },
+        layer: [
+            {
+                transform: [
+                    { type: "formula", expr: "datum.data * 2", as: "x" },
+                ],
+                mark,
+            },
+            {
+                transform: [{ type: "filter", expr: "datum.data > 4" }],
+                mark,
+            },
+        ],
+    });
+
+    const units = Array.from(view.getDescendants()).filter(
+        (child) => child instanceof UnitView
     );
-
-    const dataSource = buildDataFlow(root).dataSources[0];
-
-    expect(dataSource).toBeInstanceOf(InlineSource);
-    // Formula transform modifies data and it should be implicitly preceded by CloneTransform
-    expect(byPath(dataSource, [0])).toBeInstanceOf(CloneTransform);
-    expect(byPath(dataSource, [0, 0])).toBeInstanceOf(FormulaTransform);
-    expect(byPath(dataSource, [0, 0, 0])).toBeInstanceOf(Collector);
-    expect(byPath(dataSource, [1])).toBeInstanceOf(FilterTransform);
-    expect(byPath(dataSource, [1, 0])).toBeInstanceOf(Collector);
+    expect(
+        units.map((unit) => Array.from(unit.flowHandle.collector.getData()))
+    ).toEqual([
+        [
+            { data: 3, x: 6 },
+            { data: 5, x: 10 },
+        ],
+        [{ data: 5 }],
+    ]);
 });
 
-test("Nested data sources", async () => {
-    const root = await create(
-        {
-            data: { values: [1] },
-            transform: [{ type: "filter", expr: "datum.data > 0" }],
-            layer: [
-                {
-                    data: { sequence: { start: 0, stop: 5 } },
-                    transform: [{ type: "formula", expr: "3", as: "foo" }],
-                    mark,
-                },
-            ],
-        },
-        LayerView
+test("a nested source overrides inherited data without changing its sibling", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [1] },
+        transform: [{ type: "filter", expr: "datum.data > 0" }],
+        layer: [
+            {
+                data: { sequence: { start: 0, stop: 5 } },
+                transform: [{ type: "formula", expr: "3", as: "foo" }],
+                mark,
+            },
+            { mark },
+        ],
+    });
+
+    const units = Array.from(view.getDescendants()).filter(
+        (child) => child instanceof UnitView
     );
-
-    const dataSources = buildDataFlow(root).dataSources;
-
-    expect(dataSources[0]).toBeInstanceOf(InlineSource);
-    expect(dataSources[0].children[0]).toBeInstanceOf(FilterTransform);
-    expect(dataSources[0].children[0].children.length).toEqual(0);
-
-    expect(byPath(dataSources[1], [])).toBeInstanceOf(SequenceSource);
-    expect(byPath(dataSources[1], [0])).toBeInstanceOf(CloneTransform);
-    expect(byPath(dataSources[1], [0, 0])).toBeInstanceOf(FormulaTransform);
-    expect(byPath(dataSources[1], [0, 0, 0])).toBeInstanceOf(Collector);
-});
-
-test("Cross transform builds a unary auxiliary data branch", async () => {
-    const root = await create(
-        {
-            data: { values: [{ x: 1 }] },
-            transform: [
-                {
-                    type: "cross",
-                    from: {
-                        data: {
-                            sequence: { start: 0, stop: 2, as: "y" },
-                        },
-                        transform: [
-                            {
-                                type: "formula",
-                                expr: "datum.y * 2",
-                                as: "doubled",
-                            },
-                        ],
-                    },
-                },
-            ],
-            mark,
-        },
-        UnitView
+    expect(Array.from(units[0].flowHandle.collector.getData())).toEqual(
+        Array.from({ length: 5 }, (_, data) => ({ data, foo: 3 }))
     );
-
-    const flow = buildDataFlow(root);
-    const primarySource = flow.dataSources.find(
-        (source) => source instanceof InlineSource
-    );
-    const foreignSource = flow.dataSources.find(
-        (source) => source instanceof SequenceSource
-    );
-
-    expect(byPath(primarySource, [0])).toBeInstanceOf(CrossTransform);
-    expect(byPath(primarySource, [0, 0])).toBeInstanceOf(Collector);
-    expect(byPath(foreignSource, [0])).toBeInstanceOf(CloneTransform);
-    expect(byPath(foreignSource, [0, 0])).toBeInstanceOf(FormulaTransform);
-    expect(byPath(foreignSource, [0, 0, 0])).toBeInstanceOf(Collector);
+    expect(Array.from(units[1].flowHandle.collector.getData())).toEqual([
+        { data: 1 },
+    ]);
 });
 
 test("Linearize does not rewrite synthesized secondary locus channels", async () => {
