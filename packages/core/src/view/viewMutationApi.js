@@ -1,3 +1,5 @@
+import { viewQueryResolvers } from "./viewQueryAccess.js";
+import { isChannelWithScale } from "../encoder/encoder.js";
 import ConcatView from "./concatView.js";
 import GridView from "./gridView/gridView.js";
 import LayerView from "./layerView.js";
@@ -332,6 +334,22 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 return children.map((child) => getHandle(child));
             },
 
+            getScaleResolution: (channel) => {
+                ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
+                // Internal sample domains are not public scale resolutions.
+                if (
+                    /** @type {string} */ (channel) === "sample" ||
+                    !isChannelWithScale(channel)
+                ) {
+                    throw new Error(
+                        "Expected a scale-backed encoding channel."
+                    );
+                }
+
+                return view.getScaleResolution(channel);
+            },
+
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
 
             params: createEmbedParamNamespace(view, {
@@ -432,7 +450,7 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
         if (!isLiveView(view, getRootView)) {
             throw new ViewMutationError(
                 "staleHandle",
-                "Cannot use a mark API handle for a removed view."
+                "Cannot use an API handle for a removed view."
             );
         }
     }
@@ -1047,6 +1065,11 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 ? runTransaction(callback)
                 : enqueueTopLevelOperation(() => runTransaction(callback)),
     };
+
+    viewQueryResolvers.set(api, (address) => {
+        ensureEmbedIsActive(isActive);
+        return getView(address);
+    });
 
     return api;
 }

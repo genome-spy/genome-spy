@@ -2,6 +2,7 @@
   "extends": "../packages/core/tsconfig.json",
   "compilerOptions": {
     "checkJs": false,
+    "strictNullChecks": true,
     "noEmit": true
   },
   "files": ["./api-docs-entry.d.ts"]

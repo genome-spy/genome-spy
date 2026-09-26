@@ -125,7 +125,7 @@ Removes a registered event listener.
 
 ### getScaleResolutionByName
 
-> **getScaleResolutionByName**: (`name`) => [`ScaleResolutionApi`](ScaleResolutionApi.md)
+> **getScaleResolutionByName**: (`name`) => [`ScaleResolutionApi`](ScaleResolutionApi.md) \| `undefined`
 
 Returns a named `ScaleResolution` object that allows for attaching event
 listeners and controlling the scale domain. Returns `undefined` when the
@@ -139,7 +139,7 @@ name is not registered.
 
 #### Returns
 
-[`ScaleResolutionApi`](ScaleResolutionApi.md)
+[`ScaleResolutionApi`](ScaleResolutionApi.md) \| `undefined`
 
 ***
 
@@ -228,11 +228,11 @@ Returns the bounds reached by the last rendered layout in CSS pixels.
 
 ##### width
 
-> **width**: `number`
+> **width**: `number` \| `undefined`
 
 ##### height
 
-> **height**: `number`
+> **height**: `number` \| `undefined`
 
 ***
 
@@ -269,7 +269,7 @@ Returns a PNG data URL of the current canvas.
 | `logicalWidth?` | `number` | Custom width, defaults to canvas width |
 | `logicalHeight?` | `number` | Custom height, defaults to canvas height |
 | `devicePixelRatio?` | `number` | Defaults to window.devicePixelRatio |
-| `clearColor?` | `string` | Background color. A CSS color, null for transparent |
+| `clearColor?` | `string` \| `null` | Background color. A CSS color, null for transparent |
 
 #### Returns
 

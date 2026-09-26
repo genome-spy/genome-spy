@@ -56,6 +56,9 @@ export default interface ViewContext {
 
     requestLayoutReflow: () => void;
 
+    /** Rebuilds layout commands synchronously for API updates that must await rendering. */
+    computeLayout: () => void;
+
     /**
      * Renders the current scene immediately without scheduling an animation frame.
      *

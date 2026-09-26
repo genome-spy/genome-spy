@@ -124,6 +124,7 @@ export function createHeadlessViewContext(options = {}) {
         textMetrics: options.textMetrics ?? new HeadlessTextMetricsProvider(),
         animator: options.animator ?? createHeadlessAnimator(),
         requestLayoutReflow: options.requestLayoutReflow ?? (() => undefined),
+        computeLayout: () => undefined,
         updateTooltip: options.updateTooltip ?? (() => undefined),
         getNamedDataFromProvider:
             options.getNamedDataFromProvider ?? (() => undefined),
