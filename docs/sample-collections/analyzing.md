@@ -35,6 +35,10 @@ from what is shown below.
 8. **Metadata** such as clinical attributes or computed variables shown as a heatmap.
 9. **Genomic data** is shown here.
 
+In **View settings**, use a checkbox or radio button to change a view's
+visibility. When a view has more options, its separate arrow button opens them.
+Use Tab to move between controls and Escape to close the open settings panel.
+
 ## Importing metadata
 
 For metadata import workflows (uploading tabular metadata and importing from

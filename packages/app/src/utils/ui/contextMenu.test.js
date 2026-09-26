@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { html } from "lit";
 
 const { computePosition } = vi.hoisted(() => ({
     computePosition: vi.fn(() => Promise.resolve({ x: 0, y: 0 })),
@@ -168,5 +169,92 @@ describe("dropdownMenu", () => {
         await Promise.resolve();
         expect(document.querySelectorAll("[role='menu']")).toHaveLength(1);
         expect(document.body.textContent).not.toContain("Loaded");
+    });
+
+    it("keeps visibility inputs separate from named settings buttons", () => {
+        const opener = document.createElement("button");
+        document.body.append(opener);
+        dropdownMenu(
+            {
+                mode: "controls",
+                label: "View settings",
+                items: [
+                    {
+                        key: "track",
+                        label: "Track",
+                        customContent: html`<label
+                            ><input
+                                type="checkbox"
+                                data-control-key="track:visibility"
+                                checked
+                            />Track</label
+                        >`,
+                        submenu: [
+                            {
+                                customContent: html`<label
+                                    >Size <input type="range"
+                                /></label>`,
+                            },
+                        ],
+                    },
+                ],
+            },
+            opener
+        );
+
+        const root = document.querySelector("[role='dialog']");
+        const checkbox = /** @type {HTMLInputElement} */ (
+            root?.querySelector("input[type='checkbox']")
+        );
+        const settings = /** @type {HTMLButtonElement} */ (
+            root?.querySelector("button[aria-haspopup='dialog']")
+        );
+        expect(root?.getAttribute("aria-label")).toBe("View settings");
+        expect(root?.querySelector("[role='menuitem']")).toBeNull();
+        expect(checkbox.checked).toBe(true);
+        expect(settings.getAttribute("aria-label")).toBe("Settings for Track");
+        expect(document.activeElement).toBe(checkbox);
+
+        settings.click();
+        expect(settings.getAttribute("aria-expanded")).toBe("true");
+        expect(document.querySelectorAll("[role='dialog']")).toHaveLength(2);
+        expect(document.activeElement?.tagName).toBe("INPUT");
+        document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+        );
+        expect(document.activeElement).toBe(settings);
+        expect(settings.getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("restores focus to an equivalent control after a popup update", () => {
+        const opener = document.createElement("button");
+        document.body.append(opener);
+        const items = (/** @type {boolean} */ checked) => [
+            {
+                key: "track",
+                label: "Track",
+                customContent: html`<label
+                    ><input
+                        type="checkbox"
+                        data-control-key="track:visibility"
+                        .checked=${checked}
+                    />Track</label
+                >`,
+            },
+        ];
+        dropdownMenu(
+            { mode: "controls", label: "View settings", items: items(false) },
+            opener
+        );
+        dropdownMenu(
+            { mode: "controls", label: "View settings", items: items(true) },
+            opener
+        );
+        const checkbox = /** @type {HTMLInputElement} */ (
+            document.querySelector("[data-control-key='track:visibility']")
+        );
+        expect(document.activeElement).toBe(checkbox);
+        expect(checkbox.checked).toBe(true);
+        expect(document.querySelectorAll("[role='dialog']")).toHaveLength(1);
     });
 });

@@ -18,6 +18,7 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
  * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  * @prop {MenuItem[] | (() => MenuItem[] | Promise<MenuItem[]>)} [submenu]
+ * @prop {string} [key] Stable identity for controls that can be re-rendered.
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
@@ -39,6 +40,12 @@ const commandLevels = [];
 
 /** @type {HTMLElement[]} */
 const commandTriggers = [];
+
+/** @type {HTMLElement[]} */
+const controlLevels = [];
+
+/** @type {HTMLElement[]} */
+const controlTriggers = [];
 
 /** @type {WeakMap<HTMLElement, symbol>} */
 const submenuRequests = new WeakMap();
@@ -74,18 +81,20 @@ export function isContextMenuOpen() {
 function clearMenu(uiEvent, restoreFocus = false) {
     if (uiEvent?.type == "contextmenu") {
         uiEvent.preventDefault();
-        return;
     }
 
     if (backdropElement) {
         debouncer(() => {});
         closeCommandSubmenus(1);
+        closeControlSubmenus(1);
         commandLevels.length = 0;
+        controlLevels.length = 0;
         rootTrigger?.setAttribute("aria-expanded", "false");
         rootTrigger?.removeAttribute("aria-controls");
         rootTrigger = null;
         backdropElement.remove();
         backdropElement = undefined;
+        document.removeEventListener("focusin", handleOutsideFocus);
         openLevels.length = 0;
         lastOpener = undefined;
         currentMode = undefined;
@@ -99,6 +108,26 @@ function clearMenu(uiEvent, restoreFocus = false) {
         }
         returnFocus = null;
     }
+}
+
+/** @param {FocusEvent} event */
+function handleOutsideFocus(event) {
+    if (
+        backdropElement &&
+        event.target !== rootTrigger &&
+        !backdropElement.contains(/** @type {Node} */ (event.target))
+    ) {
+        clearMenu();
+    }
+}
+
+/** @param {Element} opener */
+export function isDropdownOpenFor(opener) {
+    return Boolean(backdropElement && lastOpener === opener);
+}
+
+export function dismissDropdownMenu() {
+    clearMenu(undefined, true);
 }
 
 /**
@@ -336,6 +365,7 @@ function prepareBackdrop() {
         { once: true }
     );
     container.appendChild(backdropElement);
+    document.addEventListener("focusin", handleOutsideFocus);
 
     document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
     document.body.classList.add(FREEZE_INTERACTION_CLASS_NAME);
@@ -357,6 +387,22 @@ function closeCommandSubmenus(fromLevel) {
     }
     commandLevels.length = fromLevel;
     commandTriggers.length = fromLevel;
+}
+
+/** @param {number} fromLevel */
+function closeControlSubmenus(fromLevel) {
+    for (let level = fromLevel; level < controlLevels.length; level++) {
+        controlLevels[level]?.remove();
+        const trigger = controlTriggers[level];
+        if (trigger) {
+            submenuRequests.delete(trigger);
+            trigger.setAttribute("aria-expanded", "false");
+            trigger.removeAttribute("aria-controls");
+            trigger.closest("li")?.classList.remove("active");
+        }
+    }
+    controlLevels.length = fromLevel;
+    controlTriggers.length = fromLevel;
 }
 
 /**
@@ -678,6 +724,304 @@ function moveFocusOutsideMenu(backwards) {
         target.focus();
     }
 }
+
+/** @param {HTMLElement} panel */
+function focusControl(panel) {
+    const target = /** @type {HTMLElement | null} */ (
+        panel.querySelector(
+            "ul input:not([disabled]), ul select:not([disabled]), ul textarea:not([disabled]), ul button:not([disabled])"
+        ) ?? panel.querySelector(".popup-close")
+    );
+    target?.focus();
+}
+
+/**
+ * @param {MenuItem} item
+ * @param {number} level
+ */
+function controlItemToTemplate(item, level) {
+    if (item.type === "divider") {
+        return html`<li class="menu-divider" aria-hidden="true"></li>`;
+    }
+    if (item.type === "header") {
+        return html`<li class="menu-header">
+            <strong>${item.label || "-"}</strong>
+        </li>`;
+    }
+
+    const submenu = Boolean(item.submenu);
+    const disabled = !submenu && !item.callback && !item.customContent;
+    const submenuButton = submenu
+        ? html`<button
+              type="button"
+              class=${
+                  item.customContent
+                      ? "settings-submenu-button"
+                      : "submenu-item"
+              }
+              data-control-key=${item.key ? `${item.key}:settings` : nothing}
+              aria-label=${
+                  item.customContent ? `Settings for ${item.label}` : nothing
+              }
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              @click=${(/** @type {MouseEvent} */ event) => {
+                  void openControlSubmenu(
+                      item,
+                      /** @type {HTMLElement} */ (event.currentTarget),
+                      level + 1,
+                      true
+                  );
+              }}
+          >
+              ${
+                  item.customContent
+                      ? html`<span aria-hidden="true">▸</span>`
+                      : item.label
+              }
+          </button>`
+        : nothing;
+
+    return html`<li
+        class=${submenu ? "control-submenu-row" : nothing}
+        @mouseenter=${
+            submenu
+                ? (/** @type {MouseEvent} */ event) => {
+                      const trigger = /** @type {HTMLElement} */ (
+                          /** @type {HTMLElement} */ (
+                              event.currentTarget
+                          ).querySelector("button[aria-haspopup='dialog']")
+                      );
+                      debouncer(() => {
+                          if (trigger.isConnected) {
+                              void openControlSubmenu(
+                                  item,
+                                  trigger,
+                                  level + 1,
+                                  false
+                              );
+                          }
+                      });
+                  }
+                : nothing
+        }
+        @mouseleave=${
+            submenu
+                ? () =>
+                      debouncer(() => {
+                          const child = controlLevels[level + 1];
+                          if (!child?.contains(document.activeElement)) {
+                              closeControlSubmenus(level + 1);
+                          }
+                      })
+                : nothing
+        }
+    >
+        ${
+            item.customContent
+                ? item.customContent
+                : item.callback
+                  ? html`<button
+                        type="button"
+                        class="choice-item"
+                        data-control-key=${item.key ?? nothing}
+                        @click=${() => {
+                            clearMenu(undefined, true);
+                            item.callback();
+                        }}
+                    >
+                        ${item.label}
+                    </button>`
+                  : disabled
+                    ? html`<span class="disabled-item"
+                          >${item.label || "-"}</span
+                      >`
+                    : nothing
+        }
+        ${submenuButton}
+    </li>`;
+}
+
+/**
+ * @param {MenuItem[]} items
+ * @param {number} level
+ * @param {string} label
+ */
+function controlPanelContent(items, level, label) {
+    return html`<button
+            type="button"
+            class="popup-close"
+            aria-label=${`Close ${label}`}
+            @click=${() => {
+                if (level > 0) {
+                    const trigger = controlTriggers[level];
+                    closeControlSubmenus(level);
+                    trigger.focus();
+                } else {
+                    clearMenu(undefined, true);
+                }
+            }}
+        >
+            ×
+        </button>
+        <ul>
+            ${items.map((item) => controlItemToTemplate(item, level))}
+        </ul>`;
+}
+
+/**
+ * @param {MenuItem[]} items
+ * @param {HTMLElement | VirtualElement} opener
+ * @param {number} level
+ * @param {string} label
+ * @param {import("@floating-ui/core").Placement} placement
+ * @param {boolean} focus
+ */
+function renderControlLevel(items, opener, level, label, placement, focus) {
+    closeControlSubmenus(level);
+
+    const panel = document.createElement("div");
+    panel.className = "gs-context-menu gs-controls-popup";
+    panel.id = `gs-controls-popup-${++nextMenuId}`;
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", label);
+    panel.style.top = "0";
+    panel.addEventListener("mouseenter", () => debouncer(() => {}));
+    panel.addEventListener("mouseup", (event) => event.stopPropagation());
+    panel.addEventListener("click", (event) => event.stopPropagation());
+    panel.addEventListener("keydown", (event) =>
+        handleControlKeydown(event, level)
+    );
+    render(controlPanelContent(items, level, label), panel);
+
+    backdropElement.append(panel);
+    controlLevels[level] = panel;
+
+    const adjust = !/^(top|bottom)/.test(placement);
+    computePosition(opener, panel, {
+        strategy: "fixed",
+        placement,
+        middleware: level === 0 && adjust ? [offset(2), flip()] : [flip()],
+    }).then(({ x, y }) => {
+        if (!panel.isConnected) {
+            return;
+        }
+        const first = /** @type {HTMLElement | null} */ (
+            panel.querySelector(":scope > ul > li")
+        );
+        if (first && adjust) {
+            y -= first.getBoundingClientRect().top;
+        }
+        panel.style.left = `${x}px`;
+        panel.style.top = `${y}px`;
+    });
+
+    if (focus) {
+        focusControl(panel);
+    }
+    return panel;
+}
+
+/**
+ * @param {MenuItem} item
+ * @param {HTMLElement} trigger
+ * @param {number} level
+ * @param {boolean} focus
+ */
+async function openControlSubmenu(item, trigger, level, focus) {
+    if (controlTriggers[level] === trigger && controlLevels[level]) {
+        if (focus) {
+            focusControl(controlLevels[level]);
+        }
+        return;
+    }
+
+    const request = Symbol();
+    submenuRequests.set(trigger, request);
+    /** @type {MenuItem[] | Promise<MenuItem[]>} */
+    let source;
+    try {
+        source =
+            typeof item.submenu === "function" ? item.submenu() : item.submenu;
+    } catch {
+        source = Promise.reject(new Error("Could not open settings."));
+    }
+    const asyncSource = source instanceof Promise;
+    const label = String(item.label || "Settings");
+    const panel = renderControlLevel(
+        asyncSource
+            ? [{ label: "Loading..." }]
+            : /** @type {MenuItem[]} */ (source),
+        trigger,
+        level,
+        label,
+        "right-start",
+        focus
+    );
+    controlTriggers[level] = trigger;
+    trigger.setAttribute("aria-expanded", "true");
+    trigger.setAttribute("aria-controls", panel.id);
+    trigger.closest("li")?.classList.add("active");
+
+    if (!asyncSource) {
+        return;
+    }
+    try {
+        const items = await source;
+        if (submenuRequests.get(trigger) !== request || !panel.isConnected) {
+            return;
+        }
+        const focusWasInside = panel.contains(document.activeElement);
+        render(controlPanelContent(items, level, label), panel);
+        if (focusWasInside) {
+            focusControl(panel);
+        }
+    } catch {
+        if (submenuRequests.get(trigger) !== request || !panel.isConnected) {
+            return;
+        }
+        render(
+            controlPanelContent(
+                [{ label: "Could not open settings." }],
+                level,
+                label
+            ),
+            panel
+        );
+    }
+}
+
+/**
+ * @param {KeyboardEvent} event
+ * @param {number} level
+ */
+function handleControlKeydown(event, level) {
+    if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (level > 0) {
+            const trigger = controlTriggers[level];
+            closeControlSubmenus(level);
+            trigger.focus();
+        } else {
+            clearMenu(undefined, true);
+        }
+    } else if (event.key === "Tab") {
+        const focusables = Array.from(
+            backdropElement.querySelectorAll(
+                ".gs-controls-popup button:not([disabled]), .gs-controls-popup input:not([disabled]), .gs-controls-popup select:not([disabled]), .gs-controls-popup textarea:not([disabled])"
+            )
+        );
+        const current = focusables.indexOf(document.activeElement);
+        if (
+            (event.shiftKey && current === 0) ||
+            (!event.shiftKey && current === focusables.length - 1)
+        ) {
+            event.preventDefault();
+            moveFocusOutsideMenu(event.shiftKey);
+        }
+    }
+}
 /**
  *
  * @param {MenuOptions} options
@@ -726,7 +1070,20 @@ export function dropdownMenu(options, openerElement, placement) {
             );
             rootTrigger?.setAttribute("aria-controls", menu.id);
         } else {
-            renderAndPositionMenu(options.items, openerElement, 0, placement);
+            if (openerElement instanceof HTMLElement) {
+                rootTrigger = openerElement;
+                rootTrigger.setAttribute("aria-haspopup", "dialog");
+                rootTrigger.setAttribute("aria-expanded", "true");
+            }
+            const panel = renderControlLevel(
+                options.items,
+                openerElement,
+                0,
+                options.label ?? "Settings",
+                placement,
+                true
+            );
+            rootTrigger?.setAttribute("aria-controls", panel.id);
         }
     } else {
         // Update existing menu
@@ -747,10 +1104,34 @@ export function dropdownMenu(options, openerElement, placement) {
                 replacement.focus();
             }
         } else {
+            const focusedKey =
+                document.activeElement instanceof HTMLElement
+                    ? document.activeElement.dataset.controlKey
+                    : undefined;
+            const panel = controlLevels[0];
+            closeControlSubmenus(1);
             render(
-                options.items.map((item) => menuItemToTemplate(item, level)),
-                openLevels[0]
+                controlPanelContent(
+                    options.items,
+                    level,
+                    options.label ?? "Settings"
+                ),
+                panel
             );
+            if (focusedKey) {
+                const replacement = Array.from(
+                    panel.querySelectorAll("[data-control-key]")
+                ).find(
+                    (element) =>
+                        /** @type {HTMLElement} */ (element).dataset
+                            .controlKey === focusedKey
+                );
+                if (replacement instanceof HTMLElement) {
+                    replacement.focus();
+                } else {
+                    focusControl(panel);
+                }
+            }
         }
     }
 }
