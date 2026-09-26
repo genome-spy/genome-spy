@@ -64,6 +64,9 @@ import {
  */
 
 export default class GenomeSpy {
+    /** @type {(() => void) | undefined} */
+    #captureFrame;
+
     /** @type {(() => void)[]} */
     #destructionCallbacks = [];
     /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
@@ -370,7 +373,8 @@ export default class GenomeSpy {
 
         this.#keyboardListenerManager.removeAll();
 
-        this.#destructionCallbacks.forEach((callback) => callback());
+        // Disposers may unregister themselves while running.
+        this.#destructionCallbacks.slice().forEach((callback) => callback());
 
         this.#disposeInitializedResources();
 
@@ -549,6 +553,16 @@ export default class GenomeSpy {
                 onLayoutComputed: () =>
                     this.#loadingIndicatorManager.updateLayout(),
             });
+
+        // Capture only visible paints, including resize paths that call the coordinator
+        // directly. Copy before the browser can discard GPU presentation buffers.
+        const renderAll = this.#renderCoordinator.renderAll.bind(
+            this.#renderCoordinator
+        );
+        this.#renderCoordinator.renderAll = () => {
+            renderAll();
+            this.#captureFrame?.();
+        };
 
         // Allow early layout requests from view subscriptions created during initialization.
         // Layout will be recomputed anyway once launch completes.
@@ -926,6 +940,38 @@ export default class GenomeSpy {
      */
     requestLayoutReflow() {
         this.animator.requestTransition(this._layoutReflowTransition);
+    }
+
+    /**
+     * Internal live-surface hook for explicitly imported capture modules.
+     * @internal
+     */
+    getCanvasCaptureTarget() {
+        if (this.#destroyed) {
+            throw new Error("Cannot capture a finalized embed.");
+        }
+        return {
+            canvas: this.#surface.canvas,
+            render: () => this.#renderCoordinator.renderAll(),
+            /**
+             * @param {() => void} capture
+             * @param {() => void} onDispose
+             */
+            subscribe: (capture, onDispose) => {
+                if (this.#captureFrame) {
+                    throw new Error("A canvas capture is already active.");
+                }
+                this.#captureFrame = capture;
+                this.#destructionCallbacks.push(onDispose);
+                return () => {
+                    this.#captureFrame = undefined;
+                    this.#destructionCallbacks.splice(
+                        this.#destructionCallbacks.indexOf(onDispose),
+                        1
+                    );
+                };
+            },
+        };
     }
 
     renderAll() {

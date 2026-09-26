@@ -887,9 +887,31 @@ export interface ImageExportApi {
     ) => Promise<SvgExportAnalysis>;
 }
 
-/**
- * An API for controlling the embedded GenomeSpy instance.
- */
+/** Experimental, local plot recording. Cancellation rejects with AbortError. */
+export interface RecordingSession {
+    /** Whether recording is paused. Paused time is excluded from the video. */
+    readonly paused: boolean;
+
+    /** Remaining active recording time in milliseconds; frozen while paused. */
+    readonly remainingMs: number;
+
+    /** Pauses an active recording and its time limit. */
+    pause(): void;
+
+    /** Resumes a paused recording from the current plot state. */
+    resume(): void;
+
+    /** Completes on manual stop or the 60-second/64-MiB limit; rejects on failure. */
+    readonly finished: Promise<Blob>;
+
+    /** Finishes encoding and returns the same result as finished. */
+    stop(): Promise<Blob>;
+
+    /** Discards the recording and releases capture resources. */
+    cancel(): void;
+}
+
+/** An API for controlling the embedded GenomeSpy instance. */
 export interface EmbedResult {
     /**
      * Inspects and controls the live view hierarchy.
