@@ -77,6 +77,25 @@ describe("dropdownMenu", () => {
         expect(opener.getAttribute("aria-expanded")).toBe("false");
     });
 
+    it("dismisses the menu on a right-click inside it", () => {
+        const opener = document.createElement("button");
+        document.body.append(opener);
+        dropdownMenu(
+            { mode: "command", items: [{ label: "Run", callback: vi.fn() }] },
+            opener
+        );
+
+        const event = new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+        });
+        document.querySelector("[role='menuitem']").dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(document.querySelector("[role='menu']")).toBeNull();
+        expect(opener.getAttribute("aria-expanded")).toBe("false");
+    });
+
     it("opens submenus with arrows and restores parent focus with Escape", () => {
         const opener = document.createElement("button");
         document.body.append(opener);

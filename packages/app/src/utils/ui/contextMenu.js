@@ -34,6 +34,9 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 /** @type {HTMLElement} */
 let backdropElement;
 
+/** @type {HTMLElement} */
+let popupLayerElement;
+
 /** @type {HTMLElement[]} */
 const commandLevels = [];
 
@@ -95,6 +98,8 @@ function clearMenu(uiEvent, restoreFocus = false) {
         rootTrigger?.removeAttribute("aria-controls");
         rootTrigger = null;
         interactionBoundary = null;
+        popupLayerElement.remove();
+        popupLayerElement = undefined;
         backdropElement.remove();
         backdropElement = undefined;
         document.removeEventListener("focusin", handleOutsideFocus);
@@ -119,7 +124,7 @@ function handleOutsideFocus(event) {
         backdropElement &&
         event.target !== rootTrigger &&
         !interactionBoundary?.contains(/** @type {Node} */ (event.target)) &&
-        !backdropElement.contains(/** @type {Node} */ (event.target))
+        !popupLayerElement.contains(/** @type {Node} */ (event.target))
     ) {
         clearMenu();
     }
@@ -131,7 +136,7 @@ function handleDocumentKeydown(event) {
         event.key === "Escape" &&
         !event.defaultPrevented &&
         backdropElement &&
-        !event.composedPath().includes(backdropElement)
+        !event.composedPath().includes(popupLayerElement)
     ) {
         event.preventDefault();
         clearMenu(undefined, true);
@@ -150,7 +155,7 @@ export function dismissDropdownMenu() {
 /** @type {HTMLElement | VirtualElement | undefined} */
 let lastOpener;
 
-function prepareBackdrop() {
+function prepareMenuLayers() {
     const container = document.body;
     const openedAt = performance.now();
 
@@ -170,6 +175,10 @@ function prepareBackdrop() {
         { once: true }
     );
     container.appendChild(backdropElement);
+    popupLayerElement = document.createElement("div");
+    popupLayerElement.className = "gs-context-menu-popup-layer";
+    popupLayerElement.addEventListener("contextmenu", clearMenu);
+    container.appendChild(popupLayerElement);
     document.addEventListener("focusin", handleOutsideFocus);
     document.addEventListener("keydown", handleDocumentKeydown);
 
@@ -221,7 +230,7 @@ function mountPopup(popup, opener, level, placement) {
     popup.addEventListener("mouseenter", () => debouncer(() => {}));
     popup.addEventListener("mouseup", (event) => event.stopPropagation());
     popup.addEventListener("click", (event) => event.stopPropagation());
-    backdropElement.append(popup);
+    popupLayerElement.append(popup);
 
     const adjust = !/^(top|bottom)/.test(placement);
     computePosition(opener, popup, {
@@ -586,7 +595,7 @@ function moveFocusOutsideMenu(backwards) {
         )
     ).filter(
         (element) =>
-            !element.closest(".gs-context-menu-backdrop") &&
+            !element.closest(".gs-context-menu-popup-layer") &&
             getComputedStyle(element).display !== "none"
     );
     const index = candidates.indexOf(anchor);
@@ -837,7 +846,7 @@ function handleControlKeydown(event, level) {
         }
     } else if (event.key === "Tab") {
         const focusables = Array.from(
-            backdropElement.querySelectorAll(
+            popupLayerElement.querySelectorAll(
                 ".gs-controls-popup button:not([disabled]), .gs-controls-popup input:not([disabled]), .gs-controls-popup select:not([disabled]), .gs-controls-popup textarea:not([disabled])"
             )
         );
@@ -880,7 +889,7 @@ export function dropdownMenu(options, openerElement, placement) {
                 : document.activeElement instanceof HTMLElement
                   ? document.activeElement
                   : null;
-        prepareBackdrop();
+        prepareMenuLayers();
         if (mode === "command") {
             if (openerElement instanceof HTMLElement) {
                 rootTrigger = openerElement;
