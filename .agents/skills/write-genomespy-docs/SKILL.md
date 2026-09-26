@@ -21,6 +21,9 @@ description: Write and verify GenomeSpy user-facing documentation, schema-derive
   solves—its behavior, and representative use cases. Include implementation
   details or internal design rationale only when needed for correct usage.
 - Prefer the shortest explanation that gives readers the context they need.
+- For UI changes, do not describe visible controls or standard keyboard behavior
+  merely because they changed. Document non-obvious workflows, constraints, or
+  behavior that readers need to use the feature.
 - Use concise, direct language. Remove vague or tentative phrasing unless the
   uncertainty is meaningful.
 - Prefer plain statements over analogies or design commentary.
