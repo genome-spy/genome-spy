@@ -112,6 +112,7 @@ $menu-line-height: 22px;
         > button[role="menuitem"] {
             width: 100%;
             border: 0;
+            padding-block: 0;
             background: transparent;
             color: inherit;
             font: inherit;
