@@ -182,3 +182,25 @@ an equivalent visible control deliberately.
 Review the plan before implementation, and review the integrated change after
 the milestones. Reconcile every item above in Git history before deleting this
 temporary plan in a later commit.
+
+## Final reconciliation
+
+- **Complete:** All three milestones were implemented. Command menus have
+  menu semantics and keyboard navigation; view settings uses labeled control
+  dialogs with native inputs and separate settings buttons; toolbar menus use
+  the shared command renderer. Bookmark overflow and provenance history remain
+  accessible, and the provenance menu stays open during back/forward navigation.
+- **Complete:** Focus, submenu expansion, async loading, hover dismissal,
+  styling, and toolbar placement were checked in the MCCA example and covered
+  by focused tests. The user guide documents the keyboard interactions.
+- **Complete:** The final branch passed the full unit suite, workspace
+  TypeScript checks, lint, and the App production build.
+- **Complete:** The independent final review found bookmark loading and
+  keyboard focus gaps. These were fixed, covered by focused tests, and
+  reviewed again with no remaining findings.
+- **Discarded:** The conditional fallback to a separate inline command
+  renderer. Keeping it would duplicate menu semantics and keyboard behavior.
+  Two attempts to extract view settings also increased production code, so the
+  shared popup host with distinct command and control renderers was retained.
+- **Out of scope as planned:** A keyboard shortcut to invoke canvas context
+  menus and screen-reader-specific certification.
