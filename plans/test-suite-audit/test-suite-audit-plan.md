@@ -113,7 +113,13 @@ before deleting tests with uncertain or broad coverage.
 
 ## Milestone 2: Prune clear duplication and simplify fixtures
 
-Status: pending
+Status: completed. `embedFactory.test.js` fell from 292 to 180 lines by sharing
+mock construction and view-root setup while retaining its distinct public API,
+lifecycle, and debug assertions. `textProgram.test.js` fell from 619 to 613
+lines by removing one assertion that only checked arithmetic on local test
+data. The 27 focused cases are unchanged. The exact GraphRuntime sibling-order
+check remains for a later behavior-focused review; rewriting it now would add
+more assertion machinery than it removes.
 
 ### Intended outcome
 
@@ -137,6 +143,12 @@ keeping public API and subsystem behavior covered.
 Run affected Vitest files with `--reporter=agent`, then relevant package tests.
 Check that every removed public behavior assertion still has a named retained
 test. Run TypeScript checks and lint if test fixtures or JSDoc change.
+
+Actual verification: all 9 embed factory and 18 text program cases pass after
+cleanup; their case counts are unchanged and no snapshots changed. The Core
+and WebGPU package selection passed 3,565 tests with 1 skipped and 2 todo.
+Both package TypeScript checks, targeted ESLint, and Prettier checks passed.
+The two edited test files shrunk by 118 lines in total.
 
 Tentative commit: `test: simplify redundant wrapper coverage`
 
