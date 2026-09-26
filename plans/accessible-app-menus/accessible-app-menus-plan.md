@@ -19,8 +19,8 @@ the accessibility tree and from agents that inspect it.
 
 - Expose menu actions, disabled state, submenu availability and expansion, and
   view visibility controls with accurate names, roles, and state.
-- Make every menu and nested submenu operable without a mouse, with visible
-  focus and predictable return of focus.
+- Make every open menu and nested submenu operable without a mouse, with
+  visible focus and predictable return of focus.
 - Keep native checkbox, radio, and parameter input behavior in view settings;
   preserve the existing mouse hover path and application actions.
 - Cover floating context menus, view settings, and inline toolbar dropdowns.
@@ -29,8 +29,10 @@ the accessibility tree and from agents that inspect it.
 
 - Change visibility, bookmark, provenance, or sample action state semantics.
 - Replace the App's menu appearance or adopt a component library.
-- Add a global shortcut to open canvas context menus. Existing context menu
-  invocation remains the entry point; once open, its contents are accessible.
+- Add a global shortcut to open canvas context menus. The current canvas
+  context-menu callers only receive pointer coordinates, so keyboard-only
+  invocation of those menus remains a separate gap. Once open, their contents
+  are accessible. Toolbar menus must be keyboard-invocable.
 - Guarantee a particular screen reader's output without assistive technology
   testing. The implementation will expose standards-based semantics and verify
   the DOM and browser interaction.
@@ -40,13 +42,18 @@ the accessibility tree and from agents that inspect it.
 Use the [WAI-ARIA menu button pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/)
 and [menu pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/) for lists
 of commands. Trigger buttons announce `aria-haspopup="menu"` and expansion;
-the list has `role="menu"`, actions have `role="menuitem"`, separators are
-separators, and unavailable choices expose disabled state. Opening the menu
-moves focus to an item. Arrow keys move among items, Right/Enter opens a
-submenu, Left/Escape closes it and returns focus, and Escape at the root closes
-the menu. Tab exits the menu. Mouse hover continues to work. Submenu triggers
-show a visible affordance as well as `aria-haspopup`, `aria-expanded`, and a
-relationship to the popup. Do not copy code from the APG examples.
+the list has `role="menu"`, actions have `role="menuitem"`, separators have
+`role="separator"`, and unavailable choices expose `aria-disabled` while
+remaining inert. Use presentational list wrappers so only menu items, groups,
+and separators are exposed as menu children. Label each root and submenu.
+Opening the menu moves focus to an item. Up/Down wrap among items, Home/End
+reach the ends, Right/Enter/Space open a submenu, Left/Escape closes it and
+returns focus, and Escape at the root closes the menu. Tab or Shift+Tab closes
+the menu and moves focus outside it. Disabled entries may receive navigation
+focus but cannot activate. Mouse hover continues to work. Submenu triggers
+show a visible affordance as well as `aria-haspopup`, `aria-expanded`, and
+`aria-controls` only while the target popup exists. Do not copy code from the
+APG examples.
 
 The view settings popup contains native controls and is a labeled non-modal
 `dialog`, not an ARIA `menu`: the [menu pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/)
@@ -54,26 +61,39 @@ expects menu items, whereas view settings embeds form controls. The toolbar
 button announces `aria-haspopup="dialog"` and expansion. A view row retains
 its native labeled checkbox or radio and gains a separate, named button to
 open that view's settings submenu. Nested panels with parameter inputs also
-use labeled dialog semantics. Tab follows the native control order; Enter or
-Space opens a submenu button; Escape closes the current panel and returns
-focus to its trigger. Mouse hover may open a submenu, but never becomes the
-only route. The popup is not marked modal because outside content is not made
-inert. Keep labels and submenu buttons as distinct controls to avoid nested
-interactive elements or misleading `menuitemcheckbox` roles.
+use labeled dialog semantics. In this mode, callbacks render as native buttons,
+and headers as non-interactive headings; no `menuitem` roles leak into it.
+Opening the root or a child panel moves focus to its first interactive control.
+Tab and Shift+Tab follow the native control order within the open panel chain;
+at the boundary they return to the toolbar trigger or close the panel, never
+move focus behind the backdrop. A visible close action and Escape provide an
+explicit exit. Escape closes the current panel and returns focus to its trigger;
+at the root it closes the popup and returns to the toolbar button. Outside
+pointer dismissal must reset expansion without stealing focus. Hover-open
+panels remain while pointer or focus is within their trigger/panel chain.
+The popup is not marked modal because outside content is not made inert. Keep
+labels and submenu buttons as distinct controls to avoid nested interactive
+elements or misleading `menuitemcheckbox` roles.
 
 For inline toolbar dropdowns, use semantic buttons for commands and accurate
 expanded state on their triggers. If they are converted to the shared action
 menu renderer, preserve their dynamic bookmark/provenance contents and current
 visual behavior. A separate, named bookmark overflow button remains reachable
-by keyboard and visible on focus. Preserve standard Tab behavior wherever a
-popup contains native controls. Do not assign `role="menu"` to a list that
-contains arbitrary form widgets.
+by keyboard and visible on focus. Its overflow menu returns focus to that
+button, not the bookmark row. Preserve standard Tab behavior wherever a popup
+contains native controls. Do not assign `role="menu"` to a list that contains
+arbitrary form widgets.
 
 The [WCAG guidance for hover or focus content](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus)
 requires popups to be dismissible, hoverable, and persistent while used.
 Closing a panel must cancel pending hover opens and prevent stale asynchronous
 submenu results from reappearing. Focus styles must be visible for keyboard
-users.
+users. One dismissal lifecycle handles Escape, Tab/focus exit, outside pointer,
+selection, and switching triggers. It clears pending hover work and updates
+`aria-expanded` on every path. After selecting a command that opens a dialog,
+do not restore focus over the new dialog. View settings re-renders after state
+changes, so preserve focus using a stable view-selector identity or move it to
+an equivalent visible control deliberately.
 
 ## Milestones
 
@@ -86,8 +106,10 @@ users.
 - **Areas and consumers:** `src/utils/ui/contextMenu.js`, menu SCSS, and all
   sample view, metadata, selection, and bookmark callers using that renderer.
 - **Verification:** Focused jsdom tests for roles, focus movement, action
-  invocation, disabled items, asynchronous submenu replacement, Escape, and
-  mouse behavior; App TypeScript checks and focused browser smoke checks.
+  invocation, disabled items, asynchronous submenu replacement, Escape,
+  Tab/Shift+Tab, and mouse behavior; App TypeScript checks and focused browser
+  smoke checks. Check inline `menuItemToTemplate` consumers for interim
+  compatibility before milestone 3.
 - **Docs/migration:** No public API migration; adjust menu item typing and
   internal comments as needed.
 - **Tentative commit:** `feat(app): make floating action menus accessible`
@@ -101,8 +123,9 @@ users.
   control mode, related SCSS, and visibility menu tests. Redux behavior stays
   the same.
 - **Verification:** Focused component and popup tests for native state,
-  accessible names, submenu expansion, focus return, and updates while open;
-  browser inspection of the visibility menu in a real App example.
+  accessible names, submenu expansion, focus return, focus after re-render,
+  and updates while open; browser inspection of the visibility menu in a real
+  App example.
 - **Docs/migration:** Update the user guide with the discoverable settings
   control and keyboard use if the final interaction warrants it.
 - **Tentative commit:** `feat(app): expose view settings controls and submenus`
@@ -143,9 +166,11 @@ users.
 - An agent inspecting the accessibility tree can identify every visible
   submenu trigger in view settings, tell whether it is expanded, and reach it
   without hover.
-- Context and toolbar command menus announce actions and can be traversed and
-  dismissed with keyboard alone. View settings keeps native controls and
-  offers keyboard access to every nested panel.
+- Open context menus and toolbar command menus announce actions and can be
+  traversed and dismissed with keyboard alone. Toolbar menus can be opened
+  with the keyboard. Canvas context-menu keyboard invocation remains an
+  explicit follow-up. View settings keeps native controls and offers keyboard
+  access to every nested panel.
 - Opening and closing menus returns focus predictably; no popup remains after
   dismissal or stale async completion.
 - Existing mouse actions, visibility state updates, bookmark operations, and
