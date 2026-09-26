@@ -25,6 +25,7 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
  * @prop {MenuItem[]} items
  * @prop {"command" | "controls"} [mode]
  * @prop {string} [label]
+ * @prop {HTMLElement} [interactionBoundary] An element whose controls keep the popup open.
  *
  * @typedef {Object} VirtualElement
  * @prop {() => DOMRect} getBoundingClientRect
@@ -53,6 +54,9 @@ let returnFocus = null;
 
 /** @type {HTMLElement | null} */
 let rootTrigger = null;
+
+/** @type {HTMLElement | null} */
+let interactionBoundary = null;
 
 /** @type {"command" | "controls" | undefined} */
 let currentMode;
@@ -90,9 +94,11 @@ function clearMenu(uiEvent, restoreFocus = false) {
         rootTrigger?.setAttribute("aria-expanded", "false");
         rootTrigger?.removeAttribute("aria-controls");
         rootTrigger = null;
+        interactionBoundary = null;
         backdropElement.remove();
         backdropElement = undefined;
         document.removeEventListener("focusin", handleOutsideFocus);
+        document.removeEventListener("keydown", handleDocumentKeydown);
         lastOpener = undefined;
         currentMode = undefined;
 
@@ -112,9 +118,23 @@ function handleOutsideFocus(event) {
     if (
         backdropElement &&
         event.target !== rootTrigger &&
+        !interactionBoundary?.contains(/** @type {Node} */ (event.target)) &&
         !backdropElement.contains(/** @type {Node} */ (event.target))
     ) {
         clearMenu();
+    }
+}
+
+/** @param {KeyboardEvent} event */
+function handleDocumentKeydown(event) {
+    if (
+        event.key === "Escape" &&
+        !event.defaultPrevented &&
+        backdropElement &&
+        !event.composedPath().includes(backdropElement)
+    ) {
+        event.preventDefault();
+        clearMenu(undefined, true);
     }
 }
 
@@ -151,6 +171,7 @@ function prepareBackdrop() {
     );
     container.appendChild(backdropElement);
     document.addEventListener("focusin", handleOutsideFocus);
+    document.addEventListener("keydown", handleDocumentKeydown);
 
     document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
     document.body.classList.add(FREEZE_INTERACTION_CLASS_NAME);
@@ -850,6 +871,7 @@ export function dropdownMenu(options, openerElement, placement) {
 
     if (!backdropElement) {
         currentMode = mode;
+        interactionBoundary = options.interactionBoundary ?? null;
         returnFocus =
             openerElement instanceof HTMLElement
                 ? openerElement
@@ -894,9 +916,15 @@ export function dropdownMenu(options, openerElement, placement) {
         }
     } else {
         // Update existing menu
+        interactionBoundary = options.interactionBoundary ?? null;
         const level = 0;
         if (mode === "command") {
-            const activeLabel = document.activeElement?.textContent?.trim();
+            const focusedInMenu = commandLevels[0].contains(
+                document.activeElement
+            );
+            const activeLabel = focusedInMenu
+                ? document.activeElement?.textContent?.trim()
+                : undefined;
             closeCommandSubmenus(1);
             render(
                 options.items.map((item) => commandItemToTemplate(item, level)),
@@ -908,10 +936,12 @@ export function dropdownMenu(options, openerElement, placement) {
                     ":scope > li > [role='menuitem']"
                 )
             ).find((item) => item.textContent?.trim() === activeLabel);
-            if (replacement instanceof HTMLElement) {
-                replacement.focus();
-            } else {
-                focusCommandItem(commandLevels[0]);
+            if (focusedInMenu) {
+                if (replacement instanceof HTMLElement) {
+                    replacement.focus();
+                } else {
+                    focusCommandItem(commandLevels[0]);
+                }
             }
         } else {
             const focusedKey =

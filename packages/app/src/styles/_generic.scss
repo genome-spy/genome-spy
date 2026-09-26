@@ -254,7 +254,7 @@ $menu-line-height: 22px;
         pointer-events: none;
     }
 
-    button[aria-current="step"] {
+    li > button[role="menuitem"][aria-current="step"] {
         background-color: #e0e0e0;
         border-left: 5px solid #c0c0c0;
         padding-left: $menu-item-h-padding - 5px;

@@ -28,7 +28,27 @@ export default class ProvenanceButtons extends LitElement {
         super.connectedCallback();
 
         const unsubscribe = this.provenance.store.subscribe(() => {
+            const focusedControl = document.activeElement;
             this.requestUpdate();
+            const trigger = this.querySelector("button[title='Provenance']");
+            if (trigger instanceof HTMLElement && isDropdownOpenFor(trigger)) {
+                this.#showHistoryMenu(trigger);
+                if (
+                    focusedControl instanceof HTMLButtonElement &&
+                    this.contains(focusedControl)
+                ) {
+                    void this.updateComplete.then(() => {
+                        if (
+                            focusedControl.disabled &&
+                            (document.activeElement === focusedControl ||
+                                document.activeElement === document.body) &&
+                            isDropdownOpenFor(trigger)
+                        ) {
+                            trigger.focus();
+                        }
+                    });
+                }
+            }
         });
         this._subscriptions.addUnsubscribeCallback(unsubscribe);
     }
@@ -67,6 +87,19 @@ export default class ProvenanceButtons extends LitElement {
         return items;
     }
 
+    /** @param {HTMLElement} trigger */
+    #showHistoryMenu(trigger) {
+        dropdownMenu(
+            {
+                items: this.#makeHistoryItems(),
+                mode: "command",
+                label: "Provenance",
+                interactionBoundary: this,
+            },
+            trigger
+        );
+    }
+
     render() {
         const provenanceDropdown = () => html`
             <div class="provenance-dropdown">
@@ -83,14 +116,7 @@ export default class ProvenanceButtons extends LitElement {
                         if (isDropdownOpenFor(opener)) {
                             dismissDropdownMenu();
                         } else {
-                            dropdownMenu(
-                                {
-                                    items: this.#makeHistoryItems(),
-                                    mode: "command",
-                                    label: "Provenance",
-                                },
-                                opener
-                            );
+                            this.#showHistoryMenu(opener);
                         }
                     }}
                 >
