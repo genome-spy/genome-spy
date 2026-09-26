@@ -1,3 +1,4 @@
+import { attachCaptureTarget } from "./embedCapture.js";
 import {
     createTopLevelDatasetApi,
     createViewMutationApi,
@@ -19,7 +20,8 @@ import { getTopLevelSpecView } from "./view/viewFactory.js";
  * @returns {import("./types/embedApi.js").EmbedResult}
  */
 export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
-    return {
+    /** @type {import("./types/embedApi.js").EmbedResult} */
+    const api = {
         views: createViewMutationApi(genomeSpy, isActive),
         datasets: createTopLevelDatasetApi(genomeSpy, isActive),
         events: {
@@ -69,4 +71,6 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
         },
         debug,
     };
+    attachCaptureTarget(api, () => genomeSpy.getCanvasCaptureTarget());
+    return api;
 }

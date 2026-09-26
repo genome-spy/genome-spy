@@ -38,6 +38,7 @@ Public TypeScript API for `@genome-spy/core`.
 - [SvgExportLayerInfo](interfaces/SvgExportLayerInfo.md)
 - [SvgExportAnalysis](interfaces/SvgExportAnalysis.md)
 - [ImageExportApi](interfaces/ImageExportApi.md)
+- [RecordingSession](interfaces/RecordingSession.md)
 - [EmbedResult](interfaces/EmbedResult.md)
 - [ScaleResolutionEvent](interfaces/ScaleResolutionEvent.md)
 - [ZoomToOptions](interfaces/ZoomToOptions.md)

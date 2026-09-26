@@ -41,11 +41,18 @@
         </p>
         <p>
             Shift-drag across the points to select a region. Scroll over the
-            plot to zoom. The eraser button clears the selection; hover for its
-            title. The bug button opens the Inspector. Image downloads include
-            the current visualization state.
+            plot to zoom. The bug button opens the Inspector. Image downloads
+            include the current visualization state.
         </p>
         <p>
+            <label>
+                Renderer
+                <select id="renderer">
+                    <option value="webgl">WebGL</option>
+                    <option value="canvas">Canvas2D</option>
+                    <option value="webgpu">WebGPU (experimental)</option>
+                </select>
+            </label>
             <label>
                 Placement
                 <select id="placement">
@@ -65,20 +72,15 @@
             Changing controls preserves the current plot state. This page
             provides margins above and below the plot for outside controls.
         </p>
+        <p>
+            The red Record button captures a silent WebM video of the plot, up
+            to 60 seconds of active recording. Pause lets you adjust the view
+            without recording; Resume continues the clip. Stop downloads it,
+            even while paused. Tooltips and controls are excluded; transparent
+            areas become white. Resizing or hiding this tab cancels recording.
+            The recording PoC targets desktop Chrome with all three renderers.
+        </p>
         <div id="plot" class="visualization-surface"></div>
-        <!-- Icon markup is cloned into each button's shadow root. Set its own
-             fill/stroke attributes so it needs no page-level CSS. -->
-        <template id="clear-selection-icon">
-            <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-            >
-                <path d="m3 12 8-8 6 6-7 7H7zM7 8l6 6M10 17h7" />
-            </svg>
-        </template>
         <p>
             <button id="reset">Reset example</button>
             disposes the controls and embed before recreating them.
