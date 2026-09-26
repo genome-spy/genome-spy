@@ -392,11 +392,6 @@ describe("TextProgram series replacement", () => {
                 y: { value: 0, scale: identityScale() },
             },
         });
-        const glyphCount = labels.reduce(
-            (count, label) => count + label.length,
-            0
-        );
-
         expect(placementIndices.byteLength).toBe(8000);
         expect(program.drawCount).toBe(2000);
         expect(program._channels.__placementIndex.data).toHaveLength(2000);
@@ -405,7 +400,6 @@ describe("TextProgram series replacement", () => {
         expect(
             program._seriesBuffers._packedBuffers.get("seriesU32")?.byteLength
         ).toBe(8000);
-        expect(glyphCount * 8 - 8000).toBe(264000);
     });
 
     it("keeps scalar scale inputs logical for vector color outputs", () => {
