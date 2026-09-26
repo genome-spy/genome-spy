@@ -4,16 +4,19 @@ import { createViewMutationApi } from "./viewMutationApi.js";
 import { createViewQuery } from "../viewQuery.js";
 import { renderToLayout } from "./testUtils.js";
 
-async function setup() {
+/** @param {{x: number, y: number, name: string}[]} [rows] */
+async function setup(
+    rows = [
+        { x: 1, y: 2, name: "same" },
+        { x: 2, y: 3, name: "same" },
+    ]
+) {
     const { view } = await createHeadlessEngine({
         name: "points",
         width: 400,
         height: 300,
         data: {
-            values: [
-                { x: 1, y: 2, name: "same" },
-                { x: 2, y: 3, name: "same" },
-            ],
+            values: rows,
         },
         mark: "point",
         encoding: {
@@ -275,4 +278,31 @@ test("invisible replacement arguments preserve the previous visible set", async 
         })
     ).rejects.toThrow("connectors need text");
     expect(query.annotations.inspect().activeTargets).toBe(1);
+});
+
+test("annotates a complete result larger than 1000 points", async () => {
+    const rows = Array.from({ length: 1500 }, (_, i) => ({
+        x: i / 500,
+        y: 2,
+        name: String(i),
+    }));
+    const { query } = await setup(rows);
+    const result = await query.queryData("root", {
+        ...options,
+        limit: null,
+        analysis: [],
+    });
+    expect(result.rows).toEqual(rows.map(({ x, y, name }) => ({ x, y, name })));
+    expect(new Set(result.annotationTargets).size).toBe(rows.length);
+    await query.annotations.replace({
+        targets: result.annotationTargets.map((reference, i) => ({
+            reference,
+            text: String(result.rows[i].name),
+        })),
+        emphasis: "purple",
+    });
+    expect(query.annotations.inspect().activeTargets).toBe(rows.length);
+    await query.annotations.clear();
+    expect(query.annotations.inspect().activeTargets).toBe(0);
+    query.annotations.dispose();
 });

@@ -141,8 +141,8 @@ export type ViewQueryAssessment =
 export interface ViewSliceQueryOptions extends ViewQueryScopeOptions {
     /** Returned fields, or required input columns for analysis. Omit for whole raw rows. */
     fields?: string[];
-    /** Maximum returned rows, 0–1000. Does not limit scanning or aggregation. */
-    limit: number;
+    /** Maximum returned rows (nonnegative safe integer), or null for all output rows. Does not limit scanning or aggregation. */
+    limit: number | null;
     /** Compute each operation over all matching loaded rows, even when rows are truncated. */
     aggregate?: ViewSliceAggregate[];
     /** Transform all scoped rows before limiting. Requires fields; excludes aggregate. */

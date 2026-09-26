@@ -9,6 +9,28 @@ Create the query object with `createViewQuery(api.views)`.
 
 ## Properties
 
+### assessAnnotations
+
+> **assessAnnotations**: (`address`) => [`ViewAnnotationAssessment`](../type-aliases/ViewAnnotationAssessment.md)
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `address` | [`ViewAddress`](../type-aliases/ViewAddress.md) |
+
+#### Returns
+
+[`ViewAnnotationAssessment`](../type-aliases/ViewAnnotationAssessment.md)
+
+***
+
+### annotations
+
+> **annotations**: [`ViewAnnotations`](ViewAnnotations.md)
+
+***
+
 ### describe
 
 > **describe**: (`address`) => [`ViewDescription`](ViewDescription.md)

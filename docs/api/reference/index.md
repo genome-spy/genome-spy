@@ -54,6 +54,9 @@ These query types are not exported by the root `@genome-spy/core` entry.
 - [ViewQueryScopeOptions](interfaces/ViewQueryScopeOptions.md)
 - [ViewSliceQueryOptions](interfaces/ViewSliceQueryOptions.md)
 - [ViewSliceQueryResult](interfaces/ViewSliceQueryResult.md)
+- [ViewAnnotationSet](interfaces/ViewAnnotationSet.md)
+- [ViewAnnotationState](interfaces/ViewAnnotationState.md)
+- [ViewAnnotations](interfaces/ViewAnnotations.md)
 
 ## Type Aliases
 
@@ -70,5 +73,7 @@ These query types are not exported by the root `@genome-spy/core` entry.
 - [ViewMutationApi](type-aliases/ViewMutationApi.md)
 - [ScaleResolutionEventType](type-aliases/ScaleResolutionEventType.md)
 - [ScaleResolutionListener](type-aliases/ScaleResolutionListener.md)
+- [ViewSliceAnalysisStage](type-aliases/ViewSliceAnalysisStage.md)
 - [QuerySupportReason](type-aliases/QuerySupportReason.md)
 - [ViewQueryAssessment](type-aliases/ViewQueryAssessment.md)
+- [ViewAnnotationAssessment](type-aliases/ViewAnnotationAssessment.md)

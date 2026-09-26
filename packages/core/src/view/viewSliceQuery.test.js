@@ -729,6 +729,9 @@ describe("scoped loaded-data queries", () => {
             {},
             { ...request, channels: [] },
             { ...request, limit: -1 },
+            ...[undefined, NaN, Infinity, 0.5, Number.MAX_SAFE_INTEGER + 1].map(
+                (limit) => ({ ...request, limit })
+            ),
             { ...request, fields: ["["] },
             { ...request, aggregate: [{ op: "sum", as: "sum", field: "[" }] },
             { ...request, aggregate: [{ op: "median", as: "m", field: "x" }] },
@@ -927,6 +930,59 @@ test("assessment and execution reject conditional positions identically", async 
 });
 
 describe("scoped analysis", () => {
+    test.each([null, 1500])(
+        "returns more than 1000 rows with limit %s",
+        async (limit) => {
+            const rows = Array.from({ length: 1500 }, (_, x) => ({
+                x,
+                group: x,
+            }));
+            const { query, handle } = await setup(rows);
+            const raw = await query.queryData(handle, { ...request, limit });
+            expect(raw.rows).toEqual(
+                rows.map(({ x, group }) => ({ x, group }))
+            );
+            expect(raw.truncated).toBe(false);
+
+            const grouped = await query.queryData(handle, {
+                ...request,
+                limit,
+                fields: ["group"],
+                analysis: [
+                    {
+                        type: "aggregate",
+                        groupby: ["group"],
+                        ops: ["count"],
+                        fields: [null],
+                        as: ["count"],
+                    },
+                ],
+            });
+            expect(grouped.rows).toEqual(
+                rows.map(({ group }) => ({ group, count: 1 }))
+            );
+            expect(grouped.outputRows).toBe(1500);
+            expect(grouped.truncated).toBe(false);
+        }
+    );
+
+    test("complete output still respects the viewport and analysis filters", async () => {
+        const { query, handle } = await setup([
+            { x: 1 },
+            { x: 2 },
+            { x: 6000 },
+        ]);
+        const result = await query.queryData(handle, {
+            ...request,
+            limit: null,
+            fields: ["x"],
+            analysis: [{ type: "filter", field: "x", op: "gt", value: 1 }],
+        });
+        expect(result.rows).toEqual([{ x: 2 }]);
+        expect(result.rowsMatched).toBe(2);
+        expect(result.truncated).toBe(false);
+    });
+
     test("groups the full slice before limiting and snapshots its pipeline", async () => {
         const { query, handle } = await setup(
             Array.from({ length: 1500 }, (_, x) => ({

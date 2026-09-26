@@ -89,7 +89,7 @@ function hasDynamicValue(value) {
     );
 }
 
-/** Owns bounded temporary references and one applied annotation set. */
+/** Owns temporary references and one applied annotation set. */
 export default class ViewAnnotations {
     /** @type {Map<string, Target>} */
     #references = new Map();
@@ -148,7 +148,6 @@ export default class ViewAnnotations {
         if (
             !set ||
             !Array.isArray(set.targets) ||
-            set.targets.length > 1000 ||
             (set.emphasis !== undefined &&
                 !["purple", "orange", "blue"].includes(set.emphasis)) ||
             (set.connectors !== undefined &&

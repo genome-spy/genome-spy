@@ -184,7 +184,10 @@ retains its empty-result semantics. Invalid requests, stale handles and unexpect
 errors throw normally. Assessment does not validate aggregate fields or guarantee
 row cloneability. Execution always checks again because chart state may change.
 
-The limit (0–1000) bounds output rows, not the matching population. `rowsExamined`
+A numeric `limit` is a nonnegative safe integer bounding output rows, not the
+matching population. Use `limit: null` to return all output rows in one result.
+Complete results consume memory proportional to their size; callers choose any
+transport or presentation budget. Neither mode loads data outside the current sources. `rowsExamined`
 counts all visited loaded rows; `rowsMatched` counts all rows in the slice.
 `truncated` concerns only row output; aggregates use every matching loaded row.
 Setting `limit: 0` computes aggregates without copying any source rows.
@@ -318,6 +321,9 @@ await query.annotations.clear();
 References are opaque, separate from disclosed values, and aligned with returned
 rows. Filters and window/rank analysis preserve references; aggregation cannot
 produce point targets. A truncated result supplies targets for its preview only.
+Use `limit: null` to obtain references for the complete query output. Annotation
+sets have no fixed target-count ceiling; rendering cost and label overlap grow
+with the number of targets.
 The next successful target-producing query expires previous references, while an
 already applied set remains visible. Ordinary queries do not expire references.
 

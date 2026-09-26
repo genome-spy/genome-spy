@@ -34,6 +34,7 @@ import createFunction from "../utils/expression.js";
  */
 export async function queryViewData(resolve, options, captureTargets) {
     validateOptions(options);
+    const limit = options.limit ?? Infinity;
     if (
         options.includeAnnotationTargets &&
         (!captureTargets ||
@@ -114,7 +115,7 @@ export async function queryViewData(resolve, options, captureTargets) {
             );
             analyzed.push(projected);
             if (options.includeAnnotationTargets) origins.set(projected, row);
-        } else if (result.rows.length < options.limit) {
+        } else if (result.rows.length < limit) {
             const output = fields
                 ? Object.fromEntries(
                       fields.map(({ name, accessor }) => [name, accessor(row)])
@@ -144,10 +145,11 @@ export async function queryViewData(resolve, options, captureTargets) {
             analyzed = runAnalysisStage(analyzed, stage);
         }
         result.outputRows = analyzed.length;
-        const preview = analyzed.slice(0, options.limit);
+        const preview = analyzed.slice(0, limit);
         result.rows = cloneDetached(preview);
-        if (options.includeAnnotationTargets)
-            targetRows.push(...preview.map((row) => origins.get(row)));
+        if (options.includeAnnotationTargets) {
+            for (const row of preview) targetRows.push(origins.get(row));
+        }
         result.scope.analysis = options.analysis;
     }
     // min/max may return source objects; aggregation must detach them too.
@@ -178,11 +180,12 @@ export async function queryViewData(resolve, options, captureTargets) {
 function validateOptions(options) {
     if (
         !options ||
-        !Number.isInteger(options.limit) ||
-        options.limit < 0 ||
-        options.limit > 1000
+        (options.limit !== null &&
+            (!Number.isSafeInteger(options.limit) || options.limit < 0))
     ) {
-        throw new Error("Slice query limit must be an integer from 0 to 1000.");
+        throw new Error(
+            "Slice query limit must be null or a nonnegative safe integer."
+        );
     }
     if (
         options.includeAnnotationTargets !== undefined &&

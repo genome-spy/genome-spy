@@ -36,15 +36,15 @@ Named interval selection in this view's parameter scope. A wholly cleared select
 
 > `optional` **fields?**: `string`[]
 
-Returned fields. Omit to return whole detached rows.
+Returned fields, or required input columns for analysis. Omit for whole raw rows.
 
 ***
 
 ### limit
 
-> **limit**: `number`
+> **limit**: `number` \| `null`
 
-Maximum returned rows, 0–1000. Does not limit scanning or aggregation.
+Maximum returned rows (nonnegative safe integer), or null for all output rows. Does not limit scanning or aggregation.
 
 ***
 
@@ -53,6 +53,22 @@ Maximum returned rows, 0–1000. Does not limit scanning or aggregation.
 > `optional` **aggregate?**: [`ViewSliceAggregate`](ViewSliceAggregate.md)[]
 
 Compute each operation over all matching loaded rows, even when rows are truncated.
+
+***
+
+### analysis?
+
+> `optional` **analysis?**: [`ViewSliceAnalysisStage`](../type-aliases/ViewSliceAnalysisStage.md)[]
+
+Transform all scoped rows before limiting. Requires fields; excludes aggregate.
+
+***
+
+### includeAnnotationTargets?
+
+> `optional` **includeAnnotationTargets?**: `boolean`
+
+Return temporary opaque references for row-preserving point queries.
 
 ***
 
