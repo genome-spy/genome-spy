@@ -257,4 +257,65 @@ describe("dropdownMenu", () => {
         expect(checkbox.checked).toBe(true);
         expect(document.querySelectorAll("[role='dialog']")).toHaveLength(1);
     });
+
+    it("keeps bookmark overflow actions in a keyboard-reachable submenu", () => {
+        const opener = document.createElement("button");
+        document.body.append(opener);
+        dropdownMenu(
+            {
+                mode: "command",
+                label: "Bookmarks",
+                items: [
+                    { label: "Local bookmarks", type: "header" },
+                    {
+                        label: "Saved view",
+                        callback: vi.fn(),
+                        ellipsisSubmenu: [
+                            { label: "Delete", callback: vi.fn() },
+                        ],
+                    },
+                ],
+            },
+            opener
+        );
+
+        const overflow = /** @type {HTMLElement} */ (
+            document.querySelector("[aria-label='Actions for Saved view']")
+        );
+        expect(document.querySelectorAll("[role='separator']")).toHaveLength(1);
+        document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })
+        );
+        expect(document.activeElement).toBe(overflow);
+        overflow.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+        );
+        expect(overflow.getAttribute("aria-expanded")).toBe("true");
+        expect(document.activeElement?.textContent?.trim()).toBe("Delete");
+        document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+        );
+        expect(document.activeElement).toBe(overflow);
+        expect(overflow.getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("derives a readable name from rich command labels", () => {
+        const opener = document.createElement("button");
+        document.body.append(opener);
+        dropdownMenu(
+            {
+                mode: "command",
+                items: [
+                    {
+                        label: html`Sort by <em>Sample</em>, ascending`,
+                        callback: vi.fn(),
+                    },
+                ],
+            },
+            opener
+        );
+        expect(document.activeElement?.getAttribute("aria-label")).toBe(
+            "Sort by Sample, ascending"
+        );
+    });
 });

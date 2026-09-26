@@ -73,8 +73,7 @@ $menu-line-height: 22px;
 }
 
 .gs-menu,
-.gs-context-menu,
-.gs-dropdown-menu {
+.gs-context-menu {
     margin: 0;
     padding: 7px 0;
     background: #f6f6f6;
@@ -170,6 +169,12 @@ $menu-line-height: 22px;
     .menu-header {
         font-size: 12px;
         color: #666;
+
+        h2 {
+            margin: 0;
+            font: inherit;
+            font-weight: 600;
+        }
     }
 
     li {
@@ -215,7 +220,7 @@ $menu-line-height: 22px;
         }
     }
 
-    a.menu-ellipsis {
+    button.menu-ellipsis {
         padding: 0;
         display: flex;
         align-items: center;
@@ -223,6 +228,7 @@ $menu-line-height: 22px;
         position: absolute;
         top: 0px;
         right: $menu-item-h-padding * 0.5;
+        width: $menu-line-height;
         height: $menu-line-height;
 
         background-color: $menu-hover-bg-color;
@@ -243,8 +249,15 @@ $menu-line-height: 22px;
         }
     }
 
-    li:not(:hover) a.menu-ellipsis {
-        display: none;
+    li:not(:hover, :focus-within) button.menu-ellipsis {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    button[aria-current="step"] {
+        background-color: #e0e0e0;
+        border-left: 5px solid #c0c0c0;
+        padding-left: $menu-item-h-padding - 5px;
     }
 
     .gs-input-binding {
@@ -255,10 +268,6 @@ $menu-line-height: 22px;
             margin-bottom: 0.2em;
         }
     }
-}
-
-.gs-dropdown-menu-right {
-    right: 0;
 }
 
 .gs-context-menu-backdrop {
@@ -325,26 +334,6 @@ $menu-line-height: 22px;
         width: 100%;
         min-height: $menu-line-height;
         text-align: left;
-    }
-}
-
-.gs-dropdown-menu {
-    overflow: auto;
-    position: absolute;
-
-    display: none;
-    z-index: 1;
-    width: max-content;
-
-    // Checkbox stuff --------------------
-
-    ul {
-        padding-left: 1.5em;
-        list-style: none;
-    }
-
-    > li > ul {
-        padding-left: 0;
     }
 }
 

@@ -14,7 +14,8 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
  * @prop {string | import("lit").TemplateResult} [label]
  * @prop {function} [callback]
  * @prop {string} [shortcut] Shortcut key. Just for displaying.
- * @prop {function} [ellipsisCallback]
+ * @prop {MenuItem[]} [ellipsisSubmenu] Secondary actions for the same item.
+ * @prop {boolean} [current] Current item in a history menu.
  * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  * @prop {MenuItem[] | (() => MenuItem[] | Promise<MenuItem[]>)} [submenu]
@@ -31,9 +32,6 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 
 /** @type {HTMLElement} */
 let backdropElement;
-
-/** @type {HTMLElement[]} */
-const openLevels = [];
 
 /** @type {HTMLElement[]} */
 const commandLevels = [];
@@ -95,7 +93,6 @@ function clearMenu(uiEvent, restoreFocus = false) {
         backdropElement.remove();
         backdropElement = undefined;
         document.removeEventListener("focusin", handleOutsideFocus);
-        openLevels.length = 0;
         lastOpener = undefined;
         currentMode = undefined;
 
@@ -130,219 +127,7 @@ export function dismissDropdownMenu() {
     clearMenu(undefined, true);
 }
 
-/**
- * @param {number} fromLevel
- */
-function clearSubmenus(fromLevel) {
-    if (fromLevel < 1) {
-        return;
-    }
-
-    for (let i = fromLevel; i < openLevels.length; i++) {
-        openLevels[i]?.remove();
-        openLevels[i] = undefined;
-    }
-    for (const li of openLevels[fromLevel - 1].querySelectorAll("li.active")) {
-        li.classList.remove("active");
-    }
-}
-
-const createDivider = () => html`<li class="menu-divider"></li>`;
-
-const createHeader = (/** @type {MenuItem} */ item) => html`
-    <li class="menu-header">${item.label || "-"}</li>
-`;
-
-/**
- * @param {MenuItem} item
- * @param {number} level
- */
-const createSubmenu = (item, level) => html`
-    <li>
-        <div
-            class="submenu-item"
-            @mouseenter=${(/** @type {MouseEvent} */ event) =>
-                debouncer(() => {
-                    const li = /** @type {HTMLElement} */ (
-                        event.target
-                    ).closest("li");
-                    void openSubmenu(item, li, level + 1);
-                    event.stopPropagation();
-                })}
-            @mouseleave=${() => debouncer(() => clearSubmenus(level + 1))}
-        >
-            ${
-                item.customContent
-                    ? item.customContent
-                    : html`<span
-                          >${item.icon ? icon(item.icon).node[0] : nothing}
-                          ${item.label}</span
-                      >`
-            }
-        </div>
-    </li>
-`;
-
-/**
- * @param {MenuItem} item
- * @param {HTMLElement} li
- * @param {number} level
- */
-async function openSubmenu(item, li, level) {
-    try {
-        const submenuSource =
-            typeof item.submenu == "function" ? item.submenu() : item.submenu;
-
-        if (submenuSource instanceof Promise) {
-            renderAndPositionSubmenu([{ label: "Loading..." }], li, level);
-            const submenu = await submenuSource;
-            if (!li.isConnected || !li.classList.contains("active")) {
-                return;
-            }
-            renderAndPositionSubmenu(submenu, li, level);
-        } else {
-            renderAndPositionSubmenu(submenuSource, li, level);
-        }
-    } catch {
-        if (!li.isConnected) {
-            return;
-        }
-        renderAndPositionSubmenu(
-            [{ label: "Could not open submenu." }],
-            li,
-            level
-        );
-    }
-}
-
-const createChoice = (/** @type {MenuItem} */ item) => html`
-    <li>
-        <a
-            class="choice-item"
-            @mouseup=${() => {
-                clearMenu();
-                item.callback();
-            }}
-        >
-            <span
-                >${item.icon ? icon(item.icon).node[0] : ""} ${item.label}</span
-            >
-            ${
-                item.shortcut
-                    ? html`<span class="kbd-shortcut">${item.shortcut}</span>`
-                    : nothing
-            }
-        </a>
-
-        ${
-            item.ellipsisCallback
-                ? html` <a
-                      class="menu-ellipsis"
-                      @click=${item.ellipsisCallback}
-                  >
-                      ${icon(faEllipsisV).node[0]}
-                  </a>`
-                : nothing
-        }
-    </li>
-`;
-
-const createDisabledItem = (/** @type {MenuItem} */ item) => html`
-    <li>
-        <span class="disabled-item">
-            ${item.icon ? icon(item.icon).node[0] : ""}
-            ${item.label || "-"}</span
-        >
-    </li>
-`;
-
-/**
- * @param {MenuItem} item
- * @param {number} level TODO: refactor this away
- */
-export function menuItemToTemplate(item, level = 1) {
-    switch (item.type) {
-        case "divider":
-            return createDivider();
-        case "header":
-            return createHeader(item);
-        default:
-            if (item.submenu) {
-                return createSubmenu(item, level);
-            } else if (item.customContent) {
-                return item.customContent;
-            } else if (item.callback) {
-                return createChoice(item);
-            } else {
-                return createDisabledItem(item);
-            }
-    }
-}
-
-/**
- * @param {MenuItem[]} items
- * @param {HTMLElement} openerElement
- * @param {number} level
- */
-function renderAndPositionSubmenu(items, openerElement, level) {
-    renderAndPositionMenu(items, openerElement, level, "right-start");
-    openerElement.classList.add("active");
-}
-
-/**
- *
- * @param {MenuItem[]} items
- * @param {VirtualElement} openerElement
- * @param {number} level
- * @param {import("@floating-ui/core").Placement} [placement]
- */
-function renderAndPositionMenu(items, openerElement, level, placement) {
-    const menuElement = document.createElement("ul");
-    menuElement.classList.add("gs-context-menu");
-    // A fixed menu appended to a long document would otherwise initially have
-    // a static position below its content. The alignment adjustment below must
-    // measure it from the viewport instead.
-    menuElement.style.top = "0";
-    menuElement.addEventListener("mouseenter", () => {
-        debouncer(() => {
-            // nop. clear the debouncer.
-        });
-    });
-    menuElement.addEventListener("mouseup", (event) => event.stopPropagation());
-    menuElement.addEventListener("click", (event) => event.stopPropagation());
-
-    // TODO: Keyboard navigation: https://web.dev/building-a-split-button-component/
-
-    render(
-        items.map((item) => menuItemToTemplate(item, level)),
-        menuElement
-    );
-
-    backdropElement.appendChild(menuElement);
-    clearSubmenus(level);
-    openLevels[level] = menuElement;
-
-    placement ??= "right-start";
-    const adjust = !/^(top|bottom)/.test(placement);
-
-    computePosition(openerElement, menuElement, {
-        strategy: "fixed",
-        placement,
-        middleware: level < 1 && adjust ? [offset(2), flip()] : [flip()],
-    }).then(({ x, y }) => {
-        const first = /** @type {HTMLElement} */ (
-            menuElement.querySelector(":scope > li")
-        );
-        if (first && adjust) {
-            // Align items nicely
-            y -= first.getBoundingClientRect().top;
-        }
-        menuElement.style.left = `${x}px`;
-        menuElement.style.top = `${y}px`;
-    });
-}
-
-/** @type {any} */
+/** @type {HTMLElement | VirtualElement | undefined} */
 let lastOpener;
 
 function prepareBackdrop() {
@@ -373,11 +158,16 @@ function prepareBackdrop() {
 
 /**
  * @param {number} fromLevel
+ * @param {HTMLElement[]} levels
+ * @param {HTMLElement[]} triggers
  */
-function closeCommandSubmenus(fromLevel) {
-    for (let level = fromLevel; level < commandLevels.length; level++) {
-        commandLevels[level]?.remove();
-        const trigger = commandTriggers[level];
+function closeSubmenus(fromLevel, levels, triggers) {
+    if (fromLevel >= levels.length) {
+        return;
+    }
+    for (let level = fromLevel; level < levels.length; level++) {
+        levels[level]?.remove();
+        const trigger = triggers[level];
         if (trigger) {
             submenuRequests.delete(trigger);
             trigger.setAttribute("aria-expanded", "false");
@@ -385,24 +175,51 @@ function closeCommandSubmenus(fromLevel) {
             trigger.closest("li")?.classList.remove("active");
         }
     }
-    commandLevels.length = fromLevel;
-    commandTriggers.length = fromLevel;
+    levels.length = fromLevel;
+    triggers.length = fromLevel;
+}
+
+/** @param {number} fromLevel */
+function closeCommandSubmenus(fromLevel) {
+    closeSubmenus(fromLevel, commandLevels, commandTriggers);
 }
 
 /** @param {number} fromLevel */
 function closeControlSubmenus(fromLevel) {
-    for (let level = fromLevel; level < controlLevels.length; level++) {
-        controlLevels[level]?.remove();
-        const trigger = controlTriggers[level];
-        if (trigger) {
-            submenuRequests.delete(trigger);
-            trigger.setAttribute("aria-expanded", "false");
-            trigger.removeAttribute("aria-controls");
-            trigger.closest("li")?.classList.remove("active");
+    closeSubmenus(fromLevel, controlLevels, controlTriggers);
+}
+
+/**
+ * @param {HTMLElement} popup
+ * @param {HTMLElement | VirtualElement} opener
+ * @param {number} level
+ * @param {import("@floating-ui/core").Placement} placement
+ */
+function mountPopup(popup, opener, level, placement) {
+    popup.style.top = "0";
+    popup.addEventListener("mouseenter", () => debouncer(() => {}));
+    popup.addEventListener("mouseup", (event) => event.stopPropagation());
+    popup.addEventListener("click", (event) => event.stopPropagation());
+    backdropElement.append(popup);
+
+    const adjust = !/^(top|bottom)/.test(placement);
+    computePosition(opener, popup, {
+        strategy: "fixed",
+        placement,
+        middleware: level === 0 && adjust ? [offset(2), flip()] : [flip()],
+    }).then(({ x, y }) => {
+        if (!popup.isConnected) {
+            return;
         }
-    }
-    controlLevels.length = fromLevel;
-    controlTriggers.length = fromLevel;
+        const first = /** @type {HTMLElement | null} */ (
+            popup.querySelector("li")
+        );
+        if (first && adjust) {
+            y -= first.getBoundingClientRect().top;
+        }
+        popup.style.left = `${x}px`;
+        popup.style.top = `${y}px`;
+    });
 }
 
 /**
@@ -421,19 +238,38 @@ function focusCommandItem(menu, end = "first") {
     }
 }
 
+/** @param {HTMLElement} menu */
+function nameCommandItems(menu) {
+    for (const item of menu.querySelectorAll(
+        "[role='menuitem']:not([aria-label])"
+    )) {
+        const label = item.firstElementChild?.textContent
+            ?.replace(/\s+/g, " ")
+            .trim();
+        if (label) {
+            item.setAttribute("aria-label", label);
+        }
+    }
+}
+
 /**
  * @param {MenuItem} item
  * @param {number} level
  */
 function commandItemToTemplate(item, level) {
     if (item.type === "divider") {
-        return html`<li role="separator" class="menu-divider"></li>`;
+        return html`<li
+            role="separator"
+            aria-orientation="horizontal"
+            class="menu-divider"
+        ></li>`;
     }
     if (item.type === "header") {
         return html`<li
-            role="presentation"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label=${typeof item.label === "string" ? item.label : nothing}
             class="menu-header"
-            aria-hidden="true"
         >
             ${item.label || "-"}
         </li>`;
@@ -458,6 +294,7 @@ function commandItemToTemplate(item, level) {
                 aria-haspopup=${submenu ? "menu" : nothing}
                 aria-expanded=${submenu ? "false" : nothing}
                 aria-disabled=${disabled ? "true" : nothing}
+                aria-current=${item.current ? "step" : nothing}
                 @mouseenter=${
                     submenu
                         ? (/** @type {MouseEvent} */ event) => {
@@ -525,6 +362,36 @@ function commandItemToTemplate(item, level) {
                         : nothing
                 }
             </button>
+            ${
+                item.ellipsisSubmenu
+                    ? html`<button
+                          type="button"
+                          role="menuitem"
+                          tabindex="-1"
+                          class="menu-ellipsis"
+                          aria-label=${`Actions for ${label}`}
+                          aria-haspopup="menu"
+                          aria-expanded="false"
+                          @click=${(/** @type {MouseEvent} */ event) => {
+                              void openCommandSubmenu(
+                                  {
+                                      label: `Actions for ${label}`,
+                                      submenu: item.ellipsisSubmenu,
+                                  },
+                                  /** @type {HTMLElement} */ (
+                                      event.currentTarget
+                                  ),
+                                  level + 1,
+                                  true
+                              );
+                          }}
+                      >
+                          <span aria-hidden="true"
+                              >${icon(faEllipsisV).node[0]}</span
+                          >
+                      </button>`
+                    : nothing
+            }
         </li>
     `;
 }
@@ -546,10 +413,6 @@ function renderCommandLevel(items, opener, level, label, placement, focus) {
     menu.setAttribute("role", "menu");
     menu.setAttribute("aria-label", label);
     menu.tabIndex = -1;
-    menu.style.top = "0";
-    menu.addEventListener("mouseenter", () => debouncer(() => {}));
-    menu.addEventListener("mouseup", (event) => event.stopPropagation());
-    menu.addEventListener("click", (event) => event.stopPropagation());
     menu.addEventListener("keydown", (event) =>
         handleCommandKeydown(event, level)
     );
@@ -557,28 +420,10 @@ function renderCommandLevel(items, opener, level, label, placement, focus) {
         items.map((item) => commandItemToTemplate(item, level)),
         menu
     );
+    nameCommandItems(menu);
 
-    backdropElement.append(menu);
+    mountPopup(menu, opener, level, placement);
     commandLevels[level] = menu;
-
-    const adjust = !/^(top|bottom)/.test(placement);
-    computePosition(opener, menu, {
-        strategy: "fixed",
-        placement,
-        middleware: level === 0 && adjust ? [offset(2), flip()] : [flip()],
-    }).then(({ x, y }) => {
-        if (!menu.isConnected) {
-            return;
-        }
-        const first = /** @type {HTMLElement | null} */ (
-            menu.querySelector(":scope > li")
-        );
-        if (first && adjust) {
-            y -= first.getBoundingClientRect().top;
-        }
-        menu.style.left = `${x}px`;
-        menu.style.top = `${y}px`;
-    });
 
     if (focus) {
         focusCommandItem(menu);
@@ -617,7 +462,7 @@ async function openCommandSubmenu(item, trigger, level, focus) {
             : /** @type {MenuItem[]} */ (source),
         trigger,
         level,
-        String(item.label || "Submenu"),
+        trigger.textContent?.trim() || "Submenu",
         "right-start",
         focus
     );
@@ -640,6 +485,7 @@ async function openCommandSubmenu(item, trigger, level, focus) {
             items.map((child) => commandItemToTemplate(child, level)),
             menu
         );
+        nameCommandItems(menu);
         if (focusWasInside) {
             focusCommandItem(menu);
         }
@@ -651,6 +497,7 @@ async function openCommandSubmenu(item, trigger, level, focus) {
             commandItemToTemplate({ label: "Could not open submenu." }, level),
             menu
         );
+        nameCommandItems(menu);
     }
 }
 
@@ -745,7 +592,7 @@ function controlItemToTemplate(item, level) {
     }
     if (item.type === "header") {
         return html`<li class="menu-header">
-            <strong>${item.label || "-"}</strong>
+            <h2>${item.label || "-"}</h2>
         </li>`;
     }
 
@@ -885,36 +732,13 @@ function renderControlLevel(items, opener, level, label, placement, focus) {
     panel.id = `gs-controls-popup-${++nextMenuId}`;
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", label);
-    panel.style.top = "0";
-    panel.addEventListener("mouseenter", () => debouncer(() => {}));
-    panel.addEventListener("mouseup", (event) => event.stopPropagation());
-    panel.addEventListener("click", (event) => event.stopPropagation());
     panel.addEventListener("keydown", (event) =>
         handleControlKeydown(event, level)
     );
     render(controlPanelContent(items, level, label), panel);
 
-    backdropElement.append(panel);
+    mountPopup(panel, opener, level, placement);
     controlLevels[level] = panel;
-
-    const adjust = !/^(top|bottom)/.test(placement);
-    computePosition(opener, panel, {
-        strategy: "fixed",
-        placement,
-        middleware: level === 0 && adjust ? [offset(2), flip()] : [flip()],
-    }).then(({ x, y }) => {
-        if (!panel.isConnected) {
-            return;
-        }
-        const first = /** @type {HTMLElement | null} */ (
-            panel.querySelector(":scope > ul > li")
-        );
-        if (first && adjust) {
-            y -= first.getBoundingClientRect().top;
-        }
-        panel.style.left = `${x}px`;
-        panel.style.top = `${y}px`;
-    });
 
     if (focus) {
         focusControl(panel);
@@ -1095,6 +919,7 @@ export function dropdownMenu(options, openerElement, placement) {
                 options.items.map((item) => commandItemToTemplate(item, level)),
                 commandLevels[0]
             );
+            nameCommandItems(commandLevels[0]);
             const replacement = Array.from(
                 commandLevels[0].querySelectorAll(
                     ":scope > li > [role='menuitem']"
@@ -1102,6 +927,8 @@ export function dropdownMenu(options, openerElement, placement) {
             ).find((item) => item.textContent?.trim() === activeLabel);
             if (replacement instanceof HTMLElement) {
                 replacement.focus();
+            } else {
+                focusCommandItem(commandLevels[0]);
             }
         } else {
             const focusedKey =

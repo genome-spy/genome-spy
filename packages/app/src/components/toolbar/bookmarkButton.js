@@ -1,5 +1,4 @@
 import { html, LitElement, nothing } from "lit";
-import { until } from "lit/directives/until.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faBookmark,
@@ -7,11 +6,11 @@ import {
     faPen,
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../../utils/ui/dropdown.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
 import {
+    dismissDropdownMenu,
     dropdownMenu,
-    menuItemToTemplate,
+    isDropdownOpenFor,
 } from "../../utils/ui/contextMenu.js";
 import { queryDependency } from "../../utils/dependency.js";
 import { restoreBookmarkAndShowInfoBox } from "../../bookmark/bookmark.js";
@@ -20,6 +19,8 @@ import { showShareBookmarkDialog } from "../dialogs/shareBookmarkDialog.js";
 import { createBookmarkWithCurrentState } from "../../bookmark/bookmarkState.js";
 
 class BookmarkButton extends LitElement {
+    #bookmarkRequestId = 0;
+
     constructor() {
         super();
 
@@ -107,13 +108,8 @@ class BookmarkButton extends LitElement {
     /**
      * @param {import("../../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} name
-     * @param {MouseEvent} event
      */
-    #createContextMenu(bookmarkDatabase, name, event) {
-        event.stopPropagation();
-
-        const opener = /** @type {HTMLElement} */ (event.currentTarget);
-
+    #createBookmarkActions(bookmarkDatabase, name) {
         const deleteCallback = () =>
             showMessageDialog(
                 html`The bookmark <em>${name}</em> will be deleted.`,
@@ -156,11 +152,7 @@ class BookmarkButton extends LitElement {
                 ),
         });
 
-        dropdownMenu(
-            { items, mode: "command", label: `Actions for ${name}` },
-            opener,
-            "right-start"
-        );
+        return items;
     }
 
     /**
@@ -173,73 +165,104 @@ class BookmarkButton extends LitElement {
         const items = names.map((name) => ({
             label: name,
             callback: () => this.#loadBookmark(bookmarkDatabase, name),
-            ellipsisCallback: (/** @type {MouseEvent} */ event) =>
-                this.#createContextMenu(bookmarkDatabase, name, event),
+            ellipsisSubmenu: this.#createBookmarkActions(
+                bookmarkDatabase,
+                name
+            ),
         }));
         return items.length
             ? /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */ ([
                   { type: "divider" },
                   { label: databaseTitle, type: "header" },
                   ...items,
-              ]).map((item) => menuItemToTemplate(item))
-            : nothing;
+              ])
+            : [];
     }
 
-    #getBookmarks() {
-        /**
-         * @param {import("../../bookmark/bookmarkDatabase.js").default} db
-         * @param {string} title
-         */
-        const makeTemplate = (db, title) =>
-            db
-                ? until(
-                      this.#makeBookmarkMenuItems(db, title),
-                      html`Loading...`
+    async #getBookmarks() {
+        const sections = await Promise.all([
+            this.app.globalBookmarkDatabase
+                ? this.#makeBookmarkMenuItems(
+                      this.app.globalBookmarkDatabase,
+                      "Bookmarks on the server"
                   )
-                : nothing;
+                : [],
+            this.app.localBookmarkDatabase
+                ? this.#makeBookmarkMenuItems(
+                      this.app.localBookmarkDatabase,
+                      "Bookmarks in the web browser"
+                  )
+                : [],
+        ]);
+        return sections.flat();
+    }
 
-        return [
-            makeTemplate(
-                this.app.globalBookmarkDatabase,
-                "Bookmarks on the server"
-            ),
-            makeTemplate(
-                this.app.localBookmarkDatabase,
-                "Bookmarks in the web browser"
-            ),
-        ];
+    /** @param {MouseEvent} event */
+    #handleBookmarksClick(event) {
+        const opener = /** @type {HTMLElement} */ (event.currentTarget);
+        const requestId = ++this.#bookmarkRequestId;
+        if (isDropdownOpenFor(opener)) {
+            dismissDropdownMenu();
+            return;
+        }
+
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
+        const items = this.app.localBookmarkDatabase
+            ? [
+                  {
+                      label: "Add bookmark...",
+                      callback: () =>
+                          this.#addBookmark(this.app.localBookmarkDatabase),
+                  },
+              ]
+            : [];
+        const show = (
+            /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */ bookmarks
+        ) => {
+            if (
+                requestId === this.#bookmarkRequestId &&
+                isDropdownOpenFor(opener)
+            ) {
+                dropdownMenu(
+                    {
+                        items: [...items, ...bookmarks],
+                        mode: "command",
+                        label: "Bookmarks",
+                    },
+                    opener
+                );
+            }
+        };
+
+        dropdownMenu(
+            {
+                items: [...items, { label: "Loading..." }],
+                mode: "command",
+                label: "Bookmarks",
+            },
+            opener
+        );
+        void this.#getBookmarks()
+            .then(show)
+            .catch(() => show([{ label: "Could not load bookmarks." }]));
     }
 
     render() {
         const localBookmarkDb = this.app.localBookmarkDatabase;
 
-        const add = localBookmarkDb
-            ? html` <li>
-                  <a @click=${() => this.#addBookmark(localBookmarkDb)}
-                      >Add bookmark...</a
-                  >
-              </li>`
-            : nothing;
-
         const bookmarkButtonTemplate =
             localBookmarkDb || this.app.globalBookmarkDatabase
                 ? html`
-                      <div class="dropdown bookmark-dropdown">
+                      <div class="bookmark-dropdown">
                           <button
                               class="tool-btn"
                               title="Bookmarks"
-                              @click=${(/** @type {MouseEvent} */ event) => {
-                                  if (toggleDropdown(event)) {
-                                      // TODO: Use redux actions to save bookmarks
-                                      this.requestUpdate();
-                                  }
-                              }}
+                              aria-haspopup="menu"
+                              aria-expanded="false"
+                              @click=${this.#handleBookmarksClick}
                           >
                               ${icon(faBookmark).node[0]}
                           </button>
-                          <ul class="gs-dropdown-menu">
-                              ${add} ${this.#getBookmarks()}
-                          </ul>
                       </div>
                   `
                 : nothing;

@@ -1,4 +1,4 @@
-import { html, nothing, LitElement } from "lit";
+import { html, LitElement } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faUndo,
@@ -7,7 +7,11 @@ import {
     faCircle,
     faCheck,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../../utils/ui/dropdown.js";
+import {
+    dismissDropdownMenu,
+    dropdownMenu,
+    isDropdownOpenFor,
+} from "../../utils/ui/contextMenu.js";
 import SubscriptionController from "../generic/subscriptionController.js";
 import { isBaselineAction } from "../../state/provenanceBaseline.js";
 
@@ -33,17 +37,13 @@ export default class ProvenanceButtons extends LitElement {
         return this;
     }
 
-    render() {
-        /**
-         *
-         * @param {any} action
-         * @param {number} index
-         */
-        const makeDropdownItem = (action, index) => {
+    #makeHistoryItems() {
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
+        const items = [];
+        this.provenance.getFullActionHistory().forEach((action, index) => {
             if (!action) {
-                return nothing;
+                return;
             }
-
             const baselineAction = isBaselineAction(action);
             const info = baselineAction
                 ? undefined
@@ -51,43 +51,51 @@ export default class ProvenanceButtons extends LitElement {
 
             if (!baselineAction && !info) {
                 // Skip Redux' internal actions
-                return nothing;
+                return;
             }
 
-            const infoTemplate = baselineAction
-                ? html`${icon(faCheck).node[0]} Initial state`
-                : html` ${icon(info.icon ?? faCircle).node[0]}
-                  ${info.provenanceTitle ?? info.title}`;
+            items.push({
+                label: baselineAction
+                    ? "Initial state"
+                    : (info.provenanceTitle ?? info.title),
+                icon: baselineAction ? faCheck : (info.icon ?? faCircle),
+                current: index === this.provenance.getCurrentIndex(),
+                callback: () =>
+                    this.provenance.activateState(action.provenanceId),
+            });
+        });
+        return items;
+    }
 
-            return html`
-                <li>
-                    <a
-                        @click=${() =>
-                            this.provenance.activateState(action.provenanceId)}
-                        class=${index == this.provenance.getCurrentIndex()
-                            ? "active-state"
-                            : ""}
-                        >${infoTemplate}</a
-                    >
-                </li>
-            `;
-        };
-
+    render() {
         const provenanceDropdown = () => html`
-            <div class="dropdown provenance-dropdown">
+            <div class="provenance-dropdown">
                 <button
                     class="tool-btn"
                     title="Provenance"
                     ?disabled=${this.provenance.isEmpty()}
-                    @click=${toggleDropdown}
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    @click=${(/** @type {MouseEvent} */ event) => {
+                        const opener = /** @type {HTMLElement} */ (
+                            event.currentTarget
+                        );
+                        if (isDropdownOpenFor(opener)) {
+                            dismissDropdownMenu();
+                        } else {
+                            dropdownMenu(
+                                {
+                                    items: this.#makeHistoryItems(),
+                                    mode: "command",
+                                    label: "Provenance",
+                                },
+                                opener
+                            );
+                        }
+                    }}
                 >
                     ${icon(faEllipsisH).node[0]}
                 </button>
-                <ol class="gs-dropdown-menu provenance-menu">
-                    ${this.provenance
-                        .getFullActionHistory()
-                        .map(makeDropdownItem)}
-                </ol>
             </div>
         `;
 
