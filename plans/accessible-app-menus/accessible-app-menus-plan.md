@@ -66,7 +66,7 @@ and headers as non-interactive headings; no `menuitem` roles leak into it.
 Opening the root or a child panel moves focus to its first interactive control.
 Tab and Shift+Tab follow the native control order within the open panel chain;
 at the boundary they return to the toolbar trigger or close the panel, never
-move focus behind the backdrop. A visible close action and Escape provide an
+move focus behind the backdrop. Escape and the toolbar trigger provide an
 explicit exit. Escape closes the current panel and returns focus to its trigger;
 at the root it closes the popup and returns to the toolbar button. Outside
 pointer dismissal must reset expansion without stealing focus. Hover-open

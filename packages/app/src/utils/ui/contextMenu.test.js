@@ -224,6 +224,42 @@ describe("dropdownMenu", () => {
         );
         expect(document.activeElement).toBe(settings);
         expect(settings.getAttribute("aria-expanded")).toBe("false");
+
+        document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+        );
+        expect(document.activeElement).toBe(opener);
+        expect(document.querySelector("[role='dialog']")).toBeNull();
+    });
+
+    it("exits the controls popup on Shift+Tab from its first control", () => {
+        const before = document.createElement("button");
+        const opener = document.createElement("button");
+        document.body.append(before, opener);
+
+        dropdownMenu(
+            {
+                mode: "controls",
+                items: [
+                    {
+                        customContent: html`<label
+                            ><input type="checkbox" />Track</label
+                        >`,
+                    },
+                ],
+            },
+            opener
+        );
+        expect(document.activeElement?.tagName).toBe("INPUT");
+        document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", {
+                key: "Tab",
+                shiftKey: true,
+                bubbles: true,
+            })
+        );
+        expect(document.activeElement).toBe(before);
+        expect(document.querySelector("[role='dialog']")).toBeNull();
     });
 
     it("restores focus to an equivalent control after a popup update", () => {

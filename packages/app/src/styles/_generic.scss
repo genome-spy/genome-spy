@@ -283,7 +283,6 @@ $menu-line-height: 22px;
 
 .gs-controls-popup {
     min-width: 14em;
-    padding-top: 2em;
 
     > ul {
         margin: 0;
@@ -305,27 +304,34 @@ $menu-line-height: 22px;
         }
     }
 
-    .popup-close {
-        position: absolute;
-        top: 0.2em;
-        right: 0.2em;
-        min-width: 1.7em;
-        min-height: 1.7em;
-        font-size: 1.1em;
-    }
-
     .control-submenu-row {
         display: flex;
         align-items: center;
 
+        &:hover {
+            background: $menu-hover-bg-color;
+        }
+
+        &.active {
+            background: $menu-active-bg-color;
+        }
+
         > label {
             flex: 1;
+
+            &:hover {
+                background: transparent;
+            }
         }
 
         > .settings-submenu-button {
             min-width: 2.2em;
             min-height: $menu-line-height;
             padding: 0 0.5em;
+
+            &:hover {
+                background: transparent;
+            }
         }
     }
 
@@ -333,6 +339,7 @@ $menu-line-height: 22px;
     .submenu-item {
         width: 100%;
         min-height: $menu-line-height;
+        padding: 0 $menu-item-h-padding;
         text-align: left;
     }
 }

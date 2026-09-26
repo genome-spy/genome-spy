@@ -574,12 +574,12 @@ function moveFocusOutsideMenu(backwards) {
 
 /** @param {HTMLElement} panel */
 function focusControl(panel) {
-    const target = /** @type {HTMLElement | null} */ (
+    const target = /** @type {HTMLElement} */ (
         panel.querySelector(
             "ul input:not([disabled]), ul select:not([disabled]), ul textarea:not([disabled]), ul button:not([disabled])"
-        ) ?? panel.querySelector(".popup-close")
+        ) ?? panel
     );
-    target?.focus();
+    target.focus();
 }
 
 /**
@@ -692,28 +692,11 @@ function controlItemToTemplate(item, level) {
 /**
  * @param {MenuItem[]} items
  * @param {number} level
- * @param {string} label
  */
-function controlPanelContent(items, level, label) {
-    return html`<button
-            type="button"
-            class="popup-close"
-            aria-label=${`Close ${label}`}
-            @click=${() => {
-                if (level > 0) {
-                    const trigger = controlTriggers[level];
-                    closeControlSubmenus(level);
-                    trigger.focus();
-                } else {
-                    clearMenu(undefined, true);
-                }
-            }}
-        >
-            ×
-        </button>
-        <ul>
-            ${items.map((item) => controlItemToTemplate(item, level))}
-        </ul>`;
+function controlPanelContent(items, level) {
+    return html`<ul>
+        ${items.map((item) => controlItemToTemplate(item, level))}
+    </ul>`;
 }
 
 /**
@@ -732,10 +715,11 @@ function renderControlLevel(items, opener, level, label, placement, focus) {
     panel.id = `gs-controls-popup-${++nextMenuId}`;
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", label);
+    panel.tabIndex = -1;
     panel.addEventListener("keydown", (event) =>
         handleControlKeydown(event, level)
     );
-    render(controlPanelContent(items, level, label), panel);
+    render(controlPanelContent(items, level), panel);
 
     mountPopup(panel, opener, level, placement);
     controlLevels[level] = panel;
@@ -796,7 +780,7 @@ async function openControlSubmenu(item, trigger, level, focus) {
             return;
         }
         const focusWasInside = panel.contains(document.activeElement);
-        render(controlPanelContent(items, level, label), panel);
+        render(controlPanelContent(items, level), panel);
         if (focusWasInside) {
             focusControl(panel);
         }
@@ -805,11 +789,7 @@ async function openControlSubmenu(item, trigger, level, focus) {
             return;
         }
         render(
-            controlPanelContent(
-                [{ label: "Could not open settings." }],
-                level,
-                label
-            ),
+            controlPanelContent([{ label: "Could not open settings." }], level),
             panel
         );
     }
@@ -838,6 +818,7 @@ function handleControlKeydown(event, level) {
         );
         const current = focusables.indexOf(document.activeElement);
         if (
+            current === -1 ||
             (event.shiftKey && current === 0) ||
             (!event.shiftKey && current === focusables.length - 1)
         ) {
@@ -937,14 +918,7 @@ export function dropdownMenu(options, openerElement, placement) {
                     : undefined;
             const panel = controlLevels[0];
             closeControlSubmenus(1);
-            render(
-                controlPanelContent(
-                    options.items,
-                    level,
-                    options.label ?? "Settings"
-                ),
-                panel
-            );
+            render(controlPanelContent(options.items, level), panel);
             if (focusedKey) {
                 const replacement = Array.from(
                     panel.querySelectorAll("[data-control-key]")
