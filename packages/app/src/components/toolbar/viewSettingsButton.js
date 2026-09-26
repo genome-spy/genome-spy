@@ -1,6 +1,6 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFileUpload, faSlidersH } from "@fortawesome/free-solid-svg-icons";
-import { LitElement, html } from "lit";
+import { LitElement, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
 import { visitAddressableViews } from "@genome-spy/core/view/viewSelectors.js";
@@ -328,6 +328,7 @@ class ViewSettingsButton extends LitElement {
                         data-control-key=${`${selectorKey ?? title}:visibility`}
                         style=${`margin-left: ${depth * 1.5}em;`}
                         type=${isRadioGroup ? "radio" : "checkbox"}
+                        name=${isRadioGroup ? radioGroup.groupKey : nothing}
                         ?disabled=${
                             !selectorKey ||
                             !uniqueSelectorKeys.has(selectorKey) ||

@@ -137,8 +137,11 @@ describe("dropdownMenu", () => {
     it("moves focus outside on Tab and Shift+Tab, wrapping at the ends", () => {
         const before = document.createElement("button");
         const opener = document.createElement("button");
+        const hidden = document.createElement("div");
+        hidden.style.display = "none";
+        hidden.append(document.createElement("button"));
         const after = document.createElement("button");
-        document.body.append(before, opener, after);
+        document.body.append(before, opener, hidden, after);
 
         for (const [trigger, shiftKey, target] of [
             [opener, false, after],
@@ -286,6 +289,40 @@ describe("dropdownMenu", () => {
             })
         );
         expect(document.activeElement).toBe(before);
+        expect(document.querySelector("[role='dialog']")).toBeNull();
+    });
+
+    it("exits after the selected radio even when later options share its group", () => {
+        const opener = document.createElement("button");
+        const after = document.createElement("button");
+        document.body.append(opener, after);
+
+        dropdownMenu(
+            {
+                mode: "controls",
+                items: [
+                    {
+                        customContent: html`<label
+                                ><input
+                                    type="radio"
+                                    name="mode"
+                                    checked
+                                />A</label
+                            ><label
+                                ><input type="radio" name="mode" />B</label
+                            >`,
+                    },
+                ],
+            },
+            opener
+        );
+        expect(document.activeElement).toBe(
+            document.querySelector("input:checked")
+        );
+        document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Tab", bubbles: true })
+        );
+        expect(document.activeElement).toBe(after);
         expect(document.querySelector("[role='dialog']")).toBeNull();
     });
 

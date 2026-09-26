@@ -558,11 +558,24 @@ function moveFocusOutsideMenu(backwards) {
         document.querySelectorAll(
             "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex='0']"
         )
-    ).filter(
-        (element) =>
-            !element.closest(".gs-context-menu-popup-layer") &&
-            getComputedStyle(element).display !== "none"
-    );
+    ).filter((element) => {
+        if (element.closest(".gs-context-menu-popup-layer")) return false;
+        for (
+            let ancestor = element;
+            ancestor;
+            ancestor = ancestor.parentElement
+        ) {
+            const style = getComputedStyle(ancestor);
+            if (
+                ancestor.hasAttribute("inert") ||
+                style.display === "none" ||
+                style.visibility === "hidden"
+            ) {
+                return false;
+            }
+        }
+        return true;
+    });
     const index = candidates.indexOf(anchor);
     const next =
         index === -1
@@ -820,10 +833,29 @@ function handleControlKeydown(event, level) {
             clearMenu(undefined, true);
         }
     } else if (event.key === "Tab") {
-        const focusables = Array.from(
+        const controls = Array.from(
             popupLayerElement.querySelectorAll(
                 ".gs-controls-popup button:not([disabled]), .gs-controls-popup input:not([disabled]), .gs-controls-popup select:not([disabled]), .gs-controls-popup textarea:not([disabled])"
             )
+        );
+        /** @type {Map<string, HTMLInputElement>} */
+        const radioGroups = new Map();
+        for (const control of controls) {
+            if (
+                control instanceof HTMLInputElement &&
+                control.type === "radio" &&
+                control.name &&
+                (control.checked || !radioGroups.has(control.name))
+            ) {
+                radioGroups.set(control.name, control);
+            }
+        }
+        const focusables = controls.filter(
+            (control) =>
+                !(control instanceof HTMLInputElement) ||
+                control.type !== "radio" ||
+                !control.name ||
+                radioGroups.get(control.name) === control
         );
         const current = focusables.indexOf(document.activeElement);
         if (
@@ -906,6 +938,9 @@ export function dropdownMenu(options, openerElement, placement) {
         const level = 0;
         if (mode === "command") {
             const focusedInMenu = levels[0].contains(document.activeElement);
+            const focusedInChild = levels
+                .slice(1)
+                .some((menu) => menu.contains(document.activeElement));
             const activeLabel = focusedInMenu
                 ? document.activeElement?.textContent?.trim()
                 : undefined;
@@ -917,7 +952,7 @@ export function dropdownMenu(options, openerElement, placement) {
             const replacement = Array.from(
                 levels[0].querySelectorAll(":scope > li > [role='menuitem']")
             ).find((item) => item.textContent?.trim() === activeLabel);
-            if (focusedInMenu) {
+            if (focusedInMenu || focusedInChild) {
                 if (replacement instanceof HTMLElement) {
                     replacement.focus();
                 } else {

@@ -179,21 +179,43 @@ class BookmarkButton extends LitElement {
             : [];
     }
 
-    async #getBookmarks() {
-        const sections = await Promise.all([
-            this.app.globalBookmarkDatabase
-                ? this.#makeBookmarkMenuItems(
-                      this.app.globalBookmarkDatabase,
-                      "Bookmarks on the server"
-                  )
-                : [],
-            this.app.localBookmarkDatabase
-                ? this.#makeBookmarkMenuItems(
-                      this.app.localBookmarkDatabase,
-                      "Bookmarks in the web browser"
-                  )
-                : [],
-        ]);
+    /**
+     * @param {(items: import("../../utils/ui/contextMenu.js").MenuItem[]) => void} show
+     */
+    #getBookmarks(show) {
+        /** @type {[import("../../bookmark/bookmarkDatabase.js").default | undefined, string][]} */
+        const databases = [
+            [this.app.globalBookmarkDatabase, "Bookmarks on the server"],
+            [this.app.localBookmarkDatabase, "Bookmarks in the web browser"],
+        ];
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[][]} */
+        const sections = databases.map(([database, title]) =>
+            database
+                ? [
+                      { type: "divider" },
+                      { label: title, type: "header" },
+                      { label: "Loading..." },
+                  ]
+                : []
+        );
+
+        databases.forEach(([database, title], index) => {
+            if (!database) return;
+            void this.#makeBookmarkMenuItems(database, title)
+                .then((items) => {
+                    sections[index] = items;
+                    show(sections.flat());
+                })
+                .catch(() => {
+                    sections[index] = [
+                        { type: "divider" },
+                        { label: title, type: "header" },
+                        { label: "Could not load bookmarks." },
+                    ];
+                    show(sections.flat());
+                });
+        });
+
         return sections.flat();
     }
 
@@ -234,17 +256,15 @@ class BookmarkButton extends LitElement {
             }
         };
 
+        const bookmarks = this.#getBookmarks(show);
         dropdownMenu(
             {
-                items: [...items, { label: "Loading..." }],
+                items: [...items, ...bookmarks],
                 mode: "command",
                 label: "Bookmarks",
             },
             opener
         );
-        void this.#getBookmarks()
-            .then(show)
-            .catch(() => show([{ label: "Could not load bookmarks." }]));
     }
 
     render() {
