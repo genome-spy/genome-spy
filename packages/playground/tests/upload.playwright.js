@@ -84,4 +84,44 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
             })
         )
         .toBe(true);
+
+    // Inspect the composited frame after dataflow publication and rendering.
+    await expect
+        .poll(async () => {
+            const screenshot = await page
+                .locator("#genome-spy-container")
+                .screenshot();
+            return page.evaluate(
+                async (dataUrl) => {
+                    const image = new globalThis.Image();
+                    image.src = dataUrl;
+                    await image.decode();
+
+                    const canvas = globalThis.document.createElement("canvas");
+                    canvas.width = image.width;
+                    canvas.height = image.height;
+                    const context = canvas.getContext("2d");
+                    context.drawImage(image, 0, 0);
+                    const pixels = context.getImageData(
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height
+                    ).data;
+
+                    for (let index = 0; index < pixels.length; index += 4) {
+                        if (
+                            pixels[index] > 160 &&
+                            pixels[index + 1] < 80 &&
+                            pixels[index + 2] < 80
+                        ) {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                "data:image/png;base64," + screenshot.toString("base64")
+            );
+        })
+        .toBe(true);
 });

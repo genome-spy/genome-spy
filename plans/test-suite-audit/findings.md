@@ -1,6 +1,7 @@
 # Test suite audit: Milestone 1 findings
 
-Status: completed on 2026-09-26. This milestone changed no tests.
+Status: Milestone 1 review completed on 2026-09-26. The outcome of the full
+audit is recorded at the end of this document.
 
 ## Inventory and method
 
@@ -277,3 +278,60 @@ The ranked queue is a starting point, not a complete judgment on every test in
 the 497-file inventory. Further candidates discovered during feature work
 should use the same rubric. Before any deletion with uncertain coverage,
 inspect the retained assertion and cross-subsystem contract named above.
+
+## Final audit outcome
+
+The root Vitest collection now has 497 files and 4,413 runnable cases, down
+from 4,418. Two focused example cases were added, six redundant full-tree
+layout cases and one graph-path cross case were removed; all other cases were
+retained or rewritten. The full unit run passed 4,413 tests, with 1 skipped
+and 2 todo. The separate two-file, seven-case msdfgen oracle collection was
+untouched. The existing one-case Playground Playwright suite gained a rendered
+pixel assertion without adding a browser scenario.
+
+| Change | Retained protection | Maintenance effect |
+| --- | --- | --- |
+| Shared examples | All 204 offline specs initialize and contain a visual unit; template expansion and relative URL wiring have focused checks. | Removed the 15,273-line hierarchy/source snapshot. |
+| Flow builder | Headless rows show formula output, sibling isolation, and nested source override; `cross.test.js` checks auxiliary Cartesian rows and disposal. | Removed exact child-path and node-class checks, plus the `byPath` helper; one redundant cross case was deleted. |
+| Layout | Eight examples check plot/legend bounds, nested grids, shared axes, adjacent tracks, imported tracks, and panel alignment. Existing focused layout and SVG suites cover other geometry and rendering contracts. | Removed the 2,417-line full-tree snapshot and six cases whose layout shape added no distinct contract. |
+| Public API and text program | Embed API forwarding, lifecycle, failure, and text buffer checks remain. | Shared setup removed 112 lines from `embedFactory.test.js`; one arithmetic-only text assertion and six unused lines were removed. |
+| Zero-size flex layout | Five scenarios still run in both directions, with explicit expected positions. | One labeled table replaces duplicated setup and individual expectations. |
+| Browser stack | The CI upload scenario checks dataflow publication and visible red rendered marks. | One scenario, no new browser fixture or screenshot baseline. |
+
+The broad example and layout snapshots together removed 17,690 serialized
+lines; the edited test source files are 163 lines shorter in aggregate. These
+counts are maintenance measures, not proxies for test quality. The
+flow-builder and layout assertions were checked against their supported
+failure modes: removing the defensive clone made the sibling-isolation test
+fail, and changing the browser mark to blue made the rendered-pixel assertion
+fail. Both mutations were restored and the tests passed again.
+
+### Subsystem coverage and retained candidates
+
+- **Dataflow and reactivity:** complete headless specs exercise sources,
+  transforms, collectors, cross inputs, and disposal. `reactiveReplay.test.js`,
+  `graphRuntime.test.js`, and `scaleResolution.parameterDependency.test.js`
+  retain propagation, observer, replay, cycle, and lifecycle checks. These
+  subsystem tests are more valuable than graph-shape assertions.
+- **Hierarchical layout and output:** `layout.test.js`, `layoutSnapshot.test.js`,
+  and `flexLayout.test.js` check arranged geometry and guide placement;
+  `rendering/svg/examples.test.js` and `standaloneAxes.test.js` check emitted
+  output across the view hierarchy. The real-browser upload test adds one
+  end-to-end rendering check through the Playground, Core, and WebGL.
+- **Generated GLSL:** the 8,520-line shader snapshot remains. Its fake GL
+  reports compile/link success, so exact generated-source checks still protect
+  variants that the focused semantic assertions and one browser draw do not
+  cover. A representative `first.json` WebGL smoke run succeeded; this does
+  not prove every generated shader variant compiles. Narrowing this snapshot
+  is future work only after reliable per-variant compiler or rendering checks.
+- **Other low-value leads kept:** the WebGPU linear-scale test protects
+  definition identity at little cost. The GraphRuntime exact sibling-order
+  assertion and disposer count are brittle but guard scheduling and cleanup;
+  replacing them now would add assertion machinery without clear savings.
+  Mutation, Canvas2D, App metadata, and agent chat tests retain distinct
+  lifecycle or user-visible protection.
+
+No further `AGENTS.md` rule emerged: its current guidance already asks for
+observable contracts, representative assertions, and feature-time pruning.
+The inventory was broad, but assertion-level decisions were made for the
+ranked candidates and sample, not for every case in the repository.

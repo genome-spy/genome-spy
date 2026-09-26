@@ -207,15 +207,19 @@ an extra `x` field on a sibling row; the source was restored. The full unit
 suite then passed 4,413 tests with 1 skipped and 2 todo across 497 files.
 Core TypeScript and targeted ESLint passed.
 
-Tentative commits: `test(core): assert dataflow outcomes instead of graph paths`
-and `test(core): focus layout and example regression checks`
+Actual commits: `3669a9074 test(core): replace broad example hierarchy snapshots`
+and `099062a25 test(core): assert flow and layout behavior`.
 
 Review gate: inspect the surviving assertion set and representative snapshot
 diffs before removing generated GLSL or broad example coverage.
 
 ## Milestone 4: Integrate and document the result
 
-Status: pending
+Status: completed. `findings.md` reconciles every ranked candidate with the
+implemented assertions and retained coverage. The existing CI Playwright
+upload scenario now verifies visible rendered marks as well as dataflow
+publication. Ten zero-size flex-layout cases retain their forward and reverse
+expectations in one labeled table. No new `AGENTS.md` rule was needed.
 
 ### Intended outcome
 
@@ -247,9 +251,18 @@ lint. Run affected browser or GPU checks if the suite changes browser-specific
 coverage. Compare the final file/case/snapshot inventory with the baseline and
 report the net maintenance change without treating the count as a quality score.
 
+Actual verification: all 497 root Vitest files passed with 4,413 passing
+tests, 1 skipped, and 2 todo; the baseline collection had 4,418 runnable
+cases. Workspace TypeScript checks, repository lint, targeted test-file ESLint,
+Prettier, and `git diff --check` passed. The CI Playground Playwright scenario
+passed with the rendered-pixel check. Temporarily changing its red mark to
+blue made that check fail, then the restored test passed. A focused Core WebGL
+smoke run for `examples/core/first.json` passed. The two snapshots removed
+17,690 serialized lines, while edited test source files shrank by 163 lines.
+
 Tentative commit: `test: finalize focused subsystem coverage`
 
-## Risks and unresolved questions
+## Risks and decisions
 
 - A verbose test may be the only guard for a bug-prone edge case. Require
   candidate-specific evidence and preserve or replace unique assertions.
@@ -258,9 +271,9 @@ Tentative commit: `test: finalize focused subsystem coverage`
 - Real WebGL/WebGPU validation may need CI facilities unavailable to a local
   headless run. Do not claim equivalent coverage from a mock that always
   reports compile success.
-- The Playground upload check is already in CI, but its assertion ends at
-  dataflow publication. Decide whether a rendering check is needed from the
-  remaining stack gap and measured runtime.
+- The Playground upload check now inspects rendered pixels in its existing CI
+  scenario. One local Playwright run completed in 1.9 seconds; no additional
+  browser scenario or screenshot baseline was added.
 
 ## Acceptance criteria
 
@@ -277,3 +290,14 @@ Tentative commit: `test: finalize focused subsystem coverage`
 Before a future PR or merge, reconcile every pending task in this temporary
 plan, commit that record, then delete the plan files in a later commit as the
 repository plan workflow requires.
+
+## Final reconciliation
+
+All four milestones are complete. The proposed generated-GLSL snapshot
+replacement is discarded for this audit because no reliable per-variant
+compiler or rendering oracle covers it; the existing snapshot stays. The
+GraphRuntime order/disposer-count and WebGPU definition-identity checks stay
+after review. The broad inventory does not claim a case-by-case audit of every
+test; future feature work should apply the existing testing guidance to its
+affected area. This reconciled record is ready to commit before retiring the
+temporary plan files in a separate commit.
