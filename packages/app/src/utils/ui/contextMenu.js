@@ -38,16 +38,10 @@ let backdropElement;
 let popupLayerElement;
 
 /** @type {HTMLElement[]} */
-const commandLevels = [];
+const levels = [];
 
 /** @type {HTMLElement[]} */
-const commandTriggers = [];
-
-/** @type {HTMLElement[]} */
-const controlLevels = [];
-
-/** @type {HTMLElement[]} */
-const controlTriggers = [];
+const triggers = [];
 
 /** @type {WeakMap<HTMLElement, symbol>} */
 const submenuRequests = new WeakMap();
@@ -90,10 +84,9 @@ function clearMenu(uiEvent, restoreFocus = false) {
 
     if (backdropElement) {
         debouncer(() => {});
-        closeCommandSubmenus(1);
-        closeControlSubmenus(1);
-        commandLevels.length = 0;
-        controlLevels.length = 0;
+        closeSubmenus(1);
+        levels.length = 0;
+        triggers.length = 0;
         rootTrigger?.setAttribute("aria-expanded", "false");
         rootTrigger?.removeAttribute("aria-controls");
         rootTrigger = null;
@@ -188,10 +181,8 @@ function prepareMenuLayers() {
 
 /**
  * @param {number} fromLevel
- * @param {HTMLElement[]} levels
- * @param {HTMLElement[]} triggers
  */
-function closeSubmenus(fromLevel, levels, triggers) {
+function closeSubmenus(fromLevel) {
     if (fromLevel >= levels.length) {
         return;
     }
@@ -207,16 +198,6 @@ function closeSubmenus(fromLevel, levels, triggers) {
     }
     levels.length = fromLevel;
     triggers.length = fromLevel;
-}
-
-/** @param {number} fromLevel */
-function closeCommandSubmenus(fromLevel) {
-    closeSubmenus(fromLevel, commandLevels, commandTriggers);
-}
-
-/** @param {number} fromLevel */
-function closeControlSubmenus(fromLevel) {
-    closeSubmenus(fromLevel, controlLevels, controlTriggers);
 }
 
 /**
@@ -334,11 +315,11 @@ function commandItemToTemplate(item, level) {
                     submenu
                         ? () =>
                               debouncer(() => {
-                                  const child = commandLevels[level + 1];
+                                  const child = levels[level + 1];
                                   if (
                                       !child?.contains(document.activeElement)
                                   ) {
-                                      closeCommandSubmenus(level + 1);
+                                      closeSubmenus(level + 1);
                                   }
                               })
                         : nothing
@@ -423,7 +404,7 @@ function commandItemToTemplate(item, level) {
  * @param {boolean} focus
  */
 function renderCommandLevel(items, opener, level, label, placement, focus) {
-    closeCommandSubmenus(level);
+    closeSubmenus(level);
 
     const menu = document.createElement("ul");
     menu.className = "gs-context-menu";
@@ -439,7 +420,7 @@ function renderCommandLevel(items, opener, level, label, placement, focus) {
         menu
     );
     mountPopup(menu, opener, level, placement);
-    commandLevels[level] = menu;
+    levels[level] = menu;
 
     if (focus) {
         focusCommandItem(menu);
@@ -454,9 +435,9 @@ function renderCommandLevel(items, opener, level, label, placement, focus) {
  * @param {boolean} focus
  */
 async function openCommandSubmenu(item, trigger, level, focus) {
-    if (commandTriggers[level] === trigger && commandLevels[level]) {
+    if (triggers[level] === trigger && levels[level]) {
         if (focus) {
-            focusCommandItem(commandLevels[level]);
+            focusCommandItem(levels[level]);
         }
         return;
     }
@@ -486,7 +467,7 @@ async function openCommandSubmenu(item, trigger, level, focus) {
         "right-start",
         focus
     );
-    commandTriggers[level] = trigger;
+    triggers[level] = trigger;
     trigger.setAttribute("aria-expanded", "true");
     trigger.setAttribute("aria-controls", menu.id);
     trigger.closest("li")?.classList.add("active");
@@ -524,7 +505,7 @@ async function openCommandSubmenu(item, trigger, level, focus) {
  * @param {number} level
  */
 function handleCommandKeydown(event, level) {
-    const menu = commandLevels[level];
+    const menu = levels[level];
     const items = Array.from(
         menu.querySelectorAll(":scope > li > [role='menuitem']")
     );
@@ -539,8 +520,8 @@ function handleCommandKeydown(event, level) {
     if (event.key === "Escape" || (event.key === "ArrowLeft" && level > 0)) {
         event.preventDefault();
         if (level > 0) {
-            const trigger = commandTriggers[level];
-            closeCommandSubmenus(level);
+            const trigger = triggers[level];
+            closeSubmenus(level);
             trigger.focus();
         } else {
             clearMenu(undefined, true);
@@ -675,9 +656,9 @@ function controlItemToTemplate(item, level) {
             submenu
                 ? () =>
                       debouncer(() => {
-                          const child = controlLevels[level + 1];
+                          const child = levels[level + 1];
                           if (!child?.contains(document.activeElement)) {
-                              closeControlSubmenus(level + 1);
+                              closeSubmenus(level + 1);
                           }
                       })
                 : nothing
@@ -736,7 +717,7 @@ function controlPanelContent(items, level) {
  * @param {boolean} focus
  */
 function renderControlLevel(items, opener, level, label, placement, focus) {
-    closeControlSubmenus(level);
+    closeSubmenus(level);
 
     const panel = document.createElement("div");
     panel.className = "gs-context-menu gs-controls-popup";
@@ -750,7 +731,7 @@ function renderControlLevel(items, opener, level, label, placement, focus) {
     render(controlPanelContent(items, level), panel);
 
     mountPopup(panel, opener, level, placement);
-    controlLevels[level] = panel;
+    levels[level] = panel;
 
     if (focus) {
         focusControl(panel);
@@ -765,9 +746,9 @@ function renderControlLevel(items, opener, level, label, placement, focus) {
  * @param {boolean} focus
  */
 async function openControlSubmenu(item, trigger, level, focus) {
-    if (controlTriggers[level] === trigger && controlLevels[level]) {
+    if (triggers[level] === trigger && levels[level]) {
         if (focus) {
-            focusControl(controlLevels[level]);
+            focusControl(levels[level]);
         }
         return;
     }
@@ -794,7 +775,7 @@ async function openControlSubmenu(item, trigger, level, focus) {
         "right-start",
         focus
     );
-    controlTriggers[level] = trigger;
+    triggers[level] = trigger;
     trigger.setAttribute("aria-expanded", "true");
     trigger.setAttribute("aria-controls", panel.id);
     trigger.closest("li")?.classList.add("active");
@@ -832,8 +813,8 @@ function handleControlKeydown(event, level) {
         event.preventDefault();
         event.stopPropagation();
         if (level > 0) {
-            const trigger = controlTriggers[level];
-            closeControlSubmenus(level);
+            const trigger = triggers[level];
+            closeSubmenus(level);
             trigger.focus();
         } else {
             clearMenu(undefined, true);
@@ -924,27 +905,23 @@ export function dropdownMenu(options, openerElement, placement) {
         interactionBoundary = options.interactionBoundary ?? null;
         const level = 0;
         if (mode === "command") {
-            const focusedInMenu = commandLevels[0].contains(
-                document.activeElement
-            );
+            const focusedInMenu = levels[0].contains(document.activeElement);
             const activeLabel = focusedInMenu
                 ? document.activeElement?.textContent?.trim()
                 : undefined;
-            closeCommandSubmenus(1);
+            closeSubmenus(1);
             render(
                 options.items.map((item) => commandItemToTemplate(item, level)),
-                commandLevels[0]
+                levels[0]
             );
             const replacement = Array.from(
-                commandLevels[0].querySelectorAll(
-                    ":scope > li > [role='menuitem']"
-                )
+                levels[0].querySelectorAll(":scope > li > [role='menuitem']")
             ).find((item) => item.textContent?.trim() === activeLabel);
             if (focusedInMenu) {
                 if (replacement instanceof HTMLElement) {
                     replacement.focus();
                 } else {
-                    focusCommandItem(commandLevels[0]);
+                    focusCommandItem(levels[0]);
                 }
             }
         } else {
@@ -952,8 +929,8 @@ export function dropdownMenu(options, openerElement, placement) {
                 document.activeElement instanceof HTMLElement
                     ? document.activeElement.dataset.controlKey
                     : undefined;
-            const panel = controlLevels[0];
-            closeControlSubmenus(1);
+            const panel = levels[0];
+            closeSubmenus(1);
             render(controlPanelContent(options.items, level), panel);
             if (focusedKey) {
                 const replacement = Array.from(
