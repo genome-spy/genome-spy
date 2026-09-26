@@ -364,6 +364,10 @@ $menu-line-height: 22px;
         padding: 0 $menu-item-h-padding;
         text-align: left;
     }
+
+    li > button.choice-item {
+        display: block;
+    }
 }
 
 label.checkbox {
