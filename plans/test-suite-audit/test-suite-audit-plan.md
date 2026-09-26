@@ -1,6 +1,6 @@
 # Test suite value audit and pruning plan
 
-Status: proposed
+Status: active
 
 ## Objective
 
@@ -11,10 +11,10 @@ where that improves coverage, and retain tests that catch plausible regressions.
 The result should make feature work and refactoring easier without losing
 important dataflow, reactivity, layout, rendering, or public API contracts.
 
-The recent inventory found about 497 Vitest files and 4,418 collected cases.
-These are navigation figures, not a deletion target: parameterized example
-initialization contributes many cases, and test count alone says little about
-value. Record a fresh baseline when work begins.
+The root Vitest collection has 497 files and 4,418 cases; the separate
+msdfgen oracle config adds 2 files and 7 cases. These are navigation figures,
+not a deletion target: parameterized example initialization contributes many
+cases, and test count alone says little about value.
 
 ## Scope and decisions
 
@@ -68,7 +68,9 @@ but do not treat their integration setup as waste merely because it is long.
 
 ## Milestone 1: Build a reviewable decision queue
 
-Status: pending
+Status: completed. The root Vitest collection has 497 files and 4,418 cases.
+Three read-only Luna reviews and a fixed-seed, 12-file control sample produced
+the ranked queue in `findings.md`; `vitest-inventory.tsv` records every file.
 
 ### Intended outcome
 
