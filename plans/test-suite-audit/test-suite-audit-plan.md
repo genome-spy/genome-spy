@@ -154,7 +154,11 @@ Tentative commit: `test: simplify redundant wrapper coverage`
 
 ## Milestone 3: Replace fragile internal and snapshot checks
 
-Status: pending
+Status: in progress. The first pass removed the 15,273-line shared-example
+snapshot. All 204 offline examples still initialize and must contain a visual
+unit; two focused checks cover repeated-template expansion and relative URL
+source wiring. The example test file fell from 183 to 171 lines. Other
+flow-builder, layout, and generated-GLSL decisions remain pending.
 
 ### Intended outcome
 
@@ -184,6 +188,12 @@ and confirm that the surviving assertion fails. Run the full unit suite after
 broad snapshot or generated-example changes. Use browser/GPU checks only for
 rendering contracts that headless tests cannot establish, and document any
 local environment limitation.
+
+First-pass verification: the focused example run passed 209 tests (including
+three SVG example tests selected by the path filter). A temporary change to
+`UrlSource.baseUrl` made the new URL assertion fail; restoring it made the test
+pass. The full unit suite passed 4,420 tests with 1 skipped and 2 todo across
+497 files. Core TypeScript, targeted ESLint, and Prettier checks passed.
 
 Tentative commits: `test(core): assert dataflow outcomes instead of graph paths`
 and `test(core): focus layout and example regression checks`
