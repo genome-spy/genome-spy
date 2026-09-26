@@ -96,6 +96,10 @@ $basic-spacing: generic.$basic-spacing;
             position: relative;
             z-index: 101;
             pointer-events: auto;
+
+            .tool-btn {
+                box-shadow: 0 -1px 1px rgba(0, 0, 0, 0.15);
+            }
         }
     }
 
