@@ -462,7 +462,9 @@ async function openCommandSubmenu(item, trigger, level, focus) {
             : /** @type {MenuItem[]} */ (source),
         trigger,
         level,
-        trigger.textContent?.trim() || "Submenu",
+        trigger.getAttribute("aria-label") ||
+            trigger.textContent?.trim() ||
+            "Submenu",
         "right-start",
         focus
     );

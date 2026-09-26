@@ -327,6 +327,11 @@ describe("dropdownMenu", () => {
             new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
         );
         expect(overflow.getAttribute("aria-expanded")).toBe("true");
+        expect(
+            document
+                .querySelectorAll("[role='menu']")[1]
+                .getAttribute("aria-label")
+        ).toBe("Actions for Saved view");
         expect(document.activeElement?.textContent?.trim()).toBe("Delete");
         document.activeElement.dispatchEvent(
             new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
