@@ -705,6 +705,15 @@ function controlItemToTemplate(item, level) {
                             item.callback();
                         }}
                     >
+                        ${
+                            item.icon
+                                ? html`<span
+                                      class="menu-item-icon"
+                                      aria-hidden="true"
+                                      >${icon(item.icon).node[0]}</span
+                                  >`
+                                : nothing
+                        }
                         ${item.label}
                     </button>`
                   : disabled
