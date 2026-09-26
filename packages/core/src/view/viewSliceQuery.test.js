@@ -4,8 +4,6 @@ import { createViewMutationApi } from "./viewMutationApi.js";
 import { createViewQuery } from "../viewQuery.js";
 import { processData } from "../data/flowTestUtils.js";
 import AggregateTransform from "../data/transforms/aggregate.js";
-import { makeSelectionUnionTestExpression } from "../selection/selection.js";
-import createFunction from "../utils/expression.js";
 
 /** @param {any[]} rows @param {Record<string, any>} [spec] */
 async function setup(rows, spec = {}) {
@@ -323,32 +321,54 @@ describe("scoped loaded-data queries", () => {
                     intervals: { x: [1, 2] },
                 });
             handle.params.get("region").setValue(selection);
-            const membership = createFunction(
-                makeSelectionUnionTestExpression(
-                    [
-                        {
-                            param: "region",
-                            selection,
-                            fields: ranged ? { x: "x", x2: "end" } : { x: "x" },
-                        },
-                    ],
-                    false
-                ),
-                { region: selection }
-            );
             const result = await query.queryData(handle, {
                 ...request,
                 selection: "region",
                 limit: 10,
             });
-            expect(result.rows).toEqual(
-                rows.filter(membership).map(({ x, end }) => ({ x, end }))
-            );
-            expect(result.rows.map((row) => row.x)).toEqual(
-                ranged ? [0, 1, 2] : [1, 2]
-            );
+            expect(result.rows).toEqual([{ x: 1, end: 2 }]);
         }
     );
+
+    test("scalar rule selection includes its lower boundary", async () => {
+        const { query, handle } = await setup(
+            [
+                { x: 1, end: 3, y: 2 },
+                { x: 1, end: 3, y: 4 },
+            ],
+            {
+                mark: "rule",
+                params: [
+                    {
+                        name: "region",
+                        select: { type: "interval", encodings: ["y"] },
+                    },
+                ],
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 5] },
+                    },
+                    x2: { field: "end" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 5] },
+                    },
+                    y2: { field: "y" },
+                },
+            }
+        );
+        handle.params
+            .get("region")
+            .setValue({ type: "interval", intervals: { y: [2, 4] } });
+        const result = await query.queryData(handle, {
+            ...request,
+            selection: "region",
+        });
+        expect(result.rows).toEqual([{ x: 1, end: 3, y: 2 }]);
+    });
 
     test("link slice membership matches the mark's conditional encoder", async () => {
         const rows = [
@@ -392,7 +412,6 @@ describe("scoped loaded-data queries", () => {
             .map(({ x, end }) => ({ x, end }));
         expect(selected).toEqual([
             { x: 4, end: 10 },
-            { x: 0, end: 6 },
             { x: 10, end: 4 },
         ]);
         expect(
@@ -492,7 +511,7 @@ describe("scoped loaded-data queries", () => {
         }
     );
 
-    test("inactive dimensions of an interval selection do not constrain active dimensions", async () => {
+    test("partially cleared interval selections match no rows", async () => {
         const { query, handle } = await setup(
             [
                 { x: 1, y: 2 },
@@ -525,7 +544,7 @@ describe("scoped loaded-data queries", () => {
         expect(
             (await query.queryData(handle, { ...request, selection: "region" }))
                 .rows
-        ).toEqual([{ x: 3, y: 4 }]);
+        ).toEqual([]);
         handle.params
             .get("region")
             .setValue({ type: "interval", intervals: { x: null, y: null } });

@@ -15,8 +15,7 @@ import {
     projectAnalysisRow,
     runAnalysisStage,
 } from "./viewSliceAnalysis.js";
-import { makeSelectionUnionTestExpression } from "../selection/selection.js";
-import createFunction from "../utils/expression.js";
+import { compileSelectionPredicateTree } from "../selection/selectionPredicateTree.js";
 
 /** @typedef {import("./unitView.js").default} UnitView */
 /** @typedef {import("../types/viewQueryApi.js").ViewSliceQueryOptions} Options */
@@ -378,13 +377,11 @@ function makePredicates(view, scope) {
 
 /**
  * Apply Core's selection membership separately from viewport clipping. Selection
- * boundaries are inclusive, and cleared dimensions follow Core's union semantics.
+ * membership and cleared dimensions follow the shared selection predicate.
  * @param {UnitView} view
  * @param {import("../types/selectionTypes.js").IntervalSelection} selection
  */
 function selectionPredicate(view, selection) {
-    /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, string>>} */
-    const fields = {};
     const positions = Object.entries(selection.intervals)
         .filter(([, interval]) => interval !== null)
         .map(([name]) => {
@@ -395,20 +392,37 @@ function selectionPredicate(view, selection) {
             const end = view.mark.encoders[secondary]
                 ? positionAccessor(view, secondary)
                 : start;
-            fields[channel] = channel;
-            fields[secondary] = secondary;
             return { channel, secondary, start, end };
         });
-    const test = createFunction(
-        makeSelectionUnionTestExpression(
-            [{ param: "region", selection, fields }],
-            false,
-            view.mark.defaultHitTestMode
-        ),
-        { region: selection }
+    const test = compileSelectionPredicateTree(
+        {
+            param: "region",
+            type: "interval",
+            empty: false,
+            projections: positions.map(
+                ({ channel, secondary, start, end }) => ({
+                    component: channel,
+                    input: channel,
+                    field: channel,
+                    ...(end !== start &&
+                    !(
+                        "field" in start.channelDef &&
+                        "field" in end.channelDef &&
+                        start.channelDef.field === end.channelDef.field
+                    )
+                        ? {
+                              secondaryInput: secondary,
+                              secondaryField: secondary,
+                              hitTest: view.mark.defaultHitTestMode,
+                          }
+                        : {}),
+                })
+            ),
+        },
+        () => selection
     );
 
-    // The compiled membership expression reads this record synchronously.
+    // Evaluate the captured selection against linearized, offset-aware positions.
     /** @type {Record<string, number>} */
     const point = {};
 
