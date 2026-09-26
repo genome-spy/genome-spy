@@ -368,7 +368,9 @@ function commandItemToTemplate(item, level) {
                 <span>
                     ${
                         item.icon
-                            ? html`<span aria-hidden="true"
+                            ? html`<span
+                                  class="menu-item-icon"
+                                  aria-hidden="true"
                                   >${icon(item.icon).node[0]}</span
                               >`
                             : nothing

@@ -124,6 +124,11 @@ $menu-line-height: 22px;
                 outline-offset: -2px;
                 background-color: $menu-active-bg-color;
             }
+
+            .menu-item-icon svg {
+                width: 1em;
+                margin-right: 0.2em;
+            }
         }
 
         > span.disabled-item,
