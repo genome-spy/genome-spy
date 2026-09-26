@@ -1,9 +1,9 @@
+import { normalizeSelectionPredicate } from "../selection/selection.js";
 import {
-    isIntervalSelection,
-    makeSelectionTestExpression,
-    makeSelectionUnionTestExpression,
-    normalizeSelectionPredicate,
-} from "../selection/selection.js";
+    compileSelectionPredicateTree,
+    getSelectionPredicateTreeParams,
+    resolveSelectionPredicateTree,
+} from "../selection/selectionPredicateTree.js";
 import { createAccessor } from "./accessor.js";
 import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
@@ -14,111 +14,56 @@ import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
  * Creates a host-side predicate for selection-driven conditional encoding.
- * The selection test expression is compiled lazily when the predicate is
- * first evaluated so encoder construction does not depend on eager selection
- * materialization.
- *
  * @param {import("../selection/selection.js").SelectionPredicateInfo} info
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
+ * @param {{ findValue: (param: string) => any, findSelectionCapability?: import("../paramRuntime/viewParamRuntime.js").default["findSelectionCapability"] }} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
+ * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @returns {import("../types/encoder.js").Predicate}
  */
 export function createSelectionPredicate(
     info,
     encoding,
     paramRuntime,
-    hitTestMode = "intersects"
+    hitTestMode = "intersects",
+    getType
 ) {
-    /**
-     * @typedef {import("../data/flowNode.js").Datum} Datum
-     * @typedef {import("../types/selectionTypes.js").Selection} Selection
-     * @typedef {import("../types/encoder.js").Predicate} Predicate
-     */
+    /** @type {import("../selection/selectionPredicateTree.js").ResolvedSelectionPredicate | undefined} */
+    let resolved;
+    /** @type {((datum: import("../data/flowNode.js").Datum) => boolean) | undefined} */
+    let evaluate;
+    const params = getSelectionPredicateTreeParams(info);
 
-    /** @type {import("../paramRuntime/types.js").ExprRefFunction | undefined} */
-    let compiled;
-
-    const fallback = makeConstantExprRef(false);
-
-    const ensureCompiled = () => {
-        if (compiled) {
-            return compiled;
-        }
-
-        if (info.singleParam && !paramRuntime.findValue(info.params[0])) {
-            return fallback;
-        }
-
-        const entries = info.params.map((param) => {
-            const selection = /** @type {Selection | undefined} */ (
-                paramRuntime.findValue(param)
-            );
-            if (!selection) {
-                throw new Error(
-                    `Selection parameter "${param}" was not found.`
-                );
-            }
-
-            /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
-            const fields = {};
-            if (isIntervalSelection(selection)) {
-                for (const channel of Object.keys(selection.intervals)) {
-                    const targets = info.singleParam
-                        ? [channel]
-                        : [channel, getSecondaryChannel(channel)];
-                    for (const target of targets) {
-                        const channelDef = encoding[target];
-                        if (isFieldDef(channelDef)) {
-                            fields[target] = channelDef.field;
-                        } else if (channelDef && "condition" in channelDef) {
-                            const condition = channelDef.condition;
-                            const conditionDefs = Array.isArray(condition)
-                                ? condition
-                                : [condition];
-                            const conditionDef = conditionDefs.find(isFieldDef);
-                            if (isFieldDef(conditionDef)) {
-                                fields[target] = conditionDef.field;
-                            }
-                        }
-                    }
-                    if (!fields[channel]) {
-                        throw new Error(
-                            `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
-                        );
-                    }
-                }
-            }
-            return { param, selection, fields };
-        });
-
-        const expr = info.singleParam
-            ? makeSelectionTestExpression(
-                  {
-                      type: "filter",
-                      param: info.params[0],
-                      fields: entries[0].fields,
-                      empty: info.empty,
-                  },
-                  entries[0].selection
-              )
-            : makeSelectionUnionTestExpression(
-                  entries,
-                  info.empty,
-                  hitTestMode
-              );
-
-        compiled = paramRuntime.createExpression(expr);
-        return compiled;
+    const resolve = () => {
+        resolved ??= resolveSelectionPredicateTree(
+            info,
+            encoding,
+            paramRuntime,
+            hitTestMode,
+            getType
+        );
+        return resolved;
     };
 
-    /** @type {Predicate} */
-    const predicate = Object.assign(
-        /** @param {Datum} datum */ (datum) => ensureCompiled()(datum),
-        { selection: info }
-    );
+    if (params.every((name) => paramRuntime.findValue(name))) {
+        resolve();
+    }
 
-    return predicate;
+    const predicate = (
+        /** @type {import("../data/flowNode.js").Datum} */ datum
+    ) => {
+        // A plain parameter may be initialized without a selection value.
+        if (params.some((name) => !paramRuntime.findValue(name))) {
+            return false;
+        }
+        evaluate ??= compileSelectionPredicateTree(resolve(), (name) =>
+            paramRuntime.findValue(name)
+        );
+        return evaluate(datum);
+    };
+    return Object.defineProperty(predicate, "selection", {
+        get: resolve,
+    });
 }
 
 /**
@@ -130,6 +75,7 @@ export function createSelectionPredicate(
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, findValue: (param: string) => any }} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
+ * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @returns {import("../types/encoder.js").EncodingBranch[]}
  */
 export function createConditionalBranches(
@@ -137,7 +83,8 @@ export function createConditionalBranches(
     channelDef,
     encoding,
     paramRuntime,
-    hitTestMode = "intersects"
+    hitTestMode = "intersects",
+    getType
 ) {
     const conditions =
         isFieldOrDatumDefWithCondition(channelDef) ||
@@ -166,7 +113,8 @@ export function createConditionalBranches(
                   selectionPredicate,
                   encoding,
                   paramRuntime,
-                  hitTestMode
+                  hitTestMode,
+                  getType
               )
             : makeConstantExprRef(index === branchChannelDefs.length - 1);
 
@@ -236,7 +184,8 @@ export default function createEncoders(unitView, encoding) {
                 typedChannelDef,
                 encoding,
                 unitView.paramRuntime,
-                unitView.mark.defaultHitTestMode
+                unitView.mark.defaultHitTestMode,
+                (channel) => unitView.getScaleResolution(channel)?.type
             ),
             scaleSource,
             bindScale

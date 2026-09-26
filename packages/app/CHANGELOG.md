@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
+
+### Features
+
+* **webgpu:** add GPU path and outline font rendering ([#533](https://github.com/genome-spy/genome-spy/issues/533)) ([f4a44d6](https://github.com/genome-spy/genome-spy/commit/f4a44d60eb23d00b75867eb752ee24e898716a45)) by @tuner
+
 ## [0.88.1](https://github.com/genome-spy/genome-spy/compare/v0.88.0...v0.88.1) (2026-09-16)
 
 **Note:** Version bump only for package @genome-spy/app

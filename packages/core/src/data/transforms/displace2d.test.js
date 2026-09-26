@@ -1,0 +1,940 @@
+import { describe, expect, test, vi } from "vitest";
+import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
+import Rectangle from "../../view/layout/rectangle.js";
+import { createAndInitialize, renderToLayout } from "../../view/testUtils.js";
+import UnitView from "../../view/unitView.js";
+import Collector from "../collector.js";
+import Displace2DTransform from "./displace2d.js";
+import createTransform from "./transformFactory.js";
+
+const FRAME_INTERVAL = 1000 / 60;
+const TEST_AXIS_LENGTH = 10_000;
+
+/**
+ * @param {{ animator?: TestAnimator, paramRuntime?: ViewParamRuntime, layoutReady?: boolean }} [options]
+ */
+function createTestView(options = {}) {
+    const paramRuntime = options.paramRuntime ?? new ViewParamRuntime();
+    let axisLength = options.layoutReady === false ? 0 : TEST_AXIS_LENGTH;
+    const createResolution = (/** @type {"x" | "y"} */ channel) => {
+        const scale = Object.assign(
+            (/** @type {number} */ value) =>
+                channel == "x"
+                    ? (value + TEST_AXIS_LENGTH / 2) / TEST_AXIS_LENGTH
+                    : 1 - (value + TEST_AXIS_LENGTH / 2) / TEST_AXIS_LENGTH,
+            { type: "linear" }
+        );
+        return {
+            getScale: () => scale,
+            getAxisLength: () => axisLength,
+            getMappingRef: () => ({ subscribe: () => () => {} }),
+        };
+    };
+    const resolutions = {
+        x: createResolution("x"),
+        y: createResolution("y"),
+    };
+    return /** @type {any} */ ({
+        context: { animator: options.animator },
+        paramRuntime,
+        getScaleResolution: (/** @type {"x" | "y"} */ channel) =>
+            resolutions[channel],
+        _addBroadcastHandler: () => () => {},
+        initializeLayout: () => {
+            axisLength = TEST_AXIS_LENGTH;
+        },
+    });
+}
+
+/**
+ * @param {import("../../spec/transform.js").Displace2DParams} params
+ * @param {{ animator?: TestAnimator, paramRuntime?: ViewParamRuntime, consumeBootstrap?: boolean }} [options]
+ */
+function createDisplace2D(params, options = {}) {
+    const view = createTestView({ ...options, layoutReady: false });
+    const transform = new Displace2DTransform(params, view);
+    if (options.consumeBootstrap !== false) {
+        transform.complete();
+        view.initializeLayout();
+        transform.reset();
+    } else {
+        view.initializeLayout();
+    }
+    return transform;
+}
+
+class TestAnimator {
+    transitionsEnabled = true;
+
+    /** @type {((timestamp: number) => void)[]} */
+    transitions = [];
+
+    /** @param {(timestamp: number) => void} callback */
+    requestTransition(callback) {
+        this.cancelTransition(callback);
+        this.transitions.push(callback);
+    }
+
+    /** @param {(timestamp: number) => void} callback */
+    cancelTransition(callback) {
+        const index = this.transitions.indexOf(callback);
+        if (index >= 0) {
+            this.transitions.splice(index, 1);
+        }
+    }
+
+    /** @param {number} timestamp */
+    frame(timestamp) {
+        const transitions = this.transitions;
+        this.transitions = [];
+        for (const transition of transitions) {
+            transition(timestamp);
+        }
+    }
+}
+
+/**
+ * @param {Record<string, any>[]} data
+ * @param {Partial<import("../../spec/transform.js").Displace2DParams>} [overrides]
+ */
+function createFlow(data, overrides = {}) {
+    const source = new Collector();
+    const transform = createDisplace2D({
+        type: "displace2d",
+        x: "x",
+        y: "y",
+        width: 10,
+        height: 10,
+        as: ["dx", "dy"],
+        ...overrides,
+    });
+    const output = new Collector();
+    source.addChild(transform);
+    transform.addChild(output);
+
+    for (const datum of data) {
+        source.handle(datum);
+    }
+    source.complete();
+
+    return { output, source, transform };
+}
+
+/**
+ * @param {number[][]} offsets
+ * @param {number} width
+ * @param {number} height
+ */
+function expectPairSeparated(offsets, width, height) {
+    expect(
+        Math.abs(offsets[0][0] - offsets[1][0]) >= width ||
+            Math.abs(offsets[0][1] - offsets[1][1]) >= height
+    ).toBe(true);
+}
+
+describe("Displace2DTransform", () => {
+    test("progressively relaxes retained rows and replays descendants", () => {
+        const animator = new TestAnimator();
+        const transform = createDisplace2D(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            { animator }
+        );
+        const output = new Collector();
+        const observer = vi.fn();
+        output.observe(observer);
+        transform.addChild(output);
+        /** @type {Record<string, number>[]} */
+        const data = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ];
+        for (const datum of data) {
+            transform.handle(datum);
+        }
+        transform.complete();
+
+        const initial = data.map(({ dx, dy }) => [dx, dy]);
+        expect(animator.transitions).toHaveLength(1);
+        animator.frame(0);
+
+        const firstFrame = data.map(({ dx, dy }) => [dx, dy]);
+        expect(firstFrame).not.toEqual(initial);
+        expect(observer).toHaveBeenCalledTimes(2);
+        expect(animator.transitions).toHaveLength(1);
+
+        for (let frame = 1; animator.transitions.length > 0; frame++) {
+            animator.frame(frame * FRAME_INTERVAL);
+            expect(frame).toBeLessThan(100);
+        }
+        expect(
+            Math.max(...data.map(({ dx, dy }) => Math.hypot(dx, dy)))
+        ).toBeGreaterThan(
+            Math.max(...firstFrame.map(([dx, dy]) => Math.hypot(dx, dy)))
+        );
+
+        transform.dispose();
+        expect(animator.transitions).toHaveLength(0);
+    });
+
+    test("warm-starts retained rows when anchors move", () => {
+        const animator = new TestAnimator();
+        const transform = createDisplace2D(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            { animator }
+        );
+        const output = new Collector();
+        transform.addChild(output);
+        /** @type {Record<string, number>[]} */
+        const data = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ];
+        for (const datum of data) {
+            transform.handle(datum);
+        }
+        transform.complete();
+        animator.frame(0);
+        const previousOffsets = data.map(({ dx, dy }) => [dx, dy]);
+
+        transform.reset();
+        for (const datum of data) {
+            datum.x += 20;
+            datum.y += 10;
+            transform.handle(datum);
+        }
+        transform.complete();
+
+        for (let i = 0; i < data.length; i++) {
+            expect(data[i].dx).toBeCloseTo(previousOffsets[i][0]);
+            expect(data[i].dy).toBeCloseTo(previousOffsets[i][1]);
+        }
+    });
+
+    test("does not transfer state between replacement rows without a key", () => {
+        const animator = new TestAnimator();
+        const transform = createDisplace2D(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            { animator }
+        );
+        const output = new Collector();
+        transform.addChild(output);
+        for (const datum of [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ]) {
+            transform.handle(datum);
+        }
+        transform.complete();
+        for (let i = 0; i < 5; i++) {
+            animator.frame(i);
+        }
+        transform.reset();
+        for (const datum of [
+            { x: 20, y: 10 },
+            { x: 20, y: 10 },
+        ]) {
+            transform.handle(datum);
+        }
+        transform.complete();
+
+        expect(Array.from(output.getData(), ({ dx, dy }) => [dx, dy])).toEqual([
+            [0, 0],
+            [0, 0],
+        ]);
+    });
+
+    test("warm-starts keyed replacement rows after filtering and reordering", () => {
+        const animator = new TestAnimator();
+        const transform = createDisplace2D(
+            {
+                type: "displace2d",
+                key: "id",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                as: ["dx", "dy"],
+            },
+            { animator }
+        );
+        const output = new Collector();
+        transform.addChild(output);
+        for (const id of ["a", "b", "c"]) {
+            transform.handle({ id, x: 0, y: 0 });
+        }
+        transform.complete();
+        for (let i = 0; i < 5; i++) {
+            animator.frame(i);
+        }
+        const previousOffsets = new Map(
+            Array.from(output.getData(), ({ id, dx, dy }) => [id, [dx, dy]])
+        );
+
+        transform.reset();
+        for (const id of ["c", "b"]) {
+            transform.handle({ id, x: 0, y: 0 });
+        }
+        transform.complete();
+
+        for (const { id, dx, dy } of output.getData()) {
+            expect([dx, dy]).toEqual(previousOffsets.get(id));
+        }
+    });
+
+    test("rejects invalid and duplicate keys", () => {
+        const animator = new TestAnimator();
+        const create = () =>
+            createDisplace2D(
+                {
+                    type: "displace2d",
+                    key: "id",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                },
+                { animator }
+            );
+
+        const invalid = create();
+        invalid.handle({ id: {}, x: 0, y: 0 });
+        expect(() => invalid.complete()).toThrow("keys must");
+
+        const duplicate = create();
+        duplicate.handle({ id: "a", x: 0, y: 0 });
+        duplicate.handle({ id: "a", x: 1, y: 1 });
+        expect(() => duplicate.complete()).toThrow("key must be unique");
+
+        expect(() =>
+            createDisplace2D(
+                {
+                    type: "displace2d",
+                    key: "id",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                    as: ["id", "dy"],
+                },
+                { animator }
+            )
+        ).toThrow("preserve the key");
+    });
+
+    test("preserves facet batches during progressive replay", () => {
+        const animator = new TestAnimator();
+        const transform = createDisplace2D(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+            },
+            { animator }
+        );
+        const output = new Collector();
+        const batches = vi.spyOn(output, "beginBatch");
+        transform.addChild(output);
+        for (const facetId of ["a", "b"]) {
+            transform.beginBatch({ type: "facet", facetId: [facetId] });
+            transform.handle({ x: 0, y: 0 });
+            transform.handle({ x: 0, y: 0 });
+        }
+        transform.complete();
+        batches.mockClear();
+
+        animator.frame(0);
+
+        expect(
+            batches.mock.calls.map(([batch]) =>
+                batch.type == "facet" ? batch.facetId[0] : undefined
+            )
+        ).toEqual(["a", "b"]);
+    });
+
+    test.each([false, true])(
+        "places across file boundaries and preserves events (faceted: %s)",
+        (faceted) => {
+            const transform = createDisplace2D({
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+            });
+            const output = new Collector();
+            transform.addChild(output);
+            const batches = vi.spyOn(output, "beginBatch");
+            const rows = vi.spyOn(output, "handle");
+
+            // Files share collision space within a facet, but facets do not.
+            for (const facet of faceted ? ["a", "b"] : [undefined]) {
+                if (faceted) {
+                    transform.beginBatch({ type: "facet", facetId: [facet] });
+                }
+                for (const url of ["first.json", "second.json"]) {
+                    transform.beginBatch({ type: "file", url });
+                    transform.handle({ x: 0, y: 0 });
+                }
+            }
+            transform.complete();
+
+            const offsets = Array.from(output.getData(), (datum) => [
+                datum.xDisplacement,
+                datum.yDisplacement,
+            ]);
+            expectPairSeparated(offsets.slice(0, 2), 10, 10);
+            if (faceted) {
+                expectPairSeparated(offsets.slice(2, 4), 10, 10);
+                expect(offsets.slice(2, 4)).toEqual(offsets.slice(0, 2));
+            }
+
+            const fileCalls = batches.mock.calls.flatMap(([batch], index) =>
+                batch.type == "file"
+                    ? [
+                          {
+                              url: batch.url,
+                              order: batches.mock.invocationCallOrder[index],
+                          },
+                      ]
+                    : []
+            );
+            expect(fileCalls.map(({ url }) => url)).toEqual(
+                faceted
+                    ? ["first.json", "second.json", "first.json", "second.json"]
+                    : ["first.json", "second.json"]
+            );
+            for (let i = 0; i < fileCalls.length; i++) {
+                expect(fileCalls[i].order).toBeLessThan(
+                    rows.mock.invocationCallOrder[i]
+                );
+                if (i > 0) {
+                    expect(rows.mock.invocationCallOrder[i - 1]).toBeLessThan(
+                        fileCalls[i].order
+                    );
+                }
+            }
+        }
+    );
+
+    test("preserves facet membership and places facets independently", () => {
+        const transform = createDisplace2D({
+            type: "displace2d",
+            x: "x",
+            y: "y",
+            width: 10,
+            height: 10,
+        });
+        const output = new Collector();
+        transform.addChild(output);
+        for (const id of ["a", "b"]) {
+            transform.beginBatch({ type: "facet", facetId: [id] });
+            transform.handle({ id, x: 0, y: 0 });
+        }
+        transform.complete();
+        for (const id of ["a", "b"]) {
+            expect(output.facetBatches.get([id])).toEqual([
+                { id, x: 0, y: 0, xDisplacement: 0, yDisplacement: 0 },
+            ]);
+        }
+    });
+
+    test("restores canonical offsets after intermediate geometry", () => {
+        const transform = createDisplace2D({
+            type: "displace2d",
+            x: "x",
+            y: "y",
+            width: 10,
+            height: 10,
+            as: ["dx", "dy"],
+        });
+        const output = new Collector();
+        transform.addChild(output);
+        const home = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ];
+        const place = (/** @type {Record<string, number>[]} */ data) => {
+            transform.reset();
+            for (const datum of structuredClone(data)) {
+                transform.handle(datum);
+            }
+            transform.complete();
+            return Array.from(output.getData(), ({ dx, dy }) => [dx, dy]);
+        };
+
+        const initial = place(home);
+        place(home.map((datum, i) => ({ ...datum, x: i * 3 })));
+
+        expect(place(home)).toEqual(initial);
+    });
+
+    test("uses displacement field defaults", () => {
+        const transform = createDisplace2D({
+            type: "displace2d",
+            x: "x",
+            y: "y",
+            width: 10,
+            height: 10,
+        });
+        const output = new Collector();
+        transform.addChild(output);
+        transform.handle({ x: 0, y: 0 });
+        transform.complete();
+
+        expect([...output.getData()]).toEqual([
+            { x: 0, y: 0, xDisplacement: 0, yDisplacement: 0 },
+        ]);
+    });
+
+    test("uses data-driven domains and reacts to zoom", async () => {
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 200,
+            height: 100,
+            data: {
+                values: [
+                    { x: 100, y: 0 },
+                    { x: 11, y: 0 },
+                    { x: 10, y: 0 },
+                ],
+            },
+            transform: [
+                {
+                    type: "collect",
+                    sort: { field: "x", order: "ascending" },
+                },
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 20,
+                    height: 20,
+                    as: ["dx", "dy"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { zoom: true },
+                },
+                y: { field: "y", type: "quantitative" },
+                xOffset: { field: "dx", type: "quantitative", scale: null },
+                yOffset: { field: "dy", type: "quantitative", scale: null },
+            },
+        };
+        const view = await createAndInitialize(spec, UnitView);
+        renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+
+        const resolution = view.getScaleResolution("x");
+        const initialDomain = resolution.getScale().domain();
+        expect(initialDomain[0]).toBeLessThanOrEqual(10);
+        expect(initialDomain[1]).toBeGreaterThanOrEqual(100);
+
+        const initialPlacement = [...view.flowHandle.collector.getData()];
+        expect(initialPlacement.map((datum) => datum.x)).toEqual([10, 11, 100]);
+        expect(
+            initialPlacement.some((datum) => datum.dx != 0 || datum.dy != 0)
+        ).toBe(true);
+
+        const zoomPromise = resolution.zoomTo([9.5, 11.5], false);
+        await view.paramRuntime.whenPropagated();
+        await Promise.resolve();
+        const zoomedPlacement = [...view.flowHandle.collector.getData()];
+        expect(
+            zoomedPlacement.slice(0, 2).map(({ dx, dy }) => [dx, dy])
+        ).toEqual([
+            [0, 0],
+            [0, 0],
+        ]);
+        expect([zoomedPlacement[2].dx, zoomedPlacement[2].dy]).toEqual([0, 0]);
+        expect(zoomedPlacement[0]).not.toBe(initialPlacement[0]);
+        await zoomPromise;
+    });
+
+    test("maps positions through view scales and reacts to zoom", async () => {
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 200,
+            height: 100,
+            data: {
+                values: [
+                    { x: 4.9, y: 5 },
+                    { x: 5.1, y: 5 },
+                ],
+            },
+            transform: [
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                    as: ["dx", "dy"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: true },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: [0, 10] },
+                },
+                xOffset: { field: "dx", type: "quantitative", scale: null },
+                yOffset: { field: "dy", type: "quantitative", scale: null },
+            },
+        };
+        const view = await createAndInitialize(spec, UnitView);
+        renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+
+        expect(
+            [...view.flowHandle.collector.getData()].some(
+                ({ dx, dy }) => dx != 0 || dy != 0
+            )
+        ).toBe(true);
+
+        const resolution = view.getScaleResolution("x");
+        const zoomPromise = resolution.zoomTo([4, 6], false);
+        await view.paramRuntime.whenPropagated();
+        expect(
+            [...view.flowHandle.collector.getData()].map(({ dx, dy }) => [
+                dx,
+                dy,
+            ])
+        ).toEqual([
+            [0, 0],
+            [0, 0],
+        ]);
+        await zoomPromise;
+
+        renderToLayout(view, Rectangle.create(0, 0, 40, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+        expect(
+            [...view.flowHandle.collector.getData()].some(
+                ({ dx, dy }) => dx != 0 || dy != 0
+            )
+        ).toBe(true);
+    });
+
+    test("places categorical positions at band centers", async () => {
+        const view = await createAndInitialize(
+            {
+                width: 100,
+                height: 100,
+                data: { values: [{ x: "category", y: "category" }] },
+                transform: [
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: 20,
+                        height: 20,
+                        as: ["dx", "dy"],
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "nominal",
+                        scale: { type: "band" },
+                    },
+                    y: {
+                        field: "y",
+                        type: "nominal",
+                        scale: { type: "band" },
+                    },
+                },
+            },
+            UnitView
+        );
+        renderToLayout(view, Rectangle.create(0, 0, 100, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await view.paramRuntime.whenPropagated();
+
+        expect([...view.flowHandle.collector.getData()][0]).toMatchObject({
+            dx: 0,
+            dy: 0,
+        });
+    });
+
+    test("gives off-viewport data zero offsets with nonlinear scales", async () => {
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 200,
+            height: 100,
+            data: { values: [{ x: 1000, y: 5 }] },
+            transform: [
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 20,
+                    height: 20,
+                    as: ["dx", "dy"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { type: "log", domain: [1, 100], reverse: true },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: [0, 10] },
+                },
+                xOffset: { field: "dx", type: "quantitative", scale: null },
+                yOffset: { field: "dy", type: "quantitative", scale: null },
+            },
+        };
+        const view = await createAndInitialize(spec, UnitView);
+        renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+        view.handleBroadcast({ type: "layoutComputed" });
+        await Promise.resolve();
+
+        const datum = [...view.flowHandle.collector.getData()][0];
+        expect(datum.dx).toBe(0);
+        expect(datum.dy).toBe(0);
+    });
+
+    test.each([false, true])(
+        "gives off-viewport data zero offsets with reverse=%s y scales",
+        async (reverse) => {
+            /** @type {import("../../spec/view.js").UnitSpec} */
+            const spec = {
+                width: 200,
+                height: 100,
+                data: { values: [{ x: 5, y: 20 }] },
+                transform: [
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: 20,
+                        height: 20,
+                        as: ["dx", "dy"],
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 10] },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 10], reverse },
+                    },
+                    xOffset: {
+                        field: "dx",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                    yOffset: {
+                        field: "dy",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                },
+            };
+            const view = await createAndInitialize(spec, UnitView);
+            renderToLayout(view, Rectangle.create(0, 0, 200, 100));
+            view.handleBroadcast({ type: "layoutComputed" });
+            await Promise.resolve();
+
+            const datum = [...view.flowHandle.collector.getData()][0];
+            expect(datum.dx).toBe(0);
+            expect(datum.dy).toBe(0);
+        }
+    );
+
+    test("preserves input order and emits signed pixel offsets", () => {
+        const input = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+        ];
+        const { output } = createFlow(input);
+        const placed = [...output.getData()];
+
+        expectPairSeparated(
+            placed.map(({ dx, dy }) => [dx, dy]),
+            10,
+            10
+        );
+        expect(Math.hypot(placed[0].dx, placed[0].dy)).toBeLessThan(
+            Math.hypot(placed[1].dx, placed[1].dy)
+        );
+        expect(placed[0]).toBe(input[0]);
+        expect(placed[1]).toBe(input[1]);
+    });
+
+    test("reads collision dimensions from fields", () => {
+        const { output } = createFlow(
+            [
+                { x: 0, y: 0, width: 20, height: 10 },
+                { x: 0, y: 0, width: 20, height: 10 },
+            ],
+            { width: "width", height: "height" }
+        );
+
+        expectPairSeparated(
+            [...output.getData()].map(({ dx, dy }) => [dx, dy]),
+            20,
+            10
+        );
+    });
+
+    test("avoids anchor dimensions read from fields", () => {
+        const { output } = createFlow(
+            [{ x: 0, y: 0, anchorWidth: 4, anchorHeight: 4 }],
+            { anchorWidth: "anchorWidth", anchorHeight: "anchorHeight" }
+        );
+
+        const [{ dx, dy }] = [...output.getData()];
+        expect(Math.abs(dx) >= 7 || Math.abs(dy) >= 7).toBe(true);
+    });
+
+    test("coalesces reactive placement changes into one replay", async () => {
+        const paramRuntime = new ViewParamRuntime();
+        const setWidth = paramRuntime.registerParam({
+            name: "width",
+            value: 20,
+        });
+        const setHeight = paramRuntime.registerParam({
+            name: "height",
+            value: 20,
+        });
+        const source = new Collector();
+        const transform = createDisplace2D(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: { expr: "width" },
+                height: { expr: "height" },
+                as: ["dx", "dy"],
+            },
+            { paramRuntime, consumeBootstrap: false }
+        );
+        const output = new Collector();
+        source.addChild(transform);
+        transform.addChild(output);
+        source.handle({ x: 0.5, y: 0.5 });
+        source.handle({ x: 0.5, y: 0.5 });
+
+        const repropagate = vi.spyOn(source, "repropagate");
+        source.complete();
+        expect([...output.getData()].map(({ dx, dy }) => [dx, dy])).toEqual([
+            [0, 0],
+            [0, 0],
+        ]);
+
+        await Promise.resolve();
+        expect(repropagate).toHaveBeenCalledOnce();
+        expectPairSeparated(
+            [...output.getData()].map(({ dx, dy }) => [dx, dy]),
+            20,
+            20
+        );
+        repropagate.mockClear();
+
+        paramRuntime.runInTransaction(() => {
+            setWidth(10);
+            setHeight(10);
+        });
+        await paramRuntime.whenPropagated();
+        expect(repropagate).toHaveBeenCalledOnce();
+        expectPairSeparated(
+            [...output.getData()].map(({ dx, dy }) => [dx, dy]),
+            10,
+            10
+        );
+    });
+
+    test("cancels the deferred bootstrap replay after disposal", async () => {
+        const paramRuntime = new ViewParamRuntime();
+        const setHeight = paramRuntime.registerParam({
+            name: "height",
+            value: 10,
+        });
+        const source = new Collector();
+        const transform = createDisplace2D(
+            {
+                type: "displace2d",
+                x: "x",
+                y: "y",
+                width: 10,
+                height: { expr: "height" },
+            },
+            { paramRuntime, consumeBootstrap: false }
+        );
+        const output = new Collector();
+        source.addChild(transform);
+        transform.addChild(output);
+        source.handle({ x: 0, y: 0 });
+
+        const repropagate = vi.spyOn(source, "repropagate");
+        source.complete();
+        transform.dispose();
+        setHeight(20);
+        await paramRuntime.whenPropagated();
+
+        expect(repropagate).not.toHaveBeenCalled();
+    });
+
+    test("is available through the transform factory", () => {
+        expect(
+            createTransform(
+                /** @type {import("../../spec/transform.js").Displace2DParams} */ ({
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                }),
+                createTestView()
+            )
+        ).toBeInstanceOf(Displace2DTransform);
+    });
+});

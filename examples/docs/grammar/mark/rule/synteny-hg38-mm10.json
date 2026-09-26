@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Human-mouse synteny example",
     "Data source: http://bioinfo.konkuk.ac.kr/synteny_portal/"

@@ -558,6 +558,8 @@ By giving the scale a name, it can be accessed through the
 
 ## Axes
 
-Positional scales are usually annotated with axes. See [Axis](./axis.md) for
-axis configuration, resolution, styling, inside placement, and genome axes for
-locus scales.
+Positional encodings create axes automatically. A view-level scale declaration
+does not create an axis by itself; declare `axes.<channel>` when an axis is
+needed without a positional encoding. See [Axis](./axis.md) for axis
+configuration, resolution, styling, inside placement, and genome axes for locus
+scales.

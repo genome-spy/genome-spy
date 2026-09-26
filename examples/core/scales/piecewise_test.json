@@ -1,6 +1,4 @@
 {
-  "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
-
   "description": "Piecewise color scale with multiple thresholds",
 
   "data": {

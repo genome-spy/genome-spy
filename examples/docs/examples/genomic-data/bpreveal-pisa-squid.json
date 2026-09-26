@@ -1,0 +1,428 @@
+{
+  "description": [
+    "PISA Squid Plot",
+    "Links connect influential input bases to affected ATAC-seq output positions. Brush Accessibility and Contribution score separately to highlight links whose endpoints match."
+  ],
+
+  "params": [
+    { "name": "accessibilityRegion", "value": null },
+    { "name": "contributionRegion", "value": null },
+    { "name": "pisaLinkHover", "value": null }
+  ],
+
+  "scales": {
+    "x": { "domain": [15646649, 15647250], "zoom": true }
+  },
+
+  "resolve": {
+    "scale": { "x": "shared" },
+    "axis": { "x": "shared" },
+    "legend": { "color": "collected" }
+  },
+  "padding": { "top": 8, "right": 30, "bottom": 8, "left": 10 },
+  "spacing": 0,
+
+  "vconcat": [
+    {
+      "name": "prediction",
+      "title": {
+        "text": "Accessibility",
+        "style": "overlay-title"
+      },
+      "height": { "grow": 0.16 },
+      "cursor": "text",
+      "params": [
+        {
+          "name": "accessibilityRegion",
+          "push": "outer",
+          "persist": false,
+          "description": "Drag to select affected output positions; bars outside an active brush turn gray. Double-click to clear.",
+          "select": {
+            "type": "interval",
+            "encodings": ["x"],
+            "extent": "view",
+            "on": "mousedown",
+            "clear": "dblclick",
+            "zoom": false
+          }
+        }
+      ],
+      "data": {
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
+        "format": { "type": "parquet" }
+      },
+      "transform": [
+        { "type": "filter", "expr": "datum.track == 'prediction'" }
+      ],
+      "mark": { "type": "rect", "minOpacity": 1 },
+      "encoding": {
+        "x": {
+          "field": "position",
+          "type": "index",
+          "title": "dm6 chrX"
+        },
+        "y": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "zero": true },
+          "axis": null
+        },
+        "y2": { "datum": 0 },
+        "color": {
+          "condition": { "param": "accessibilityRegion", "value": "#332288" },
+          "value": "#d8dbe0"
+        },
+        "tooltip": [
+          { "field": "position", "title": "Output position" },
+          { "field": "value", "title": "Prediction", "format": ".4g" }
+        ]
+      }
+    },
+    {
+      "resolve": { "scale": { "color": "independent" } },
+      "layer": [
+        {
+          "name": "pisa-links",
+          "description": "Links matching the active endpoint brushes or Shift-hover retain their effect encoding and are drawn above muted links. With no active selection, all links look normal.",
+          "params": [
+            {
+              "name": "pisaLinkHover",
+              "push": "outer",
+              "persist": false,
+              "select": {
+                "type": "point",
+                "on": "pointerover[event.shiftKey]",
+                "clear": "mousemove[!event.shiftKey]"
+              }
+            }
+          ],
+          "data": {
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2c-atac-links.parquet",
+            "format": { "type": "parquet" }
+          },
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "abs(datum.effect)",
+              "as": "absEffect",
+              "description": "Precompute effect magnitude for the normal link-opacity encoding."
+            }
+          ],
+          "mark": {
+            "type": "link",
+            "linkShape": "diagonal",
+            "orient": "vertical",
+            "size": 1.5,
+            "minPickingSize": 2
+          },
+          "predicates": {
+            "highlightedLink": {
+              "or": [
+                { "param": "pisaLinkHover", "empty": false },
+                {
+                  "and": [
+                    {
+                      "param": "accessibilityRegion",
+                      "project": { "x": "x2" }
+                    },
+                    {
+                      "param": "contributionRegion",
+                      "project": { "x": "x" }
+                    },
+                    {
+                      "or": [
+                        { "param": "pisaLinkHover" },
+                        {
+                          "param": "accessibilityRegion",
+                          "project": { "x": "x2" },
+                          "empty": false
+                        },
+                        {
+                          "param": "contributionRegion",
+                          "project": { "x": "x" },
+                          "empty": false
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "encoding": {
+            "order": {
+              "condition": {
+                "test": { "ref": "highlightedLink" },
+                "value": 1
+              },
+              "value": 0
+            },
+            "x": {
+              "field": "source",
+              "type": "index",
+              "title": "dm6 chrX",
+              "buildIndex": false
+            },
+            "x2": { "field": "target" },
+            "y": {
+              "datum": 0,
+              "type": "quantitative",
+              "scale": { "domain": [0, 1] },
+              "axis": null
+            },
+            "y2": { "datum": 1 },
+            "color": {
+              "condition": {
+                "test": { "ref": "highlightedLink" },
+                "field": "effect",
+                "type": "quantitative",
+                "scale": {
+                  "domain": [
+                    -0.216404, -0.173123, -0.129843, -0.086562, -0.043281, 0,
+                    0.043281, 0.086562, 0.129843, 0.173123, 0.216404
+                  ],
+                  "range": [
+                    "#053061",
+                    "#2166ac",
+                    "#4393c3",
+                    "#92c5de",
+                    "#d1e5f0",
+                    "#ffffff",
+                    "#fddbc7",
+                    "#f4a582",
+                    "#d6604d",
+                    "#b2182b",
+                    "#67001f"
+                  ],
+                  "clamp": true
+                },
+                "legend": {
+                  "title": "PISA (log2(fc))",
+                  "orient": "left",
+                  "direction": "vertical",
+                  "gradientLength": 84,
+                  "gradientThickness": 18,
+                  "gradientStrokeColor": "#777777",
+                  "gradientStrokeWidth": 0.5,
+                  "values": [-0.2, 0, 0.2]
+                }
+              },
+              "value": "#d8dbe0"
+            },
+            "opacity": {
+              "condition": {
+                "test": { "ref": "highlightedLink" },
+                "field": "absEffect",
+                "type": "quantitative",
+                "scale": {
+                  "domain": [0, 0.216404],
+                  "range": [0, 1],
+                  "clamp": true
+                },
+                "legend": null
+              },
+              "value": 0.1
+            },
+            "tooltip": [
+              { "field": "source", "title": "Input position" },
+              { "field": "target", "title": "Output position" },
+              {
+                "field": "effect",
+                "title": "PISA effect (log2 fold change)",
+                "format": ".4f"
+              }
+            ]
+          }
+        },
+        {
+          "name": "motifs",
+          "description": "Motif intervals share the genomic x scale with the links. Normalized y values keep the overlay at a fixed pixel height near the bottom of the link view, while ranged text centers each motif name inside its interval.",
+          "data": {
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-motifs.parquet",
+            "format": { "type": "parquet" }
+          },
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "datum.name == 'm1bp' ? 'M1bp' : datum.name == 'gaga' ? 'Gaga' : 'Zelda'",
+              "as": "motifLabel"
+            }
+          ],
+          "encoding": {
+            "x": {
+              "field": "start",
+              "type": "index",
+              "title": "dm6 chrX"
+            },
+            "x2": { "field": "end" },
+            "y": { "value": { "expr": "4 / height" } },
+            "y2": { "value": { "expr": "20 / height" } }
+          },
+          "layer": [
+            {
+              "name": "Motif intervals",
+              "mark": { "type": "rect", "minOpacity": 1 },
+              "encoding": {
+                "color": {
+                  "field": "motifLabel",
+                  "type": "nominal",
+                  "scale": {
+                    "domain": ["M1bp", "Gaga", "Zelda"],
+                    "range": ["#bbcc33", "#44bb99", "#99ddff"]
+                  },
+                  "legend": {
+                    "orient": "left",
+                    "direction": "vertical",
+                    "symbolOpacity": 1
+                  }
+                },
+                "tooltip": [
+                  { "field": "motifLabel", "title": "Motif" },
+                  { "field": "start", "title": "Start" },
+                  { "field": "end", "title": "End" },
+                  { "field": "strand", "title": "Strand" },
+                  { "field": "score", "title": "Score" }
+                ]
+              }
+            },
+            {
+              "name": "Motif labels",
+              "mark": {
+                "type": "text",
+                "align": "center",
+                "baseline": "middle",
+                "paddingX": 3,
+                "tooltip": null
+              },
+              "encoding": {
+                "text": { "field": "motifLabel" },
+                "color": { "value": "black" }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "importance",
+      "title": {
+        "text": "Contribution score",
+        "style": "overlay-title"
+      },
+      "height": { "grow": 0.16 },
+      "cursor": "text",
+      "params": [
+        {
+          "name": "contributionRegion",
+          "push": "outer",
+          "persist": false,
+          "description": "Drag to select influential input positions; bars and letters outside an active brush turn gray. Double-click to clear.",
+          "select": {
+            "type": "interval",
+            "encodings": ["x"],
+            "extent": "view",
+            "on": "mousedown",
+            "clear": "dblclick",
+            "zoom": false
+          }
+        }
+      ],
+      "data": {
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
+        "format": { "type": "parquet" }
+      },
+      "transform": [
+        { "type": "filter", "expr": "datum.track == 'importance'" }
+      ],
+      "encoding": {
+        "x": {
+          "field": "position",
+          "type": "index",
+          "title": "dm6 chrX"
+        },
+        "y": {
+          "datum": 0,
+          "type": "quantitative",
+          "scale": { "zero": true },
+          "axis": null
+        },
+        "y2": { "field": "value" },
+        "tooltip": [
+          { "field": "position", "title": "Input position" },
+          { "field": "base", "title": "Base" },
+          { "field": "value", "title": "Contribution", "format": ".4g" }
+        ]
+      },
+      "description": "Use compact bars in the overview and reveal the contributing reference bases as a Dynseq logo once each one-base band is at least 12 pixels wide.",
+      "stops": {
+        "channel": "x",
+        "values": [0.15],
+        "transition": { "type": "lerp", "halfLife": 60 }
+      },
+      "multiscale": [
+        {
+          "name": "Contribution bars",
+          "mark": { "type": "rect", "minOpacity": 1 },
+          "encoding": {
+            "color": {
+              "condition": {
+                "param": "contributionRegion",
+                "value": "#332288"
+              },
+              "value": "#d8dbe0"
+            }
+          }
+        },
+        {
+          "name": "Contribution sequence logo",
+          "mark": {
+            "type": "text",
+            "font": "Source Sans Pro",
+            "fontWeight": 700,
+            "size": 100,
+            "squeeze": true,
+            "fitToBand": true,
+            "paddingX": 0,
+            "paddingY": 0,
+            "logoLetters": true
+          },
+          "encoding": {
+            "text": { "field": "base" },
+            "color": {
+              "condition": {
+                "param": "contributionRegion",
+                "field": "base",
+                "type": "nominal",
+                "scale": {
+                  "type": "ordinal",
+                  "domain": ["A", "C", "G", "T", "N"],
+                  "range": [
+                    "#009E73",
+                    "#0072B2",
+                    "#F0E442",
+                    "#D55E00",
+                    "#BDBDBD"
+                  ]
+                },
+                "legend": null
+              },
+              "value": "#d8dbe0"
+            }
+          }
+        }
+      ]
+    }
+  ],
+
+  "config": {
+    "axis": { "domain": false },
+    "legend": {
+      "labelFontSize": 11,
+      "titleFontSize": 11,
+      "layout": { "left": { "anchor": "middle", "wrap": false } }
+    },
+    "legendTrack": { "style": null },
+    "title": { "fontSize": 12, "fontWeight": "normal", "offset": 2 },
+    "view": { "stroke": "transparent", "strokeWidth": 0 }
+  }
+}

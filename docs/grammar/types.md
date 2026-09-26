@@ -205,6 +205,10 @@ SCHEMA DataFormat
 
 SCHEMA DataSource
 
+## DebouncedExprParameter
+
+SCHEMA DebouncedExprParameter
+
 ## DirectionDef
 
 SCHEMA DirectionDef
@@ -212,6 +216,10 @@ SCHEMA DirectionDef
 ## Displace1DParams
 
 See the [Displace1DParams documentation](transform/displace1d.md#parameters).
+
+## Displace2DParams
+
+See the [Displace2DParams documentation](transform/displace2d.md#parameters).
 
 ## DomEventType
 
@@ -529,6 +537,10 @@ See the [NamedData documentation](data/eager.md#named-data).
 
 SCHEMA NamedGenomeConfig
 
+## NamedSelectionPredicateRef
+
+SCHEMA NamedSelectionPredicateRef
+
 ## NumericDomain
 
 SCHEMA NumericDomain
@@ -604,6 +616,10 @@ SCHEMA ParseValue
 ## PileupParams
 
 See the [PileupParams documentation](transform/pileup.md#parameters).
+
+## PlainExprParameter
+
+SCHEMA PlainExprParameter
 
 ## PlainValueParameter
 
@@ -805,6 +821,14 @@ SCHEMA SelectionInitIntervalMapping
 
 See the [SelectionParameter documentation](parameters.md#selection-parameters).
 
+## SelectionPredicateDefinition
+
+SCHEMA SelectionPredicateDefinition
+
+## SelectionPredicateOperand
+
+SCHEMA SelectionPredicateOperand
+
 ## SelectionType
 
 SCHEMA SelectionType
@@ -924,6 +948,10 @@ SCHEMA TooltipDef
 ## TransformParams
 
 SCHEMA TransformParams
+
+## TransitionedExprParameter
+
+SCHEMA TransitionedExprParameter
 
 ## TransitionedMultiscaleStops
 

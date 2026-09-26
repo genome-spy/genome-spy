@@ -1,0 +1,139 @@
+{
+  "description": [
+    "Displaced scatterplot labels",
+    "Measures and separates overlapping labels while leader lines preserve their connection to the original points."
+  ],
+
+  "data": {
+    "values": [
+      { "x": 4.82, "y": 5.08, "label": "TP53" },
+      { "x": 4.96, "y": 5.12, "label": "EGFR" },
+      { "x": 5.08, "y": 4.98, "label": "BRCA1" },
+      { "x": 4.91, "y": 4.89, "label": "PIK3CA" },
+      { "x": 5.18, "y": 5.09, "label": "MYC" },
+      { "x": 5.02, "y": 5.24, "label": "KRAS" },
+      { "x": 4.74, "y": 4.95, "label": "PTEN" },
+      { "x": 5.23, "y": 4.86, "label": "CDKN2A" },
+      { "x": 4.85, "y": 5.28, "label": "ERBB2" },
+      { "x": 5.3, "y": 5.2, "label": "BRAF" }
+    ]
+  },
+
+  "layer": [
+    {
+      "name": "scatterplot",
+      "mark": { "type": "point", "filled": true, "size": 45 },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [3.5, 6.5], "zoom": true }
+        },
+        "y": {
+          "field": "y",
+          "type": "quantitative",
+          "scale": { "domain": [3.5, 6.5], "zoom": true }
+        }
+      }
+    },
+
+    {
+      "name": "labels-and-leaders",
+      "transform": [
+        {
+          "type": "measureText",
+          "field": "label",
+          "fontSize": 14,
+          "fontWeight": "bold",
+          "as": "_labelWidth"
+        },
+        {
+          "type": "formula",
+          "expr": "datum._labelWidth + 10",
+          "as": "_labelWidth"
+        },
+        {
+          "type": "collect",
+          "description": "Caches label geometry so scale changes do not repeat text measurement."
+        },
+        {
+          "type": "filter",
+          "expr": "inrange(datum.x, domain('x')) && inrange(datum.y, domain('y'))"
+        },
+        {
+          "type": "displace2d",
+          "key": "label",
+          "x": "x",
+          "y": "y",
+          "width": "_labelWidth",
+          "height": 18,
+          "anchorWidth": 10,
+          "anchorHeight": 10,
+          "as": ["_labelDx", "_labelDy"]
+        },
+        {
+          "type": "formula",
+          "expr": "max(0, 1 - min(datum._labelWidth / 2 / max(abs(datum._labelDx), 1e-6), 8 / max(abs(datum._labelDy), 1e-6)))",
+          "as": "_leaderScale"
+        },
+        {
+          "type": "formula",
+          "expr": "datum._labelDx * datum._leaderScale",
+          "as": "_leaderDx"
+        },
+        {
+          "type": "formula",
+          "expr": "datum._labelDy * datum._leaderScale",
+          "as": "_leaderDy"
+        }
+      ],
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      },
+      "layer": [
+        {
+          "name": "leader-lines",
+          "mark": { "type": "rule", "color": "#606770", "size": 1 },
+          "encoding": {
+            "x2": { "field": "x" },
+            "y2": { "field": "y" },
+            "xOffset": {
+              "field": "_leaderDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "_leaderDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        },
+        {
+          "name": "labels",
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "middle",
+            "size": 14,
+            "fontWeight": "bold"
+          },
+          "encoding": {
+            "text": { "field": "label", "type": "nominal" },
+            "xOffset": {
+              "field": "_labelDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "_labelDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

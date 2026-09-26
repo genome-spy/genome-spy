@@ -360,7 +360,7 @@ const placementSentinel = 1u;
                             when: {
                                 selection: "brush",
                                 type: "interval",
-                                targets: [{ input: "x" }],
+                                projections: [{ component: "x", input: "x" }],
                             },
                             value: [0, 1, 0, 1],
                         },
@@ -397,7 +397,16 @@ const placementSentinel = 1u;
                 {
                     name: "brush",
                     type: "interval",
-                    targets: [{ input: "x", scalarType: "f32" }],
+                    components: ["x"],
+                    projections: [
+                        {
+                            component: "x",
+                            input: "x",
+                            scalarType: "f32",
+                            inputComponents: 1,
+                            hitTest: "intersects",
+                        },
+                    ],
                 },
             ],
         });
@@ -408,21 +417,7 @@ const placementSentinel = 1u;
         expect(shaderCode).toContain("checkSelection_brush");
     });
 
-    it("emits flat selection-union predicates with group emptiness", () => {
-        const packedSeriesLayout = /** @type {any} */ (
-            new Map([
-                [
-                    "x",
-                    {
-                        name: "x",
-                        scalarType: "f32",
-                        components: 1,
-                        offset: 0,
-                        stride: 1,
-                    },
-                ],
-            ])
-        );
+    it("emits empty-aware selection predicates", () => {
         const { shaderCode } = buildMarkShader({
             channels: {
                 uniqueId: { value: 1, type: "u32", components: 1 },
@@ -432,54 +427,36 @@ const placementSentinel = 1u;
                     conditions: [
                         {
                             when: {
-                                selectionUnion: [
-                                    { selection: "picked", type: "single" },
+                                any: [
                                     {
-                                        selection: "brush",
-                                        type: "interval",
-                                        targets: [{ input: "x" }],
+                                        selection: "picked",
+                                        type: "single",
+                                        empty: false,
+                                    },
+                                    {
+                                        not: {
+                                            selectionActive: {
+                                                selection: "picked",
+                                                type: "single",
+                                            },
+                                        },
                                     },
                                 ],
-                                empty: true,
                             },
                             value: [1, 0, 0, 1],
                         },
                     ],
                 },
-                x: {
-                    data: new Float32Array([0]),
-                    type: "f32",
-                    components: 1,
-                },
             },
             uniformLayout: [
                 { name: "uSelection_picked", type: "u32", components: 1 },
-                {
-                    name: "uSelection_brush_0_active",
-                    type: "u32",
-                    components: 1,
-                },
-                { name: "uSelection_brush_0", type: "f32", components: 2 },
             ],
             shaderBody,
-            packedSeriesLayout,
-            selectionDefs: [
-                { name: "picked", type: "single" },
-                {
-                    name: "brush",
-                    type: "interval",
-                    targets: [{ input: "x", scalarType: "f32" }],
-                },
-            ],
+            selectionDefs: [{ name: "picked", type: "single" }],
         });
 
-        expect(shaderCode).toContain("isSelectionMember_picked");
-        expect(shaderCode).toContain("isSelectionMember_brush");
-        expect(shaderCode).toContain("isSelectionEmpty_picked");
-        expect(shaderCode).toContain("isSelectionEmpty_brush");
-        expect(shaderCode).toContain(
-            "isSelectionMember_picked(i) || isSelectionMember_brush(i)"
-        );
+        expect(shaderCode).toContain("checkSelection_picked(i, false)");
+        expect(shaderCode).toContain("!isSelectionEmpty_picked(i)");
     });
 
     it("emits visibility predicates over scalar inputs and slots", () => {
@@ -544,11 +521,18 @@ const placementSentinel = 1u;
                         ],
                     },
                     {
-                        selectionUnion: [
-                            { selection: "first", type: "single" },
-                            { selection: "second", type: "single" },
+                        any: [
+                            {
+                                selection: "first",
+                                type: "single",
+                                empty: false,
+                            },
+                            {
+                                selection: "second",
+                                type: "single",
+                                empty: false,
+                            },
                         ],
-                        empty: false,
                     },
                 ],
             },
@@ -558,7 +542,7 @@ const placementSentinel = 1u;
         expect(shaderCode).toContain("read_score(i)");
         expect(shaderCode).toContain("params.u_scalar_threshold");
         expect(shaderCode).toContain(
-            "isSelectionMember_first(i) || isSelectionMember_second(i)"
+            "checkSelection_first(i, false) || checkSelection_second(i, false)"
         );
         expect(shaderCode).toContain(">=");
         expect(shaderCode).toContain("<");
@@ -608,7 +592,7 @@ const placementSentinel = 1u;
             channels: {
                 x: { value: 2, type: "f32", components: 1 },
                 x2: { value: 4, type: "f32", components: 1 },
-                y: { value: 3, type: "u32", components: 1 },
+                y: { value: [0, 3], type: "u32", components: 2 },
                 fill: {
                     value: 0,
                     type: "f32",
@@ -618,13 +602,14 @@ const placementSentinel = 1u;
                             when: {
                                 selection: "brush",
                                 type: "interval",
-                                targets: [
+                                projections: [
                                     {
+                                        component: "x",
                                         input: "x",
                                         secondaryInput: "x2",
                                         hitTest: "endpoints",
                                     },
-                                    { input: "y" },
+                                    { component: "y", input: "y" },
                                 ],
                             },
                             value: 1,
@@ -651,7 +636,7 @@ const placementSentinel = 1u;
                 {
                     name: "uSelection_brush_1",
                     type: "u32",
-                    components: 2,
+                    components: 4,
                 },
             ],
             shaderBody,
@@ -659,13 +644,23 @@ const placementSentinel = 1u;
                 {
                     name: "brush",
                     type: "interval",
-                    targets: [
+                    components: ["x", "y"],
+                    projections: [
                         {
+                            component: "x",
                             input: "x",
                             secondaryInput: "x2",
+                            scalarType: "f32",
+                            inputComponents: 1,
                             hitTest: "endpoints",
                         },
-                        { input: "y" },
+                        {
+                            component: "y",
+                            input: "y",
+                            scalarType: "u32",
+                            inputComponents: 2,
+                            hitTest: "intersects",
+                        },
                     ],
                 },
             ],
@@ -673,10 +668,17 @@ const placementSentinel = 1u;
 
         expect(shaderCode).toContain("params.uSelection_brush_0_active");
         expect(shaderCode).toContain("params.uSelection_brush_1_active");
-        expect(shaderCode).toContain("matches = matches && allowEmpty");
-        expect(shaderCode).toContain("uSelection_brush_0_d0");
-        expect(shaderCode).toContain("uSelection_brush_0_d1");
-        expect(shaderCode).toContain("uSelection_brush_1_lo");
+        expect(shaderCode).toContain(
+            "params.uSelection_brush_0_active == 0u || params.uSelection_brush_1_active == 0u"
+        );
+        expect(shaderCode).toContain("let datum0 =");
+        expect(shaderCode).toContain("let datum1 =");
+        expect(shaderCode).toContain("(datum0 < max(bound.x, bound.y))");
+        expect(shaderCode).toContain("(datum1 < max(bound.x, bound.y))");
+        expect(shaderCode).toContain("hpLess(vec2<u32>(u32(0), u32(3)), hi)");
+        expect(shaderCode).toContain(
+            "select(checkSelection_brush_p0(i) && checkSelection_brush_p1(i), true, isSelectionEmpty_brush(i))"
+        );
     });
 
     it("throws when updating non-dynamic uniforms", () => {

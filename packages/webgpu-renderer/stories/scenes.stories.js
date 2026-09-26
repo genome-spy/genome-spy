@@ -14,7 +14,7 @@ import runLinkScene from "../examples/linkScene.js";
 import runArrowScene from "../examples/arrowScene.js";
 import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
-import runSelectionUnionScene from "../examples/selectionUnionScene.js";
+import runSelectionPredicateScene from "../examples/selectionPredicateScene.js";
 import runConditionalOrderScene from "../examples/conditionalOrderScene.js";
 import runGroupScene from "../examples/groupScene.js";
 import {
@@ -46,6 +46,7 @@ const withSource = (runnerName, args, story) => {
         parameters: {
             ...story.parameters,
             docs: {
+                ...story.parameters?.docs,
                 source: {
                     code,
                 },
@@ -212,9 +213,73 @@ export const RangedText = withSource(
     }
 );
 
-export const SelectionUnion = withSource("runSelectionUnionScene", null, {
-    render: (args) => renderScene(runSelectionUnionScene, args),
-});
+const selectionPredicateArgs = {
+    pickEnabled: true,
+    pickedX: 1,
+    pickedY: 8,
+    useXRange: true,
+    xFrom: 3,
+    xTo: 6,
+    useYRange: true,
+    yFrom: 3,
+    yTo: 6,
+};
+
+export const SelectionPredicates = withSource(
+    "runSelectionPredicateScene",
+    selectionPredicateArgs,
+    {
+        args: selectionPredicateArgs,
+        argTypes: {
+            pickEnabled: {
+                name: "Pick a point",
+                control: "boolean",
+            },
+            pickedX: {
+                name: "Picked X",
+                control: { type: "range", min: 0, max: 9, step: 1 },
+            },
+            pickedY: {
+                name: "Picked Y",
+                control: { type: "range", min: 0, max: 9, step: 1 },
+            },
+            useXRange: {
+                name: "Use X range",
+                control: "boolean",
+                description: "Clear X to leave that axis unconstrained.",
+            },
+            xFrom: {
+                name: "X from",
+                control: { type: "range", min: 0, max: 9, step: 1 },
+            },
+            xTo: {
+                name: "X to",
+                control: { type: "range", min: 0, max: 9, step: 1 },
+            },
+            useYRange: {
+                name: "Use Y range",
+                control: "boolean",
+                description: "Clear Y to leave that axis unconstrained.",
+            },
+            yFrom: {
+                name: "Y from",
+                control: { type: "range", min: 0, max: 9, step: 1 },
+            },
+            yTo: {
+                name: "Y to",
+                control: { type: "range", min: 0, max: 9, step: 1 },
+            },
+        },
+        parameters: {
+            docs: {
+                description: {
+                    story: "Blue points match the picked point or the active ranges. The picked point is larger. Clear both ranges to show only the picked point.",
+                },
+            },
+        },
+        render: (args) => renderScene(runSelectionPredicateScene, args),
+    }
+);
 
 export const ConditionalOrder = withSource("runConditionalOrderScene", null, {
     render: (args) => renderScene(runConditionalOrderScene, args),

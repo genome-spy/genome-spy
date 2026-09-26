@@ -124,6 +124,7 @@ package.
 [`length`](https://vega.github.io/vega/docs/expressions/#length),
 [`join`](https://vega.github.io/vega/docs/expressions/#join),
 [`indexof`](https://vega.github.io/vega/docs/expressions/#indexof),
+[`inrange`](https://vega.github.io/vega/docs/expressions/#inrange),
 [`lastindexof`](https://vega.github.io/vega/docs/expressions/#lastindexof),
 [`reverse`](https://vega.github.io/vega/docs/expressions/#reverse),
 [`slice`](https://vega.github.io/vega/docs/expressions/#slice),

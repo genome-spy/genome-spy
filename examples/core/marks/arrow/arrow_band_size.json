@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Arrow sizing across view spans",
     "Compares arrow size on a band scale with sizing relative to the perpendicular view span."

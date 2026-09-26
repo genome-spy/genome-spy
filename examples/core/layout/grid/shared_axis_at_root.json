@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": "Shared x-axis and scale, fixed view heights.",
 
   "data": { "url": "data/sincos.csv" },

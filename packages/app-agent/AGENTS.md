@@ -2,12 +2,13 @@
 
 ## Architecture and routing
 
-- Read `ARCHITECTURE.md` for package ownership, entry points, and the suggested
-  reading order.
+- Read `ARCHITECTURE.md` when changing package ownership, entry points, or
+  cross-package behavior.
 - Read `packages/app/AGENTS.md` before changing the host App boundary.
 - Read `src/agent/AGENTS.md` before editing the browser-agent implementation.
-- Read `server/AGENTS.md` and `server/ARCHITECTURE.md` before editing the Python
-  relay.
+- Read `server/AGENTS.md` before editing the Python relay. Read
+  `server/ARCHITECTURE.md` when changing relay responsibilities or module
+  boundaries.
 
 ## Package boundaries
 

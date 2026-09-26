@@ -1,5 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Tick mark example.",
 
   "data": { "url": "vega-datasets/cars.json" },

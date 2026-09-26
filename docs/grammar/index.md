@@ -66,29 +66,32 @@ model.
 
 ## Schema-assisted editing
 
-GenomeSpy publishes a JSON Schema that JSON-aware editors can use for
-completion, hover documentation, and validation. Add `$schema` to the root of a
-Core specification:
+Misspelled properties, invalid values, and settings in the wrong place are easy
+to overlook in a specification. A JSON-aware editor can catch many of these
+errors as you type. It can also suggest available properties and show their
+documentation.
 
-```json
-{
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "data": { "url": "data/example.csv" },
-  "mark": "point",
-  "encoding": {}
-}
-```
+A schema is a machine-readable description of the properties and values that a
+specification accepts. Enable these editor features by adding `$schema` to the
+root of a Core specification:
 
-Use the `@genome-spy/app` schema instead for [sample collection
-specifications](../sample-collections/index.md). For reproducible editing, pin
-the schema to the same package version as the GenomeSpy runtime by adding
-`@VERSION` after the package name. The Playground configures the Core schema
-automatically.
+SNIPPET grammar/core-schema-spec.json
 
-The inline examples in this documentation omit `$schema` to keep them concise.
-Schema validation checks the structure and configuration values of a
-specification, but it cannot verify external resources, the existence of data
-fields, or expression behavior.
+Major-version URLs are recommended because they follow compatible releases.
+Minor (`v1.2.json`) and exact (`v1.2.3.json`) URLs are available when tighter
+reproducibility is needed. Update the URL when upgrading to a new major version.
+Schemas are also available from jsDelivr and unpkg.
+
+GenomeSpy App specifications use a different schema; see [Visualizing Sample
+Collections](../sample-collections/visualizing.md#schema-assisted-editing).
+
+VS Code supports JSON schemas without an extension. Its [JSON
+documentation](https://code.visualstudio.com/docs/languages/json#_json-schemas-and-settings)
+also explains how to associate schemas through workspace or user settings.
+
+The Playground selects the Core schema automatically, and inline documentation
+examples omit `$schema`. Schema validation cannot verify external resources,
+data fields, or expression behavior.
 
 ## Unit view reference
 

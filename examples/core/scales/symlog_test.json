@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Symmetric logarithmic scale",
     "Plots values with a symlog y-axis around zero."

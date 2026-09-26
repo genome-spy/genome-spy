@@ -12,7 +12,7 @@ export default class FilterTransform extends Transform {
 
         this.params = params;
 
-        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
+        /** @type {(datum?: import("../flowNode.js").Datum) => any} */
         this.predicate = undefined;
     }
 
@@ -35,14 +35,7 @@ export default class FilterTransform extends Transform {
             );
         }
 
-        this.predicate = this.paramRuntime.watchExpression(
-            expression,
-            () => this.requestRepropagate(),
-            {
-                scopeOwned: false,
-                registerDisposer: (disposer) => this.registerDisposer(disposer),
-            }
-        );
+        this.predicate = this.watchSnapshottedExpression(expression);
     }
 
     /**

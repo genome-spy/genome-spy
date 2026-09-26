@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "A genome-browser-like view with multiple tracks",
     "Combines existing visualizations into a genome-browser-like view with multiple tracks sharing the x-axis.",

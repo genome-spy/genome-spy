@@ -193,7 +193,9 @@ describe("SVG link renderer", () => {
                     { x: 0.6, x2: 0.9, y: 0.5 },
                 ],
             },
-            params: [{ name: "picked", select: "point" }],
+            params: [
+                { name: "picked", select: { type: "point", toggle: false } },
+            ],
             mark: {
                 type: "link",
                 arcFadingDistance: [10, 20],
@@ -231,5 +233,76 @@ describe("SVG link renderer", () => {
             "url(#link-arc-fade-0)"
         );
         expect(paths[1].parentElement?.getAttribute("mask")).toBeNull();
+    });
+
+    test("exports projected conjunction color and draw order", async () => {
+        const predicate = {
+            and: [
+                { param: "access", project: { x: "x2" } },
+                { param: "score", project: { x: "x" } },
+            ],
+        };
+        const { view } = await createHeadlessEngine(
+            /** @type {any} */ ({
+                data: {
+                    values: [
+                        { source: 15, target: 25, y: 0.4 },
+                        { source: 45, target: 25, y: 0.6 },
+                    ],
+                },
+                params: [
+                    {
+                        name: "access",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                    {
+                        name: "score",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                mark: "link",
+                encoding: {
+                    x: {
+                        field: "source",
+                        type: "quantitative",
+                        scale: { domain: [0, 50] },
+                    },
+                    x2: { field: "target" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 1] },
+                    },
+                    color: {
+                        condition: { test: predicate, value: "#ff0000" },
+                        value: "#777777",
+                    },
+                    order: {
+                        condition: { test: predicate, value: 1 },
+                        value: 0,
+                    },
+                },
+            })
+        );
+        view.paramRuntime.setValue("access", {
+            type: "interval",
+            intervals: { x: [20, 30] },
+        });
+        view.paramRuntime.setValue("score", {
+            type: "interval",
+            intervals: { x: [10, 20] },
+        });
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const strokes = Array.from(
+            svg.querySelectorAll('[data-mark-type="link"] path'),
+            (path) => path.getAttribute("stroke")
+        );
+        expect(strokes).toEqual(["#777777", "#ff0000"]);
     });
 });

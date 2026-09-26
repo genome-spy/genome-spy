@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Interactive ASCAT-like Purity/Ploidy Fitting",
     "Visualizes ASCAT purity/ploidy fits for simulated samples and shows how rounded allele-specific copy-number estimates change when rho and psi are adjusted.",

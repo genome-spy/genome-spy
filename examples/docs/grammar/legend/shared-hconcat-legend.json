@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": "Palmer penguins scatter plots with a shared legend.",
 
   "data": { "url": "vega-datasets/penguins.json" },

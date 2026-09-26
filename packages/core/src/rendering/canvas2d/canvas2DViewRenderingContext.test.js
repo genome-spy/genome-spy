@@ -669,7 +669,9 @@ describe("Canvas2DViewRenderingContext", () => {
     test("repaints conditional encodings when a selection changes", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ value: 1 }] },
-            params: [{ name: "selected", select: "point" }],
+            params: [
+                { name: "selected", select: { type: "point", toggle: false } },
+            ],
             mark: "point",
             encoding: {
                 x: { value: 0.5 },
@@ -711,7 +713,9 @@ describe("Canvas2DViewRenderingContext", () => {
     test("draws an active order partition after its unselected partition", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.25 }, { x: 0.75 }] },
-            params: [{ name: "picked", select: "point" }],
+            params: [
+                { name: "picked", select: { type: "point", toggle: false } },
+            ],
             mark: "point",
             encoding: {
                 x: {

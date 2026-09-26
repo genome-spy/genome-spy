@@ -362,7 +362,7 @@ describe("sample data and metadata wiring", () => {
         expect(provenance.isUndoable()).toBe(false);
     });
 
-    test("publishes visibleSamples from the sample hierarchy", async () => {
+    test("publishes visibleSamples by membership in original sample order", async () => {
         const { view } = await createSampleViewForTest({
             spec: {
                 data: {
@@ -395,6 +395,41 @@ describe("sample data and metadata wiring", () => {
         expect(facetsView.paramRuntime.findValue("visibleSamples")).toEqual([
             "A",
             "B",
+        ]);
+
+        const visibleSamples =
+            facetsView.paramRuntime.findValue("visibleSamples");
+        view.provenance.store.dispatch(
+            view.actions.sortBy({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "rank",
+                },
+                order: "descending",
+                [AUGMENTED_KEY]: { values: { A: 1, B: 2 } },
+            })
+        );
+        await Promise.resolve();
+
+        expect(view.leafSamples).toEqual(["B", "A"]);
+        expect(facetsView.paramRuntime.findValue("visibleSamples")).toBe(
+            visibleSamples
+        );
+
+        view.provenance.store.dispatch(
+            view.actions.filterByNominal({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "keep",
+                },
+                values: ["yes"],
+                [AUGMENTED_KEY]: { values: { A: "yes", B: "no" } },
+            })
+        );
+        await Promise.resolve();
+
+        expect(facetsView.paramRuntime.findValue("visibleSamples")).toEqual([
+            "A",
         ]);
     });
 

@@ -92,22 +92,48 @@ export interface TransitionedValueParameter
     expr?: never;
 }
 
-export interface ExprParameter extends ParameterBase, PersistedParameter {
+interface ExprParameterBase extends ParameterBase, PersistedParameter {
     /**
      * An expression for the value of the parameter. This expression may include other parameters,
      * in which case the parameter will automatically update in response to upstream parameter changes.
      */
     expr: string;
 
-    /**
-     * Smoothly follows numeric expression output values.
-     */
-    transition?: ParamTransition;
-
     value?: never;
 
     bind?: never;
 }
+
+export interface PlainExprParameter extends ExprParameterBase {
+    transition?: never;
+
+    debounce?: never;
+}
+
+export interface TransitionedExprParameter extends ExprParameterBase {
+    /**
+     * Smoothly follows numeric expression output values.
+     */
+    transition: ParamTransition;
+
+    debounce?: never;
+}
+
+export interface DebouncedExprParameter extends ExprParameterBase {
+    /**
+     * Delays publication until the expression dependencies have remained
+     * unchanged for the specified number of milliseconds. The initial value is
+     * published immediately.
+     *
+     * @minimum 0
+     */
+    debounce: number;
+
+    transition?: never;
+}
+
+export type ExprParameter =
+    PlainExprParameter | TransitionedExprParameter | DebouncedExprParameter;
 
 export type ParamTransition = LerpTransition;
 
@@ -413,9 +439,11 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     strokeWidth?: number;
 
     /**
-     * Whether the brush rectangle should be clipped to the viewport.
+     * Clip the brush rectangle to the viewport along the selected axes.
+     * An explicit value overrides this direction-based default.
      *
-     * __Default value:__ `true`
+     * __Default value:__ `"x"` for x selections, `"y"` for y selections,
+     * and `true` for x/y selections.
      */
     clip?: boolean | "never";
 

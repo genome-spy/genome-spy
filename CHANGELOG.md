@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
+
+### Bug Fixes
+
+* **core:** align interval predicates with half-open brushes ([6b678ee](https://github.com/genome-spy/genome-spy/commit/6b678eea19d782984d3347dca27baaccb73bc774)) by @tuner
+* **core:** clip interval brushes along selected axes ([a0933bc](https://github.com/genome-spy/genome-spy/commit/a0933bcc64b50b38d1a6448130ded99eab258af2)) by @tuner
+* **core:** defer text expression subscriptions until scales are initialized ([c346d9e](https://github.com/genome-spy/genome-spy/commit/c346d9ef883cc38c6b84df6af6489341f7f4443e)) by @tuner
+* **core:** keep axis marks on explicitly declared scales ([2943636](https://github.com/genome-spy/genome-spy/commit/29436366cbfdad1e46d174ccee1132954feb9b35)) by @tuner
+* **core:** rebuild drawing commands after physical canvas resize ([#542](https://github.com/genome-spy/genome-spy/issues/542)) ([7d3702c](https://github.com/genome-spy/genome-spy/commit/7d3702ca90e5f9f8129a5242fef61db2e5e5131f)) by @okunator
+* **core:** refresh glyph geometry for reactive text values ([42e6e05](https://github.com/genome-spy/genome-spy/commit/42e6e054c3e6b263c7cac5c300f15182dbbe1475)) by @tuner
+* **core:** require explicit axes for view-level scales ([0f20cdf](https://github.com/genome-spy/genome-spy/commit/0f20cdf8e9fbaa3c2d0c49ca60857c968b579806)) by @tuner
+* **core:** snap index brush edges at band centers ([0a25f15](https://github.com/genome-spy/genome-spy/commit/0a25f1541fdaef7ddba3cc7cfb1c24f48be6f5a3)) by @tuner
+
+### Features
+
+* add versioned schema workflow ([#539](https://github.com/genome-spy/genome-spy/issues/539)) ([8878a3b](https://github.com/genome-spy/genome-spy/commit/8878a3b468bd8746f58d9341b30639fc9f944209)) by @tuner
+* **core:** add bidirectional arrow support ([#535](https://github.com/genome-spy/genome-spy/issues/535)) ([6a6b28a](https://github.com/genome-spy/genome-spy/commit/6a6b28a402818c9c9d59cc425262928586d44b28)) by @tuner
+* **core:** add progressive two-dimensional displacement ([#497](https://github.com/genome-spy/genome-spy/issues/497)) ([e7ce877](https://github.com/genome-spy/genome-spy/commit/e7ce877330911f47d551fb93f5237d0c4a8887b1)) by @okunator
+* **core:** compose selection predicates and project interval endpoints ([#543](https://github.com/genome-spy/genome-spy/issues/543)) ([a40bc23](https://github.com/genome-spy/genome-spy/commit/a40bc23794cf16ae7b95a43304638c45b23ffc8f)) by @tuner
+* **core:** debounce expression parameters ([302fe9b](https://github.com/genome-spy/genome-spy/commit/302fe9bd13cdf60affdbbfdd9a3da7eb31d75100)) by @tuner
+* **core:** debounce reactive transform replay ([#540](https://github.com/genome-spy/genome-spy/issues/540)) ([66b884c](https://github.com/genome-spy/genome-spy/commit/66b884c102fd9b05f484ef1aeadc3b0cc53698b7)) by @tuner
+* **core:** expose tickStep in expressions ([ffac8af](https://github.com/genome-spy/genome-spy/commit/ffac8af0cb5098c0ec49916587b0afe46f2de833)) by @tuner
+* **webgpu:** add GPU path and outline font rendering ([#533](https://github.com/genome-spy/genome-spy/issues/533)) ([f4a44d6](https://github.com/genome-spy/genome-spy/commit/f4a44d60eb23d00b75867eb752ee24e898716a45)) by @tuner
+
+### Performance Improvements
+
+* **core:** snapshot expression parameters per batch ([7a69618](https://github.com/genome-spy/genome-spy/commit/7a69618669bb88fde2cb9b488d0eba0cbd9074b5)), closes [#541](https://github.com/genome-spy/genome-spy/issues/541) by @tuner
+
 ## [0.88.1](https://github.com/genome-spy/genome-spy/compare/v0.88.0...v0.88.1) (2026-09-16)
 
 ### Bug Fixes

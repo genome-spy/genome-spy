@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Penguin scatterplot with species legend",
     "Uses a nominal species legend for a Palmer penguins scatterplot."

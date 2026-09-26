@@ -80,6 +80,15 @@ describe("expression helpers", () => {
         expect(createFunction("isValid(42)")()).toBe(true);
     });
 
+    test("matches Vega's inrange helper", () => {
+        expect(createFunction("inrange(2, [2, 5])")()).toBe(true);
+        expect(createFunction("inrange(5, [2, 5])")()).toBe(true);
+        expect(createFunction("inrange(2, [5, 2])")()).toBe(true);
+        expect(createFunction("inrange(5, [5, 2])")()).toBe(true);
+        expect(createFunction("inrange(2, [2, 5], false, true)")()).toBe(false);
+        expect(createFunction("inrange(5, [2, 5], true, false)")()).toBe(false);
+    });
+
     test("supports scale helpers with reactive scale dependencies", () => {
         const resolution = createFakeScaleResolution(
             [1, 5],
@@ -89,6 +98,7 @@ describe("expression helpers", () => {
             resolveScaleResolution: (channel) =>
                 channel == "x" ? resolution : undefined,
         }).expression;
+        const snapshot = expr.createSnapshotEvaluator();
 
         let calls = 0;
         const unsubscribe = expr.subscribe(() => {
@@ -96,10 +106,12 @@ describe("expression helpers", () => {
         });
 
         expect(expr()).toEqual([1, 5]);
+        expect(snapshot()).toEqual([1, 5]);
 
         resolution.setDomain([2, 6]);
         expect(calls).toBe(1);
         expect(expr()).toEqual([2, 6]);
+        expect(snapshot()).toEqual([2, 6]);
 
         unsubscribe();
     });

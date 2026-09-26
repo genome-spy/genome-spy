@@ -7,7 +7,7 @@
     "email": "kari.lavikka@helsinki.fi"
   },
   "license": "MIT",
-  "version": "0.88.0",
+  "version": "0.89.0",
   "type": "module",
   "sideEffects": false,
   "types": "src/index.d.ts",

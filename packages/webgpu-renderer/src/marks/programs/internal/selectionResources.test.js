@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SelectionResourceManager as DefinedSelectionResourceManager } from "./selectionResources.js";
 import { analyzeTestChannels } from "../../../../testUtils/scaleDefinitions.js";
 import { HASH_EMPTY_KEY, hash32 } from "../../../utils/hashTable.js";
+import { packHighPrecisionU32 } from "../../../utils/highPrecision.js";
 import {
     intervalSelectionActiveName,
     intervalSelectionBoundsName,
@@ -22,13 +23,18 @@ class SelectionResourceManager extends DefinedSelectionResourceManager {
 }
 
 /**
- * @param {Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints" }>} targets
+ * @param {Array<{ component?: string, input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints" }>} targets
  */
 function makeIntervalChannels(targets) {
     return /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ (
         /** @type {unknown} */ ({
             x: {
                 data: new Float32Array([0, 1]),
+                type: "f32",
+                components: 1,
+            },
+            x2: {
+                data: new Float32Array([1, 2]),
                 type: "f32",
                 components: 1,
             },
@@ -56,7 +62,10 @@ function makeIntervalChannels(targets) {
                         when: {
                             selection: "brush",
                             type: "interval",
-                            targets,
+                            projections: targets.map((target) => ({
+                                component: target.component ?? target.input,
+                                ...target,
+                            })),
                         },
                         value: 1,
                     },
@@ -146,16 +155,17 @@ describe("SelectionResourceManager", () => {
                 conditions: [
                     {
                         when: {
-                            selectionUnion: [
+                            any: [
                                 { selection: "a", type: "single" },
                                 {
                                     selection: "b",
                                     type: "interval",
-                                    targets: [{ input: "x" }],
+                                    projections: [
+                                        { component: "x", input: "x" },
+                                    ],
                                 },
                                 { selection: "a", type: "single" },
                             ],
-                            empty: true,
                         },
                         value: 1,
                     },
@@ -185,15 +195,14 @@ describe("SelectionResourceManager", () => {
             visibleWhen: {
                 any: [
                     {
-                        selectionUnion: [
+                        any: [
                             { selection: "picked", type: "multi" },
                             {
                                 selection: "brush",
                                 type: "interval",
-                                targets: [{ input: "x" }],
+                                projections: [{ component: "x", input: "x" }],
                             },
                         ],
-                        empty: false,
                     },
                 ],
             },
@@ -204,13 +213,19 @@ describe("SelectionResourceManager", () => {
             "picked",
             "brush",
         ]);
-        expect(manager.selectionDefs[1].targets).toEqual([
-            { input: "x", hitTest: "intersects", scalarType: "f32" },
+        expect(manager.selectionDefs[1].projections).toEqual([
+            {
+                component: "x",
+                input: "x",
+                hitTest: "intersects",
+                scalarType: "f32",
+                inputComponents: 1,
+            },
         ]);
     });
 
     it("caches activity for the selections referenced by order", () => {
-        const channels = makeIntervalChannels([{ input: "x" }]);
+        const channels = makeIntervalChannels([{ input: "x" }, { input: "y" }]);
         channels.uniqueId = { value: 1, type: "u32", components: 1 };
         channels.fill.conditions = [
             {
@@ -221,7 +236,10 @@ describe("SelectionResourceManager", () => {
                 when: {
                     selection: "brush",
                     type: "interval",
-                    targets: [{ input: "x" }],
+                    projections: [
+                        { component: "x", input: "x" },
+                        { component: "y", input: "y" },
+                    ],
                 },
                 value: 1,
             },
@@ -231,13 +249,16 @@ describe("SelectionResourceManager", () => {
             channels,
             order: /** @type {any} */ ({
                 when: {
-                    selectionUnion: [
+                    any: [
                         { selection: "picked", type: "single" },
                         { selection: "chosen", type: "multi" },
                         {
                             selection: "brush",
                             type: "interval",
-                            targets: [{ input: "x" }],
+                            projections: [
+                                { component: "x", input: "x" },
+                                { component: "y", input: "y" },
+                            ],
                         },
                     ],
                 },
@@ -285,6 +306,12 @@ describe("SelectionResourceManager", () => {
             { type: "interval", intervals: { x: [0, 1] } },
             extraBuffers
         );
+        expect(manager.orderActive).toBe(false);
+        manager.updateSelection(
+            "brush",
+            { type: "interval", intervals: { x: [0, 1], y: [0, 1] } },
+            extraBuffers
+        );
         expect(manager.orderActive).toBe(true);
         manager.updateSelection(
             "brush",
@@ -299,7 +326,7 @@ describe("SelectionResourceManager", () => {
             /** @type {import("../../../index.d.ts").VisibilityPredicate} */ ({
                 selection: "brush",
                 type: "interval",
-                targets: [{ input: "x" }],
+                projections: [{ component: "x", input: "x" }],
             });
         const manager = new SelectionResourceManager({
             device: createDevice(),
@@ -309,8 +336,14 @@ describe("SelectionResourceManager", () => {
         });
 
         expect(manager.selectionDefs).toHaveLength(1);
-        expect(manager.selectionDefs[0].targets).toEqual([
-            { input: "x", hitTest: "intersects", scalarType: "f32" },
+        expect(manager.selectionDefs[0].projections).toEqual([
+            {
+                component: "x",
+                input: "x",
+                hitTest: "intersects",
+                scalarType: "f32",
+                inputComponents: 1,
+            },
         ]);
     });
 
@@ -323,11 +356,11 @@ describe("SelectionResourceManager", () => {
                     visibleWhen: {
                         selection: "brush",
                         type: "interval",
-                        targets: [{ input: "y" }],
+                        projections: [{ component: "x", input: "y" }],
                     },
                     setUniformValue: vi.fn(),
                 })
-        ).toThrow("must keep the same interval targets");
+        ).toThrow("must keep one comparison representation");
     });
 
     it("allocates independently typed fields for an N-target interval", () => {
@@ -448,7 +481,7 @@ describe("SelectionResourceManager", () => {
                 },
                 new Map()
             )
-        ).toThrow('cannot update unknown target "unknown"');
+        ).toThrow('cannot update unknown component "unknown"');
         expect(setUniformValue).not.toHaveBeenCalled();
 
         const invalidUpdate =
@@ -470,7 +503,7 @@ describe("SelectionResourceManager", () => {
             when: {
                 selection: "brush",
                 type: "interval",
-                targets: [{ input: "y" }],
+                projections: [{ component: "x", input: "y" }],
             },
             value: 2,
         });
@@ -482,7 +515,7 @@ describe("SelectionResourceManager", () => {
                     channels,
                     setUniformValue: vi.fn(),
                 })
-        ).toThrow("must keep the same interval targets");
+        ).toThrow("must keep one comparison representation");
     });
 
     it("rejects unknown and non-scalar interval inputs", () => {
@@ -504,7 +537,156 @@ describe("SelectionResourceManager", () => {
                     channels: makeIntervalChannels([{ input: "vec" }]),
                     setUniformValue: vi.fn(),
                 })
-        ).toThrow('requires scalar input "vec"');
+        ).toThrow('requires a scalar or packed numeric input "vec"');
+    });
+
+    it("retains an opaque activity-only component without bounds", () => {
+        const setUniformValue = vi.fn();
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels: {
+                fill: {
+                    value: 0,
+                    type: "f32",
+                    components: 1,
+                    conditions: [
+                        {
+                            when: {
+                                selectionActive: {
+                                    selection: "brush",
+                                    type: "interval",
+                                    components: ["range0"],
+                                },
+                            },
+                            value: 1,
+                        },
+                    ],
+                },
+            },
+            setUniformValue,
+        });
+        /** @type {Array<{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4 }>} */
+        const layout = [];
+        manager.addSelectionUniforms(layout);
+        expect(layout).toEqual([
+            {
+                name: intervalSelectionActiveName("brush", 0),
+                type: "u32",
+                components: 1,
+            },
+        ]);
+
+        manager.initializeSelections(new Map());
+        setUniformValue.mockClear();
+        manager.updateSelection(
+            "brush",
+            { type: "interval", intervals: { range0: [2, 4] } },
+            new Map()
+        );
+        expect(setUniformValue).toHaveBeenCalledTimes(1);
+        expect(setUniformValue).toHaveBeenCalledWith(
+            intervalSelectionActiveName("brush", 0),
+            1
+        );
+    });
+
+    it("shares one component state across two input projections", () => {
+        const channels = makeIntervalChannels([{ input: "x" }]);
+        channels.fill.conditions = [
+            {
+                when: {
+                    all: [
+                        {
+                            selection: "brush",
+                            type: "interval",
+                            projections: [{ component: "range0", input: "x" }],
+                        },
+                        {
+                            selection: "brush",
+                            type: "interval",
+                            projections: [{ component: "range0", input: "x2" }],
+                        },
+                    ],
+                },
+                value: 1,
+            },
+        ];
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels,
+            setUniformValue: vi.fn(),
+        });
+        expect(manager.selectionDefs).toHaveLength(1);
+        expect(manager.selectionDefs[0].components).toEqual(["range0"]);
+        expect(manager.selectionDefs[0].projections).toHaveLength(2);
+        /** @type {Array<{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4 }>} */
+        const layout = [];
+        manager.addSelectionUniforms(layout);
+        expect(layout).toHaveLength(2);
+    });
+
+    it("packs high-precision bounds for two-component u32 inputs", () => {
+        const setUniformValue = vi.fn();
+        const manager = new SelectionResourceManager({
+            device: createDevice(),
+            channels: /** @type {any} */ ({
+                packed: {
+                    data: new Uint32Array([1, 0]),
+                    type: "u32",
+                    components: 2,
+                    inputComponents: 2,
+                },
+                fill: {
+                    value: 0,
+                    type: "f32",
+                    components: 1,
+                    conditions: [
+                        {
+                            when: {
+                                selection: "brush",
+                                type: "interval",
+                                projections: [
+                                    { component: "range0", input: "packed" },
+                                ],
+                            },
+                            value: 1,
+                        },
+                    ],
+                },
+            }),
+            setUniformValue,
+        });
+        /** @type {Array<{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4 }>} */
+        const layout = [];
+        manager.addSelectionUniforms(layout);
+        expect(layout[1]).toEqual({
+            name: intervalSelectionBoundsName("brush", 0),
+            type: "u32",
+            components: 4,
+        });
+
+        manager.initializeSelections(new Map());
+        setUniformValue.mockClear();
+        const lower = 2 ** 32 + 1;
+        const upper = 2 ** 32 + 3;
+        manager.updateSelection(
+            "brush",
+            { type: "interval", intervals: { range0: [lower, upper] } },
+            new Map()
+        );
+        expect(setUniformValue).toHaveBeenCalledWith(
+            intervalSelectionBoundsName("brush", 0),
+            [...packHighPrecisionU32(lower), ...packHighPrecisionU32(upper)]
+        );
+        setUniformValue.mockClear();
+        expect(() =>
+            manager.updateSelection(
+                "brush",
+                { type: "interval", intervals: { range0: [-1, upper] } },
+                new Map()
+            )
+        ).toThrow("High-precision values must be non-negative safe integers");
+        expect(setUniformValue).not.toHaveBeenCalled();
     });
 
     it("destroys a superseded multi-selection buffer", () => {

@@ -19,11 +19,13 @@ import {
     SELECTION_CHECKER_PREFIX,
     SELECTION_COUNT_PREFIX,
     SELECTION_EMPTY_PREFIX,
-    SELECTION_MEMBERSHIP_PREFIX,
     SELECTION_PREFIX,
 } from "../../wgsl/prefixes.js";
 import { buildScaledFunction } from "../scales/scaleCodegen.js";
-import { buildVisibilityPredicate } from "./visibilityPredicate.js";
+import {
+    buildVisibilityPredicate,
+    emitPredicateExpression,
+} from "./visibilityPredicate.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -48,10 +50,7 @@ import { buildVisibilityPredicate } from "./visibilityPredicate.js";
 /**
  * Selection predicate wiring info emitted into WGSL.
  *
- * @typedef {object} SelectionDef
- * @prop {string} name
- * @prop {"single"|"multi"|"interval"} type
- * @prop {{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints", scalarType?: import("../../types.js").ScalarType, secondaryScalarType?: import("../../types.js").ScalarType }[]} [targets]
+ * @typedef {import("../programs/internal/selectionResources.js").SelectionDef} SelectionDef
  */
 
 /**
@@ -243,6 +242,7 @@ fn isInstanceVisible(i: u32) -> bool {
         if (
             __DEV__ &&
             (def.type === "single" || def.type === "multi") &&
+            def.membershipUsed !== false &&
             !uniqueId
         ) {
             throw new Error(
@@ -258,9 +258,6 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
     if (selected == 0u) { return false; }
     let id = ${uniqueId?.rawValueExpr ?? "0u"};
     return id == selected;
-}
-fn ${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i: u32) -> bool {
-    return ${fnName}(i, false);
 }
 fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
     return params.${SELECTION_PREFIX}${def.name} == 0u;
@@ -278,103 +275,88 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
     let id = ${uniqueId?.rawValueExpr ?? "0u"};
     return ${lookupName}(id, arrayLength(&${bufferName})) != HASH_NOT_FOUND;
 }
-fn ${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i: u32) -> bool {
-    return ${fnName}(i, false);
-}
 fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
     return params.${SELECTION_COUNT_PREFIX}${def.name} == 0u;
 }
 `;
             }
             case "interval": {
-                const targets = def.targets ?? [];
-                if (__DEV__ && targets.length === 0) {
-                    throw new Error(
-                        `Interval selection "${def.name}" must have at least one target.`
-                    );
-                }
-
-                const targetChecks = targets.map((target, index) => {
-                    const channelIR = channelIRByName.get(target.input);
-                    const secondaryIR = target.secondaryInput
-                        ? channelIRByName.get(target.secondaryInput)
-                        : null;
-                    if (__DEV__ && !channelIR) {
-                        throw new Error(
-                            `Selection "${def.name}" references missing input "${target.input}".`
+                const components = def.components ?? [];
+                const projections = def.projections ?? [];
+                const projectionFns = projections.map(
+                    (projection, projectionIndex) => {
+                        const componentIndex = components.indexOf(
+                            projection.component
                         );
-                    }
-                    if (__DEV__ && target.secondaryInput && !secondaryIR) {
-                        throw new Error(
-                            `Selection "${def.name}" references missing input "${target.secondaryInput}".`
+                        const channelIR = channelIRByName.get(projection.input);
+                        const secondaryIR = projection.secondaryInput
+                            ? channelIRByName.get(projection.secondaryInput)
+                            : undefined;
+                        if (
+                            componentIndex < 0 ||
+                            !channelIR ||
+                            (projection.secondaryInput && !secondaryIR)
+                        ) {
+                            throw new Error(
+                                `Selection "${def.name}" has an unresolved projection input or component.`
+                            );
+                        }
+                        const active = intervalSelectionActiveName(
+                            def.name,
+                            componentIndex
                         );
-                    }
-                    if (
-                        __DEV__ &&
-                        target.hitTest !== undefined &&
-                        target.hitTest !== "intersects" &&
-                        !target.secondaryInput
-                    ) {
-                        throw new Error(
-                            `Selection "${def.name}" cannot specify a hit-test mode without a secondary input.`
+                        const bounds = intervalSelectionBoundsName(
+                            def.name,
+                            componentIndex
                         );
+                        const packed = projection.inputComponents === 2;
+                        /** @param {string} a @param {string} b */
+                        const le = (a, b) =>
+                            packed ? `hpLessEq(${a}, ${b})` : `(${a} <= ${b})`;
+                        /** @param {string} a @param {string} b */
+                        const lt = (a, b) =>
+                            packed ? `hpLess(${a}, ${b})` : `(${a} < ${b})`;
+                        const lo = packed ? "lo" : "min(bound.x, bound.y)";
+                        const hi = packed ? "hi" : "max(bound.x, bound.y)";
+                        const value = channelIR.rawValueExpr;
+                        const secondary = secondaryIR?.rawValueExpr;
+                        const boundsSetup = packed
+                            ? `    let bound0 = params.${bounds}.xy;
+    let bound1 = params.${bounds}.zw;
+    let lo = select(bound1, bound0, hpLessEq(bound0, bound1));
+    let hi = select(bound0, bound1, hpLessEq(bound0, bound1));`
+                            : `    let bound = params.${bounds};`;
+                        let test;
+                        if (!secondary) {
+                            test = `${le(lo, value)} && ${lt(value, hi)}`;
+                        } else if (projection.hitTest === "encloses") {
+                            test = `${le(lo, "datumLo")} && ${le("datumHi", hi)}`;
+                        } else if (projection.hitTest === "endpoints") {
+                            test = `(${le(lo, "datum0")} && ${lt("datum0", hi)}) || (${le(lo, "datum1")} && ${lt("datum1", hi)})`;
+                        } else {
+                            test = `${lt(lo, "datumHi")} && ${lt("datumLo", hi)}`;
+                        }
+                        const datumSetup = secondary
+                            ? `    let datum0 = ${value};
+    let datum1 = ${secondary};
+    let datumLo = select(datum1, datum0, ${le("datum0", "datum1")});
+    let datumHi = select(datum0, datum1, ${le("datum0", "datum1")});`
+                            : "";
+                        return /* wgsl */ `
+fn ${fnName}_p${projectionIndex}(i: u32) -> bool {
+    if (params.${active} == 0u) { return false; }
+${boundsSetup}
+${datumSetup}
+    return ${test};
+}
+`;
                     }
-
-                    const activeName = intervalSelectionActiveName(
-                        def.name,
-                        index
-                    );
-                    const boundsName = intervalSelectionBoundsName(
-                        def.name,
-                        index
-                    );
-                    const valueExpr = channelIR?.rawValueExpr ?? "0.0";
-                    const secondaryExpr = secondaryIR?.rawValueExpr ?? null;
-                    const hitTest = target.hitTest ?? "intersects";
-                    let test;
-                    if (!secondaryExpr) {
-                        test = `${boundsName}_lo <= ${valueExpr} && ${valueExpr} <= ${boundsName}_hi`;
-                    } else if (hitTest === "encloses") {
-                        test = `${boundsName}_lo <= ${boundsName}_dLo && ${boundsName}_dHi <= ${boundsName}_hi`;
-                    } else if (hitTest === "endpoints") {
-                        test = `(${boundsName}_lo <= ${boundsName}_d0 && ${boundsName}_d0 <= ${boundsName}_hi) || (${boundsName}_lo <= ${boundsName}_d1 && ${boundsName}_d1 <= ${boundsName}_hi)`;
-                    } else if (hitTest === "intersects") {
-                        test = `${boundsName}_dHi >= ${boundsName}_lo && ${boundsName}_dLo <= ${boundsName}_hi`;
-                    } else {
-                        throw new Error(
-                            `Selection "${def.name}" has unsupported hit-test mode "${hitTest}".`
-                        );
-                    }
-
-                    const secondaryDeclarations = secondaryExpr
-                        ? `
-        let ${boundsName}_d0 = ${valueExpr};
-        let ${boundsName}_d1 = ${secondaryExpr};
-        let ${boundsName}_dLo = min(${boundsName}_d0, ${boundsName}_d1);
-        let ${boundsName}_dHi = max(${boundsName}_d0, ${boundsName}_d1);`
-                        : "";
-                    return /* wgsl */ `
-    if (params.${activeName} == 0u) {
-        matches = matches && allowEmpty;
-    } else {
-        let ${boundsName}_lo = min(params.${boundsName}.x, params.${boundsName}.y);
-        let ${boundsName}_hi = max(params.${boundsName}.x, params.${boundsName}.y);${secondaryDeclarations}
-        matches = matches && (${test});
-    }`;
-                });
-
+                );
                 return /* wgsl */ `
-fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
-    var matches = true;
-${targetChecks.join("\n")}
-    return matches;
-}
-fn ${SELECTION_MEMBERSHIP_PREFIX}${def.name}(i: u32) -> bool {
-    return !${SELECTION_EMPTY_PREFIX}${def.name}(i) && ${fnName}(i, true);
-}
 fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
-    return ${targets.map((_, index) => `params.${intervalSelectionActiveName(def.name, index)} == 0u`).join(" && ")};
+    return ${components.map((_, index) => `params.${intervalSelectionActiveName(def.name, index)} == 0u`).join(" || ") || "true"};
 }
+${projectionFns.join("\n")}
 `;
             }
             default: {
@@ -398,47 +380,19 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                 : `vec${outputComponents}<f32>`;
         const conditions = channelIR.channel.conditions ?? [];
         const clauses = conditions.map((condition) => {
-            const when = condition.when;
-            const leaves =
-                "selectionUnion" in when ? when.selectionUnion : [when];
-            const selectionExpression =
-                "selectionUnion" in when
-                    ? `(${leaves
-                          .map(
-                              (leaf) =>
-                                  `${SELECTION_MEMBERSHIP_PREFIX}${leaf.selection}(i)`
-                          )
-                          .join(" || ")}${
-                          when.empty === true
-                              ? ` || (${leaves
-                                    .map(
-                                        (leaf) =>
-                                            `${SELECTION_EMPTY_PREFIX}${leaf.selection}(i)`
-                                    )
-                                    .join(" && ")})`
-                              : ""
-                      })`
-                    : null;
-            const selectionName = leaves[0].selection;
-            if (__DEV__) {
-                for (const leaf of leaves) {
-                    if (!selectionDefsByName.has(leaf.selection)) {
-                        throw new Error(
-                            `Channel "${name}" references unknown selection "${leaf.selection}".`
-                        );
-                    }
-                }
-            }
-            const allowEmpty = when.empty === true ? "true" : "false";
+            const selectionExpression = emitPredicateExpression(
+                condition.when,
+                selectionDefsByName
+            );
             if (condition.channelName) {
-                return `    if (${selectionExpression ?? `${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})`}) { return ${SCALED_FUNCTION_PREFIX}${condition.channelName}(i); }`;
+                return `    if (${selectionExpression}) { return ${SCALED_FUNCTION_PREFIX}${condition.channelName}(i); }`;
             }
             const literal = formatLiteral(
                 outputComponents === 1 ? outputScalarType : "f32",
                 outputComponents,
                 condition.value
             );
-            return `    if (${selectionExpression ?? `${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})`}) { return ${literal}; }`;
+            return `    if (${selectionExpression}) { return ${literal}; }`;
         });
         return /* wgsl */ `
 fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> ${returnType} {
@@ -627,6 +581,22 @@ ${clauses.join("\n")}
     }
 
     if (selectionDefs.length > 0) {
+        if (
+            selectionDefs.some((def) =>
+                def.projections?.some(
+                    (projection) => projection.inputComponents === 2
+                )
+            )
+        ) {
+            selectionFns.push(/* wgsl */ `
+fn hpLessEq(a: vec2<u32>, b: vec2<u32>) -> bool {
+    return a.x < b.x || (a.x == b.x && a.y <= b.y);
+}
+fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
+    return a.x < b.x || (a.x == b.x && a.y < b.y);
+}
+`);
+        }
         for (const def of selectionDefs) {
             selectionFns.push(emitSelectionPredicate(def));
         }

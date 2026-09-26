@@ -137,13 +137,15 @@ for (const [
                                         empty: true,
                                         ...(selectionType == "interval"
                                             ? {
-                                                  targets: [
+                                                  projections: [
                                                       {
+                                                          component: "x",
                                                           input: "x",
                                                           secondaryInput: "x2",
                                                           hitTest: "endpoints",
                                                       },
                                                       {
+                                                          component: "y",
                                                           input: "y",
                                                           secondaryInput: "y2",
                                                           hitTest: "endpoints",

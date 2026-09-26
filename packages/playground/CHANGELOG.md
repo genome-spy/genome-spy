@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
+
+### Features
+
+* add versioned schema workflow ([#539](https://github.com/genome-spy/genome-spy/issues/539)) ([8878a3b](https://github.com/genome-spy/genome-spy/commit/8878a3b468bd8746f58d9341b30639fc9f944209)) by @tuner
+
 ## [0.88.1](https://github.com/genome-spy/genome-spy/compare/v0.88.0...v0.88.1) (2026-09-16)
 
 ### Bug Fixes

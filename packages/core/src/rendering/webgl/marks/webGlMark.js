@@ -13,6 +13,7 @@ import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import {
     dedupeEncodingFields,
     generateConditionalEncoderGlsl,
+    emitSelectionPredicateGlsl,
     generateConstantValueGlsl,
     generateDataGlsl,
     generateDatumGlslAndUniform,
@@ -24,7 +25,6 @@ import {
     makeAttributeName,
     PARAM_PREFIX,
     RANGE_TEXTURE_PREFIX,
-    SELECTION_CHECKER_PREFIX,
     SELECTION_EMPTY_PREFIX,
     SELECTION_MEMBERSHIP_PREFIX,
     splitLargeHighPrecision,
@@ -32,7 +32,6 @@ import {
 } from "../gl/glslScaleGenerator.js";
 import {
     findChannelDefWithScale,
-    getSecondaryChannel,
     isChannelWithScale,
     isDatumDef,
     isExprDef,
@@ -59,6 +58,10 @@ import {
     isSinglePointSelection,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
+import {
+    activeMatchResolvedSelectionPredicate,
+    getSelectionPredicateTreeParams,
+} from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
@@ -231,23 +234,54 @@ export default class WebGLMark {
 
         const dedupedEncodingFields = dedupeEncodingFields(encoders);
 
+        /** @param {string} channel */
+        const getSelectionAttributeName = (channel) => {
+            for (const [key, channels] of dedupedEncodingFields.entries()) {
+                if (
+                    key[1] &&
+                    channels.includes(/** @type {Channel} */ (channel))
+                ) {
+                    return makeAttributeName(channels);
+                }
+            }
+            return makeAttributeName(/** @type {Channel} */ (channel));
+        };
+
         /** @type {string[]} */
         const dynamicMarkUniforms = [];
 
         const appearanceSelections = collectAppearanceSelections(encoders);
-        const selectionParams = new Set(appearanceSelections.keys());
+        const selectionParams = new Set(
+            appearanceSelections.flatMap(getSelectionPredicateTreeParams)
+        );
         for (const param of order?.params ?? []) {
             selectionParams.add(param);
         }
-        const selectionUnionParams = new Set(
-            appearanceSelections
-                .keys()
-                .filter((param) => appearanceSelections.get(param))
-        );
-        if (order && !order.predicate.selection.singleParam) {
-            for (const param of order.params) {
-                selectionUnionParams.add(param);
-            }
+        if (
+            Array.from(selectionParams).some((param) => {
+                const selection = this.unitView.paramRuntime.findValue(param);
+                return (
+                    isIntervalSelection(selection) &&
+                    Object.keys(selection.intervals).some(
+                        (channel) =>
+                            getAttributeAndArrayTypes(
+                                this.unitView
+                                    .getScaleResolution(
+                                        /** @type {"x" | "y"} */ (channel)
+                                    )
+                                    .getScale(),
+                                /** @type {Channel} */ (channel)
+                            ).largeHp
+                    )
+                );
+            })
+        ) {
+            scaleCode.push(
+                "bool selectionLeq(uvec2 a, uvec2 b) { return a.x < b.x || (a.x == b.x && a.y <= b.y); }"
+            );
+            scaleCode.push(
+                "bool selectionLt(uvec2 a, uvec2 b) { return a.x < b.x || (a.x == b.x && a.y < b.y); }"
+            );
         }
 
         if (order) {
@@ -290,22 +324,15 @@ export default class WebGLMark {
                     );
                 });
                 scaleCode.push(
-                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                        `    return ${PARAM_PREFIX}${param} == ${uniqueIdAttr} || (empty && ${PARAM_PREFIX}${param} == 0u);\n` +
+                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                        `    return ${PARAM_PREFIX}${param} != 0u && ${PARAM_PREFIX}${param} == ${uniqueIdAttr};\n` +
                         `}`
                 );
-                if (selectionUnionParams.has(param)) {
-                    scaleCode.push(
-                        `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
-                            `    return ${PARAM_PREFIX}${param} != 0u && ${PARAM_PREFIX}${param} == ${uniqueIdAttr};\n` +
-                            `}`
-                    );
-                    scaleCode.push(
-                        `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
-                            `    return ${PARAM_PREFIX}${param} == 0u;\n` +
-                            `}`
-                    );
-                }
+                scaleCode.push(
+                    `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                        `    return ${PARAM_PREFIX}${param} == 0u;\n` +
+                        `}`
+                );
             } else if (isMultiPointSelection(selection)) {
                 // We need a texture for each multi-selection parameter.
                 // The texture stores an open-addressing hash table of selected uniqueIds.
@@ -336,22 +363,15 @@ export default class WebGLMark {
 
                 const texName = SELECTION_TEXTURE_PREFIX + param;
                 scaleCode.push(
-                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                        `   return hashContainsTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyHashTexture(${texName}));\n` +
+                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                        `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
                         `}`
                 );
-                if (selectionUnionParams.has(param)) {
-                    scaleCode.push(
-                        `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
-                            `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
-                            `}`
-                    );
-                    scaleCode.push(
-                        `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
-                            `    return isEmptyHashTexture(${texName});\n` +
-                            `}`
-                    );
-                }
+                scaleCode.push(
+                    `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
+                        `    return isEmptyHashTexture(${texName});\n` +
+                        `}`
+                );
 
                 // Create the initial texture
                 glHelper.createSelectionTexture(selection);
@@ -376,9 +396,6 @@ export default class WebGLMark {
                 }
 
                 /** @type {string[]} */
-                const testSnippets = [];
-
-                /** @type {string[]} */
                 const emptySnippets = [];
 
                 // Handle both channels separately
@@ -388,12 +405,13 @@ export default class WebGLMark {
                         validateParameterName(param) +
                         `_${channel}`;
 
-                    // TODO: High precision scales
-                    const { attributeType } = getAttributeAndArrayTypes(
-                        this.unitView.getScaleResolution(channel).getScale(),
-                        channel
-                    );
-
+                    const { attributeType, largeHp } =
+                        getAttributeAndArrayTypes(
+                            this.unitView
+                                .getScaleResolution(channel)
+                                .getScale(),
+                            channel
+                        );
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
                         `    uniform highp ${attributeType}[2] ${uniformName};`
@@ -404,75 +422,28 @@ export default class WebGLMark {
                             { expr: param },
                             (
                                 /** @type {import("../../../types/selectionTypes.js").IntervalSelection} */ selection
-                            ) => selection.intervals[channel] ?? [1, 0]
+                            ) => {
+                                const bounds = selection.intervals[channel] ?? [
+                                    1, 0,
+                                ];
+                                return largeHp
+                                    ? bounds.flatMap((value) =>
+                                          splitLargeHighPrecision(value)
+                                      )
+                                    : bounds;
+                            }
                         );
                     });
 
-                    const getAttributeName = (
-                        /** @type {Channel} */ channel
-                    ) => {
-                        for (const [
-                            k,
-                            channels,
-                        ] of dedupedEncodingFields.entries()) {
-                            if (k[1] && channels.includes(channel)) {
-                                return makeAttributeName(channels);
-                            }
-                        }
-                        return makeAttributeName(channel);
-                    };
-
-                    const c = getAttributeName(channel);
                     const u = uniformName + "[0]";
                     const u2 = uniformName + "[1]";
-                    const secondaryChannel = getSecondaryChannel(channel);
-                    if (this.encoding[secondaryChannel]) {
-                        const c2 = getAttributeName(secondaryChannel);
-                        const mode = this.defaultHitTestMode;
-                        if (mode == "endpoints") {
-                            testSnippets.push(
-                                `((${u} <= ${c} && ${c} <= ${u2}) || (${u} <= ${c2} && ${c2} <= ${u2}))`
-                            );
-                        } else if (mode == "encloses") {
-                            testSnippets.push(
-                                `(${u} <= ${c} && ${c2} <= ${u2})`
-                            );
-                        } else if (mode == "intersects") {
-                            testSnippets.push(
-                                `(${u} <= ${c2} && ${c} <= ${u2})`
-                            );
-                        } else {
-                            throw new ViewError(
-                                `Unsupported hit test mode "${mode}" for interval selection!`,
-                                this.unitView
-                            );
-                        }
-                    } else {
-                        testSnippets.push(`(${u} <= ${c} && ${c} <= ${u2})`);
-                    }
-
-                    emptySnippets.push(`${u} > ${u2}`);
+                    emptySnippets.push(
+                        largeHp ? `!selectionLeq(${u}, ${u2})` : `${u} > ${u2}`
+                    );
                 }
-
-                scaleCode.push(
-                    `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                        `    return ${testSnippets.join(" && ")} || (empty && (${emptySnippets.join(" || ")}));\n` +
-                        `}`
-                );
-                if (!selectionUnionParams.has(param)) {
-                    continue;
-                }
-                const partialTests = testSnippets.map(
-                    (test, index) => `(${emptySnippets[index]} || ${test})`
-                );
-                scaleCode.push(
-                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
-                        `    return (!(${emptySnippets.join(" && ")})) && (${partialTests.join(" && ")});\n` +
-                        `}`
-                );
                 scaleCode.push(
                     `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
-                        `    return ${emptySnippets.join(" && ")};\n` +
+                        `    return ${emptySnippets.join(" || ")};\n` +
                         `}`
                 );
             } else {
@@ -482,6 +453,67 @@ export default class WebGLMark {
                 );
             }
         }
+
+        /**
+         * @param {Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>} leaf
+         */
+        const emitSelectionLeaf = (leaf) => {
+            const { param, empty } = leaf;
+            if (leaf.type !== "interval") {
+                return `(${SELECTION_MEMBERSHIP_PREFIX}${param}() || (${empty} && ${SELECTION_EMPTY_PREFIX}${param}()))`;
+            }
+            const dimensions = leaf.projections.map((projection) => {
+                const uniform =
+                    PARAM_PREFIX + param + `_${projection.component}`;
+                const lo = uniform + "[0]";
+                const hi = uniform + "[1]";
+                const first = getSelectionAttributeName(projection.input);
+                const second = projection.secondaryInput
+                    ? getSelectionAttributeName(projection.secondaryInput)
+                    : undefined;
+                const { largeHp } = getAttributeAndArrayTypes(
+                    this.unitView
+                        .getScaleResolution(
+                            /** @type {"x" | "y"} */ (projection.component)
+                        )
+                        .getScale(),
+                    /** @type {Channel} */ (projection.component)
+                );
+                const leq = (
+                    /** @type {string} */ a,
+                    /** @type {string} */ b
+                ) => (largeHp ? `selectionLeq(${a}, ${b})` : `${a} <= ${b}`);
+                const lt = (
+                    /** @type {string} */ a,
+                    /** @type {string} */ b
+                ) => (largeHp ? `selectionLt(${a}, ${b})` : `${a} < ${b}`);
+                const inside = (/** @type {string} */ value) =>
+                    `(${leq(lo, value)} && ${lt(value, hi)})`;
+                const datumLo =
+                    second === undefined
+                        ? first
+                        : largeHp
+                          ? `(${leq(first, second)} ? ${first} : ${second})`
+                          : `min(${first}, ${second})`;
+                const datumHi =
+                    second === undefined
+                        ? first
+                        : largeHp
+                          ? `(${leq(first, second)} ? ${second} : ${first})`
+                          : `max(${first}, ${second})`;
+                const test =
+                    second === undefined
+                        ? inside(first)
+                        : projection.hitTest === "endpoints"
+                          ? `(${inside(first)} || ${inside(second)})`
+                          : projection.hitTest === "encloses"
+                            ? `(${leq(lo, datumLo)} && ${leq(datumHi, hi)})`
+                            : `(${lt(lo, datumHi)} && ${lt(datumLo, hi)})`;
+                return test;
+            });
+            const active = `!${SELECTION_EMPTY_PREFIX}${param}()`;
+            return `((${active} && ${dimensions.join(" && ")}) || (${empty} && !${active}))`;
+        };
 
         /**
          * @param {Channel} channel
@@ -684,14 +716,21 @@ export default class WebGLMark {
 
             // Generate conditional encoder -------------------------------
 
-            scaleCode.push(generateConditionalEncoderGlsl(channel, branches));
+            scaleCode.push(
+                generateConditionalEncoderGlsl(
+                    channel,
+                    branches,
+                    emitSelectionLeaf
+                )
+            );
         }
 
         // Check membership in any selection referenced by conditional encoders.
-        const conditions = Array.from(
-            appearanceSelections,
-            ([param, partialIntervals]) =>
-                `${partialIntervals ? SELECTION_MEMBERSHIP_PREFIX : SELECTION_CHECKER_PREFIX}${param}(${partialIntervals ? "" : "false"})`
+        const conditions = appearanceSelections.map((root) =>
+            emitSelectionPredicateGlsl(
+                activeMatchResolvedSelectionPredicate(root),
+                emitSelectionLeaf
+            )
         );
 
         scaleCode.push(
@@ -703,18 +742,12 @@ export default class WebGLMark {
         );
 
         if (order) {
-            const checks = order.params.map((param) => {
-                const selectionUnion = !order.predicate.selection.singleParam;
-                return `${
-                    selectionUnion
-                        ? SELECTION_MEMBERSHIP_PREFIX
-                        : SELECTION_CHECKER_PREFIX
-                }${param}(${selectionUnion ? "" : String(order.predicate.selection.empty)})`;
-            });
+            const expression = emitSelectionPredicateGlsl(
+                order.predicate.selection,
+                emitSelectionLeaf
+            );
             scaleCode.push(
-                "bool isOrderMatch() {\n" +
-                    `    return ${checks.join(" || ")};\n` +
-                    "}"
+                "bool isOrderMatch() {\n" + `    return ${expression};\n` + "}"
             );
         }
 

@@ -9,6 +9,7 @@ import {
     resolveThemeSelection,
 } from "../../config/themes.js";
 import { createSvg } from "./index.js";
+import AxisView from "../../view/axisView.js";
 
 const baseConfig = resolveBaseConfig({
     defaultConfig: INTERNAL_DEFAULT_CONFIG,
@@ -63,6 +64,7 @@ function labels(svg) {
 test("a locus axis renders without genomic encodings", async () => {
     const { view, render } = await createPlot({
         scales: { x: { type: "locus" } },
+        axes: { x: {} },
         data: { values: [{}] },
         mark: { type: "text", text: "Scale bar" },
     });
@@ -76,6 +78,61 @@ test("a locus axis renders without genomic encodings", async () => {
         expect(
             svg.querySelectorAll('[data-name="chromosome_labels"] text').length
         ).toBeGreaterThan(0);
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
+test("a view-level scale does not create an axis by itself", async () => {
+    const { view } = await createPlot({
+        scales: { x: { type: "linear", domain: [0, 10] } },
+        data: { values: [{}] },
+        mark: { type: "text", text: "Scale only" },
+    });
+    try {
+        expect(
+            view
+                .getDescendants()
+                .filter((descendant) => descendant instanceof AxisView)
+        ).toHaveLength(0);
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
+test("a typed shared scale does not add an axis beside independent child axes", async () => {
+    const { view } = await createPlot({
+        scales: { x: { type: "linear", domain: [0, 10] } },
+        resolve: {
+            scale: { x: "shared" },
+            axis: { x: "independent" },
+        },
+        vconcat: [
+            {
+                name: "axis-hidden",
+                data: { values: [{ x: 1 }] },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative", axis: null },
+                },
+            },
+            {
+                name: "axis-visible",
+                data: { values: [{ x: 2 }] },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                },
+            },
+        ],
+    });
+    try {
+        const axes = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof AxisView);
+
+        expect(axes).toHaveLength(1);
+        expect(axes[0].dataParent.name).toBe("axis-visible");
     } finally {
         view.disposeSubtree();
     }
@@ -184,6 +241,7 @@ test("independent declared scales cannot share an axis", async () => {
             resolve: { scale: { x: "independent" }, axis: { x: "shared" } },
             vconcat: [10, 100].map((end) => ({
                 scales: { x: { type: "linear", domain: [0, end] } },
+                axes: { x: {} },
                 data: { values: [{}] },
                 mark: "point",
             })),
@@ -198,6 +256,7 @@ test("a shared axis rejects a scale declared below its placement host", async ()
             vconcat: [
                 {
                     scales: { x: { type: "linear", domain: [0, 100] } },
+                    axes: { x: {} },
                     resolve: { axis: { x: "shared" } },
                     vconcat: [],
                 },
@@ -215,6 +274,7 @@ test.each(["unit", "layer"])(
         const { view, render } = await createPlot({
             name: "plot",
             scales: { x: { type: "locus" } },
+            axes: { x: {} },
             resolve: { scale: { x: "shared" }, axis: { x: "shared" } },
             data: { values: [{}] },
             ...(composition === "unit" ? mark : { layer: [mark] }),

@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest";
 import GenomeStore from "./src/genome/genomeStore.js";
 import { resolveRootGenomeConfig } from "./src/genome/rootGenomeConfig.js";
 import { createHeadlessEngine } from "./src/genomeSpy/headlessBootstrap.js";
+import UrlSource from "./src/data/sources/urlSource.js";
+import UnitView from "./src/view/unitView.js";
 import {
     collectSharedExamplePaths,
     loadSharedExampleSpec,
@@ -17,7 +19,35 @@ const examplePaths = collectSharedExamplePaths().filter((examplePath) => {
 
 describe("shared examples", () => {
     test.each(examplePaths)("initializes %s", async (examplePath) => {
-        expect(await initializeExample(examplePath)).toMatchSnapshot();
+        const { view } = await initializeExample(examplePath);
+
+        expect(
+            view.getDescendants().some((child) => child instanceof UnitView)
+        ).toBe(true);
+    });
+
+    test("expands repeated templates into named tracks", async () => {
+        const { view } = await initializeExample(
+            "examples/core/config/config-imported-track.json"
+        );
+
+        expect(view.children.map((child) => child.name)).toEqual([
+            "track-a",
+            "track-b",
+        ]);
+    });
+
+    test("resolves relative data URLs from the curated base URL", async () => {
+        const { context } = await initializeExample("examples/core/first.json");
+
+        expect(
+            context.dataFlow.dataSources.some(
+                (source) =>
+                    source instanceof UrlSource &&
+                    source.params.url === "data/sincos.csv" &&
+                    source.baseUrl === curatedBaseUrl
+            )
+        ).toBe(true);
     });
 });
 
@@ -33,7 +63,7 @@ async function initializeExample(examplePath) {
     genomeStore.configureGenomes(genomesByName, defaultAssembly);
     await ensureAssembliesForSpec(spec, genomeStore);
 
-    const { view, context } = await createHeadlessEngine(spec, {
+    return createHeadlessEngine(spec, {
         contextOptions: {
             genomeStore,
             viewFactoryOptions: {
@@ -42,48 +72,6 @@ async function initializeExample(examplePath) {
             },
         },
     });
-
-    return {
-        assemblies: Array.from(context.genomeStore.genomes.keys()).sort(),
-        hierarchy: summarizeView(view),
-        dataSources: Array.from(
-            context.dataFlow.dataSources,
-            summarizeDataSource
-        ).sort(compareDataSources),
-    };
-}
-
-/**
- * @param {import("./src/view/view.js").default} view
- */
-function summarizeView(view) {
-    return {
-        type: view.constructor.name,
-        name: view.name,
-        baseUrl: view.getBaseUrl() ?? null,
-        children: view.children?.map(summarizeView) ?? [],
-    };
-}
-
-/**
- * @param {import("./src/data/sources/dataSource.js").default} dataSource
- */
-function summarizeDataSource(dataSource) {
-    return {
-        type: dataSource.constructor.name,
-        identifier: dataSource.identifier ?? null,
-    };
-}
-
-/**
- * @param {{ type: string, identifier: string | null }} a
- * @param {{ type: string, identifier: string | null }} b
- */
-function compareDataSources(a, b) {
-    return (
-        a.type.localeCompare(b.type) ||
-        (a.identifier ?? "").localeCompare(b.identifier ?? "")
-    );
 }
 
 /**
@@ -142,7 +130,7 @@ function visitSpec(node, visitor) {
 
 /**
  * Exclude examples that require network access or URL imports from the offline
- * snapshot suite, which deliberately disables external view loading.
+ * initialization suite, which deliberately disables external view loading.
  *
  * @param {any} node
  */

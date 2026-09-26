@@ -169,7 +169,9 @@ describe("BaseProgram channel validation", () => {
                                 when: {
                                     selection: "chosen",
                                     type: "interval",
-                                    targets: [{ input: "x" }],
+                                    projections: [
+                                        { component: "x", input: "x" },
+                                    ],
                                 },
                                 channel: {
                                     value: [0, 1, 0, 1],
@@ -347,13 +349,15 @@ describe("BaseProgram channel validation", () => {
     });
 
     it("copies interval targets without adding hit testing to scalar inputs", () => {
-        const targets = Object.freeze([Object.freeze({ input: "x" })]);
+        const projections = Object.freeze([
+            Object.freeze({ component: "x", input: "x" }),
+        ]);
         const predicate =
-            /** @type {import("../../../index.d.ts").LegacySelectionPredicate} */ (
+            /** @type {import("../../../index.d.ts").SelectionPredicateLeaf} */ (
                 Object.freeze({
                     selection: "brush",
                     type: "interval",
-                    targets,
+                    projections,
                 })
             );
         const program = createProgram({
@@ -376,10 +380,10 @@ describe("BaseProgram channel validation", () => {
         );
         expect(when.type).toBe("interval");
         if (when.type === "interval") {
-            expect(when.targets).toEqual([{ input: "x" }]);
+            expect(when.projections).toEqual([{ component: "x", input: "x" }]);
         }
-        expect(/** @type {any} */ (predicate).targets).toEqual([
-            { input: "x" },
+        expect(/** @type {any} */ (predicate).projections).toEqual([
+            { component: "x", input: "x" },
         ]);
     });
 
@@ -395,7 +399,7 @@ describe("BaseProgram channel validation", () => {
                         when: {
                             selection: "brush",
                             type: "interval",
-                            targets: [{ input: "x" }],
+                            projections: [{ component: "x", input: "x" }],
                         },
                         channel: {
                             data: new Float32Array([0, 1, 0, 1]),
@@ -412,56 +416,36 @@ describe("BaseProgram channel validation", () => {
 
     it.each(
         /** @type {Array<[string, unknown, string]>} */ ([
+            ["empty all", { all: [] }, "all nodes must not be empty"],
+            ["empty any", { any: [] }, "any nodes must not be empty"],
+            ["mixed variants", { all: [], any: [] }, "exactly one variant"],
             [
-                "empty union",
-                { selectionUnion: [] },
-                "selection unions must be non-empty",
-            ],
-            [
-                "invalid union empty flag",
-                {
-                    selectionUnion: [{ selection: "brush", type: "single" }],
-                    empty: "yes",
-                },
-                "selection union empty flag must be boolean",
-            ],
-            [
-                "leaf empty flag",
-                {
-                    selectionUnion: [
-                        { selection: "brush", type: "single", empty: true },
-                    ],
-                },
-                "selection union leaves must not specify empty",
-            ],
-            [
-                "ambiguous selection predicate",
+                "mixed leaf and operator",
                 {
                     selection: "brush",
                     type: "single",
-                    selectionUnion: [{ selection: "brush", type: "single" }],
+                    not: { selection: "brush", type: "single" },
                 },
-                "must choose a selection or a selection union",
+                "exactly one variant",
             ],
+            ["null not operand", { not: null }, "nodes must be objects"],
             [
-                "nested selection union",
+                "comparison in channel condition",
                 {
-                    selectionUnion: [
-                        {
-                            selection: "brush",
-                            type: "single",
-                            selectionUnion: [
-                                { selection: "brush", type: "single" },
-                            ],
-                        },
-                    ],
+                    compare: "<",
+                    left: { input: "x" },
+                    right: { input: "x" },
                 },
-                "selection unions must be flat",
+                "cannot contain comparisons",
             ],
             [
-                "null selection union leaf",
-                { selectionUnion: [null] },
-                "conditions require a selection name",
+                "invalid leaf empty",
+                {
+                    selection: "brush",
+                    type: "single",
+                    empty: "yes",
+                },
+                "empty policy must be boolean",
             ],
         ])
     )("rejects %s", (_label, when, message) => {
@@ -486,24 +470,27 @@ describe("BaseProgram channel validation", () => {
     it.each(
         /** @type {Array<[string, Record<string, unknown>, string]>} */ ([
             [
-                "empty target arrays",
-                { targets: [] },
-                "must specify a non-empty targets array",
+                "empty projection arrays",
+                { projections: [] },
+                "non-empty projections",
             ],
             [
-                "duplicate targets",
-                { targets: [{ input: "x" }, { input: "x" }] },
-                'cannot target "x" more than once',
-            ],
-            [
-                "unknown targets",
-                { targets: [{ input: "missing" }] },
-                "references unknown selection input",
+                "unknown inputs",
+                { projections: [{ component: "range", input: "missing" }] },
+                "unknown selection input",
             ],
             [
                 "hit tests without endpoints",
-                { targets: [{ input: "x", hitTest: "endpoints" }] },
-                "cannot specify a hit-test mode without a secondary input",
+                {
+                    projections: [
+                        {
+                            component: "range",
+                            input: "x",
+                            hitTest: "endpoints",
+                        },
+                    ],
+                },
+                "invalid hit-test mode",
             ],
         ])
     )("rejects %s", (_label, interval, message) => {
@@ -533,31 +520,6 @@ describe("BaseProgram channel validation", () => {
         ).toThrow(message);
     });
 
-    it("rejects the obsolete singular interval channel form", () => {
-        expect(() =>
-            createProgram({
-                x: { value: 0.5, type: "f32" },
-                vec: {
-                    value: [1, 0, 0, 1],
-                    type: "f32",
-                    components: 4,
-                    conditions: [
-                        {
-                            when: /** @type {import("../../../index.d.ts").SelectionPredicate} */ (
-                                /** @type {unknown} */ ({
-                                    selection: "brush",
-                                    type: "interval",
-                                    channel: "x",
-                                })
-                            ),
-                            value: [0, 1, 0, 1],
-                        },
-                    ],
-                },
-            })
-        ).toThrow('uses the obsolete "channel" form');
-    });
-
     it("rejects an interval uniform layout over the device limit", () => {
         const renderer = createMockRenderer();
         Object.defineProperty(renderer.device, "limits", {
@@ -579,7 +541,9 @@ describe("BaseProgram channel validation", () => {
                                     when: {
                                         selection: "brush",
                                         type: "interval",
-                                        targets: [{ input: "x" }],
+                                        projections: [
+                                            { component: "x", input: "x" },
+                                        ],
                                     },
                                     value: [0, 1, 0, 1],
                                 },
@@ -589,7 +553,7 @@ describe("BaseProgram channel validation", () => {
                     count: 1,
                 })
         ).toThrow(
-            'interval selection "brush" (1 targets) requires 16 bytes, exceeding the device limit of 15 bytes'
+            'interval selection "brush" (1 components) requires 16 bytes, exceeding the device limit of 15 bytes'
         );
         expect(createBuffer).not.toHaveBeenCalled();
     });

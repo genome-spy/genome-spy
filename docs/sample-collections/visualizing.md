@@ -28,6 +28,12 @@ When developing sample-collection visualizations locally, use the
 inspect the live view hierarchy, dataflow, params, and scale/axis/legend
 resolutions.
 
+### Schema-assisted editing
+
+Follow the general [schema-assisted editing
+instructions](../grammar/index.md#schema-assisted-editing), but use the App
+schema: `https://genomespy.app/schema/app/v<major>.json`.
+
 ## Specifying a Sample View
 
 The GenomeSpy app extends the core library with a new view composition operator

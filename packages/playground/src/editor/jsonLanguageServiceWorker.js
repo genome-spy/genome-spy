@@ -10,23 +10,29 @@
  */
 
 import schema from "@genome-spy/core/schema.json";
+import corePackage from "../../../core/package.json" with { type: "json" };
 import { getLanguageService, TextDocument } from "vscode-json-languageservice";
+import { createSchemaRequestService } from "./schemaRequestService.js";
 
 const SPEC_URI = "inmemory://genome-spy/spec.json";
-const SCHEMA_URIS = [
-    "https://unpkg.com/@genome-spy/core/dist/schema.json",
-    "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-];
+const DEFAULT_SCHEMA_URI = "inmemory://genome-spy/core-schema.json";
 
-const languageService = getLanguageService({});
+const languageService = getLanguageService({
+    schemaRequestService: createSchemaRequestService(
+        schema,
+        corePackage.version
+    ),
+});
 languageService.configure({
     validate: true,
     allowComments: false,
-    schemas: SCHEMA_URIS.map((uri) => ({
-        uri,
-        fileMatch: ["*"],
-        schema,
-    })),
+    schemas: [
+        {
+            uri: DEFAULT_SCHEMA_URI,
+            fileMatch: ["*"],
+            schema,
+        },
+    ],
 });
 
 const workerScope = /** @type {DedicatedWorkerGlobalScope} */ (

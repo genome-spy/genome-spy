@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Recurrent protein-altering PIK3CA mutations in TCGA-BRCA.",
     "Heights and circle labels show distinct tumor sample counts.",

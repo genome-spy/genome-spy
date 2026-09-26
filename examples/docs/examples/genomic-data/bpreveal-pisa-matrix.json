@@ -1,0 +1,442 @@
+{
+  "description": [
+    "PISA Interaction Matrix",
+    "Each matrix cell shows the effect of an input base on an ATAC-seq output position. Positive effects are red and negative effects are blue; clipped extremes are pink and green."
+  ],
+
+  "columns": 2,
+  "spacing": 2,
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "shared", "color": "independent" },
+    "axis": { "x": "independent", "y": "independent" },
+    "legend": { "color": "collected" }
+  },
+
+  "scales": {
+    "x": { "type": "index", "domain": [15646649, 15647250] },
+    "y": { "type": "index", "domain": [15646499, 15647400], "reverse": true }
+  },
+
+  "concat": [
+    {
+      "name": "pisa-matrix",
+      "view": { "stroke": "gray" },
+      "resolve": { "scale": { "color": "independent" } },
+      "data": {
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2d-atac-matrix.parquet",
+        "format": { "type": "parquet" }
+      },
+      "params": [
+        {
+          "name": "matrixCursor",
+          "description": "Two-dimensional ruler for tracing input and output positions; it fades away when per-cell labels become readable.",
+          "persist": false,
+          "ruler": {
+            "encodings": ["x", "y"],
+            "extent": "view",
+            "mark": {
+              "opacity": { "expr": "rulerOpacity" },
+              "strokeDash": [3, 3]
+            }
+          }
+        },
+        {
+          "name": "labelVisibilityXSpan",
+          "expr": "width / 15",
+          "description": "Maximum visible x-domain span for labels, requiring roughly 15 horizontal pixels per input base."
+        },
+        {
+          "name": "labelVisibilityYSpan",
+          "expr": "height / 8",
+          "description": "Maximum visible y-domain span for labels, requiring roughly 8 vertical pixels per output base."
+        },
+        {
+          "name": "labelXBinSize",
+          "value": 10,
+          "description": "Width in input bases of the stable tiles used to materialize labels."
+        },
+        {
+          "name": "labelYBinSize",
+          "value": 15,
+          "description": "Height in output bases of the stable tiles used to materialize labels."
+        },
+        {
+          "name": "showCellLabels",
+          "expr": "abs(span(domain('x'))) <= labelVisibilityXSpan && abs(span(domain('y'))) <= labelVisibilityYSpan",
+          "description": "Enable labels only when cells are large enough in both dimensions."
+        },
+        {
+          "name": "rulerOpacity",
+          "expr": "showCellLabels ? 0 : 0.3",
+          "transition": {
+            "type": "lerp",
+            "halfLife": 100,
+            "epsilon": 0.01
+          },
+          "description": "Fade the matrix ruler out when cell labels become visible."
+        }
+      ],
+      "layer": [
+        {
+          "description": "Full-resolution matrix cells. Index scales map each integer coordinate to one base-sized band without secondary positional channels.",
+          "mark": {
+            "type": "rect",
+            "buildIndex": false,
+            "tooltip": null
+          },
+          "encoding": {
+            "x": {
+              "field": "input",
+              "type": "index",
+              "axis": null
+            },
+            "y": {
+              "field": "output",
+              "type": "index",
+              "axis": {
+                "title": null,
+                "tickCount": 4,
+                "grid": false
+              }
+            },
+            "color": {
+              "field": "effect",
+              "type": "quantitative",
+              "scale": {
+                "domain": [
+                  -0.14427, -0.138499, -0.115416, -0.086562, -0.057708,
+                  -0.028854, 0, 0.028854, 0.057708, 0.086562, 0.115416,
+                  0.138499, 0.14427
+                ],
+                "range": [
+                  "#18f894",
+                  "#053061",
+                  "#2166ac",
+                  "#4393c3",
+                  "#92c5de",
+                  "#d1e5f0",
+                  "#ffffff",
+                  "#fddbc7",
+                  "#f4a582",
+                  "#d6604d",
+                  "#b2182b",
+                  "#67001f",
+                  "#f81894"
+                ],
+                "clamp": true
+              },
+              "legend": {
+                "title": "PISA (log2(fc))",
+                "orient": "left",
+                "direction": "vertical",
+                "gradientLength": 110,
+                "gradientThickness": 18,
+                "gradientStrokeColor": "#777777",
+                "gradientStrokeWidth": 0.5,
+                "values": [-0.1, -0.05, 0, 0.05, 0.1]
+              }
+            }
+          }
+        },
+        {
+          "name": "same-position-diagonal",
+          "description": "Dashed reference where an input base and output position have the same genomic coordinate.",
+          "data": {
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
+            "format": { "type": "parquet" }
+          },
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.track == 'importance' && datum.position == 15646649"
+            }
+          ],
+          "mark": {
+            "type": "rule",
+            "color": "#333333",
+            "opacity": 0.35,
+            "size": 0.75,
+            "strokeDash": [3, 3],
+            "tooltip": null
+          },
+          "encoding": {
+            "x": {
+              "datum": 15646649,
+              "type": "index"
+            },
+            "x2": { "datum": 15647250 },
+            "y": {
+              "datum": 15646649,
+              "type": "index"
+            },
+            "y2": { "datum": 15647250 }
+          }
+        },
+        {
+          "name": "cell-labels",
+
+          "description": "Text labels for matrix cells, materialized only when zoomed in sufficiently. The matrix is quantized into tiles, and only tiles intersecting the current viewport are materialized.",
+
+          "params": [
+            {
+              "name": "labelXStart",
+              "expr": "showCellLabels ? floor(min(domain('x')[0], domain('x')[1]) / labelXBinSize) * labelXBinSize : null",
+              "description": "Left edge of the first x tile intersecting the viewport, or null while labels are hidden."
+            },
+            {
+              "name": "labelXEnd",
+              "expr": "showCellLabels ? ceil(max(domain('x')[0], domain('x')[1]) / labelXBinSize) * labelXBinSize : null",
+              "description": "Exclusive right edge of the last x tile intersecting the viewport."
+            },
+            {
+              "name": "labelYStart",
+              "expr": "showCellLabels ? floor(min(domain('y')[0], domain('y')[1]) / labelYBinSize) * labelYBinSize : null",
+              "description": "Lower coordinate edge of the first y tile intersecting the viewport, independent of the reversed display direction."
+            },
+            {
+              "name": "labelYEnd",
+              "expr": "showCellLabels ? ceil(max(domain('y')[0], domain('y')[1]) / labelYBinSize) * labelYBinSize : null",
+              "description": "Exclusive upper coordinate edge of the last y tile intersecting the viewport."
+            }
+          ],
+
+          "transform": [
+            {
+              "type": "collect",
+              "description": "Cache the matrix rows so reactive label filtering replays only this branch."
+            },
+            {
+              "type": "filter",
+              "expr": "showCellLabels && datum.input >= labelXStart && datum.input < labelXEnd && datum.output >= labelYStart && datum.output < labelYEnd",
+              "description": "Materialize text marks only for quantized tiles intersecting a sufficiently small viewport."
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "size": 10,
+            "opacity": 0.85,
+            "fitToBand": true,
+            "paddingX": 2.5,
+            "paddingY": 2.5,
+            "buildIndex": false,
+            "tooltip": null
+          },
+          "encoding": {
+            "x": { "field": "input", "type": "index", "axis": null },
+            "y": { "field": "output", "type": "index" },
+            "text": { "field": "effect", "format": ".2f" },
+            "color": {
+              "field": "effect",
+              "type": "quantitative",
+              "scale": {
+                "type": "threshold",
+                "domain": [-0.138499, -0.06, 0.06, 0.138499],
+                "range": ["#222222", "#ffffff", "#222222", "#ffffff", "#222222"]
+              },
+              "legend": null
+            }
+          }
+        },
+        {
+          "name": "motifs",
+          "description": "Ranged text centers each motif name inside the colored interval overlaid near the bottom of the matrix.",
+          "data": {
+            "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-motifs.parquet",
+            "format": { "type": "parquet" }
+          },
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "datum.name == 'm1bp' ? 'M1bp' : datum.name == 'gaga' ? 'Gaga' : 'Zelda'",
+              "as": "motifLabel"
+            }
+          ],
+          "encoding": {
+            "x": {
+              "field": "start",
+              "type": "index",
+              "axis": null
+            },
+            "x2": { "field": "end" },
+            "y": { "value": { "expr": "4 / height" } },
+            "y2": { "value": { "expr": "20 / height" } }
+          },
+          "layer": [
+            {
+              "name": "Motif intervals",
+              "mark": { "type": "rect", "minOpacity": 1 },
+              "encoding": {
+                "color": {
+                  "field": "motifLabel",
+                  "type": "nominal",
+                  "scale": {
+                    "domain": ["M1bp", "Gaga", "Zelda"],
+                    "range": ["#bbcc33", "#44bb99", "#99ddff"]
+                  },
+                  "legend": {
+                    "orient": "left",
+                    "direction": "vertical",
+                    "symbolOpacity": 1
+                  }
+                },
+                "tooltip": [
+                  { "field": "motifLabel", "title": "Motif" },
+                  { "field": "start", "title": "Start" },
+                  { "field": "end", "title": "End" },
+                  { "field": "strand", "title": "Strand" },
+                  { "field": "score", "title": "Score" }
+                ]
+              }
+            },
+            {
+              "name": "Motif labels",
+              "mark": {
+                "type": "text",
+                "align": "center",
+                "baseline": "middle",
+                "paddingX": 3,
+                "tooltip": null
+              },
+              "encoding": {
+                "text": { "field": "motifLabel" },
+                "color": { "value": "black" }
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "accessibility",
+      "title": {
+        "text": "Accessibility",
+        "style": "overlay-title",
+        "orient": "right",
+        "anchor": "start",
+        "angle": 90,
+        "dx": 5
+      },
+      "width": 60,
+      "resolve": { "scale": { "x": "excluded" } },
+      "data": {
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
+        "format": { "type": "parquet" }
+      },
+      "transform": [
+        { "type": "filter", "expr": "datum.track == 'prediction'" }
+      ],
+      "mark": { "type": "rect", "color": "#332288", "minOpacity": 1 },
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "type": "linear", "zero": true },
+          "axis": null
+        },
+        "x2": { "datum": 0 },
+        "y": {
+          "field": "position",
+          "type": "index",
+          "axis": null
+        },
+        "tooltip": [
+          { "field": "position", "title": "Output position" },
+          { "field": "value", "title": "Accessibility", "format": ".4g" }
+        ]
+      }
+    },
+
+    {
+      "name": "importance",
+      "title": {
+        "text": "Contribution score",
+        "style": "overlay-title",
+        "dx": 5
+      },
+      "width": { "grow": 1 },
+      "height": 60,
+      "resolve": { "scale": { "y": "excluded" } },
+      "data": {
+        "url": "https://data.genomespy.app/datasets/bpreveal-pisa/v3/fig2cd-atac-tracks.parquet",
+        "format": { "type": "parquet" }
+      },
+      "transform": [
+        { "type": "filter", "expr": "datum.track == 'importance'" }
+      ],
+      "encoding": {
+        "x": {
+          "field": "position",
+          "type": "index",
+          "title": "dm6 chrX"
+        },
+        "y": {
+          "datum": 0,
+          "type": "quantitative",
+          "scale": { "type": "linear", "zero": true },
+          "axis": null
+        },
+        "y2": { "field": "value" },
+        "tooltip": [
+          { "field": "position", "title": "Input position" },
+          { "field": "base", "title": "Base" },
+          { "field": "value", "title": "Contribution", "format": ".4g" }
+        ]
+      },
+      "description": "Use compact bars in the overview and reveal the contributing reference bases as a Dynseq logo once each one-base band is at least 12 pixels wide.",
+      "stops": {
+        "channel": "x",
+        "values": [0.15],
+        "transition": { "type": "lerp", "halfLife": 60 }
+      },
+      "multiscale": [
+        {
+          "name": "Contribution bars",
+          "mark": { "type": "rect", "color": "#332288", "minOpacity": 1 }
+        },
+        {
+          "name": "Contribution sequence logo",
+          "mark": {
+            "type": "text",
+            "font": "Source Sans Pro",
+            "fontWeight": 700,
+            "size": 100,
+            "squeeze": true,
+            "fitToBand": true,
+            "paddingX": 0,
+            "paddingY": 0,
+            "logoLetters": true
+          },
+          "encoding": {
+            "text": { "field": "base" },
+            "color": {
+              "field": "base",
+              "type": "nominal",
+              "scale": {
+                "type": "ordinal",
+                "domain": ["A", "C", "G", "T", "N"],
+                "range": ["#009E73", "#0072B2", "#F0E442", "#D55E00", "#BDBDBD"]
+              },
+              "legend": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+
+  "config": {
+    "axis": {
+      "domain": false,
+      "grid": false,
+      "labelFontSize": 10,
+      "titleFontSize": 10
+    },
+    "legend": {
+      "layout": { "left": { "anchor": "middle", "wrap": false } }
+    },
+    "legendTrack": { "style": null },
+    "title": { "fontSize": 12, "fontWeight": "normal", "offset": 2 }
+  }
+}

@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
+import { scaleLinear } from "d3-scale";
 
 import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
@@ -376,6 +377,43 @@ describe("AxisTickSource", () => {
         getDomainListener()?.();
 
         expect(onDomainChangedSpy).toHaveBeenCalledOnce();
+        expect(resetSpy).not.toHaveBeenCalled();
+    });
+
+    test("updates labels when the domain changes but ticks do not", async () => {
+        const { getDomainListener, view } = createViewStub({ axisLength: 20 });
+        const scale = /** @type {any} */ (scaleLinear().domain([0, 0]));
+        scale.type = "linear";
+        vi.spyOn(view.getScaleResolution(), "getScale").mockReturnValue(scale);
+
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "y",
+                axis: { tickCount: 1 },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+        source.activate();
+        await source.load();
+        expect([...collector.getData()].map((datum) => datum.label)).toEqual([
+            "0.000000",
+        ]);
+
+        const resetSpy = vi.spyOn(collector, "reset");
+        scale.domain([0, 4]);
+        getDomainListener()?.();
+
+        expect([...collector.getData()].map((datum) => datum.label)).toEqual([
+            "0",
+        ]);
+        expect(resetSpy).toHaveBeenCalledOnce();
+
+        resetSpy.mockClear();
+        scale.domain([0, 4.1]);
+        getDomainListener()?.();
         expect(resetSpy).not.toHaveBeenCalled();
     });
 

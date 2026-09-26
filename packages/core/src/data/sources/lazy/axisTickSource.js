@@ -21,6 +21,9 @@ export default class AxisTickSource extends SingleAxisLazySource {
      */
     ticks = [];
 
+    /** @type {string[]} */
+    tickLabels = [];
+
     /** @type {number[]} */
     zoomExtentTicks = [];
 
@@ -126,16 +129,31 @@ export default class AxisTickSource extends SingleAxisLazySource {
                   this.scaleResolution.zoomExtent
               )
             : [];
+        const ticksChanged =
+            this.ticks == null || !shallowArrayEquals(ticks, this.ticks);
+        const format = tickFormat(scale, requestedCount, axisParams.format);
+        let labelsChanged = ticksChanged;
+        if (!labelsChanged) {
+            for (let i = 0; i < ticks.length; i++) {
+                if (format(ticks[i]) !== this.tickLabels[i]) {
+                    labelsChanged = true;
+                    break;
+                }
+            }
+        }
 
         if (
-            this.ticks == null ||
-            !shallowArrayEquals(ticks, this.ticks) ||
+            ticksChanged ||
+            labelsChanged ||
             !shallowArrayEquals(zoomExtentTicks, this.zoomExtentTicks)
         ) {
+            const tickLabels = labelsChanged
+                ? ticks.map(format)
+                : this.tickLabels;
             this.ticks = ticks;
+            this.tickLabels = tickLabels;
             this.zoomExtentTicks = zoomExtentTicks;
 
-            const format = tickFormat(scale, requestedCount, axisParams.format);
             const explicitTicks = new Set(
                 axisParams.values ? ticks : extraTicks
             );
@@ -147,10 +165,10 @@ export default class AxisTickSource extends SingleAxisLazySource {
                       ).genome()
                     : undefined;
             this.publishData([
-                ticks.map((tick) => {
+                ticks.map((tick, index) => {
                     const datum = {
                         value: tick,
-                        label: format(tick),
+                        label: tickLabels[index],
                         explicit: explicitTicks.has(tick),
                         ...(zoomExtentTickSet.has(tick)
                             ? { zoomExtent: true }

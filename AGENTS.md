@@ -55,9 +55,21 @@ an early browser-side LLM agent with a thin Python relay.
   edit directly and use the lightest relevant verification.
 - Permanent tests should verify behavior, contracts, dataflow, layout semantics,
   or user-visible output rather than repeat the implementation.
+- Match the test level to the contract. For behavior spanning components, prefer
+  a focused headless subsystem test that exercises the real path from a spec or
+  public API to collector data, scale state, layout, or rendered SVG. Keep
+  isolated unit tests for algorithms, scheduling, and failure boundaries that
+  broader tests cannot verify precisely. Use browser tests for DOM, renderer,
+  and input behavior that headless tests cannot cover.
 - Prefer representative assertions. Exhaustive configuration or generated-shape
   assertions are appropriate only when the full shape is an intentional
   compatibility contract.
+- As part of feature and refactor work, review the related tests without waiting
+  for a separate request. Simplify, combine, or delete cases that duplicate the
+  implementation, over-specify internal details, or no longer protect meaningful
+  behavior. Preserve coverage of the relevant contracts and regression risks;
+  do not aim for a fixed number of tests. Remove overlapping lower-level
+  assertions when a broader test covers the same contract.
 - Temporary implementation-detail tests are acceptable while debugging, but
   delete or rewrite them before finishing. After refactors, remove tests for
   temporary compatibility paths unless the behavior remains a public contract.

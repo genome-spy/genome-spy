@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Indexed FASTA Six-Frame Translation",
     "Translates a visible hg38 FASTA interval in three forward and three reverse reading frames using generic flattenSequence, lookup, window, and formula transforms.",

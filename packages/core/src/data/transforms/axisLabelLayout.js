@@ -53,10 +53,10 @@ export default class AxisLabelLayoutTransform extends Transform {
         this.nextOutputData = [];
 
         /**
-         * Published locus tick datums are uniquely identified by `value`.
-         * @type {Set<import("../../spec/channel.js").Scalar>}
+         * Published tick datums are uniquely identified by `value`.
+         * @type {Map<import("../../spec/channel.js").Scalar, string>}
          */
-        this.outputValueSet = new Set();
+        this.outputLabels = new Map();
 
         /** @type {Set<import("../../spec/channel.js").Scalar>} */
         this.visibleLabelValueSet = new Set();
@@ -194,9 +194,9 @@ export default class AxisLabelLayoutTransform extends Transform {
     propagateIfChanged() {
         const changed =
             !this.hasPublished ||
-            this.nextOutputData.length != this.outputValueSet.size ||
+            this.nextOutputData.length != this.outputLabels.size ||
             this.nextOutputData.some(
-                (datum) => !this.outputValueSet.has(datum.value)
+                (datum) => this.outputLabels.get(datum.value) !== datum.label
             ) ||
             !setsEqual(
                 this.nextVisibleLabelValueSet,
@@ -205,9 +205,9 @@ export default class AxisLabelLayoutTransform extends Transform {
             !mapsEqual(this.nextFlushOffsetMap, this.flushOffsetMap);
 
         if (changed) {
-            this.outputValueSet.clear();
+            this.outputLabels.clear();
             for (const datum of this.nextOutputData) {
-                this.outputValueSet.add(datum.value);
+                this.outputLabels.set(datum.value, datum.label);
             }
             const previousVisibleLabelValueSet = this.visibleLabelValueSet;
             this.visibleLabelValueSet = this.nextVisibleLabelValueSet;

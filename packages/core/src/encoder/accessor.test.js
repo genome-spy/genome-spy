@@ -13,6 +13,7 @@ import {
     createIntervalSelection,
     createSinglePointSelection,
 } from "../selection/selection.js";
+import { getSelectionPredicateTreeParams } from "../selection/selectionPredicateTree.js";
 
 const datum = {
     a: 1,
@@ -206,7 +207,9 @@ describe("createConditionalBranches", () => {
     // Conditional accessor
     test("Conditional accessor accesses the correct field", () => {
         expect(a[0].accessor(data[0])).toEqual(123);
-        expect(a[0].predicate.selection.params).toEqual(["p"]);
+        expect(
+            getSelectionPredicateTreeParams(a[0].predicate.selection)
+        ).toEqual(["p"]);
     });
 
     test("Conditional predicate is true only for the selected datum", () => {
@@ -309,8 +312,10 @@ describe("createConditionalBranches", () => {
         );
 
         expect(branches).toHaveLength(2);
-        expect(branches[0].predicate.selection.params).toEqual(["brush"]);
-        expect(branches[0].predicate.selection.empty).toBe(false);
+        expect(
+            getSelectionPredicateTreeParams(branches[0].predicate.selection)
+        ).toEqual(["brush"]);
+        expect(branches[0].predicate.selection).toMatchObject({ empty: false });
     });
 
     test("Selection unions match all-empty and selected rows", () => {
@@ -348,10 +353,12 @@ describe("createConditionalBranches", () => {
         expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 1 })).toBe(true);
         setB(createSinglePointSelection({ [UNIQUE_ID_KEY]: 0 }));
         expect(branches[0].predicate({ [UNIQUE_ID_KEY]: 0 })).toBe(true);
-        expect(branches[0].predicate.selection.params).toEqual(["a", "b"]);
+        expect(
+            getSelectionPredicateTreeParams(branches[0].predicate.selection)
+        ).toEqual(["a", "b"]);
     });
 
-    test("Selection unions support partial interval dimensions", () => {
+    test("Selection unions require complete interval brushes", () => {
         const intervalRuntime = new ViewParamRuntime(() => undefined);
         const setX = intervalRuntime.allocateSetter(
             "xBrush",
@@ -383,11 +390,15 @@ describe("createConditionalBranches", () => {
         )[0].predicate;
 
         setX({ type: "interval", intervals: { x: [1, 2], y: null } });
-        expect(predicate({ x: 1.5, y: 100 })).toBe(true);
+        expect(predicate({ x: 1.5, y: 100 })).toBe(false);
         expect(predicate({ x: 3, y: 100 })).toBe(false);
         setY({ type: "interval", intervals: { x: null, y: [4, 5] } });
-        expect(predicate({ x: 100, y: 4.5 })).toBe(true);
+        expect(predicate({ x: 100, y: 4.5 })).toBe(false);
         expect(predicate({ x: 100, y: 8 })).toBe(false);
+
+        setX({ type: "interval", intervals: { x: [1, 2], y: [0, 1] } });
+        expect(predicate({ x: 1.5, y: 0.5 })).toBe(true);
+        expect(predicate({ x: 1.5, y: 100 })).toBe(false);
     });
 
     test("Selection union interval predicates use the requested endpoint hit test", () => {

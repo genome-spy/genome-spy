@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": "Unit view specification example.",
 
   "data": { "url": "data/sincos.csv" },

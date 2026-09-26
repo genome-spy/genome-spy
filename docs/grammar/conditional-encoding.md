@@ -1,12 +1,8 @@
 # Conditional Encoding
 
-Conditional encoding lets an encoding channel switch between alternative
-definitions based on a [selection
-parameter](./parameters.md#selection-parameters). It is used to highlight the
-selected rows and de-emphasize the rest.
-
-The basic pattern is to provide a fallback definition for the channel and one
-or more conditional branches in `condition`:
+Conditional encoding changes a visual channel when a [selection
+parameter](./parameters.md#selection-parameters) matches a row. The channel's
+own definition is the fallback:
 
 ```json
 {
@@ -19,113 +15,122 @@ or more conditional branches in `condition`:
 }
 ```
 
-When the selection matches the current row, GenomeSpy uses the definition
-inside `condition`. Otherwise it uses the fallback definition on the channel
-itself.
-
-Conditional encoding is available on many visual channels, such as `color`,
-`fill`, `stroke`, `opacity`, `fillOpacity`, `strokeOpacity`, `strokeWidth`,
-`size`, `shape`, and `angle`.
-
-## With Selection Parameters
-
-Selections are the most common driver for conditional encoding. Point
-selections work well for click or hover interactions, while interval
-selections are useful for brushing ranges.
+Conditional encoding works with `color`, `opacity`, `size`, `shape`, and other
+visual channels. Point selections suit clicks and hovering:
 
 EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 
 ## Empty Selections
 
-For selection parameters, an empty selection matches by default. This is often
-useful for filters, but in conditional encoding it can be surprising because
-the highlighted style is then applied before the user has selected anything.
+An empty selection matches every row by default. Add `"empty": false` to a
+condition when its style should apply only after a selection, for example:
 
-Set `empty: false` when the conditional branch should only apply after the
-selection contains data:
+```json
+{ "param": "select", "empty": false, "value": 2 }
+```
+
+## Combining Selections
+
+Use `test` to combine selections with nested `and`, `or`, and `not`. Each leaf
+can set its own `empty` policy:
 
 ```json
 {
+  "test": {
+    "or": [
+      { "param": "hover", "empty": false },
+      { "and": [{ "param": "sourceBrush" }, { "param": "targetBrush" }] }
+    ]
+  },
+  "value": "#3a86ff"
+}
+```
+
+A leaf's `empty` defaults to `true` and is evaluated before the Boolean
+operators. A single `"test": { "param": "brush" }` is equivalent to the direct
+`"param": "brush"` condition.
+
+A two-axis brush is empty until both intervals are active. Declare a one-axis
+brush to select on one axis.
+
+For a simple union, use `param.or` inside `test`:
+
+```json
+{
+  "test": { "param": { "or": ["select", "brush"] }, "empty": true },
+  "value": "#3a86ff"
+}
+```
+
+The union matches rows in any active selection. With `empty: true` (the
+default), it also matches every row while all selections are empty. Set
+`empty: false` inside `test` to keep the fallback in that case.
+
+## Reusing Tests in a Unit View
+
+When several channels use the same test, define it once in the unit view's
+`predicates` and refer to it from each condition, including `order`:
+
+```json
+{
+  "mark": "point",
+  "predicates": {
+    "highlighted": {
+      "or": [
+        { "param": "hover", "empty": false },
+        { "param": "brush", "empty": false }
+      ]
+    }
+  },
   "encoding": {
-    "strokeWidth": {
-      "condition": { "param": "select", "value": 2, "empty": false },
+    "fillOpacity": {
+      "condition": { "test": { "ref": "highlighted" }, "value": 1 },
+      "value": 0.2
+    },
+    "order": {
+      "condition": { "test": { "ref": "highlighted" }, "value": 1 },
       "value": 0
     }
   }
 }
 ```
 
-## Structured Selection Tests
+Each consuming unit must define names referenced by its encodings, including
+inherited encodings. Selection parameters and projected channels resolve in
+that unit. Named predicates cannot refer to other named predicates.
 
-Use a structured test for a selection condition when you want the predicate
-to be explicit. A structured singleton has the same behavior as the direct
-`param` shorthand:
+## Testing Different Link Endpoints
 
-```json
-{
-  "encoding": {
-    "color": {
-      "condition": {
-        "test": { "param": "select", "empty": false },
-        "value": "#3a86ff"
-      },
-      "value": "#d9d9d9"
-    }
-  }
-}
-```
+An interval normally tests the matching positional channel and, on ranged
+marks, its second endpoint according to the mark's hit-test mode. Use
+`"project": { "x": "x2" }` to test the selected x interval against `x2` alone.
+Predicates may test the same selection against different endpoints.
 
-The direct `param` form remains the concise spelling for a singleton
-selection condition. The structured singleton follows the Vega-Lite predicate
-shape; GenomeSpy extends it with a flat union of selection names. Use a
-selection union when one branch should apply to rows selected by any of several
-point or interval selections:
+`project` is a GenomeSpy extension. Map every component declared by the
+selection to an unconditional field encoding on the same axis and of the same
+type. Quantitative, index, and locus types are supported.
 
-```json
-{
-  "encoding": {
-    "color": {
-      "condition": {
-        "test": {
-          "param": { "or": ["select", "brush"] },
-          "empty": true
-        },
-        "field": "class",
-        "type": "nominal"
-      },
-      "value": "#cbd2d6"
-    }
-  }
-}
-```
+In this example, the upper brush tests each link's `x2` (target), and the
+lower brush tests `x` (source). Links keep their color when they match both;
+an empty brush leaves its endpoint unconstrained.
 
-The branch matches when at least one selection contains the row. With
-`empty: true` (the default), it also matches all rows while every selection in
-the group is empty. Once any member is active, the union matches rows selected
-by any active member. Set `empty: false` inside `test` to keep the fallback
-active until one selection is populated. Interval unions allow an active
-dimension to constrain the row while inactive dimensions impose no constraint.
+EXAMPLE examples/docs/grammar/conditional-encoding/endpoint-brushes.json height=200 spechidden
 
-The `or` list must contain at least one selection name. A structured group test
-is flat; nested tests and condition-level `empty` are not supported. Direct
-`param` conditions continue to support `empty` as described above.
+For endpoint brushes, hover, and several conditional channels, see the
+[PISA Squid Plot](../examples/genomic-data/bpreveal-pisa-squid.md).
 
 ## Multiple Conditions
 
-You can provide an array of conditional value definitions. They are evaluated
-in order, and the channel's main definition acts as the final fallback.
+Conditions in an array are tested in order. The channel's main definition is
+the final fallback:
 
 ```json
 {
-  "encoding": {
-    "strokeWidth": {
-      "condition": [
-        { "param": "select", "value": 2, "empty": false },
-        { "param": "highlight", "value": 1, "empty": false }
-      ],
-      "value": 0
-    }
-  }
+  "condition": [
+    { "param": "select", "empty": false, "value": 2 },
+    { "param": "highlight", "empty": false, "value": 1 }
+  ],
+  "value": 0
 }
 ```
 

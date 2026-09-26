@@ -31,7 +31,6 @@ export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 export const PARAM_PREFIX = "uParam_";
-export const SELECTION_CHECKER_PREFIX = "checkSelection_";
 export const SELECTION_MEMBERSHIP_PREFIX = "isSelectionMember_";
 export const SELECTION_EMPTY_PREFIX = "isSelectionEmpty_";
 
@@ -555,8 +554,9 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
  *
  * @param {Channel} channel
  * @param {import("../../../types/encoder.js").EncodingBranch[]} branches
+ * @param {(leaf: Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>) => string} [emitLeaf]
  */
-export function generateConditionalEncoderGlsl(channel, branches) {
+export function generateConditionalEncoderGlsl(channel, branches, emitLeaf) {
     const type = getScaledDataTypeForChannel(channel);
 
     /** @type {string[]}  */
@@ -568,26 +568,9 @@ export function generateConditionalEncoderGlsl(channel, branches) {
         const { accessor, predicate } = branches[i];
         const accessorFunctionName = makeAccessorFunctionName(channel, i);
         const { selection } = predicate;
-        if (selection && !selection.singleParam) {
-            const groupEmpty = selection.empty;
-            const memberships = selection.params.map(
-                (name) => `${SELECTION_MEMBERSHIP_PREFIX}${name}()`
-            );
-            const allEmpty = selection.params.map(
-                (name) => `${SELECTION_EMPTY_PREFIX}${name}()`
-            );
-            conditions.push(
-                `(${memberships.join(" || ")}${
-                    groupEmpty ? ` || (${allEmpty.join(" && ")})` : ""
-                })`
-            );
-        } else {
-            conditions.push(
-                selection
-                    ? `${SELECTION_CHECKER_PREFIX}${selection.params[0]}(${selection.empty})`
-                    : null
-            );
-        }
+        conditions.push(
+            selection ? emitSelectionPredicateGlsl(selection, emitLeaf) : null
+        );
 
         statements.push(
             accessor.scaleChannel
@@ -601,6 +584,33 @@ ${ifElseGlsl(conditions, statements)}
 }
 
 #define ${channel}_DEFINED`;
+}
+
+/**
+ * Emits the Boolean structure shared by conditional channels and draw order.
+ * Leaf expressions are supplied by the mark, which owns attribute bindings.
+ *
+ * @param {import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate
+ * @param {(leaf: Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>) => string} [emitLeaf]
+ * @returns {string}
+ */
+export function emitSelectionPredicateGlsl(predicate, emitLeaf) {
+    if ("all" in predicate) {
+        return `(${predicate.all.map((child) => emitSelectionPredicateGlsl(child, emitLeaf)).join(" && ")})`;
+    }
+    if ("any" in predicate) {
+        return `(${predicate.any.map((child) => emitSelectionPredicateGlsl(child, emitLeaf)).join(" || ")})`;
+    }
+    if ("not" in predicate) {
+        return `(!${emitSelectionPredicateGlsl(predicate.not, emitLeaf)})`;
+    }
+    if ("selectionActive" in predicate) {
+        return `(!${SELECTION_EMPTY_PREFIX}${predicate.selectionActive.param}())`;
+    }
+    return (
+        emitLeaf?.(predicate) ??
+        `${SELECTION_MEMBERSHIP_PREFIX}${predicate.param}() || (${predicate.empty} && ${SELECTION_EMPTY_PREFIX}${predicate.param}())`
+    );
 }
 
 /**

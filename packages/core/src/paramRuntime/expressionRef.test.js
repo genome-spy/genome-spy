@@ -5,9 +5,11 @@ import { bindExpression } from "./expressionRef.js";
  * @param {string} id
  * @param {string} name
  * @param {number} initialValue
+ * @param {{ batchStable?: boolean, notify?: boolean }} [options]
  */
-function createMutableRef(id, name, initialValue) {
+function createMutableRef(id, name, initialValue, options = {}) {
     let value = initialValue;
+    let getCalls = 0;
     const listeners = new Set();
 
     return {
@@ -15,7 +17,9 @@ function createMutableRef(id, name, initialValue) {
             id,
             name,
             kind: /** @type {"base"} */ ("base"),
+            batchStable: options.batchStable,
             get() {
+                getCalls++;
                 return value;
             },
             subscribe(
@@ -34,10 +38,15 @@ function createMutableRef(id, name, initialValue) {
         ) {
             if (nextValue !== value) {
                 value = nextValue;
-                for (const listener of listeners) {
-                    listener();
+                if (options.notify ?? true) {
+                    for (const listener of listeners) {
+                        listener();
+                    }
                 }
             }
+        },
+        getCalls() {
+            return getCalls;
         },
     };
 }
@@ -65,6 +74,73 @@ describe("bindExpression", () => {
 
         expect(expression()).toBe(6);
         expect(calls).toBe(1);
+    });
+
+    test("snapshots stable globals once per refresh", () => {
+        const foo = createMutableRef("p:foo", "foo", 2, {
+            batchStable: true,
+        });
+        const bar = createMutableRef("p:bar", "bar", 3, {
+            batchStable: true,
+        });
+        const refs = new Map([
+            ["foo", foo.ref],
+            ["bar", bar.ref],
+        ]);
+        const expression = bindExpression("foo + foo + bar", (name) =>
+            refs.get(name)
+        ).expression;
+        const evaluator = expression.createSnapshotEvaluator();
+
+        expect(evaluator()).toBe(7);
+        expect(evaluator()).toBe(7);
+        expect([foo.getCalls(), bar.getCalls()]).toEqual([1, 1]);
+
+        foo.set(4);
+        evaluator.refresh();
+        expect(evaluator()).toBe(11);
+        expect([foo.getCalls(), bar.getCalls()]).toEqual([2, 2]);
+    });
+
+    test("keeps passive and unknown refs live", () => {
+        const passive = createMutableRef("p:passive", "passive", 2, {
+            batchStable: false,
+            notify: false,
+        });
+        const unknown = createMutableRef("p:unknown", "unknown", 3);
+        const refs = new Map([
+            ["passive", passive.ref],
+            ["unknown", unknown.ref],
+        ]);
+        const expression = bindExpression("passive + unknown", (name) =>
+            refs.get(name)
+        ).expression;
+        const evaluator = expression.createSnapshotEvaluator();
+
+        expect(evaluator()).toBe(5);
+        passive.set(4);
+        unknown.set(5);
+        expect(evaluator()).toBe(9);
+        expect([passive.getCalls(), unknown.getCalls()]).toEqual([2, 2]);
+    });
+
+    test("snapshots the ref originally resolved from a shadowed scope", () => {
+        const outer = createMutableRef("p:outer", "value", 1, {
+            batchStable: true,
+        });
+        const inner = createMutableRef("p:inner", "value", 2, {
+            batchStable: true,
+        });
+        let resolved = inner.ref;
+        const expression = bindExpression("value", () => resolved).expression;
+        const evaluator = expression.createSnapshotEvaluator();
+
+        resolved = outer.ref;
+        inner.set(3);
+        evaluator.refresh();
+
+        expect(evaluator()).toBe(3);
+        expect(outer.getCalls()).toBe(0);
     });
 
     test("listener invalidation is expression-instance local", () => {

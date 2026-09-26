@@ -5,6 +5,7 @@ import FilterTransform from "./transforms/filter.js";
 import FormulaTransform from "./transforms/formula.js";
 import InlineSource from "./sources/inlineSource.js";
 import DataSource from "./sources/dataSource.js";
+import FlowNode from "./flowNode.js";
 
 /** @param {ViewParamRuntime} runtime */
 function makeFilter(runtime) {
@@ -14,10 +15,18 @@ function makeFilter(runtime) {
     );
 }
 
-/** @param {ViewParamRuntime} runtime */
-function makeFormula(runtime) {
+/**
+ * @param {ViewParamRuntime} runtime
+ * @param {Partial<import("../spec/transform.js").FormulaParams>} [options]
+ */
+function makeFormula(runtime, options = {}) {
     return new FormulaTransform(
-        { type: "formula", expr: "datum.x * factor", as: "y" },
+        {
+            type: "formula",
+            expr: "datum.x * factor",
+            as: "y",
+            ...options,
+        },
         { paramRuntime: runtime }
     );
 }
@@ -38,6 +47,133 @@ function publish(collector) {
 }
 
 describe("parameter-triggered streaming replay", () => {
+    test("debounced expression params coalesce downstream replay", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = new ViewParamRuntime();
+            const setTarget = runtime.registerParam({
+                name: "targetFactor",
+                value: 1,
+            });
+            runtime.registerParam({
+                name: "factor",
+                expr: "targetFactor",
+                debounce: 50,
+            });
+            const source = new Collector();
+            const formula = makeFormula(runtime);
+            const output = new Collector();
+            source.addChild(formula);
+            formula.addChild(output);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            setTarget(2);
+            vi.advanceTimersByTime(40);
+            setTarget(3);
+            vi.advanceTimersByTime(49);
+
+            expect(replay).not.toHaveBeenCalled();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([1, 2, 3]);
+
+            vi.advanceTimersByTime(1);
+
+            expect(replay).toHaveBeenCalledOnce();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([3, 6, 9]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("debounced transforms coalesce reactive replay", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = makeRuntime();
+            const source = new Collector();
+            const formula = makeFormula(runtime, { debounce: 50 });
+            const output = new Collector();
+            source.addChild(formula);
+            formula.addChild(output);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            runtime.setValue("factor", 2);
+            vi.advanceTimersByTime(40);
+            runtime.setValue("factor", 3);
+            vi.advanceTimersByTime(49);
+
+            expect(replay).not.toHaveBeenCalled();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([1, 2, 3]);
+
+            vi.advanceTimersByTime(1);
+
+            expect(replay).toHaveBeenCalledOnce();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual([3, 6, 9]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test.each([
+        { empty: false, label: "nonempty" },
+        { empty: true, label: "empty" },
+    ])("a new $label batch consumes pending transform replay", ({ empty }) => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = makeRuntime();
+            const source = new Collector();
+            const formula = makeFormula(runtime, { debounce: 50 });
+            const output = new Collector();
+            source.addChild(formula);
+            formula.addChild(output);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            runtime.setValue("factor", 2);
+            source.reset();
+            if (empty) source.complete();
+            else publish(source);
+            vi.advanceTimersByTime(50);
+
+            expect(replay).not.toHaveBeenCalled();
+            expect(Array.from(output.getData(), (d) => d.y)).toEqual(
+                empty ? [] : [2, 4, 6]
+            );
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("disposing a transform cancels pending debounced replay", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const runtime = makeRuntime();
+            const source = new Collector();
+            const formula = makeFormula(runtime, { debounce: 50 });
+            source.addChild(formula);
+            formula.initialize();
+            publish(source);
+            const replay = vi.spyOn(source, "repropagate");
+
+            runtime.setValue("factor", 2);
+            formula.dispose();
+            vi.advanceTimersByTime(50);
+
+            expect(replay).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("rejects invalid transform debounce", () => {
+        expect(() => makeFormula(makeRuntime(), { debounce: -1 })).toThrow(
+            "must be a non-negative finite number"
+        );
+    });
+
     test.each([false, true])(
         "chained filter/formula publishes once (intermediate collector: %s)",
         async (intermediate) => {
@@ -118,6 +254,38 @@ describe("parameter-triggered streaming replay", () => {
                 [2, 3],
                 [2, 3],
             ],
+        ]);
+    });
+
+    test("a notifying write during replay affects following rows and queues a final replay", () => {
+        const runtime = makeRuntime();
+        const source = new Collector();
+        const formula = makeFormula(runtime);
+        const output = new Collector();
+        let armed = false;
+        const writer = new (class extends FlowNode {
+            /** @param {import("./flowNode.js").Datum} datum */
+            handle(datum) {
+                if (armed) {
+                    armed = false;
+                    runtime.setValue("factor", 10);
+                }
+                this._propagate(datum);
+            }
+        })();
+        source.addChild(formula);
+        formula.addChild(writer);
+        writer.addChild(output);
+        formula.initialize();
+        publish(source);
+        const replay = vi.spyOn(source, "repropagate");
+
+        armed = true;
+        runtime.setValue("factor", 2);
+
+        expect(replay).toHaveBeenCalledTimes(2);
+        expect(Array.from(output.getData(), (datum) => datum.y)).toEqual([
+            10, 20, 30,
         ]);
     });
 

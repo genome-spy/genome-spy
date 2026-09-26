@@ -1,0 +1,78 @@
+{
+  "description": [
+    "Pileup with adjacent labels",
+    "Places labels after segments, but excludes them from collision detection."
+  ],
+
+  "data": {
+    "values": [
+      { "start": 20, "end": 105, "label": "kirre" },
+      { "start": 20, "end": 105, "label": "kirre" },
+      { "start": 20, "end": 105, "label": "kirre" },
+      { "start": 110, "end": 225, "label": "N" },
+      { "start": 230, "end": 234, "label": "CG18508" },
+      { "start": 238, "end": 242, "label": "Fcp3C" },
+      { "start": 246, "end": 250, "label": "CG3939" },
+      { "start": 430, "end": 434, "label": "CG14265" },
+      { "start": 446, "end": 450, "label": "ng2" },
+      { "start": 455, "end": 459, "label": "ng3" },
+      { "start": 464, "end": 468, "label": "ng1" },
+      { "start": 475, "end": 479, "label": "ng4" },
+      { "start": 490, "end": 494, "label": "Pig1" },
+      { "start": 505, "end": 510, "label": "Sgs4" },
+      { "start": 525, "end": 790, "label": "dnc" },
+      { "start": 690, "end": 805, "label": "CR44886" },
+      { "start": 695, "end": 775, "label": "dnc" },
+      { "start": 805, "end": 850, "label": "dm" },
+      { "start": 860, "end": 880, "label": "CG10793" }
+    ]
+  },
+
+  "transform": [
+    { "type": "collect", "sort": { "field": "start", "order": "ascending" } },
+    { "type": "pileup", "start": "start", "end": "end", "as": "lane" }
+  ],
+
+  "height": { "step": 24 },
+  "padding": 10,
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "index",
+      "scale": { "domain": [0, 1000], "nice": false, "zoom": true },
+      "axis": null
+    },
+    "y": {
+      "field": "lane",
+      "type": "ordinal",
+      "scale": { "padding": 0.3 },
+      "axis": null
+    }
+  },
+
+  "layer": [
+    {
+      "mark": {
+        "type": "rect",
+        "fill": "#2c7fb8",
+        "stroke": "black",
+        "strokeWidth": 1
+      },
+      "encoding": { "x2": { "field": "end" } }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "align": "left",
+        "baseline": "middle",
+        "dx": 5
+      },
+      "encoding": {
+        "x": { "field": "end", "type": "index" },
+        "text": { "field": "label" },
+        "color": { "value": "black" }
+      }
+    }
+  ]
+}

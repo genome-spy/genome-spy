@@ -64,9 +64,13 @@ function createDisposerBinder(lifecycleRegistry) {
  * @template T
  * @param {RuntimeNodeBase & { value: T, kind: "base" | "derived" | "selection", name: string }} node
  * @param {(value: T) => void} [setter]
+ * @param {boolean} [batchStable=true] Whether every value change synchronously
+ * notifies subscribers. When true, consumers may cache `get()` until the next
+ * notification or dataflow boundary. Use false for passive refs whose value can
+ * change without a notification.
  * @returns {import("./types.js").ParamRef<T> | import("./types.js").WritableParamRef<T>}
  */
-function createRef(node, setter) {
+function createRef(node, setter, batchStable = true) {
     /**
      * @type {import("./types.js").ParamRef<any>}
      */
@@ -74,6 +78,7 @@ function createRef(node, setter) {
         id: node.id,
         name: node.name,
         kind: node.kind,
+        batchStable,
         get() {
             return node.value;
         },
@@ -299,7 +304,9 @@ export default class GraphRuntime {
         const unbind = this.#bindDisposer(ownerId, dispose);
         return Object.assign(
             /** @type {import("./types.js").WritableParamRef<T>} */ (
-                createRef(node, setter)
+                // A silent setter cannot guarantee that a cached value remains
+                // valid until the next notification.
+                createRef(node, setter, notifyOnSet)
             ),
             { dispose }
         );

@@ -513,7 +513,7 @@ describe("Single-level ViewParamRuntime", () => {
             undefined,
             undefined,
             /** @type {any} */ (animator),
-            { snapTransitionedUpdates: true }
+            { settleTemporalUpdatesImmediately: true }
         );
         const setter = pm.registerParam({ name: "foo", value: 0 });
         pm.registerParam({
@@ -533,6 +533,105 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getValue("bar")).toBe(1);
         expect(pm.getTargetValue("bar")).toBe(0);
         expect(animator.pendingTransitionCount()).toBe(1);
+    });
+
+    test("debounced expression params publish the latest target after a quiet period", async () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const pm = new ViewParamRuntime();
+            const setter = pm.registerParam({ name: "foo", value: 1 });
+            pm.registerParam({
+                name: "bar",
+                expr: "foo * 2",
+                debounce: 50,
+            });
+            const listener = vi.fn();
+            pm.subscribe("bar", listener);
+
+            expect(pm.getValue("bar")).toBe(2);
+
+            setter(2);
+            expect(pm.getValue("bar")).toBe(2);
+            expect(pm.getTargetValue("bar")).toBe(4);
+
+            await pm.whenPropagated();
+            expect(pm.getValue("bar")).toBe(2);
+
+            vi.advanceTimersByTime(40);
+            setter(3);
+            vi.advanceTimersByTime(49);
+
+            expect(pm.getValue("bar")).toBe(2);
+            expect(pm.getTargetValue("bar")).toBe(6);
+            expect(listener).not.toHaveBeenCalled();
+
+            vi.advanceTimersByTime(1);
+
+            expect(pm.getValue("bar")).toBe(6);
+            expect(listener).toHaveBeenCalledOnce();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("debounced expression params cancel redundant and disposed updates", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const pm = new ViewParamRuntime();
+            const setter = pm.registerParam({ name: "foo", value: 1 });
+            pm.registerParam({
+                name: "bar",
+                expr: "foo % 2",
+                debounce: 50,
+            });
+            const listener = vi.fn();
+            pm.subscribe("bar", listener);
+
+            setter(2);
+            setter(3);
+            vi.advanceTimersByTime(50);
+
+            expect(pm.getValue("bar")).toBe(1);
+            expect(listener).not.toHaveBeenCalled();
+
+            setter(4);
+            pm.dispose();
+            vi.advanceTimersByTime(50);
+
+            expect(listener).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("debounced expression params publish immediately during initialization", () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        try {
+            const pm = new ViewParamRuntime(undefined, undefined, undefined, {
+                settleTemporalUpdatesImmediately: true,
+            });
+            const setter = pm.registerParam({ name: "foo", value: 1 });
+            pm.registerParam({
+                name: "bar",
+                expr: "foo * 2",
+                debounce: 50,
+            });
+
+            setter(2);
+            expect(pm.getValue("bar")).toBe(4);
+            expect(vi.getTimerCount()).toBe(0);
+
+            pm.finalizeInitialization();
+            setter(3);
+
+            expect(pm.getValue("bar")).toBe(4);
+            expect(vi.getTimerCount()).toBe(1);
+
+            vi.advanceTimersByTime(50);
+            expect(pm.getValue("bar")).toBe(6);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     test("transitioned params reject non-numeric values", () => {
@@ -599,6 +698,39 @@ describe("Single-level ViewParamRuntime", () => {
                 transition: { type: "lerp", epsilon: -1 },
             })
         ).toThrow("epsilon");
+    });
+
+    test("rejects invalid debounce configs", () => {
+        const pm = new ViewParamRuntime();
+
+        expect(() =>
+            pm.registerParam(
+                /** @type {any} */ ({
+                    name: "valueParam",
+                    value: 1,
+                    debounce: 50,
+                })
+            )
+        ).toThrow("must have an expr property");
+
+        expect(() =>
+            pm.registerParam({
+                name: "negative",
+                expr: "1",
+                debounce: -1,
+            })
+        ).toThrow("non-negative finite number");
+
+        expect(() =>
+            pm.registerParam(
+                /** @type {any} */ ({
+                    name: "combined",
+                    expr: "1",
+                    debounce: 50,
+                    transition: { type: "lerp" },
+                })
+            )
+        ).toThrow("must not use debounce and transition together");
     });
 
     test("dispose clears local scope and disables allocated setters", () => {
@@ -769,6 +901,77 @@ describe("Nested ViewParamRuntimes", () => {
 
         expect(parent.findValue("foo")).toBe(2);
         expect(child.findValue("foo")).toBe(2);
+    });
+
+    test("resolves compatible pushed selection declarations by value slot", () => {
+        const parent = new ViewParamRuntime();
+        parent.registerParam({ name: "brush", value: null });
+
+        /** @param {string} name @param {"index" | "locus"} type */
+        const addBrush = (name, type) => {
+            const child = new ViewParamRuntime(() => parent);
+            child.setSelectionSource(
+                /** @type {any} */ ({
+                    name,
+                    getScaleResolution: () => ({ type }),
+                })
+            );
+            child.registerParam({
+                name: "brush",
+                push: "outer",
+                select: { type: "interval", encodings: ["x"] },
+            });
+            return child;
+        };
+
+        const first = addBrush("first", "index");
+        const second = addBrush("second", "index");
+        expect(parent.findSelectionCapability("brush")).toMatchObject({
+            type: "interval",
+            components: [{ component: "x", type: "index" }],
+        });
+
+        const incompatible = addBrush("incompatible", "locus");
+        expect(() => parent.findSelectionCapability("brush")).toThrow(
+            /first.*incompatible/
+        );
+        incompatible.dispose();
+        expect(parent.findSelectionCapability("brush").components).toEqual([
+            { component: "x", type: "index" },
+        ]);
+        first.dispose();
+        second.dispose();
+        expect(parent.findSelectionCapability("brush")).toBeUndefined();
+    });
+
+    test("rejects pushed declarations with different selection kinds or components", () => {
+        const parent = new ViewParamRuntime();
+        parent.registerParam({ name: "brush", value: null });
+
+        const first = new ViewParamRuntime(() => parent);
+        first.registerParam({
+            name: "brush",
+            push: "outer",
+            select: { type: "interval", encodings: ["x"] },
+        });
+
+        const differentKind = new ViewParamRuntime(() => parent);
+        expect(() =>
+            differentKind.registerParam({
+                name: "brush",
+                push: "outer",
+                select: "point",
+            })
+        ).toThrow(/Conflicting selection declarations/);
+
+        const differentComponents = new ViewParamRuntime(() => parent);
+        expect(() =>
+            differentComponents.registerParam({
+                name: "brush",
+                push: "outer",
+                select: { type: "interval", encodings: ["y"] },
+            })
+        ).toThrow(/Conflicting selection declarations/);
     });
 
     test("Pushing to outer parameter rejects duplicate registration in child scope", () => {

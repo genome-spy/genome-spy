@@ -1,0 +1,81 @@
+{
+  "description": "Brush both ends of a link",
+
+  "data": {
+    "values": [
+      { "source": 80, "target": 730 },
+      { "source": 230, "target": 420 },
+      { "source": 380, "target": 880 },
+      { "source": 530, "target": 230 },
+      { "source": 680, "target": 580 },
+      { "source": 830, "target": 100 }
+    ]
+  },
+
+  "params": [{ "name": "targetBrush" }, { "name": "sourceBrush" }],
+
+  "scales": { "x": { "domain": [0, 1000] } },
+
+  "resolve": { "scale": { "x": "shared" }, "axis": { "x": "shared" } },
+
+  "spacing": 0,
+
+  "vconcat": [
+    {
+      "height": 30,
+      "cursor": "text",
+      "params": [
+        {
+          "name": "targetBrush",
+          "push": "outer",
+          "select": {
+            "type": "interval",
+            "encodings": ["x"],
+            "on": "mousedown"
+          }
+        }
+      ],
+      "mark": { "type": "point", "size": 120 },
+      "encoding": { "x": { "field": "target", "type": "index" } }
+    },
+    {
+      "name": "links",
+      "mark": { "type": "link", "linkShape": "diagonal" },
+      "encoding": {
+        "x": { "field": "source", "type": "index" },
+        "x2": { "field": "target" },
+        "y": { "value": 0 },
+        "y2": { "value": 1 },
+        "color": {
+          "condition": {
+            "test": {
+              "and": [
+                { "param": "targetBrush", "project": { "x": "x2" } },
+                { "param": "sourceBrush", "project": { "x": "x" } }
+              ]
+            },
+            "value": "#2962a3"
+          },
+          "value": "#d8dbe0"
+        }
+      }
+    },
+    {
+      "height": 30,
+      "cursor": "text",
+      "params": [
+        {
+          "name": "sourceBrush",
+          "push": "outer",
+          "select": {
+            "type": "interval",
+            "encodings": ["x"],
+            "on": "mousedown"
+          }
+        }
+      ],
+      "mark": { "type": "point", "size": 120 },
+      "encoding": { "x": { "field": "source", "type": "index" } }
+    }
+  ]
+}

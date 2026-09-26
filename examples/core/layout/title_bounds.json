@@ -1,5 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": [
     "Title bounds in composed layouts",
     "Checks that composed-view title bounds include the required layout space."

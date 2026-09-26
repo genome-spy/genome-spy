@@ -86,6 +86,35 @@ The check resolves imports, loads data, and waits for rendering to settle. It
 does not write screenshots. Network access is required by examples that use
 remote data.
 
+### Publishing versioned schemas
+
+The documentation deployment publishes Core and App schemas only for a stable
+GitHub release. It writes immutable exact files and updates the matching minor
+and major aliases under `https://genomespy.app/schema/`. Manual documentation
+deployments and prereleases do not change the public schema tree.
+Manual deployments stop before updating the site if the current Core or App
+major has no published alias yet.
+
+Before advancing a major alias, the release job validates compatible examples
+from the currently deployed documentation against the new schema. A failure
+means the schema or specification types must be corrected, or the change must
+move to a new major version. The late-v0 corpus is also checked for the first v1
+release because that transition is intentionally compatible.
+
+To exercise publication without touching the live site, build both schemas and
+run the publisher against a temporary copy or empty directory:
+
+```sh
+npm run build:schemas
+node scripts/publish-schemas.mjs --site-dir /path/to/site-copy
+```
+
+Inspect `schema/core/` and `schema/app/` in that directory. Each contains exact,
+minor, and major files plus a manifest that records alias targets. Reusing an
+exact version with different content fails, rerunning the same release is
+idempotent, and publishing an older release cannot move aliases backward. Core
+and App package versions are handled independently.
+
 ## How to Contribute
 
 Before making contributions, please familiarize yourself with the following
@@ -97,6 +126,39 @@ Setting up a local development environment is the first step. VSCode is the
 recommended IDE for GenomeSpy development, as it provides a seamless development
 experience with integrated tools and extensions. However, any IDE that supports
 JavaScript and TypeScript can be used.
+
+After installing dependencies, generate the JSON Schemas used for editing
+GenomeSpy examples:
+
+```sh
+npm ci
+npm run build:schemas
+```
+
+Open `genome-spy.code-workspace` in VSCode and trust the workspace. Its
+committed settings associate Core examples under `examples/core/` and
+`examples/docs/` with `packages/core/dist/schema.json`. App examples under
+`examples/app/` use `packages/app/dist/schema.json`. You can also regenerate
+both schemas with **Tasks: Run Task → Build JSON schemas** from the Command
+Palette. No extension is required for JSON Schema support, and your personal
+`.vscode/` settings remain separate.
+
+Regenerate the schemas after changing specification types in
+`packages/core/src/spec/` or `packages/app/src/spec/`. VSCode normally notices
+the changed schema files automatically. If completion or validation remains
+stale, run the build task and then use **Developer: Reload Window**.
+
+If VSCode reports that a schema cannot be resolved, check that both
+`dist/schema.json` files exist and rerun `npm run build:schemas`. Maintained
+examples should not declare `$schema`, because it takes precedence over the
+workspace association. Check the example's directory if it receives the App
+schema instead of Core, or vice versa.
+
+Other editors can use the same generated schema files. Configure the editor to
+associate the Core and App example paths with their respective files, or add an
+explicit `$schema` to private specifications. For example, a file directly
+under `private/` can use `../packages/core/dist/schema.json` for the current
+checkout.
 
 ### Debugging
 

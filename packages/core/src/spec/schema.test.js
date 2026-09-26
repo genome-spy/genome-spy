@@ -208,9 +208,40 @@ describe("generated core schema", () => {
             empty: false,
         };
         expect(validate(base)).toBe(true);
+        condition.test = {
+            and: [
+                { param: "selected", empty: false },
+                { not: { param: "brush", project: { x: "x2" } } },
+            ],
+        };
+        expect(validate(base), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+        condition.test.and = [];
+        expect(validate(base)).toBe(false);
+        condition.test.and = [{ param: "selected" }];
+        condition.test.or = [{ param: "brush" }];
+        expect(validate(base)).toBe(false);
+        delete condition.test.or;
+        condition.test.and[0].project = { x: "y" };
+        expect(validate(base)).toBe(false);
         delete condition.test;
         condition.param = { or: ["selected"] };
         expect(validate(base)).toBe(false);
+
+        delete condition.param;
+        condition.test = { param: "selected" };
+        base.params = [
+            {
+                name: "brush",
+                select: { type: "interval", encodings: ["x"], fields: ["id"] },
+            },
+        ];
+        expect(validate(base)).toBe(false);
+        delete base.params[0].select.fields;
+        expect(validate(base), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
     });
 
     test("accepts restricted conditional order and rejects unsupported forms", () => {
@@ -251,6 +282,35 @@ describe("generated core schema", () => {
         expect(validate(base)).toBe(false);
         base.encoding.order = { value: { expr: "level" } };
         expect(validate(base)).toBe(false);
+    });
+
+    test("accepts unit predicates referenced by conditional encodings", () => {
+        const validate = createCoreValidator();
+        const spec = /** @type {any} */ ({
+            mark: "point",
+            predicates: {
+                highlighted: {
+                    or: [{ param: "hover", empty: false }, { param: "brush" }],
+                },
+            },
+            encoding: {
+                color: {
+                    condition: { test: { ref: "highlighted" }, value: "red" },
+                    value: "gray",
+                },
+            },
+        });
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+
+        spec.predicates.highlighted = { ref: "other" };
+        expect(validate(spec)).toBe(false);
+
+        spec.predicates.highlighted = { param: "hover" };
+        spec.encoding.color.condition.test.empty = false;
+        expect(validate(spec)).toBe(false);
     });
 
     test("accepts the indexed FASTA six-frame translation example", () => {
@@ -332,6 +392,36 @@ describe("generated core schema", () => {
         expect(selectionFilterParams.properties.description).toBeTruthy();
     });
 
+    test("accepts debounce only on reactive transforms", () => {
+        const validate = createCoreValidator();
+        const spec = /** @type {any} */ ({
+            data: { values: [{ x: 1 }] },
+            transform: [
+                {
+                    type: "formula",
+                    expr: "datum.x * factor",
+                    as: "y",
+                    debounce: 50,
+                },
+            ],
+            mark: "point",
+            encoding: { x: { field: "y", type: "quantitative" } },
+        });
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+        spec.transform[0].debounce = -1;
+        expect(validate(spec)).toBe(false);
+        spec.transform[0] = {
+            type: "pileup",
+            start: "start",
+            end: "end",
+            debounce: 50,
+        };
+        expect(validate(spec)).toBe(false);
+    });
+
     test("accepts expression-based scaled mark property encodings", () => {
         const validate = createCoreValidator();
         /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
@@ -398,6 +488,36 @@ describe("generated core schema", () => {
             mark: "point",
             encoding: {
                 x: { field: "profileSize", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
+    test("accepts two-dimensional displacement transform parameters", () => {
+        const validate = createCoreValidator();
+        /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
+        const spec = {
+            data: { values: [{ x: 1, y: 2, width: 20 }] },
+            transform: [
+                {
+                    type: "displace2d",
+                    key: "x",
+                    x: "x",
+                    y: "y",
+                    width: "width",
+                    height: { expr: "fontSize" },
+                    as: ["dx", "dy"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                xOffset: { field: "dx", type: "quantitative", scale: null },
+                yOffset: { field: "dy", type: "quantitative", scale: null },
             },
         };
 
@@ -611,6 +731,49 @@ describe("generated core schema", () => {
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
         );
+    });
+
+    test("accepts debounced expression parameters", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1 }] },
+            params: [
+                {
+                    name: "settledX",
+                    expr: "x",
+                    debounce: 150,
+                },
+            ],
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
+    test("rejects incompatible expression update policies", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1 }] },
+            params: [
+                {
+                    name: "settledX",
+                    expr: "x",
+                    debounce: 150,
+                    transition: { type: "lerp" },
+                },
+            ],
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        };
+
+        expect(validate(spec)).toBe(false);
+
+        delete spec.params[0].transition;
+        spec.params[0].debounce = -1;
+        expect(validate(spec)).toBe(false);
     });
 
     test("rejects bound expression parameters", () => {

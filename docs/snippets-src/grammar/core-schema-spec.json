@@ -1,0 +1,6 @@
+{
+  "$schema": "https://genomespy.app/schema/core/v{{CORE_MAJOR_VERSION}}.json",
+  "data": { "url": "data/example.csv" },
+  "mark": "point",
+  "encoding": {}
+}

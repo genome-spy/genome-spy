@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Chromosome Ideogram from Cytobands",
     "Shows a compact hg38 ideogram built from UCSC cytoband intervals with layered rectangles, ranged band labels, and dashed chromosome separators.",

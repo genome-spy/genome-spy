@@ -11,9 +11,30 @@ describe("GLSL conditional selection encoders", () => {
                 },
                 predicate: {
                     selection: {
-                        params: ["selected", "brush"],
-                        empty: true,
-                        singleParam: false,
+                        any: [
+                            { param: "selected", type: "single", empty: false },
+                            { param: "brush", type: "interval", empty: false },
+                            {
+                                not: {
+                                    any: [
+                                        {
+                                            selectionActive: {
+                                                param: "selected",
+                                                type: "single",
+                                                components: [],
+                                            },
+                                        },
+                                        {
+                                            selectionActive: {
+                                                param: "brush",
+                                                type: "interval",
+                                                components: ["x"],
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
                     },
                 },
             },
@@ -31,6 +52,6 @@ describe("GLSL conditional selection encoders", () => {
         expect(source).toContain("isSelectionMember_brush()");
         expect(source).toContain("isSelectionEmpty_selected()");
         expect(source).toContain("isSelectionEmpty_brush()");
-        expect(source).toContain("|| (isSelectionEmpty_selected() &&");
+        expect(source).toContain("(!(");
     });
 });

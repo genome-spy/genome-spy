@@ -35,6 +35,12 @@ export function createSelectionRectSpec({
         );
     }
 
+    const clip = channels.includes("x")
+        ? channels.includes("y")
+            ? true
+            : "x"
+        : "y";
+
     /** @type {import("../../spec/view.js").LayerSpec} */
     const layerSpec = {
         name: "selectionRect",
@@ -98,7 +104,7 @@ export function createSelectionRectSpec({
         name: "selectionRectRect",
         mark: {
             type: "rect",
-            clip: true,
+            clip,
             ...{
                 fill: "#808080",
                 fillOpacity: 0.05,

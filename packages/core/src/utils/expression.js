@@ -7,6 +7,7 @@ import {
     isRegExp,
     isString,
     ascending,
+    inrange,
     lerp,
     span,
 } from "vega-util";
@@ -56,6 +57,8 @@ const functionContext = {
     ) {
         return sequence(seq).indexOf(value, start);
     },
+
+    inrange,
 
     lastindexof(
         /** @type {any} */ seq,
@@ -188,6 +191,7 @@ function buildFunctions(codegen, context) {
  * @prop { string[] } fields
  * @prop { string[] } globals
  * @prop { string } code
+ * @prop {(globalObject: Record<string, any>) => (datum?: import("../data/flowNode.js").Datum) => any} [createEvaluator] Creates an evaluator over the already compiled expression using an alternate globals object.
  * @prop { import("../paramRuntime/types.js").ParamRef<any>[] } [scaleDependencies]
  * @prop {import("../scales/scaleResolution.js").default[]} [zoomLevelResolutions]
  *
@@ -468,6 +472,10 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         /** @type { ExpressionFunction } */
         const exprFunction = /** @param {object} datum */ (datum) =>
             fn(datum, globalObject);
+        // Reuse the compiled function so consumers can supply optimized global
+        // storage without paying another parse/code-generation cost.
+        exprFunction.createEvaluator = (alternateGlobalObject) => (datum) =>
+            fn(datum, alternateGlobalObject);
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;

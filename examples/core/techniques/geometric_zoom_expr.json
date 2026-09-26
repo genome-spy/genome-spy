@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Expression-driven geometric zoom",
     "Uses zoom-dependent expressions for text size and color."

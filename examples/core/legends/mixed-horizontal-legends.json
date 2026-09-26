@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Mixed horizontal legends",
     "Symbol legends and a gradient share a bottom legend row."

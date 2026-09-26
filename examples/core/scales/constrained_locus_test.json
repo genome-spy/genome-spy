@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Constrained zoom extent and initial domain",
     "Sets a zoom limit and an initial locus domain."

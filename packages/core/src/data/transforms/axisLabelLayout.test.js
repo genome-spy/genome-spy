@@ -347,6 +347,30 @@ describe("AxisLabelLayoutTransform", () => {
         expect([...collector.getData()]).toEqual(ticks);
     });
 
+    test("propagates changed label text for the same tick", () => {
+        const { collector, transform, view } = createFixture({
+            channel: "y",
+            chromLabels: false,
+        });
+        const initialTick = { ...tick(0, 0), label: "0.000000" };
+        propagate(transform, view, [initialTick]);
+        const resetSpy = vi.spyOn(collector, "reset");
+
+        const updatedTick = { ...initialTick, label: "0" };
+        transform.reset();
+        propagate(transform, view, [updatedTick]);
+
+        expect(resetSpy).toHaveBeenCalledOnce();
+        expect([...collector.getData()].map((datum) => datum.label)).toEqual([
+            "0",
+        ]);
+
+        resetSpy.mockClear();
+        transform.reset();
+        propagate(transform, view, [{ ...updatedTick }]);
+        expect(resetSpy).not.toHaveBeenCalled();
+    });
+
     test("propagates when the output value set changes", () => {
         const { collector, resolution, transform, view } = createFixture();
         propagate(transform, view, [tick(300, 160)]);

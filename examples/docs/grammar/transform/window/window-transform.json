@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Window transform with leads and moving mean",
     "Shows lead arrows and a two-row moving mean."

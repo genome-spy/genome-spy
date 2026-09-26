@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-
   "description": [
     "Sashimi Plot from Splice Junctions",
     "Recreates IGV's splice-junction demo as a lazy BigWig coverage track with dome-shaped BED splice arcs, score labels, and a minimum-read threshold control.",

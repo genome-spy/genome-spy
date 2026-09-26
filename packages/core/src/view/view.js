@@ -247,8 +247,9 @@ export default class View {
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
             context.animator,
-            { snapTransitionedUpdates: true }
+            { settleTemporalUpdatesImmediately: true }
         );
+        this.paramRuntime.setSelectionSource(this);
 
         if ("mark" in spec) {
             // TODO(v2.0): Remove this alias and its lazy-name plumbing after

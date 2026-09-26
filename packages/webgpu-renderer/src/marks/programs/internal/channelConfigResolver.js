@@ -1,6 +1,7 @@
 import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { validateScaleConfig } from "../../scales/scaleValidation.js";
+import { normalizeSelectionPredicate } from "../../shaders/visibilityPredicate.js";
 
 /**
  * Input shape for channel configs as provided by callers.
@@ -157,7 +158,7 @@ function normalizeChannelConditions(channels, analysisByChannel, context) {
         for (const condition of conditions) {
             const normalizedCondition = /** @type {ChannelCondition} */ ({
                 ...condition,
-                when: normalizeSelectionPredicate(condition.when),
+                when: condition.when,
             });
             if (!("channel" in condition) || !condition.channel) {
                 resolvedConditions.push(normalizedCondition);
@@ -181,41 +182,6 @@ function normalizeChannelConditions(channels, analysisByChannel, context) {
         }
         channel.conditions = resolvedConditions;
     }
-}
-
-/**
- * Copy a selection predicate while adding the ranged-target default only when
- * a second input makes the target a ranged datum.
- *
- * @param {ChannelCondition["when"]} when
- * @returns {ChannelCondition["when"]}
- */
-function normalizeSelectionPredicate(when) {
-    if ("selectionUnion" in when) {
-        return {
-            ...when,
-            selectionUnion: when.selectionUnion.map(
-                (leaf) =>
-                    /** @type {import("../../../index.d.ts").SelectionPredicateLeaf} */ (
-                        normalizeSelectionPredicate(leaf)
-                    )
-            ),
-        };
-    }
-    if (when.type !== "interval") {
-        return { ...when };
-    }
-
-    return {
-        ...when,
-        targets: when.targets.map((target) => ({
-            ...target,
-            ...(target.secondaryInput !== undefined &&
-            target.hitTest === undefined
-                ? { hitTest: "intersects" }
-                : {}),
-        })),
-    };
 }
 
 /**
@@ -380,163 +346,35 @@ export function validateChannel(name, channel, context, analysisName = name) {
                 );
             }
             const { when, value } = condition;
-            const leaves =
-                "selectionUnion" in when ? when.selectionUnion : [when];
-            if (!Array.isArray(leaves) || leaves.length === 0) {
-                throw new Error(
-                    `Channel "${name}" selection unions must be non-empty.`
-                );
-            }
-            if ("selectionUnion" in when) {
-                if ("selection" in when) {
-                    throw new Error(
-                        `Channel "${name}" conditions must choose a selection or a selection union.`
-                    );
-                }
-                if (
-                    when.empty !== undefined &&
-                    typeof when.empty !== "boolean"
-                ) {
-                    throw new Error(
-                        `Channel "${name}" selection union empty flag must be boolean.`
-                    );
-                }
-                if (
-                    leaves.some(
-                        (leaf) =>
-                            leaf &&
-                            typeof leaf === "object" &&
-                            Object.hasOwn(leaf, "empty")
-                    )
-                ) {
-                    throw new Error(
-                        `Channel "${name}" selection union leaves must not specify empty.`
-                    );
-                }
-            }
-            for (const when of leaves) {
-                if (
-                    !when ||
-                    typeof when !== "object" ||
-                    typeof when.selection !== "string" ||
-                    when.selection.length < 1
-                ) {
-                    throw new Error(
-                        `Channel "${name}" conditions require a selection name.`
-                    );
-                }
-                if ("selectionUnion" in when) {
-                    throw new Error(
-                        `Channel "${name}" selection unions must be flat.`
-                    );
-                }
-                if (
-                    when.type !== "single" &&
-                    when.type !== "multi" &&
-                    when.type !== "interval"
-                ) {
-                    throw new Error(
-                        `Channel "${name}" has invalid selection type "${when.type}".`
-                    );
-                }
-                if (Object.hasOwn(when, "channel")) {
-                    throw new Error(
-                        `Selection "${when.selection}" uses the obsolete "channel" form; specify targets.`
-                    );
-                }
-                if (Object.hasOwn(when, "secondaryChannel")) {
-                    throw new Error(
-                        `Selection "${when.selection}" uses the obsolete "secondaryChannel" form; specify secondaryInput.`
-                    );
-                }
-                if (when.type === "interval") {
-                    if (
-                        !Array.isArray(when.targets) ||
-                        when.targets.length === 0
-                    ) {
-                        throw new Error(
-                            `Interval selection "${when.selection}" must specify a non-empty targets array.`
-                        );
+            normalizeSelectionPredicate(when);
+
+            /** @param {import("../../../index.d.ts").SelectionPredicate} node */
+            const checkInputs = (node) => {
+                if ("all" in node || "any" in node) {
+                    for (const child of "all" in node ? node.all : node.any) {
+                        checkInputs(child);
                     }
-                    const names = new Set();
-                    for (const target of when.targets) {
-                        if (!target || typeof target !== "object") {
+                } else if ("not" in node) {
+                    checkInputs(node.not);
+                } else if ("selection" in node && node.type === "interval") {
+                    for (const projection of node.projections) {
+                        if (!channelOrder.includes(projection.input)) {
                             throw new Error(
-                                `Interval selection "${when.selection}" has an invalid target.`
+                                `Channel "${name}" references unknown selection input "${projection.input}".`
                             );
                         }
                         if (
-                            typeof target.input !== "string" ||
-                            target.input.length === 0
+                            projection.secondaryInput !== undefined &&
+                            !channelOrder.includes(projection.secondaryInput)
                         ) {
                             throw new Error(
-                                `Interval selection "${when.selection}" targets require an input name.`
-                            );
-                        }
-                        if (names.has(target.input)) {
-                            throw new Error(
-                                `Interval selection "${when.selection}" cannot target "${target.input}" more than once.`
-                            );
-                        }
-                        names.add(target.input);
-                        if (
-                            target.secondaryInput !== undefined &&
-                            (typeof target.secondaryInput !== "string" ||
-                                target.secondaryInput.length === 0)
-                        ) {
-                            throw new Error(
-                                `Interval selection "${when.selection}" has an invalid secondary input.`
-                            );
-                        }
-                        if (
-                            target.hitTest !== undefined &&
-                            target.hitTest !== "intersects" &&
-                            target.hitTest !== "encloses" &&
-                            target.hitTest !== "endpoints"
-                        ) {
-                            throw new Error(
-                                `Interval selection "${when.selection}" has invalid hit-test mode "${target.hitTest}".`
-                            );
-                        }
-                        if (
-                            target.hitTest !== undefined &&
-                            target.secondaryInput === undefined
-                        ) {
-                            throw new Error(
-                                `Interval selection "${when.selection}" cannot specify a hit-test mode without a secondary input.`
-                            );
-                        }
-                        if (
-                            target.input !== undefined &&
-                            !channelOrder.includes(target.input)
-                        ) {
-                            throw new Error(
-                                `Channel "${name}" references unknown selection input "${target.input}".`
-                            );
-                        }
-                        if (
-                            target.secondaryInput !== undefined &&
-                            !channelOrder.includes(target.secondaryInput)
-                        ) {
-                            throw new Error(
-                                `Channel "${name}" references unknown selection input "${target.secondaryInput}".`
+                                `Channel "${name}" references unknown selection input "${projection.secondaryInput}".`
                             );
                         }
                     }
-                } else if (Object.hasOwn(when, "targets")) {
-                    throw new Error(
-                        `Selection "${when.selection}" may only specify targets for interval selections.`
-                    );
                 }
-                if (
-                    when.empty !== undefined &&
-                    typeof when.empty !== "boolean"
-                ) {
-                    throw new Error(
-                        `Selection "${when.selection}" empty flag must be boolean.`
-                    );
-                }
-            }
+            };
+            checkInputs(when);
             if (condition.channel) {
                 if (value !== undefined) {
                     throw new Error(

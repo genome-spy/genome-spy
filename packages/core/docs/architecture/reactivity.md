@@ -10,6 +10,15 @@
 - DAG propagation is transaction-aware through `runInTransaction` and provides
   `whenPropagated` as a deterministic synchronization barrier.
 
+Expression parameters may opt into trailing-edge debounce. Their initial value
+is published synchronously, while later expression targets restart a
+scope-owned timer and keep the previous published value stable. Timer expiry
+publishes through the normal graph and flushes downstream work. Pending timers
+are temporal work outside transactions and the `whenPropagated` barrier;
+disposing the parameter scope cancels them. View initialization publishes
+temporal parameter targets immediately so scale and layout calibration settle
+before the first render.
+
 ### Coherent synchronous updates
 
 `ParamRuntime` and `ViewParamRuntime` expose owner-bound anonymous `signal` refs, `computed` refs and
@@ -56,6 +65,18 @@ before graph effects consume published values; expression evaluation per datum
 remains streaming. Async reload dispatch cannot subsume a cached descendant's
 replay. `whenPropagated` includes synchronous replay and resulting graph work,
 but excludes network completion and future animation frames.
+
+Formula and filter transforms may debounce replay caused by reactive expression
+changes while keeping the expression values current. Each completed incoming
+batch records the expression revision it consumed, so a batch arriving during
+the delay suppresses an otherwise redundant replay. The timer remains temporal
+work outside `whenPropagated()` and is canceled with the transform.
+
+Formula and filter expressions evaluate notifying parameter refs through a
+stable plain-object snapshot that is refreshed on dependency notifications and
+dataflow boundaries. Passive and unknown refs retain live getters, while scale
+helpers remain live closures over their resolution. The evaluator and globals
+object retain their identity so the per-row call sites stay monomorphic.
 
 Streaming jobs may declare prerequisite callbacks. Only pending prerequisites
 participate: a queued publisher of a foreign collector runs before the primary

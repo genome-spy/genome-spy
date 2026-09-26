@@ -33,35 +33,39 @@ describe("embed factory", () => {
         }
     }
 
-    test("forwards getParam from the GenomeSpy instance", async () => {
-        const paramApi = {
-            /** @returns {number} */
-            getValue: () => 1,
-            /** @param {number} value */
-            setValue: (value) => {
-                void value;
-            },
-            /** @param {(value: number) => void} listener */
-            subscribe: (listener) => {
-                void listener;
-                return function unsubscribe() {};
-            },
-        };
-
-        class ParamGenomeSpy extends MockGenomeSpy {
+    /** @param {Record<string, unknown>} [overrides] */
+    async function embedMock(overrides = {}) {
+        class ConfiguredGenomeSpy extends MockGenomeSpy {
             /**
              * @param {HTMLElement} element
              * @param {any} spec
              */
             constructor(element, spec) {
                 super(element, spec);
-                this.getParam = vi.fn(() => paramApi);
+                Object.assign(this, overrides);
             }
         }
 
-        const embed = createEmbed(/** @type {any} */ (ParamGenomeSpy));
-        const element = document.createElement("div");
-        const api = await embed(element, /** @type {any} */ ({}));
+        const embed = createEmbed(/** @type {any} */ (ConfiguredGenomeSpy));
+        return embed(document.createElement("div"), /** @type {any} */ ({}));
+    }
+
+    /** @returns {any} */
+    function makeViewRoot() {
+        /** @type {any} */
+        const viewRoot = {
+            explicitName: "root",
+            name: "root",
+            layoutParent: undefined,
+            getDescendants: () => [viewRoot],
+            children: [],
+        };
+        return viewRoot;
+    }
+
+    test("forwards getParam from the GenomeSpy instance", async () => {
+        const paramApi = { getValue: () => 1 };
+        const api = await embedMock({ getParam: vi.fn(() => paramApi) });
 
         expect(api.getParam("threshold")).toBe(paramApi);
     });
@@ -73,22 +77,9 @@ describe("embed factory", () => {
             warnings: /** @type {string[]} */ ([]),
         };
 
-        class SvgGenomeSpy extends MockGenomeSpy {
-            /**
-             * @param {HTMLElement} element
-             * @param {any} spec
-             */
-            constructor(element, spec) {
-                super(element, spec);
-                this.exportSvg = vi.fn(async () => svgResult);
-            }
-        }
-
-        const embed = createEmbed(/** @type {any} */ (SvgGenomeSpy));
-        const api = await embed(
-            document.createElement("div"),
-            /** @type {any} */ ({})
-        );
+        const api = await embedMock({
+            exportSvg: vi.fn(async () => svgResult),
+        });
 
         await expect(api.imageExport.svg()).resolves.toBe(svgResult);
     });
@@ -98,22 +89,9 @@ describe("embed factory", () => {
             blob: new Blob([], { type: "image/png" }),
         };
 
-        class RasterGenomeSpy extends MockGenomeSpy {
-            /**
-             * @param {HTMLElement} element
-             * @param {any} spec
-             */
-            constructor(element, spec) {
-                super(element, spec);
-                this.exportRaster = vi.fn(async () => rasterResult);
-            }
-        }
-
-        const embed = createEmbed(/** @type {any} */ (RasterGenomeSpy));
-        const api = await embed(
-            document.createElement("div"),
-            /** @type {any} */ ({})
-        );
+        const api = await embedMock({
+            exportRaster: vi.fn(async () => rasterResult),
+        });
 
         await expect(api.imageExport.raster()).resolves.toBe(rasterResult);
     });
@@ -122,50 +100,16 @@ describe("embed factory", () => {
         /** @type {import("./types/embedApi.js").SvgExportAnalysis} */
         const analysis = { layers: [] };
 
-        class SvgGenomeSpy extends MockGenomeSpy {
-            /**
-             * @param {HTMLElement} element
-             * @param {any} spec
-             */
-            constructor(element, spec) {
-                super(element, spec);
-                this.analyzeSvgExport = vi.fn(async () => analysis);
-            }
-        }
-
-        const embed = createEmbed(/** @type {any} */ (SvgGenomeSpy));
-        const api = await embed(
-            document.createElement("div"),
-            /** @type {any} */ ({})
-        );
+        const api = await embedMock({
+            analyzeSvgExport: vi.fn(async () => analysis),
+        });
 
         await expect(api.imageExport.analyzeSvg()).resolves.toBe(analysis);
     });
 
     test("exposes the view mutation API", async () => {
-        /** @type {any} */
-        const viewRoot = {
-            explicitName: "root",
-            name: "root",
-            layoutParent: undefined,
-            getDescendants: () => [viewRoot],
-            children: [],
-        };
-
-        class ViewGenomeSpy extends MockGenomeSpy {
-            /**
-             * @param {HTMLElement} element
-             * @param {any} spec
-             */
-            constructor(element, spec) {
-                super(element, spec);
-                this.viewRoot = viewRoot;
-            }
-        }
-
-        const embed = createEmbed(/** @type {any} */ (ViewGenomeSpy));
-        const element = document.createElement("div");
-        const api = await embed(element, /** @type {any} */ ({}));
+        const viewRoot = makeViewRoot();
+        const api = await embedMock({ viewRoot });
 
         expect(api.views.root().name).toBe("root");
         expect(api.datasets).toMatchObject({
@@ -176,29 +120,7 @@ describe("embed factory", () => {
     });
 
     test("invalidates dataset operations when finalized", async () => {
-        /** @type {any} */
-        const viewRoot = {
-            explicitName: "root",
-            name: "root",
-            layoutParent: undefined,
-            getDescendants: () => [viewRoot],
-            children: [],
-        };
-
-        class ViewGenomeSpy extends MockGenomeSpy {
-            /**
-             * @param {HTMLElement} element
-             * @param {any} spec
-             */
-            constructor(element, spec) {
-                super(element, spec);
-                this.viewRoot = viewRoot;
-            }
-        }
-
-        const embed = createEmbed(/** @type {any} */ (ViewGenomeSpy));
-        const element = document.createElement("div");
-        const api = await embed(element, /** @type {any} */ ({}));
+        const api = await embedMock({ viewRoot: makeViewRoot() });
 
         api.finalize();
 
@@ -210,29 +132,8 @@ describe("embed factory", () => {
     });
 
     test("exposes debug hooks for developer tooling", async () => {
-        /** @type {any} */
-        const viewRoot = {
-            explicitName: "root",
-            name: "root",
-            layoutParent: undefined,
-            getDescendants: () => [viewRoot],
-            children: [],
-        };
-
-        class ViewGenomeSpy extends MockGenomeSpy {
-            /**
-             * @param {HTMLElement} element
-             * @param {any} spec
-             */
-            constructor(element, spec) {
-                super(element, spec);
-                this.viewRoot = viewRoot;
-            }
-        }
-
-        const embed = createEmbed(/** @type {any} */ (ViewGenomeSpy));
-        const element = document.createElement("div");
-        const api = await embed(element, /** @type {any} */ ({}));
+        const viewRoot = makeViewRoot();
+        const api = await embedMock({ viewRoot });
 
         expect(api.debug.getViewRoot()).toBe(viewRoot);
         await expect(api.debug.getModules()).resolves.toHaveProperty(
@@ -246,22 +147,9 @@ describe("embed factory", () => {
     });
 
     test("reports an unsupported picking-buffer visualization", async () => {
-        class UnsupportedGenomeSpy extends MockGenomeSpy {
-            /**
-             * @param {HTMLElement} element
-             * @param {any} spec
-             */
-            constructor(element, spec) {
-                super(element, spec);
-                this.createPickingBufferVisualization = vi.fn(() => undefined);
-            }
-        }
-
-        const embed = createEmbed(/** @type {any} */ (UnsupportedGenomeSpy));
-        const api = await embed(
-            document.createElement("div"),
-            /** @type {any} */ ({})
-        );
+        const api = await embedMock({
+            createPickingBufferVisualization: vi.fn(() => undefined),
+        });
 
         expect(api.debug.createPickingBufferVisualization?.()).toBeUndefined();
     });

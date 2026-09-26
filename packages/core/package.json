@@ -7,7 +7,7 @@
   },
   "contributors": [],
   "license": "MIT",
-  "version": "0.88.1",
+  "version": "0.89.0",
   "jsdelivr": "dist/bundle/index.js",
   "unpkg": "dist/bundle/index.js",
   "browser": "dist/bundle/index.js",
@@ -87,7 +87,7 @@
     "vega-util": "2.1.0"
   },
   "devDependencies": {
-    "@genome-spy/webgpu-renderer": "^0.88.0",
+    "@genome-spy/webgpu-renderer": "^0.89.0",
     "@types/long": "^4.0.1"
   }
 }

@@ -945,12 +945,18 @@ export default class SampleView extends ContainerView {
         return sampleGroups.map((sampleGroup) => sampleGroup.samples).flat();
     }
 
+    /**
+     * Publishes visible membership in identity order so row sorting does not
+     * invalidate parameterized data sources.
+     */
     #updateVisibleSamplesParam() {
-        if (!this.#visibleSamplesParam) {
+        const sampleData = this.sampleHierarchy.sampleData;
+        if (!this.#visibleSamplesParam || !sampleData) {
             return;
         }
 
-        const samples = this.leafSamples;
+        const visibleSamples = new Set(this.leafSamples);
+        const samples = sampleData.ids.filter((id) => visibleSamples.has(id));
         if (arraysEqual(samples, this.#lastVisibleSamples)) {
             return;
         }

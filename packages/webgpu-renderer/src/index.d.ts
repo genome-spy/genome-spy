@@ -23,8 +23,10 @@ export type TypedArray =
 
 export type SelectionType = "single" | "multi" | "interval";
 
-export type IntervalSelectionTarget = Readonly<{
-    /** Primary scalar input tested by this interval dimension. */
+export type IntervalSelectionProjection = Readonly<{
+    /** Opaque identifier of the retained interval component. */
+    component: string;
+    /** Primary input tested by this component. */
     input: string;
     /** Optional second endpoint of the same ranged datum. */
     secondaryInput?: string;
@@ -32,35 +34,50 @@ export type IntervalSelectionTarget = Readonly<{
     hitTest?: "intersects" | "encloses" | "endpoints";
 }>;
 
-export type SelectionPredicateLeaf =
-    | {
+export type SelectionStateReference =
+    | Readonly<{
           /** Selection name declared in channel conditions. */
           selection: string;
           /** Fixed selection kind (cannot change after mark creation). */
           type: "single" | "multi";
-      }
-    | {
+      }>
+    | Readonly<{
           /** Selection name declared in channel conditions. */
           selection: string;
           /** Fixed selection kind (cannot change after mark creation). */
           type: "interval";
-          /** Ordered, non-empty scalar target descriptors. */
-          targets: readonly IntervalSelectionTarget[];
-      };
+          /** Retained components, independent of mark inputs. */
+          components: readonly [string, ...string[]];
+      }>;
 
-export type LegacySelectionPredicate = SelectionPredicateLeaf & {
-    /** Treat empty selections as true when set. */
-    empty?: boolean;
-};
-
-export type SelectionPredicate =
-    | LegacySelectionPredicate
-    | {
-          /** Flat OR over named selection leaves. */
-          selectionUnion: readonly SelectionPredicateLeaf[];
-          /** Treat the union as matching when every leaf is empty. */
+export type SelectionPredicateLeaf =
+    | (Extract<SelectionStateReference, { type: "single" | "multi" }> &
+          Readonly<{ empty?: boolean }>)
+    | Readonly<{
+          selection: string;
+          type: "interval";
+          /** Input bindings for the retained components used by this test. */
+          projections: readonly [
+              IntervalSelectionProjection,
+              ...IntervalSelectionProjection[],
+          ];
           empty?: boolean;
-      };
+      }>;
+
+export type SelectionActivityPredicate = Readonly<{
+    selectionActive: SelectionStateReference;
+}>;
+
+export type BooleanPredicate<TLeaf> =
+    | TLeaf
+    | Readonly<{ all: readonly BooleanPredicate<TLeaf>[] }>
+    | Readonly<{ any: readonly BooleanPredicate<TLeaf>[] }>
+    | Readonly<{ not: BooleanPredicate<TLeaf> }>;
+
+export type SelectionPredicateAtom =
+    SelectionPredicateLeaf | SelectionActivityPredicate;
+
+export type SelectionPredicate = BooleanPredicate<SelectionPredicateAtom>;
 
 /** A non-visual, per-instance scalar series available to visibility predicates. */
 export type ScalarInputConfig = Readonly<{
@@ -98,15 +115,9 @@ export type ScalarComparisonPredicate = Readonly<{
 }>;
 
 /** An immutable selection, comparison, or Boolean visibility expression. */
-export type VisibilityPredicate =
-    /** Existing named selection test. */
-    | SelectionPredicate
-    /** Ordered scalar comparison. */
-    | ScalarComparisonPredicate
-    /** Logical AND over a non-empty child array. */
-    | Readonly<{ all: readonly VisibilityPredicate[] }>
-    /** Logical OR over a non-empty child array. */
-    | Readonly<{ any: readonly VisibilityPredicate[] }>;
+export type VisibilityPredicate = BooleanPredicate<
+    SelectionPredicateAtom | ScalarComparisonPredicate
+>;
 
 /** Updates one declared scalar slot without recreating renderer resources. */
 export type ScalarSlotHandle = {
@@ -191,9 +202,9 @@ export type SelectionSlotHandle =
       }
     | {
           type: "interval";
-          /** Stable target declaration order. */
-          targets: readonly string[];
-          /** Replace the complete interval state; omitted keys are inactive. */
+          /** Stable retained component declaration order. */
+          components: readonly string[];
+          /** Replace the complete state with half-open intervals; omitted keys are inactive. */
           set(
               intervals: Readonly<
                   Partial<Record<string, readonly [number, number] | null>>

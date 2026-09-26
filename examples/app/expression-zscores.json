@@ -1,6 +1,4 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
-
   "description": "Toy expression heatmap with five samples and gene-wise z-scores.",
 
   "data": {

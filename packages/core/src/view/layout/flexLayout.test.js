@@ -255,132 +255,86 @@ describe("Basic flex functionality", () => {
     });
 });
 
-describe("Collapse gaps when items have zero px and grow", () => {
-    test("Zero as first", () => {
-        const items = [0, 30, 20].map((x) => ({ px: x }));
-        const containerSize = 100;
+/** @type {[string, number[], [number, number][], [number, number][]][]} */
+const zeroSizeCases = [
+    [
+        "zero first",
+        [0, 30, 20],
+        [
+            [0, 0],
+            [0, 30],
+            [40, 20],
+        ],
+        [
+            [100, 0],
+            [70, 30],
+            [40, 20],
+        ],
+    ],
+    [
+        "zero in the middle",
+        [10, 0, 20],
+        [
+            [0, 10],
+            [15, 0],
+            [20, 20],
+        ],
+        [
+            [90, 10],
+            [85, 0],
+            [60, 20],
+        ],
+    ],
+    [
+        "multiple zeroes in the middle",
+        [10, 0, 0, 0, 20],
+        [
+            [0, 10],
+            [12.5, 0],
+            [15, 0],
+            [17.5, 0],
+            [20, 20],
+        ],
+        [
+            [90, 10],
+            [87.5, 0],
+            [85, 0],
+            [82.5, 0],
+            [60, 20],
+        ],
+    ],
+    [
+        "zero last",
+        [10, 30, 0],
+        [
+            [0, 10],
+            [20, 30],
+            [50, 0],
+        ],
+        [
+            [90, 10],
+            [50, 30],
+            [50, 0],
+        ],
+    ],
+    ["only zero", [0], [[0, 0]], [[100, 0]]],
+];
 
-        const mapped = mapToPixelCoords(items, containerSize, { spacing: 10 });
+describe.each([
+    ["forward", false],
+    ["reversed", true],
+])("Collapse gaps around zero-size items, %s", (_direction, reverse) => {
+    test.each(zeroSizeCases)("%s", (_name, sizes, forward, reversed) => {
+        const mapped = mapToPixelCoords(
+            sizes.map((px) => ({ px })),
+            100,
+            { spacing: 10, reverse }
+        );
+        const expected = reverse ? reversed : forward;
 
-        expect(mapped[0]).toEqual({ location: 0, size: 0 });
-        expect(mapped[1]).toEqual({ location: 0, size: 30 });
-        expect(mapped[2]).toEqual({ location: 40, size: 20 });
-    });
-
-    test("Zero in the middle", () => {
-        const items = [10, 0, 20].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, { spacing: 10 });
-
-        expect(mapped[0]).toEqual({ location: 0, size: 10 });
-        expect(mapped[1]).toEqual({ location: 15, size: 0 });
-        expect(mapped[2]).toEqual({ location: 20, size: 20 });
-    });
-
-    test("Multiple zeroes in the middle", () => {
-        const items = [10, 0, 0, 0, 20].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, { spacing: 10 });
-
-        expect(mapped[0]).toEqual({ location: 0, size: 10 });
-        expect(mapped[1]).toEqual({ location: 12.5, size: 0 });
-        expect(mapped[2]).toEqual({ location: 15, size: 0 });
-        expect(mapped[3]).toEqual({ location: 17.5, size: 0 });
-        expect(mapped[4]).toEqual({ location: 20, size: 20 });
-    });
-
-    test("Zero as last", () => {
-        const items = [10, 30, 0].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, { spacing: 10 });
-
-        expect(mapped[0]).toEqual({ location: 0, size: 10 });
-        expect(mapped[1]).toEqual({ location: 20, size: 30 });
-        expect(mapped[2]).toEqual({ location: 50, size: 0 });
-    });
-
-    test("Only a zero", () => {
-        const items = [0].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, { spacing: 10 });
-
-        expect(mapped[0]).toEqual({ location: 0, size: 0 });
-    });
-});
-
-describe("Collapse gaps when items have zero px and grow, reversed", () => {
-    test("Zero as first", () => {
-        const items = [0, 30, 20].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, {
-            spacing: 10,
-            reverse: true,
-        });
-
-        expect(mapped[0]).toEqual({ location: 100, size: 0 });
-        expect(mapped[1]).toEqual({ location: 70, size: 30 });
-        expect(mapped[2]).toEqual({ location: 40, size: 20 });
-    });
-
-    test("Zero in the middle", () => {
-        const items = [10, 0, 20].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, {
-            spacing: 10,
-            reverse: true,
-        });
-
-        expect(mapped[0]).toEqual({ location: 90, size: 10 });
-        expect(mapped[1]).toEqual({ location: 85, size: 0 });
-        expect(mapped[2]).toEqual({ location: 60, size: 20 });
-    });
-
-    test("Multiple zeroes in the middle", () => {
-        const items = [10, 0, 0, 0, 20].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, {
-            spacing: 10,
-            reverse: true,
-        });
-
-        expect(mapped[0]).toEqual({ location: 90, size: 10 });
-        expect(mapped[1]).toEqual({ location: 87.5, size: 0 });
-        expect(mapped[2]).toEqual({ location: 85, size: 0 });
-        expect(mapped[3]).toEqual({ location: 82.5, size: 0 });
-        expect(mapped[4]).toEqual({ location: 60, size: 20 });
-    });
-
-    test("Zero as last", () => {
-        const items = [10, 30, 0].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, {
-            spacing: 10,
-            reverse: true,
-        });
-
-        expect(mapped[0]).toEqual({ location: 90, size: 10 });
-        expect(mapped[1]).toEqual({ location: 50, size: 30 });
-        expect(mapped[2]).toEqual({ location: 50, size: 0 });
-    });
-
-    test("Only a zero", () => {
-        const items = [0].map((x) => ({ px: x }));
-        const containerSize = 100;
-
-        const mapped = mapToPixelCoords(items, containerSize, {
-            spacing: 10,
-            reverse: true,
-        });
-
-        expect(mapped[0]).toEqual({ location: 100, size: 0 });
+        expect(mapped).toEqual(
+            expected.map(([location, size]) => ({ location, size }))
+        );
     });
 });
 
