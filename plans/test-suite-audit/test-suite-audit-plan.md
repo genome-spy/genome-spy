@@ -80,11 +80,19 @@ coverage change rather than a raw count of assertions removed.
 ### Work and affected areas
 
 - Collect test files and case counts with the repository's Vitest configuration.
-  Use a fixed random seed for a control sample and record the command and seed.
-- Inspect high-cost candidate groups across Core, App, App Agent, WebGPU, and
-  smaller packages. Trace proposed replacement coverage to actual assertions,
-  not just filenames. Record whether a test has caught a prior bug when that is
-  discoverable without an open-ended history search.
+  Select a control sample from files outside the named candidate groups with
+  a fixed random seed; record the command, seed, and selected paths.
+- Run three read-only Luna reviews in parallel with disjoint primary ownership:
+  (1) Core dataflow, reactivity, and view lifecycle; (2) Core layout, examples,
+  SVG, and shader snapshots; (3) API wrappers, App, App Agent, WebGPU, smaller
+  packages, and the control sample. Each reviewer uses the same cost/protection
+  rubric and names exact assertions, overlapping coverage, confidence, and
+  residual risk. Reviewers do not edit tests or the findings file.
+- Independently inspect selected production paths and cross-area assertions
+  before accepting a proposed overlap. Check whether a test caught a prior bug
+  when that is discoverable without an open-ended history search. Resolve
+  conflicting recommendations in one coverage map; a file owner does not decide
+  alone that another area's test makes an assertion redundant.
 - Publish the queue and its rationale in a temporary findings file under this
   plan directory. Include exact files/cases, cost and protection evidence,
   proposed actions, confidence, and residual risk. Revisit the queue as code
