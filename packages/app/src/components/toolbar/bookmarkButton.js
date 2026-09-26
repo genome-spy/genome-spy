@@ -112,7 +112,7 @@ class BookmarkButton extends LitElement {
     #createContextMenu(bookmarkDatabase, name, event) {
         event.stopPropagation();
 
-        const opener = /** @type {HTMLElement} */ (event.target).closest("li");
+        const opener = /** @type {HTMLElement} */ (event.currentTarget);
 
         const deleteCallback = () =>
             showMessageDialog(
@@ -156,7 +156,11 @@ class BookmarkButton extends LitElement {
                 ),
         });
 
-        dropdownMenu({ items }, opener, "right-start");
+        dropdownMenu(
+            { items, mode: "command", label: `Actions for ${name}` },
+            opener,
+            "right-start"
+        );
     }
 
     /**

@@ -105,8 +105,26 @@ $menu-line-height: 22px;
         &.active > :is(a:first-child, .submenu-item) {
             background-color: $menu-active-bg-color;
         }
-        > :is(a:first-child, label, .submenu-item):hover {
+        > :is(a:first-child, label, .submenu-item):hover,
+        > :is(button.choice-item, button.submenu-item):hover {
             background-color: $menu-hover-bg-color;
+        }
+
+        > button[role="menuitem"] {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            line-height: inherit;
+            text-align: left;
+            cursor: default;
+
+            &:focus-visible {
+                outline: 2px solid #2459a6;
+                outline-offset: -2px;
+                background-color: $menu-active-bg-color;
+            }
         }
 
         > span.disabled-item,
@@ -143,7 +161,8 @@ $menu-line-height: 22px;
     }
 
     .menu-header,
-    li > :is(span.disabled-item, a:first-child, .submenu-item, label) {
+    li > :is(span.disabled-item, a:first-child, .submenu-item, label),
+    li > button[role="menuitem"] {
         padding-left: $menu-item-h-padding;
         padding-right: $menu-item-h-padding;
     }
@@ -154,7 +173,7 @@ $menu-line-height: 22px;
     }
 
     li {
-        > :is(div.submenu-item, .choice-item) {
+        > :is(div.submenu-item, .choice-item, button.submenu-item) {
             display: flex;
             justify-content: space-between;
             align-items: center;
