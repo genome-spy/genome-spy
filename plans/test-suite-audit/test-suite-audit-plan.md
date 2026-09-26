@@ -32,8 +32,14 @@ value. Record a fresh baseline when work begins.
   that contract is covered elsewhere, what routine refactoring would break it,
   and the proposed action. Do not extrapolate a deletion percentage from the
   control sample.
-- Delete a test only when its assertion has no unique supported contract, or
-  when a retained/replacement test covers that contract at least as well.
+- Rank candidates by two separately recorded judgments: unique regression
+  protection and maintenance cost. Support the cost judgment with available
+  evidence such as runtime, snapshot update history, fixture/setup burden,
+  failure noise, or actual refactor churn; file length and mocking style are
+  leads, not proof. Prioritize high-cost tests with little unique protection.
+- Delete a test only when a named retained/replacement assertion covers its
+  supported contract, or when the assertion checks no supported observable
+  contract. State the evidence for either conclusion.
   Assess cases individually; an implementation-oriented file may contain a
   valuable lifecycle or failure test.
 - Prefer small, named examples and representative assertions. Preserve broad
@@ -80,8 +86,9 @@ coverage change rather than a raw count of assertions removed.
   not just filenames. Record whether a test has caught a prior bug when that is
   discoverable without an open-ended history search.
 - Publish the queue and its rationale in a temporary findings file under this
-  plan directory. Include exact files/cases, proposed actions, confidence, and
-  the residual risk. Revisit the queue as code changes reveal hidden contracts.
+  plan directory. Include exact files/cases, cost and protection evidence,
+  proposed actions, confidence, and residual risk. Revisit the queue as code
+  changes reveal hidden contracts.
 
 ### Verification
 
@@ -110,10 +117,10 @@ keeping public API and subsystem behavior covered.
   `embedFactory.test.js` where the same setup obscures the meaningful checks.
 - Review the remaining inventory for copied implementation branches, duplicate
   permutations, and assertions that can fail only when the test's mock changes.
-- For each deletion, record the retained test or explain why the behavior is
-  obvious and has no realistic independent regression mode. Keep an explicit
-  before/after list of cases and fixture/snapshot lines, without setting a
-  required reduction percentage.
+- For each deletion, name the retained/replacement assertion or explain why
+  the removed assertion checks no supported observable contract. Keep an
+  explicit before/after list of cases and fixture/snapshot lines, without
+  setting a required reduction percentage.
 
 ### Verification
 
@@ -149,11 +156,12 @@ behavior with assertions that remain useful through ordinary refactors.
 
 ### Verification
 
-Run focused suites for each changed subsystem and compare failures on deliberate
-small mutations to ensure replacement assertions detect the intended behavior.
-Run the full unit suite after broad snapshot or generated-example changes.
-Use browser/GPU checks only for rendering contracts that headless tests cannot
-establish, and document any local environment limitation.
+Run focused suites for each changed subsystem. For uncertain or high-risk
+replacements, try one small, reversible mutation tied to the claimed contract
+and confirm that the surviving assertion fails. Run the full unit suite after
+broad snapshot or generated-example changes. Use browser/GPU checks only for
+rendering contracts that headless tests cannot establish, and document any
+local environment limitation.
 
 Tentative commits: `test(core): assert dataflow outcomes instead of graph paths`
 and `test(core): focus layout and example regression checks`
@@ -178,9 +186,13 @@ removed, what was combined or replaced, and what behavior remains protected.
 - Check that headless tests cover representative end-to-end paths through
   dataflow, reactive propagation, hierarchical layout, and SVG output. Add only
   a missing high-value scenario discovered by the audit.
-- Keep the small browser smoke layer that demonstrates the application stack
-  starts and renders. Expand it only for browser-specific behavior lacking a
-  cheaper trustworthy test.
+- Inspect the existing CI Playwright check at
+  `packages/playground/tests/upload.playwright.js`: it verifies upload and
+  dataflow publication through the Playground, but does not assert rendered
+  output. Add at most one representative stack startup/render smoke scenario
+  if no existing browser check already covers that gap. Add further browser
+  tests only for a concrete browser-specific contract without a cheaper
+  trustworthy check; record runtime before expanding this layer.
 - Update repository testing guidance only if the audit reveals a concrete
   rule that the current `AGENTS.md` does not already express.
 
@@ -202,8 +214,9 @@ Tentative commit: `test: finalize focused subsystem coverage`
 - Real WebGL/WebGPU validation may need CI facilities unavailable to a local
   headless run. Do not claim equivalent coverage from a mock that always
   reports compile success.
-- The right amount of browser smoke depends on existing CI coverage and speed.
-  Decide from observed gaps and runtime, not a fixed test-count target.
+- The Playground upload check is already in CI, but its assertion ends at
+  dataflow publication. Decide whether a rendering check is needed from the
+  remaining stack gap and measured runtime.
 
 ## Acceptance criteria
 
