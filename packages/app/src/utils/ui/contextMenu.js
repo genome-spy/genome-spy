@@ -625,9 +625,7 @@ function controlItemToTemplate(item, level) {
         return html`<li class="menu-divider" aria-hidden="true"></li>`;
     }
     if (item.type === "header") {
-        return html`<li class="menu-header">
-            <h2>${item.label || "-"}</h2>
-        </li>`;
+        return html`<li class="menu-header">${item.label || "-"}</li>`;
     }
 
     const submenu = Boolean(item.submenu);
@@ -655,11 +653,7 @@ function controlItemToTemplate(item, level) {
                   );
               }}
           >
-              ${
-                  item.customContent
-                      ? html`<span aria-hidden="true">▸</span>`
-                      : item.label
-              }
+              ${item.customContent ? nothing : item.label}
           </button>`
         : nothing;
 
