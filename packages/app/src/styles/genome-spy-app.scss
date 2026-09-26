@@ -86,15 +86,15 @@ $basic-spacing: generic.$basic-spacing;
     --gs-toolbar-bg-lo: oklch(from var(--gs-toolbar-bg) calc(l - 0.06) c h);
     --gs-toolbar-bg-dim: oklch(from var(--gs-toolbar-bg) calc(l - 0.05) c h);
 
-    position: relative;
     z-index: 1;
 
     // Keep provenance navigation clickable above the shared menu backdrop.
     &:has(.provenance-dropdown > button[aria-expanded="true"]) {
-        z-index: 101;
         pointer-events: none;
 
         genome-spy-provenance-buttons {
+            position: relative;
+            z-index: 101;
             pointer-events: auto;
         }
     }
