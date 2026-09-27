@@ -98,7 +98,7 @@ decisions. All non-trivial code has been reviewed by a human developer.
 
 ## About
 
-Copyright (c) 2019-2026 Kari Lavikka and contributors. See [LICENSE](LICENSE)
+Copyright (c) 2018-2026 Kari Lavikka and contributors. See [LICENSE](LICENSE)
 for details.
 
 GenomeSpy was created by Kari Lavikka as an MSc student at the [University of
