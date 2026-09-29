@@ -1,34 +1,42 @@
 {
-  "description": [
-    "Zoomable point plot",
-    "Point size increases with zoom level."
-  ],
+  "description": "Illustrative copy-number states along chromosome 3",
+
+  "assembly": "hg38",
 
   "data": {
-    "sequence": { "start": 0, "stop": 200000, "as": "x" }
+    "values": [
+      { "chrom": "chr3", "start": 500000, "end": 560000, "state": "loss" },
+      { "chrom": "chr3", "start": 560000, "end": 830000, "state": "neutral" },
+      { "chrom": "chr3", "start": 830000, "end": 900000, "state": "gain" }
+    ]
   },
 
-  "transform": [
-    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
-    {
-      "type": "formula",
-      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
-      "as": "y"
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr3", "pos": 450000 },
+        { "chrom": "chr3", "pos": 950000 }
+      ]
     }
-  ],
-
-  "mark": {
-    "type": "point",
-    "size": { "expr": "min(0.5 * pow(zoomLevel(), 1.5), 200)" }
   },
+
+  "mark": "rect",
 
   "encoding": {
     "x": {
-      "field": "x",
-      "type": "quantitative",
-      "scale": { "zoom": true }
+      "chrom": "chrom",
+      "pos": "start",
+      "type": "locus",
+      "axis": { "title": "Position on chr3" }
     },
-    "y": { "field": "y", "type": "quantitative" },
-    "opacity": { "value": 0.6 }
+    "x2": { "chrom": "chrom", "pos": "end" },
+    "color": {
+      "field": "state",
+      "type": "nominal",
+      "scale": {
+        "domain": ["loss", "neutral", "gain"],
+        "range": ["#4e79a7", "#b8b8b8", "#e15759"]
+      }
+    }
   }
 }

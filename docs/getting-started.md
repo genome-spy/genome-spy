@@ -4,78 +4,41 @@ title: Getting Started with GenomeSpy
 
 # Getting Started
 
-GenomeSpy is a visualization toolkit for genomic data. More specifically, it is
-a JavaScript library that can be used to create interactive visualizations of
-genomic data in web browsers. To visualize data with GenomeSpy, you need to:
+GenomeSpy Core visualizations are defined by [JSON
+specifications](grammar/index.md) that describe the data and how it should be
+displayed. You can try a specification in the Playground or embed one in a web
+page. [GenomeSpy for Python](https://genomespy.app/genome-spy-python/) can build
+the same specifications from Python chart definitions. If you are analyzing an
+existing GenomeSpy App, see [Analyzing Sample
+Collections](sample-collections/analyzing.md).
 
-1. Have some data to be visualized
-2. Write or find a [visualization specification](grammar/index.md) that
-   describes how the data should be visualized
-3. Embed GenomeSpy into a web page and initialize it with the specification and
-   the data
-4. Open the web page with your web browser
+## Try a JSON specification in the Playground
 
-When writing a specification as JSON, turn on [editor suggestions and error
-checking](grammar/index.md#schema-assisted-editing). It catches many common
-mistakes as you type and shows the available properties and their documentation.
+The [Playground](https://genomespy.app/playground/) lets you edit a JSON
+specification and preview the visualization in your browser. You can load data
+from a publicly accessible web server or from your computer. The Playground
+does not support saving or sharing visualizations, so keep a copy of your
+specification if you want to reuse it.
 
-You can get started with GenomeSpy using the Playground app, Python, Observable
-notebooks, or by embedding GenomeSpy on HTML pages. More advanced users can use
-GenomeSpy as a visualization library in web applications.
+## Embed a JSON specification in a web page
 
-## Playground
+To use a JSON specification outside the Playground, embed GenomeSpy Core in an
+HTML page:
 
-The easiest way to try out GenomeSpy is the [Playground
-](https://genomespy.app/playground/) app, which allows you to experiment with
-different visualization specifications directly in your web browser. You can
-load data from publicly accessible web servers or from your computer. The app is
-still rudimentary and does not support saving or sharing visualizations. The
-toolbar includes an [Inspector](api/inspector.md) button for looking at the live
-view hierarchy and dataflow while editing a specification.
+1. Create an HTML document using one of the templates below.
+2. Place the specification and any local data files alongside the HTML document.
+3. Serve the files from a local or remote web server and open the page in a
+   browser.
 
-## Python
+When writing JSON, turn on [editor suggestions and error
+checking](grammar/index.md#schema-assisted-editing). They catch common mistakes
+as you type and show the available properties and their documentation.
 
-The [genome-spy-python](https://genomespy.app/genome-spy-python/) package builds
-validated GenomeSpy specifications from Python chart definitions and displays
-them in notebooks or web pages. Its chart API uses the same visualization
-grammar documented here. See the package's
-[getting-started guide](https://genomespy.app/genome-spy-python/getting-started.html)
-to install it and create your first chart.
+### HTML templates
 
-## Observable notebooks
-
-You can embed GenomeSpy into an [Observable](https://observablehq.com) notebook.
-See the [GenomeSpy
-collection](https://observablehq.com/collection/@tuner/genomespy) for usage
-examples.
-
-## Local or remote web server
-
-For more serious work, use the GenomeSpy JavaScript library to create a web
-page for your visualization:
-
-1. Create an HTML document by using one of the examples below
-2. Place the visualization specification (spec) and your data files into the same
-   directory as the HTML document
-3. Copy them to a remote web server or start a local web server in that directory
-
-### Local web server
-
-Python comes with an HTTP server module that can be started from command
-line:
-
-```
-python3 -m http.server --bind 127.0.0.1
-```
-
-By default, it serves files from the current working directory. See Python's
-[documentation](https://docs.python.org/3/library/http.server.html) for details.
-
-### HTML template
-
-The templates below load the GenomeSpy JavaScript library from a content
-delivery network. Because the specification schema and the JavaScript API are
-not yet 100% stable, it is recommended to use a specific version.
+The templates below load GenomeSpy Core from a content delivery network. They
+use a specific package version so later releases do not change the library
+loaded by your page.
 
 The `embed` function initializes a visualization into the HTML element given as
 the first parameter using the specification given as the second parameter. The
@@ -96,12 +59,47 @@ You can alternatively provide the specification as a JavaScript object.
 
 SNIPPET getting-started/core-module-inline-spec.html title="Module Script"
 
+### Local web server
+
+You can use any HTTP server for local development. For example, Python's
+standard library provides one:
+
+```
+python3 -m http.server --bind 127.0.0.1
+```
+
+Run the command from the directory containing your files. It does not require
+the GenomeSpy for Python package. See Python's
+[documentation](https://docs.python.org/3/library/http.server.html) for details.
+
 ### genomespy.app website examples
 
 The examples on the [genomespy.app](https://genomespy.app/) home page are stored
 in the [website-examples](https://github.com/genome-spy/website-examples) GitHub
 repository. You can clone the repository and launch the examples locally for
 further experimentation.
+
+## Python
+
+[GenomeSpy for Python](https://genomespy.app/genome-spy-python/) is an alternative
+way to author Core visualizations. It builds validated JSON specifications from
+Python chart definitions and displays the resulting visualizations in notebooks
+or web pages. See its
+[getting-started guide](https://genomespy.app/genome-spy-python/getting-started.html)
+to install the package and create your first chart.
+
+## Analyze a configured GenomeSpy App
+
+If you have access to a configured GenomeSpy App, you can analyze its sample
+collection without writing a specification. Start with
+[Analyzing Sample Collections](sample-collections/analyzing.md).
+
+## Observable notebooks
+
+You can embed GenomeSpy into an [Observable](https://observablehq.com) notebook.
+See the [GenomeSpy
+collection](https://observablehq.com/collection/@tuner/genomespy) for usage
+examples.
 
 ## Using GenomeSpy as a visualization library in web applications
 

@@ -4,10 +4,12 @@ title: GenomeSpy Visualization Grammar
 
 # Visualization Grammar
 
-Genome browser applications typically couple the visual representations to
-specific file formats and provide few customization options. GenomeSpy instead
-uses declarative JSON specifications: you describe the data and its visual
-representation rather than issue drawing commands.
+GenomeSpy Core uses a declarative visualization grammar, not a set of predefined
+chart templates. Its JSON specifications describe which data to use, how to
+display it, and how views fit together. This lets you create genome tracks and
+other views tailored to your data without writing drawing commands. If you work
+in Python, [GenomeSpy for Python](https://genomespy.app/genome-spy-python/)
+builds the same specifications from Python chart definitions.
 
 The grammar combines [data sources](data/index.md),
 [transformations](transform/index.md), [marks](mark/index.md),

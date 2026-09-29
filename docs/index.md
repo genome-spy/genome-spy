@@ -6,49 +6,37 @@ title: Interactive Genomic Visualization with GenomeSpy
 
 ![Logo](./img/do-it-swiftly.svg){ align=right }
 
-GenomeSpy is a toolkit for interactive visualization of genomic and other data.
-It provides a declarative [grammar](grammar/index.md) for mapping data to visual
-channels, such as position and color, and for composing complex visualizations
-from primitive graphical marks, such as [points](grammar/mark/point.md) and
-[rectangles](grammar/mark/rect.md). The grammar is heavily inspired by
-[Vega-Lite](https://vega.github.io/vega-lite/), with partial compatibility and
-extensions for genome visualization.
+GenomeSpy is a toolkit for creating interactive visualizations of genomic and
+other data. Its [visualization grammar](grammar/index.md) uses
+[JSON specifications](getting-started.md) to describe what to display and how it
+should appear. You can combine charts and genome tracks into custom views, such
+as a genome browser. Software developers can write the JSON directly;
+bioinformaticians and data scientists may prefer
+[GenomeSpy for Python](https://genomespy.app/genome-spy-python/), which builds
+the same specifications from Python chart definitions.
 
-Visualizations normally use a carefully crafted WebGL-based engine, which
-enables fluid interaction and smooth animation for datasets with several
-million rows. This performance comes from using GPU
-[shader](https://en.wikipedia.org/wiki/Shader) programs for all
-[scale](grammar/scale.md) transformations and mark rendering, but shaders are
-an implementation detail hidden from end users. A Canvas2D compatibility
-renderer keeps GenomeSpy usable when WebGL is unavailable, with lower
-performance and conservative software-based datum picking.
+GenomeSpy Core renders these visualizations in a web browser. Its WebGL-based
+engine supports smooth interaction with datasets containing several million
+rows.
 
-The toolkit comprises two JavaScript packages:
+[GenomeSpy App](sample-collections/index.md) builds on Core for analyzing large
+sample collections, such as cancer cohorts. In a configured App, researchers can
+inspect genomic measurements alongside metadata and sort, filter, and group
+samples. If you are using an existing App, start with
+[Analyzing Sample Collections](sample-collections/analyzing.md).
 
-1. The [**core**](grammar/index.md) library implements the visualization grammar
-   and rendering engine and can be embedded in web pages or applications.
-2. The [**app**](sample-collections/index.md) builds on the core library for
-   interactive analysis of large sample collections, such as cancer cohorts. It
-   repeats a visualization across samples and adds tools for filtering, sorting,
-   grouping, and exploring metadata.
+## Minimal genomic example
 
-Check the [Getting Started](getting-started.md) page to get started with
-GenomeSpy and make your own tailored visualizations.
+This illustrative copy-number view shows three segments on chromosome 3. The
+`x` and `x2` encodings place each segment along the genomic axis, and `color`
+distinguishes loss, neutral, and gain.
 
-## Minimal interactive example
+EXAMPLE examples/docs/index/interactive-overview.json height=100
 
-The example below introduces basic grammar concepts such as data transforms,
-encodings, marks, and interactive zooming. It renders a large synthetic point
-cloud smoothly, with point size increasing as you zoom in using the mouse
-wheel.
+## More genomic examples
 
-EXAMPLE examples/docs/index/interactive-overview.json
-
-## Genome visualization in practice
-
-GenomeSpy applies the same declarative grammar to genomic data. These examples
-show two richer, domain-specific visualizations: translated sequence context and
-splice-junction evidence.
+The same grammar supports more specialized views. These examples show
+translated sequence context and splice-junction evidence.
 
 EXAMPLE_GALLERY examples/docs/examples/genomic-data
 
