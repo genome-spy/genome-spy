@@ -31,7 +31,6 @@ export function recordButton(options = {}) {
                     flex-shrink: 0;
                     border-radius: 4px;
                     background: var(--gs-controls-background, #fff);
-                    box-shadow: inset 0 0 0 1px #8886;
                 }
                 .recording-controls > button { background: transparent; }
                 .recording-controls > button:disabled { cursor: default; }
@@ -45,9 +44,6 @@ export function recordButton(options = {}) {
                     width: 32px;
                     border-left: 1px solid #8886;
                     border-radius: 0 4px 4px 0;
-                }
-                button.pause-button[aria-pressed="true"] {
-                    box-shadow: inset 0 0 0 2px currentColor;
                 }
             `;
 
