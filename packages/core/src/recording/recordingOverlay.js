@@ -8,7 +8,7 @@
  * @returns {(context: CanvasRenderingContext2D) => void}
  */
 export default function recordingOverlay(canvas, signal) {
-    /** @type {{x: number, y: number} | undefined} */
+    /** @type {{x: number, y: number, fromX: number, fromY: number, targetX: number, targetY: number, time: number} | undefined} */
     let pointer;
     const tooltip = canvas
         .closest(".genome-spy")
@@ -17,7 +17,22 @@ export default function recordingOverlay(canvas, signal) {
         "pointermove",
         (event) => {
             if (event.pointerType !== "touch") {
-                pointer = { x: event.clientX, y: event.clientY };
+                pointer ??= {
+                    x: event.clientX,
+                    y: event.clientY,
+                    fromX: event.clientX,
+                    fromY: event.clientY,
+                    targetX: event.clientX,
+                    targetY: event.clientY,
+                    time: performance.now(),
+                };
+                const now = performance.now();
+                updatePointer(now);
+                pointer.fromX = pointer.x;
+                pointer.fromY = pointer.y;
+                pointer.time = now;
+                pointer.targetX = event.clientX;
+                pointer.targetY = event.clientY;
             }
         },
         { signal, passive: true }
@@ -30,12 +45,21 @@ export default function recordingOverlay(canvas, signal) {
         { signal }
     );
 
+    /** @param {number} now */
+    function updatePointer(now) {
+        // Retarget a 250 ms cubic ease-out from the current animated position.
+        const progress = Math.min((now - pointer.time) / 250, 1);
+        const alpha = 1 - (1 - progress) ** 3;
+        pointer.x = pointer.fromX + (pointer.targetX - pointer.fromX) * alpha;
+        pointer.y = pointer.fromY + (pointer.targetY - pointer.fromY) * alpha;
+    }
+
     return (context) => {
         if (!pointer) return;
         const bounds = canvas.getBoundingClientRect();
         if (!bounds.width || !bounds.height) return;
-        const x = pointer.x - bounds.left;
-        const y = pointer.y - bounds.top;
+        const x = pointer.targetX - bounds.left;
+        const y = pointer.targetY - bounds.top;
         if (x < 0 || y < 0 || x >= bounds.width || y >= bounds.height) return;
 
         context.save();
@@ -49,7 +73,8 @@ export default function recordingOverlay(canvas, signal) {
         ) {
             drawTooltip(context, tooltip, bounds);
         }
-        context.translate(x, y);
+        updatePointer(performance.now());
+        context.translate(pointer.x - bounds.left, pointer.y - bounds.top);
         context.beginPath();
         context.moveTo(0, 0);
         context.lineTo(0, 17);

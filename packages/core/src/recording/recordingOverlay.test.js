@@ -192,3 +192,69 @@ it("collapses ordinary tooltip whitespace without collapsing nonbreaking spaces"
         2
     );
 });
+
+it("smooths cursor movement over time without overshooting and resets on reentry", () => {
+    const { canvas, context, draw, move } = setup();
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0);
+    move(60, 50);
+    draw(context);
+    move(160, 80);
+    clock.mockReturnValue(30);
+    draw(context);
+    const [x, y] = context.translate.mock.calls.at(-1);
+    expect(x).toBeGreaterThan(50);
+    expect(x).toBeLessThan(150);
+    expect(y).toBeGreaterThan(30);
+    expect(y).toBeLessThan(60);
+    clock.mockReturnValue(500);
+    draw(context);
+    expect(context.translate.mock.calls.at(-1)[0]).toBeCloseTo(150, 1);
+    canvas.dispatchEvent(new Event("pointerleave"));
+    move(40, 40);
+    draw(context);
+    expect(context.translate).toHaveBeenLastCalledWith(30, 20);
+});
+
+it("uses elapsed time rather than frame count for cursor smoothing", () => {
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0);
+    const { context, draw, move } = setup();
+    move(60, 50);
+    draw(context);
+    move(160, 80);
+    clock.mockReturnValue(50);
+    draw(context);
+    const once = context.translate.mock.calls.at(-1);
+
+    clock.mockReturnValue(0);
+    const other = setup();
+    other.move(60, 50);
+    other.draw(other.context);
+    other.move(160, 80);
+    for (const time of [10, 20, 30, 40, 50]) {
+        clock.mockReturnValue(time);
+        other.draw(other.context);
+    }
+    const repeated = other.context.translate.mock.calls.at(-1);
+    expect(repeated[0]).toBeCloseTo(once[0]);
+    expect(repeated[1]).toBeCloseTo(once[1]);
+});
+
+it("eases for 250 ms and retargets continuously after idle", () => {
+    const { context, draw, move } = setup();
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0);
+    move(60, 50);
+    draw(context);
+    clock.mockReturnValue(2000);
+    move(160, 50);
+    draw(context);
+    expect(context.translate).toHaveBeenLastCalledWith(50, 30);
+    clock.mockReturnValue(2125);
+    draw(context);
+    expect(context.translate).toHaveBeenLastCalledWith(137.5, 30);
+    move(60, 50);
+    draw(context);
+    expect(context.translate).toHaveBeenLastCalledWith(137.5, 30);
+    clock.mockReturnValue(2375);
+    draw(context);
+    expect(context.translate).toHaveBeenLastCalledWith(50, 30);
+});
