@@ -1,3 +1,5 @@
+import recordingOverlay from "./recordingOverlay.js";
+
 const RECORDING_DURATION_MS = 60_000;
 const MIME_TYPE = "video/webm;codecs=vp8";
 const MAX_BYTES = 64 * 1024 * 1024;
@@ -35,8 +37,15 @@ export function startCanvasRecording(canvas, subscribeFrame, render) {
     output.width = canvas.width;
     output.height = canvas.height;
     const context = output.getContext("2d", { alpha: false });
+    // Retain a clean plot frame so moving overlays never leave trails or require
+    // reading a GPU presentation buffer after the browser has discarded it.
+    const plot = doc.createElement("canvas");
+    plot.width = canvas.width;
+    plot.height = canvas.height;
+    const plotContext = plot.getContext("2d", { alpha: false });
     const listeners = new AbortController();
     const { signal } = listeners;
+    const drawOverlay = recordingOverlay(canvas, signal);
     /** @type {MediaStream | undefined} */
     let stream;
     let unsubscribe = () => {};
@@ -65,10 +74,7 @@ export function startCanvasRecording(canvas, subscribeFrame, render) {
 
     function startTimers() {
         // Repeat the retained image during idle time without rerendering the plot.
-        frameTimer = setInterval(
-            () => capture(() => context.drawImage(output, 0, 0)),
-            1000 / 30
-        );
+        frameTimer = setInterval(() => capture(presentFrame), 1000 / 30);
         limitTimer = setTimeout(stop, remaining);
     }
 
@@ -135,9 +141,19 @@ export function startCanvasRecording(canvas, subscribeFrame, render) {
         if (settled || paused || stopping) {
             return;
         }
-        context.fillStyle = "white";
-        context.fillRect(0, 0, output.width, output.height);
-        context.drawImage(canvas, 0, 0);
+        plotContext.fillStyle = "white";
+        plotContext.fillRect(0, 0, output.width, output.height);
+        plotContext.drawImage(canvas, 0, 0);
+        presentFrame();
+    }
+
+    function presentFrame() {
+        if (stopping) {
+            context.drawImage(output, 0, 0);
+        } else {
+            context.drawImage(plot, 0, 0);
+            drawOverlay(context);
+        }
     }
 
     /** @param {() => void} action */
@@ -244,6 +260,8 @@ export function startCanvasRecording(canvas, subscribeFrame, render) {
             return remainingMs();
         },
         pause() {
+            // Ignore a late UI click while an automatic stop finishes encoding.
+            if (stopping && !settled) return;
             requireActive(false);
             recorder.pause();
             remaining = remainingMs();
@@ -252,6 +270,7 @@ export function startCanvasRecording(canvas, subscribeFrame, render) {
             clearTimeout(limitTimer);
         },
         resume() {
+            if (stopping && !settled) return;
             requireActive(true);
             recorder.resume();
             paused = false;

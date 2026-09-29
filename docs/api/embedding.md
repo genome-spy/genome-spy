@@ -135,8 +135,9 @@ and allow overflow. Inside controls overlay the plot.
 
 `recordButton()` adds a Record/Stop control that downloads a silent WebM video
 of the visible plot. It captures pan, zoom, selections, animations, and data
-updates. Transparent areas are flattened onto white. HTML tooltips, menus,
-Inspector, controls, and the mouse pointer are excluded.
+updates, a synthetic mouse pointer, and standard tooltips clipped to the plot.
+Transparent areas are flattened onto white. Custom HTML tooltips, menus,
+Inspector, and controls are excluded.
 
 ```js
 import { attachControls, recordButton } from "@genome-spy/core/controls";

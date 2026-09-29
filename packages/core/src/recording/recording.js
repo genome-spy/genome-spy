@@ -4,6 +4,8 @@ import { startCanvasRecording } from "./canvasRecording.js";
 /**
  * Starts an experimental recording. Importing this module explicitly opts in to
  * recording. Bundlers can omit it when only other controls are used.
+ * Includes a synthetic pointer and the styled standard tooltip, clipped to the
+ * recorded canvas. Custom HTML is omitted.
  * @param {import("../types/embedApi.js").EmbedResult} api
  * @returns {import("../types/embedApi.js").RecordingSession}
  */

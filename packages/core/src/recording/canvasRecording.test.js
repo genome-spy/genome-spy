@@ -127,9 +127,15 @@ describe("canvas recording", () => {
     it("copies visible paints but does not rerender during idle time", async () => {
         const session = await start();
         capture();
-        expect(draw.mock.calls.at(-1)[0]).toBe(canvas);
+        expect(draw).toHaveBeenCalledWith(canvas, 0, 0);
+        const plotCopies = draw.mock.calls.filter(
+            ([source]) => source === canvas
+        ).length;
         await vi.advanceTimersByTimeAsync(1000);
         expect(requestRender).toHaveBeenCalledOnce();
+        expect(
+            draw.mock.calls.filter(([source]) => source === canvas)
+        ).toHaveLength(plotCopies);
         session.cancel();
         await expect(session.finished).rejects.toMatchObject({
             name: "AbortError",
@@ -305,3 +311,25 @@ it("allows an immediate restart after cancellation while rejecting concurrent ca
     await expect(first.finished).rejects.toMatchObject({ name: "AbortError" });
     await expect(second.finished).rejects.toMatchObject({ name: "AbortError" });
 });
+
+it.each(["duration", "size"])(
+    "ignores pause/resume clicks while the %s limit finishes encoding",
+    async (limit) => {
+        const session = await start();
+        const recorder = Recorder.instances[0];
+        if (limit === "duration") {
+            await vi.advanceTimersByTimeAsync(60_000);
+        } else {
+            // Only chunk size matters for this limit; avoid allocating a large video.
+            recorder.chunk(/** @type {Blob} */ ({ size: 64 * 1024 * 1024 }));
+        }
+        expect(() => session.pause()).not.toThrow();
+        expect(() => session.resume()).not.toThrow();
+        expect(recorder.state).toBe("recording");
+        expect(session.paused).toBe(false);
+        await vi.advanceTimersByTimeAsync(101);
+        expect((await session.finished).size).toBeGreaterThan(0);
+        expectReleased();
+        expect(() => session.pause()).toThrow("recording state");
+    }
+);
