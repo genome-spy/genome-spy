@@ -150,7 +150,7 @@ it("shows remaining seconds in the button without an overlay and clears its time
 
 it("uses hover labels and pauses/resumes the button countdown", async () => {
     const { button, controls, session } = setup();
-    expect(button.textContent).toBe("●");
+    expect(button.textContent).toBe("● Record");
     expect(button.title).toBe("Record plot video");
     button.click();
     await vi.advanceTimersByTimeAsync(3000);
@@ -169,4 +169,32 @@ it("uses hover labels and pauses/resumes the button countdown", async () => {
     await vi.advanceTimersByTimeAsync(2000);
     expect(button.textContent).toBe("■ 55");
     expect(pause.title).toBe("Pause recording");
+});
+
+it("keeps both recording actions present through idle, recording, and completion", async () => {
+    const { button, controls, session, resolve } = setup();
+    const group = controls.element.shadowRoot.querySelector(
+        '[aria-label="Recording"]'
+    );
+    const pause = /** @type {HTMLButtonElement} */ (
+        group.querySelector(".pause-button")
+    );
+    expect(group.querySelectorAll("button")).toHaveLength(2);
+    expect(pause.hidden).toBe(false);
+    expect(pause.disabled).toBe(true);
+    button.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(pause.disabled).toBe(false);
+    // Keep encoding pending to inspect the finishing state.
+    session.stop.mockImplementation(() => session.finished);
+    const stopText = button.textContent;
+    button.click();
+    expect(button.disabled).toBe(true);
+    expect(pause.disabled).toBe(true);
+    expect(button.textContent).toBe(stopText);
+    resolve(new Blob(["video"]));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(button.textContent).toBe("● Record");
+    expect(pause.disabled).toBe(true);
+    expect(pause.hidden).toBe(false);
 });

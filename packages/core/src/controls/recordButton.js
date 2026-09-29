@@ -18,15 +18,37 @@ export function recordButton(options = {}) {
             const doc = context.container.ownerDocument;
             const group = doc.createElement("span");
             group.className = "recording-controls";
+            group.setAttribute("role", "group");
+            group.ariaLabel = "Recording";
             const style = doc.createElement("style");
             style.textContent = `
                 :host .buttons:has([data-recording]) {
                     opacity: 1;
                     pointer-events: auto;
                 }
-                .recording-controls { display: inline-flex; gap: 3px; }
-                .recording-controls > [hidden] { display: none; }
-                button.record-button { color: #b42318; font-variant-numeric: tabular-nums; }
+                .recording-controls {
+                    display: inline-flex;
+                    flex-shrink: 0;
+                    border-radius: 4px;
+                    background: var(--gs-controls-background, #fff);
+                    box-shadow: inset 0 0 0 1px #8886;
+                }
+                .recording-controls > button { background: transparent; }
+                .recording-controls > button:disabled { cursor: default; }
+                button.record-button {
+                    width: 80px;
+                    color: #b42318;
+                    font-variant-numeric: tabular-nums;
+                    border-radius: 4px 0 0 4px;
+                }
+                button.pause-button {
+                    width: 32px;
+                    border-left: 1px solid #8886;
+                    border-radius: 0 4px 4px 0;
+                }
+                button.pause-button[aria-pressed="true"] {
+                    box-shadow: inset 0 0 0 2px currentColor;
+                }
             `;
 
             function clearCountdown() {
@@ -38,7 +60,7 @@ export function recordButton(options = {}) {
                 const paused = session?.paused ?? false;
                 element.textContent = session
                     ? "■ " + Math.ceil(session.remainingMs / 1000)
-                    : "●";
+                    : "● Record";
                 element.ariaLabel = session ? "Stop recording" : "Record";
                 element.ariaPressed = String(!!session);
                 element.title = !session
@@ -47,7 +69,7 @@ export function recordButton(options = {}) {
                       ? "Recording paused — stop and download"
                       : "Stop and download recording";
                 element.toggleAttribute("data-recording", !!session);
-                pauseElement.hidden = !session;
+                pauseElement.disabled = !session;
                 pauseElement.textContent = paused ? "▶" : "Ⅱ";
                 pauseElement.title = paused
                     ? "Resume recording"
@@ -94,12 +116,10 @@ export function recordButton(options = {}) {
                     if (session) {
                         clearCountdown();
                         pauseElement.disabled = true;
-                        element.textContent = "■ …";
                         element.ariaLabel = "Finishing recording";
                         await session.stop().catch(() => {});
                     } else {
                         session = startRecording(context.api);
-                        pauseElement.disabled = false;
                         updateControls();
                         countdown = setInterval(updateControls, 250);
                         void finish(session);
@@ -122,6 +142,7 @@ export function recordButton(options = {}) {
             const pauseElement = /** @type {HTMLButtonElement} */ (
                 pauseControl.element
             );
+            pauseElement.classList.add("pause-button");
             updateControls();
             group.append(style, element, pauseElement);
             return {

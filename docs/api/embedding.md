@@ -156,9 +156,9 @@ button at runtime still includes its functionality. The dedicated
 For direct webpage use, the prebuilt controls bundle excludes recording. Load the
 separate recording addon as shown in the browser examples below.
 
-The red circle starts recording. The Stop button shows the seconds remaining,
-without a recording message over the plot. A Pause button appears alongside it;
-while paused it becomes Resume, and the countdown freezes. Paused time and view
+The recording widget keeps Record/Stop and Pause/Resume in fixed positions.
+Pause is disabled until recording starts. Stop shows the seconds remaining;
+pausing freezes the countdown and changes Pause to Resume. Paused time and view
 changes made during the pause are omitted from the video. Resuming continues from
 the current plot state; stopping while paused downloads the clip already captured.
 Hover over each button for its action label.
