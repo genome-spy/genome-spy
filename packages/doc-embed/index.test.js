@@ -131,20 +131,41 @@ describe("GenomeSpyDocEmbed", () => {
                 element.shadowRoot.querySelector(".embed-spec")
             );
 
-        expect(getToggle().textContent).toBe("Show specification");
+        expect(getToggle().textContent).toBe("Show JSON specification");
         expect(getSpec().style.display).toBe("none");
 
         getToggle().click();
         await element.updateComplete;
 
-        expect(getToggle().textContent).toBe("Hide specification");
+        expect(getToggle().textContent).toBe("Hide JSON specification");
         expect(getSpec().style.display).toBe("block");
 
         getToggle().click();
         await element.updateComplete;
 
-        expect(getToggle().textContent).toBe("Show specification");
+        expect(getToggle().textContent).toBe("Show JSON specification");
         expect(getSpec().style.display).toBe("none");
+    });
+
+    it("links to a curated Python example beside the existing controls", async () => {
+        const element = await mountEmbed("core", true);
+        element.playgroundUrl = "/playground/?spec=example.json";
+        element.pythonUrl =
+            "https://genomespy.app/genome-spy-python/gallery/ascat_fitting.html";
+        await element.updateComplete;
+
+        const links = Array.from(
+            element.shadowRoot.querySelectorAll(".embed-links a")
+        );
+
+        expect(
+            links.map((link) => link.textContent.trim().replace(/\s+/g, " "))
+        ).toEqual([
+            "Show JSON specification",
+            "Edit this example in Playground",
+            "View Python example",
+        ]);
+        expect(links[2].getAttribute("href")).toBe(element.pythonUrl);
     });
 
     it("renders an error for an unknown runtime", async () => {

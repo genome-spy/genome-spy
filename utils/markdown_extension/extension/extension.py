@@ -16,6 +16,29 @@ docs_baseurl = 'https://genomespy.app/docs'
 DOCS_EXAMPLE_SOURCE_PREFIX = 'examples/docs/'
 APP_EXAMPLE_SOURCE_PREFIX = 'examples/app/'
 DOCS_EXAMPLE_PUBLIC_PREFIX = '/docs/example-specs/'
+PYTHON_GALLERY_BASE_URL = 'https://genomespy.app/genome-spy-python/gallery/'
+
+# Explicit matches keep curated ports discoverable even when their filenames differ.
+PYTHON_GALLERY_EXAMPLES: dict[str, str] = {
+    'examples/docs/examples/genomic-data/ASCAT-algorithm.json': 'ascat_fitting',
+    'examples/docs/examples/genomic-data/ASCAT.json': 'ascat_copy_number',
+    'examples/docs/examples/genomic-data/bam-read-alignments.json': 'bam_read_alignments',
+    'examples/docs/examples/genomic-data/bpreveal-pisa-matrix.json': 'pisa_interaction_matrix',
+    'examples/docs/examples/genomic-data/bpreveal-pisa-squid.json': 'pisa_squid',
+    'examples/docs/examples/genomic-data/clinvar-variants.json': 'clinvar_variants',
+    'examples/docs/examples/genomic-data/cytobands.json': 'cytobands',
+    'examples/docs/examples/genomic-data/dynseq-spi1-bqtl.json': 'dynseq_bqtl',
+    'examples/docs/examples/genomic-data/genome-browser.json': 'composing_genome_browser',
+    'examples/docs/examples/genomic-data/gff3-gene-annotations.json': 'gff3_gene_annotations',
+    'examples/docs/examples/genomic-data/hcc1954-sv-cnv.json': 'hcc1954_sv_cnv',
+    'examples/docs/examples/genomic-data/indexed-fasta-six-frame-translation.json': 'six_frame_translation',
+    'examples/docs/examples/genomic-data/msa.json': 'multiple_sequence_alignment',
+    'examples/docs/examples/genomic-data/pik3ca-tcga-brca-lollipop.json': 'pik3ca_tcga_brca_lollipop',
+    'examples/docs/examples/genomic-data/sashimi-plot.json': 'sashimi_plot',
+    'examples/docs/examples/genomic-data/scored-refSeq-genes.json': 'refseq_scored_genes',
+    'examples/docs/examples/genomic-data/tcga-ov-gistic.json': 'tcga_ov_gistic',
+    'examples/docs/examples/generic/upsetr-mutations.json': 'upset_mutations',
+}
 
 types_with_descriptions = {
     'Field': 'string (field name)',
@@ -215,6 +238,13 @@ class MyPreprocessor(Preprocessor):
             attributes.append(
                 'playground-url="/playground/?spec={}"'.format(
                     playground_spec_path
+                )
+            )
+        python_example = PYTHON_GALLERY_EXAMPLES.get(example_path)
+        if python_example:
+            attributes.append(
+                'python-url="{}{}.html"'.format(
+                    PYTHON_GALLERY_BASE_URL, python_example
                 )
             )
         if height:

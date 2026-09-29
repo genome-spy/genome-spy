@@ -129,6 +129,7 @@ export class GenomeSpyDocEmbed extends LitElement {
             specHidden: { type: Boolean },
             baseUrl: { type: String, attribute: "base-url" },
             playgroundUrl: { type: String, attribute: "playground-url" },
+            pythonUrl: { type: String, attribute: "python-url" },
             runtime: { type: String },
         };
     }
@@ -139,6 +140,7 @@ export class GenomeSpyDocEmbed extends LitElement {
         this.specHidden = false;
         this.baseUrl = undefined;
         this.playgroundUrl = undefined;
+        this.pythonUrl = undefined;
         this.runtime = "core";
         this.embedRef = createRef();
         this.appStyles = "";
@@ -153,10 +155,11 @@ export class GenomeSpyDocEmbed extends LitElement {
 
     render() {
         const shouldShowSpecToggle = this.specHidden || this.#specToggleEnabled;
-        const shouldShowLinks = this.playgroundUrl || shouldShowSpecToggle;
+        const shouldShowLinks =
+            this.playgroundUrl || this.pythonUrl || shouldShowSpecToggle;
         const specToggleLabel = this.specHidden
-            ? "Show specification"
-            : "Hide specification";
+            ? "Show JSON specification"
+            : "Hide JSON specification";
 
         return html`
             ${
@@ -178,34 +181,51 @@ export class GenomeSpyDocEmbed extends LitElement {
                     ? html`
                           <div class="embed-links">
                               ${
-                              shouldShowSpecToggle
-                                  ? html`
-                                        <a
-                                            href="#"
-                                            @click=${(event) => {
-                                            this.#specToggleEnabled = true;
-                                            this.specHidden = !this.specHidden;
-                                            event.preventDefault();
-                                        }}
-                                            >${specToggleLabel}</a
-                                        >
-                                    `
-                                  : nothing
-                          }
+                                  shouldShowSpecToggle
+                                      ? html`
+                                            <a
+                                                href="#"
+                                                @click=${(event) => {
+                                                    this.#specToggleEnabled = true;
+                                                    this.specHidden =
+                                                        !this.specHidden;
+                                                    event.preventDefault();
+                                                }}
+                                                >${specToggleLabel}</a
+                                            >
+                                        `
+                                      : nothing
+                              }
                               ${
-                              this.playgroundUrl && shouldShowSpecToggle
-                                  ? html` - `
-                                  : nothing
-                          }
+                                  this.playgroundUrl && shouldShowSpecToggle
+                                      ? html` - `
+                                      : nothing
+                              }
                               ${
-                              this.playgroundUrl
-                                  ? html`
-                                        <a href=${this.playgroundUrl}
-                                            >Edit this example in Playground</a
-                                        >
-                                    `
-                                  : nothing
-                          }
+                                  this.playgroundUrl
+                                      ? html`
+                                            <a href=${this.playgroundUrl}
+                                                >Edit this example in
+                                                Playground</a
+                                            >
+                                        `
+                                      : nothing
+                              }
+                              ${
+                                  this.pythonUrl &&
+                                  (shouldShowSpecToggle || this.playgroundUrl)
+                                      ? html` - `
+                                      : nothing
+                              }
+                              ${
+                                  this.pythonUrl
+                                      ? html`
+                                            <a href=${this.pythonUrl}
+                                                >View Python example</a
+                                            >
+                                        `
+                                      : nothing
+                              }
                           </div>
                       `
                     : nothing
