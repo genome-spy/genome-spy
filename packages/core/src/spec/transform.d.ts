@@ -1187,6 +1187,16 @@ export interface Displace2DParams extends TransformParamsBase {
     anchorHeight?: number | Field | ExprRef;
 
     /**
+     * Easing half-life in milliseconds for displayed offsets as they approach
+     * their solved positions. Larger values make label motion slower without
+     * changing the placement. An expression can adjust the speed while the
+     * visualization is running. Must be positive and finite.
+     *
+     * __Default value:__ `120`
+     */
+    animationHalfLife?: number | ExprRef;
+
+    /**
      * Names of the output fields for signed horizontal and vertical pixel
      * offsets. Positive values move right and down, respectively. Neither name
      * may overwrite `key`.

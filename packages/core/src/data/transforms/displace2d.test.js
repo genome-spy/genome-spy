@@ -183,6 +183,152 @@ describe("Displace2DTransform", () => {
         expect(animator.transitions).toHaveLength(0);
     });
 
+    test("updates animation speed while labels are moving", async () => {
+        const paramRuntime = new ViewParamRuntime();
+        const setHalfLife = paramRuntime.registerParam({
+            name: "halfLife",
+            value: 60,
+        });
+        const createPair = (
+            /** @type {number | import("../../spec/parameter.js").ExprRef} */
+            animationHalfLife,
+            /** @type {ViewParamRuntime | undefined} */ runtime
+        ) => {
+            const animator = new TestAnimator();
+            const transform = createDisplace2D(
+                {
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 20,
+                    height: 20,
+                    animationHalfLife,
+                },
+                { animator, paramRuntime: runtime }
+            );
+            /** @type {Record<string, number>[]} */
+            const rows = [
+                { x: 0, y: 0 },
+                { x: 0, y: 0 },
+            ];
+            for (const row of rows) transform.handle(row);
+            transform.complete();
+            return { animator, rows };
+        };
+
+        const steady = createPair(60, undefined);
+        const adjustable = createPair({ expr: "halfLife" }, paramRuntime);
+        steady.animator.frame(0);
+        adjustable.animator.frame(0);
+        const firstStep = [
+            adjustable.rows[1].xDisplacement,
+            adjustable.rows[1].yDisplacement,
+        ];
+        expect([
+            steady.rows[1].xDisplacement,
+            steady.rows[1].yDisplacement,
+        ]).toEqual(firstStep);
+
+        setHalfLife(240);
+        await paramRuntime.whenPropagated();
+        steady.animator.frame(FRAME_INTERVAL);
+        adjustable.animator.frame(FRAME_INTERVAL);
+
+        const distanceMoved = (/** @type {Record<string, number>} */ row) =>
+            Math.hypot(
+                row.xDisplacement - firstStep[0],
+                row.yDisplacement - firstStep[1]
+            );
+        expect(distanceMoved(adjustable.rows[1])).toBeLessThan(
+            distanceMoved(steady.rows[1])
+        );
+    });
+
+    test.each([40, 1000])(
+        "keeps animation speed consistent across replay rates for %s-pixel labels",
+        (size) => {
+            const simulate = (/** @type {number} */ refreshRate) => {
+                const animator = new TestAnimator();
+                const transform = createDisplace2D(
+                    {
+                        type: "displace2d",
+                        x: "x",
+                        y: "y",
+                        width: "width",
+                        height: "height",
+                        animationHalfLife: 180,
+                    },
+                    { animator }
+                );
+                /** @type {Record<string, number>[]} */
+                const rows = [
+                    { x: 0, y: 0, width: size, height: size },
+                    { x: 0, y: 0, width: size, height: size },
+                ];
+                const replay = () => {
+                    transform.reset();
+                    for (const row of rows) transform.handle(row);
+                    transform.complete();
+                };
+                const displacement = () =>
+                    Math.max(
+                        Math.abs(rows[1].xDisplacement),
+                        Math.abs(rows[1].yDisplacement)
+                    );
+
+                replay();
+                for (let frame = 0; animator.transitions.length > 0; frame++) {
+                    animator.frame(frame * FRAME_INTERVAL);
+                    expect(frame).toBeLessThan(1000);
+                }
+
+                // Removing collision geometry gives a fixed target at the anchor.
+                // Replay it each frame to model scale-driven updates during zoom.
+                for (const row of rows) {
+                    row.width = 0;
+                    row.height = 0;
+                }
+                replay();
+                animator.frame(10_000);
+                const start = displacement();
+                for (let frame = 1; frame <= refreshRate * 0.3; frame++) {
+                    replay();
+                    animator.frame(10_000 + (frame * 1000) / refreshRate);
+                }
+                const remaining = displacement();
+                transform.dispose();
+                return { start, remaining };
+            };
+
+            const at60Hz = simulate(60);
+            const at120Hz = simulate(120);
+            expect(at120Hz.start).toBeCloseTo(at60Hz.start, 7);
+            expect(at120Hz.remaining).toBeCloseTo(at60Hz.remaining, 7);
+            expect(at60Hz.remaining).toBeCloseTo(
+                size == 40
+                    ? at60Hz.start * 2 ** (-300 / 180)
+                    : at60Hz.start - 600 * 0.3,
+                7
+            );
+        }
+    );
+
+    test.each([0, Infinity])(
+        "rejects invalid animation half-life %s",
+        (animationHalfLife) => {
+            expect(() =>
+                createDisplace2D({
+                    type: "displace2d",
+                    x: "x",
+                    y: "y",
+                    width: 10,
+                    height: 10,
+                    animationHalfLife,
+                })
+            ).toThrow("animationHalfLife must be positive and finite");
+        }
+    );
+
     test("warm-starts retained rows when anchors move", () => {
         const animator = new TestAnimator();
         const transform = createDisplace2D(

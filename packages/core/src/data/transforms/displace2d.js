@@ -11,8 +11,8 @@ import { Displace2DConstraintSolver } from "./displace2dConstraintSolver.js";
 const FRAME_BUDGET = 4;
 const INITIAL_STEPS = 2;
 const MAX_STEPS_PER_FRAME = 64;
-const DISPLAY_HALF_LIFE = 60;
-const MAX_DISPLAY_STEP = 10;
+const DEFAULT_ANIMATION_HALF_LIFE = 120;
+const MAX_DISPLAY_SPEED = 600; // Logical pixels per second, per axis.
 const DISPLAY_EPSILON = 0.05;
 const DEFAULT_FRAME_INTERVAL = 1000 / 60;
 
@@ -99,6 +99,9 @@ export default class Displace2DTransform extends Transform {
     /** @type {DimensionAccessor} */
     #anchorHeightAccessor;
 
+    /** @type {() => number} */
+    #animationHalfLifeReader = () => DEFAULT_ANIMATION_HALF_LIFE;
+
     get behavior() {
         return BEHAVIOR_COLLECTS | BEHAVIOR_MODIFIES;
     }
@@ -160,6 +163,16 @@ export default class Displace2DTransform extends Transform {
         this.#anchorHeightAccessor = dimensionAccessor(
             params.anchorHeight,
             () => props.anchorHeight
+        );
+
+        const animationHalfLife =
+            params.animationHalfLife ?? DEFAULT_ANIMATION_HALF_LIFE;
+        if (!isExprRef(animationHalfLife)) {
+            validateAnimationHalfLife(animationHalfLife);
+        }
+        this.#animationHalfLifeReader = this.watchExprRef(
+            animationHalfLife,
+            () => validateAnimationHalfLife(this.#animationHalfLifeReader())
         );
 
         const view = /** @type {import("../../view/view.js").default} */ (
@@ -392,11 +405,15 @@ export default class Displace2DTransform extends Transform {
     }
 
     #requestAnimation() {
+        if (this.#relaxations.length == 0) {
+            this.#lastAnimationTimestamp = undefined;
+            return;
+        }
+
         if (
             !this.#animator ||
             this.#animator.transitionsEnabled === false ||
-            this.#animationRequested ||
-            this.#relaxations.length == 0
+            this.#animationRequested
         ) {
             return;
         }
@@ -408,7 +425,6 @@ export default class Displace2DTransform extends Transform {
     #cancelAnimation() {
         this.#animator?.cancelTransition(this.#animate);
         this.#animationRequested = false;
-        this.#lastAnimationTimestamp = undefined;
     }
 
     /** @param {number} timestamp */
@@ -444,6 +460,8 @@ export default class Displace2DTransform extends Transform {
         }
         if (solverActive || displayState == 2) {
             this.#requestAnimation();
+        } else {
+            this.#lastAnimationTimestamp = undefined;
         }
     };
 
@@ -463,7 +481,11 @@ export default class Displace2DTransform extends Transform {
      * @returns {0 | 1 | 2} No change, changed and settled, or still moving.
      */
     #advanceDisplayedPositions(elapsed) {
-        const alpha = 1 - 2 ** (-elapsed / DISPLAY_HALF_LIFE);
+        const halfLife = validateAnimationHalfLife(
+            this.#animationHalfLifeReader()
+        );
+        const alpha = 1 - 2 ** (-elapsed / halfLife);
+        const maxStep = (MAX_DISPLAY_SPEED * elapsed) / 1000;
         let changed = false;
         let pending = false;
         for (const relaxation of this.#relaxations) {
@@ -475,22 +497,14 @@ export default class Displace2DTransform extends Transform {
                     placement.displayX +=
                         Math.abs(dx) <= DISPLAY_EPSILON
                             ? dx
-                            : clamp(
-                                  dx * alpha,
-                                  -MAX_DISPLAY_STEP,
-                                  MAX_DISPLAY_STEP
-                              );
+                            : clamp(dx * alpha, -maxStep, maxStep);
                     changed = true;
                 }
                 if (dy != 0) {
                     placement.displayY +=
                         Math.abs(dy) <= DISPLAY_EPSILON
                             ? dy
-                            : clamp(
-                                  dy * alpha,
-                                  -MAX_DISPLAY_STEP,
-                                  MAX_DISPLAY_STEP
-                              );
+                            : clamp(dy * alpha, -maxStep, maxStep);
                     changed = true;
                 }
                 pending ||=
@@ -569,6 +583,7 @@ export default class Displace2DTransform extends Transform {
     }
 
     reset() {
+        // Preserve frame timing across replays while labels are still moving.
         this.#cancelAnimation();
         super.reset();
         this.#clearBufferedData();
@@ -601,6 +616,16 @@ function validateKey(key) {
     ) {
         throw new Error("displace2d keys must be strings or finite numbers.");
     }
+}
+
+/** @param {number} halfLife */
+function validateAnimationHalfLife(halfLife) {
+    if (!Number.isFinite(halfLife) || halfLife <= 0) {
+        throw new Error(
+            "displace2d animationHalfLife must be positive and finite."
+        );
+    }
+    return halfLife;
 }
 
 /** @param {number} value @param {number} min @param {number} max */
