@@ -6,7 +6,7 @@ import { renderVersionLink, packageJson } from "../../utils/version.js";
 export default class AboutDialog extends BaseDialog {
     constructor() {
         super();
-        this.dialogTitle = "About GenomeSpy";
+        this.dialogTitle = "About GenomeSpy App";
     }
 
     renderBody() {
@@ -30,9 +30,11 @@ export default class AboutDialog extends BaseDialog {
                 </p>
                 <p>
                     Version: ${renderVersionLink(packageJson.version)}
-                    ${"commitHash" in packageJson
-                        ? `(${packageJson.commitHash})`
-                        : nothing}
+                    ${
+                        "commitHash" in packageJson
+                            ? `(${packageJson.commitHash})`
+                            : nothing
+                    }
                 </p>
 
                 <p style="font-size: 85%">
