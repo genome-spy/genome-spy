@@ -68,16 +68,30 @@ describe("scaleLocus ticks", () => {
             .domain(domain);
     }
 
-    test("returns fewer ticks for long exact labels", () => {
-        const longLabels = createScale(200_000_000, [100_000_000, 100_100_000]);
-        const shortLabels = createScale(200_000_000, [0, 4_000]);
+    test("returns every base when the requested tick count allows it", () => {
+        const scale = createScale(1_000, [100, 110]);
+        const ticks = scale.ticks(100);
 
-        expect(longLabels.ticks(10).length).toBeLessThan(
-            shortLabels.ticks(10).length
-        );
-        expect(longLabels.tickFormat(10)(longLabels.ticks(10)[0])).toContain(
-            ","
-        );
+        expect(ticks.map(scale.tickFormat(100))).toEqual([
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110",
+        ]);
+    });
+
+    test("thins exact labels when the requested count limits density", () => {
+        const scale = createScale(200_000_000, [100_000_000, 100_100_000]);
+        const ticks = scale.ticks(10);
+
+        expect(ticks.length).toBeLessThan(10);
+        expect(scale.tickFormat(10)(ticks[0])).toContain(",");
     });
 
     test("keeps abbreviated labels for large spans", () => {
@@ -87,33 +101,16 @@ describe("scaleLocus ticks", () => {
         expect(scale.tickFormat(7)(tick)).toContain("M");
     });
 
-    test("keeps exact locus ticks stable around five-base spans", () => {
-        const stable = createScale(2_000_000, [1_000_000.2, 1_000_005.2]);
-        const slightlyZoomed = createScale(
-            2_000_000,
-            [1_000_000.2, 1_000_005.21]
-        );
-        const furtherZoomed = createScale(
-            2_000_000,
-            [1_000_000.2, 1_000_006.1]
-        );
+    test("keeps one-base spacing as fractional spans expose more bases", () => {
+        const scale = createScale(20_000_000, [16_814_352, 16_814_354]);
+        expect(scale.ticks(10)).toEqual([16_814_352, 16_814_353]);
 
-        expect(slightlyZoomed.ticks(10)).toEqual(stable.ticks(10));
-        expect(furtherZoomed.ticks(10)).toEqual(stable.ticks(10));
-    });
-
-    test("keeps exact locus ticks stable around two-base spans", () => {
-        const stable = createScale(20_000_000, [16_814_352, 16_814_354]);
-        const slightlyZoomed = createScale(
-            20_000_000,
-            [16_814_352, 16_814_354.01]
-        );
-        const furtherZoomed = createScale(
-            20_000_000,
-            [16_814_352, 16_814_354.9]
-        );
-
-        expect(slightlyZoomed.ticks(10)).toEqual(stable.ticks(10));
-        expect(furtherZoomed.ticks(10)).toEqual(stable.ticks(10));
+        // Newly exposed bases add edge ticks without changing the existing spacing.
+        for (const end of [16_814_354.01, 16_814_354.9]) {
+            scale.domain([16_814_352, end]);
+            expect(scale.ticks(10)).toEqual([
+                16_814_352, 16_814_353, 16_814_354,
+            ]);
+        }
     });
 });

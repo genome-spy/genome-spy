@@ -38,18 +38,23 @@ export default function scaleLocus() {
             Math.min(domain[1], genome.totalSize - 1)
         );
 
-        const requestedCount = Math.max(
-            1,
-            Math.min(count ?? 10, Math.floor(domainSpan))
-        );
+        const requestedCount = Math.max(1, Math.min(count ?? 10, domainSpan));
 
         let step = tickStep(domain[0], domain[1], requestedCount);
 
         if (step < EXACT_LOCUS_LABEL_STEP_THRESHOLD) {
+            // Thin before limiting by the visible span. Keep the cap continuous
+            // so fractional zoom levels retain stable one-base spacing.
             step = tickStep(
                 domain[0],
                 domain[1],
-                requestedCount * EXACT_LOCUS_LABEL_THINNING_FACTOR
+                Math.max(
+                    1,
+                    Math.min(
+                        (count ?? 10) * EXACT_LOCUS_LABEL_THINNING_FACTOR,
+                        domainSpan
+                    )
+                )
             );
         }
 
@@ -94,7 +99,7 @@ export default function scaleLocus() {
         const step = tickStep(
             domain[0],
             domain[1],
-            Math.max(1, Math.min(count ?? 10, Math.floor(domainSpan)))
+            Math.max(1, Math.min(count ?? 10, domainSpan))
         );
         // Use higher display precision for smaller spans
         // TODO: max absolute value should be taken into account too. 2.00M vs 200M
