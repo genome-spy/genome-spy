@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
+
+**Note:** Version bump only for package @genome-spy/inspector
+
 # [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
 
 **Note:** Version bump only for package @genome-spy/inspector

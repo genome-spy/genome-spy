@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
+
+### Bug Fixes
+
+* **app:** avoid reloading sample tracks when sorting ([70c88c6](https://github.com/genome-spy/genome-spy/commit/70c88c6fd44aed15abb3f555e6152a2d5d8f5327)) by @tuner
+
+### Features
+
+* **app:** make menus and view settings accessible ([#547](https://github.com/genome-spy/genome-spy/issues/547)) ([72eded3](https://github.com/genome-spy/genome-spy/commit/72eded38dc064772609f752e3f77d1ba43ade01d)) by @tuner
+
 # [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
 
 ### Features

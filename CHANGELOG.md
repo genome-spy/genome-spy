@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
+
+### Bug Fixes
+
+* **app:** avoid reloading sample tracks when sorting ([70c88c6](https://github.com/genome-spy/genome-spy/commit/70c88c6fd44aed15abb3f555e6152a2d5d8f5327)) by @tuner
+* **core:** allow one-base locus ticks at close zoom ([42da653](https://github.com/genome-spy/genome-spy/commit/42da653911119610c5a31ac413536e7d63f08fca)) by @tuner
+* **core:** refresh axis labels when scale formatting changes ([ec5da05](https://github.com/genome-spy/genome-spy/commit/ec5da057c5e00894d49c917ad648d6db56c8d854)) by @tuner
+
+### Features
+
+* **app:** make menus and view settings accessible ([#547](https://github.com/genome-spy/genome-spy/issues/547)) ([72eded3](https://github.com/genome-spy/genome-spy/commit/72eded38dc064772609f752e3f77d1ba43ade01d)) by @tuner
+* **core:** add adjustable displace2d animation half-life ([fe97c84](https://github.com/genome-spy/genome-spy/commit/fe97c8442399ca78c3e73b1bf9826db6b5ca2e4f)) by @tuner
+* **docs:** link curated examples to Python gallery ([afab7aa](https://github.com/genome-spy/genome-spy/commit/afab7aa884e314deadc7c3da48b79eaffd60852d)) by @tuner
+
 # [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
 
 ### Bug Fixes
