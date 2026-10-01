@@ -30,7 +30,7 @@ jobs:
             - run: npm -w @genome-spy/react-component run test
             - run: npm -w @genome-spy/embed-examples run test
             - run: npm -w @genome-spy/embed-examples run build:smoke
-            - run: npm --workspaces run build --if-present
+            - run: npm run build
             - run: npm run test
 
     playground-e2e:

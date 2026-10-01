@@ -13,11 +13,14 @@ import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { afterEach, describe, expect, test } from "vitest";
 import { checkChangesets } from "./checkChangesets.mjs";
+import { verifyPackedPackages } from "./verifyPackedPackages.mjs";
 import {
     prepareRelease,
     readJson,
     readReleasePlan,
     releaseNotes,
+    releaseVersion,
+    verifyRelease,
 } from "./release.mjs";
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -64,8 +67,12 @@ async function fixture() {
         name: "release-fixture",
         private: true,
         workspaces: ["packages/*"],
+        scripts: {
+            "release:pack": (
+                await readJson(path.join(repoRoot, "package.json"))
+            ).scripts["release:pack"],
+        },
     });
-    await writeJson(path.join(cwd, "lerna.json"), { version: "1.0.0" });
     await writeFile(
         path.join(cwd, "CHANGELOG.md"),
         "# Change Log\n\n# [1.0.0](https://example.org/v1.0.0)\n\nExisting history.\n"
@@ -160,9 +167,7 @@ describe("fixed post-1.0 releases", () => {
 
             await prepareRelease(cwd);
 
-            expect((await readJson(path.join(cwd, "lerna.json"))).version).toBe(
-                version
-            );
+            expect(await releaseVersion(cwd)).toBe(version);
             const lock = await readJson(path.join(cwd, "package-lock.json"));
             for (const directory of await readdir(path.join(cwd, "packages"))) {
                 const manifest = await readJson(
@@ -234,42 +239,8 @@ describe("fixed post-1.0 releases", () => {
         expect(notes).toContain("### Fixes");
         expect(notes).toContain("Preserve sample order.");
 
-        // Pack the publication candidates locally and rehearse the single tag.
+        // Rehearse the single global tag at the reviewed version commit.
         commit(cwd);
-        const artifacts = path.join(cwd, "artifacts");
-        await mkdir(artifacts);
-        const packed = [];
-        for (const directory of await readdir(path.join(cwd, "packages"))) {
-            const packageDir = path.join(cwd, "packages", directory);
-            const manifest = await readJson(
-                path.join(packageDir, "package.json")
-            );
-            if (!manifest.private) {
-                const result = JSON.parse(
-                    execFileSync(
-                        "npm",
-                        [
-                            "pack",
-                            packageDir,
-                            "--ignore-scripts",
-                            "--json",
-                            "--offline",
-                            "--cache",
-                            path.join(artifacts, "cache"),
-                        ],
-                        { cwd: artifacts, encoding: "utf8" }
-                    )
-                );
-                packed.push(result[0].name);
-                expect(result[0].version).toBe("2.0.0");
-            }
-        }
-        expect(packed.sort()).toEqual([
-            "@genome-spy/app",
-            "@genome-spy/core",
-            "@genome-spy/inspector",
-            "@genome-spy/react-component",
-        ]);
         git(cwd, ["tag", "-a", "v2.0.0", "-m", "v2.0.0"]);
         expect(git(cwd, ["tag"])).toBe("v1.0.0\nv2.0.0");
         expect(
@@ -285,9 +256,7 @@ describe("fixed post-1.0 releases", () => {
         await expect(prepareRelease(cwd)).rejects.toThrow(
             "No releasable changesets"
         );
-        expect((await readJson(path.join(cwd, "lerna.json"))).version).toBe(
-            "1.0.0"
-        );
+        expect(await releaseVersion(cwd)).toBe("1.0.0");
     });
 
     test("rejects unknown packages and an expanded npm publication boundary", async () => {
@@ -309,6 +278,134 @@ describe("fixed post-1.0 releases", () => {
             "Only App, Core, Inspector, and React"
         );
     });
+});
+
+test("publication requires consumed fragments and the reviewed stable version", async () => {
+    const cwd = await fixture();
+    await addChangeset(
+        cwd,
+        '---\n"@genome-spy/core": patch\n---\n\nKeep axis labels consistent.\n'
+    );
+    await expect(verifyRelease(cwd, "1.0.0")).rejects.toThrow(
+        "before publishing"
+    );
+    await prepareRelease(cwd);
+    await expect(verifyRelease(cwd, "1.0.1")).resolves.toBeUndefined();
+    await expect(verifyRelease(cwd, "1.1.0")).rejects.toThrow(
+        "Expected stable version"
+    );
+    await writeFile(path.join(cwd, "CHANGELOG.md"), "# Change Log\n");
+    await expect(verifyRelease(cwd, "1.0.1")).rejects.toThrow(
+        "Missing root release notes"
+    );
+});
+
+test("verifies public archives, Core's packing lifecycle, and missing build outputs", async () => {
+    const cwd = await fixture();
+    const coreDir = path.join(cwd, "packages/core");
+    const manifestPath = path.join(coreDir, "package.json");
+    const manifest = await readJson(manifestPath);
+    manifest.type = "module";
+    manifest.files = ["dist/"];
+    manifest.exports = { ".": "./src/index.js", "./data/*": "./src/data/*" };
+    const actual = await readJson(
+        path.join(repoRoot, "packages/core/package.json")
+    );
+    manifest.scripts = {
+        prepack: actual.scripts.prepack,
+        postpack: actual.scripts.postpack,
+    };
+    await writeJson(manifestPath, manifest);
+    await mkdir(path.join(coreDir, "scripts"));
+    for (const hook of ["prepack", "postpack"]) {
+        await writeFile(
+            path.join(coreDir, "scripts", `${hook}.mjs`),
+            await readFile(
+                path.join(repoRoot, "packages/core/scripts", `${hook}.mjs`)
+            )
+        );
+    }
+    await mkdir(path.join(coreDir, "dist/src/data"), { recursive: true });
+    await writeFile(
+        path.join(coreDir, "dist/src/index.js"),
+        "export const embed = 1;\n"
+    );
+    await writeFile(
+        path.join(coreDir, "dist/src/data/source.js"),
+        "export const data = 1;\n"
+    );
+    const original = await readFile(manifestPath, "utf8");
+    const artifacts = path.join(cwd, "artifacts");
+    await mkdir(artifacts);
+    const packedFile = path.join(artifacts, "packed-packages.json");
+    const appPath = path.join(cwd, "packages/app/package.json");
+    const app = await readJson(appPath);
+    // Bundle smoke tests can clear dist after the full build wrote the schema.
+    app.exports = { "./schema.json": "./dist/schema.json" };
+    await writeJson(appPath, app);
+    async function pack() {
+        const packed = JSON.parse(
+            execFileSync(
+                "npm",
+                [
+                    "run",
+                    "--silent",
+                    "release:pack",
+                    "--",
+                    "--pack-destination",
+                    artifacts,
+                    "--json",
+                    "--offline",
+                    "--cache",
+                    path.join(artifacts, "cache"),
+                ],
+                { cwd, encoding: "utf8" }
+            )
+        );
+        await writeJson(packedFile, packed);
+        return packed;
+    }
+    await pack();
+    await expect(verifyPackedPackages(cwd, packedFile)).rejects.toThrow(
+        "@genome-spy/app is missing archived entry dist/schema.json"
+    );
+    await mkdir(path.join(cwd, "packages/app/dist"));
+    await writeFile(path.join(cwd, "packages/app/dist/schema.json"), "{}\n");
+    const packed = await pack();
+    await expect(
+        verifyPackedPackages(cwd, packedFile)
+    ).resolves.toBeUndefined();
+    expect(packed.map((pkg) => pkg.name).sort()).toEqual([
+        "@genome-spy/app",
+        "@genome-spy/core",
+        "@genome-spy/inspector",
+        "@genome-spy/react-component",
+    ]);
+    const core = packed.find((pkg) => pkg.name === "@genome-spy/core");
+    expect(core.files.map((file) => file.path)).toEqual([
+        "dist/src/data/source.js",
+        "dist/src/index.js",
+        "package.json",
+    ]);
+    const tarManifest = JSON.parse(
+        execFileSync(
+            "tar",
+            [
+                "-xOf",
+                path.join(artifacts, core.filename),
+                "package/package.json",
+            ],
+            { encoding: "utf8" }
+        )
+    );
+    expect(tarManifest.exports).toEqual({
+        ".": "./dist/src/index.js",
+        "./data/*": "./dist/src/data/*",
+    });
+    expect(await readFile(manifestPath, "utf8")).toBe(original);
+    await expect(
+        readFile(path.join(coreDir, "package.prepack-backup.json"))
+    ).rejects.toMatchObject({ code: "ENOENT" });
 });
 
 test("PRs and direct commits need a note or an intentional no-release marker", async () => {

@@ -4,6 +4,19 @@ on:
     release:
         types: [released]
     workflow_dispatch:
+    workflow_call:
+        inputs:
+            ref:
+                description: Release tag to build and deploy
+                required: true
+                type: string
+            publish_schemas:
+                description: Publish stable versioned schemas and update aliases
+                required: true
+                type: boolean
+        secrets:
+            ACTIONS_DEPLOY_KEY:
+                required: true
 
 permissions:
     contents: read
@@ -17,12 +30,13 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 45
         env:
-            DEPLOY_REF: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
+            DEPLOY_REF: ${{ inputs.ref || (github.event_name == 'release' && github.event.release.tag_name) || github.sha }}
 
         steps:
             - uses: actions/checkout@v6
               with:
                   fetch-depth: 0
+                  ref: ${{ env.DEPLOY_REF }}
 
             - name: Set up Python 3.12
               uses: actions/setup-python@v6
@@ -68,11 +82,11 @@ jobs:
                   ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
 
             - name: Verify published schema aliases
-              if: github.event_name == 'workflow_dispatch'
+              if: github.event_name != 'release' && inputs.publish_schemas != true
               run: node scripts/verify-schema-aliases.mjs --site-dir deploy-site
 
             - name: Publish versioned schemas
-              if: github.event_name == 'release' && github.event.release.prerelease == false
+              if: inputs.publish_schemas == true || (github.event_name == 'release' && github.event.release.prerelease == false)
               run: |
                   node scripts/publish-schemas.mjs --site-dir deploy-site
                   git -C deploy-site add schema

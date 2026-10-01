@@ -6,7 +6,7 @@ import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { getReleasePlan } from "@changesets/get-release-plan";
 
-const publicPackages = [
+export const publicPackages = [
     "@genome-spy/app",
     "@genome-spy/core",
     "@genome-spy/inspector",
@@ -16,6 +16,12 @@ const publicPackages = [
 /** @param {string} filename */
 export async function readJson(filename) {
     return JSON.parse(await readFile(filename, "utf8"));
+}
+
+/** @param {string} cwd @returns {Promise<string>} */
+export async function releaseVersion(cwd) {
+    return (await readJson(path.join(cwd, "packages/core/package.json")))
+        .version;
 }
 
 /**
@@ -71,11 +77,8 @@ export async function readReleasePlan(cwd) {
             "Preserve the eight-package group and private-package policy."
         );
     }
-    const lerna = await readJson(path.join(cwd, "lerna.json"));
-    if (versions.size !== 1 || !versions.has(lerna.version)) {
-        throw new Error(
-            "Release packages and lerna.json must share one version."
-        );
+    if (versions.size !== 1 || !versions.has(await releaseVersion(cwd))) {
+        throw new Error("Release packages must share Core's version.");
     }
     if (plan.preState) {
         throw new Error("This release workflow supports stable releases only.");
@@ -215,11 +218,6 @@ export async function prepareRelease(cwd) {
         { cwd, stdio: "inherit" }
     );
 
-    const lernaPath = path.join(cwd, "lerna.json");
-    const lerna = await readJson(lernaPath);
-    lerna.version = release.newVersion;
-    await writeFile(lernaPath, JSON.stringify(lerna, null, 2) + "\n");
-
     const date = new Date().toISOString().slice(0, 10);
     const heading = `## [${release.newVersion}](https://github.com/genome-spy/genome-spy/compare/v${release.oldVersion}...v${release.newVersion}) (${date})`;
     await writeFile(
@@ -233,7 +231,7 @@ export async function prepareRelease(cwd) {
 
 /** @param {string} cwd */
 export async function releaseNotes(cwd) {
-    const { version } = await readJson(path.join(cwd, "lerna.json"));
+    const version = await releaseVersion(cwd);
     const changelog = await readFile(path.join(cwd, "CHANGELOG.md"), "utf8");
     const heading = new RegExp(
         `^#{1,2} \\[${version.replaceAll(".", "\\.")}\\].*$`,
@@ -250,6 +248,27 @@ export async function releaseNotes(cwd) {
     );
 }
 
+/**
+ * Publish reviewed manifest versions only after their fragments are consumed.
+ * @param {string} cwd
+ * @param {string} expectedVersion
+ */
+export async function verifyRelease(cwd, expectedVersion) {
+    const plan = await readReleasePlan(cwd);
+    const version = await releaseVersion(cwd);
+    if (!/^\d+\.\d+\.\d+$/.test(version) || version !== expectedVersion) {
+        throw new Error(
+            `Expected stable version ${expectedVersion}, found ${version}.`
+        );
+    }
+    if (plan.releases.length) {
+        throw new Error(
+            "Run release:version and commit the result before publishing."
+        );
+    }
+    await releaseNotes(cwd);
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     switch (process.argv[2]) {
         case "version":
@@ -258,7 +277,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         case "notes":
             process.stdout.write(await releaseNotes(process.cwd()));
             break;
+        case "verify":
+            await verifyRelease(
+                process.cwd(),
+                process.argv[3] ?? (await releaseVersion(process.cwd()))
+            );
+            break;
         default:
-            throw new Error("Expected version or notes.");
+            throw new Error("Expected version, notes, or verify.");
     }
 }

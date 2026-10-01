@@ -78,7 +78,7 @@ git diff
 
 `release:status` inspects the calculated versions without modifying the repo.
 `release:version` runs Changesets, consumes pending fragments, updates manifests
-and package changelogs, synchronizes `package-lock.json` and `lerna.json`, and
+and package changelogs, synchronizes `package-lock.json`, and
 adds a root changelog entry grouped into breaking changes, features, and fixes.
 Each logical fragment appears once in the root entry, even when several fixed
 packages are affected. The GitHub changelog formatter supplies PR/commit links
@@ -96,40 +96,94 @@ publication. Inspect the npm publication candidates with:
 npm run release:plan
 ```
 
-Only App, Core, Inspector, and the React component may be published. Lerna Lite
-retains the existing build/pack lifecycle scripts and publishes the reviewed
-manifest versions:
+Only App, Core, Inspector, and the React component are published. All eight
+release packages share Core's manifest version; the private WebGPU prototype
+keeps its independent version. npm workspaces builds packages in the explicit
+order in the root `build` script, with Core and the plugins before App and the
+frontends. Update that order when introducing a new build dependency.
+
+### Set up npm trusted publishing once
+
+For each of `@genome-spy/core`, `@genome-spy/app`, `@genome-spy/inspector`, and
+`@genome-spy/react-component`, open its npm package settings and add a GitHub
+Actions trusted publisher with:
+
+- Organization: `genome-spy`
+- Repository: `genome-spy`
+- Workflow filename: `publish.yml` (just the filename)
+- Environment: leave empty; this workflow does not use a GitHub environment
+- Allowed actions: enable direct `npm publish`
+
+New trusted publisher configurations default to staged publishing, which this
+Changesets workflow does not use. Enable direct publishing explicitly. The
+workflow uses a GitHub-hosted runner, Node 24, npm 11 (at least 11.5.1), and
+`id-token: write`. npm exchanges the workflow identity for a short-lived publish
+credential and automatically supplies provenance for these public packages.
+No `NPM_TOKEN` or `NODE_AUTH_TOKEN` secret is needed. See
+[npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
+After verifying the first successful trusted release, restrict legacy token
+publishing and revoke unused automation tokens in npm settings.
+
+Keep the existing `ACTIONS_DEPLOY_KEY` repository secret for the separate site
+repository. The release action needs permission to create repository tags and
+GitHub releases; repository rules must permit those operations by GitHub Actions.
+
+### Publish a reviewed release commit
+
+Push the reviewed version commit to `master` and let CI pass. In GitHub Actions,
+select **Publish GenomeSpy**, choose **Run workflow** on `master`, and enter the
+exact prepared manifest version, such as `1.0.1`. The run uses the commit selected
+when it starts; subsequent commits do not change that checkout.
+
+The action verifies the expected stable version, synchronized packages, consumed
+release fragments, root release notes, and absence of the global tag. It then
+runs lint, type checks, tests, embedding-example builds, then the complete
+ordered build and real npm packing with lifecycle scripts. The final build runs
+after tests because bundle smoke tests rewrite App outputs without its schema.
+Archive validation checks runtime and type entry files before publication. Core's packing hook rewrites its source
+exports to built files and restores the working manifest afterward.
+
+Changesets publishes the four public packages at their reviewed versions and
+skips versions already present on npm. Publication reuses the completed
+builds; publishing does not repeat them. The action creates the single
+annotated `vX.Y.Z` tag at that commit and a GitHub release containing the root
+changelog entry after npm succeeds. Package-specific Git tags are disabled.
+
+The action explicitly calls the docs/Playground deployment workflow at the new
+tag, including versioned schemas and alias updates. A GitHub release created
+with `GITHUB_TOKEN` does not trigger another release-event workflow. Human-created
+releases and manual docs deployments still use the existing triggers. See
+[GitHub's workflow trigger rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+
+If npm publication fails partway through, rerun the publish job at the same
+commit; Changesets skips successfully published package versions. If the tag and
+GitHub release already exist and only docs failed, rerun the failed docs job.
+The publish job rejects an existing global tag, so inspect a failure during tag
+or release creation and complete that step manually before deploying docs.
+
+`npm run release:publish` is the action's publishing command and performs a real
+npm publication. Do not run it during preparation or rehearsal. Use
+`npm run release:version` instead of plain `changeset version` so the lockfile
+and root changelog are prepared too.
+
+### Rehearse without publishing
+
+Use a disposable checkout or worktree to rehearse versioning. `changeset version`
+has no non-mutating dry run. `release:status` and `release:plan` inspect plans;
+versioning consumes fragments and changes files. To build and pack locally:
 
 ```sh
-npm run release:publish
+npm run build
+mkdir -p /tmp/genomespy-pack
+npm run --silent release:pack -- --pack-destination /tmp/genomespy-pack --json \
+  > /tmp/genomespy-pack/packed-packages.json
+node scripts/verifyPackedPackages.mjs /tmp/genomespy-pack/packed-packages.json
+git diff --exit-code -- packages/*/package.json
 ```
 
-This publishes to npm. It does not calculate another version or create a Git
-tag or GitHub release. Do not use `lerna version`, the old `npm run publish`, or
-plain `lerna publish` in this workflow.
-
-After successful npm publication, create and push the single annotated
-`vX.Y.Z` tag at the reviewed release commit, then create the GitHub release with
-the root entry as its body. For example, if the reviewed version is `1.0.1`:
-
-```sh
-git tag -a v1.0.1 -m v1.0.1
-git push origin master --follow-tags
-npm run --silent release:notes > /tmp/genomespy-release-notes.md
-gh release create v1.0.1 --verify-tag --title v1.0.1 \
-  --notes-file /tmp/genomespy-release-notes.md
-```
-
-Use the connected GitHub tools when releasing with an agent; the CLI example is
-for maintainers. Agent-authored release bodies follow the repository's GitHub
-attribution policy. Creating a published stable GitHub release continues to
-trigger the existing docs, Playground, and schema deployment. Avoid package
-tags (`@genome-spy/core@X.Y.Z`); the repository retains one global release tag.
-
-To rehearse versioning, use a disposable checkout or worktree. `changeset
-version` has no non-mutating dry run. `release:status` and `release:plan` inspect
-plans; versioning, building, and packing belong in the disposable checkout.
-Never run the publish, tag-push, or GitHub-release steps during rehearsal.
+Packing runs the actual `prepack`/`postpack` lifecycle and writes only the four
+public tarballs. Inspect their manifests and entry files before release. Never
+run publication, tag pushes, or GitHub-release creation during rehearsal.
 
 ## Coding Practices
 

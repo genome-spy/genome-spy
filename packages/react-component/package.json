@@ -25,5 +25,10 @@
     "eslint-plugin-react-refresh": "^0.4.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/genome-spy/genome-spy.git",
+    "directory": "packages/react-component"
   }
 }

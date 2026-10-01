@@ -69,7 +69,8 @@ export async function checkChangesets(cwd, since) {
         files.some(
             ([status, filename]) => status === "D" && isFragment(filename)
         ) || deleted.split("\n").some(isFragment);
-    const releaseFiles = ["lerna.json", "CHANGELOG.md", "package-lock.json"];
+    const manifestPath = "packages/core/package.json";
+    const releaseFiles = [manifestPath, "CHANGELOG.md", "package-lock.json"];
     if (
         consumed &&
         releaseFiles.every((filename) =>
@@ -77,12 +78,12 @@ export async function checkChangesets(cwd, since) {
         )
     ) {
         const before = JSON.parse(
-            execFileSync("git", ["show", `${since}:lerna.json`], {
+            execFileSync("git", ["show", `${since}:${manifestPath}`], {
                 cwd,
                 encoding: "utf8",
             })
         );
-        const after = await readJson(path.join(cwd, "lerna.json"));
+        const after = await readJson(path.join(cwd, manifestPath));
         if (before.version !== after.version) {
             await releaseNotes(cwd);
             return;

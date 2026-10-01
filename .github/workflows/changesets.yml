@@ -22,7 +22,7 @@ jobs:
                   node-version: 24
                   cache: npm
             - run: npm ci
-            - run: npx eslint scripts/release.mjs scripts/checkChangesets.mjs scripts/release.test.mjs
+            - run: npx eslint scripts/release.mjs scripts/checkChangesets.mjs scripts/verifyPackedPackages.mjs scripts/release.test.mjs
             - name: Check release notes or intentional no-release marker
               env:
                   EVENT_NAME: ${{ github.event_name }}

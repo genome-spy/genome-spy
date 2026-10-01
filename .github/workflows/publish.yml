@@ -1,0 +1,99 @@
+name: Publish GenomeSpy
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: Reviewed manifest version to publish (for example, 1.0.1)
+                required: true
+                type: string
+
+permissions:
+    contents: read
+
+concurrency:
+    group: genomespy-release
+    cancel-in-progress: false
+
+jobs:
+    publish:
+        if: github.repository == 'genome-spy/genome-spy' && github.ref == 'refs/heads/master'
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        permissions:
+            contents: write
+            id-token: write
+        outputs:
+            tag: ${{ steps.release.outputs.tag }}
+        env:
+            VERSION: ${{ inputs.version }}
+
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.sha }}
+
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  package-manager-cache: false
+
+            # Trusted publishing requires npm >=11.5.1, regardless of Node's bundle.
+            - name: Install npm with trusted publishing support
+              run: npm install --global npm@11
+
+            - run: npm ci
+
+            - name: Verify the reviewed release
+              id: release
+              run: |
+                  npm run release:verify -- "$VERSION"
+                  if git show-ref --verify --quiet "refs/tags/v$VERSION"; then
+                      echo "Tag v$VERSION already exists."
+                      exit 1
+                  fi
+                  echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+                  npm run --silent release:notes > "$RUNNER_TEMP/release-notes.md"
+
+            - run: npm run lint
+            - run: npx eslint scripts/release.mjs scripts/checkChangesets.mjs scripts/verifyPackedPackages.mjs scripts/release.test.mjs
+            - run: npm --workspaces run test:tsc --if-present
+            # Bundle smoke tests rebuild App's dist without its generated schema.
+            # The complete production build must be the last writer before packing.
+            - run: npm test -- --reporter=agent
+            - run: npm -w @genome-spy/embed-examples run build:smoke
+            - run: npm run build
+
+            - name: Rehearse package packing with lifecycle scripts
+              run: |
+                  npm run --silent release:pack -- --pack-destination "$RUNNER_TEMP" --json > "$RUNNER_TEMP/packed-packages.json"
+                  node scripts/verifyPackedPackages.mjs "$RUNNER_TEMP/packed-packages.json"
+                  git diff --exit-code -- package.json package-lock.json CHANGELOG.md packages/*/package.json .changeset
+                  test ! -e packages/core/package.prepack-backup.json
+
+            - name: Publish public packages to npm with OIDC
+              run: npm run release:publish
+
+            - name: Create the global tag and GitHub release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  git diff --exit-code -- package.json package-lock.json CHANGELOG.md packages/*/package.json .changeset
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git tag -a "v$VERSION" -m "v$VERSION" "$GITHUB_SHA"
+                  git push origin "refs/tags/v$VERSION"
+                  gh release create "v$VERSION" --verify-tag --title "v$VERSION" \
+                      --notes-file "$RUNNER_TEMP/release-notes.md"
+
+    deploy-docs:
+        needs: publish
+        permissions:
+            contents: read
+        uses: ./.github/workflows/docs-and-playground.yml
+        with:
+            ref: ${{ needs.publish.outputs.tag }}
+            publish_schemas: true
+        secrets:
+            ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}

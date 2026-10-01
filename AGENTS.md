@@ -27,8 +27,8 @@ an early browser-side LLM agent with a thin Python relay.
   there is no external CSS framework or component library.
 - `packages/app-agent`: Browser-side agent plugin and chat UI. Its Python relay
   is under `packages/app-agent/server/`.
-- Changesets calculates release versions and notes; lerna-lite runs workspace
-  tasks and publishes already-versioned packages.
+- npm workspaces runs package tasks. Changesets calculates release versions and
+  notes and publishes reviewed versions through GitHub Actions trusted publishing.
 
 ## Workflow expectations
 

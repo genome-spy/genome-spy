@@ -27,7 +27,8 @@ description: Prepare GenomeSpy commits and pull requests for delivery. Use when 
   messages describe history; Changesets supplies release intent and prose.
 - Release preparation consumes the pending fragments. Use
   `npm run release:version` and the workflow in `CONTRIBUTING.md`; do not run
-  `lerna version` or infer the release from commit subjects.
+  plain `changeset version` or infer the release from commit subjects. Publish
+  reviewed release commits with the manual `publish.yml` workflow.
 
 ## Write commits
 
