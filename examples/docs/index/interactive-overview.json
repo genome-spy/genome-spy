@@ -35,7 +35,7 @@
       "type": "nominal",
       "scale": {
         "domain": ["loss", "neutral", "gain"],
-        "range": ["#4e79a7", "#b8b8b8", "#e15759"]
+        "range": ["#4e79a7", "#d8d8d8", "#e15759"]
       }
     }
   }
