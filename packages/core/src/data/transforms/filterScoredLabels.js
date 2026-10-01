@@ -3,6 +3,7 @@ import { BEHAVIOR_COLLECTS } from "../flowNode.js";
 import { topK } from "../../utils/topK.js";
 import ReservationMap from "../../utils/reservationMap.js";
 import { field } from "../../utils/field.js";
+import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import Transform from "./transform.js";
 
 export default class FilterScoredLabelsTransform extends Transform {
@@ -92,6 +93,7 @@ export default class FilterScoredLabelsTransform extends Transform {
         super.reset();
 
         const scale = this.resolution.getScale();
+        const positionAdjustment = getScalePositionAdjustment(scale);
         const rangeSpan = this.resolution.getAxisLength();
         if (!rangeSpan) {
             // The view size is not (yet) available
@@ -119,8 +121,12 @@ export default class FilterScoredLabelsTransform extends Transform {
 
         // Try to fit the elements on the available lanes and propagate if there was room
         for (const datum of topElements) {
-            let startPos = scale(this.startPosAccessor(datum)) * rangeSpan;
-            let endPos = scale(this.endPosAccessor(datum)) * rangeSpan;
+            let startPos =
+                (scale(this.startPosAccessor(datum)) + positionAdjustment) *
+                rangeSpan;
+            let endPos =
+                (scale(this.endPosAccessor(datum)) + positionAdjustment) *
+                rangeSpan;
 
             const span = endPos - startPos;
             const width = this.widthAccessor(datum) + this.padding * 2;
@@ -151,7 +157,7 @@ export default class FilterScoredLabelsTransform extends Transform {
                     const clonedDatum = Object.assign({}, datum);
                     // @ts-ignore
                     clonedDatum[this.params.asMidpoint] = scale.invert(
-                        midpoint / rangeSpan
+                        midpoint / rangeSpan - positionAdjustment
                     );
                     this._propagate(clonedDatum);
                 } else {

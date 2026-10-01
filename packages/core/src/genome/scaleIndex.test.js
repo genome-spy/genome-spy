@@ -1,51 +1,34 @@
 import { expect, test } from "vitest";
 import scaleIndex from "./scaleIndex.js";
 
-test("Scale with defaults works as expected", () => {
+test("returns band starts with defaults", () => {
     const scale = scaleIndex();
 
-    // Align is 0.5 by default
-    expect(scale(-1)).toEqual(-0.5);
-    expect(scale(0)).toEqual(0.5);
-    expect(scale(1)).toEqual(1.5);
-    expect(scale(2)).toEqual(2.5);
+    expect(scale(-1)).toEqual(-1);
+    expect(scale(0)).toEqual(0);
+    expect(scale(1)).toEqual(1);
+    expect(scale(2)).toEqual(2);
 });
 
-test("Scale scales correctly with custom domain and range", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.0);
+test.each([0, 0.5, 1])(
+    "alignment %s does not affect unpadded mapping or viewport inversion",
+    (align) => {
+        const scale = scaleIndex()
+            .domain([1.25, 11.25])
+            .range([100, 200])
+            .align(align);
 
-    expect(scale(0)).toEqual(100);
-    expect(scale(10)).toEqual(200);
-});
+        expect(scale(2)).toBe(107.5);
+        expect(scale.invert(107.5)).toBe(2);
+        expect([scale.invert(100), scale.invert(200)]).toEqual(scale.domain());
+    }
+);
 
 test("Scale floors fractional index inputs", () => {
     const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0);
 
     expect(scale(3.1)).toEqual(scale(3));
     expect(scale(3.9)).toEqual(scale(3));
-});
-
-test("Invert works as expected", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.0);
-
-    expect(scale.invert(scale(0))).toEqual(0);
-    expect(scale.invert(scale(5))).toEqual(5);
-    expect(scale.invert(scale(10))).toEqual(10);
-});
-
-test("Scale scales correctly with custom domain, range, and align", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.5);
-
-    expect(scale(0)).toEqual(105);
-    expect(scale(10)).toEqual(205);
-});
-
-test("Invert works as expected with align", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.5);
-
-    expect(scale.invert(scale(0))).toEqual(0);
-    expect(scale.invert(scale(5))).toEqual(5);
-    expect(scale.invert(scale(10))).toEqual(10);
 });
 
 test("domain() accepts numeric ordinal domain and computes its extent", () => {
@@ -72,8 +55,8 @@ test("padding affects step, placement, and inversion like the WebGL scale", () =
 
     expect(scale.step()).toBeCloseTo(-1 / 40.5);
     expect(scale.bandwidth()).toBeCloseTo(0.5 / 40.5);
-    expect(scale(0)).toBeCloseTo(0.9814814815);
-    expect(scale(40)).toBeCloseTo(-0.0061728395);
+    expect(scale(0)).toBeCloseTo(0.987654321);
+    expect(scale(40)).toBeCloseTo(0);
     expect(scale.invert(scale(0))).toBeCloseTo(0);
     expect(scale.invert(scale(17))).toBeCloseTo(17);
     expect(scale.invert(scale(40))).toBeCloseTo(40);
@@ -99,6 +82,16 @@ test("ticks() produces integer values", () => {
 
     expect(scale.ticks(5)).toEqual([0, 1, 2, 3, 4]);
     expect(scale.ticks(100)).toEqual([0, 1, 2, 3, 4]);
+});
+
+test("ticks follow visible band centers when padding and alignment shift bands", () => {
+    const scale = scaleIndex()
+        .domain([0.4, 5.4])
+        .paddingInner(0.2)
+        .paddingOuter(0.4);
+
+    expect(scale.align(0).ticks(5)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(scale.align(1).ticks(5)).toEqual([0, 1, 2, 3, 4]);
 });
 
 test("ticks() take numberingOffset into account", () => {

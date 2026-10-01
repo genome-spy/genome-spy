@@ -37,9 +37,15 @@ export function normalizeRulerCoordinate(
     }
 
     const scaleType = scaleResolution.getResolvedScaleType();
-    const numericValue = shouldSnapRulerCoordinate(scaleType, snap)
-        ? Math.round(value)
-        : value;
+    let numericValue = value;
+    if (shouldSnapRulerCoordinate(scaleType, snap)) {
+        // Index-like inversion returns a position within a band. Select that
+        // band's index rather than rounding toward the next band.
+        numericValue =
+            scaleType === "index" || scaleType === "locus"
+                ? Math.floor(value)
+                : Math.round(value);
+    }
 
     if (scaleType === "locus" && scaleResolution.toComplex) {
         return scaleResolution.toComplex(numericValue);

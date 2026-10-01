@@ -32,27 +32,21 @@ export default function scaleIndex() {
         );
     };
 
-    const getSignedBandwidth = (step = getStep()) => step * (1 - paddingInner);
-
     const scaleFunction = (/** @type {number} */ x) => {
         const step = getStep();
-        return (
-            getStart(step) +
-            (Math.floor(x) - domain[0]) * step +
-            getSignedBandwidth(step) * align
-        );
+        return getStart(step) + (Math.floor(x) - domain[0]) * step;
     };
 
     /**
-     * Index inputs are floored to their discrete band. The domain remains
-     * continuous so zooming and panning can use fractional bounds.
+     * Returns band starts, like a band scale. Encoders apply within-band
+     * placement. Index inputs are floored, while the domain and inversion
+     * remain continuous for zooming and panning.
      *
      * @type {import("./scaleIndex.js").ScaleIndex}
      */
     const scale = /** @type {any} */ (scaleFunction);
 
-    scale.invert = (y) =>
-        (y - getStart() - getSignedBandwidth() * align) / getStep() + domain[0];
+    scale.invert = (y) => (y - getStart()) / getStep() + domain[0];
 
     // @ts-expect-error
     scale.domain = function (_) {
@@ -138,14 +132,14 @@ export default function scaleIndex() {
 
     scale.step = getStep;
 
-    scale.bandwidth = () => Math.abs(getSignedBandwidth());
+    scale.bandwidth = () => Math.abs(getStep() * (1 - paddingInner));
 
     scale.ticks = (count) => {
-        const align = /** @type {number} */ (scale.align());
-        const offset = /** @type {number} */ (scale.numberingOffset());
+        // Axis ticks are placed at band centers, independently of alignment.
+        const offset = numberingOffset - (1 - paddingInner) / 2;
         return d3ticks(
-            domain[0] - align + offset,
-            domain[1] - align + offset,
+            scale.invert(range[0]) + offset,
+            scale.invert(range[1]) + offset,
             Math.min(count, Math.ceil(domainSpan))
         )
             .filter(Number.isInteger)

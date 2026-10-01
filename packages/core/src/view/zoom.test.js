@@ -200,9 +200,9 @@ describe("wheel zoom snapping", () => {
                         scale: {
                             type: "locus",
                             step: () => 0.1,
-                            align: () => 0.5,
+                            bandwidth: () => 0.08,
                         },
-                        channelDef: { band: 0.0 },
+                        channelDef: { band: 0.5 },
                     }),
                     y: Object.assign(() => 0.9, {
                         constant: false,
@@ -212,9 +212,9 @@ describe("wheel zoom snapping", () => {
                         scale: {
                             type: "locus",
                             step: () => 0.1,
-                            align: () => 0.5,
+                            bandwidth: () => 0.08,
                         },
-                        channelDef: { band: 0.0 },
+                        channelDef: { band: 0.5 },
                     }),
                     y2: Object.assign(() => 0.1, {
                         constant: false,
@@ -225,17 +225,16 @@ describe("wheel zoom snapping", () => {
             datum: {},
         };
 
-        // Without band correction, endpoint 1 would be at x=35. With band=0.0,
-        // rendered endpoint 1 is at x=30.
+        // Snapping follows the padded band's center, as rendering does.
         interactionToZoom(
-            new Interaction(new Point(30, 30), createWheelEvent(120)),
+            new Interaction(new Point(39, 30), createWheelEvent(120)),
             /** @type {any} */ ({ x: 10, y: 20, width: 100, height: 100 }),
             handleZoom,
             /** @type {any} */ (hover)
         );
 
         expect(handleZoom).toHaveBeenCalledWith({
-            x: 30,
+            x: 39,
             y: 30,
             xDelta: 0,
             yDelta: 0,

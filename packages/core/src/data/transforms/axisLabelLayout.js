@@ -1,6 +1,7 @@
 import { isLogarithmic } from "vega-scale";
 import { BEHAVIOR_COLLECTS, BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
+import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import {
     boundsOverlap,
     removeOverlappingAxisLabels,
@@ -110,6 +111,7 @@ export default class AxisLabelLayoutTransform extends Transform {
         this.nextOutputData.length = 0;
 
         const scale = this.resolution.getScale();
+        const positionAdjustment = getScalePositionAdjustment(scale);
         const genome = this.chromLabelWidthAccessor
             ? /** @type {import("../../genome/scaleLocus.js").ScaleLocus} */ (
                   scale
@@ -127,7 +129,8 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         this.nextFlushOffsetMap.clear();
         for (const datum of this.nextOutputData) {
-            const position = scale(datum.value) * axisLength;
+            const position =
+                (scale(datum.value) + positionAdjustment) * axisLength;
             const layoutOffset =
                 this.params.labelFlushZoomExtent && datum.zoomExtent
                     ? getZoomExtentFlushedLabelOffset(
@@ -162,7 +165,7 @@ export default class AxisLabelLayoutTransform extends Transform {
         const getBounds = (datum) => {
             const bounds = this.getLabelBounds(
                 datum,
-                scale(datum.value) * axisLength
+                (scale(datum.value) + positionAdjustment) * axisLength
             );
             const encodedOffset = datum[this.params.labelOffset];
             const layoutOffset =
@@ -241,7 +244,8 @@ export default class AxisLabelLayoutTransform extends Transform {
         const chromosome = genome.getChromosome(datum.chromLabel);
         const numericBounds = this.getLabelBounds(
             datum,
-            scale(datum.value) * axisLength
+            (scale(datum.value) + getScalePositionAdjustment(scale)) *
+                axisLength
         );
         const chromosomeStart = scale(chromosome.continuousStart) * axisLength;
         const chromosomeEnd = scale(chromosome.continuousEnd) * axisLength;

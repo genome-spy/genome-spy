@@ -1445,10 +1445,7 @@ export default class SampleView extends ContainerView {
             const normalizedValue =
                 channel === "x" ? normalized.x : normalized.y;
             // @ts-ignore
-            let value = scale.invert(normalizedValue);
-            if (["index", "locus"].includes(scale.type)) {
-                value = /** @type {number} */ (value) + 0.5;
-            }
+            const value = scale.invert(normalizedValue);
             point[channel] = /** @type {number} */ (value);
         }
 

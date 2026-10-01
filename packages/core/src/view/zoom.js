@@ -11,6 +11,7 @@ import { makeLerpSmoother } from "../utils/animator.js";
 import RingBuffer from "../utils/ringBuffer.js";
 import { isTouchGestureEvent } from "../utils/interactionEvent.js";
 import { startDocumentDrag } from "../utils/documentDrag.js";
+import { getScalePositionAdjustment } from "../scales/scalePosition.js";
 import Point from "./layout/point.js";
 
 /**
@@ -331,28 +332,10 @@ function getEncoderUnitPosition(encoder, datum) {
 
     const band = resolveBandPosition(encoder.channelDef);
 
-    if (scale.type === "band" || scale.type === "point") {
-        if (!Number.isFinite(band)) {
-            return basePosition;
-        }
-
-        const typedScale = /** @type {{ bandwidth: () => number }} */ (
-            /** @type {any} */ (scale)
-        );
-        return basePosition + typedScale.bandwidth() * band;
-    } else if (scale.type === "index" || scale.type === "locus") {
-        if (!Number.isFinite(band)) {
-            return basePosition;
-        }
-
-        const typedScale =
-            /** @type {{ step: () => number, align: () => number }} */ (
-                /** @type {any} */ (scale)
-            );
-        return basePosition + typedScale.step() * (band - typedScale.align());
-    } else {
-        return basePosition;
-    }
+    return (
+        basePosition +
+        (Number.isFinite(band) ? getScalePositionAdjustment(scale, band) : 0)
+    );
 }
 
 /**

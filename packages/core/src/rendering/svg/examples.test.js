@@ -17,6 +17,98 @@ const baseConfig = resolveBaseConfig({
 });
 
 describe("SVG example exports", () => {
+    test.each(
+        /** @type {const} */ ([
+            {
+                type: "index",
+                align: 1,
+                padding: 0,
+                reverse: false,
+                positions: [25, 37.5, 50],
+            },
+            {
+                type: "index",
+                align: 0,
+                padding: 0.4,
+                reverse: false,
+                positions: [22.7, 29.5, 36.4],
+            },
+            {
+                type: "locus",
+                align: 1,
+                padding: 0.4,
+                reverse: true,
+                positions: [59.1, 52.3, 45.5],
+            },
+        ])
+    )(
+        "places $type bands with alignment $align and reverse=$reverse",
+        async ({ type, align, padding, reverse, positions }) => {
+            const { view } = await createHeadlessEngine(
+                {
+                    name: "bands",
+                    genomes: {
+                        test: { contigs: [{ name: "chr1", size: 100 }] },
+                    },
+                    assembly: "test",
+                    width: 100,
+                    height: 40,
+                    data: { values: [{ pos: 1 }] },
+                    params: [{ name: "mapped", expr: "scale('x', 1)" }],
+                    scales: {
+                        x: { type, domain: [0, 3], align, padding, reverse },
+                    },
+                    encoding: { y: { value: 0.5 } },
+                    // Compare band starts, centers, and ends through the real SVG path.
+                    layer: [0, 0.5, 1].map((band, i) => ({
+                        name: "placement" + i,
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "pos",
+                                type,
+                                band,
+                                axis: /** @type {null} */ (null),
+                            },
+                        },
+                    })),
+                },
+                {
+                    contextOptions: {
+                        baseConfig,
+                        viewFactoryOptions: { wrapRoot: true },
+                    },
+                }
+            );
+            try {
+                const { svg, warnings } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 100,
+                    logicalHeight: 40,
+                });
+                const actualPositions = positions.map(
+                    (_, i) =>
+                        +svg
+                            .querySelector(
+                                '[data-name="placement' + i + '"] circle'
+                            )
+                            .getAttribute("cx")
+                );
+                expect(actualPositions).toEqual(positions);
+                const owner = view
+                    .getDescendants()
+                    .find((child) => child.name === "bands");
+                expect(owner.paramRuntime.getValue("mapped") * 100).toBeCloseTo(
+                    positions[0],
+                    0
+                );
+                expect(warnings).toEqual([]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
     test("exports ranged chromosome labels on a locus axis", async () => {
         const { view } = await createHeadlessEngine(
             {

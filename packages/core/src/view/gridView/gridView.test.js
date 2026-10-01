@@ -2582,6 +2582,83 @@ describe("GridView wheel zoom", () => {
         }
     );
 
+    test.each(/** @type {const} */ (["index", "locus"]))(
+        "%s brushing uses viewport coordinates without a center correction",
+        async (type) => {
+            const environment = installDocumentDragTestEnvironment();
+            const listeners = environment.installDocument();
+            try {
+                const view = /** @type {ConcatView} */ (
+                    await createAndInitialize(
+                        {
+                            genomes: {
+                                test: {
+                                    contigs: [{ name: "chr1", size: 100 }],
+                                },
+                            },
+                            assembly: "test",
+                            params: [
+                                {
+                                    name: "brush",
+                                    select: {
+                                        type: "interval",
+                                        encodings: ["x"],
+                                        extent: "container",
+                                    },
+                                },
+                            ],
+                            data: { values: [{ x: 0 }, { x: 9 }] },
+                            encoding: {
+                                x: {
+                                    field: "x",
+                                    type,
+                                    scale: { domain: [0, 9] },
+                                    axis: null,
+                                },
+                            },
+                            vconcat: [
+                                { width: 200, height: 60, mark: "point" },
+                                { width: 200, height: 60, mark: "point" },
+                            ],
+                        },
+                        ConcatView
+                    )
+                );
+                renderForLayout(view);
+                const child = /** @type {UnitView} */ (view.children[0]);
+                const { x, y, width, height } = child.coords;
+                const start = new Point(x + width * 0.22, y + height / 2);
+                view.propagateInteraction(
+                    new Interaction(
+                        start,
+                        /** @type {any} */ (
+                            new FakeMouseEvent("mousedown", {
+                                button: 0,
+                                shiftKey: true,
+                                clientX: start.x,
+                                clientY: start.y,
+                            })
+                        )
+                    )
+                );
+                listeners.mousemove(
+                    new FakeMouseEvent("mousemove", {
+                        clientX: x + width * 0.72,
+                        clientY: start.y,
+                    })
+                );
+
+                const interval =
+                    view.paramRuntime.findValue("brush").intervals.x;
+                expect(interval).toEqual([2, 7]);
+                listeners.mouseup(new FakeMouseEvent("mouseup"));
+                view.disposeSubtree();
+            } finally {
+                environment.restore();
+            }
+        }
+    );
+
     test("disposing a container brush releases an active document drag", async () => {
         const environment = installDocumentDragTestEnvironment();
         const listeners = environment.installDocument();

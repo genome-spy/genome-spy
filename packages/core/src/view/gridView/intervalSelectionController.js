@@ -344,11 +344,9 @@ export class IntervalSelectionController {
             for (const channel of channels) {
                 const scale = scaleResolutions[channel].getScale();
                 // @ts-ignore
-                const val = scale.invert(
+                inverted[channel] = scale.invert(
                     channel === "x" ? normalizedPoint.x : normalizedPoint.y
                 );
-                inverted[channel] =
-                    val + (["index", "locus"].includes(scale.type) ? 0.5 : 0);
             }
 
             return inverted;

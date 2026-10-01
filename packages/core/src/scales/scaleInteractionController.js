@@ -318,26 +318,42 @@ function resolveZoomExtent(
  * @returns {number[]}
  */
 function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
-    let newDomain = [...domain];
-
-    /** @type {number} */
-    // @ts-ignore
-    let anchor = scale.invert(scaleAnchor);
+    let newDomain = domain;
 
     if (scale.props.reverse) {
         pan = -pan;
     }
 
-    if ("align" in scale) {
-        anchor += scale.align();
-    }
-
     switch (scale.type) {
         case "linear":
-        case "index":
-        case "locus":
             newDomain = panLinear(newDomain, pan || 0);
             break;
+        case "index":
+        case "locus": {
+            const indexScale =
+                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                    scale
+                );
+            const [rangeStart, rangeEnd] = indexScale.range();
+            const fraction =
+                (scaleAnchor - rangeStart) / (rangeEnd - rangeStart);
+            const domainSpan = span(domain);
+            const newSpan = Math.max(1, domainSpan * scaleFactor);
+            const padding =
+                2 * indexScale.paddingOuter() - indexScale.paddingInner();
+            const stepSpan = Math.max(1, domainSpan + padding);
+            const newStepSpan = Math.max(1, newSpan + padding);
+            const align = indexScale.align();
+
+            // Padding stays fixed in domain units. Account for the minimum
+            // step span too, so zooming preserves the pointer coordinate.
+            const start =
+                domain[0] +
+                (fraction - align) * (stepSpan - newStepSpan) +
+                align * (domainSpan - newSpan) -
+                (pan || 0) * newSpan;
+            return [start, start + newSpan];
+        }
         case "log":
             newDomain = panLog(newDomain, pan || 0);
             break;
@@ -361,6 +377,10 @@ function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
         default:
             throw new Error("Zooming is not implemented for: " + scale.type);
     }
+
+    /** @type {number} */
+    // @ts-ignore
+    const anchor = scale.invert(scaleAnchor);
 
     return zoomDomainByScaleType(
         scale,

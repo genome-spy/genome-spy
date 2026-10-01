@@ -69,11 +69,18 @@ bounds use the original `pos` coordinate system and are multiplied by
 covering protein residues 1 through 1068, `[0.5, 1068.5]` represents the outer
 edges of the first and last residue bands.
 
-`extent` can also be a reactive expression. For example, the following keeps
-the preferred bounds at the edges of the currently visible x domain:
+`extent` can also be a reactive expression. For a linear quantitative x scale,
+the following keeps the preferred bounds at the edges of the viewport:
 
 ```json
-"extent": { "expr": "[invert('x', 0), invert('x', 1)]" }
+"extent": { "expr": "domain('x')" }
+```
+
+For an index or locus scale without padding, marks placed at band centers are
+offset by half a position unit. Subtract that offset from the domain bounds:
+
+```json
+"extent": { "expr": "[domain('x')[0] - 0.5, domain('x')[1] - 0.5]" }
 ```
 
 When all collision intervals fit, the extent acts as a hard bound. If their

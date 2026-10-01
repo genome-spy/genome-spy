@@ -37,6 +37,58 @@ function createFlow(data, length, positionFactor = 100, extent) {
 }
 
 describe("Displace1DTransform", () => {
+    test("bounds centered index marks using domain bounds minus half a band", async () => {
+        const view = await createAndInitialize(
+            {
+                width: 120,
+                height: 40,
+                data: { values: [{ pos: 1 }, { pos: 1 }] },
+                transform: [
+                    { type: "collect", sort: { field: "pos" } },
+                    {
+                        type: "displace1d",
+                        pos: "pos",
+                        length: 60,
+                        positionFactor: {
+                            expr: "width * (scale('x', 1) - scale('x', 0))",
+                        },
+                        extent: {
+                            expr: "[domain('x')[0] - 0.5, domain('x')[1] - 0.5]",
+                        },
+                        as: "offset",
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "pos",
+                        type: "index",
+                        scale: { domain: [1, 2] },
+                        axis: null,
+                    },
+                    xOffset: {
+                        field: "offset",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                },
+            },
+            UnitView
+        );
+        try {
+            renderToLayout(view, Rectangle.create(0, 0, 120, 40));
+            const offsets = [...view.flowHandle.collector.getData()].map(
+                (datum) => datum.offset
+            );
+
+            // Two 60-pixel intervals fill the viewport at centers 30 and 90.
+            expect(offsets[0]).toBeCloseTo(0);
+            expect(offsets[1]).toBeCloseTo(60);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("uses one and displacement as grammar defaults", () => {
         const transform = new Displace1DTransform(
             { type: "displace1d", pos: "pos", length: 10 },

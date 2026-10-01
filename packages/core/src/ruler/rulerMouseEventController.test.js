@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import Rectangle from "../view/layout/rectangle.js";
+import scaleIndex from "../genome/scaleIndex.js";
 import { RulerMouseEventController } from "./rulerMouseEventController.js";
 
 /**
@@ -9,10 +10,14 @@ import { RulerMouseEventController } from "./rulerMouseEventController.js";
  */
 function createScaleResolution(type, toComplex) {
     /** @param {number} value */
-    const scale = (value) => value / 100;
-    scale.type = type;
-    /** @param {number} value */
-    scale.invert = (value) => value * 100;
+    const scale = Object.assign(
+        type === "index" || type === "locus"
+            ? scaleIndex().domain([0, 100])
+            : Object.assign((/** @type {number} */ value) => value / 100, {
+                  invert: (/** @type {number} */ value) => value * 100,
+              }),
+        { type }
+    );
 
     return {
         getResolvedScaleType() {
@@ -169,7 +174,7 @@ describe("RulerMouseEventController", () => {
         expect(setValue).toHaveBeenCalledWith("cursor", {
             type: "ruler",
             values: {
-                x: 26,
+                x: 25,
             },
         });
     });
@@ -193,7 +198,7 @@ describe("RulerMouseEventController", () => {
         expect(setValue).toHaveBeenCalledWith("cursor", {
             type: "ruler",
             values: {
-                x: { chrom: "chr1", pos: 26 },
+                x: { chrom: "chr1", pos: 25 },
             },
         });
     });
