@@ -27,7 +27,8 @@ an early browser-side LLM agent with a thin Python relay.
   there is no external CSS framework or component library.
 - `packages/app-agent`: Browser-side agent plugin and chat UI. Its Python relay
   is under `packages/app-agent/server/`.
-- The monorepo is managed with lerna-lite.
+- Changesets calculates release versions and notes; lerna-lite runs workspace
+  tasks and publishes already-versioned packages.
 
 ## Workflow expectations
 
@@ -128,6 +129,14 @@ Common checks from the repository root:
 
 ## Documentation and change delivery
 
+- Every user-visible change needs a committed `.changeset/*.md` fragment. Use
+  the `write-genomespy-changeset` skill when implementing a feature, fix, or
+  compatibility change and before preparing a PR or a direct commit to
+  `master`/`main`. Assess the whole PR or the exact individual commit; commit
+  types alone do not determine release impact. Update an existing fragment for
+  the same unreleased change. Use an empty changeset for intentionally
+  non-releasable contributions. See `.changeset/README.md` and the release
+  workflow in `CONTRIBUTING.md`.
 - Use the `write-genomespy-docs` skill for user-facing docs, specification JSDoc,
   schema macros, or docs builds.
 - Use the `plan-genomespy-change` skill for architecture or implementation

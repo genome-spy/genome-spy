@@ -1,14 +1,6 @@
 {
   "$schema": "node_modules/@lerna-lite/cli/schemas/lerna-schema.json",
-  "packages": [
-    "packages/*"
-  ],
+  "packages": ["packages/*"],
   "useWorkspaces": true,
-  "version": "1.0.0",
-  "command": {
-    "publish": {
-      "conventionalCommits": true,
-      "createRelease": "github"
-    }
-  }
+  "version": "1.0.0"
 }

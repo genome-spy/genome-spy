@@ -3,9 +3,13 @@
   "private": true,
   "type": "module",
   "engines": {
-    "npm": ">=7.0.0"
+    "node": "^22.11 || ^24 || >=26",
+    "npm": ">=10.9.0"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
+    "@changesets/get-release-plan": "^5.0.2",
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^16.2.4",
     "@eslint/js": "^10.0.1",
@@ -65,8 +69,13 @@
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
     "pre-commit": "lint-staged",
-    "publish": "lerna publish --allow-peer-dependencies-update --sync-workspace-lock --changelog-include-commits-client-login \" by @%l\"",
-    "preview:publish": "lerna publish --allow-peer-dependencies-update --sync-workspace-lock --changelog-include-commits-client-login \" by @%l\" --dry-run"
+    "changeset": "changeset",
+    "release:status": "changeset status",
+    "release:check": "node scripts/checkChangesets.mjs",
+    "release:version": "node scripts/release.mjs version",
+    "release:notes": "node scripts/release.mjs notes",
+    "release:publish": "npm run release:check && lerna publish from-package",
+    "release:plan": "changeset publish-plan"
   },
   "workspaces": [
     "./packages/*"

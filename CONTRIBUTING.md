@@ -23,6 +23,114 @@ If applicable, the scope in the commit message should be the package name, e.g.,
 `core` or `app`. However, when making commits that will be squashed into a
 single commit, the scope can be omitted.
 
+Conventional Commits describe Git history. They no longer calculate versions or
+generate release notes after `v1.0.0`; Changesets records those decisions.
+
+## Release notes for contributions
+
+Include a `.changeset/*.md` fragment with each user-visible change, whether it
+arrives through a PR or a direct commit to `master` or `main`:
+
+```sh
+npm run changeset
+npm run release:check
+npm run release:status
+```
+
+Select the directly affected packages and describe the benefit or corrected
+behavior in language GenomeSpy users understand. Use `patch` for compatible
+fixes, `minor` for compatible functionality, and `major` for breaking API or
+specification changes. Every breaking note must explain the required migration.
+The eight release packages share one fixed version, so selecting a single
+affected package propagates the bump to the group. Private applications are
+versioned but never published or tagged. The private WebGPU prototype remains
+outside the group, at its own development version.
+
+Update an existing fragment when further commits change the same unreleased
+feature. Use separate fragments for independent changes. For changes with no
+release impact, such as tests, CI, pure refactoring, or internal documentation,
+record the decision with an empty fragment:
+
+```sh
+npm run changeset -- --empty
+```
+
+CI checks PRs and pushes to `master`/`main` for a new or updated fragment. It
+validates package names, release plans, and the publication boundary; reviewers
+still assess the bump and prose. Version commits consume fragments and do not
+need another no-release marker. See [.changeset/README.md](.changeset/README.md)
+for the complete contribution contract.
+
+## Releases
+
+`v1.0.0` was the final release calculated with Lerna Lite and Conventional
+Commits. Preserve the existing versions and changelog history as the baseline;
+start accumulating Changesets fragments for subsequent changes.
+
+Prepare a stable release from a clean checkout with committed fragments:
+
+```sh
+npm run release:status
+npm run release:check
+npm run release:version
+git diff
+```
+
+`release:status` inspects the calculated versions without modifying the repo.
+`release:version` runs Changesets, consumes pending fragments, updates manifests
+and package changelogs, synchronizes `package-lock.json` and `lerna.json`, and
+adds a root changelog entry grouped into breaking changes, features, and fixes.
+Each logical fragment appears once in the root entry, even when several fixed
+packages are affected. The GitHub changelog formatter supplies PR/commit links
+and contributor attribution; release preparation needs a `GITHUB_TOKEN` with
+the formatter's documented read permissions. See the
+[formatter documentation](https://changesets.dev/packages/changelog-github).
+Empty fragments alone do not create a release. This command supports stable
+releases; prerelease and snapshot workflows require a separate design.
+
+Review and commit all generated changes using Conventional Commits, then run the
+normal lint, type, build, and test checks and `npm run smoke:examples` before
+publication. Inspect the npm publication candidates with:
+
+```sh
+npm run release:plan
+```
+
+Only App, Core, Inspector, and the React component may be published. Lerna Lite
+retains the existing build/pack lifecycle scripts and publishes the reviewed
+manifest versions:
+
+```sh
+npm run release:publish
+```
+
+This publishes to npm. It does not calculate another version or create a Git
+tag or GitHub release. Do not use `lerna version`, the old `npm run publish`, or
+plain `lerna publish` in this workflow.
+
+After successful npm publication, create and push the single annotated
+`vX.Y.Z` tag at the reviewed release commit, then create the GitHub release with
+the root entry as its body. For example, if the reviewed version is `1.0.1`:
+
+```sh
+git tag -a v1.0.1 -m v1.0.1
+git push origin master --follow-tags
+npm run --silent release:notes > /tmp/genomespy-release-notes.md
+gh release create v1.0.1 --verify-tag --title v1.0.1 \
+  --notes-file /tmp/genomespy-release-notes.md
+```
+
+Use the connected GitHub tools when releasing with an agent; the CLI example is
+for maintainers. Agent-authored release bodies follow the repository's GitHub
+attribution policy. Creating a published stable GitHub release continues to
+trigger the existing docs, Playground, and schema deployment. Avoid package
+tags (`@genome-spy/core@X.Y.Z`); the repository retains one global release tag.
+
+To rehearse versioning, use a disposable checkout or worktree. `changeset
+version` has no non-mutating dry run. `release:status` and `release:plan` inspect
+plans; versioning, building, and packing belong in the disposable checkout.
+Never run the publish, tag-push, or GitHub-release steps during rehearsal.
+
 ## Coding Practices
 
 ### Language and Typings
@@ -127,6 +235,9 @@ recommended IDE for GenomeSpy development, as it provides a seamless development
 experience with integrated tools and extensions. However, any IDE that supports
 JavaScript and TypeScript can be used.
 
+Use Node.js 24 (as CI does) and npm 10.9 or newer for the development and release
+tools.
+
 After installing dependencies, generate the JSON Schemas used for editing
 GenomeSpy examples:
 
@@ -190,7 +301,8 @@ See the [`README.md`](./README.md) for instructions on how to start the developm
 
 ### Submitting Pull Requests
 
-All changes should be submitted through pull requests (PRs). Please provide a
+Prefer submitting changes through pull requests (PRs). Direct maintainer commits
+to `master` or `main` follow the same changeset/no-release convention. Please provide a
 clear and detailed description of your changes, including the motivation and
 context behind them. PRs undergo a review process, and constructive feedback
 should be expected and welcomed.
