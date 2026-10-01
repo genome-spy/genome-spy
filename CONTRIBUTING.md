@@ -86,7 +86,9 @@ and contributor attribution; release preparation needs a `GITHUB_TOKEN` with
 the formatter's documented read permissions. See the
 [formatter documentation](https://changesets.dev/packages/changelog-github).
 Empty fragments alone do not create a release. This command supports stable
-releases; prerelease and snapshot workflows require a separate design.
+releases. The deferred branch policy and required prerelease work are recorded
+under [future major release lines](#future-major-release-lines). Snapshot
+workflows require a separate design.
 
 Review and commit all generated changes using Conventional Commits, then run the
 normal lint, type, build, and test checks and `npm run smoke:examples` before
@@ -184,6 +186,79 @@ git diff --exit-code -- packages/*/package.json
 Packing runs the actual `prepack`/`postpack` lifecycle and writes only the four
 public tarballs. Inspect their manifests and entry files before release. Never
 run publication, tag pushes, or GitHub-release creation during rehearsal.
+
+### Future major release lines
+
+This policy is deferred. Continue compatible 1.x development on `master`, using
+patch and minor changesets and stable releases under npm's `latest` tag. Create
+the maintenance branch and enter prerelease mode when work on the next breaking
+release begins, after the supporting tooling below is implemented.
+
+Before merging the first breaking PR, create `release/1.x` from the chosen
+stable 1.x baseline, including the release tooling. Prefer cutting the branch
+after a stable release so pending release fragments have been consumed. The
+intended branch roles are:
+
+| Branch        | Accepted changes                                  | Release line                       |
+| ------------- | ------------------------------------------------- | ---------------------------------- |
+| `master`      | Main development, including breaking changes      | Next major, initially 2.0 previews |
+| `release/1.x` | Compatible fixes and selected compatible features | Stable 1.x                         |
+
+Keep `.changeset/config.json`'s `baseBranch` as `master` on the development
+branch and set it to `release/1.x` on the maintenance branch. Use temporary
+branches for feature and backport PRs; each supported major needs one enduring
+maintenance branch, not a branch per feature.
+
+Breaking PRs target `master` and include a major changeset with migration
+instructions. Compatible work also targets `master` by default. Merging a PR
+records release intent; it does not publish packages. Once prerelease support
+is ready, enter Changesets prerelease mode with `next` on `master` and prepare
+reviewed previews such as `2.0.0-next.0`. When the major is ready, exit prerelease
+mode and prepare the final stable version commit. See the
+[Changesets prerelease guide](https://changesets.dev/guide/prereleases).
+
+For changes needed by both lines, merge the implementation into `master`, then
+open a backport PR against `release/1.x` by cherry-picking or adapting it. Include
+a changeset appropriate to the 1.x behavior, usually patch for a fix. Fix bugs
+specific to 1.x on the maintenance branch and forward-port them when relevant.
+Keep release/version commits, generated changelogs, lockfile version updates,
+and prerelease state local to each line; port individual implementation changes
+rather than routinely merging whole release branches. See the
+[Changesets backporting guide](https://changesets.dev/guide/backporting-changes).
+
+The intended npm channel policy is:
+
+| Release                                          | npm dist-tag |
+| ------------------------------------------------ | ------------ |
+| Stable 1.x while it is the current stable major  | `latest`     |
+| 2.0 prereleases                                  | `next`       |
+| Final 2.0 and subsequent current stable releases | `latest`     |
+| 1.x maintenance after 2.0 becomes stable         | `latest-1`   |
+
+Older-major releases must explicitly use their maintenance tag to preserve the
+current `latest`. GitHub prereleases must be marked as such, and older-major
+releases must not replace the current major as the latest GitHub release. See
+[npm dist-tags](https://docs.npmjs.com/adding-dist-tags-to-packages/).
+
+Before activating this policy, complete the following work:
+
+- Extend `scripts/release.mjs` and the contribution gate for Changesets
+  prerelease entry, repeated previews, and exit. Preserve the fixed/private
+  package policy, handle archived `.changeset/pre/` notes in the final changelog,
+  and check the expected version against the selected release channel.
+- Extend both CI workflows to cover maintenance branches and their PRs.
+- Make `publish.yml` validate the branch, version, and npm channel together,
+  including the transition from 1.x `latest` to 2.x `latest`. Preserve the global
+  Git tags and mark GitHub releases with the appropriate prerelease/latest status.
+- Route preview and maintenance docs and Playground builds separately from the
+  primary stable site. Publish schemas and advance aliases for the appropriate
+  release line; previews and old-major docs must not replace current stable docs.
+- Rehearse repeated previews, finalization, and maintenance publication in
+  disposable fixtures before enabling the workflow, including checking that a
+  backport cannot move npm's `latest` or overwrite the primary site.
+
+The current scripts reject prerelease state and the publisher accepts stable
+versions from `master` only. Keep those restrictions until this work is ready.
 
 ## Coding Practices
 

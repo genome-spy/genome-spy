@@ -80,6 +80,8 @@ export async function readReleasePlan(cwd) {
     if (versions.size !== 1 || !versions.has(await releaseVersion(cwd))) {
         throw new Error("Release packages must share Core's version.");
     }
+    // TODO: Support prerelease entry/exit, archived notes, and channel-aware
+    // verification together; see CONTRIBUTING.md#future-major-release-lines.
     if (plan.preState) {
         throw new Error("This release workflow supports stable releases only.");
     }

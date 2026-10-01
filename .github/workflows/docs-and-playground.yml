@@ -92,6 +92,8 @@ jobs:
                   git -C deploy-site add schema
 
             - name: Update site contents
+              # TODO: Route previews and maintenance docs separately from this
+              # primary site; see CONTRIBUTING.md#future-major-release-lines.
               run: |
                   rm -rf deploy-site/docs deploy-site/playground
                   mkdir -p deploy-site/docs/api/embed-examples deploy-site/playground

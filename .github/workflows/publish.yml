@@ -17,6 +17,8 @@ concurrency:
 
 jobs:
     publish:
+        # TODO: Validate branch, version, and channel together for future release
+        # lines; see CONTRIBUTING.md#future-major-release-lines before widening this.
         if: github.repository == 'genome-spy/genome-spy' && github.ref == 'refs/heads/master'
         runs-on: ubuntu-latest
         timeout-minutes: 45

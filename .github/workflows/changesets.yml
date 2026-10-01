@@ -1,6 +1,8 @@
 name: Changesets
 
 on:
+    # TODO: Cover maintenance branches alongside Node.js CI when activating
+    # CONTRIBUTING.md#future-major-release-lines.
     pull_request:
         branches: [master, main]
     push:
