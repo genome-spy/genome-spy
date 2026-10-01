@@ -1,7 +1,8 @@
 # Change Log
 
 All notable changes to this project will be documented in this file.
-See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+Releases after v1.0.0 use user-written [Changesets](.changeset/README.md) notes.
+Earlier entries were generated from Conventional Commits and are preserved below.
 
 # [1.0.0](https://github.com/genome-spy/genome-spy/compare/v0.90.0...v1.0.0) (2026-10-01)
 

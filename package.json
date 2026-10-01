@@ -3,15 +3,16 @@
   "private": true,
   "type": "module",
   "engines": {
-    "npm": ">=7.0.0"
+    "node": "^22.11 || ^24 || >=26",
+    "npm": ">=10.9.0"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
+    "@changesets/get-release-plan": "^5.0.2",
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^16.2.4",
     "@eslint/js": "^10.0.1",
-    "@lerna-lite/cli": "^5.3.0",
-    "@lerna-lite/publish": "^5.3.0",
-    "@lerna-lite/run": "^5.3.0",
     "@rollup/plugin-replace": "^6.0.1",
     "@storybook/addon-docs": "^8.6.17",
     "@storybook/addon-essentials": "^8.6.17",
@@ -47,7 +48,7 @@
     "vitest": "^4.1.10"
   },
   "scripts": {
-    "build": "lerna run build",
+    "build": "npm run build --if-present -w @genome-spy/webgpu-renderer -w @genome-spy/core -w @genome-spy/inspector -w @genome-spy/app-agent -w @genome-spy/app -w @genome-spy/doc-embed -w @genome-spy/react-component -w @genome-spy/embed-examples -w @genome-spy/playground",
     "build:schemas": "npm -w @genome-spy/core run build:schema && npm -w @genome-spy/app run build:schema",
     "build:docs:prepare": "npm -w @genome-spy/app run build && npm -w @genome-spy/doc-embed run build && npm -w @genome-spy/core run build:schema && node scripts/prepare-docs-assets.mjs && npm run generate:api-docs && npm run generate:doc-types",
     "build:docs": "npm run build:docs:prepare && uv run --group docs zensical build --clean",
@@ -65,8 +66,15 @@
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
     "pre-commit": "lint-staged",
-    "publish": "lerna publish --allow-peer-dependencies-update --sync-workspace-lock --changelog-include-commits-client-login \" by @%l\"",
-    "preview:publish": "lerna publish --allow-peer-dependencies-update --sync-workspace-lock --changelog-include-commits-client-login \" by @%l\" --dry-run"
+    "changeset": "changeset",
+    "release:status": "changeset status",
+    "release:check": "node scripts/checkChangesets.mjs",
+    "release:version": "node scripts/release.mjs version",
+    "release:notes": "node scripts/release.mjs notes",
+    "release:publish": "npm run release:verify && changeset publish --no-git-tag",
+    "release:plan": "changeset publish-plan",
+    "release:verify": "node scripts/release.mjs verify",
+    "release:pack": "npm pack -w @genome-spy/core -w @genome-spy/app -w @genome-spy/inspector -w @genome-spy/react-component"
   },
   "workspaces": [
     "./packages/*"
