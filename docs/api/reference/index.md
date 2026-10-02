@@ -1,6 +1,10 @@
 # GenomeSpy Core API
 
-Public TypeScript API for `@genome-spy/core`.
+Public TypeScript API for GenomeSpy Core and its optional entry points.
+
+Import `ViewQueryApi`, `ViewDescription`, `ViewDataReadOptions`, and
+`ViewDataReadResult` from `@genome-spy/core/view-query`.
+These query types are not exported by the root `@genome-spy/core` entry.
 
 ## Interfaces
 
@@ -42,6 +46,17 @@ Public TypeScript API for `@genome-spy/core`.
 - [ScaleResolutionEvent](interfaces/ScaleResolutionEvent.md)
 - [ZoomToOptions](interfaces/ZoomToOptions.md)
 - [ScaleResolutionApi](interfaces/ScaleResolutionApi.md)
+- [ViewQueryApi](interfaces/ViewQueryApi.md)
+- [ViewDescription](interfaces/ViewDescription.md)
+- [ViewDataReadOptions](interfaces/ViewDataReadOptions.md)
+- [ViewDataReadResult](interfaces/ViewDataReadResult.md)
+- [ViewSliceAggregate](interfaces/ViewSliceAggregate.md)
+- [ViewQueryScopeOptions](interfaces/ViewQueryScopeOptions.md)
+- [ViewSliceQueryOptions](interfaces/ViewSliceQueryOptions.md)
+- [ViewSliceQueryResult](interfaces/ViewSliceQueryResult.md)
+- [ViewAnnotationSet](interfaces/ViewAnnotationSet.md)
+- [ViewAnnotationState](interfaces/ViewAnnotationState.md)
+- [ViewAnnotations](interfaces/ViewAnnotations.md)
 
 ## Type Aliases
 
@@ -58,3 +73,7 @@ Public TypeScript API for `@genome-spy/core`.
 - [ViewMutationApi](type-aliases/ViewMutationApi.md)
 - [ScaleResolutionEventType](type-aliases/ScaleResolutionEventType.md)
 - [ScaleResolutionListener](type-aliases/ScaleResolutionListener.md)
+- [ViewSliceAnalysisStage](type-aliases/ViewSliceAnalysisStage.md)
+- [QuerySupportReason](type-aliases/QuerySupportReason.md)
+- [ViewQueryAssessment](type-aliases/ViewQueryAssessment.md)
+- [ViewAnnotationAssessment](type-aliases/ViewAnnotationAssessment.md)

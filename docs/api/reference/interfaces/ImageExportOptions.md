@@ -27,6 +27,6 @@ Custom height in CSS pixels. Defaults to canvas height.
 
 ### background?
 
-> `optional` **background?**: `string`
+> `optional` **background?**: `string` \| `null`
 
 Overrides the visualization background. Null is transparent.

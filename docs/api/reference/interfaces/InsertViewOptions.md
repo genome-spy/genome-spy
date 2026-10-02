@@ -16,7 +16,7 @@ Child index where the view is inserted. If omitted, the view is appended.
 
 ### scope?
 
-> `optional` **scope?**: `string`
+> `optional` **scope?**: `string` \| `null`
 
 Optional scope name for the inserted subtree.
 

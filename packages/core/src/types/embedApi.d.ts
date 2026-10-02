@@ -581,6 +581,15 @@ export interface DatasetApi {
  */
 export interface ViewHandle {
     /**
+     * Returns the resolved scale, including unnamed scales, or undefined if absent.
+     * Secondary channels such as x2 use their primary channel's scale.
+     * Throws for invalid channels, removed views, or finalized embeds.
+     */
+    getScaleResolution: (
+        channel: import("../spec/channel.js").ChannelWithScale
+    ) => ScaleResolutionApi | undefined;
+
+    /**
      * Runtime-stable id for this handle.
      *
      * The id is stable only for the current embedded instance. It is not a

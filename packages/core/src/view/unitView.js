@@ -1,3 +1,4 @@
+import { annotationPlacements } from "./viewAnnotationAccess.js";
 import RectMark from "../marks/rect.js";
 import ArrowMark from "../marks/arrow.js";
 import PointMark from "../marks/point.js";
@@ -246,6 +247,7 @@ export default class UnitView extends View {
 
         context.pushView(this, coords);
         context.renderMark(this.mark, options);
+        annotationPlacements.get(this)?.(context, coords, options);
         context.popView(this);
     }
 

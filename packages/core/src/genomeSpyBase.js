@@ -457,6 +457,7 @@ export default class GenomeSpy {
                 this.#extraBroadcastListeners.add(type, listener),
             removeBroadcastListener: (type, listener) =>
                 this.#extraBroadcastListeners.remove(type, listener),
+            computeLayout: this.computeLayout.bind(this),
             renderImmediately: this.renderAll.bind(this),
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),

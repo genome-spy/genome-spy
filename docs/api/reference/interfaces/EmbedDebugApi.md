@@ -11,13 +11,13 @@ visualization control or persisted application state.
 
 ### getViewRoot
 
-> **getViewRoot**: () => `object`
+> **getViewRoot**: () => `object` \| `undefined`
 
 Returns the internal root view for optional developer tooling.
 
 #### Returns
 
-`object`
+`object` \| `undefined`
 
 ***
 
@@ -35,11 +35,11 @@ Loads Core debug helpers from the same runtime that owns the view tree.
 
 ### createPickingBufferVisualization?
 
-> `optional` **createPickingBufferVisualization?**: () => `HTMLCanvasElement`
+> `optional` **createPickingBufferVisualization?**: () => `HTMLCanvasElement` \| `undefined`
 
 Creates a detached logical-pixel visualization of the Canvas software
 picking IDs. Available only in Core embeds using the Canvas renderer.
 
 #### Returns
 
-`HTMLCanvasElement`
+`HTMLCanvasElement` \| `undefined`
