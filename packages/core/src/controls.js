@@ -1,5 +1,6 @@
 import css, { overrideStyle } from "./controls/styles.js";
 
+export { recordButton } from "./controls/recordButton.js";
 export { button } from "./controls/button.js";
 export { pngButton, svgButton } from "./controls/imageButtons.js";
 export { fullWindowButton } from "./controls/fullWindow.js";

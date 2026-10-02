@@ -73,7 +73,7 @@ try {
     );
 
     const controlsOutput = await buildEntry(
-        "controls.js",
+        path.resolve("scripts/browserControls.js"),
         "genomeSpyControls",
         controlsOutDir
     );
@@ -86,6 +86,30 @@ try {
     ) {
         throw new Error("Controls should not import the GenomeSpy runtime.");
     }
+
+    const imageControlsOutput = await buildEntry(
+        path.resolve("scripts/fixtures/imageControls.js"),
+        "imageControls",
+        path.join(tempDir, "image-controls")
+    );
+    const recordingOutput = await buildEntry(
+        path.resolve("scripts/fixtures/recordingControls.js"),
+        "recordingControls",
+        path.join(tempDir, "recording-controls")
+    );
+    if (
+        !readAllOutputSources(recordingOutput).some((source) =>
+            source.includes("src/recording/canvasRecording.js")
+        )
+    ) {
+        throw new Error(
+            "The opt-in recording bundle must include the encoder implementation."
+        );
+    }
+    verifyNoOptionalRendererSources(
+        readAllOutputSources(recordingOutput),
+        "Recording controls bundle"
+    );
 
     const minimalCanvasEntry = path.resolve(
         "scripts/fixtures/minimalCanvas.js"
@@ -154,6 +178,34 @@ try {
             );
         }
     }
+    // Inspect every emitted chunk, including dynamically reachable modules. Merely
+    // moving the implementation behind import() must not satisfy this contract.
+    for (const [label, output] of [
+        ["minimal", minimalOutput],
+        ["default", productionOutput],
+        ["controls", controlsOutput],
+        ["image controls", imageControlsOutput],
+        ["minimal Canvas", minimalCanvasOutput],
+    ]) {
+        if (
+            readAllOutputSources(output).some((source) =>
+                /src\/(recording[/.]|controls\/recordButton\.js)/.test(source)
+            )
+        ) {
+            throw new Error(
+                `${label} bundle includes recording without opting in.`
+            );
+        }
+        if (
+            output.some(
+                (chunk) =>
+                    chunk.type === "chunk" && /MediaRecorder/.test(chunk.code)
+            )
+        ) {
+            throw new Error(`${label} bundle contains recording encoder code.`);
+        }
+    }
+
     if (
         productionBundleSources.some((source) =>
             source.includes(webGpuRenderingDirectory)

@@ -1,16 +1,17 @@
-// The minimal entry point requires explicit renderer imports. Here WebGL draws
-// the interactive plot, while SVG enables vector downloads. The controls module
-// supplies its own styles but does not import or register either renderer.
+// Explicit renderer imports let this example exercise recording on each live
+// backend. SVG remains an independent export capability. Controls register none.
 import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
+import "@genome-spy/core/rendering/canvas.js";
+import "@genome-spy/core/rendering/webgpu/register.js";
 import "@genome-spy/core/rendering/svg.js";
 import {
     attachControls,
     pngButton,
+    recordButton,
     svgButton,
     fullWindowButton,
     genomeSpyButton,
-    button,
 } from "@genome-spy/core/controls";
 
 // The Inspector implements the same control contract from its own package.
@@ -19,9 +20,6 @@ import { inspectorButton } from "@genome-spy/inspector";
 
 // Pass this same element to embed() and attachControls(); no wrapper is needed.
 const container = /** @type {HTMLElement} */ (document.getElementById("plot"));
-const clearIcon = /** @type {HTMLTemplateElement} */ (
-    document.getElementById("clear-selection-icon")
-).content.firstElementChild;
 const reset = /** @type {HTMLButtonElement} */ (
     document.getElementById("reset")
 );
@@ -58,7 +56,15 @@ const spec = {
     },
 };
 
-let api = await embed(container, structuredClone(spec));
+const renderer = /** @type {HTMLSelectElement} */ (
+    document.getElementById("renderer")
+);
+function embedPlot() {
+    return embed(container, structuredClone(spec), {
+        renderer: /** @type {"webgl" | "canvas" | "webgpu"} */ (renderer.value),
+    });
+}
+let api = await embedPlot();
 let controls = createControls();
 
 function createControls() {
@@ -76,20 +82,7 @@ function createControls() {
             // Requires the SVG renderer import above. Both exports capture the
             // current visualization state, including zoom and selection.
             svgButton({ filename: "genomespy-controls-example" }),
-            // Use an SVG or HTML icon, cloned independently for each button.
-            // label names it for assistive technology; title supplies hover text.
-            // Omit icon to display the label as a text button.
-            // Async actions receive a disposal signal: check it before side effects.
-            button({
-                label: "Clear selection",
-                title: "Clear the selected region",
-                icon: clearIcon,
-                onClick: ({ api }) =>
-                    api.getParam("brush").setValue({
-                        type: "interval",
-                        intervals: {},
-                    }),
-            }),
+            recordButton({ filename: "genomespy-controls-example" }),
             // Closing, changing controls, or resetting the embed cleans up the
             // Inspector. It remains interactive during full-window expansion.
             inspectorButton(),
@@ -128,16 +121,24 @@ function updateControls() {
 
 async function resetExample() {
     // Prevent option changes while the replacement embed is loading.
-    reset.disabled = placement.disabled = visibility.disabled = true;
+    reset.disabled =
+        placement.disabled =
+        visibility.disabled =
+        renderer.disabled =
+            true;
     try {
         // Dispose controls before finalizing the embed or removing its DOM.
         // This restores an expanded container and suppresses pending downloads.
         controls.dispose();
         api.finalize();
-        api = await embed(container, structuredClone(spec));
+        api = await embedPlot();
         controls = createControls();
     } finally {
-        reset.disabled = placement.disabled = visibility.disabled = false;
+        reset.disabled =
+            placement.disabled =
+            visibility.disabled =
+            renderer.disabled =
+                false;
     }
 }
 
@@ -145,3 +146,4 @@ async function resetExample() {
 placement.addEventListener("change", updateControls);
 visibility.addEventListener("change", updateControls);
 reset.addEventListener("click", resetExample);
+renderer.addEventListener("change", resetExample);

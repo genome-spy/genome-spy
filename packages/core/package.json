@@ -17,12 +17,21 @@
     "./minimal": "./src/minimal.js",
     "./full": "./src/full.js",
     "./controls": "./src/controls.js",
+    "./recording": "./src/recording.js",
     "./rendering/canvas.js": "./src/rendering/registerCanvas.js",
     "./rendering/svg.js": "./src/rendering/registerSvg.js",
     "./rendering/webgl.js": "./src/rendering/registerWebGL.js",
     "./browser": {
       "import": "./dist/bundle/index.es.js",
       "default": "./dist/bundle/index.js"
+    },
+    "./browser/controls": {
+      "import": "./dist/bundle/controls.es.js",
+      "default": "./dist/bundle/controls.js"
+    },
+    "./browser/recording": {
+      "import": "./dist/bundle/recording.es.js",
+      "default": "./dist/bundle/recording.js"
     },
     "./svg/index.js": "./src/rendering/svg/index.js",
     "./data/*": "./src/data/*",
@@ -44,8 +53,9 @@
     "benchmark:interaction": "node scripts/runWebGpuInteractionBenchmark.mjs",
     "smoke:examples": "node scripts/captureScreenshots.mjs --all --check",
     "smoke:examples:webgpu": "node scripts/runWebGpuExamples.mjs --all",
+    "verify:bundle:recording": "node scripts/verifyBrowserRecording.mjs",
     "verify:bundle:minimal": "node scripts/verifyMinimalBundle.mjs",
-    "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
+    "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && node scripts/buildBrowserAddons.mjs && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json",
