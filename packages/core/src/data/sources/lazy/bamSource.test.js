@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
-import BamSource, { createBamReadDatum } from "./bamSource.js";
+import BamSource, { createBamReadDatum, createTagFields } from "./bamSource.js";
 
 /** @type {{ chrom: string, start: number, end: number }[]} */
 const requestedIntervals = [];
@@ -68,13 +68,15 @@ vi.mock("@gmod/bam", () => ({
 /**
  * @param {string} chrom
  * @param {FakeBamRecord} record
+ * @param {[string, string][]} [tagFields]
  */
-function createDatum(chrom, record) {
+function createDatum(chrom, record, tagFields) {
     return createBamReadDatum(
         chrom,
         /** @type {import("@gmod/bam").BamRecord} */ (
             /** @type {unknown} */ (record)
-        )
+        ),
+        tagFields
     );
 }
 
@@ -316,5 +318,50 @@ describe("BamSource", () => {
         expect(createDatum("chr1", record)).toMatchObject({
             cigar: "*",
         });
+    });
+
+    test("copies requested SAM tags as tag_ fields", () => {
+        /** @type {Record<string, string | number>} */
+        const tags = { MD: "10", HP: 1, CB: "AACGT" };
+        /** @type {FakeBamRecord} */
+        const record = {
+            start: 50,
+            end: 60,
+            name: "read3",
+            CIGAR: "10M",
+            mq: 60,
+            strand: 1,
+            seq: "ACGT",
+            qual: undefined,
+            flags: 0,
+            getTag: (tag) => /** @type {any} */ (tags[tag]),
+            isPaired: () => false,
+            isProperlyPaired: () => false,
+            isDuplicate: () => false,
+            isFailedQc: () => false,
+            isSecondary: () => false,
+            isSupplementary: () => false,
+        };
+
+        const datum = createDatum(
+            "chr1",
+            record,
+            createTagFields(["HP", "CB", "XX"])
+        );
+
+        expect(datum).toMatchObject({ tag_HP: 1, tag_CB: "AACGT" });
+        // Missing tags still get a field so that all rows share a shape
+        expect(datum).toHaveProperty("tag_XX", undefined);
+        expect(createDatum("chr1", record)).not.toHaveProperty("tag_HP");
+    });
+
+    test("validates and deduplicates SAM tag names", () => {
+        expect(createTagFields(undefined)).toEqual([]);
+        expect(createTagFields(["HP", "HP"])).toEqual([["tag_HP", "HP"]]);
+        expect(() => createTagFields(["H"])).toThrow(/Invalid SAM tag/);
+        expect(() => createTagFields(["1A"])).toThrow(/Invalid SAM tag/);
+        expect(() => createTagFields(/** @type {any} */ ("HP"))).toThrow(
+            /must be an array/
+        );
     });
 });
