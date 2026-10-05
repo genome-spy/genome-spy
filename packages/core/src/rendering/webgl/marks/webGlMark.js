@@ -2,7 +2,6 @@ import {
     bindUniformBlock,
     createBufferInfoFromArrays,
     createProgramInfoFromProgram,
-    createUniformBlockInfo,
     createVertexArrayInfo,
     setAttribInfoBufferFromArray,
     setBlockUniforms,
@@ -63,6 +62,7 @@ import {
     getSelectionPredicateTreeParams,
 } from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
+import { createUniformBlockInfoWithDiagnostics } from "../gl/uniformBlocks.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -851,16 +851,22 @@ export default class WebGLMark {
         );
         delete this.programStatus;
 
-        this.viewUniformInfo = createUniformBlockInfo(
+        const uniformContext = {
+            view: this.unitView.getPathString(),
+            mark: this.unitView.getMarkType(),
+        };
+        this.viewUniformInfo = createUniformBlockInfoWithDiagnostics(
             this.gl,
             this.programInfo,
-            "View"
+            "View",
+            uniformContext
         );
 
-        this.markUniformInfo = createUniformBlockInfo(
+        this.markUniformInfo = createUniformBlockInfoWithDiagnostics(
             this.gl,
             this.programInfo,
-            "Mark"
+            "Mark",
+            uniformContext
         );
 
         this.gl.useProgram(this.programInfo.program);
