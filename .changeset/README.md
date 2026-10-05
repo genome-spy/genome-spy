@@ -35,3 +35,44 @@ whether a note or bump is appropriate: review that decision with the diff.
 Run `npm run release:status` to inspect planned versions and `npm run
 release:check` to validate the package topology and fragments. See the
 [release workflow](../CONTRIBUTING.md#releases) for preparation and publishing.
+
+## Example notes
+
+Each example is a complete fragment with YAML frontmatter and prose for the
+changelog. Adapt the packages, bump types, and text to the actual change.
+
+### Feature
+
+This example names the affected data source, explains the benefit, and shows
+how to use the new option:
+
+```md
+---
+"@genome-spy/core": minor
+---
+
+The BAM lazy data source now supports a `tags` option for exposing SAM auxiliary
+tags in encodings, filters, and tooltips. This makes it possible to visualize
+haplotype assignments, cell barcodes, and other annotations stored in BAM records.
+
+For example, adding `"tags": ["HP", "CB"]` to a BAM source definition exposes
+`tag_HP` and `tag_CB` fields on each read. A field has the value `undefined` when
+the read lacks the requested tag.
+```
+
+### Breaking change
+
+This hypothetical example explains the compatibility change and gives concrete
+migration instructions:
+
+```md
+---
+"@genome-spy/core": major
+---
+
+The BAM lazy data source now uses `samTags` instead of `tags` to select SAM
+auxiliary tags. Source definitions using `tags` must be updated.
+
+Replace `"tags": ["HP", "CB"]` with `"samTags": ["HP", "CB"]` in BAM source
+definitions. The resulting fields, such as `tag_HP`, keep their existing names.
+```
