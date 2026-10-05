@@ -260,6 +260,23 @@ Returned fields:
 | `isQcFail`        | boolean  | Whether the read failed vendor quality checks.                                   |
 | `isSecondary`     | boolean  | Whether the alignment is secondary.                                              |
 | `isSupplementary` | boolean  | Whether the alignment is supplementary.                                          |
+| `tag_<TAG>`       | any      | Value of each SAM tag listed in the `tags` parameter, e.g. `tag_HP`.             |
+
+Additional SAM auxiliary tags, such as haplotype (`HP`), cell barcode (`CB`), or
+tags written by analysis tools, can be exposed with the `tags` parameter. Each
+listed tag becomes a field named `tag_` plus the tag name, and is `undefined` for
+reads that lack it:
+
+```json
+{
+  "data": {
+    "lazy": { "type": "bam", "url": "reads.bam", "tags": ["HP"] }
+  },
+  "encoding": {
+    "color": { "field": "tag_HP", "type": "nominal" }
+  }
+}
+```
 
 Use [`flattenCigar`](../transform/flatten-cigar.md) and
 [`alignmentMismatches`](../transform/alignment-mismatches.md) when reshaping BAM

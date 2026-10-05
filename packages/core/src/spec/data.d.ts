@@ -22,12 +22,7 @@ import {
 import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
-    | null
-    | string
-    | "string"
-    | "boolean"
-    | "date"
-    | "number";
+    null | string | "string" | "boolean" | "date" | "number";
 
 export interface Parse {
     [field: string]: ParseValue;
@@ -144,21 +139,12 @@ export type DataFormat =
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;
 
 export type DataSource =
-    | UrlData
-    | InlineData
-    | NamedData
-    | DynamicCallbackData
-    | LazyData;
+    UrlData | InlineData | NamedData | DynamicCallbackData | LazyData;
 
 export type Data = DataSource | Generator;
 
 export type InlineDataset =
-    | number[]
-    | string[]
-    | boolean[]
-    | object[]
-    | string
-    | object;
+    number[] | string[] | boolean[] | object[] | string | object;
 
 export interface DataBase {
     /**
@@ -600,6 +586,14 @@ export interface BamData extends DebouncedData {
      * __Default value:__ `10000`
      */
     windowSize?: number | ExprRef;
+
+    /**
+     * SAM auxiliary tags to expose on each read, for example `["HP", "CB"]`.
+     * Each tag is available as a field named `tag_` followed by the tag name,
+     * for example `tag_HP`. The field is `undefined` when a read lacks the tag.
+     * Tags that are not listed are not decoded.
+     */
+    tags?: string[];
 }
 
 export interface TabixData extends DebouncedData {
