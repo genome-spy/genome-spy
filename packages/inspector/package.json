@@ -27,7 +27,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "github:genome-spy/genome-spy",
+    "url": "git+https://github.com/genome-spy/genome-spy.git",
     "directory": "packages/inspector"
   },
   "scripts": {

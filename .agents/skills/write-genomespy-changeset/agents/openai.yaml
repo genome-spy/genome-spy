@@ -1,0 +1,4 @@
+interface:
+    display_name: "Write GenomeSpy Changeset"
+    short_description: "Record release impact for PRs and direct commits"
+    default_prompt: "Use $write-genomespy-changeset to assess this change and add or update its user-facing release note, or record an intentional no-release decision."

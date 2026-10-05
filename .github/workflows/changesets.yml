@@ -1,0 +1,42 @@
+name: Changesets
+
+on:
+    # TODO: Cover maintenance branches alongside Node.js CI when activating
+    # CONTRIBUTING.md#future-major-release-lines.
+    pull_request:
+        branches: [master, main]
+    push:
+        branches: [master, main]
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  fetch-depth: 0
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  cache: npm
+            - run: npm ci
+            - run: npx eslint scripts/release.mjs scripts/checkChangesets.mjs scripts/verifyPackedPackages.mjs scripts/release.test.mjs
+            - name: Check release notes or intentional no-release marker
+              env:
+                  EVENT_NAME: ${{ github.event_name }}
+                  PR_BASE: ${{ github.event.pull_request.base.sha }}
+                  PUSH_BASE: ${{ github.event.before }}
+              run: |
+                  if [ "$EVENT_NAME" = pull_request ]; then
+                      BASE=$(git merge-base "$PR_BASE" HEAD)
+                  elif [ "$PUSH_BASE" = 0000000000000000000000000000000000000000 ]; then
+                      BASE=$(git rev-parse HEAD^)
+                  else
+                      BASE=$PUSH_BASE
+                  fi
+                  npm run release:check -- "$BASE"
+            - run: npx vitest run --project release-tools --reporter=agent

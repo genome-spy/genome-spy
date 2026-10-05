@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "genome-spy/genome-spy" }
+  ],
+  "commit": false,
+  "fixed": [
+    [
+      "@genome-spy/app-agent",
+      "@genome-spy/app",
+      "@genome-spy/core",
+      "@genome-spy/doc-embed",
+      "@genome-spy/embed-examples",
+      "@genome-spy/inspector",
+      "@genome-spy/playground",
+      "@genome-spy/react-component"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "master",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@genome-spy/webgpu-renderer"],
+  "privatePackages": { "version": true, "tag": false }
+}
