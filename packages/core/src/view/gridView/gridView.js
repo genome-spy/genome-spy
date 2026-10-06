@@ -1898,7 +1898,8 @@ export default class GridView extends ContainerView {
                           this.#propagateZoomInteraction(
                               event,
                               pointedChild.coords,
-                              getZoomableResolutions(pointedView)
+                              getZoomableResolutions(pointedView),
+                              pointedChild
                           )
                     : undefined
             );
@@ -1983,25 +1984,89 @@ export default class GridView extends ContainerView {
      * @param {import("../../utils/interaction.js").default} event
      * @param {Rectangle} coords
      * @param {ReturnType<typeof getZoomableResolutions>} zoomableResolutions
+     * @param {GridChild} [pointedChild] the child under the pointer, if any
      */
-    #propagateZoomInteraction(event, coords, zoomableResolutions) {
+    #propagateZoomInteraction(
+        event,
+        coords,
+        zoomableResolutions,
+        pointedChild
+    ) {
         event.target ??= this;
+
+        // A mouse drag on an axis without a zoomable scale scrolls the
+        // innermost scrollable viewport containing the pointer in that
+        // direction. Zoomable scales keep priority: their viewport can still
+        // be scrolled with the scrollbar. Wheel and touch input are unchanged.
+        /** @type {{ x?: import("./scrollbar.js").default, y?: import("./scrollbar.js").default }} */
+        const dragScrollbars =
+            event.type === "mousedown"
+                ? {
+                      x: zoomableResolutions.x.size
+                          ? undefined
+                          : this.#findScrollbar("horizontal", pointedChild),
+                      y: zoomableResolutions.y.size
+                          ? undefined
+                          : this.#findScrollbar("vertical", pointedChild),
+                  }
+                : {};
+
         const cancelPan = interactionToZoom(
             event,
             coords,
-            (zoomEvent) =>
-                zoomResolutions(
+            (zoomEvent) => {
+                const zoomed = zoomResolutions(
                     coords,
                     zoomEvent,
                     zoomableResolutions,
                     this.context.animator
-                ),
+                );
+                const scrolledX = scrollBy(dragScrollbars.x, zoomEvent.xDelta);
+                const scrolledY = scrollBy(dragScrollbars.y, zoomEvent.yDelta);
+                if (scrolledX || scrolledY) {
+                    this.context.animator.requestRender();
+                }
+                return zoomed || scrolledX || scrolledY;
+            },
             this.context.getCurrentHover(),
-            this.context.animator
+            this.context.animator,
+            // When dragging can scroll, lock to one axis so that a vertical
+            // drag doesn't also pan horizontally (and vice versa).
+            { lockAxis: Boolean(dragScrollbars.x || dragScrollbars.y) }
         );
         if (cancelPan) {
             this.#cancelActivePan();
             this.#cancelActivePan = cancelPan;
+        }
+    }
+
+    /**
+     * Finds the innermost scrollbar in the given direction whose viewport
+     * contains the pointed child: first the pointed child's own viewport, then
+     * the viewports that hold this view in the ancestor grids.
+     *
+     * @param {import("./scrollbar.js").ScrollDirection} direction
+     * @param {GridChild} [pointedChild]
+     * @returns {import("./scrollbar.js").default | undefined}
+     */
+    #findScrollbar(direction, pointedChild) {
+        const own = pointedChild?.scrollbars[direction];
+        if (own) {
+            return own;
+        }
+
+        /** @type {View} */
+        let view = this;
+        for (const ancestor of this.getLayoutAncestors().slice(1)) {
+            if (ancestor instanceof GridView) {
+                const scrollbar = ancestor.#children.find(
+                    (gridChild) => gridChild.view === view
+                )?.scrollbars[direction];
+                if (scrollbar) {
+                    return scrollbar;
+                }
+            }
+            view = ancestor;
         }
     }
 
@@ -2068,6 +2133,24 @@ export function getLegendLayoutHost(owner, channel) {
     }
 
     return owner instanceof GridView ? owner : undefined;
+}
+
+/**
+ * Scrolls by a drag movement: dragging down (positive delta) pulls the content
+ * down, revealing what is above, like panning. Clamped to the scrollable range.
+ *
+ * @param {import("./scrollbar.js").default | undefined} scrollbar
+ * @param {number} delta drag movement in pixels
+ * @returns {boolean} whether the scroll position changed
+ */
+function scrollBy(scrollbar, delta) {
+    if (!scrollbar || !delta) {
+        return false;
+    }
+    const previous = scrollbar.viewportOffset;
+    // Keeps the thumb-drag smoother in sync with the new position
+    scrollbar.setViewportOffset(previous - delta, { syncSmoother: true });
+    return scrollbar.viewportOffset !== previous;
 }
 
 /**

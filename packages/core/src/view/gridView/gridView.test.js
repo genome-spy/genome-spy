@@ -3136,3 +3136,191 @@ describe("GridView ruler interactions", () => {
         }
     });
 });
+
+describe("drag scrolling of scrollable viewports", () => {
+    /** @param {import("../concatView.js").default} view */
+    const render = (view) =>
+        view.arrange(
+            new NoOpRenderingContext({ picking: false }),
+            Rectangle.create(0, 0, 200, 200),
+            { firstFacet: true }
+        );
+
+    /**
+     * A scrollable viewport (50 px) holding two 100 px units, as in a stack of
+     * lanes under fixed tracks.
+     *
+     * @param {Record<string, any>} [yScale]
+     * @returns {any} a vconcat spec
+     */
+    const makeScrollableSpec = (yScale) => {
+        const unit = () => ({
+            ...makeUnitSpec(),
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative", scale: yScale },
+            },
+        });
+        return {
+            vconcat: [
+                {
+                    viewportHeight: 50,
+                    vconcat: [
+                        { height: 100, ...unit() },
+                        { height: 100, ...unit() },
+                    ],
+                },
+            ],
+        };
+    };
+
+    /**
+     * Presses the mouse at the centre of the first scrolled unit and moves it.
+     *
+     * @param {import("../concatView.js").default} view
+     * @param {Record<string, EventListener | undefined>} listeners
+     * @param {number} dx
+     * @param {number} dy
+     */
+    const drag = (view, listeners, dx, dy) => {
+        const scrollable = /** @type {import("../concatView.js").default} */ (
+            view.children[0]
+        );
+        const unit = scrollable.children[0];
+        const point = new Point(
+            unit.coords.x + unit.coords.width / 2,
+            unit.coords.y + unit.coords.height / 4
+        );
+        view.propagateInteraction(
+            new Interaction(
+                point,
+                /** @type {any} */ (
+                    new FakeMouseEvent("mousedown", {
+                        button: 0,
+                        clientX: point.x,
+                        clientY: point.y,
+                        preventDefault: () => {},
+                    })
+                )
+            )
+        );
+        listeners.mousemove?.(
+            /** @type {any} */ (
+                new FakeMouseEvent("mousemove", {
+                    clientX: point.x + dx,
+                    clientY: point.y + dy,
+                })
+            )
+        );
+        listeners.mouseup?.(/** @type {any} */ (new FakeMouseEvent("mouseup")));
+    };
+
+    /** @param {import("../concatView.js").default} view */
+    const getVerticalScrollbar = (view) => {
+        const scrollbar =
+            /** @type {import("./scrollbar.js").default | undefined} */ (
+                view
+                    .getDescendants()
+                    .find((d) => d.name === "scrollbar-vertical")
+            );
+        if (!scrollbar) {
+            throw new Error("Expected vertical scrollbar!");
+        }
+        return scrollbar;
+    };
+
+    test("vertical drag scrolls the enclosing viewport when y isn't zoomable", async () => {
+        const environment = installDocumentDragTestEnvironment();
+        const listeners = environment.installDocument();
+        try {
+            const view = await createAndInitialize(
+                makeScrollableSpec(),
+                ConcatView
+            );
+            render(view);
+            const scrollbar = getVerticalScrollbar(view);
+            expect(scrollbar.viewportOffset).toBe(0);
+
+            // Dragging up pulls the content up, revealing what is below
+            drag(view, listeners, 0, -20);
+            expect(scrollbar.viewportOffset).toBe(20);
+        } finally {
+            environment.restore();
+        }
+    });
+
+    test("horizontal drag locks to x and leaves the scroll position alone", async () => {
+        const environment = installDocumentDragTestEnvironment();
+        const listeners = environment.installDocument();
+        try {
+            const view = await createAndInitialize(
+                makeScrollableSpec(),
+                ConcatView
+            );
+            render(view);
+            const scrollbar = getVerticalScrollbar(view);
+
+            // Mostly horizontal: locks to x, so the small vertical part is ignored
+            drag(view, listeners, 30, -4);
+            expect(scrollbar.viewportOffset).toBe(0);
+        } finally {
+            environment.restore();
+        }
+    });
+
+    test("horizontal drag scrolls a horizontally scrollable viewport when x isn't zoomable", async () => {
+        const environment = installDocumentDragTestEnvironment();
+        const listeners = environment.installDocument();
+        try {
+            const view = await createAndInitialize(
+                /** @type {any} */ ({
+                    hconcat: [
+                        {
+                            viewportWidth: 50,
+                            hconcat: [
+                                { width: 100, ...makeUnitSpec() },
+                                { width: 100, ...makeUnitSpec() },
+                            ],
+                        },
+                    ],
+                }),
+                ConcatView
+            );
+            render(view);
+            const scrollbar =
+                /** @type {import("./scrollbar.js").default | undefined} */ (
+                    view
+                        .getDescendants()
+                        .find((d) => d.name === "scrollbar-horizontal")
+                );
+            if (!scrollbar) {
+                throw new Error("Expected horizontal scrollbar!");
+            }
+            expect(scrollbar.viewportOffset).toBe(0);
+
+            // Dragging left pulls the content left, revealing what is to the right
+            drag(view, listeners, -20, 0);
+            expect(scrollbar.viewportOffset).toBe(20);
+        } finally {
+            environment.restore();
+        }
+    });
+
+    test("a zoomable y scale keeps priority over scrolling", async () => {
+        const environment = installDocumentDragTestEnvironment();
+        const listeners = environment.installDocument();
+        try {
+            const view = await createAndInitialize(
+                makeScrollableSpec({ zoom: true }),
+                ConcatView
+            );
+            render(view);
+            const scrollbar = getVerticalScrollbar(view);
+
+            drag(view, listeners, 0, -20);
+            expect(scrollbar.viewportOffset).toBe(0);
+        } finally {
+            environment.restore();
+        }
+    });
+});

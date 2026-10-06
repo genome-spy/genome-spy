@@ -408,3 +408,115 @@ describe("wheel zoom snapping", () => {
         }
     });
 });
+
+describe("drag axis lock", () => {
+    /**
+     * Presses the mouse at (20, 30), moves through `moves` and returns the
+     * zoom events the handler received.
+     *
+     * @param {[number, number][]} moves absolute client coordinates
+     * @param {{ lockAxis?: boolean }} [options]
+     */
+    const dragAndRecord = (moves, options) => {
+        /** @type {Record<string, EventListener>} */
+        const listeners = {};
+        const originalDocument = globalThis.document;
+        const originalMouseEvent = globalThis.MouseEvent;
+        try {
+            class FakeMouseEvent {
+                constructor(
+                    /** @type {string} */ type,
+                    /** @type {Record<string, any>} */ init = {}
+                ) {
+                    this.type = type;
+                    Object.assign(this, init);
+                }
+            }
+            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+                /** @type {any} */ (FakeMouseEvent)
+            );
+            globalThis.document = /** @type {Document} */ (
+                /** @type {any} */ ({
+                    addEventListener(
+                        /** @type {string} */ type,
+                        /** @type {EventListener} */ listener
+                    ) {
+                        listeners[type] = listener;
+                    },
+                    /** @returns {void} */
+                    removeEventListener() {
+                        return undefined;
+                    },
+                })
+            );
+
+            const handleZoom = vi.fn();
+            const event = new Interaction(
+                new Point(20, 30),
+                /** @type {any} */ (
+                    new FakeMouseEvent("mousedown", {
+                        button: 0,
+                        clientX: 20,
+                        clientY: 30,
+                        preventDefault: /** @returns {void} */ () => undefined,
+                    })
+                )
+            );
+
+            interactionToZoom(
+                event,
+                /** @type {any} */ ({ x: 0, y: 0, width: 100, height: 100 }),
+                handleZoom,
+                undefined,
+                undefined,
+                options
+            );
+            for (const [clientX, clientY] of moves) {
+                listeners.mousemove?.(
+                    /** @type {any} */ ({ type: "mousemove", clientX, clientY })
+                );
+            }
+            listeners.mouseup?.(/** @type {any} */ ({ type: "mouseup" }));
+
+            return handleZoom.mock.calls.map(([e]) => [e.xDelta, e.yDelta]);
+        } finally {
+            globalThis.document = originalDocument;
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    };
+
+    test("without lockAxis, drags pan in both directions as before", () => {
+        expect(dragAndRecord([[21, 33]])).toEqual([[1, 3]]);
+    });
+
+    test("with lockAxis, nothing moves until the threshold, then the dominant axis only", () => {
+        expect(
+            dragAndRecord(
+                [
+                    [22, 32], // under 5 px: not committed
+                    [22, 40], // commits to y; includes the held-back movement
+                    [30, 45],
+                ],
+                { lockAxis: true }
+            )
+        ).toEqual([
+            [0, 10],
+            [0, 5],
+        ]);
+    });
+
+    test("with lockAxis, a mostly horizontal drag locks to x", () => {
+        expect(
+            dragAndRecord(
+                [
+                    [27, 31],
+                    [35, 36],
+                ],
+                { lockAxis: true }
+            )
+        ).toEqual([
+            [7, 0],
+            [8, 0],
+        ]);
+    });
+});

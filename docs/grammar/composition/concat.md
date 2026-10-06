@@ -105,6 +105,12 @@ for the step size. Scrollable viewports are particularly useful for categorical
 data types (`"ordinal"` and `"nominal"`) and respective scales and axes that
 do not support zooming and panning.
 
+Besides using the scrollbars, you can scroll a viewport by dragging its content.
+Dragging scrolls along each direction whose scale is not zoomable; a zoomable
+scale is panned instead, as before. Once a drag can scroll, it follows its main
+direction after the first few pixels, so scrolling a tall view vertically does
+not also pan it horizontally.
+
 EXAMPLE examples/docs/grammar/composition/concat/scrollable-viewports.json height=200
 
 ## Collapsed overhang
