@@ -1885,6 +1885,17 @@ export default class GridView extends ContainerView {
                         gapZoomTarget.coords,
                         gapZoomTarget.zoomableResolutions
                     );
+                } else if (
+                    event.type === "mousedown" &&
+                    (this.#findScrollbar("vertical") ||
+                        this.#findScrollbar("horizontal"))
+                ) {
+                    // No zoomable shared scale in the gap, but an enclosing
+                    // viewport can still be scrolled by dragging from here.
+                    this.#propagateZoomInteraction(event, Rectangle.ZERO, {
+                        x: new Set(),
+                        y: new Set(),
+                    });
                 }
                 return;
             }
@@ -2042,31 +2053,31 @@ export default class GridView extends ContainerView {
 
     /**
      * Finds the innermost scrollbar in the given direction whose viewport
-     * contains the pointed child: first the pointed child's own viewport, then
-     * the viewports that hold this view in the ancestor grids.
+     * contains the pointed child (or this view) and actually overflows.
+     * Viewports whose content fits are skipped, so an enclosing viewport can
+     * receive the drag.
      *
      * @param {import("./scrollbar.js").ScrollDirection} direction
      * @param {GridChild} [pointedChild]
      * @returns {import("./scrollbar.js").default | undefined}
      */
     #findScrollbar(direction, pointedChild) {
-        const own = pointedChild?.scrollbars[direction];
-        if (own) {
-            return own;
-        }
-
         /** @type {View} */
-        let view = this;
-        for (const ancestor of this.getLayoutAncestors().slice(1)) {
-            if (ancestor instanceof GridView) {
-                const scrollbar = ancestor.#children.find(
+        let view = pointedChild?.view ?? this;
+        for (
+            let parent = view.layoutParent;
+            parent;
+            parent = parent.layoutParent
+        ) {
+            if (parent instanceof GridView) {
+                const scrollbar = parent.#children.find(
                     (gridChild) => gridChild.view === view
                 )?.scrollbars[direction];
-                if (scrollbar) {
+                if (scrollbar?.canScroll()) {
                     return scrollbar;
                 }
             }
-            view = ancestor;
+            view = parent;
         }
     }
 
@@ -2148,6 +2159,9 @@ function scrollBy(scrollbar, delta) {
         return false;
     }
     const previous = scrollbar.viewportOffset;
+    // Cancel a scrollbar-thumb animation still in progress: its queued frames
+    // would otherwise overwrite this position.
+    scrollbar.interpolateViewportOffset.stop();
     // Keeps the thumb-drag smoother in sync with the new position
     scrollbar.setViewportOffset(previous - delta, { syncSmoother: true });
     return scrollbar.viewportOffset !== previous;

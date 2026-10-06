@@ -171,17 +171,16 @@ export function interactionToZoom(
         /** @type {"x" | "y" | undefined} */
         let lockedAxis;
 
-        // Drops the movement on the unlocked axis, also during inertia.
-        const handleDragZoom = lockAxis
-            ? (/** @type {ZoomEvent} */ zoomEvent) =>
-                  handleZoom(
-                      lockedAxis === "x"
-                          ? { ...zoomEvent, yDelta: 0 }
-                          : lockedAxis === "y"
-                            ? { ...zoomEvent, xDelta: 0 }
-                            : zoomEvent
-                  )
-            : handleZoom;
+        // Drops the movement on the unlocked axis, also during inertia. Both
+        // callers pass a fresh ZoomEvent, so it can be modified in place.
+        const handleDragZoom = (/** @type {ZoomEvent} */ zoomEvent) => {
+            if (lockedAxis === "x") {
+                zoomEvent.yDelta = 0;
+            } else if (lockedAxis === "y") {
+                zoomEvent.xDelta = 0;
+            }
+            return handleZoom(zoomEvent);
+        };
 
         const onMousemove = /** @param {MouseEvent} moveEvent */ (
             moveEvent
