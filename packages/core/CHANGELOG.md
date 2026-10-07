@@ -27,11 +27,11 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [1.0.0](https://github.com/genome-spy/genome-spy/compare/v0.90.0...v1.0.0) (2026-10-01)
+## [1.0.0](https://github.com/genome-spy/genome-spy/compare/v0.90.0...v1.0.0) (2026-10-01)
 
 **Note:** Version bump only for package @genome-spy/core
 
-# [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
+## [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
 
 ### Bug Fixes
 
@@ -42,7 +42,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 - **core:** add adjustable displace2d animation half-life ([fe97c84](https://github.com/genome-spy/genome-spy/commit/fe97c8442399ca78c3e73b1bf9826db6b5ca2e4f)) by @tuner
 
-# [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
+## [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
 
 ### Bug Fixes
 
@@ -76,7 +76,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 - **core:** preserve conditional order in production shaders ([e57e870](https://github.com/genome-spy/genome-spy/commit/e57e87076c20a53b1f52494a4815af0156e655de)) by @
 
-# [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
+## [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
 
 ### Bug Fixes
 
@@ -91,7 +91,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - support conditional draw order and foreground arc rendering ([#521](https://github.com/genome-spy/genome-spy/issues/521)) ([ffa0b07](https://github.com/genome-spy/genome-spy/commit/ffa0b07ffa5307f596ad9dac2a261a077e08d9ff)) by @tuner
 - support selection unions in conditional encodings ([#520](https://github.com/genome-spy/genome-spy/issues/520)) ([a71a15f](https://github.com/genome-spy/genome-spy/commit/a71a15f8db39b89590af4e26fbb40f3c09ed6d65)) by @tuner
 
-# [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
+## [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
 
 ### Bug Fixes
 
@@ -107,7 +107,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - **core:** add reactive ruler styling and tracking control ([1d2ebd5](https://github.com/genome-spy/genome-spy/commit/1d2ebd5adb415719f3efe630a87c739b8748528c)), closes [#504](https://github.com/genome-spy/genome-spy/issues/504) by @tuner
 - **core:** add track annotations and container-wide brushing ([#518](https://github.com/genome-spy/genome-spy/issues/518)) ([680422c](https://github.com/genome-spy/genome-spy/commit/680422cd27004b87524d217ad8e5bb823af467ad)) by @tuner
 
-# [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+## [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
 
 - fix(core)!: scope scale parameters to their resolution (#482) ([78534a7](https://github.com/genome-spy/genome-spy/commit/78534a72bf73a1d2121d70897573ee5a57531839)), closes [#482](https://github.com/genome-spy/genome-spy/issues/482) [#471](https://github.com/genome-spy/genome-spy/issues/471) by @tuner
 
@@ -211,7 +211,7 @@ Share repeated view fixtures and remove duplicate cases.
 
 Preserve the scope and lifecycle behavior matrix.
 
-# [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
+## [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
 ### Bug Fixes
 
@@ -236,7 +236,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** defer BGZF decompressor loading ([8662082](https://github.com/genome-spy/genome-spy/commit/8662082d25e944b5926628b7d5462c60f4697922)) by @tuner
 
-# [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
+## [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
 
 ### Bug Fixes
 
@@ -264,7 +264,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** avoid recursive initial domain notifications ([70c72b4](https://github.com/genome-spy/genome-spy/commit/70c72b49f52cc5c4392b9f6a0ffa61c7b8079144)) by @tuner
 
-# [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
+## [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
 
 ### Bug Fixes
 
@@ -284,7 +284,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** support scale helpers in expression parameters ([2fe0e8b](https://github.com/genome-spy/genome-spy/commit/2fe0e8ba6dc678fc6e7343971aa240ea5d7b76ee)) by @tuner
 - **docs:** show selected solution in ASCAT example ([ea3f0f8](https://github.com/genome-spy/genome-spy/commit/ea3f0f86eea3525ceb100e083c7043aaffbfdd51)) by @tuner
 
-# [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
+## [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
 
 ### Bug Fixes
 
@@ -299,7 +299,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** add view-level overhang reservation ([#450](https://github.com/genome-spy/genome-spy/issues/450)) ([f761eff](https://github.com/genome-spy/genome-spy/commit/f761eff02cd9bdefe6ce498800b31c1ca1ec6e2b)) by @tuner
 - **docs:** add interactive ASCAT fitting example ([#444](https://github.com/genome-spy/genome-spy/issues/444)) ([9eaba00](https://github.com/genome-spy/genome-spy/commit/9eaba00bbe0dd9173aac65018fc53cb3c4262369)) by @tuner
 
-# [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
+## [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
 
 ### Bug Fixes
 
@@ -331,7 +331,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** support ExprRef view sizing ([dd2f3db](https://github.com/genome-spy/genome-spy/commit/dd2f3db2b6b191aeb1904fe06f491f1fe4b21f2d)) by @tuner
 - **core:** support lookup from current input ([51a9a40](https://github.com/genome-spy/genome-spy/commit/51a9a40ab9b8825ff5918159646f8346cbc7e12b)) by @tuner
 
-# [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
+## [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
 ### Bug Fixes
 
@@ -354,7 +354,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** stack legends outside shared axes ([2a652f2](https://github.com/genome-spy/genome-spy/commit/2a652f28ef77f1189695ce3b904f8a21f76784ae)) by @tuner
 - **core:** use deterministic fonts in layout snapshots ([212cad8](https://github.com/genome-spy/genome-spy/commit/212cad8e36a60405d5ace9981ca13746075fdc89)) by @tuner
 
-# [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
+## [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
 
 ### Bug Fixes
 
@@ -400,7 +400,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** support Vega-Lite-style view size defaults ([#421](https://github.com/genome-spy/genome-spy/issues/421)) ([657892c](https://github.com/genome-spy/genome-spy/commit/657892cb725282c516edfeab2e7776488a43ec56)) by @tuner
 - **inspector:** add GenomeSpy runtime inspector ([#425](https://github.com/genome-spy/genome-spy/issues/425)) ([0151c5d](https://github.com/genome-spy/genome-spy/commit/0151c5db16b825af760a9fbedb3a4f4df838c7a1)) by @tuner
 
-# [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
+## [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
 
 ### Bug Fixes
 
@@ -412,7 +412,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** align scale domain expressions ([70c6bef](https://github.com/genome-spy/genome-spy/commit/70c6befd12384b0b64d01080b2649956a53d53ef)) by @tuner
 - **core:** view level scale config ([#401](https://github.com/genome-spy/genome-spy/issues/401)) ([428372a](https://github.com/genome-spy/genome-spy/commit/428372acd322c1eb1063f780bcb6335e73009aed)) by @tuner
 
-# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+## [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
 
 ### Bug Fixes
 
@@ -430,7 +430,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** batch BigWig interval requests ([47a1eff](https://github.com/genome-spy/genome-spy/commit/47a1eff57ce327ab7b39e2a87ca967e7fbda1469)), closes [GMOD/bbi-js#84](https://github.com/GMOD/bbi-js/issues/84) by @tuner
 
-# [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
+## [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 ### Bug Fixes
 
@@ -451,7 +451,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** handle concat gaps during zoom and pan ([b9c587b](https://github.com/genome-spy/genome-spy/commit/b9c587bf8f6af3b8b4c2077ad93dca79bdfc7177)) by @tuner
 - surface metadata descriptions ([82ed12f](https://github.com/genome-spy/genome-spy/commit/82ed12f52410de42b26b01124a810c37ef900955)) by @tuner
 
-# [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
+## [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
 
 ### Bug Fixes
 
@@ -471,7 +471,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** extract x-index post-pass ([b92a042](https://github.com/genome-spy/genome-spy/commit/b92a04232d286c6febcfc0bd6577cba563be3002)) by @tuner
 - **core:** skip locus data-domain extraction ([aa3d3f0](https://github.com/genome-spy/genome-spy/commit/aa3d3f00734fb933e9d3b393456a40266d1fd63a)) by @tuner
 
-# [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
+## [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
 
 ### Bug Fixes
 
@@ -510,7 +510,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** avoid domain feedback loops ([1f3a084](https://github.com/genome-spy/genome-spy/commit/1f3a084b838b51641ef23c3ec2a2442e883c0bab)) by @tuner
 
-# [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
+## [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
 ### Bug Fixes
 
@@ -534,7 +534,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** disable mipmaps for selection hash textures ([5dc8edc](https://github.com/genome-spy/genome-spy/commit/5dc8edc56b41cf1127cf370a5cb27079b90581b7)) by @tuner
 
-# [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
+## [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
 
 ### Features
 
@@ -545,7 +545,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** radix sort micro optimization ([d90011f](https://github.com/genome-spy/genome-spy/commit/d90011f6e544fe0bc2f4754d4734d12f19f051a8)) by @
 - **core:** switch point-selection lookup to hashed textures ([c770170](https://github.com/genome-spy/genome-spy/commit/c7701702deb2488496f7b83c290dcdc98aac39a7)) by @tuner
 
-# [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
+## [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
 
 ### Bug Fixes
 
@@ -557,7 +557,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** add smooth WASD keyboard pan/zoom navigation ([#333](https://github.com/genome-spy/genome-spy/issues/333)) ([46f3e7b](https://github.com/genome-spy/genome-spy/commit/46f3e7b66bb120a026f51bf8213c1f110a73fc49)) by @tuner
 
-# [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
+## [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
 
 ### Bug Fixes
 
@@ -574,7 +574,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** keep existing visualizations working with unordered dynamic opacity stops ([6bb11fa](https://github.com/genome-spy/genome-spy/commit/6bb11fa6e3c13ada8dd10ee8f0bf6815454687b9)) by @tuner
 
-# [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
+## [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
 
 ### Bug Fixes
 
@@ -600,7 +600,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** cache tooltip linearization mappings per mark ([c2fee08](https://github.com/genome-spy/genome-spy/commit/c2fee0872ef4f1b0f22d0b6fdf35d96c427ebaf7)) by @tuner
 
-# [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
+## [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
 
 ### Bug Fixes
 
@@ -628,7 +628,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **app:** speed up sample layout rendering ([#313](https://github.com/genome-spy/genome-spy/issues/313)) ([a01dbce](https://github.com/genome-spy/genome-spy/commit/a01dbce17d07b3da1618787aedf81cfa3bf0ebb7)) by @tuner
 
-# [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
+## [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
 
 ### Bug Fixes
 
@@ -648,7 +648,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 **Note:** Version bump only for package @genome-spy/core
 
-# [0.66.0](https://github.com/genome-spy/genome-spy/compare/v0.65.0...v0.66.0) (2026-01-19)
+## [0.66.0](https://github.com/genome-spy/genome-spy/compare/v0.65.0...v0.66.0) (2026-01-19)
 
 ### Bug Fixes
 
@@ -660,7 +660,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **app:** add scrollbar to SampleView ([#309](https://github.com/genome-spy/genome-spy/issues/309)) ([7bc9de1](https://github.com/genome-spy/genome-spy/commit/7bc9de1a1332ca2036de2bc464ea6ffdb0b6f1fc)) by @tuner
 - **core:** dynamic container mutations for concat/layer views ([#307](https://github.com/genome-spy/genome-spy/issues/307)) ([f6fc957](https://github.com/genome-spy/genome-spy/commit/f6fc957ceed30bae139f83d44d4e534ef17586f2)) by @tuner
 
-# [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
+## [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
 
 ### Bug Fixes
 
@@ -671,7 +671,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **app:** enable "upload" of custom metadata ([#299](https://github.com/genome-spy/genome-spy/issues/299)) ([3089f97](https://github.com/genome-spy/genome-spy/commit/3089f97bea8ce100551b53ea46191baec6d9f3c2)) by @tuner
 - **app:** highlight views when navigating view-visibility menu ([2a2c9b5](https://github.com/genome-spy/genome-spy/commit/2a2c9b516aba74f2277d25cd66fa18f671d7df30)) by @tuner
 
-# [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
+## [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
 
 ### Bug Fixes
 
@@ -686,7 +686,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** reintroduce flat shading to avoid unnecessary interpolation ([bf3d087](https://github.com/genome-spy/genome-spy/commit/bf3d0873807ea3969d08b83485c93606ae24ab77)), closes [#248](https://github.com/genome-spy/genome-spy/issues/248) by @tuner
 
-# [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
+## [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
 
 ### Bug Fixes
 
@@ -710,7 +710,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** empty interval selection with index or locus scales ([3dc437a](https://github.com/genome-spy/genome-spy/commit/3dc437afbe308edae6066c59735ce7ffcdf9b5ed)) by @tuner
 - **core:** interval selection when both primary and secondary positional channel encode same field ([17d975b](https://github.com/genome-spy/genome-spy/commit/17d975b80cb240ea7a6e673a6d3641beb025f4de)) by @tuner
 
-# [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
+## [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
 
 ### Features
 
@@ -728,7 +728,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** zoom extent and geometric zoom ([8e469d3](https://github.com/genome-spy/genome-spy/commit/8e469d3aa28cf72858e86c28cad1313f6c232c3f)) by @
 
-# [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
+## [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
 
 ### Bug Fixes
 
@@ -749,7 +749,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** fixes a problem in brushing initiation introduced in an earlier fix ([4c7992d](https://github.com/genome-spy/genome-spy/commit/4c7992d5ba5c26337c666a9fcd99935c434c0105)) by @tuner
 
-# [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
+## [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
 
 ### Bug Fixes
 
@@ -772,7 +772,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** show measures in the selection rectangle ([edfd516](https://github.com/genome-spy/genome-spy/commit/edfd516cd9cec159d4040238a3f0fb16602ad289)) by @tuner
 - **core:** sticky tooltips ([6bf7be4](https://github.com/genome-spy/genome-spy/commit/6bf7be4589ce9fc821d047c1dec12ef8bc7b2962)), closes [#86](https://github.com/genome-spy/genome-spy/issues/86) by @tuner
 
-# [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
+## [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
 
 ### Bug Fixes
 
@@ -788,7 +788,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** null values in tooltip ([e472345](https://github.com/genome-spy/genome-spy/commit/e472345574543b4715fdf48a8fd2d2909ec856ba))
 
-# [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
+## [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
 
 ### Bug Fixes
 
@@ -802,7 +802,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** add support for `vcf` files ([7f5b3a5](https://github.com/genome-spy/genome-spy/commit/7f5b3a561fc98646e4b4e8efed57a4101cb9a37b)) by @tuner
 - **core:** show nested objects in tooltip ([b645cf9](https://github.com/genome-spy/genome-spy/commit/b645cf9b07b81b15b28ed0e63b3b66d42c9ca845)) by @tuner
 
-# [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
+## [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
 
 ### Bug Fixes
 
@@ -820,19 +820,19 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** selection config wasn't always handled properly ([c2dbbc8](https://github.com/genome-spy/genome-spy/commit/c2dbbc85505886f71a0fbfbe8079774dae32b90f)) by @tuner
 
-# [0.56.0](https://github.com/genome-spy/genome-spy/compare/v0.55.0...v0.56.0) (2024-08-20)
+## [0.56.0](https://github.com/genome-spy/genome-spy/compare/v0.55.0...v0.56.0) (2024-08-20)
 
 ### Features
 
 - multi-point selection ([#264](https://github.com/genome-spy/genome-spy/issues/264)) ([0e9c1bd](https://github.com/genome-spy/genome-spy/commit/0e9c1bd4a7f95ac24e2c62a5a22d41cf16f77cfd)) by @tuner
 
-# [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
+## [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
 
 ### Features
 
 - dataflow inspector ([#262](https://github.com/genome-spy/genome-spy/issues/262)) ([1d6a6bf](https://github.com/genome-spy/genome-spy/commit/1d6a6bf45732cb959fc644e78c50e3a9e0290051)) by @tuner
 
-# [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
+## [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
 
 ### Bug Fixes
 
@@ -848,7 +848,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** minify favicon svg and remove namespaced attributes ([e9a3619](https://github.com/genome-spy/genome-spy/commit/e9a3619fe52dc3264a195f68ae81978444ffdf18)) by @tuner
 
-# [0.53.0](https://github.com/genome-spy/genome-spy/compare/v0.52.0...v0.53.0) (2024-05-16)
+## [0.53.0](https://github.com/genome-spy/genome-spy/compare/v0.52.0...v0.53.0) (2024-05-16)
 
 ### Bug Fixes
 
@@ -860,7 +860,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** create new cloners for batches only when the data objects' shape changes ([2eeb9c3](https://github.com/genome-spy/genome-spy/commit/2eeb9c34f28361e15f44f0b12413155bb4f2ddaa)) by @tuner
 
-# [0.52.0](https://github.com/genome-spy/genome-spy/compare/v0.51.0...v0.52.0) (2024-04-26)
+## [0.52.0](https://github.com/genome-spy/genome-spy/compare/v0.51.0...v0.52.0) (2024-04-26)
 
 ### Bug Fixes
 
@@ -871,7 +871,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** publish view `width` and `height` as parameters ([fa8a2bc](https://github.com/genome-spy/genome-spy/commit/fa8a2bc3f2a9cac1dc15b4591a87219be25fdce1))
 
-# [0.51.0](https://github.com/genome-spy/genome-spy/compare/v0.50.2...v0.51.0) (2024-03-26)
+## [0.51.0](https://github.com/genome-spy/genome-spy/compare/v0.50.2...v0.51.0) (2024-03-26)
 
 ### Bug Fixes
 
@@ -894,7 +894,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** clipped tooltip ([e48ad69](https://github.com/genome-spy/genome-spy/commit/e48ad698975bf7925750c6e4e91e06fcaeb21f30))
 - **core:** silence the "mark has no data" error ([30b251b](https://github.com/genome-spy/genome-spy/commit/30b251b7d526d8de03a4d5aaae0b8f087f729f39)), closes [#247](https://github.com/genome-spy/genome-spy/issues/247)
 
-# [0.50.0](https://github.com/genome-spy/genome-spy/compare/v0.49.0...v0.50.0) (2024-03-08)
+## [0.50.0](https://github.com/genome-spy/genome-spy/compare/v0.49.0...v0.50.0) (2024-03-08)
 
 ### Bug Fixes
 
@@ -911,7 +911,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** support `minPickingSize` in `"point"` mark ([09a478a](https://github.com/genome-spy/genome-spy/commit/09a478ac46929bfacdca53a4ce9298969b6542ff))
 
-# [0.49.0](https://github.com/genome-spy/genome-spy/compare/v0.48.2...v0.49.0) (2024-03-06)
+## [0.49.0](https://github.com/genome-spy/genome-spy/compare/v0.48.2...v0.49.0) (2024-03-06)
 
 ### Bug Fixes
 
@@ -939,13 +939,13 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** categorical data in `"link"` mark misbehaved ([14a4d8d](https://github.com/genome-spy/genome-spy/commit/14a4d8d99c822d45b142a47f5016808e55949f73)), closes [#231](https://github.com/genome-spy/genome-spy/issues/231)
 - **core:** rect mark's corner radius ([42af3a6](https://github.com/genome-spy/genome-spy/commit/42af3a6f9cf2247f509c2d2c20447da84f10cd01))
 
-# [0.48.0](https://github.com/genome-spy/genome-spy/compare/v0.47.0...v0.48.0) (2024-02-20)
+## [0.48.0](https://github.com/genome-spy/genome-spy/compare/v0.47.0...v0.48.0) (2024-02-20)
 
 ### Features
 
 - **core:** add inertia to drag-to-pan interaction ([#240](https://github.com/genome-spy/genome-spy/issues/240)) ([8b00907](https://github.com/genome-spy/genome-spy/commit/8b00907ec3d970165f7808da00977a911fc6bb59))
 
-# [0.47.0](https://github.com/genome-spy/genome-spy/compare/v0.46.1...v0.47.0) (2024-02-16)
+## [0.47.0](https://github.com/genome-spy/genome-spy/compare/v0.46.1...v0.47.0) (2024-02-16)
 
 ### Bug Fixes
 
@@ -975,7 +975,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** optimize `coverage` transform a bit ([25c7375](https://github.com/genome-spy/genome-spy/commit/25c737519f9ab0de06de6d8a2e95aee2572f3f5c))
 
-# [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
+## [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
 
 ### Bug Fixes
 
@@ -990,7 +990,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** show loading indicator for `UrlSource` ([1b583fe](https://github.com/genome-spy/genome-spy/commit/1b583fe99025e89c7160c83e29556c252d437183))
 - **core:** support params in filter and formula transforms ([11d9626](https://github.com/genome-spy/genome-spy/commit/11d9626d60dbe400ed4e280bedeff796759e223c))
 
-# [0.45.0](https://github.com/genome-spy/genome-spy/compare/v0.44.0...v0.45.0) (2024-02-08)
+## [0.45.0](https://github.com/genome-spy/genome-spy/compare/v0.44.0...v0.45.0) (2024-02-08)
 
 ### Bug Fixes
 
@@ -1007,7 +1007,7 @@ Preserve the scope and lifecycle behavior matrix.
 - scoped parameters ([#235](https://github.com/genome-spy/genome-spy/issues/235)) ([975fe29](https://github.com/genome-spy/genome-spy/commit/975fe29a8dd3e868f63946fcd9bf4937faaa3176))
 - support ExprRefs in `url` and `sequence` data sources ([58dad1c](https://github.com/genome-spy/genome-spy/commit/58dad1cf18ac424fca2a9ddff2780b2518079866))
 
-# [0.44.0](https://github.com/genome-spy/genome-spy/compare/v0.43.3...v0.44.0) (2024-01-30)
+## [0.44.0](https://github.com/genome-spy/genome-spy/compare/v0.43.3...v0.44.0) (2024-01-30)
 
 ### Bug Fixes
 
@@ -1046,7 +1046,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** use `Uint16Array` for categorical vertex arrays ([1e3a9c7](https://github.com/genome-spy/genome-spy/commit/1e3a9c737873bde4de9ca848f14109c7c7f5b43f))
 - **core:** use `Uint32Array` as vertex buffer for `index` and `locus` scale ([#224](https://github.com/genome-spy/genome-spy/issues/224)) ([85f54a3](https://github.com/genome-spy/genome-spy/commit/85f54a38b466d26b4f96c1a5eef6b8b659e81a68))
 
-# [0.43.0](https://github.com/genome-spy/genome-spy/compare/v0.42.2...v0.43.0) (2024-01-16)
+## [0.43.0](https://github.com/genome-spy/genome-spy/compare/v0.42.2...v0.43.0) (2024-01-16)
 
 ### Features
 
@@ -1072,7 +1072,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** deduplicate vertex buffers that share the same quantitative field ([118196d](https://github.com/genome-spy/genome-spy/commit/118196d9b9d055092ad675b9167e35125636fb90))
 - **core:** use `gl_VertexID` to calculate rect corners ([26cdf4b](https://github.com/genome-spy/genome-spy/commit/26cdf4b98e76ef389e97842f997de5d5bcffdaaf))
 
-# [0.42.0](https://github.com/genome-spy/genome-spy/compare/v0.41.0...v0.42.0) (2024-01-11)
+## [0.42.0](https://github.com/genome-spy/genome-spy/compare/v0.41.0...v0.42.0) (2024-01-11)
 
 ### Bug Fixes
 
@@ -1090,13 +1090,13 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** remove unnecessary `bindVertexArray` call in `"link"` mark ([b6b71f3](https://github.com/genome-spy/genome-spy/commit/b6b71f3815120ab518ea5f5b653d661266d4517d))
 - **core:** use `ext.drawArraysInstancedBaseInstanceWEBGL` in `"link"` mark ([1de9e18](https://github.com/genome-spy/genome-spy/commit/1de9e1844a0bc23117f4ed82e781618f5a4deb1c)), closes [#214](https://github.com/genome-spy/genome-spy/issues/214)
 
-# [0.41.0](https://github.com/genome-spy/genome-spy/compare/v0.40.0...v0.41.0) (2023-12-20)
+## [0.41.0](https://github.com/genome-spy/genome-spy/compare/v0.40.0...v0.41.0) (2023-12-20)
 
 ### Features
 
 - experimental param-driven mark properties ([#212](https://github.com/genome-spy/genome-spy/issues/212)) ([2a3bda5](https://github.com/genome-spy/genome-spy/commit/2a3bda539d073ed4c887f1b074486fc48deb3c88))
 
-# [0.40.0](https://github.com/genome-spy/genome-spy/compare/v0.39.0...v0.40.0) (2023-12-18)
+## [0.40.0](https://github.com/genome-spy/genome-spy/compare/v0.39.0...v0.40.0) (2023-12-18)
 
 ### Bug Fixes
 
@@ -1106,7 +1106,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** add new `"link"` mark props: `maxChordLength` and `arcFadingDistance` ([d72de62](https://github.com/genome-spy/genome-spy/commit/d72de62d97cdfdf9b85d5b607855247c776acd3e))
 
-# [0.39.0](https://github.com/genome-spy/genome-spy/compare/v0.38.0...v0.39.0) (2023-12-12)
+## [0.39.0](https://github.com/genome-spy/genome-spy/compare/v0.38.0...v0.39.0) (2023-12-12)
 
 ### Bug Fixes
 
@@ -1119,7 +1119,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** more shapes and props for the `"link"` mark ([7e99459](https://github.com/genome-spy/genome-spy/commit/7e994599117520055521eee307cc9d41eded3b77)), closes [#199](https://github.com/genome-spy/genome-spy/issues/199)
 - **core:** new `"tick-up"`, `"tick-right"`, etc. point shapes ([bd4c92d](https://github.com/genome-spy/genome-spy/commit/bd4c92dac14fad4657948af935711eecbfa6611d)), closes [#196](https://github.com/genome-spy/genome-spy/issues/196)
 
-# [0.38.0](https://github.com/genome-spy/genome-spy/compare/v0.37.4...v0.38.0) (2023-11-24)
+## [0.38.0](https://github.com/genome-spy/genome-spy/compare/v0.37.4...v0.38.0) (2023-11-24)
 
 ### Bug Fixes
 
@@ -1149,7 +1149,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 **Note:** Version bump only for package @genome-spy/core
 
-# [0.37.0](https://github.com/genome-spy/genome-spy/compare/v0.36.1...v0.37.0) (2023-09-28)
+## [0.37.0](https://github.com/genome-spy/genome-spy/compare/v0.36.1...v0.37.0) (2023-09-28)
 
 ### Features
 
@@ -1161,20 +1161,20 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** update scale domains when container view has shared scale but independent (dynamic) data ([6b551a3](https://github.com/genome-spy/genome-spy/commit/6b551a3166c7e77c24de7c666c928343aa1e32e6)), closes [#183](https://github.com/genome-spy/genome-spy/issues/183)
 
-# [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
+## [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
 
 ### Bug Fixes
 
 - **core:** replace Axis with GenomeAxis in the schema ([e22d60e](https://github.com/genome-spy/genome-spy/commit/e22d60e770540d9db6ce5a9c0a937574f54ea4bd))
 
-# [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
+## [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
 
 ### Features
 
 - `flatten` transform ([d22ea35](https://github.com/genome-spy/genome-spy/commit/d22ea35139c17566289b957bb45f95db5be92b2c))
 - gff3 with tabix ([#177](https://github.com/genome-spy/genome-spy/issues/177)) ([6e69ce9](https://github.com/genome-spy/genome-spy/commit/6e69ce9646f4629de219d04b32339750af822597))
 
-# [0.34.0](https://github.com/genome-spy/genome-spy/compare/v0.33.0...v0.34.0) (2023-06-16)
+## [0.34.0](https://github.com/genome-spy/genome-spy/compare/v0.33.0...v0.34.0) (2023-06-16)
 
 ### Bug Fixes
 
@@ -1186,7 +1186,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **app:** allow sorting, filtering non-genomic data ([d7bb194](https://github.com/genome-spy/genome-spy/commit/d7bb194de3ce95c212ec6f19d4c975bb9374f5ea))
 
-# [0.33.0](https://github.com/genome-spy/genome-spy/compare/v0.32.2...v0.33.0) (2023-06-07)
+## [0.33.0](https://github.com/genome-spy/genome-spy/compare/v0.32.2...v0.33.0) (2023-06-07)
 
 ### Bug Fixes
 
@@ -1221,7 +1221,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** don't fetch lazy data for hidden views ([eaa0ce4](https://github.com/genome-spy/genome-spy/commit/eaa0ce46984784b143d5585a688770043a5e38f2))
 
-# [0.32.0](https://github.com/genome-spy/genome-spy/compare/v0.31.2...v0.32.0) (2023-05-22)
+## [0.32.0](https://github.com/genome-spy/genome-spy/compare/v0.31.2...v0.32.0) (2023-05-22)
 
 ### Features
 
@@ -1235,7 +1235,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 **Note:** Version bump only for package @genome-spy/core
 
-# [0.31.0](https://github.com/genome-spy/genome-spy/compare/v0.30.3...v0.31.0) (2023-05-09)
+## [0.31.0](https://github.com/genome-spy/genome-spy/compare/v0.30.3...v0.31.0) (2023-05-09)
 
 ### Features
 
@@ -1257,7 +1257,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** eliminate blurry edges in stretched sequence logo letters ([36365b3](https://github.com/genome-spy/genome-spy/commit/36365b31425179e774e07d7d196ec24cef466ed8))
 
-# [0.30.0](https://github.com/genome-spy/genome-spy/compare/v0.29.0...v0.30.0) (2023-04-21)
+## [0.30.0](https://github.com/genome-spy/genome-spy/compare/v0.29.0...v0.30.0) (2023-04-21)
 
 ### Bug Fixes
 
@@ -1270,7 +1270,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** use bitmask instead of modulo in `splitHighPrecision` ([0e502dd](https://github.com/genome-spy/genome-spy/commit/0e502ddccd8bd6973f4d198d65f8faf3c3a1c2da))
 
-# [0.29.0](https://github.com/genome-spy/genome-spy/compare/v0.28.5...v0.29.0) (2023-03-24)
+## [0.29.0](https://github.com/genome-spy/genome-spy/compare/v0.28.5...v0.29.0) (2023-03-24)
 
 ### Bug Fixes
 
@@ -1299,19 +1299,19 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** fix a bug introduced in the previous commit ([f397ed5](https://github.com/genome-spy/genome-spy/commit/f397ed5fc22902b8b65966dcc49e45234eb21e66))
 
-# [0.28.0](https://github.com/genome-spy/genome-spy/compare/v0.27.1...v0.28.0) (2023-03-07)
+## [0.28.0](https://github.com/genome-spy/genome-spy/compare/v0.27.1...v0.28.0) (2023-03-07)
 
 ### Bug Fixes
 
 - **core:** respect explicit GridView sizes ([2e4c6d9](https://github.com/genome-spy/genome-spy/commit/2e4c6d944cac3d6a2a039a4eb8941bbf8c289614)), closes [#117](https://github.com/genome-spy/genome-spy/issues/117)
 
-# [0.27.0](https://github.com/genome-spy/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
+## [0.27.0](https://github.com/genome-spy/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
 
 ### Features
 
 - **app:** add "remove group" action ([#135](https://github.com/genome-spy/genome-spy/issues/135)) ([4f9269e](https://github.com/genome-spy/genome-spy/commit/4f9269e37f286059878bb2cd27a95d2536a42c30))
 
-# [0.26.0](https://github.com/genome-spy/genome-spy/compare/v0.25.1...v0.26.0) (2022-10-24)
+## [0.26.0](https://github.com/genome-spy/genome-spy/compare/v0.25.1...v0.26.0) (2022-10-24)
 
 **Note:** Version bump only for package @genome-spy/core
 
@@ -1321,7 +1321,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** disastrous performance on Safari ([544cb80](https://github.com/genome-spy/genome-spy/commit/544cb80ece4c81e97ef08a86f2033291b74a8e4f))
 
-# [0.25.0](https://github.com/genome-spy/genome-spy/compare/v0.24.2...v0.25.0) (2022-10-12)
+## [0.25.0](https://github.com/genome-spy/genome-spy/compare/v0.24.2...v0.25.0) (2022-10-12)
 
 ### Features
 
@@ -1333,13 +1333,13 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** link marks disappeared when zooming in ([299addb](https://github.com/genome-spy/genome-spy/commit/299addbc114f8bdde0900205569d224835d2e996)), closes [#124](https://github.com/genome-spy/genome-spy/issues/124)
 
-# [0.24.0](https://github.com/genome-spy/genome-spy/compare/v0.23.0...v0.24.0) (2022-09-07)
+## [0.24.0](https://github.com/genome-spy/genome-spy/compare/v0.23.0...v0.24.0) (2022-09-07)
 
 ### Bug Fixes
 
 - **core:** point items disappeared when zooming close enough ([6969dd2](https://github.com/genome-spy/genome-spy/commit/6969dd2933d6247941ff75cb19292f89dc0bdacc))
 
-# [0.23.0](https://github.com/genome-spy/genome-spy/compare/v0.22.1...v0.23.0) (2022-08-09)
+## [0.23.0](https://github.com/genome-spy/genome-spy/compare/v0.22.1...v0.23.0) (2022-08-09)
 
 ### Features
 
@@ -1351,13 +1351,13 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **core:** semantic zoom on Apple Silicon GPU ([0a32f08](https://github.com/genome-spy/genome-spy/commit/0a32f081e531be21cbeef96b46ccffff5009a2a2))
 
-# [0.22.0](https://github.com/genome-spy/genome-spy/compare/v0.21.0...v0.22.0) (2022-05-31)
+## [0.22.0](https://github.com/genome-spy/genome-spy/compare/v0.21.0...v0.22.0) (2022-05-31)
 
 ### Features
 
 - **app:** use a unique view name to identify an attribute (really!) ([185c110](https://github.com/genome-spy/genome-spy/commit/185c110c04887516c5d2a7da7b00f2c6be4f3414))
 
-# [0.21.0](https://github.com/genome-spy/genome-spy/compare/v0.20.0...v0.21.0) (2022-05-24)
+## [0.21.0](https://github.com/genome-spy/genome-spy/compare/v0.20.0...v0.21.0) (2022-05-24)
 
 ### Performance Improvements
 
@@ -1369,7 +1369,7 @@ Preserve the scope and lifecycle behavior matrix.
 - replace x bisector with binned index ([7d05649](https://github.com/genome-spy/genome-spy/commit/7d0564940bf52f37e1294b7691dd7e01dcece9b4))
 - use uniform block for viewport stuff ([5079214](https://github.com/genome-spy/genome-spy/commit/50792149368c66d745e4cd65ae9ccc394cb8c7b1))
 
-# [0.20.0](https://github.com/genome-spy/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
+## [0.20.0](https://github.com/genome-spy/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
 
 ### Features
 
@@ -1383,7 +1383,7 @@ Preserve the scope and lifecycle behavior matrix.
 - **core:** snapping to point mark when zooming ([aaebdc2](https://github.com/genome-spy/genome-spy/commit/aaebdc261a9dbff9c3761835b08de2e0e30ffb52))
 - gets rid of fp64 gpu hack that fails on m1 macs ([2aade84](https://github.com/genome-spy/genome-spy/commit/2aade84b2c8cdab45af3cf69fbfb644318c4a6b6)), closes [#92](https://github.com/genome-spy/genome-spy/issues/92)
 
-# [0.19.0](https://github.com/genome-spy/genome-spy/compare/v0.18.1...v0.19.0) (2022-03-28)
+## [0.19.0](https://github.com/genome-spy/genome-spy/compare/v0.18.1...v0.19.0) (2022-03-28)
 
 ### Bug Fixes
 
@@ -1398,7 +1398,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 **Note:** Version bump only for package @genome-spy/core
 
-# [0.18.0](https://github.com/genome-spy/genome-spy/compare/v0.17.1...v0.18.0) (2022-02-10)
+## [0.18.0](https://github.com/genome-spy/genome-spy/compare/v0.17.1...v0.18.0) (2022-02-10)
 
 ### Bug Fixes
 
@@ -1408,11 +1408,11 @@ Preserve the scope and lifecycle behavior matrix.
 
 - **playground:** validate spec using JSON schema ([#87](https://github.com/genome-spy/genome-spy/issues/87)) ([d6fc84c](https://github.com/genome-spy/genome-spy/commit/d6fc84c7c090931c96b8e571701249090a03f49e))
 
-# [0.17.0](https://github.com/tuner/genome-spy/compare/v0.16.0...v0.17.0) (2022-01-21)
+## [0.17.0](https://github.com/tuner/genome-spy/compare/v0.16.0...v0.17.0) (2022-01-21)
 
 **Note:** Version bump only for package @genome-spy/core
 
-# [0.16.0](https://github.com/tuner/genome-spy/compare/v0.15.0...v0.16.0) (2021-12-20)
+## [0.16.0](https://github.com/tuner/genome-spy/compare/v0.15.0...v0.16.0) (2021-12-20)
 
 ### Bug Fixes
 
@@ -1422,7 +1422,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - support categorical datums ([fc25855](https://github.com/tuner/genome-spy/commit/fc25855af07886cb31efce86f1c3a30d0e12fa94)), closes [#54](https://github.com/tuner/genome-spy/issues/54)
 
-# [0.15.0](https://github.com/tuner/genome-spy/compare/v0.14.2...v0.15.0) (2021-11-25)
+## [0.15.0](https://github.com/tuner/genome-spy/compare/v0.14.2...v0.15.0) (2021-11-25)
 
 **Note:** Version bump only for package @genome-spy/core
 
@@ -1436,13 +1436,13 @@ Preserve the scope and lifecycle behavior matrix.
 
 - a dummy change. testing versioning/publishing ([efba81f](https://github.com/tuner/genome-spy/commit/efba81f769f38a8a11d1c68078d64d249c5e7c46))
 
-# [0.14.0](https://github.com/tuner/genome-spy/compare/v0.13.0...v0.14.0) (2021-11-23)
+## [0.14.0](https://github.com/tuner/genome-spy/compare/v0.13.0...v0.14.0) (2021-11-23)
 
 ### Features
 
 - split GenomeSpy "core" and "app" into separate, scoped npm packages ([#62](https://github.com/tuner/genome-spy/issues/62)) ([f3efe78](https://github.com/tuner/genome-spy/commit/f3efe783961a416d8b12b96d563a963b87829dfa))
 
-# [0.13.0](https://github.com/tuner/genome-spy/compare/v0.12.1...v0.13.0) (2021-11-22)
+## [0.13.0](https://github.com/tuner/genome-spy/compare/v0.12.1...v0.13.0) (2021-11-22)
 
 ### Bug Fixes
 
@@ -1461,7 +1461,7 @@ Preserve the scope and lifecycle behavior matrix.
 - left/right alignment of rotated, ranged text ([#59](https://github.com/tuner/genome-spy/issues/59)) ([0c6104d](https://github.com/tuner/genome-spy/commit/0c6104d133609792ce02e9a545844fca7697d574))
 - vertical (orient: left/right) genome axis was rendered incorrectly ([#60](https://github.com/tuner/genome-spy/issues/60)) ([03e5383](https://github.com/tuner/genome-spy/commit/03e5383f4b117c6ef66bb40daac53da3ccafc410))
 
-# [0.12.0](https://github.com/tuner/genome-spy/compare/v0.11.0...v0.12.0) (2021-11-16)
+## [0.12.0](https://github.com/tuner/genome-spy/compare/v0.11.0...v0.12.0) (2021-11-16)
 
 ### Bug Fixes
 
@@ -1473,13 +1473,13 @@ Preserve the scope and lifecycle behavior matrix.
 
 - configurable view visibilities ([#57](https://github.com/tuner/genome-spy/issues/57)) ([c99a828](https://github.com/tuner/genome-spy/commit/c99a828764403bb15cd43595bd70e74b48370742))
 
-# [0.11.0](https://github.com/tuner/genome-spy/compare/v0.10.0...v0.11.0) (2021-11-08)
+## [0.11.0](https://github.com/tuner/genome-spy/compare/v0.10.0...v0.11.0) (2021-11-08)
 
 ### Features
 
 - bookmark sharing ([723de00](https://github.com/tuner/genome-spy/commit/723de00477ae4169f32ac8157ed4d602f29b414d))
 
-# [0.10.0](https://github.com/tuner/genome-spy/compare/v0.9.0...v0.10.0) (2021-11-02)
+## [0.10.0](https://github.com/tuner/genome-spy/compare/v0.9.0...v0.10.0) (2021-11-02)
 
 ### Bug Fixes
 
@@ -1498,13 +1498,13 @@ Preserve the scope and lifecycle behavior matrix.
 - add crc32 checksum to the state hash in url ([f6c4284](https://github.com/tuner/genome-spy/commit/f6c4284cc595d73e0e58b06822fdc2cb75d94538))
 - filtering/sorting by sample id ([f364400](https://github.com/tuner/genome-spy/commit/f36440030fb7afd44a6b2c5b793b6de00dc05480))
 
-# [0.9.0](https://github.com/tuner/genome-spy/compare/v0.8.0...v0.9.0) (2021-10-21)
+## [0.9.0](https://github.com/tuner/genome-spy/compare/v0.8.0...v0.9.0) (2021-10-21)
 
 ### Features
 
 - improved bookmarking ([#46](https://github.com/tuner/genome-spy/issues/46)) ([0f2c8ec](https://github.com/tuner/genome-spy/commit/0f2c8ece6927e7ca50dd2c224adc7b97cd27bb55))
 
-# [0.8.0](https://github.com/tuner/genome-spy/compare/v0.7.0...v0.8.0) (2021-10-20)
+## [0.8.0](https://github.com/tuner/genome-spy/compare/v0.7.0...v0.8.0) (2021-10-20)
 
 ### Bug Fixes
 
@@ -1516,7 +1516,7 @@ Preserve the scope and lifecycle behavior matrix.
 - store all (named) scale domains in bookmarks ([ded9141](https://github.com/tuner/genome-spy/commit/ded9141c9c50fadab154c7e383ebd696851c52e6))
 - update zoomed scale domains to url hash ([96da343](https://github.com/tuner/genome-spy/commit/96da3437773a19aab09ebff722cc10e16c30f3d4))
 
-# [0.7.0](https://github.com/tuner/genome-spy/compare/v0.6.0...v0.7.0) (2021-10-14)
+## [0.7.0](https://github.com/tuner/genome-spy/compare/v0.6.0...v0.7.0) (2021-10-14)
 
 ### Bug Fixes
 
@@ -1529,7 +1529,7 @@ Preserve the scope and lifecycle behavior matrix.
 - add sagittaScaleFactor prop to link mark ([758585f](https://github.com/tuner/genome-spy/commit/758585f474c93fef81abfef687a32ea677b80a37))
 - named and observable scales ([#45](https://github.com/tuner/genome-spy/issues/45)) ([4011548](https://github.com/tuner/genome-spy/commit/4011548ff43c9562d434328172cdb335909e43a2))
 
-# [0.6.0](https://github.com/tuner/genome-spy/compare/v0.5.3...v0.6.0) (2021-09-28)
+## [0.6.0](https://github.com/tuner/genome-spy/compare/v0.5.3...v0.6.0) (2021-09-28)
 
 ### Bug Fixes
 
@@ -1560,7 +1560,7 @@ Preserve the scope and lifecycle behavior matrix.
 
 - sampleAttributePanel hovering ([3567cdf](https://github.com/tuner/genome-spy/commit/3567cdf8788214006b9cf5cb44e499744d9d02b3))
 
-# [0.5.0](https://github.com/tuner/genome-spy/compare/v0.4.0...v0.5.0) (2021-09-17)
+## [0.5.0](https://github.com/tuner/genome-spy/compare/v0.4.0...v0.5.0) (2021-09-17)
 
 ### Bug Fixes
 
@@ -1577,7 +1577,7 @@ Preserve the scope and lifecycle behavior matrix.
 - stroked and rounded rects ([#42](https://github.com/tuner/genome-spy/issues/42)) ([a517f70](https://github.com/tuner/genome-spy/commit/a517f7009dc9c3c26b665c65736b6682df592f07))
 - view backgrounds ([#43](https://github.com/tuner/genome-spy/issues/43)) ([810caf2](https://github.com/tuner/genome-spy/commit/810caf25db8214ec482ad2ac65360b375cc2b397))
 
-# [0.4.0](https://github.com/tuner/genome-spy/compare/v0.3.0...v0.4.0) (2021-08-26)
+## [0.4.0](https://github.com/tuner/genome-spy/compare/v0.3.0...v0.4.0) (2021-08-26)
 
 ### Bug Fixes
 
@@ -1590,14 +1590,14 @@ Preserve the scope and lifecycle behavior matrix.
 - highlight sample attribute column upon hover ([ceb5d61](https://github.com/tuner/genome-spy/commit/ceb5d61be3f0f173c80b0a96c5ac626207ebc73e))
 - transition delay ([9f4a535](https://github.com/tuner/genome-spy/commit/9f4a535356a0cf82a255b92a3b0a89affe4a8266))
 
-# [0.3.0](https://github.com/tuner/genome-spy/compare/v0.2.0...v0.3.0) (2021-08-20)
+## [0.3.0](https://github.com/tuner/genome-spy/compare/v0.2.0...v0.3.0) (2021-08-20)
 
 ### Features
 
 - accept strings and HTMLElements from tooltip handlers ([f5eef50](https://github.com/tuner/genome-spy/commit/f5eef5020bee8758373d5a2f9247e105f513bcb0))
 - export lit's html tag function ([d0d993c](https://github.com/tuner/genome-spy/commit/d0d993c0def00e0077c62071a21c54fb265f2ae0))
 
-# [0.2.0](https://github.com/tuner/genome-spy/compare/v0.1.7...v0.2.0) (2021-08-20)
+## [0.2.0](https://github.com/tuner/genome-spy/compare/v0.1.7...v0.2.0) (2021-08-20)
 
 ### Bug Fixes
 
