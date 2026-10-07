@@ -16,8 +16,6 @@ const requestedIntervals = [];
 const headerByUrl = new Map();
 /** @type {Set<string>} */
 const failingHeaderUrls = new Set();
-/** @type {string[]} */
-const renamedRefSeqs = [];
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -30,13 +28,12 @@ vi.mock("generic-filehandle2", () => ({
 
 vi.mock("@gmod/tabix", () => ({
     TabixIndexedFile: class TabixIndexedFile {
-        /** @param {{ filehandle: { url: string }, tbiFilehandle: { url: string }, renameRefSeqs?: (name: string) => string }} options */
+        /** @param {{ filehandle: { url: string }, tbiFilehandle: { url: string } }} options */
         constructor(options) {
             this.url = options.filehandle.url;
             this.indexUrl = options.tbiFilehandle.url;
             openedUrls.push(this.url);
             indexUrlByUrl.set(this.url, this.indexUrl);
-            renamedRefSeqs.push(options.renameRefSeqs?.("1") ?? "1");
         }
 
         async getHeader() {
@@ -44,6 +41,16 @@ vi.mock("@gmod/tabix", () => ({
                 throw new Error("Missing Tabix file");
             }
             return headerByUrl.get(this.url) ?? "#chrom\tstart\tend\tvalue";
+        }
+
+        async getReferenceSequenceNames() {
+            return Array.from(
+                new Set(
+                    (linesByUrl.get(this.url) ?? []).map(
+                        (line) => line.split("\t")[0]
+                    )
+                )
+            );
         }
 
         /**
@@ -74,7 +81,6 @@ function createViewStub() {
         "ovarian",
         "breast",
     ]);
-    const setAddChrPrefix = paramRuntime.allocateSetter("addChrPrefix", false);
 
     const genome = {
         totalSize: 1000,
@@ -105,7 +111,6 @@ function createViewStub() {
     return {
         paramRuntime,
         setVisibleCancers,
-        setAddChrPrefix,
         loadingStatuses,
         getBaseUrl: () => "",
         getScaleResolution: () => scaleResolution,
@@ -133,7 +138,6 @@ describe("TabixSource", () => {
         requestedIntervals.length = 0;
         headerByUrl.clear();
         failingHeaderUrls.clear();
-        renamedRefSeqs.length = 0;
         linesByUrl.set("variants/ovarian.vcf.gz", ["chr1\t1\t2\tA"]);
         linesByUrl.set("variants/breast.vcf.gz", ["chr1\t3\t4\tB"]);
     });
@@ -393,30 +397,5 @@ describe("TabixSource", () => {
         expect(openedUrls).toEqual([]);
         expect(view.loadingStatuses.at(-1)).toEqual({ status: "complete" });
         expect([...collector.getData()]).toEqual([]);
-    });
-
-    it("keys cached handles by reference-name mapping", async () => {
-        vi.useFakeTimers();
-        vi.stubGlobal("window", { setTimeout, clearTimeout });
-        const view = createViewStub();
-        const source = new TabixTsvSource(
-            /** @type {any} */ ({
-                type: "tabix",
-                url: "variants/ovarian.vcf.gz",
-                addChrPrefix: { expr: "addChrPrefix" },
-                debounce: 0,
-            }),
-            /** @type {any} */ (view)
-        );
-
-        await source.requestInterval([0, 100]);
-        view.setAddChrPrefix(true);
-        await view.paramRuntime.whenPropagated();
-        await vi.runAllTimersAsync();
-        view.setAddChrPrefix(false);
-        await view.paramRuntime.whenPropagated();
-        await vi.runAllTimersAsync();
-
-        expect(renamedRefSeqs).toEqual(["1", "chr1"]);
     });
 });
