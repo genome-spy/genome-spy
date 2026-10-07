@@ -5,15 +5,11 @@
 "@genome-spy/react-component": patch
 ---
 
-Show layout, rendering, and reactive parameter or data update errors through
-`onError` or the default centered error box, including errors from resize,
-animation, and debounced updates. This makes failures such as invalid color
-ranges visible in the playground.
+WebGL rendering errors, such as invalid colors in a color scheme, now appear in
+the visualization's error box, including in the playground. Errors from
+interactive parameter and data updates, including debounced updates, are also
+displayed. Embedded visualizations report these errors through `onError` when
+provided.
 
-Failed Core and App `embed()` calls reject with the original setup error and
-release initialized resources. Cleanup or error-handler failures no longer mask
-the original error. Documentation embeds and the React component display setup
-errors only once.
-
-Reactive update failures still throw the original error and reject pending
-propagation barriers.
+Failed `embed()` calls now reject with the original setup error. Documentation
+examples and React embeds display setup errors only once.
