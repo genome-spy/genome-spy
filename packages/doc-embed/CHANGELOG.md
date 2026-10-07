@@ -1,5 +1,13 @@
 # Change Log
 
+## 1.1.0
+
+### Patch Changes
+
+- Updated dependencies [[`207a33d`](https://github.com/genome-spy/genome-spy/commit/207a33dcec890b5d50fea539e6e09772e22a470c), [`25a371b`](https://github.com/genome-spy/genome-spy/commit/25a371bde98ed97d57450f2a08ae07c6612ae502), [`9e8a8d9`](https://github.com/genome-spy/genome-spy/commit/9e8a8d905bb0f21c6bf2f8a721c96e432e95b8b6)]:
+  - @genome-spy/core@1.1.0
+  - @genome-spy/app@1.1.0
+
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
@@ -11,7 +19,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **docs:** link curated examples to Python gallery ([afab7aa](https://github.com/genome-spy/genome-spy/commit/afab7aa884e314deadc7c3da48b79eaffd60852d)) by @tuner
+- **docs:** link curated examples to Python gallery ([afab7aa](https://github.com/genome-spy/genome-spy/commit/afab7aa884e314deadc7c3da48b79eaffd60852d)) by @tuner
 
 # [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
 
@@ -37,7 +45,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **test:** remove expected Vitest console noise ([272c7ac](https://github.com/genome-spy/genome-spy/commit/272c7acee23e4c085644b19e59b6e258299aea72)) by @tuner
+- **test:** remove expected Vitest console noise ([272c7ac](https://github.com/genome-spy/genome-spy/commit/272c7acee23e4c085644b19e59b6e258299aea72)) by @tuner
 
 # [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
 
@@ -59,7 +67,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **docs:** embed App examples in documentation ([#441](https://github.com/genome-spy/genome-spy/issues/441)) ([68e0084](https://github.com/genome-spy/genome-spy/commit/68e008468b79d068becf4f8f8e6ed722b6343f90)) by @tuner
+- **docs:** embed App examples in documentation ([#441](https://github.com/genome-spy/genome-spy/issues/441)) ([68e0084](https://github.com/genome-spy/genome-spy/commit/68e008468b79d068becf4f8f8e6ed722b6343f90)) by @tuner
 
 # [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
@@ -97,7 +105,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* reorganize shared examples across docs, playground, and screenshot tooling ([#354](https://github.com/genome-spy/genome-spy/issues/354)) ([0be3e10](https://github.com/genome-spy/genome-spy/commit/0be3e10e4e7bcd3b57dc803e65934d0bcb23008a)) by @tuner
+- reorganize shared examples across docs, playground, and screenshot tooling ([#354](https://github.com/genome-spy/genome-spy/issues/354)) ([0be3e10](https://github.com/genome-spy/genome-spy/commit/0be3e10e4e7bcd3b57dc803e65934d0bcb23008a)) by @tuner
 
 # [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
 
@@ -499,7 +507,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* split GenomeSpy "core" and "app" into separate, scoped npm packages ([#62](https://github.com/tuner/genome-spy/issues/62)) ([f3efe78](https://github.com/tuner/genome-spy/commit/f3efe783961a416d8b12b96d563a963b87829dfa))
+- split GenomeSpy "core" and "app" into separate, scoped npm packages ([#62](https://github.com/tuner/genome-spy/issues/62)) ([f3efe78](https://github.com/tuner/genome-spy/commit/f3efe783961a416d8b12b96d563a963b87829dfa))
 
 # [0.13.0](https://github.com/tuner/genome-spy/compare/v0.12.1...v0.13.0) (2021-11-22)
 
@@ -553,7 +561,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* stroked and rounded rects ([#42](https://github.com/tuner/genome-spy/issues/42)) ([a517f70](https://github.com/tuner/genome-spy/commit/a517f7009dc9c3c26b665c65736b6682df592f07))
+- stroked and rounded rects ([#42](https://github.com/tuner/genome-spy/issues/42)) ([a517f70](https://github.com/tuner/genome-spy/commit/a517f7009dc9c3c26b665c65736b6682df592f07))
 
 # [0.4.0](https://github.com/tuner/genome-spy/compare/v0.3.0...v0.4.0) (2021-08-26)
 

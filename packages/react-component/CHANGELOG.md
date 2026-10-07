@@ -1,5 +1,12 @@
 # Change Log
 
+## 1.1.0
+
+### Patch Changes
+
+- Updated dependencies [[`207a33d`](https://github.com/genome-spy/genome-spy/commit/207a33dcec890b5d50fea539e6e09772e22a470c), [`25a371b`](https://github.com/genome-spy/genome-spy/commit/25a371bde98ed97d57450f2a08ae07c6612ae502), [`9e8a8d9`](https://github.com/genome-spy/genome-spy/commit/9e8a8d905bb0f21c6bf2f8a721c96e432e95b8b6)]:
+  - @genome-spy/core@1.1.0
+
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
@@ -87,8 +94,8 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* add react component regression coverage ([44c6602](https://github.com/genome-spy/genome-spy/commit/44c6602aed8b78c558803e2a51b1b65d8753abc2)) by @tuner
-* **react-component:** update react test setup ([4a8c425](https://github.com/genome-spy/genome-spy/commit/4a8c42589c766501a9203c5428a457b5613a76da)) by @tuner
+- add react component regression coverage ([44c6602](https://github.com/genome-spy/genome-spy/commit/44c6602aed8b78c558803e2a51b1b65d8753abc2)) by @tuner
+- **react-component:** update react test setup ([4a8c425](https://github.com/genome-spy/genome-spy/commit/4a8c42589c766501a9203c5428a457b5613a76da)) by @tuner
 
 # [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
@@ -210,8 +217,8 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **react-component:** fix typing issues, building, dependencies, etc ([3389e5c](https://github.com/genome-spy/genome-spy/commit/3389e5c7e44bcb09fe267787e4dd99e942c90f79)) by @tuner
+- **react-component:** fix typing issues, building, dependencies, etc ([3389e5c](https://github.com/genome-spy/genome-spy/commit/3389e5c7e44bcb09fe267787e4dd99e942c90f79)) by @tuner
 
 ### Features
 
-* **react-component:** add initial component ([#255](https://github.com/genome-spy/genome-spy/issues/255)) ([f676ff6](https://github.com/genome-spy/genome-spy/commit/f676ff634922971f728040e2952a45bd57cd2fce)) by @trentfridey
+- **react-component:** add initial component ([#255](https://github.com/genome-spy/genome-spy/issues/255)) ([f676ff6](https://github.com/genome-spy/genome-spy/commit/f676ff634922971f728040e2952a45bd57cd2fce)) by @trentfridey

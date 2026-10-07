@@ -1,5 +1,13 @@
 # Change Log
 
+## 1.1.0
+
+### Patch Changes
+
+- Updated dependencies [[`207a33d`](https://github.com/genome-spy/genome-spy/commit/207a33dcec890b5d50fea539e6e09772e22a470c), [`25a371b`](https://github.com/genome-spy/genome-spy/commit/25a371bde98ed97d57450f2a08ae07c6612ae502), [`9e8a8d9`](https://github.com/genome-spy/genome-spy/commit/9e8a8d905bb0f21c6bf2f8a721c96e432e95b8b6)]:
+  - @genome-spy/core@1.1.0
+  - @genome-spy/inspector@1.1.0
+
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
@@ -15,13 +23,13 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* add versioned schema workflow ([#539](https://github.com/genome-spy/genome-spy/issues/539)) ([8878a3b](https://github.com/genome-spy/genome-spy/commit/8878a3b468bd8746f58d9341b30639fc9f944209)) by @tuner
+- add versioned schema workflow ([#539](https://github.com/genome-spy/genome-spy/issues/539)) ([8878a3b](https://github.com/genome-spy/genome-spy/commit/8878a3b468bd8746f58d9341b30639fc9f944209)) by @tuner
 
 ## [0.88.1](https://github.com/genome-spy/genome-spy/compare/v0.88.0...v0.88.1) (2026-09-16)
 
 ### Bug Fixes
 
-* **playground:** improve search metadata ([b5bd566](https://github.com/genome-spy/genome-spy/commit/b5bd566e64434156699a606dbfdcbc0ac27acaa9)) by @tuner
+- **playground:** improve search metadata ([b5bd566](https://github.com/genome-spy/genome-spy/commit/b5bd566e64434156699a606dbfdcbc0ac27acaa9)) by @tuner
 
 # [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
 
@@ -35,12 +43,12 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **playground:** avoid racing embeds for missing uploads ([2f3959c](https://github.com/genome-spy/genome-spy/commit/2f3959c51c06df227720c26851b6d06018312a0a)) by @tuner
+- **playground:** avoid racing embeds for missing uploads ([2f3959c](https://github.com/genome-spy/genome-spy/commit/2f3959c51c06df227720c26851b6d06018312a0a)) by @tuner
 
 ### Features
 
-* **playground:** add renderer selection with experimental WebGPU preview ([fea8da5](https://github.com/genome-spy/genome-spy/commit/fea8da50d4118949727620a266e42b97b43f9dc3)) by @tuner
-* **webgpu:** add development-only WebGPU renderer ([#479](https://github.com/genome-spy/genome-spy/issues/479)) ([6538841](https://github.com/genome-spy/genome-spy/commit/6538841d9be276db7d3536dadf84644ae0ec9707)), closes [hi#zoom](https://github.com/hi/issues/zoom) [hi#cardinality](https://github.com/hi/issues/cardinality) [hi#count](https://github.com/hi/issues/count) [#362](https://github.com/genome-spy/genome-spy/issues/362) by @tuner
+- **playground:** add renderer selection with experimental WebGPU preview ([fea8da5](https://github.com/genome-spy/genome-spy/commit/fea8da50d4118949727620a266e42b97b43f9dc3)) by @tuner
+- **webgpu:** add development-only WebGPU renderer ([#479](https://github.com/genome-spy/genome-spy/issues/479)) ([6538841](https://github.com/genome-spy/genome-spy/commit/6538841d9be276db7d3536dadf84644ae0ec9707)), closes [hi#zoom](https://github.com/hi/issues/zoom) [hi#cardinality](https://github.com/hi/issues/cardinality) [hi#count](https://github.com/hi/issues/count) [#362](https://github.com/genome-spy/genome-spy/issues/362) by @tuner
 
 # [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
@@ -50,10 +58,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **playground:** add bound input panel ([44bb962](https://github.com/genome-spy/genome-spy/commit/44bb96279d8600a4346cffc0fd58506a78150de3)) by @tuner
-* **playground:** add image export dialog ([4df889f](https://github.com/genome-spy/genome-spy/commit/4df889f1754752949ce68556f78cf695e0855ede)) by @tuner
-* **playground:** migrate editor to CodeMirror ([f8e7462](https://github.com/genome-spy/genome-spy/commit/f8e74625ada75932098b4723f2c4525fa4633d18)) by @tuner
-* **playground:** redesign toolbar buttons ([2c7733c](https://github.com/genome-spy/genome-spy/commit/2c7733c8838ce4ab50f5c9ff4ac0a92c4d11f024)) by @tuner
+- **playground:** add bound input panel ([44bb962](https://github.com/genome-spy/genome-spy/commit/44bb96279d8600a4346cffc0fd58506a78150de3)) by @tuner
+- **playground:** add image export dialog ([4df889f](https://github.com/genome-spy/genome-spy/commit/4df889f1754752949ce68556f78cf695e0855ede)) by @tuner
+- **playground:** migrate editor to CodeMirror ([f8e7462](https://github.com/genome-spy/genome-spy/commit/f8e74625ada75932098b4723f2c4525fa4633d18)) by @tuner
+- **playground:** redesign toolbar buttons ([2c7733c](https://github.com/genome-spy/genome-spy/commit/2c7733c8838ce4ab50f5c9ff4ac0a92c4d11f024)) by @tuner
 
 ## [0.83.1](https://github.com/genome-spy/genome-spy/compare/v0.83.0...v0.83.1) (2026-08-06)
 
@@ -71,13 +79,13 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **core:** add lexically scoped named datasets ([#442](https://github.com/genome-spy/genome-spy/issues/442)) ([b0b1c51](https://github.com/genome-spy/genome-spy/commit/b0b1c516d72f0d6bbd48137020d43d55f6103e15)) by @tuner
+- **core:** add lexically scoped named datasets ([#442](https://github.com/genome-spy/genome-spy/issues/442)) ([b0b1c51](https://github.com/genome-spy/genome-spy/commit/b0b1c516d72f0d6bbd48137020d43d55f6103e15)) by @tuner
 
 # [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
 ### Bug Fixes
 
-* **inspector:** use embed debug host ([9c12121](https://github.com/genome-spy/genome-spy/commit/9c12121a6882b7e047e2bc6f9a57a9ceed7223a3)) by @tuner
+- **inspector:** use embed debug host ([9c12121](https://github.com/genome-spy/genome-spy/commit/9c12121a6882b7e047e2bc6f9a57a9ceed7223a3)) by @tuner
 
 ## [0.79.1](https://github.com/genome-spy/genome-spy/compare/v0.79.0...v0.79.1) (2026-06-26)
 
@@ -87,7 +95,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **inspector:** add GenomeSpy runtime inspector ([#425](https://github.com/genome-spy/genome-spy/issues/425)) ([0151c5d](https://github.com/genome-spy/genome-spy/commit/0151c5db16b825af760a9fbedb3a4f4df838c7a1)) by @tuner
+- **inspector:** add GenomeSpy runtime inspector ([#425](https://github.com/genome-spy/genome-spy/issues/425)) ([0151c5d](https://github.com/genome-spy/genome-spy/commit/0151c5db16b825af760a9fbedb3a4f4df838c7a1)) by @tuner
 
 # [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
 
@@ -113,7 +121,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* reorganize shared examples across docs, playground, and screenshot tooling ([#354](https://github.com/genome-spy/genome-spy/issues/354)) ([0be3e10](https://github.com/genome-spy/genome-spy/commit/0be3e10e4e7bcd3b57dc803e65934d0bcb23008a)) by @tuner
+- reorganize shared examples across docs, playground, and screenshot tooling ([#354](https://github.com/genome-spy/genome-spy/issues/354)) ([0be3e10](https://github.com/genome-spy/genome-spy/commit/0be3e10e4e7bcd3b57dc803e65934d0bcb23008a)) by @tuner
 
 # [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
 
@@ -203,19 +211,19 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **playground:** add favicon ([dc07dec](https://github.com/genome-spy/genome-spy/commit/dc07decb010f10d48809765236c6b9b50b8eafe3)) by @tuner
+- **playground:** add favicon ([dc07dec](https://github.com/genome-spy/genome-spy/commit/dc07decb010f10d48809765236c6b9b50b8eafe3)) by @tuner
 
 # [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
 
 ### Bug Fixes
 
-* **playground:** file datatable styling ([18724bc](https://github.com/genome-spy/genome-spy/commit/18724bcf801e0c4b229d2a0a2dbd0d27e6d36981)) by @tuner
+- **playground:** file datatable styling ([18724bc](https://github.com/genome-spy/genome-spy/commit/18724bcf801e0c4b229d2a0a2dbd0d27e6d36981)) by @tuner
 
 ### Features
 
-* **playground:** add "Format code" tool button ([861c0c9](https://github.com/genome-spy/genome-spy/commit/861c0c90f5652090050322ef14510b9806ca0391)) by @tuner
-* **playground:** format using prettier ([6be263d](https://github.com/genome-spy/genome-spy/commit/6be263d3d2152730296404afdc42e8e850d2de8d)) by @tuner
-* **playground:** resizeable panels ([a192431](https://github.com/genome-spy/genome-spy/commit/a1924310d53777f9f74a5bffb666c4295ea0f99b)) by @tuner
+- **playground:** add "Format code" tool button ([861c0c9](https://github.com/genome-spy/genome-spy/commit/861c0c90f5652090050322ef14510b9806ca0391)) by @tuner
+- **playground:** format using prettier ([6be263d](https://github.com/genome-spy/genome-spy/commit/6be263d3d2152730296404afdc42e8e850d2de8d)) by @tuner
+- **playground:** resizeable panels ([a192431](https://github.com/genome-spy/genome-spy/commit/a1924310d53777f9f74a5bffb666c4295ea0f99b)) by @tuner
 
 ## [0.56.1](https://github.com/genome-spy/genome-spy/compare/v0.56.0...v0.56.1) (2024-08-21)
 
@@ -281,7 +289,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **core:** add `powerPreference` to embed options ([f3af4a0](https://github.com/genome-spy/genome-spy/commit/f3af4a04c759eab992f362ab02644d94ed819da9))
+- **core:** add `powerPreference` to embed options ([f3af4a0](https://github.com/genome-spy/genome-spy/commit/f3af4a04c759eab992f362ab02644d94ed819da9))
 
 ## [0.46.1](https://github.com/genome-spy/genome-spy/compare/v0.46.0...v0.46.1) (2024-02-13)
 
@@ -343,7 +351,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **playground:** oscillating sizes when panel layout is changed ([1d60d43](https://github.com/genome-spy/genome-spy/commit/1d60d43d884e65c507236a2fee038fd0a7d0d844)), closes [#186](https://github.com/genome-spy/genome-spy/issues/186)
+- **playground:** oscillating sizes when panel layout is changed ([1d60d43](https://github.com/genome-spy/genome-spy/commit/1d60d43d884e65c507236a2fee038fd0a7d0d844)), closes [#186](https://github.com/genome-spy/genome-spy/issues/186)
 
 ## [0.37.4](https://github.com/genome-spy/genome-spy/compare/v0.37.3...v0.37.4) (2023-11-07)
 
@@ -369,16 +377,16 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **playground:** improve layout on mobile devices ([f73ea49](https://github.com/genome-spy/genome-spy/commit/f73ea49bb7bfc50f48af01850fd3b8407d741585))
-* **playground:** prevent word wrapping in toolbar ([7506731](https://github.com/genome-spy/genome-spy/commit/7506731e5bd58ec2bd7398e18e3e25ba219f41b2))
+- **playground:** improve layout on mobile devices ([f73ea49](https://github.com/genome-spy/genome-spy/commit/f73ea49bb7bfc50f48af01850fd3b8407d741585))
+- **playground:** prevent word wrapping in toolbar ([7506731](https://github.com/genome-spy/genome-spy/commit/7506731e5bd58ec2bd7398e18e3e25ba219f41b2))
 
 # [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
 
 ### Features
 
-* **playground:** allow loading specs from urls ([2ae7118](https://github.com/genome-spy/genome-spy/commit/2ae7118fdfb4fd0f0936189252bf0ca204a23df9))
-* **playground:** link the bowtie to the website ([e9d394b](https://github.com/genome-spy/genome-spy/commit/e9d394b612da56126cb31e6dc4c80c17f2ad6194))
-* **playground:** show title/description in toolbar ([8d2f537](https://github.com/genome-spy/genome-spy/commit/8d2f5379cb087ffe4a8b35e4841353835a4a5351))
+- **playground:** allow loading specs from urls ([2ae7118](https://github.com/genome-spy/genome-spy/commit/2ae7118fdfb4fd0f0936189252bf0ca204a23df9))
+- **playground:** link the bowtie to the website ([e9d394b](https://github.com/genome-spy/genome-spy/commit/e9d394b612da56126cb31e6dc4c80c17f2ad6194))
+- **playground:** show title/description in toolbar ([8d2f537](https://github.com/genome-spy/genome-spy/commit/8d2f5379cb087ffe4a8b35e4841353835a4a5351))
 
 # [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
 
@@ -468,7 +476,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* dynamic named data ([#132](https://github.com/tuner/genome-spy/issues/132)) ([b60f7f0](https://github.com/tuner/genome-spy/commit/b60f7f002944103e65f33844bdf66e3c6f2bf059))
+- dynamic named data ([#132](https://github.com/tuner/genome-spy/issues/132)) ([b60f7f0](https://github.com/tuner/genome-spy/commit/b60f7f002944103e65f33844bdf66e3c6f2bf059))
 
 ## [0.24.2](https://github.com/tuner/genome-spy/compare/v0.24.1...v0.24.2) (2022-10-04)
 
@@ -502,7 +510,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **playground:** import default spec properly. Fixes [#94](https://github.com/tuner/genome-spy/issues/94) ([0514a10](https://github.com/tuner/genome-spy/commit/0514a1045e1b06f990983ce51150ebd65c402325))
+- **playground:** import default spec properly. Fixes [#94](https://github.com/tuner/genome-spy/issues/94) ([0514a10](https://github.com/tuner/genome-spy/commit/0514a1045e1b06f990983ce51150ebd65c402325))
 
 # [0.19.0](https://github.com/tuner/genome-spy/compare/v0.18.1...v0.19.0) (2022-03-28)
 
@@ -516,7 +524,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* **playground:** validate spec using JSON schema ([#87](https://github.com/tuner/genome-spy/issues/87)) ([d6fc84c](https://github.com/tuner/genome-spy/commit/d6fc84c7c090931c96b8e571701249090a03f49e))
+- **playground:** validate spec using JSON schema ([#87](https://github.com/tuner/genome-spy/issues/87)) ([d6fc84c](https://github.com/tuner/genome-spy/commit/d6fc84c7c090931c96b8e571701249090a03f49e))
 
 # [0.17.0](https://github.com/tuner/genome-spy/compare/v0.16.0...v0.17.0) (2022-01-21)
 
@@ -530,18 +538,18 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **playground:** put genomespy into a scrollable viewport ([e43ea76](https://github.com/tuner/genome-spy/commit/e43ea76e1cb2f1cf11b9cd0e977ce05ffd4ae217))
+- **playground:** put genomespy into a scrollable viewport ([e43ea76](https://github.com/tuner/genome-spy/commit/e43ea76e1cb2f1cf11b9cd0e977ce05ffd4ae217))
 
 ### Features
 
-* **playground:** add version number to toolbar ([e79551d](https://github.com/tuner/genome-spy/commit/e79551d1111e250dc94db4678a0822615d7864bb))
-* **playground:** replace CodeMirror 5 with Monaco ([#64](https://github.com/tuner/genome-spy/issues/64)) ([2f20957](https://github.com/tuner/genome-spy/commit/2f20957139385914091bd11ebc95510f80a3fad4))
+- **playground:** add version number to toolbar ([e79551d](https://github.com/tuner/genome-spy/commit/e79551d1111e250dc94db4678a0822615d7864bb))
+- **playground:** replace CodeMirror 5 with Monaco ([#64](https://github.com/tuner/genome-spy/issues/64)) ([2f20957](https://github.com/tuner/genome-spy/commit/2f20957139385914091bd11ebc95510f80a3fad4))
 
 ## [0.14.2](https://github.com/tuner/genome-spy/compare/v0.14.1...v0.14.2) (2021-11-24)
 
 ### Bug Fixes
 
-* **playground:** indent selection with tab ([a01c2a8](https://github.com/tuner/genome-spy/commit/a01c2a85dcad66ea7c069b084d792870d9d682e9))
+- **playground:** indent selection with tab ([a01c2a8](https://github.com/tuner/genome-spy/commit/a01c2a85dcad66ea7c069b084d792870d9d682e9))
 
 ## [0.14.1](https://github.com/tuner/genome-spy/compare/v0.14.0...v0.14.1) (2021-11-23)
 
@@ -551,7 +559,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* split GenomeSpy "core" and "app" into separate, scoped npm packages ([#62](https://github.com/tuner/genome-spy/issues/62)) ([f3efe78](https://github.com/tuner/genome-spy/commit/f3efe783961a416d8b12b96d563a963b87829dfa))
+- split GenomeSpy "core" and "app" into separate, scoped npm packages ([#62](https://github.com/tuner/genome-spy/issues/62)) ([f3efe78](https://github.com/tuner/genome-spy/commit/f3efe783961a416d8b12b96d563a963b87829dfa))
 
 # [0.13.0](https://github.com/tuner/genome-spy/compare/v0.12.1...v0.13.0) (2021-11-22)
 

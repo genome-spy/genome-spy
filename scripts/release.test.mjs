@@ -108,7 +108,10 @@ async function fixture() {
                 ([name]) => name.startsWith("@genome-spy/")
             );
             if (internal.length) {
-                manifest[field] = Object.fromEntries(internal);
+                // Match the fixture baseline even after the checkout is versioned.
+                manifest[field] = Object.fromEntries(
+                    internal.map(([name]) => [name, "^1.0.0"])
+                );
             }
         }
         await mkdir(path.join(cwd, "packages", directory), { recursive: true });

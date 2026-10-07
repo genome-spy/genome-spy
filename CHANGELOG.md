@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 Releases after v1.0.0 use user-written [Changesets](.changeset/README.md) notes.
 Earlier entries were generated from Conventional Commits and are preserved below.
 
+## [1.1.0](https://github.com/genome-spy/genome-spy/compare/v1.0.0...v1.1.0) (2026-10-07)
+
+### New features
+
+- [#552](https://github.com/genome-spy/genome-spy/pull/552) [`207a33d`](https://github.com/genome-spy/genome-spy/commit/207a33dcec890b5d50fea539e6e09772e22a470c) Thanks [@zorgster](https://github.com/zorgster)! - The BAM lazy data source now supports a `tags` option for exposing SAM auxiliary
+  tags in encodings, filters, and tooltips. This makes it possible to visualize
+  haplotype assignments, cell barcodes, and other annotations stored in BAM records.
+
+  For example, adding `"tags": ["HP", "CB"]` to a BAM source definition exposes
+  `tag_HP` and `tag_CB` fields on each read. A field has the value `undefined` when
+  the read lacks the requested tag.
+
+- [#555](https://github.com/genome-spy/genome-spy/pull/555) [`9e8a8d9`](https://github.com/genome-spy/genome-spy/commit/9e8a8d905bb0f21c6bf2f8a721c96e432e95b8b6) Thanks [@zorgster](https://github.com/zorgster)! - Scrollable views can now be scrolled by dragging, vertically or horizontally. In a view with `viewportHeight` or `viewportWidth`, dragging scrolls its content with the same momentum as panning, instead of requiring the scrollbar.
+  Panning zoomable scales, such as genomic coordinates, works as before; dragging only scrolls along axes that are not zoomable.
+
+  When a drag can scroll, it follows its main direction after the first few pixels, so scrolling a tall view does not also pan it sideways.
+
+### Fixes
+
+- [`25a371b`](https://github.com/genome-spy/genome-spy/commit/25a371bde98ed97d57450f2a08ae07c6612ae502) Thanks [@tuner](https://github.com/tuner)! - Fix loading failures in GFF3, VCF, and Tabix TSV lazy data sources caused by
+  incompatible decompression dependencies. Preserve the existing `addChrPrefix`
+  behavior, including custom prefixes, without requiring changes to visualization
+  specifications.
+
 # [1.0.0](https://github.com/genome-spy/genome-spy/compare/v0.90.0...v1.0.0) (2026-10-01)
 
 **Note:** Version bump only for package root

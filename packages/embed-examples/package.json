@@ -1,7 +1,7 @@
 {
   "name": "@genome-spy/embed-examples",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Examples",
   "type": "module",
   "scripts": {
@@ -17,9 +17,9 @@
   "author": "Kari Lavikka",
   "license": "MIT",
   "dependencies": {
-    "@genome-spy/core": "^1.0.0",
-    "@genome-spy/inspector": "^1.0.0",
-    "@genome-spy/react-component": "^1.0.0",
+    "@genome-spy/core": "^1.1.0",
+    "@genome-spy/inspector": "^1.1.0",
+    "@genome-spy/react-component": "^1.1.0",
     "lit": "^3.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
