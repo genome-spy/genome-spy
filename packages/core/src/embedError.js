@@ -66,19 +66,16 @@ export function createEmbedErrorHandler(embedContainer, options) {
                 error instanceof ViewError
                     ? `At "${error.view.getPathString()}": ${error}`
                     : String(error);
-            const showError = () => {
+            let handled;
+            try {
+                handled = options.onError?.(error, container);
+            } catch (reportingError) {
+                console.error(reportingError);
+            }
+            if (!handled) {
                 const style = createContainerStyle(container);
                 const display = createMessageBox(container, message);
                 errorDisplays.set(embedContainer, [style, display]);
-            };
-
-            try {
-                if (!options.onError?.(error, container)) {
-                    showError();
-                }
-            } catch (reportingError) {
-                console.error(reportingError);
-                showError();
             }
 
             throw error;

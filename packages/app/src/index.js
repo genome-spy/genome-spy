@@ -73,7 +73,6 @@ export async function embed(el, spec, options = {}) {
         applyOptions(genomeSpy, appEmbedOptions);
         errorHandler.complete(await app.launch());
     } catch (error) {
-        active = false;
         errorHandler.fail(error, element, [
             ...pluginDisposers.toReversed(),
             () => app?.finalize(),

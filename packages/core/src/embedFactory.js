@@ -63,7 +63,6 @@ export function createEmbed(GenomeSpy) {
             applyOptions(genomeSpy, options);
             errorHandler.complete(await genomeSpy.launch());
         } catch (error) {
-            active = false;
             errorHandler.fail(error, element, [() => genomeSpy?.destroy()]);
         }
 

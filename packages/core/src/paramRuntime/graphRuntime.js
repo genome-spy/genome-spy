@@ -560,7 +560,7 @@ export default class GraphRuntime {
      * 1. Nested transactions are supported via depth counting.
      * 2. Only the outermost transaction exit triggers scheduling.
      * 3. If `fn` throws, the error is rethrown after transaction depth is
-     *    restored; pending propagation is still scheduled from `finally`.
+     *    restored; a failed outermost transaction does not schedule propagation.
      * 4. The scheduled flush runs in a microtask (`queueMicrotask`) after the
      *    outermost transaction exits.
      * 5. This method does not force immediate synchronous propagation. Use
