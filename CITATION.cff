@@ -4,13 +4,60 @@
 cff-version: 1.2.0
 title: GenomeSpy
 message: >-
-  If you use this software in your research, please
-  cite it as below.
+    If you use GenomeSpy in your research, please cite the paper below.
 type: software
 authors:
-  - given-names: Kari
-    family-names: Lavikka
-    email: kari.lavikka@helsinki.fi
-    affiliation: University of Helsinki
-    orcid: 'https://orcid.org/0000-0002-4163-4945'
+    - given-names: Kari
+      family-names: Lavikka
+      email: kari@karilavikka.fi
+      orcid: "https://orcid.org/0000-0002-4163-4945"
 url: "https://genomespy.app/"
+preferred-citation:
+    type: article
+    title: "Deciphering cancer genomes with GenomeSpy: a grammar-based visualization toolkit"
+    authors:
+        - given-names: Kari
+          family-names: Lavikka
+          orcid: "https://orcid.org/0000-0002-4163-4945"
+        - given-names: Jaana
+          family-names: Oikkonen
+          orcid: "https://orcid.org/0000-0002-1063-2736"
+        - given-names: Yilin
+          family-names: Li
+          orcid: "https://orcid.org/0000-0002-3268-1969"
+        - given-names: Taru
+          family-names: Muranen
+          orcid: "https://orcid.org/0000-0002-5895-1808"
+        - given-names: Giulia
+          family-names: Micoli
+          orcid: "https://orcid.org/0009-0003-9541-8177"
+        - given-names: Giovanni
+          family-names: Marchi
+          orcid: "https://orcid.org/0000-0001-9513-1123"
+        - given-names: Alexandra
+          family-names: Lahtinen
+          orcid: "https://orcid.org/0000-0001-7179-2680"
+        - given-names: Kaisa
+          family-names: Huhtinen
+          orcid: "https://orcid.org/0000-0001-9685-5246"
+        - given-names: Rainer
+          family-names: Lehtonen
+          orcid: "https://orcid.org/0000-0002-8343-0318"
+        - given-names: Sakari
+          family-names: Hietanen
+          orcid: "https://orcid.org/0000-0003-4734-4743"
+        - given-names: Johanna
+          family-names: Hynninen
+          orcid: "https://orcid.org/0000-0002-0854-7225"
+        - given-names: Anni
+          family-names: Virtanen
+          orcid: "https://orcid.org/0000-0002-7467-8434"
+        - given-names: Sampsa
+          family-names: Hautaniemi
+          orcid: "https://orcid.org/0000-0002-7749-2694"
+    journal: GigaScience
+    volume: 13
+    start: giae040
+    year: 2024
+    month: 8
+    doi: "10.1093/gigascience/giae040"
