@@ -93,7 +93,10 @@ export default class App {
 
         this.#setupBookmarkDatabases();
 
-        render(
+        // Give each App its own Lit root so a failed embed can reuse the container.
+        const renderBefore = document.createComment("GenomeSpy App");
+        this.appContainer.appendChild(renderBefore);
+        const rootPart = render(
             html`<div class="genome-spy-app">
                 <genome-spy-toolbar .app=${this}></genome-spy-toolbar>
                 <div class="genome-spy-workspace">
@@ -107,8 +110,10 @@ export default class App {
                     }
                 </div>
             </div>`,
-            this.appContainer
+            this.appContainer,
+            { renderBefore }
         );
+        this.#registerDisposer(() => rootPart.setConnected(false));
 
         if (!this.isEmbedded()) {
             this.ui.attachAppShell(
@@ -373,6 +378,7 @@ export default class App {
         this.#disposers.add(disposer);
     }
 
+    /** @returns {Promise<boolean>} */
     async launch() {
         /**
          * Initiate async fetching of the remote bookmark entries.
@@ -396,7 +402,7 @@ export default class App {
 
         const result = await this.genomeSpy.launch();
         if (!result) {
-            return;
+            return false;
         }
         this.#showSelectorConstraintWarnings();
 
@@ -554,6 +560,7 @@ export default class App {
         }
 
         this.store.dispatch(lifecycleSlice.actions.setInitialized());
+        return true;
     }
 
     /**

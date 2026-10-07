@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
 
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { createEmbed } from "./embedFactory.js";
+import ViewError from "./view/viewError.js";
+
+afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
 
 describe("embed factory", () => {
     class MockGenomeSpy {
@@ -13,7 +19,7 @@ describe("embed factory", () => {
         constructor(element, spec) {
             this.element = element;
             this.spec = spec;
-            this.launch = vi.fn();
+            this.launch = vi.fn(async () => true);
             this.getParam = vi.fn();
             this.destroy = vi.fn();
             this.addEventListener = vi.fn();
@@ -33,8 +39,11 @@ describe("embed factory", () => {
         }
     }
 
-    /** @param {Record<string, unknown>} [overrides] */
-    async function embedMock(overrides = {}) {
+    /**
+     * @param {Record<string, unknown>} [overrides]
+     * @param {import("./types/embedApi.js").EmbedOptions} [options]
+     */
+    async function embedMock(overrides = {}, options = {}) {
         class ConfiguredGenomeSpy extends MockGenomeSpy {
             /**
              * @param {HTMLElement} element
@@ -47,7 +56,11 @@ describe("embed factory", () => {
         }
 
         const embed = createEmbed(/** @type {any} */ (ConfiguredGenomeSpy));
-        return embed(document.createElement("div"), /** @type {any} */ ({}));
+        return embed(
+            document.createElement("div"),
+            /** @type {any} */ ({}),
+            options
+        );
     }
 
     /** @returns {any} */
@@ -62,6 +75,89 @@ describe("embed factory", () => {
         };
         return viewRoot;
     }
+
+    test("rejects with the original constructor error and displays it", async () => {
+        const error = new ViewError(
+            "Invalid configuration",
+            /** @type {any} */ ({ getPathString: () => "root/plot" })
+        );
+        const constructor = vi.fn(function () {
+            throw error;
+        });
+        const embed = createEmbed(/** @type {any} */ (constructor));
+        const element = document.createElement("div");
+        const onError = vi.fn();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(
+            embed(element, /** @type {any} */ ({}), { onError })
+        ).rejects.toBe(error);
+        expect(element.querySelector(".message-box > div").textContent).toBe(
+            `At "root/plot": ${error}`
+        );
+        expect(element.querySelector("style").textContent).toContain(
+            ".message-box"
+        );
+        expect(onError).toHaveBeenCalledOnce();
+        expect(onError).toHaveBeenCalledWith(error, element);
+    });
+
+    test("preserves spec-loading diagnostics before construction", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => ({
+                ok: false,
+                status: 404,
+                statusText: "Not Found",
+            }))
+        );
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const constructor = vi.fn();
+        const embed = createEmbed(/** @type {any} */ (constructor));
+        const element = document.createElement("div");
+
+        await expect(embed(element, "missing.json")).rejects.toMatchObject({
+            message: expect.stringContaining(
+                "Could not load or parse configuration"
+            ),
+            cause: { kind: "http", message: "404 Not Found" },
+        });
+        expect(element.querySelector(".message-box").textContent).toContain(
+            "404 Not Found"
+        );
+        expect(constructor).not.toHaveBeenCalled();
+    });
+
+    test("preserves the setup error if cleanup and error reporting also fail", async () => {
+        const error = new Error("Initialization failed");
+        const cleanupError = new Error("Cleanup failed");
+        const reportingError = new Error("Error callback failed");
+        const destroy = vi.fn(() => {
+            throw cleanupError;
+        });
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
+
+        await expect(
+            embedMock(
+                {
+                    launch: vi.fn(async () => {
+                        throw error;
+                    }),
+                    destroy,
+                },
+                {
+                    onError: () => {
+                        throw reportingError;
+                    },
+                }
+            )
+        ).rejects.toBe(error);
+        expect(destroy).toHaveBeenCalledOnce();
+        expect(consoleError).toHaveBeenCalledWith(cleanupError);
+        expect(consoleError).toHaveBeenCalledWith(reportingError);
+    });
 
     test("forwards getParam from the GenomeSpy instance", async () => {
         const paramApi = { getValue: () => 1 };

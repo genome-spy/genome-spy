@@ -13,6 +13,7 @@ vi.mock("./rendering/renderingBackend.js", () => ({
 vi.mock("./styles/genome-spy.css.js", () => ({ default: "" }));
 
 import GenomeSpy from "./genomeSpyBase.js";
+import { createEmbed } from "./embedFactory.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
@@ -149,43 +150,109 @@ test("reports a backend error once and fails an in-progress launch", async () =>
     genomeSpy.destroy();
 });
 
-test("shows a post-launch backend error and ignores notifications after destroy", async () => {
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    /** @type {import("./rendering/renderingBackend.js").RenderingBackendOptions | undefined} */
-    let backendOptions;
-    const consoleError = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
-    mocks.createRenderingBackend.mockImplementation((options) => {
-        backendOptions = options;
-        return createMockBackend(options);
-    });
-    const genomeSpy = new GenomeSpy(
-        container,
-        {
+test.each([false, true])(
+    "rejects and cleans up a failed embed with custom error UI: %s",
+    async (handled) => {
+        const container = document.createElement("div");
+        document.body.appendChild(container);
+        const error = new Error("Layout initialization failed");
+        const finalize = vi.fn();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        mocks.createRenderingBackend.mockImplementationOnce((options) => {
+            const backend = createMockBackend(options);
+            backend.surface.finalize = finalize;
+            backend.createRenderCoordinator = () => ({
+                computeLayout: () => {
+                    throw error;
+                },
+                renderAll: () => {},
+            });
+            return backend;
+        });
+        const onError = vi.fn((reportedError, element) => {
+            // The host can render safely after failed setup resources are released.
+            expect(finalize).toHaveBeenCalledOnce();
+            expect(reportedError).toBe(error);
+            if (handled) element.textContent = "Host error display";
+            return handled;
+        });
+        const embed = createEmbed(GenomeSpy);
+        const spec = {
             width: 100,
             height: 100,
             data: { values: [{}] },
-            mark: "rect",
-        },
-        { renderer: "canvas" }
-    );
-    expect(await genomeSpy.launch()).toBe(true);
-    const runtimeError = new Error("device lost");
+            mark: /** @type {const} */ ("rect"),
+        };
 
-    backendOptions.onError(runtimeError);
-    backendOptions.onError(runtimeError);
+        await expect(
+            embed(container, spec, { renderer: "canvas", onError })
+        ).rejects.toBe(error);
+        expect(onError).toHaveBeenCalledOnce();
+        if (handled) {
+            expect(container.textContent).toBe("Host error display");
+            expect(container.querySelector("style")).toBeNull();
+        } else {
+            expect(
+                container.querySelector(".message-box > div").textContent
+            ).toBe(String(error));
+            expect(container.querySelectorAll("style")).toHaveLength(1);
+        }
+        expect(container.querySelector("canvas")).toBeNull();
 
-    expect(container.querySelectorAll(".message-box")).toHaveLength(1);
-    expect(consoleError).toHaveBeenCalledOnce();
+        mocks.createRenderingBackend.mockImplementation(createMockBackend);
+        const api = await embed(container, spec, { renderer: "canvas" });
+        expect(api.views.root().isAlive()).toBe(true);
+        expect(container.textContent).not.toContain(error.message);
+        expect(container.querySelectorAll("style")).toHaveLength(1);
+        api.finalize();
+    }
+);
 
-    genomeSpy.destroy();
-    backendOptions.onError(new Error("late loss"));
-    expect(container.childElementCount).toBe(0);
-    expect(consoleError).toHaveBeenCalledOnce();
-});
+test.each([false, true])(
+    "reports an embedded runtime error with custom error UI: %s",
+    async (handled) => {
+        const container = document.createElement("div");
+        document.body.appendChild(container);
+        /** @type {import("./rendering/renderingBackend.js").RenderingBackendOptions | undefined} */
+        let backendOptions;
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
+
+        mocks.createRenderingBackend.mockImplementation((options) => {
+            backendOptions = options;
+            return createMockBackend(options);
+        });
+        const onError = vi.fn(() => handled);
+        const api = await createEmbed(GenomeSpy)(
+            container,
+            {
+                width: 100,
+                height: 100,
+                data: { values: [{}] },
+                mark: "rect",
+            },
+            { renderer: "canvas", onError }
+        );
+        const runtimeError = new Error("device lost");
+
+        backendOptions.onError(runtimeError);
+        backendOptions.onError(runtimeError);
+
+        expect(container.querySelectorAll(".message-box")).toHaveLength(
+            handled ? 0 : 1
+        );
+        expect(onError).toHaveBeenCalledOnce();
+        expect(onError).toHaveBeenCalledWith(runtimeError, container);
+        expect(consoleError).toHaveBeenCalledOnce();
+
+        api.finalize();
+        backendOptions.onError(new Error("late loss"));
+        expect(container.childElementCount).toBe(0);
+        expect(consoleError).toHaveBeenCalledOnce();
+        expect(onError).toHaveBeenCalledOnce();
+    }
+);
 
 test("reports an early resize error once and fails launch", async () => {
     const container = document.createElement("div");
