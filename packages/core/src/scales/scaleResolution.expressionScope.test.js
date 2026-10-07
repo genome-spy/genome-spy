@@ -436,5 +436,8 @@ describe("scale resolution expression scope", () => {
         expect(yResolution.getScale().domain()[1]).toBeCloseTo(
             narrowDomainMax / 2
         );
+
+        // Teardown must not rebind Y after its referenced X scale is removed.
+        expect(() => view.disposeSubtree()).not.toThrow();
     });
 });

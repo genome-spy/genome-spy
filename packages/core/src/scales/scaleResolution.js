@@ -958,6 +958,7 @@ export default class ScaleResolution {
     }
 
     dispose() {
+        if (this.#disposed) return;
         this.#disposed = true;
         for (const disposer of this.#disposers) disposer();
         this.#disposers.clear();

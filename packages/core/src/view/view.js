@@ -1096,11 +1096,16 @@ export default class View {
     }
 
     /**
-     * Dispose this view and all descendants in post-order.
+     * Dispose owned scales before releasing views in post-order.
      */
     disposeSubtree() {
         /** @type {Visitor} */
-        const visitor = () => undefined;
+        const visitor = (view) => {
+            // Member removal must not reconfigure scales that are being torn down.
+            for (const resolution of Object.values(view.resolutions.scale)) {
+                resolution.dispose();
+            }
+        };
         visitor.postOrder = (view) => {
             view.dispose();
         };
