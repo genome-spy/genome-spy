@@ -20,6 +20,69 @@ const baseConfig = resolveBaseConfig({
 });
 
 describe("SVG link renderer", () => {
+    test.each([
+        [false, false],
+        [true, false],
+        [false, true],
+        [true, true],
+    ])(
+        "compensates thin strokes with variable size=%s and opacity=%s",
+        async (variableSize, variableOpacity) => {
+            const sizes = [-1, 0, 0.25, 0.5, 2];
+            const opacities = [0.2, 0.4, 0.6, 0.8, 1];
+            const { view } = await createHeadlessEngine({
+                data: {
+                    values: sizes.map((size, i) => ({
+                        size,
+                        alpha: opacities[i],
+                    })),
+                },
+                mark: { type: "link", linkShape: "dome" },
+                encoding: {
+                    color: { value: "black" },
+                    x: { value: 0.1 },
+                    x2: { value: 0.9 },
+                    y: { value: 0.8 },
+                    size: variableSize
+                        ? { field: "size", type: "quantitative", scale: null }
+                        : { value: 0.25 },
+                    opacity: variableOpacity
+                        ? { field: "alpha", type: "quantitative", scale: null }
+                        : { value: 0.4 },
+                },
+            });
+
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 200,
+                logicalHeight: 100,
+            });
+            const group = svg.querySelector('[data-mark-type="link"]');
+            const paths = Array.from(group.querySelectorAll("path"));
+            expect(paths).toHaveLength(sizes.length);
+            for (const [i, path] of paths.entries()) {
+                // Constant styles inherit from the group; variable styles live on paths.
+                const width = +(
+                    path.getAttribute("stroke-width") ??
+                    group.getAttribute("stroke-width")
+                );
+                const opacity = +(
+                    path.getAttribute("stroke-opacity") ??
+                    group.getAttribute("stroke-opacity")
+                );
+                const size = variableSize ? sizes[i] : 0.25;
+                const alpha = variableOpacity ? opacities[i] : 0.4;
+                expect(width).toBe(Math.max(size, 0.5));
+                expect(opacity).toBeCloseTo(
+                    alpha * Math.max(0, Math.min(size * 2, 1))
+                );
+            }
+            expect(group.hasAttribute("stroke-opacity")).toBe(
+                !variableSize && !variableOpacity
+            );
+        }
+    );
+
     test("exports all link shapes as native paths", async () => {
         const { view } = await createHeadlessEngine(
             /** @type {import("../../../spec/root.js").RootSpec} */ (

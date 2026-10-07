@@ -3,7 +3,7 @@ import {
     resolveLinkProperties,
     visitLinkInstances,
 } from "../../immediate/marks/link.js";
-import { toPaintString } from "../../immediate/markEncoding.js";
+import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
 import { formatSvgNumber } from "../svgNumber.js";
 import { resolveLinkFade } from "../../immediate/linkFading.js";
@@ -27,15 +27,25 @@ export function renderLinkSvg(baseMark, options) {
         properties.shape,
         options.secondOrderPass
     );
+    // SVG has no intrinsic DPR. Assume 2 so thin links remain smooth at native size.
+    const pixelSize = 0.5;
+    const constantOpacity = encoders.opacity.constant && encoders.size.constant;
+    const encodeOpacity = (/** @type {object} */ datum) =>
+        encodeNumber(encoders.opacity, datum) *
+        viewOpacity *
+        Math.max(
+            0,
+            Math.min(encodeNumber(encoders.size, datum) / pixelSize, 1)
+        );
+    if (constantOpacity) {
+        group.setAttribute("stroke-opacity", "" + encodeOpacity({}));
+    }
+
     const encodeStyles = createSvgAttributeEncoder(group, {
         stroke: { encoder: encoders.color, transform: toPaintString },
-        "stroke-opacity": {
-            encoder: encoders.opacity,
-            transform: (value) => +value * viewOpacity,
-        },
         "stroke-width": {
             encoder: encoders.size,
-            transform: (value) => formatSvgNumber(+value),
+            transform: (value) => formatSvgNumber(Math.max(+value, pixelSize)),
         },
     });
     group.setAttribute("fill", "none");
@@ -56,6 +66,9 @@ export function renderLinkSvg(baseMark, options) {
             }
             /** @type {Record<string, string | number>} */
             const styles = encodeStyles(datum);
+            if (!constantOpacity) {
+                styles["stroke-opacity"] = encodeOpacity(datum);
+            }
             const mask = arcFadingDistance
                 ? options.getLinkArcFadeMaskUrl({
                       p1: /** @type {[number, number]} */ (p1),

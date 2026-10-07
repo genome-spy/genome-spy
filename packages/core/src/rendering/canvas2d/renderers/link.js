@@ -19,6 +19,7 @@ export function renderLinkCanvas(baseMark, options) {
         baseMark
     );
     const context = options.context;
+    const pixelSize = 1 / options.devicePixelRatio;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -68,8 +69,10 @@ export function renderLinkCanvas(baseMark, options) {
             context.strokeStyle = stroke;
             strokeStyle = stroke;
         }
-        context.globalAlpha = opacity;
-        context.lineWidth = instance.strokeWidth;
+        // Preserve coverage while avoiding unstable subpixel strokes.
+        context.globalAlpha =
+            opacity * Math.min(instance.strokeWidth / pixelSize, 1);
+        context.lineWidth = Math.max(instance.strokeWidth, pixelSize);
         const [p1, p2, p3, p4] = instance.points;
         context.beginPath();
         context.moveTo(p1[0], p1[1]);

@@ -13,6 +13,29 @@ import SoftwarePickingRasterizer from "../picking/softwarePickingRasterizer.js";
 import SoftwarePickingViewRenderingContext from "../picking/softwarePickingViewRenderingContext.js";
 import Canvas2DViewRenderingContext from "../canvas2DViewRenderingContext.js";
 
+test.each([1, 2, 3])("compensates thin Canvas links at DPR %s", async (dpr) => {
+    const sizes = [0.25, 0.5, 2, 0, -1];
+    const { view } = await createHeadlessEngine({
+        data: { values: sizes.map((size) => ({ size })) },
+        mark: { type: "link", linkShape: "dome" },
+        encoding: {
+            color: { value: "black" },
+            opacity: { value: 0.4 },
+            x: { value: 0.1 },
+            x2: { value: 0.9 },
+            y: { value: 0.8 },
+            size: { field: "size", type: "quantitative", scale: null },
+        },
+    });
+
+    const { strokes } = renderLinkOutputs(view, dpr);
+    expect(strokes).toHaveLength(3);
+    for (const [i, stroke] of strokes.entries()) {
+        expect(stroke.width).toBeCloseTo(Math.max(sizes[i], 1 / dpr));
+        expect(stroke.opacity).toBeCloseTo(0.4 * Math.min(sizes[i] * dpr, 1));
+    }
+});
+
 // Use nonzero baselines in both directions so the apex cannot masquerade as an endpoint.
 test.each([
     ["dome", "vertical", 0.9, 0.2, [0, 55, 0, 105], [50, 10]],
@@ -107,9 +130,14 @@ test.each([
     }
 );
 
-/** @param {import("../../../view/view.js").default} view */
-function renderLinkOutputs(view) {
+/**
+ * @param {import("../../../view/view.js").default} view
+ * @param {number} [devicePixelRatio]
+ */
+function renderLinkOutputs(view, devicePixelRatio = 1) {
     const addColorStop = vi.fn();
+    /** @type {{width: number, opacity: number}[]} */
+    const strokes = [];
     const context = /** @type {any} */ ({
         canvas: { width: 100, height: 100 },
         save: vi.fn(),
@@ -123,7 +151,12 @@ function renderLinkOutputs(view) {
         beginPath: vi.fn(),
         moveTo: vi.fn(),
         bezierCurveTo: vi.fn(),
-        stroke: vi.fn(),
+        stroke: vi.fn(() => {
+            strokes.push({
+                width: context.lineWidth,
+                opacity: context.globalAlpha,
+            });
+        }),
     });
     view.arrange(
         new Canvas2DViewRenderingContext(
@@ -132,7 +165,7 @@ function renderLinkOutputs(view) {
                 context,
                 width: 100,
                 height: 100,
-                devicePixelRatio: 1,
+                devicePixelRatio,
                 background: null,
                 paint: true,
             }
@@ -157,7 +190,7 @@ function renderLinkOutputs(view) {
         Rectangle.create(0, 0, 100, 100),
         { firstFacet: true }
     );
-    return { context, svg, buffer, stops: addColorStop.mock.calls };
+    return { context, svg, buffer, stops: addColorStop.mock.calls, strokes };
 }
 
 // The deprecated spelling is only an alias; explicit new values take precedence.
