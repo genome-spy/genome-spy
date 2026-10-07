@@ -314,26 +314,102 @@ describe("GraphRuntime", () => {
     });
 
     test("failed replay rejects waiters, stops observers, and permits retry", async () => {
-        const runtime = new GraphRuntime();
+        const onError = vi.fn();
+        const runtime = new GraphRuntime({ onError });
         const input = runtime.createWritable("test", "input", "base", 1);
+        const error = new Error("bad rows");
         /** @type {(number | number[])[]} */
         const seen = [];
         const replay = () => {
-            if (input.get() === 2) throw new Error("bad rows");
+            if (input.get() === 2) throw error;
         };
         input.subscribe(() => runtime.requestUpdate(replay));
         runtime.effect("test", [input], () => seen.push(input.get()));
         input.set(2);
-        const failed = expect(runtime.whenPropagated()).rejects.toThrow(
-            "bad rows"
-        );
-        expect(() => runtime.flushNow()).toThrow("bad rows");
+        const failed = expect(runtime.whenPropagated()).rejects.toBe(error);
+        expect(() => runtime.flushNow()).toThrow(error);
         await failed;
+        expect(onError).toHaveBeenCalledExactlyOnceWith(error);
         expect(seen).toEqual([]);
         input.set(3);
         runtime.flushNow();
         expect(seen).toEqual([3]);
     });
+
+    test("reports scheduled propagation failures without swallowing them", () => {
+        /** @type {() => void} */
+        let microtask;
+        const scheduled = vi
+            .spyOn(globalThis, "queueMicrotask")
+            .mockImplementation((callback) => {
+                microtask = callback;
+            });
+        try {
+            const error = new Error("scheduled failure");
+            const onError = vi.fn();
+            const runtime = new GraphRuntime({ onError });
+            runtime.requestUpdate(() => {
+                throw error;
+            });
+
+            expect(() => microtask()).toThrow(error);
+            expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+        } finally {
+            scheduled.mockRestore();
+        }
+    });
+
+    test.each([false, true])(
+        "notification failure stops pending work (transaction: %s)",
+        async (transaction) => {
+            const error = new Error("notification failed");
+            const reportingError = new Error("reporting failed");
+            const onError = vi.fn(() => {
+                throw reportingError;
+            });
+            const consoleError = vi
+                .spyOn(console, "error")
+                .mockImplementation(() => {});
+            try {
+                const runtime = new GraphRuntime({ onError });
+                const source = runtime.createWritable(
+                    "test",
+                    "source",
+                    "base",
+                    0
+                );
+                source.propagation = "sync";
+                runtime.computed("test", "derived", [source], () =>
+                    source.get()
+                );
+                const observer = vi.fn();
+                runtime.effect("test", [source], observer);
+                const update = vi.fn();
+                runtime.requestUpdate(update);
+                const failed = expect(runtime.whenPropagated()).rejects.toBe(
+                    error
+                );
+                source.subscribe(() => {
+                    throw error;
+                });
+
+                const set = () => source.set(1);
+                expect(() =>
+                    transaction ? runtime.runInTransaction(set) : set()
+                ).toThrow(error);
+                await failed;
+                await Promise.resolve();
+                expect(update).not.toHaveBeenCalled();
+                expect(observer).not.toHaveBeenCalled();
+                expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+                expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+                    reportingError
+                );
+            } finally {
+                consoleError.mockRestore();
+            }
+        }
+    );
 
     test("non-settling feedback fails instead of hanging the flush", () => {
         const runtime = new GraphRuntime();

@@ -54,6 +54,9 @@ export default interface ViewContext {
     genomeStore?: GenomeStore;
     textMetrics: TextMetricsProvider;
 
+    /** Reports runtime errors without suppressing propagation failures. */
+    reportError?: (error: unknown) => void;
+
     requestLayoutReflow: () => void;
 
     /**

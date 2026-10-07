@@ -10,15 +10,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [1.0.0](https://github.com/genome-spy/genome-spy/compare/v0.90.0...v1.0.0) (2026-10-01)
+## [1.0.0](https://github.com/genome-spy/genome-spy/compare/v0.90.0...v1.0.0) (2026-10-01)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
+## [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
+## [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -26,23 +26,23 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
+## [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
+## [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+## [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
+## [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
+## [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -50,19 +50,19 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
+## [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
+## [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
+## [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
+## [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -70,46 +70,46 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
+## [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
+## [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+## [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
+## [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
+## [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
+## [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
 
 ### Bug Fixes
 
 - add react component regression coverage ([44c6602](https://github.com/genome-spy/genome-spy/commit/44c6602aed8b78c558803e2a51b1b65d8753abc2)) by @tuner
 - **react-component:** update react test setup ([4a8c425](https://github.com/genome-spy/genome-spy/commit/4a8c42589c766501a9203c5428a457b5613a76da)) by @tuner
 
-# [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
+## [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
+## [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
+## [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
+## [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -117,15 +117,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
+## [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
+## [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
+## [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -133,19 +133,19 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.66.0](https://github.com/genome-spy/genome-spy/compare/v0.65.0...v0.66.0) (2026-01-19)
+## [0.66.0](https://github.com/genome-spy/genome-spy/compare/v0.65.0...v0.66.0) (2026-01-19)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
+## [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
+## [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
+## [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -157,7 +157,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
+## [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -165,7 +165,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
+## [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -173,11 +173,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
+## [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
+## [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -185,11 +185,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
+## [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
+## [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -197,15 +197,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.56.0](https://github.com/genome-spy/genome-spy/compare/v0.55.0...v0.56.0) (2024-08-20)
+## [0.56.0](https://github.com/genome-spy/genome-spy/compare/v0.55.0...v0.56.0) (2024-08-20)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
+## [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
+## [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
@@ -213,7 +213,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/react-component
 
-# [0.53.0](https://github.com/genome-spy/genome-spy/compare/v0.52.0...v0.53.0) (2024-05-16)
+## [0.53.0](https://github.com/genome-spy/genome-spy/compare/v0.52.0...v0.53.0) (2024-05-16)
 
 ### Bug Fixes
 

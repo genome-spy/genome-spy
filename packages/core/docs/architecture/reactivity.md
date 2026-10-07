@@ -87,7 +87,12 @@ callbacks can observe pending output; consumers needing the updated rows use a
 propagation barrier or a graph effect. Coordinate coverage and asynchronous source
 completion remain governed by data-readiness APIs.
 
-A failed flush rejects current propagation waiters and stops automatic flushing.
+A failed flush or synchronous notification reports the original error through
+the shared runtime's optional reporter, rejects current propagation waiters,
+and stops automatic flushing. Reporting does not suppress the exception, including
+when propagation runs from a microtask or debounce timer. Core supplies its existing
+error reporter to the root runtime; child scopes share it. Standalone runtimes
+can omit the reporter.
 Pending computed/effect invalidations remain, while queued publication jobs are dropped. Caller-owned cleanup hooks discard their
 pending commands; cleanup must not retry or publish during failure handling.
 There is no row rollback: callers must resubmit failed publication before explicitly

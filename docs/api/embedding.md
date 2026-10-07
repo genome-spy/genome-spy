@@ -66,6 +66,17 @@ The `embed` function returns a promise that resolves into an object that
 provides the current public API. The API is documented in the [interface
 definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/types/embedApi.d.ts).
 
+If loading or initializing the visualization fails, the promise rejects with the
+original error and any initialized resources are released. The error is also
+shown in the container. An `onError` callback can provide its own error display;
+return `true` to suppress the default display. This applies to both Core and App
+embeds.
+
+Errors during reactive updates, including debounced updates, also reach
+`onError` or the default error display. Reporting preserves the original
+exception and rejects pending propagation barriers. Continued use of a failed
+instance is not guaranteed; finalize it and embed again to start fresh.
+
 For practical examples of using the API, explore the
 [live embed examples](https://genomespy.app/docs/api/embed-examples/) or browse
 their source in the

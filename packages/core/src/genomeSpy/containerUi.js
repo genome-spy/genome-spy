@@ -7,9 +7,7 @@ import Tooltip from "../utils/ui/tooltip.js";
 export function createContainerUi(container) {
     container.classList.add("genome-spy");
 
-    const styleElement = document.createElement("style");
-    styleElement.innerHTML = css;
-    container.appendChild(styleElement);
+    const styleElement = createContainerStyle(container);
 
     const canvasWrapper = element("div", {
         class: "canvas-wrapper",
@@ -32,6 +30,14 @@ export function createContainerUi(container) {
     };
 }
 
+/** @param {HTMLElement} container */
+export function createContainerStyle(container) {
+    const styleElement = document.createElement("style");
+    styleElement.textContent = css;
+    container.appendChild(styleElement);
+    return styleElement;
+}
+
 /**
  * @param {HTMLElement} container
  * @param {string} message
@@ -44,6 +50,7 @@ export function createMessageBox(container, message) {
     messageText.textContent = message;
     messageBox.appendChild(messageText);
     container.appendChild(messageBox);
+    return messageBox;
 }
 
 /**

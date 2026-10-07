@@ -28,11 +28,18 @@ import { bindExpression } from "./expressionRef.js";
 export default class ParamRuntime {
     #lifecycleRegistry = new LifecycleRegistry();
 
-    #graphRuntime = new GraphRuntime({
-        lifecycleRegistry: this.#lifecycleRegistry,
-    });
+    /** @type {GraphRuntime} */
+    #graphRuntime;
 
     #paramStore = new ParamStore();
+
+    /** @param {{ onError?: (error: unknown) => void }} [options] */
+    constructor(options = {}) {
+        this.#graphRuntime = new GraphRuntime({
+            lifecycleRegistry: this.#lifecycleRegistry,
+            onError: options.onError,
+        });
+    }
 
     /**
      * Creates a new parameter scope.
