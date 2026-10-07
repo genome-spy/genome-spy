@@ -32,6 +32,12 @@ const fallbackInteractionState = createInteractionState();
 
 const MIN_LINK_ENDPOINT_SNAP_DISTANCE = 6;
 
+/**
+ * With `lockAxis`, a mouse drag commits to its dominant axis after moving
+ * this many pixels.
+ */
+export const AXIS_LOCK_THRESHOLD = 5;
+
 export function markZoomActivity() {
     lastTimestamp = performance.now();
 }
@@ -61,9 +67,19 @@ function recordTimeStamp(fn) {
  * @param {(zoomEvent: ZoomEvent) => boolean | void} handleZoom
  * @param {import("../types/viewContext.js").Hover} [hover]
  * @param {import("../utils/animator.js").default} [animator]
+ * @param {{ lockAxis?: boolean }} [options] `lockAxis`: a mouse drag commits
+ *   to its dominant axis once it has moved `AXIS_LOCK_THRESHOLD` pixels, and
+ *   the other axis is ignored for the rest of the drag and its inertia.
  * @returns {(() => boolean) | undefined}
  */
-export function interactionToZoom(event, coords, handleZoom, hover, animator) {
+export function interactionToZoom(
+    event,
+    coords,
+    handleZoom,
+    hover,
+    animator,
+    { lockAxis = false } = {}
+) {
     handleZoom = recordTimeStamp(handleZoom);
     const interactionState = getInteractionState(animator);
 
@@ -150,16 +166,44 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         const mouseEvent = event.mouseEvent;
         mouseEvent.preventDefault();
         let prevPoint = Point.fromMouseEvent(mouseEvent);
+        const startPoint = prevPoint;
+
+        /** @type {"x" | "y" | undefined} */
+        let lockedAxis;
+
+        // Drops the movement on the unlocked axis, also during inertia. Both
+        // callers pass a fresh ZoomEvent, so it can be modified in place.
+        const handleDragZoom = (/** @type {ZoomEvent} */ zoomEvent) => {
+            if (lockedAxis === "x") {
+                zoomEvent.yDelta = 0;
+            } else if (lockedAxis === "y") {
+                zoomEvent.xDelta = 0;
+            }
+            return handleZoom(zoomEvent);
+        };
 
         const onMousemove = /** @param {MouseEvent} moveEvent */ (
             moveEvent
         ) => {
             const point = Point.fromMouseEvent(moveEvent);
+
+            if (lockAxis && !lockedAxis) {
+                const total = point.subtract(startPoint);
+                if (
+                    Math.max(Math.abs(total.x), Math.abs(total.y)) <
+                    AXIS_LOCK_THRESHOLD
+                ) {
+                    // Not committed yet. prevPoint stays put, so no movement is lost.
+                    return;
+                }
+                lockedAxis = Math.abs(total.x) >= Math.abs(total.y) ? "x" : "y";
+            }
+
             eventBuffer.push({ point, timestamp: performance.now() });
 
             const delta = point.subtract(prevPoint);
 
-            handleZoom({
+            handleDragZoom({
                 x: prevPoint.x,
                 y: prevPoint.y,
                 xDelta: delta.x,
@@ -178,7 +222,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
                     interactionState,
                     eventBuffer,
                     prevPoint,
-                    handleZoom,
+                    handleDragZoom,
                     animator,
                     { minSampleCount: 5 }
                 ),

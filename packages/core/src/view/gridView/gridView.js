@@ -1885,6 +1885,17 @@ export default class GridView extends ContainerView {
                         gapZoomTarget.coords,
                         gapZoomTarget.zoomableResolutions
                     );
+                } else if (
+                    event.type === "mousedown" &&
+                    (this.#findScrollbar("vertical") ||
+                        this.#findScrollbar("horizontal"))
+                ) {
+                    // No zoomable shared scale in the gap, but an enclosing
+                    // viewport can still be scrolled by dragging from here.
+                    this.#propagateZoomInteraction(event, Rectangle.ZERO, {
+                        x: new Set(),
+                        y: new Set(),
+                    });
                 }
                 return;
             }
@@ -1898,7 +1909,8 @@ export default class GridView extends ContainerView {
                           this.#propagateZoomInteraction(
                               event,
                               pointedChild.coords,
-                              getZoomableResolutions(pointedView)
+                              getZoomableResolutions(pointedView),
+                              pointedChild
                           )
                     : undefined
             );
@@ -1983,25 +1995,89 @@ export default class GridView extends ContainerView {
      * @param {import("../../utils/interaction.js").default} event
      * @param {Rectangle} coords
      * @param {ReturnType<typeof getZoomableResolutions>} zoomableResolutions
+     * @param {GridChild} [pointedChild] the child under the pointer, if any
      */
-    #propagateZoomInteraction(event, coords, zoomableResolutions) {
+    #propagateZoomInteraction(
+        event,
+        coords,
+        zoomableResolutions,
+        pointedChild
+    ) {
         event.target ??= this;
+
+        // A mouse drag on an axis without a zoomable scale scrolls the
+        // innermost scrollable viewport containing the pointer in that
+        // direction. Zoomable scales keep priority: their viewport can still
+        // be scrolled with the scrollbar. Wheel and touch input are unchanged.
+        /** @type {{ x?: import("./scrollbar.js").default, y?: import("./scrollbar.js").default }} */
+        const dragScrollbars =
+            event.type === "mousedown"
+                ? {
+                      x: zoomableResolutions.x.size
+                          ? undefined
+                          : this.#findScrollbar("horizontal", pointedChild),
+                      y: zoomableResolutions.y.size
+                          ? undefined
+                          : this.#findScrollbar("vertical", pointedChild),
+                  }
+                : {};
+
         const cancelPan = interactionToZoom(
             event,
             coords,
-            (zoomEvent) =>
-                zoomResolutions(
+            (zoomEvent) => {
+                const zoomed = zoomResolutions(
                     coords,
                     zoomEvent,
                     zoomableResolutions,
                     this.context.animator
-                ),
+                );
+                const scrolledX = scrollBy(dragScrollbars.x, zoomEvent.xDelta);
+                const scrolledY = scrollBy(dragScrollbars.y, zoomEvent.yDelta);
+                if (scrolledX || scrolledY) {
+                    this.context.animator.requestRender();
+                }
+                return zoomed || scrolledX || scrolledY;
+            },
             this.context.getCurrentHover(),
-            this.context.animator
+            this.context.animator,
+            // When dragging can scroll, lock to one axis so that a vertical
+            // drag doesn't also pan horizontally (and vice versa).
+            { lockAxis: Boolean(dragScrollbars.x || dragScrollbars.y) }
         );
         if (cancelPan) {
             this.#cancelActivePan();
             this.#cancelActivePan = cancelPan;
+        }
+    }
+
+    /**
+     * Finds the innermost scrollbar in the given direction whose viewport
+     * contains the pointed child (or this view) and actually overflows.
+     * Viewports whose content fits are skipped, so an enclosing viewport can
+     * receive the drag.
+     *
+     * @param {import("./scrollbar.js").ScrollDirection} direction
+     * @param {GridChild} [pointedChild]
+     * @returns {import("./scrollbar.js").default | undefined}
+     */
+    #findScrollbar(direction, pointedChild) {
+        /** @type {View} */
+        let view = pointedChild?.view ?? this;
+        for (
+            let parent = view.layoutParent;
+            parent;
+            parent = parent.layoutParent
+        ) {
+            if (parent instanceof GridView) {
+                const scrollbar = parent.#children.find(
+                    (gridChild) => gridChild.view === view
+                )?.scrollbars[direction];
+                if (scrollbar?.canScroll()) {
+                    return scrollbar;
+                }
+            }
+            view = parent;
         }
     }
 
@@ -2068,6 +2144,27 @@ export function getLegendLayoutHost(owner, channel) {
     }
 
     return owner instanceof GridView ? owner : undefined;
+}
+
+/**
+ * Scrolls by a drag movement: dragging down (positive delta) pulls the content
+ * down, revealing what is above, like panning. Clamped to the scrollable range.
+ *
+ * @param {import("./scrollbar.js").default | undefined} scrollbar
+ * @param {number} delta drag movement in pixels
+ * @returns {boolean} whether the scroll position changed
+ */
+function scrollBy(scrollbar, delta) {
+    if (!scrollbar || !delta) {
+        return false;
+    }
+    const previous = scrollbar.viewportOffset;
+    // Cancel a scrollbar-thumb animation still in progress: its queued frames
+    // would otherwise overwrite this position.
+    scrollbar.interpolateViewportOffset.stop();
+    // Keeps the thumb-drag smoother in sync with the new position
+    scrollbar.setViewportOffset(previous - delta, { syncSmoother: true });
+    return scrollbar.viewportOffset !== previous;
 }
 
 /**
