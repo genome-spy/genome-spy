@@ -86,7 +86,7 @@ export default class GenomeSpy {
 
     #destroyed = false;
     #launchPending = false;
-    /** @type {Error | undefined} */
+    /** @type {unknown} */
     #launchRuntimeError;
     /** @type {Set<unknown>} */
     #reportedErrors = new Set();
@@ -445,6 +445,7 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             textMetrics: this.#renderingBackend.textMetrics,
+            reportError: this.#reportRuntimeError.bind(this),
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
@@ -643,7 +644,7 @@ export default class GenomeSpy {
         }
     }
 
-    /** @param {Error} error */
+    /** @param {unknown} error */
     #reportRuntimeError(error) {
         if (this.#destroyed) {
             return;
@@ -673,7 +674,12 @@ export default class GenomeSpy {
             reason.view ? `At "${reason.view.getPathString()}": ` : ""
         }${reason.toString()}`;
         console.error(reason.stack);
-        const handled = this.options.onError?.(reason, this.container);
+        let handled;
+        try {
+            handled = this.options.onError?.(reason, this.container);
+        } catch (reportingError) {
+            console.error(reportingError);
+        }
         if (!handled) {
             createMessageBox(this.container, message);
         }

@@ -104,7 +104,7 @@ export interface EmbedOptions {
     theme?: GenomeSpyConfig;
 
     /**
-     * Optional hook for handling launch errors. Return true to suppress default UI.
+     * Optional hook for handling launch and runtime errors. Return true to suppress default UI.
      */
     onError?: (error: unknown, container: HTMLElement) => boolean | void;
 }

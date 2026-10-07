@@ -139,7 +139,7 @@ export default class ViewParamRuntime {
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
      * @param {import("../utils/animator.js").default} [animator]
-     * @param {{ settleTemporalUpdatesImmediately?: boolean }} [options]
+     * @param {{ settleTemporalUpdatesImmediately?: boolean, onError?: (error: unknown) => void }} [options]
      */
     constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
@@ -154,7 +154,7 @@ export default class ViewParamRuntime {
             this.#runtime = parent.#runtime;
             this.#scopeId = this.#runtime.createScope(parent.#scopeId);
         } else {
-            this.#runtime = new ParamRuntime();
+            this.#runtime = new ParamRuntime({ onError: options.onError });
             this.#scopeId = this.#runtime.createScope();
         }
     }

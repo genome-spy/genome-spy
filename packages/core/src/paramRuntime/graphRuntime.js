@@ -215,6 +215,9 @@ export default class GraphRuntime {
     /** @type {(ownerId: string, disposer: () => void) => () => void} */
     #bindDisposer;
 
+    /** @type {((error: unknown) => void) | undefined} */
+    #onError;
+
     /**
      * Creates a graph runtime.
      *
@@ -222,9 +225,11 @@ export default class GraphRuntime {
      * @param {import("./lifecycleRegistry.js").default} [options.lifecycleRegistry]
      *      Optional lifecycle owner registry. When provided, all created nodes
      *      are bound to owners and disposed automatically on owner disposal.
+     * @param {(error: unknown) => void} [options.onError] Reports failures without suppressing them.
      */
     constructor(options = {}) {
         this.#bindDisposer = createDisposerBinder(options.lifecycleRegistry);
+        this.#onError = options.onError;
     }
 
     /**
@@ -567,12 +572,17 @@ export default class GraphRuntime {
      */
     runInTransaction(fn) {
         this.#transactionDepth += 1;
+        let completed = false;
         try {
-            return fn();
+            const result = fn();
+            completed = true;
+            return result;
         } finally {
             this.#transactionDepth -= 1;
             if (this.#transactionDepth === 0) {
-                if (this.#flushAfterTransaction) {
+                if (!completed) {
+                    this.#flushAfterTransaction = false;
+                } else if (this.#flushAfterTransaction) {
                     this.#flushAfterTransaction = false;
                     this.flushNow();
                 } else {
@@ -691,17 +701,7 @@ export default class GraphRuntime {
                 // before allowing the next observer to run.
             }
         } catch (error) {
-            // Keep invalidations: a retry may publish an equal value and must
-            // still repair caches. Do not automatically retry streaming work.
-            const abandoned = Array.from(this.#updates.values());
-            this.#updates.clear();
-            // Cleanup hooks may only discard work, never schedule a retry.
-            activeCleanup?.(error);
-            for (const job of abandoned) job.onError?.(error);
-            for (const waiter of this.#propagatedWaiters) {
-                waiter.reject(error);
-            }
-            this.#propagatedWaiters.clear();
+            this.#abortPropagation(error, activeCleanup);
             throw error;
         } finally {
             this.#runCounts.clear();
@@ -733,12 +733,44 @@ export default class GraphRuntime {
         this.#notificationDepth++;
         try {
             notify(listeners);
+        } catch (error) {
+            // Do not flush partially notified work from the finally block.
+            this.#syncRequested = false;
+            if (!this.#flushing && this.#notificationDepth === 1) {
+                this.#abortPropagation(error);
+            }
+            throw error;
         } finally {
             this.#notificationDepth--;
             if (!this.#notificationDepth && this.#syncRequested) {
                 this.#syncRequested = false;
                 this.flushNow();
             }
+        }
+    }
+
+    /**
+     * @param {unknown} error
+     * @param {(error: unknown) => void} [activeCleanup]
+     */
+    #abortPropagation(error, activeCleanup) {
+        this.#scheduled = false;
+        // Keep invalidations, but do not automatically retry streaming work.
+        const abandoned = Array.from(this.#updates.values());
+        this.#updates.clear();
+        // Cleanup hooks may only discard work, never schedule a retry.
+        activeCleanup?.(error);
+        for (const job of abandoned) job.onError?.(error);
+        for (const waiter of this.#propagatedWaiters) {
+            waiter.reject(error);
+        }
+        this.#propagatedWaiters.clear();
+
+        try {
+            this.#onError?.(error);
+        } catch (reportingError) {
+            // Reporting must not replace the propagation failure.
+            console.error(reportingError);
         }
     }
 

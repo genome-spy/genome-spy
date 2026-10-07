@@ -247,7 +247,10 @@ export default class View {
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
             context.animator,
-            { settleTemporalUpdatesImmediately: true }
+            {
+                settleTemporalUpdatesImmediately: true,
+                onError: context.reportError,
+            }
         );
         this.paramRuntime.setSelectionSource(this);
 

@@ -72,6 +72,11 @@ shown in the container. An `onError` callback can provide its own error display;
 return `true` to suppress the default display. This applies to both Core and App
 embeds.
 
+Errors during reactive updates, including debounced updates, also reach
+`onError` or the default error display. Reporting preserves the original
+exception and rejects pending propagation barriers. Continued use of a failed
+instance is not guaranteed; finalize it and embed again to start fresh.
+
 For practical examples of using the API, explore the
 [live embed examples](https://genomespy.app/docs/api/embed-examples/) or browse
 their source in the
