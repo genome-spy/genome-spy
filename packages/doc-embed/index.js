@@ -61,6 +61,13 @@ function resolveSitePath(sitePath) {
  */
 async function embedToDoc(container, conf, baseUrl, runtime, prepareAppStyles) {
     const examplesBaseUrl = resolveSitePath("example-specs/");
+    // Core displays reported errors before rejecting; wrapper errors need fallback UI.
+    /** @type {Set<unknown>} */
+    const reportedErrors = new Set();
+    /** @param {unknown} error */
+    const onError = (error) => {
+        reportedErrors.add(error);
+    };
 
     try {
         conf.baseUrl =
@@ -68,17 +75,23 @@ async function embedToDoc(container, conf, baseUrl, runtime, prepareAppStyles) {
             (baseUrl ? resolveSitePath(baseUrl) : examplesBaseUrl);
 
         if (runtime === "core") {
-            return await embedCore(container, conf);
+            return await embedCore(container, conf, { onError });
         } else if (runtime === "app") {
             const { appStyles, embed } = await import("./appEmbedRuntime.js");
             await prepareAppStyles(appStyles);
-            return await embed(container, conf, { embedMode: "embedded" });
+            return await embed(container, conf, {
+                embedMode: "embedded",
+                onError,
+            });
         } else {
             throw new Error(`Unknown GenomeSpy embed runtime: ${runtime}`);
         }
     } catch (e) {
+        if (reportedErrors.has(e)) {
+            return;
+        }
         const pre = document.createElement("pre");
-        pre.textContent = e.toString();
+        pre.textContent = String(e);
         container.appendChild(pre);
     }
 }
