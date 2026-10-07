@@ -124,7 +124,10 @@ export default class GenomeSpy {
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
 
-        this.animator = new Animator(() => this.renderAll());
+        this.animator = new Animator(
+            () => this.renderAll(),
+            (error) => this.#reportRuntimeError(error)
+        );
 
         // Use a stable callback identity so repeated layout requests coalesce
         // in Animator's transition queue before the next render.
@@ -272,12 +275,16 @@ export default class GenomeSpy {
         );
 
         const resizeCallback = () => {
-            this.#surface.invalidateSize();
-            this.dpr = this.#surface.getDevicePixelRatio();
-            dprSetter(this.dpr);
-            this.computeLayout();
-            // Render immediately, without RAF
-            this.renderAll();
+            try {
+                this.#surface.invalidateSize();
+                this.dpr = this.#surface.getDevicePixelRatio();
+                dprSetter(this.dpr);
+                this.computeLayout();
+                // Render immediately, without RAF
+                this.renderAll();
+            } catch (error) {
+                this.#reportRuntimeError(error);
+            }
         };
 
         this.#onCanvasResize = resizeCallback;

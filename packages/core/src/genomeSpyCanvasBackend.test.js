@@ -27,6 +27,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
 });
 
@@ -185,6 +186,106 @@ test("shows a post-launch backend error and ignores notifications after destroy"
     expect(container.childElementCount).toBe(0);
     expect(consoleError).toHaveBeenCalledOnce();
 });
+
+test("reports an early resize error once and fails launch", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const runtimeError = new Error("Invalid color range");
+    const onError = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    /** @type {() => void} */
+    let resize;
+    vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            /** @param {() => void} callback */
+            constructor(callback) {
+                resize = callback;
+            }
+            observe() {}
+            disconnect() {}
+        }
+    );
+
+    // Keep startup pending so the initial resize runs before launch's final layout.
+    /** @type {() => void} */
+    let finishFonts;
+    const fontsReady = new Promise((resolve) => {
+        finishFonts = () => resolve(undefined);
+    });
+    const waitUntilReady = vi.fn(() => fontsReady);
+    mocks.createRenderingBackend.mockImplementation((options) => {
+        const backend = createMockBackend(options);
+        backend.textMetrics.waitUntilReady = waitUntilReady;
+        backend.createRenderCoordinator = () => ({
+            // Failed WebGL marks are skipped by subsequent layout passes.
+            computeLayout: vi.fn().mockImplementationOnce(() => {
+                throw runtimeError;
+            }),
+            renderAll: vi.fn(),
+        });
+        return backend;
+    });
+    const genomeSpy = new GenomeSpy(
+        container,
+        { data: { values: [{}] }, mark: "rect" },
+        { renderer: "canvas", onError }
+    );
+
+    const launch = genomeSpy.launch();
+    await vi.waitFor(() => expect(waitUntilReady).toHaveBeenCalled());
+    expect(() => resize()).not.toThrow();
+    expect(container.querySelector(".message-box").textContent).toContain(
+        runtimeError.message
+    );
+
+    finishFonts();
+    expect(await launch).toBe(false);
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError).toHaveBeenCalledWith(runtimeError, container);
+
+    genomeSpy.destroy();
+});
+
+test.each(/** @type {const} */ (["computeLayout", "renderAll"]))(
+    "reports scheduled %s errors while preserving synchronous throws",
+    async (operation) => {
+        const container = document.createElement("div");
+        document.body.appendChild(container);
+        const runtimeError = new Error("Scheduled rendering failed");
+        const onError = vi.fn();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const coordinator = { computeLayout: vi.fn(), renderAll: vi.fn() };
+        mocks.createRenderingBackend.mockImplementation((options) => ({
+            ...createMockBackend(options),
+            createRenderCoordinator: () => coordinator,
+        }));
+        const genomeSpy = new GenomeSpy(
+            container,
+            { width: 100, height: 100, data: { values: [{}] }, mark: "rect" },
+            { renderer: "canvas", onError }
+        );
+        expect(await genomeSpy.launch()).toBe(true);
+
+        coordinator[operation].mockImplementation(() => {
+            throw runtimeError;
+        });
+        expect(() => genomeSpy[operation]()).toThrow(runtimeError);
+        expect(onError).not.toHaveBeenCalled();
+
+        genomeSpy.requestLayoutReflow();
+        const frame = vi.mocked(window.requestAnimationFrame).mock.calls[0][0];
+        expect(() => frame(1)).not.toThrow();
+        expect(onError).toHaveBeenCalledOnce();
+        expect(onError).toHaveBeenCalledWith(runtimeError, container);
+        expect(container.querySelector(".message-box").textContent).toContain(
+            runtimeError.message
+        );
+
+        genomeSpy.destroy();
+    }
+);
 
 test("disposes a backend that finishes loading after destroy", async () => {
     const container = document.createElement("div");
