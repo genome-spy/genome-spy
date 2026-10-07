@@ -128,6 +128,10 @@ file-pane {
     > .vis-title {
         flex-grow: 1;
         flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
         font-style: italic;
         font-size: 85%;
     }
@@ -198,6 +202,11 @@ file-pane {
     }
 
     .title {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
         font-family: "Medula One", cursive;
         font-size: 30px;
         font-weight: normal;
@@ -209,7 +218,11 @@ file-pane {
         margin-right: 1em;
     }
 
-    .renderer-selector {
+    .examples-button {
+        margin-right: $basic-spacing;
+    }
+
+    .toolbar-menu-selector {
         height: 100%;
         margin-left: 0;
 
@@ -218,7 +231,12 @@ file-pane {
         }
     }
 
-    .renderer-menu {
+    .more-selector {
+        display: none;
+    }
+
+    .toolbar-menu {
+        box-sizing: border-box;
         position: fixed;
         inset: auto;
         margin: 0;
@@ -228,8 +246,12 @@ file-pane {
         background: var(--playground-surface-raised);
         color: var(--playground-panel-text);
         box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.2);
+        max-width: calc(100vw - 8px);
+        max-height: calc(100dvh - 54px);
+        overflow: auto;
 
-        button {
+        button,
+        a {
             display: flex;
             align-items: center;
             width: 100%;
@@ -242,6 +264,12 @@ file-pane {
             font-size: 0.85rem;
             text-align: left;
             cursor: pointer;
+            box-sizing: border-box;
+
+            &:disabled {
+                opacity: 0.55;
+                cursor: default;
+            }
 
             &:hover,
             &:focus-visible {
@@ -252,8 +280,30 @@ file-pane {
         }
 
         button,
+        a,
         span {
             text-shadow: none;
+        }
+
+        svg {
+            width: 1em;
+        }
+
+        [role="menuitemcheckbox"][aria-checked="true"]::after {
+            content: "✓";
+            margin-left: auto;
+        }
+
+        .renderer-group {
+            border-block: 1px solid var(--playground-border-soft);
+            margin-block: 0.3rem;
+            padding-block: 0.3rem;
+        }
+
+        .menu-heading {
+            padding: 0.3rem 0.6rem;
+            color: var(--playground-muted-text);
+            font-size: 0.75rem;
         }
 
         .renderer-check {
@@ -262,9 +312,13 @@ file-pane {
         }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 900px) {
         .hide-mobile {
             display: none;
+        }
+
+        .more-selector {
+            display: block;
         }
     }
 }

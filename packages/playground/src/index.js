@@ -8,6 +8,7 @@ import {
     faFolderOpen,
     faQuestionCircle,
     faIndent,
+    faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
@@ -29,7 +30,12 @@ import "./imageExportDialog.js";
 import "./playground.scss";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
-import { getRendererFromUrl, rendererMenu } from "./rendererMenu.js";
+import {
+    getRendererFromUrl,
+    rendererMenu,
+    rendererMenuItems,
+} from "./rendererMenu.js";
+import { toolbarAction, toolbarMenu } from "./toolbarMenu.js";
 import {
     addUploadedDatasets,
     findMissingNamedData,
@@ -604,69 +610,92 @@ async function updateVisualization(force) {
     }
 }
 
-const toolbarTemplate = () => html`
-    <div class="toolbar">
-        <a
-            href="https://genomespy.app/"
-            target="_blank"
-            class="genome-spy-icon"
-        >
-            <img title="GenomeSpy" alt="GenomeSpy" src="${genomeSpyIcon}" />
-        </a>
-        <h1 class="title">GenomeSpy Playground</h1>
-        <button @click=${toggleLayout} class="tool-button hide-mobile">
-            ${icon(faColumns).node[0]}
-            <span>Toggle layout</span>
-        </button>
-        <button
-            @click=${() => formatWithPrettier()}
-            class="tool-button hide-mobile"
-        >
-            ${icon(faIndent).node[0]}
-            <span>Format code</span>
-        </button>
-        <button
-            @click=${() => {
-                void imageExportDialogRef.value?.show();
-            }}
-            class="tool-button"
-            ?disabled=${!embedResult}
-        >
-            ${icon(faDownload).node[0]}
-            <span>Export image</span>
-        </button>
-        ${rendererMenu(renderer, selectRenderer)}
-        <button
-            @click=${toggleInspector}
-            class=${
-                sidePane === "inspector"
-                    ? "tool-button selected"
-                    : "tool-button"
-            }
-        >
-            ${icon(faBug).node[0]}
-            <span>Inspector</span>
-        </button>
-        <a
-            href="https://genomespy.app/docs/"
-            target="_blank"
-            class="tool-button hide-mobile"
-            >${icon(faQuestionCircle).node[0]} <span>Docs</span></a
-        >
-        <span class="vis-title">
-            <span class="hide-mobile">${visTitle}</span>
-        </span>
-        <a
-            class="version tool-button"
-            href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
-            >v${packageJson.version}</a
-        >
-        <button @click=${openExamplePicker} class="tool-button">
-            ${icon(faFolderOpen).node[0]}
-            <span>Examples</span>
-        </button>
-    </div>
-`;
+const toolbarTemplate = () => {
+    /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
+    const actions = [
+        { label: "Toggle layout", icon: faColumns, onClick: toggleLayout },
+        {
+            label: "Format code",
+            icon: faIndent,
+            onClick: () => void formatWithPrettier(),
+        },
+        {
+            label: "Export image",
+            icon: faDownload,
+            onClick: () => void imageExportDialogRef.value.show(),
+            disabled: !embedResult,
+        },
+        {
+            label: "Inspector",
+            icon: faBug,
+            onClick: toggleInspector,
+            checked: sidePane === "inspector",
+        },
+        {
+            label: "Docs",
+            icon: faQuestionCircle,
+            href: "https://genomespy.app/docs/",
+        },
+    ];
+    const releaseUrl =
+        "https://github.com/genome-spy/genome-spy/releases/tag/v" +
+        packageJson.version;
+
+    return html`
+        <div class="toolbar">
+            <a
+                href="https://genomespy.app/"
+                target="_blank"
+                class="genome-spy-icon"
+            >
+                <img title="GenomeSpy" alt="GenomeSpy" src="${genomeSpyIcon}" />
+            </a>
+            <h1 class="title">GenomeSpy Playground</h1>
+            ${actions.slice(0, 3).map((action) => toolbarAction(action, false))}
+            ${rendererMenu(renderer, selectRenderer)}
+            ${actions.slice(3).map((action) => toolbarAction(action, false))}
+            <span class="vis-title">
+                <span class="hide-mobile">${visTitle}</span>
+            </span>
+            <a class="version tool-button hide-mobile" href=${releaseUrl}
+                >v${packageJson.version}</a
+            >
+            <button
+                @click=${openExamplePicker}
+                class="tool-button examples-button"
+            >
+                ${icon(faFolderOpen).node[0]}
+                <span>Examples</span>
+            </button>
+            ${toolbarMenu({
+                id: "more-menu",
+                label: "More",
+                className: "more-selector",
+                buttonContent: html`${icon(faEllipsisVertical).node[0]}<span
+                        >More</span
+                    >`,
+                items: html`
+                    ${actions.map((action) => toolbarAction(action, true))}
+                    <div
+                        role="group"
+                        aria-label="Renderer"
+                        class="renderer-group"
+                    >
+                        <div class="menu-heading">Renderer</div>
+                        ${rendererMenuItems(renderer, selectRenderer)}
+                    </div>
+                    ${toolbarAction(
+                        {
+                            label: "Release v" + packageJson.version,
+                            href: releaseUrl,
+                        },
+                        true
+                    )}
+                `,
+            })}
+        </div>
+    `;
+};
 
 const debouncedUpdate = debounce(() => update(), 500, false);
 
