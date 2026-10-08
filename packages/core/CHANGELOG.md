@@ -1,5 +1,36 @@
 # Change Log
 
+## 1.1.1
+
+### Patch Changes
+
+- [`b578ad5`](https://github.com/genome-spy/genome-spy/commit/b578ad523d094544747cb7becbb851d0e29f1309) Thanks [@tuner](https://github.com/tuner)! - Keep locus axis ticks, labels, and grid lines within the visible range when
+  zoomed in closely. Tick visibility now follows base centers, including for
+  explicit index and locus axis values, so visible edge ticks are retained and
+  ticks beyond the viewport are removed.
+
+- [`8bc6275`](https://github.com/genome-spy/genome-spy/commit/8bc6275066d3bdf84f21b5a08ccc8bdf280932be) Thanks [@tuner](https://github.com/tuner)! - Fix renderer switching freezing the playground for visualizations whose scale
+  domains reference another scale, such as the sashimi plot example. Replacing or
+  removing these visualizations no longer produces an "Unknown scale channel"
+  error during cleanup.
+
+- [#556](https://github.com/genome-spy/genome-spy/pull/556) [`b7dcc90`](https://github.com/genome-spy/genome-spy/commit/b7dcc906ed495c67bc5073eeb05244f9f68837a8) Thanks [@tuner](https://github.com/tuner)! - WebGL rendering errors, such as invalid colors in a color scheme, now appear in
+  the visualization's error box, including in the playground. Errors from
+  interactive parameter and data updates, including debounced updates, are also
+  displayed. Embedded visualizations report these errors through `onError` when
+  provided.
+
+  Failed `embed()` calls now reject with the original setup error. Documentation
+  examples and React embeds display setup errors only once.
+
+- [`c9803b8`](https://github.com/genome-spy/genome-spy/commit/c9803b8ff9351d7bb20243276f063c08e539e9f6) Thanks [@tuner](https://github.com/tuner)! - Improve thin link and arc rendering in Canvas and exported SVG by clamping
+  stroke widths and reducing opacity to preserve their visual weight. Canvas
+  uses one physical pixel; SVG assumes a device pixel ratio of 2 and uses a
+  minimum width of 0.5 CSS pixels.
+
+- [`5ef07e4`](https://github.com/genome-spy/genome-spy/commit/5ef07e41c68077e3bcfcf28e70991319f21bdc29) Thanks [@tuner](https://github.com/tuner)! - Fix WebGL initialization errors on affected Mali GPUs, including the Pixel 9a,
+  by supplying trailing uniform-buffer padding expected by TWGL.
+
 ## 1.1.0
 
 ### Minor Changes

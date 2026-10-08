@@ -4,6 +4,69 @@ All notable changes to this project will be documented in this file.
 Releases after v1.0.0 use user-written [Changesets](.changeset/README.md) notes.
 Earlier entries were generated from Conventional Commits and are preserved below.
 
+## [1.1.1](https://github.com/genome-spy/genome-spy/compare/v1.1.0...v1.1.1) (2026-10-08)
+
+### Fixes
+
+- [`8039bf2`](https://github.com/genome-spy/genome-spy/commit/8039bf2b2f30fd516798c676d633ceebc1e3744c) Thanks [@tuner](https://github.com/tuner)! - Keep the Playground's Renderer and More menus beneath their buttons from the
+  first frame, preventing a brief flash in the top-left corner. CSS anchor
+  positioning follows the buttons and adjusts alignment to keep menus on screen.
+
+- [`b578ad5`](https://github.com/genome-spy/genome-spy/commit/b578ad523d094544747cb7becbb851d0e29f1309) Thanks [@tuner](https://github.com/tuner)! - Keep locus axis ticks, labels, and grid lines within the visible range when
+  zoomed in closely. Tick visibility now follows base centers, including for
+  explicit index and locus axis values, so visible edge ticks are retained and
+  ticks beyond the viewport are removed.
+
+- [`8039bf2`](https://github.com/genome-spy/genome-spy/commit/8039bf2b2f30fd516798c676d633ceebc1e3744c) Thanks [@tuner](https://github.com/tuner)! - Reclaim editor space with a collapsible Files dock in the Playground. Files starts closed, with an “Add data files” edge button for showing and hiding it, while input bindings stay visible. The dock initially opens 400 px wide or 300 px high. Missing datasets reveal the dock and upload prompt automatically, including when another example requires the same missing file, and switching layouts preserves the dock size and visibility. Dock resizing can give Files most of the workspace while retaining a small usable editor and scrolling input bindings.
+  
+  The right-edge button label reads from top to bottom with an upright icon and balanced padding inside the rail.
+
+- [`a7f5a5d`](https://github.com/genome-spy/genome-spy/commit/a7f5a5dd9a39d706cce050d8e4db00c517793428) Thanks [@tuner](https://github.com/tuner)! - Give playground controls, tabs, example cards, and dialogs consistent system
+  fonts, colors, and compact 4px corners. Preserve the blue toolbar and its title
+  font, and leave the Inspector appearance unchanged. File tabs now support
+  keyboard navigation.
+
+- [`8039bf2`](https://github.com/genome-spy/genome-spy/commit/8039bf2b2f30fd516798c676d633ceebc1e3744c) Thanks [@tuner](https://github.com/tuner)! - Explain the Docs, Core, and App sections in the Playground example browser.
+  Distinguish documentation examples from tests and experiments, and clarify that
+  App examples cannot be viewed in the Playground.
+
+- [`677d80b`](https://github.com/genome-spy/genome-spy/commit/677d80bc11f1c5aa6a7d31cd3e8bae0c2dd282f8) Thanks [@tuner](https://github.com/tuner)! - Add missing previews for eight Docs/Core examples and all seven App examples
+  in the Playground gallery.
+
+- [`9f3bc5e`](https://github.com/genome-spy/genome-spy/commit/9f3bc5e5f00f06ee7052ed479b50fdf06bfd2958) Thanks [@tuner](https://github.com/tuner)! - Keep split panel resize handles beneath the Examples gallery so they no longer
+  highlight or intercept the pointer while browsing examples.
+
+- [`8bc6275`](https://github.com/genome-spy/genome-spy/commit/8bc6275066d3bdf84f21b5a08ccc8bdf280932be) Thanks [@tuner](https://github.com/tuner)! - Fix renderer switching freezing the playground for visualizations whose scale
+  domains reference another scale, such as the sashimi plot example. Replacing or
+  removing these visualizations no longer produces an "Unknown scale channel"
+  error during cleanup.
+
+- [`27fefbd`](https://github.com/genome-spy/genome-spy/commit/27fefbd7f2d107d5008ff558c4d80b6f784c2fb4) Thanks [@tuner](https://github.com/tuner)! - Keep Playground split panels responsive after dragging their divider. Resizing
+  the browser preserves the chosen pane proportions in both layouts, without
+  leaving unused space or pushing content outside the window.
+
+- [`fcad1ad`](https://github.com/genome-spy/genome-spy/commit/fcad1ad5c2f4e88082596b6d6f302f225d52cdf0) Thanks [@tuner](https://github.com/tuner)! - Keep the playground's Examples button accessible on narrow screens by moving
+  secondary toolbar controls into a More menu and truncating the title when space
+  is limited. The menu preserves access to layout, formatting, image export,
+  renderer selection, Inspector, documentation, and releases.
+
+- [#556](https://github.com/genome-spy/genome-spy/pull/556) [`b7dcc90`](https://github.com/genome-spy/genome-spy/commit/b7dcc906ed495c67bc5073eeb05244f9f68837a8) Thanks [@tuner](https://github.com/tuner)! - WebGL rendering errors, such as invalid colors in a color scheme, now appear in
+  the visualization's error box, including in the playground. Errors from
+  interactive parameter and data updates, including debounced updates, are also
+  displayed. Embedded visualizations report these errors through `onError` when
+  provided.
+  
+  Failed `embed()` calls now reject with the original setup error. Documentation
+  examples and React embeds display setup errors only once.
+
+- [`c9803b8`](https://github.com/genome-spy/genome-spy/commit/c9803b8ff9351d7bb20243276f063c08e539e9f6) Thanks [@tuner](https://github.com/tuner)! - Improve thin link and arc rendering in Canvas and exported SVG by clamping
+  stroke widths and reducing opacity to preserve their visual weight. Canvas
+  uses one physical pixel; SVG assumes a device pixel ratio of 2 and uses a
+  minimum width of 0.5 CSS pixels.
+
+- [`5ef07e4`](https://github.com/genome-spy/genome-spy/commit/5ef07e41c68077e3bcfcf28e70991319f21bdc29) Thanks [@tuner](https://github.com/tuner)! - Fix WebGL initialization errors on affected Mali GPUs, including the Pixel 9a,
+  by supplying trailing uniform-buffer padding expected by TWGL.
+
 ## [1.1.0](https://github.com/genome-spy/genome-spy/compare/v1.0.0...v1.1.0) (2026-10-07)
 
 ### New features

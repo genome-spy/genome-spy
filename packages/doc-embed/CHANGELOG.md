@@ -1,5 +1,22 @@
 # Change Log
 
+## 1.1.1
+
+### Patch Changes
+
+- [#556](https://github.com/genome-spy/genome-spy/pull/556) [`b7dcc90`](https://github.com/genome-spy/genome-spy/commit/b7dcc906ed495c67bc5073eeb05244f9f68837a8) Thanks [@tuner](https://github.com/tuner)! - WebGL rendering errors, such as invalid colors in a color scheme, now appear in
+  the visualization's error box, including in the playground. Errors from
+  interactive parameter and data updates, including debounced updates, are also
+  displayed. Embedded visualizations report these errors through `onError` when
+  provided.
+
+  Failed `embed()` calls now reject with the original setup error. Documentation
+  examples and React embeds display setup errors only once.
+
+- Updated dependencies [[`b578ad5`](https://github.com/genome-spy/genome-spy/commit/b578ad523d094544747cb7becbb851d0e29f1309), [`8bc6275`](https://github.com/genome-spy/genome-spy/commit/8bc6275066d3bdf84f21b5a08ccc8bdf280932be), [`b7dcc90`](https://github.com/genome-spy/genome-spy/commit/b7dcc906ed495c67bc5073eeb05244f9f68837a8), [`c9803b8`](https://github.com/genome-spy/genome-spy/commit/c9803b8ff9351d7bb20243276f063c08e539e9f6), [`5ef07e4`](https://github.com/genome-spy/genome-spy/commit/5ef07e41c68077e3bcfcf28e70991319f21bdc29)]:
+  - @genome-spy/core@1.1.1
+  - @genome-spy/app@1.1.1
+
 ## 1.1.0
 
 ### Patch Changes
