@@ -1,8 +1,7 @@
 import { createUniformBlockInfo, glEnumToString } from "twgl.js";
 
 /**
- * Adds failure diagnostics without querying shader sources or layouts on the
- * successful initialization path.
+ * Supplies trailing std140 padding expected by TWGL and adds failure diagnostics.
  *
  * @param {WebGL2RenderingContext} gl
  * @param {import("twgl.js").ProgramInfo} programInfo
@@ -16,8 +15,30 @@ export function createUniformBlockInfoWithDiagnostics(
     blockName,
     context
 ) {
+    const spec = programInfo.uniformBlockSpec;
+    const block = spec.blockSpecs[blockName];
+    let paddedProgramInfo = programInfo;
+    if (block && block.size % 16 !== 0) {
+        // Mali may report the end of the last value without trailing padding.
+        // TWGL's array views include that padding. Keep the original reflection
+        // intact for diagnostics. https://github.com/genome-spy/genome-spy/issues/554
+        paddedProgramInfo = {
+            ...programInfo,
+            uniformBlockSpec: {
+                ...spec,
+                blockSpecs: {
+                    ...spec.blockSpecs,
+                    [blockName]: {
+                        ...block,
+                        size: Math.ceil(block.size / 16) * 16,
+                    },
+                },
+            },
+        };
+    }
+
     try {
-        return createUniformBlockInfo(gl, programInfo, blockName);
+        return createUniformBlockInfo(gl, paddedProgramInfo, blockName);
     } catch (error) {
         try {
             logUniformBlockFailure(gl, programInfo, blockName, context, error);

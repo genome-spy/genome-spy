@@ -3,8 +3,11 @@ import { createUniformBlockInfoWithDiagnostics } from "./uniformBlocks.js";
 
 afterEach(() => vi.restoreAllMocks());
 
-/** @param {number} blockSize */
-function fixture(blockSize) {
+/**
+ * @param {number} blockSize
+ * @param {number} [offset]
+ */
+function fixture(blockSize, offset = 0) {
     const declaration =
         "layout(std140) uniform Mark { mediump float uDomain_y[2]; };";
     const gl = {
@@ -30,7 +33,7 @@ function fixture(blockSize) {
                 Mark: { index: 0, size: blockSize, uniformIndices: [0] },
             },
             uniformData: [
-                { name: "uDomain_y[0]", type: gl.FLOAT, size: 2, offset: 0 },
+                { name: "uDomain_y[0]", type: gl.FLOAT, size: 2, offset },
             ],
         },
     };
@@ -42,26 +45,38 @@ function fixture(blockSize) {
             { view: "root/points", mark: "point" }
         );
 
-    return { gl, create, declaration };
+    return { gl, create, declaration, programInfo };
 }
 
-test("successful uniform-block initialization stays quiet and skips diagnostics", () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { gl, create } = fixture(32);
-    const info = create();
-    info.setters.uDomain_y([3, 7]);
+// Include the point and text block layouts reported by the affected Pixel.
+test.each([
+    [32, 0, 32],
+    [68, 48, 80],
+    [100, 80, 112],
+])(
+    "initializes a %i-byte block with its array at %i using %i bytes",
+    (blockSize, offset, allocationSize) => {
+        const log = vi.spyOn(console, "error").mockImplementation(() => {});
+        const { gl, create, programInfo } = fixture(blockSize, offset);
+        const info = create();
+        info.setters.uDomain_y([3, 7]);
 
-    expect(info.asFloat[0]).toBe(3);
-    expect(info.asFloat[4]).toBe(7);
-    expect(log).not.toHaveBeenCalled();
-    expect(gl.getActiveUniforms).not.toHaveBeenCalled();
-    expect(gl.getAttachedShaders).not.toHaveBeenCalled();
-});
+        expect(info.array.byteLength).toBe(allocationSize);
+        expect(info.asFloat[offset / 4]).toBe(3);
+        expect(info.asFloat[offset / 4 + 4]).toBe(7);
+        expect(programInfo.uniformBlockSpec.blockSpecs.Mark.size).toBe(
+            blockSize
+        );
+        expect(log).not.toHaveBeenCalled();
+        expect(gl.getActiveUniforms).not.toHaveBeenCalled();
+        expect(gl.getAttachedShaders).not.toHaveBeenCalled();
+    }
+);
 
 test("reports an overflowing TWGL array view and only uniform-block source", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    // Real TWGL attempts a 32-byte view into this undersized reflected block.
-    const { create, declaration } = fixture(20);
+    // This mismatch exceeds trailing padding and must still fail in real TWGL.
+    const { create, declaration } = fixture(16);
 
     expect(create).toThrow(RangeError);
     expect(log).toHaveBeenCalledOnce();
@@ -70,7 +85,7 @@ test("reports an overflowing TWGL array view and only uniform-block source", () 
         view: "root/points",
         mark: "point",
         block: "Mark",
-        blockSize: 20,
+        blockSize: 16,
         uniforms: [
             {
                 name: "uDomain_y[0]",
@@ -91,7 +106,7 @@ test("reports an overflowing TWGL array view and only uniform-block source", () 
 
 test("a diagnostics failure does not replace the initialization error", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const { gl, create } = fixture(20);
+    const { gl, create } = fixture(16);
     gl.getActiveUniforms.mockImplementation(() => {
         throw new Error("reflection failed");
     });

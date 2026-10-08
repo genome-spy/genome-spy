@@ -2,5 +2,6 @@
 "@genome-spy/core": patch
 ---
 
-Log uniform-block declarations and reported GPU layouts when WebGL uniform-block
-initialization fails, helping diagnose device-specific rendering failures.
+Pad WebGL uniform buffers when a device reports their size without trailing
+padding, avoiding initialization errors on affected Mali GPUs. Log uniform-block
+declarations and reported GPU layouts if initialization still fails.
