@@ -6,7 +6,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { icon as genomeSpyIcon } from "@genome-spy/core";
 import { faStyles, playgroundComponentStyles } from "./componentStyles.js";
-import { toolbarAction, toolbarMenu, positionMenu } from "./toolbarMenu.js";
+import { toolbarAction, toolbarMenu } from "./toolbarMenu.js";
 import { rendererMenu, rendererMenuItems } from "./rendererMenu.js";
 
 class PlaygroundToolbar extends LitElement {
@@ -197,6 +197,8 @@ class PlaygroundToolbar extends LitElement {
                     position: fixed;
                     inset: auto;
                     margin: 0;
+                    position-area: block-end span-inline-end;
+                    position-try-fallbacks: flip-inline;
                     padding: 0.3rem;
                     border: 1px solid var(--playground-border);
                     border-radius: var(--playground-radius);
@@ -284,24 +286,21 @@ class PlaygroundToolbar extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        window.addEventListener("resize", this.#resizeMenus);
+        window.addEventListener("resize", this.#closeHiddenMenus);
     }
 
     disconnectedCallback() {
-        window.removeEventListener("resize", this.#resizeMenus);
+        window.removeEventListener("resize", this.#closeHiddenMenus);
         super.disconnectedCallback();
     }
 
-    #resizeMenus = () => {
+    #closeHiddenMenus = () => {
         for (const menu of this.renderRoot.querySelectorAll(
             ".toolbar-menu:popover-open"
         )) {
             // A hidden invoker means the responsive toolbar switched modes.
-            // Visible menus follow their invoker, including ones just opened.
             if (menu.previousElementSibling.getClientRects().length === 0) {
                 /** @type {HTMLElement} */ (menu).hidePopover();
-            } else {
-                positionMenu(/** @type {HTMLElement} */ (menu));
             }
         }
     };

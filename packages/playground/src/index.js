@@ -26,6 +26,7 @@ import "./filePane.js";
 import "./imageExportDialog.js";
 import "./playground.css";
 import "./toolbar.js";
+import "./workspace.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
 import { getRendererFromUrl } from "./rendererMenu.js";
@@ -40,8 +41,16 @@ const genomeSpyContainerRef = createRef();
 const inspectorPaneRef = createRef();
 const inputBindingsHostRef = createRef();
 const inputBindingsPaneRef = createRef();
-const inputAndFilesRef = createRef();
-const editorAndOthersRef = createRef();
+/** @type {import("./workspace.js").WorkspaceState} */
+const workspaceState = {
+    filesOpen: false,
+    auxiliaryWidth: 400,
+    filesHeight: 300,
+};
+let revealMissingFilesOnNextUpdate = false;
+
+/** @type {import("lit/directives/ref.js").Ref<import("./filePane.js").default>} */
+const filePaneRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./imageExportDialog.js").default>} */
 const imageExportDialogRef = createRef();
@@ -255,6 +264,7 @@ function closeExamplePicker() {
  * @param {string} specText
  */
 function setEditorSpec(specText) {
+    revealMissingFilesOnNextUpdate = true;
     editorState.set(specText);
     if (editorRef.value) {
         suppressNextEditorChange = true;
@@ -526,7 +536,7 @@ async function update(force = false) {
 /** @param {boolean} force */
 async function updateVisualization(force) {
     const selectedRenderer = renderer;
-    missingFiles = new Set();
+    const previousMissingFiles = missingFiles;
 
     const value = editorState.getCurrent(editorRef.value);
     if (value) {
@@ -555,11 +565,26 @@ async function updateVisualization(force) {
         previousStringifiedSpec = stringifiedSpec;
 
         missingFiles = findMissingNamedData(parsedSpec, files);
+        if (
+            missingFiles.size > 0 &&
+            (revealMissingFilesOnNextUpdate ||
+                Array.from(missingFiles).some(
+                    (name) => !previousMissingFiles.has(name)
+                ))
+        ) {
+            workspaceState.filesOpen = true;
+            filePaneRef.value.showUpload();
+        }
+        revealMissingFilesOnNextUpdate = false;
         addUploadedDatasets(parsedSpec, files);
 
         if (embedResult) {
             embedResult.finalize();
             embedResult = undefined;
+        }
+
+        if (missingFiles.size > 0) {
+            hasInputBindings = false;
         }
 
         visTitle = asArray(parsedSpec.description)?.[0];
@@ -659,7 +684,7 @@ function handleEditorChange() {
 }
 
 const editorPaneTemplate = () => html`
-    <section id="editor-pane" slot="1">
+    <section id="editor-pane" slot="editor">
         ${
             effectiveBaseUrlInfo
                 ? html`
@@ -678,65 +703,31 @@ const editorPaneTemplate = () => html`
     </section>
 `;
 
-/** @param {string} slot */
-const inputBindingsPaneTemplate = (slot) =>
-    hasInputBindings
-        ? html`
-              <section
-                  id="input-bindings-pane"
-                  ${ref(inputBindingsPaneRef)}
-                  slot=${slot}
-              ></section>
-          `
-        : null;
-
-/** @param {string} slot */
-const filePaneTemplate = (slot) => html`
-    <section id="file-pane" slot=${slot}>
-        <file-pane
-            @upload=${() => update(true)}
-            .files=${files}
-            .missingFiles=${missingFiles}
-        ></file-pane>
-    </section>
+const workspaceTemplate = () => html`
+    <gs-playground-workspace
+        ?hidden=${sidePane === "inspector"}
+        .layout=${layout}
+        .hasInputBindings=${hasInputBindings}
+        .viewState=${workspaceState}
+        .fileCount=${Object.keys(files).length}
+        .missingFiles=${missingFiles}
+    >
+        ${editorPaneTemplate()}
+        <section
+            id="input-bindings-pane"
+            ${ref(inputBindingsPaneRef)}
+            slot="bindings"
+        ></section>
+        <section id="file-pane" slot="files">
+            <file-pane
+                ${ref(filePaneRef)}
+                @upload=${() => update(true)}
+                .files=${files}
+                .missingFiles=${missingFiles}
+            ></file-pane>
+        </section>
+    </gs-playground-workspace>
 `;
-
-const editorAndOthersTemplate = () => {
-    if (layout === "vertical" && hasInputBindings) {
-        return html`
-            <split-panel
-                .orientation=${"horizontal"}
-                ${ref(editorAndOthersRef)}
-                slot="2"
-                id="editor-and-others"
-            >
-                ${editorPaneTemplate()}
-                <split-panel
-                    .orientation=${"vertical"}
-                    .fitIndex=${0}
-                    ${ref(inputAndFilesRef)}
-                    slot="2"
-                    id="input-and-files"
-                >
-                    ${inputBindingsPaneTemplate("1")} ${filePaneTemplate("2")}
-                </split-panel>
-            </split-panel>
-        `;
-    }
-
-    return html`
-        <split-panel
-            .orientation=${layout == "vertical" ? "horizontal" : "vertical"}
-            .fitIndex=${layout == "horizontal" && hasInputBindings ? 1 : -1}
-            ${ref(editorAndOthersRef)}
-            slot="2"
-            id="editor-and-others"
-        >
-            ${editorPaneTemplate()} ${inputBindingsPaneTemplate("2")}
-            ${filePaneTemplate(hasInputBindings ? "3" : "2")}
-        </split-panel>
-    `;
-};
 
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
@@ -766,17 +757,14 @@ const layoutTemplate = () => html`
                 ${ref(genomeSpyContainerRef)}
                 slot="1"
             ></div>
-            ${
-                sidePane === "inspector"
-                    ? html`
-                          <section
-                              id="inspector-pane"
-                              ${ref(inspectorPaneRef)}
-                              slot="2"
-                          ></section>
-                      `
-                    : editorAndOthersTemplate()
-            }
+            <section id="workspace-pane" slot="2">
+                ${workspaceTemplate()}
+                <section
+                    id="inspector-pane"
+                    ${ref(inspectorPaneRef)}
+                    ?hidden=${sidePane !== "inspector"}
+                ></section>
+            </section>
         </split-panel>
     </section>
 `;
@@ -805,16 +793,6 @@ function placeInputBindings() {
 
     if (inputBindings && destination) {
         destination.append(inputBindings);
-        const inputAndFiles =
-            /** @type {import("lit").LitElement | undefined} */ (
-                inputAndFilesRef.value
-            );
-        inputAndFiles?.requestUpdate();
-        const editorAndOthers =
-            /** @type {import("lit").LitElement | undefined} */ (
-                editorAndOthersRef.value
-            );
-        editorAndOthers?.requestUpdate();
     }
 }
 

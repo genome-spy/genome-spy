@@ -105,3 +105,36 @@ test("shares renderer selection between compact and desktop menus", async ({
     ).toBeFocused();
     await expect(page).not.toHaveURL(/renderer=/);
 });
+
+for (const { width, label } of [
+    { width: 1280, label: "Renderer: WebGL" },
+    { width: 320, label: "More" },
+]) {
+    test(`positions ${label} beneath its button on the first opening`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 740 });
+        await page.goto("/");
+        const trigger = page.getByRole("button", { name: label, exact: true });
+        const geometry = await trigger.evaluate((button) => {
+            button.click();
+            // Read synchronously, before the asynchronous toggle event can move the menu.
+            const menu = button.popoverTargetElement.getBoundingClientRect();
+            const anchor = button.getBoundingClientRect();
+            return {
+                top: menu.top,
+                left: menu.left,
+                right: menu.right,
+                anchorBottom: anchor.bottom,
+                anchorLeft: anchor.left,
+                anchorRight: anchor.right,
+                viewportWidth: globalThis.innerWidth,
+            };
+        });
+        expect(geometry.top).toBeCloseTo(geometry.anchorBottom, 1);
+        expect(geometry.left).toBeGreaterThanOrEqual(4);
+        expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth - 4);
+        expect(geometry.left).toBeLessThan(geometry.anchorRight);
+        expect(geometry.right).toBeGreaterThan(geometry.anchorLeft);
+    });
+}

@@ -18,43 +18,11 @@ describe("split-panel", () => {
         await panel.updateComplete;
         expect(panel.shadowRoot.querySelectorAll(".resizable")).toHaveLength(2);
 
-        // The playground adds the bindings pane only after an embed discovers
-        // that the specification contains bound parameters.
         panel.append(createSlottedChild("3"));
 
         await new Promise((resolve) => setTimeout(resolve, 0));
         await panel.updateComplete;
         expect(panel.shadowRoot.querySelectorAll(".resizable")).toHaveLength(3);
-    });
-
-    test("fits the selected region to its input content", async () => {
-        const panel =
-            /** @type {import("lit").LitElement & { fitIndex: number }} */ (
-                document.createElement("split-panel")
-            );
-        panel.fitIndex = 1;
-
-        const inputPane = createSlottedChild("2");
-        const inputBindings = document.createElement("div");
-        inputBindings.className = "gs-input-bindings";
-        Object.defineProperty(inputBindings, "getBoundingClientRect", {
-            value: () => ({ height: 42 }),
-        });
-        inputPane.append(inputBindings);
-
-        panel.append(
-            createSlottedChild("1"),
-            inputPane,
-            createSlottedChild("3")
-        );
-        document.body.append(panel);
-
-        await panel.updateComplete;
-
-        const resizables = panel.shadowRoot.querySelectorAll(".resizable");
-        expect(resizables[1].getAttribute("style")).toContain("0 0 42px");
-        expect(resizables[0].getAttribute("style")).toContain("1 1 0");
-        expect(resizables[2].getAttribute("style")).toContain("1 1 0");
     });
 
     test("keeps the handle aligned with the pointer while resizing", async () => {

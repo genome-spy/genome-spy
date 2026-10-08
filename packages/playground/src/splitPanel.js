@@ -7,24 +7,15 @@ class SplitPanel extends LitElement {
     static properties = {
         orientation: { type: String, reflect: true },
         reverse: { type: Boolean, reflect: true },
-        // A non-negative index makes that pane content-sized; -1 keeps equal panes.
-        fitIndex: { type: Number, attribute: "fit-index", reflect: true },
     };
 
     /** @type {MutationObserver | undefined} */
     #childrenObserver;
 
-    /** @type {ResizeObserver | undefined} */
-    #fitContentObserver;
-
-    /** @type {Element | undefined} */
-    #fitContentElement;
-
     constructor() {
         super();
         this.orientation = "horizontal";
         this.reverse = false;
-        this.fitIndex = -1;
     }
 
     connectedCallback() {
@@ -39,14 +30,7 @@ class SplitPanel extends LitElement {
     disconnectedCallback() {
         this.#childrenObserver?.disconnect();
         this.#childrenObserver = undefined;
-        this.#fitContentObserver?.disconnect();
-        this.#fitContentObserver = undefined;
-        this.#fitContentElement = undefined;
         super.disconnectedCallback();
-    }
-
-    updated() {
-        this.#updateFitContentObserver();
     }
 
     static styles = css`
@@ -122,18 +106,8 @@ class SplitPanel extends LitElement {
     #renderChildren() {
         const children = Array.from(this.children);
         const orderedChildren = this.reverse ? children.reverse() : children;
-        // The fitted pane keeps its measured size while the other panes share the remainder.
-        const fitContentSize = this.#getFitContentSize(
-            orderedChildren[this.fitIndex]
-        );
-
         return orderedChildren.map((child, index) => {
-            const style =
-                this.fitIndex >= 0
-                    ? index === this.fitIndex
-                        ? `flex: 0 0 ${fitContentSize ?? 0}px`
-                        : "flex: 1 1 0"
-                    : `flex-basis: ${100 / children.length}%`;
+            const style = `flex-basis: ${100 / children.length}%`;
 
             return html`
                 <div class="resizable" style=${style}>
@@ -153,45 +127,6 @@ class SplitPanel extends LitElement {
                 </div>
             `;
         });
-    }
-
-    /**
-     * @param {Element | undefined} child
-     * @returns {number | undefined}
-     */
-    #getFitContentSize(child) {
-        // Bindings are moved into the pane after the visualization has been embedded.
-        return child
-            ?.querySelector(".gs-input-bindings")
-            ?.getBoundingClientRect().height;
-    }
-
-    #updateFitContentObserver() {
-        if (this.fitIndex < 0) {
-            this.#fitContentObserver?.disconnect();
-            this.#fitContentObserver = undefined;
-            this.#fitContentElement = undefined;
-            return;
-        }
-
-        const children = Array.from(this.children);
-        const orderedChildren = this.reverse ? children.reverse() : children;
-        const content =
-            orderedChildren[this.fitIndex]?.querySelector(".gs-input-bindings");
-        if (content === this.#fitContentElement) {
-            return;
-        }
-
-        this.#fitContentObserver?.disconnect();
-        this.#fitContentObserver = undefined;
-        this.#fitContentElement = content;
-
-        if (content && typeof ResizeObserver !== "undefined") {
-            this.#fitContentObserver = new ResizeObserver(() =>
-                this.requestUpdate()
-            );
-            this.#fitContentObserver.observe(content);
-        }
     }
 
     /**

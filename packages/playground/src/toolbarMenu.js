@@ -112,7 +112,6 @@ export function toolbarMenu({
                         String(open)
                     );
                     if (open) {
-                        positionMenu(menu);
                         const initialItem = /** @type {HTMLElement} */ (
                             menu.querySelector(initialFocusSelector)
                         );
@@ -139,19 +138,6 @@ export function toolbarMenu({
             </div>
         </div>
     `;
-}
-
-/** Position a top-layer menu beside its invoker, including after a resize.
- * @param {HTMLElement} menu
- */
-export function positionMenu(menu) {
-    const bounds = menu.previousElementSibling.getBoundingClientRect();
-    menu.style.left =
-        Math.max(
-            4,
-            Math.min(bounds.left, window.innerWidth - menu.offsetWidth - 4)
-        ) + "px";
-    menu.style.top = bounds.bottom + "px";
 }
 
 /** @param {HTMLElement} menu */

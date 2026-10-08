@@ -143,6 +143,11 @@ export default class FilePane extends LitElement {
         this.missingFiles = new Set();
     }
 
+    /** Show the upload prompt when a spec needs data files. */
+    showUpload() {
+        this.#selectTab(undefined);
+    }
+
     render() {
         const names = [...Object.keys(this.files), undefined];
         const selectedIndex = names.indexOf(this.#currentTab);

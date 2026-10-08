@@ -1,6 +1,12 @@
 import { LitElement, css, html, nothing } from "lit";
 import { playgroundComponentStyles } from "./componentStyles.js";
 
+const groupDescriptions = new Map([
+    ["Docs", "Examples included in the documentation."],
+    ["Core", "Non-curated examples, tests, and experiments."],
+    ["App", "App examples, not viewable in the Playground."],
+]);
+
 /**
  * @typedef {{
  *   id: string;
@@ -91,9 +97,15 @@ export default class ExamplePicker extends LitElement {
             }
 
             h3 {
-                margin: 0 0 var(--playground-spacing);
+                margin: 0 0 4px;
                 font-size: var(--playground-font-size);
                 font-weight: 600;
+            }
+
+            .group-description {
+                margin: 0 0 var(--playground-spacing);
+                color: var(--playground-muted);
+                font-size: var(--playground-font-small);
             }
 
             .grid {
@@ -208,7 +220,10 @@ export default class ExamplePicker extends LitElement {
                     <div class="header">
                         <div>
                             <h2>Examples</h2>
-                            <p>Curated shared examples from the monorepo.</p>
+                            <p>
+                                Explore examples from the documentation, Core,
+                                and App.
+                            </p>
                         </div>
                         <button
                             class="button close-button"
@@ -261,9 +276,12 @@ export default class ExamplePicker extends LitElement {
      * @param {number} startIndex
      */
     #renderGroup(label, entries, startIndex) {
+        const description = groupDescriptions.get(label);
+
         return html`
             <section class="group">
                 <h3>${label}</h3>
+                ${description ? html`<p class="group-description">${description}</p>` : nothing}
                 <div class="grid">
                     ${entries.map((entry, index) =>
                         this.#renderCard(entry, startIndex + index)

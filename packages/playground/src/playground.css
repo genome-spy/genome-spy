@@ -53,18 +53,17 @@ split-panel {
 }
 
 #genome-spy-container,
-#editor-and-others,
-#editor-pane,
-#input-and-files,
-#input-bindings-pane,
-#inspector-pane,
-file-pane {
+#workspace-pane,
+gs-playground-workspace,
+#inspector-pane {
     position: absolute;
     inset: 0;
     overflow: hidden;
 }
 
-#input-bindings-host {
+#input-bindings-host,
+gs-playground-workspace[hidden],
+#inspector-pane[hidden] {
     display: none;
 }
 
@@ -84,11 +83,11 @@ base-url-notice {
 }
 
 #input-bindings-pane {
-    overflow: auto;
     accent-color: var(--playground-accent);
 
     input,
     select {
+        box-sizing: border-box;
         font: inherit;
         color: inherit;
     }
@@ -114,14 +113,31 @@ base-url-notice {
 
     .gs-input-binding {
         display: grid;
-        grid-template-columns: max-content max-content;
+        grid-template-columns: fit-content(40%) minmax(0, 1fr);
         column-gap: 1em;
         row-gap: 0.3em;
         justify-items: start;
 
-        > select,
-        > input:not([type="checkbox"]) {
+        > label,
+        > .label {
+            overflow-wrap: anywhere;
+        }
+
+        > div {
+            min-width: 0;
             width: 100%;
+        }
+
+        > select,
+        > input:not([type="checkbox"]),
+        > div > input:not([type="range"], [type="radio"], [type="checkbox"]) {
+            width: 100%;
+            min-width: 0;
+        }
+
+        input[type="range"] {
+            width: calc(100% - 3em);
+            min-width: 40px;
         }
 
         input[type="range"] + span {
@@ -139,6 +155,13 @@ base-url-notice {
         .radio-group {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+
+            label {
+                max-width: 100%;
+                overflow-wrap: anywhere;
+            }
         }
 
         .description {
