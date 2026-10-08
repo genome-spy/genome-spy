@@ -105,12 +105,55 @@ describe("scaleLocus ticks", () => {
         const scale = createScale(20_000_000, [16_814_352, 16_814_354]);
         expect(scale.ticks(10)).toEqual([16_814_352, 16_814_353]);
 
-        // Newly exposed bases add edge ticks without changing the existing spacing.
-        for (const end of [16_814_354.01, 16_814_354.9]) {
+        // A newly exposed band adds a tick only once its center is visible.
+        scale.domain([16_814_352, 16_814_354.01]);
+        expect(scale.ticks(10)).toEqual([16_814_352, 16_814_353]);
+
+        for (const end of [16_814_354.5, 16_814_354.9]) {
             scale.domain([16_814_352, end]);
             expect(scale.ticks(10)).toEqual([
                 16_814_352, 16_814_353, 16_814_354,
             ]);
         }
+    });
+
+    test.each([
+        { domain: [100.01, 103.27], ticks: [100, 101, 102] },
+        { domain: [100.1, 101.1], ticks: [100] },
+        { domain: [100.5, 102.5], ticks: [100, 101, 102] },
+        { domain: [100.51, 102.49], ticks: [101] },
+    ])("selects visible band centers for $domain", ({ domain, ticks }) => {
+        expect(createScale(1_000, domain).ticks(100)).toEqual(ticks);
+    });
+
+    test.each([
+        { align: 0, ticks: [0, 1, 2, 3, 4, 5] },
+        { align: 1, ticks: [0, 1, 2, 3, 4] },
+    ])("accounts for padding and alignment $align", ({ align, ticks }) => {
+        const scale = createScale(1_000, [0.4, 5.4])
+            .paddingInner(0.2)
+            .paddingOuter(0.4)
+            .align(align);
+
+        expect(scale.ticks(100)).toEqual(ticks);
+        scale.range([0.8, 0.2]);
+        expect(scale.ticks(100)).toEqual(ticks);
+    });
+
+    test("preserves chromosome-local labels and chromosome-end spacing", () => {
+        const scale = scaleLocus()
+            .genome(
+                new Genome({
+                    name: "test",
+                    contigs: [
+                        { name: "chr1", size: 100 },
+                        { name: "chr2", size: 100 },
+                    ],
+                })
+            )
+            .domain([99.4, 100.7]);
+
+        expect(scale.ticks(100)).toEqual([100]);
+        expect(scale.ticks(100).map(scale.tickFormat(100))).toEqual(["1"]);
     });
 });

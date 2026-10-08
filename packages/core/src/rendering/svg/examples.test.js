@@ -9,6 +9,8 @@ import {
     resolveThemeSelection,
 } from "../../config/themes.js";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import Genome from "../../genome/genome.js";
+import { renderToLayout } from "../../view/testUtils.js";
 import { createSvg } from "./index.js";
 
 const baseConfig = resolveBaseConfig({
@@ -17,6 +19,91 @@ const baseConfig = resolveBaseConfig({
 });
 
 describe("SVG example exports", () => {
+    test.each(["generated", "values", "extraValues"])(
+        "keeps close-zoom locus ticks and grid lines at visible centers with %s ticks",
+        async (mode) => {
+            const genome = new Genome({ name: "hg38" });
+            const start = genome.toContinuous("chr8", 41_855_590);
+            const values = [start, start + 1, start + 2, start + 3];
+            const { view } = await createHeadlessEngine(
+                {
+                    assembly: "hg38",
+                    width: 1000,
+                    height: 100,
+                    data: { values: [] },
+                    mark: "point",
+                    scales: {
+                        x: {
+                            type: "locus",
+                            // External locus intervals have an inclusive upper bound.
+                            domain: [
+                                { chrom: "chr8", pos: 41_855_590.01 },
+                                { chrom: "chr8", pos: 41_855_592.27 },
+                            ],
+                            zoom: true,
+                        },
+                    },
+                    encoding: {
+                        x: {
+                            chrom: "chrom",
+                            pos: "pos",
+                            type: "locus",
+                            axis: {
+                                grid: true,
+                                // Force the extraValues case to use the explicit path.
+                                tickCount: mode === "extraValues" ? 1 : 100,
+                                ...(mode === "generated"
+                                    ? {}
+                                    : { [mode]: values }),
+                            },
+                        },
+                    },
+                },
+                {
+                    contextOptions: {
+                        baseConfig,
+                        viewFactoryOptions: { wrapRoot: true },
+                    },
+                }
+            );
+
+            try {
+                // Numeric label layout follows the first completed layout pass.
+                renderToLayout(view);
+                view.visit((child) =>
+                    child.handleBroadcast({ type: "layoutComputed" })
+                );
+                const { svg, warnings } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 1000,
+                    logicalHeight: 160,
+                });
+                const labels = Array.from(
+                    svg.querySelectorAll('[data-name="labels_main"] text')
+                );
+                expect(labels.map((label) => label.textContent)).toEqual([
+                    "41,855,591",
+                    "41,855,592",
+                    "41,855,593",
+                ]);
+                const positions = labels.map(getTranslateX);
+                expect(positions).toEqual([150.3, 457.1, 763.8]);
+
+                for (const name of ["ticks", "grid_lines"]) {
+                    const lines = Array.from(
+                        svg.querySelectorAll('[data-name="' + name + '"] line')
+                    );
+                    expect(
+                        lines.map((line) => +line.getAttribute("x1"))
+                    ).toEqual(positions);
+                }
+                expect(warnings).toEqual([]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
     test.each(
         /** @type {const} */ ([
             {

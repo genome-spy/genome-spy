@@ -28,6 +28,10 @@ function createViewStub({
     scale.type = scaleType;
     scale.domain = () => [0, 100];
     scale.range = () => [0, axisLength];
+    if (scaleType === "index" || scaleType === "locus") {
+        scale.step = () => 1;
+        scale.bandwidth = () => 1;
+    }
     scale.ticks = (/** @type {number | undefined} */ count) =>
         Array.from({ length: count ?? 10 }, (_, index) => index);
     scale.tickFormat = () => (/** @type {number} */ value) => String(value);
