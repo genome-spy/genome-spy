@@ -15,31 +15,21 @@ export default class BaseUrlNotice extends LitElement {
         css`
             :host {
                 display: block;
-                position: relative;
-                font-size: 0.82rem;
+                font-size: var(--playground-font-small);
             }
 
-            .notice {
+            .bar {
                 display: flex;
                 align-items: center;
-                gap: 0.65rem;
-                min-height: 42px;
-                padding: 6px 10px;
-                box-sizing: border-box;
-                background: var(
-                    --playground-panel-overlay,
-                    rgba(247, 245, 239, 0.95)
-                );
-                border-bottom: 1px solid
-                    var(--playground-border, rgba(23, 32, 51, 0.1));
-            }
-
-            .content {
-                flex: 1;
-                min-width: 0;
+                gap: 8px;
+                min-height: 40px;
+                padding: 4px var(--playground-spacing);
+                border-bottom: 1px solid var(--playground-divider);
+                background: var(--playground-panel);
             }
 
             .summary {
+                flex: 1;
                 min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -49,42 +39,20 @@ export default class BaseUrlNotice extends LitElement {
             .actions {
                 display: flex;
                 align-items: center;
-                gap: 0.45rem;
-                margin-left: auto;
+                gap: 8px;
                 flex-shrink: 0;
             }
 
-            .clear {
-                margin-left: auto;
-            }
-
-            .help svg {
-                font-size: 0.95rem;
-            }
-
             .details {
-                position: absolute;
-                top: calc(100% + 6px);
-                left: 10px;
-                max-width: min(34rem, calc(100vw - 20px));
-                padding: 0.65rem 0.8rem;
-                border: 1px solid
-                    var(--playground-border-strong, rgba(23, 32, 51, 0.14));
-                border-radius: 0.65rem;
-                background: var(
-                    --playground-surface-raised,
-                    rgba(255, 255, 255, 0.98)
-                );
-                box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-                color: var(--playground-muted-strong, #5a6678);
-                font-size: 0.78rem;
-                line-height: 1.35;
-                z-index: 2;
+                padding: 8px var(--playground-spacing);
+                border-bottom: 1px solid var(--playground-divider);
+                color: var(--playground-muted);
+                background: var(--playground-panel);
             }
 
             .details a {
-                color: var(--playground-accent-text, #335679);
-                margin-left: 0.45rem;
+                color: var(--playground-accent-text);
+                margin-left: 8px;
             }
         `,
     ];
@@ -110,44 +78,44 @@ export default class BaseUrlNotice extends LitElement {
         }
 
         return html`
-            <div class="notice">
-                <span class="pill-tag">baseUrl</span>
-                <div class="content">
-                    <span class="summary">${this.info.summary}</span>
-                </div>
+            <div class="bar">
+                <span class="tag">baseUrl</span>
+                <span class="summary">${this.info.summary}</span>
                 <div class="actions">
                     <button
-                        class="link-button help"
+                        class="button quiet"
+                        aria-expanded=${this.expanded}
                         @click=${this.#toggleExpanded}
                     >
                         ${icon(faQuestionCircle).node[0]}
                         <span>${this.expanded ? "Hide" : "What is this?"}</span>
                     </button>
-                    ${this.info.canClear
-                        ? html`
-                              <button
-                                  class="chip-button clear"
-                                  @click=${this.#clear}
-                              >
-                                  Clear
-                              </button>
-                          `
-                        : nothing}
+                    ${
+                        this.info.canClear
+                            ? html`
+                                  <button class="button" @click=${this.#clear}>
+                                      Clear
+                                  </button>
+                              `
+                            : nothing
+                    }
                 </div>
             </div>
-            ${this.expanded
-                ? html`
-                      <div class="details">
-                          ${this.info.detail}
-                          <a
-                              href="https://genomespy.app/docs/grammar/#properties"
-                              target="_blank"
-                              rel="noreferrer"
-                              >Docs</a
-                          >
-                      </div>
-                  `
-                : nothing}
+            ${
+                this.expanded
+                    ? html`
+                          <div class="details">
+                              ${this.info.detail}
+                              <a
+                                  href="https://genomespy.app/docs/grammar/#properties"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  >Docs</a
+                              >
+                          </div>
+                      `
+                    : nothing
+            }
         `;
     }
 

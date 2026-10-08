@@ -13,23 +13,24 @@ const editorTheme = EditorView.theme({
     "&": {
         height: "100%",
         minHeight: "0",
-        fontFamily: "'Source Code Pro', monospace",
+        fontFamily: "var(--playground-monospace)",
         fontSize: "12px",
     },
     ".cm-scroller": {
         overflow: "auto",
+        fontFamily: "var(--playground-monospace)",
     },
     ".cm-gutters": {
         backgroundColor: "rgba(0, 0, 0, 0.04)",
         borderRight: "1px solid rgba(0, 0, 0, 0.08)",
     },
     ".cm-tooltip-autocomplete > ul": {
-        fontFamily: "'Source Code Pro', monospace",
+        fontFamily: "var(--playground-monospace)",
     },
     ".cm-json-schema-hover": {
         maxWidth: "520px",
         padding: "6px 8px",
-        fontFamily: "Lato, sans-serif",
+        fontFamily: "var(--playground-font-family)",
         fontSize: "12px",
         lineHeight: "1.4",
     },
@@ -44,7 +45,7 @@ const editorTheme = EditorView.theme({
         paddingLeft: "1.5em",
     },
     ".cm-json-schema-hover code": {
-        fontFamily: "'Source Code Pro', monospace",
+        fontFamily: "var(--playground-monospace)",
     },
 });
 

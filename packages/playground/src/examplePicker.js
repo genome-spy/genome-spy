@@ -34,130 +34,93 @@ export default class ExamplePicker extends LitElement {
                 inset: 0;
                 z-index: 10;
                 display: none;
-                justify-content: flex-end;
-                background: rgba(17, 24, 39, 0.35);
-                backdrop-filter: blur(2px);
+                background: var(--playground-backdrop);
             }
 
             :host([open]) {
+                display: block;
+            }
+
+            .backdrop {
                 display: flex;
+                justify-content: flex-end;
+                height: 100%;
             }
 
             .panel {
-                width: min(68rem, 100vw);
-                height: 100vh;
+                width: min(68rem, 100%);
+                height: 100%;
                 display: flex;
                 flex-direction: column;
-                gap: 1rem;
-                padding: 1.25rem;
-                box-sizing: border-box;
-                background: var(--playground-panel-bg, #f7f5ef);
-                box-shadow: -10px 0 30px rgba(0, 0, 0, 0.18);
+                gap: 16px;
+                padding: 20px;
+                background: var(--playground-panel);
+                box-shadow: var(--playground-shadow);
             }
 
             .header {
                 display: flex;
                 align-items: flex-start;
                 justify-content: space-between;
-                gap: 1rem;
-            }
+                gap: 16px;
 
-            .header h2,
-            .header p {
-                margin: 0;
-            }
-
-            .header h2 {
-                font-size: 1.7rem;
-            }
-
-            .header p {
-                margin-top: 0.35rem;
-                color: var(--playground-muted-text, #566074);
-            }
-
-            .close-button {
-                padding: 0.55rem 0.85rem;
+                p {
+                    margin: 4px 0 0;
+                    color: var(--playground-muted);
+                }
             }
 
             .search {
                 width: 100%;
-                padding: 0.75rem 0.9rem;
-                box-sizing: border-box;
-                border: 1px solid
-                    var(--playground-border-soft, rgba(23, 32, 51, 0.15));
-                border-radius: 0.8rem;
-                background: var(
-                    --playground-surface-soft,
-                    rgba(255, 255, 255, 0.82)
-                );
-                font: inherit;
             }
 
             .content {
                 flex: 1;
+                min-height: 0;
                 overflow: auto;
-                padding-right: 0.25rem;
+                padding: 2px;
             }
 
             .status {
                 margin: 0;
-                padding: 0.9rem 0;
-                color: var(--playground-muted-text, #566074);
-            }
-
-            .status.error {
-                color: var(--playground-danger-text, #9c2f2f);
+                padding: var(--playground-spacing) 0;
             }
 
             .group + .group {
-                margin-top: 1.75rem;
+                margin-top: 24px;
             }
 
-            .group h3 {
-                margin: 0 0 0.8rem;
-                font-size: 1.15rem;
-                letter-spacing: 0.02em;
+            h3 {
+                margin: 0 0 var(--playground-spacing);
+                font-size: var(--playground-font-size);
+                font-weight: 600;
             }
 
             .grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
-                gap: 0.9rem;
+                grid-template-columns: repeat(
+                    auto-fill,
+                    minmax(min(200px, 100%), 1fr)
+                );
+                gap: var(--playground-spacing);
             }
 
             .card {
                 display: flex;
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 0.45rem;
-                padding: 0.75rem;
+                gap: 8px;
+                padding: var(--playground-spacing);
                 text-align: left;
-                border: 1px solid
-                    var(--playground-border, rgba(23, 32, 51, 0.1));
-                border-radius: 0.9rem;
-                background: var(
-                    --playground-surface-card,
-                    rgba(255, 255, 255, 0.88)
-                );
-                color: inherit;
+                border: 1px solid var(--playground-border);
+                border-radius: var(--playground-radius);
+                background: var(--playground-surface);
                 cursor: pointer;
-                transition:
-                    transform 120ms ease,
-                    border-color 120ms ease,
-                    background-color 120ms ease;
-                font: inherit;
-            }
 
-            .card:hover,
-            .card:focus-visible {
-                transform: translateY(-1px);
-                border-color: var(
-                    --playground-accent-border,
-                    rgba(84, 143, 204, 0.65)
-                );
-                background: var(--playground-surface-raised, white);
-                outline: none;
+                &:hover {
+                    border-color: var(--playground-accent);
+                    background: var(--playground-selected);
+                }
             }
 
             .preview {
@@ -166,73 +129,41 @@ export default class ExamplePicker extends LitElement {
                 aspect-ratio: 3 / 2;
                 object-fit: cover;
                 object-position: top center;
-                border-radius: 0.65rem;
-                background: linear-gradient(
-                    135deg,
-                    var(--playground-preview-bg-start, #e8efe8),
-                    var(--playground-preview-bg-end, #f8f9fb)
-                );
-                border: 1px solid
-                    var(--playground-border-faint, rgba(23, 32, 51, 0.08));
+                border: 1px solid var(--playground-divider);
+                border-radius: var(--playground-radius);
+                background: var(--playground-panel);
             }
 
             img.preview {
                 opacity: 0;
-                transform: translateY(0.35rem) scale(0.985);
-                transition:
-                    opacity 180ms ease,
-                    transform 220ms ease;
-            }
+                transition: opacity 180ms ease;
 
-            img.preview.loaded {
-                opacity: 1;
-                transform: translateY(0) scale(1);
+                &.loaded {
+                    opacity: 1;
+                }
             }
 
             .placeholder {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: var(--playground-muted-strong, #6c7688);
-                font-size: 0.82rem;
-                font-weight: 600;
-                letter-spacing: 0.03em;
-                text-transform: uppercase;
-                background:
-                    radial-gradient(
-                        circle at top left,
-                        var(--playground-accent-soft, rgba(84, 143, 204, 0.12)),
-                        transparent 55%
-                    ),
-                    linear-gradient(
-                        135deg,
-                        var(--playground-placeholder-bg-start, #f3efe4),
-                        var(--playground-placeholder-bg-end, #fbfaf6)
-                    );
+                font-size: var(--playground-font-small);
+                color: var(--playground-muted);
             }
 
             .title {
                 font-weight: 600;
-                line-height: 1.3;
             }
 
             .meta {
-                font-size: 0.82rem;
-                color: var(--playground-muted-strong, #6c7688);
+                font-size: var(--playground-font-small);
+                color: var(--playground-muted);
             }
 
             @media (max-width: 700px) {
                 .panel {
-                    width: 100vw;
-                    padding: 1rem;
-                }
-
-                .grid {
-                    grid-template-columns: repeat(
-                        auto-fill,
-                        minmax(10.5rem, 1fr)
-                    );
-                    gap: 0.75rem;
+                    width: 100%;
+                    padding: var(--playground-spacing);
                 }
             }
         `,
@@ -272,7 +203,7 @@ export default class ExamplePicker extends LitElement {
         let entryIndex = 0;
 
         return html`
-            <div @click=${this.#close}>
+            <div class="backdrop" @click=${this.#close}>
                 <aside class="panel" @click=${this.#stopPropagation}>
                     <div class="header">
                         <div>
@@ -280,39 +211,44 @@ export default class ExamplePicker extends LitElement {
                             <p>Curated shared examples from the monorepo.</p>
                         </div>
                         <button
-                            class="chip-button close-button"
+                            class="button close-button"
                             @click=${this.#close}
                         >
                             Close
                         </button>
                     </div>
                     <input
-                        class="search"
+                        class="field search"
                         type="search"
                         placeholder="Search examples"
                         .value=${this.search}
                         @input=${this.#handleSearch}
                     />
                     <div class="content">
-                        ${this.loading
-                            ? html`<p class="status">
-                                  Loading example catalog...
-                              </p>`
-                            : this.error
-                              ? html`<p class="status error">${this.error}</p>`
-                              : groups.length === 0
-                                ? html`<p class="status">
-                                      No examples matched the current search.
+                        ${
+                            this.loading
+                                ? html`<p class="status muted">
+                                      Loading example catalog...
                                   </p>`
-                                : groups.map(([label, entries]) => {
-                                      const startIndex = entryIndex;
-                                      entryIndex += entries.length;
-                                      return this.#renderGroup(
-                                          label,
-                                          entries,
-                                          startIndex
-                                      );
-                                  })}
+                                : this.error
+                                  ? html`<p class="status error">
+                                        ${this.error}
+                                    </p>`
+                                  : groups.length === 0
+                                    ? html`<p class="status muted">
+                                          No examples matched the current
+                                          search.
+                                      </p>`
+                                    : groups.map(([label, entries]) => {
+                                          const startIndex = entryIndex;
+                                          entryIndex += entries.length;
+                                          return this.#renderGroup(
+                                              label,
+                                              entries,
+                                              startIndex
+                                          );
+                                      })
+                        }
                     </div>
                 </aside>
             </div>
@@ -346,24 +282,29 @@ export default class ExamplePicker extends LitElement {
         const isLoaded = this.loadedPreviewIds.has(entry.id);
         return html`
             <button class="card" @click=${() => this.#openEntry(entry)}>
-                ${entry.screenshotUrl
-                    ? html`
-                          <img
-                              class="preview ${isLoaded ? "loaded" : ""}"
-                              src=${entry.screenshotUrl}
-                              alt=""
-                              loading=${eager ? "eager" : "lazy"}
-                              decoding="async"
-                              fetchpriority=${eager ? "high" : "low"}
-                              @load=${() => this.#markPreviewLoaded(entry.id)}
-                              @error=${() => this.#markPreviewLoaded(entry.id)}
-                          />
-                      `
-                    : html`
-                          <div class="preview placeholder" aria-hidden="true">
-                              <span>${entry.sourceLabel}</span>
-                          </div>
-                      `}
+                ${
+                    entry.screenshotUrl
+                        ? html`
+                              <img
+                                  class="preview ${isLoaded ? "loaded" : ""}"
+                                  src=${entry.screenshotUrl}
+                                  alt=""
+                                  loading=${eager ? "eager" : "lazy"}
+                                  decoding="async"
+                                  fetchpriority=${eager ? "high" : "low"}
+                                  @load=${() => this.#markPreviewLoaded(entry.id)}
+                                  @error=${() => this.#markPreviewLoaded(entry.id)}
+                              />
+                          `
+                        : html`
+                              <div
+                                  class="preview placeholder"
+                                  aria-hidden="true"
+                              >
+                                  <span>${entry.sourceLabel}</span>
+                              </div>
+                          `
+                }
                 <span class="title">${entry.title}</span>
                 <span class="meta">${entry.category}</span>
             </button>

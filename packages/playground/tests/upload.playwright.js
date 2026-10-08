@@ -43,10 +43,10 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
 
     await page.locator("#fileInput").setInputFiles(fixturePath);
 
-    const uploadedFileTab = page.locator(
-        'file-pane li[data-name="uploaded-points.csv"]'
-    );
-    await expect(uploadedFileTab).toHaveClass(/selected/);
+    const uploadedFileTab = page.getByRole("tab", {
+        name: "uploaded-points.csv",
+    });
+    await expect(uploadedFileTab).toHaveAttribute("aria-selected", "true");
     await expect(page.locator("file-pane table")).toContainText(
         "Uploaded point"
     );
@@ -84,6 +84,18 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
             })
         )
         .toBe(true);
+
+    // The component's tabs support keyboard selection across its shadow root.
+    await uploadedFileTab.focus();
+    await uploadedFileTab.press("End");
+    const addFiles = page.getByRole("tab", { name: "Add new files" });
+    await expect(addFiles).toBeFocused();
+    await expect(
+        page.getByRole("button", { name: "Choose files" })
+    ).toBeVisible();
+    await addFiles.press("ArrowRight");
+    await expect(uploadedFileTab).toBeFocused();
+    await expect(uploadedFileTab).toHaveAttribute("aria-selected", "true");
 
     // Inspect the composited frame after dataflow publication and rendering.
     await expect

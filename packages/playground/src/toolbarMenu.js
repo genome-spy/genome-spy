@@ -112,17 +112,7 @@ export function toolbarMenu({
                         String(open)
                     );
                     if (open) {
-                        const bounds =
-                            menu.previousElementSibling.getBoundingClientRect();
-                        menu.style.left =
-                            Math.max(
-                                4,
-                                Math.min(
-                                    bounds.left,
-                                    window.innerWidth - menu.offsetWidth - 4
-                                )
-                            ) + "px";
-                        menu.style.top = bounds.bottom + "px";
+                        positionMenu(menu);
                         const initialItem = /** @type {HTMLElement} */ (
                             menu.querySelector(initialFocusSelector)
                         );
@@ -151,6 +141,19 @@ export function toolbarMenu({
     `;
 }
 
+/** Position a top-layer menu beside its invoker, including after a resize.
+ * @param {HTMLElement} menu
+ */
+export function positionMenu(menu) {
+    const bounds = menu.previousElementSibling.getBoundingClientRect();
+    menu.style.left =
+        Math.max(
+            4,
+            Math.min(bounds.left, window.innerWidth - menu.offsetWidth - 4)
+        ) + "px";
+    menu.style.top = bounds.bottom + "px";
+}
+
 /** @param {HTMLElement} menu */
 function closeMenu(menu) {
     menu.hidePopover();
@@ -163,7 +166,8 @@ function handleMenuKeydown(event) {
     const items = Array.from(
         menu.querySelectorAll('[role^="menuitem"]:not(:disabled)')
     );
-    const index = items.indexOf(document.activeElement);
+    const root = /** @type {Document | ShadowRoot} */ (menu.getRootNode());
+    const index = items.indexOf(root.activeElement);
     let nextIndex;
     switch (event.key) {
         case "ArrowDown":
@@ -191,12 +195,3 @@ function handleMenuKeydown(event) {
     event.preventDefault();
     /** @type {HTMLElement} */ (items[nextIndex]).focus();
 }
-
-// A resize may switch toolbar modes or invalidate the popover's position.
-window.addEventListener("resize", () => {
-    for (const menu of document.querySelectorAll(
-        ".toolbar-menu:popover-open"
-    )) {
-        /** @type {HTMLElement} */ (menu).hidePopover();
-    }
-});

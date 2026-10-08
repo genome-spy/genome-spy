@@ -1,4 +1,5 @@
-import { html, LitElement, nothing } from "lit";
+import { html, LitElement, css, nothing } from "lit";
+import { playgroundComponentStyles } from "./componentStyles.js";
 import { map } from "lit/directives/map.js";
 import { read } from "vega-loader";
 
@@ -7,100 +8,261 @@ import { read } from "vega-loader";
  * @typedef {{ metadata: File, data: any }} FileEntry
  */
 
-/**
- *
- */
+/** Dataset tabs, previews, and local file upload. */
 export default class FilePane extends LitElement {
     static properties = {
         missingFiles: { type: Set, attribute: false },
+        files: { attribute: false },
     };
 
     /** @type {string | undefined} */
     #currentTab;
 
-    /** @type {Record<string, FileEntry>} */
-    files;
+    static styles = [
+        playgroundComponentStyles,
+        css`
+            :host {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                min-height: 0;
+                background: var(--playground-surface);
+            }
+
+            .tabs {
+                display: flex;
+                flex-shrink: 0;
+                overflow-x: auto;
+                border-bottom: 1px solid var(--playground-divider);
+                background: var(--playground-panel);
+                padding: 4px 4px 0;
+                gap: 4px;
+            }
+
+            [role="tab"] {
+                padding: 4px 8px;
+                white-space: nowrap;
+                cursor: pointer;
+                border: none;
+                border-bottom: 2px solid transparent;
+                border-radius: var(--playground-radius) var(--playground-radius)
+                    0 0;
+                background: transparent;
+                color: var(--playground-muted);
+
+                &:hover {
+                    background: var(--playground-hover);
+                }
+
+                &[aria-selected="true"] {
+                    background: var(--playground-surface);
+                    color: var(--playground-accent-text);
+                    border-bottom-color: var(--playground-accent);
+                }
+
+                &:focus-visible {
+                    outline-offset: -2px;
+                }
+            }
+
+            [role="tabpanel"] {
+                flex: 1;
+                overflow: auto;
+                padding: var(--playground-spacing);
+            }
+
+            .upload-form {
+                display: grid;
+                justify-items: start;
+                gap: var(--playground-spacing);
+                margin-top: var(--playground-spacing);
+
+                p,
+                pre {
+                    margin: 0;
+                }
+
+                p {
+                    color: var(--playground-muted);
+                }
+            }
+
+            pre {
+                padding: var(--playground-spacing);
+                background: var(--playground-panel);
+                border-radius: var(--playground-radius);
+            }
+
+            pre,
+            .missing-files ul {
+                font-family: var(--playground-monospace);
+                font-size: var(--playground-font-small);
+            }
+
+            table {
+                border-collapse: separate;
+                border-spacing: 0;
+                font-size: var(--playground-font-small);
+            }
+
+            td,
+            th {
+                padding: 4px 8px;
+                max-width: 15em;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: left;
+                border-bottom: 1px solid var(--playground-divider);
+
+                &.number {
+                    text-align: right;
+                    font-variant-numeric: tabular-nums;
+                }
+
+                &:hover {
+                    overflow: visible;
+                    background: var(--playground-hover);
+                }
+            }
+
+            th {
+                position: sticky;
+                top: 0;
+                background: var(--playground-panel);
+                font-weight: 600;
+            }
+        `,
+    ];
 
     constructor() {
         super();
-
-        /** @type {Set<String>} */
+        /** @type {Record<string, FileEntry>} */
+        this.files = {};
+        /** @type {Set<string>} */
         this.missingFiles = new Set();
     }
 
-    createRenderRoot() {
-        // No shadow DOM, please. Styles don't get through.
-        return this;
+    render() {
+        const names = [...Object.keys(this.files), undefined];
+        const selectedIndex = names.indexOf(this.#currentTab);
+        return html`
+            <div
+                class="tabs"
+                role="tablist"
+                aria-label="Datasets"
+                @keydown=${this.#handleTabKeydown}
+            >
+                ${names.map(
+                    (name, index) => html`
+                        <button
+                            role="tab"
+                            id=${"tab-" + index}
+                            aria-controls="tab-panel"
+                            aria-selected=${index === selectedIndex}
+                            tabindex=${index === selectedIndex ? 0 : -1}
+                            @click=${() => this.#selectTab(name)}
+                        >
+                            ${name ?? "Add new files"}
+                        </button>
+                    `
+                )}
+            </div>
+            <div
+                role="tabpanel"
+                id="tab-panel"
+                aria-labelledby=${"tab-" + selectedIndex}
+                tabindex="0"
+            >
+                ${
+                    this.#currentTab === undefined
+                        ? html` ${
+                              this.missingFiles.size
+                                  ? html` <div
+                                        class="notice warning missing-files"
+                                    >
+                                        <p>Please add the following files:</p>
+                                        <ul>
+                                            ${map(this.missingFiles, (name) => html`<li>${name}</li>`)}
+                                        </ul>
+                                    </div>`
+                                  : nothing
+                          }
+                          ${this.#renderUploadForm()}`
+                        : makeDataTable(this.files[this.#currentTab].data)
+                }
+            </div>
+        `;
     }
 
-    render() {
+    /** @param {string | undefined} name */
+    #selectTab(name) {
+        this.#currentTab = name;
+        this.requestUpdate();
+    }
+
+    /** @param {KeyboardEvent} event */
+    async #handleTabKeydown(event) {
+        const names = [...Object.keys(this.files), undefined];
+        const index = names.indexOf(this.#currentTab);
+        let next;
+        switch (event.key) {
+            case "ArrowRight":
+                next = (index + 1) % names.length;
+                break;
+            case "ArrowLeft":
+                next = (index + names.length - 1) % names.length;
+                break;
+            case "Home":
+                next = 0;
+                break;
+            case "End":
+                next = names.length - 1;
+                break;
+            default:
+                return;
+        }
+        event.preventDefault();
+        this.#selectTab(names[next]);
+        await this.updateComplete;
+        /** @type {HTMLElement} */ (
+            this.renderRoot.querySelector('[aria-selected="true"]')
+        ).focus();
+    }
+
+    #renderUploadForm() {
         return html`
-            <div class="tab-wrapper">
-                <ul class="tabs">
-                    ${Object.keys(this.files).map(
-                        (name) => html`
-                            <li
-                                data-name=${name}
-                                class=${name == this.#currentTab
-                                    ? "selected"
-                                    : ""}
-                            >
-                                <a
-                                    href="#"
-                                    @click=${(/** @type {UIEvent} */ event) =>
-                                        this._changeTab(event)}
-                                    >${name}</a
-                                >
-                            </li>
-                        `
-                    )}
-                    <li
-                        class=${this.#currentTab === undefined
-                            ? "selected"
-                            : ""}
-                    >
-                        <a
-                            href="#"
-                            @click=${(/** @type {UIEvent} */ event) =>
-                                this._changeTab(event)}
-                            >Add new files</a
-                        >
-                    </li>
-                    <li style="flex-grow: 1"></li>
-                </ul>
-
-                <div class="tab-pages">
-                    ${Object.keys(this.files).map(
-                        (name) => html`
-                            <div
-                                class=${name == this.#currentTab
-                                    ? "selected"
-                                    : ""}
-                            >
-                                ${makeDataTable(this.files[name].data)}
-                            </div>
-                        `
-                    )}
-
-                    <div
-                        class=${this.#currentTab === undefined
-                            ? "selected"
-                            : ""}
-                    >
-                        ${this.missingFiles.size
-                            ? html`<div class="missing-files">
-                                  <p>Please add the following files:</p>
-                                  <ul>
-                                      ${map(
-                                          this.missingFiles,
-                                          (name) => html`<li>${name}</li>`
-                                      )}
-                                  </ul>
-                              </div>`
-                            : nothing}
-                        ${makeUploadForm((event) => this._handleFiles(event))}
-                    </div>
-                </div>
+            <div class="upload-form">
+                <input
+                    type="file"
+                    multiple
+                    accept=".csv,.tsv,.txt,.json"
+                    id="fileInput"
+                    hidden
+                    @change=${this._handleFiles}
+                />
+                <button
+                    type="button"
+                    class="button primary"
+                    @click=${() =>
+                        /** @type {HTMLInputElement} */ (
+                            this.renderRoot.querySelector("#fileInput")
+                        ).click()}
+                >
+                    Choose files
+                </button>
+                <p>
+                    The added file becomes a named datasource, which can be
+                    accessed as follows:
+                </p>
+                <pre>
+"data": {
+    "name": "filename.csv"
+}</pre>
+                <p>
+                    All data processing takes place in your web browser. Nothing
+                    is uploaded anywhere.
+                </p>
             </div>
         `;
     }
@@ -132,70 +294,9 @@ export default class FilePane extends LitElement {
         this.requestUpdate();
         this.dispatchEvent(new CustomEvent("upload", { detail: {} }));
     }
-
-    /**
-     * @param {UIEvent} event
-     */
-    _changeTab(event) {
-        const target = /** @type {HTMLElement} */ (event.target);
-        const name = target.parentElement.dataset.name;
-        this.#currentTab = name;
-
-        event.preventDefault();
-        this.requestUpdate();
-    }
 }
 
 customElements.define("file-pane", FilePane);
-
-// Utils
-
-/**
- *
- * @param {(event: InputEvent) => void} handleFiles
- * @returns
- */
-function makeUploadForm(handleFiles) {
-    return html` <form class="upload-form">
-        <input
-            type="file"
-            multiple
-            accept=".csv,.tsv,.txt,.json"
-            id="fileInput"
-            @change=${handleFiles}
-            style="display:none"
-        />
-        <div id="upload-button-wrapper">
-            <button
-                class="btn"
-                @click=${(/** @type {UIEvent} */ e) => {
-                    document.getElementById("fileInput").click();
-                    e.preventDefault();
-                    e.stopPropagation();
-                }}
-            >
-                Choose files
-            </button>
-        </div>
-
-        <p>
-            The added file becomes a named datasource, which can be accessed as
-            follows:
-        </p>
-
-        <pre>
-"data": {
-    "name": "filename.csv"
-}
-</pre
-        >
-
-        <p>
-            N.B. All data processing takes place in your web browser. Nothing is
-            uploaded anywhere.
-        </p>
-    </form>`;
-}
 
 /**
  *
@@ -205,29 +306,27 @@ function makeDataTable(data) {
     const cols = Object.keys(data[0]);
     const rows = data.slice(0, 30);
 
-    const alignments = cols.map(
-        (col) =>
-            "text-align: " +
-            (typeof data[0][col] === "number" ? "right" : "left")
+    const alignments = cols.map((col) =>
+        typeof data[0][col] === "number" ? "number" : ""
     );
 
     const makeRow = (/** @type {Datum} */ row) => html`
         <tr>
             ${cols.map(
-                (c, i) => html`<td style=${alignments[i]}>${row[c]}</td> `
+                (c, i) => html`<td class=${alignments[i]}>${row[c]}</td> `
             )}
         </tr>
     `;
 
     const makeEllipsis = () => html`
         <tr>
-            ${cols.map((c, i) => html`<td style=${alignments[i]}>...</td> `)}
+            ${cols.map((c, i) => html`<td class=${alignments[i]}>...</td> `)}
         </tr>
     `;
 
     const makeHead = () => html`
         <tr>
-            ${cols.map((c, i) => html`<th style=${alignments[i]}>${c}</th> `)}
+            ${cols.map((c, i) => html`<th class=${alignments[i]}>${c}</th> `)}
         </tr>
     `;
 

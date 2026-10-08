@@ -1,17 +1,14 @@
 import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
-import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faBug,
     faColumns,
     faDownload,
-    faFolderOpen,
     faQuestionCircle,
     faIndent,
-    faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
-import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
+import { embed } from "@genome-spy/core";
 import "@genome-spy/core/rendering/webgpu/register.js";
 import { createInspectorPanel } from "@genome-spy/inspector";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
@@ -27,15 +24,11 @@ import "./editor/codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
 import "./imageExportDialog.js";
-import "./playground.scss";
+import "./playground.css";
+import "./toolbar.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
-import {
-    getRendererFromUrl,
-    rendererMenu,
-    rendererMenuItems,
-} from "./rendererMenu.js";
-import { toolbarAction, toolbarMenu } from "./toolbarMenu.js";
+import { getRendererFromUrl } from "./rendererMenu.js";
 import {
     addUploadedDatasets,
     findMissingNamedData,
@@ -641,60 +634,15 @@ const toolbarTemplate = () => {
         "https://github.com/genome-spy/genome-spy/releases/tag/v" +
         packageJson.version;
 
-    return html`
-        <div class="toolbar">
-            <a
-                href="https://genomespy.app/"
-                target="_blank"
-                class="genome-spy-icon"
-            >
-                <img title="GenomeSpy" alt="GenomeSpy" src="${genomeSpyIcon}" />
-            </a>
-            <h1 class="title">GenomeSpy Playground</h1>
-            ${actions.slice(0, 3).map((action) => toolbarAction(action, false))}
-            ${rendererMenu(renderer, selectRenderer)}
-            ${actions.slice(3).map((action) => toolbarAction(action, false))}
-            <span class="vis-title">
-                <span class="hide-mobile">${visTitle}</span>
-            </span>
-            <a class="version tool-button hide-mobile" href=${releaseUrl}
-                >v${packageJson.version}</a
-            >
-            <button
-                @click=${openExamplePicker}
-                class="tool-button examples-button"
-            >
-                ${icon(faFolderOpen).node[0]}
-                <span>Examples</span>
-            </button>
-            ${toolbarMenu({
-                id: "more-menu",
-                label: "More",
-                className: "more-selector",
-                buttonContent: html`${icon(faEllipsisVertical).node[0]}<span
-                        >More</span
-                    >`,
-                items: html`
-                    ${actions.map((action) => toolbarAction(action, true))}
-                    <div
-                        role="group"
-                        aria-label="Renderer"
-                        class="renderer-group"
-                    >
-                        <div class="menu-heading">Renderer</div>
-                        ${rendererMenuItems(renderer, selectRenderer)}
-                    </div>
-                    ${toolbarAction(
-                        {
-                            label: "Release v" + packageJson.version,
-                            href: releaseUrl,
-                        },
-                        true
-                    )}
-                `,
-            })}
-        </div>
-    `;
+    return html`<gs-playground-toolbar
+        .actions=${actions}
+        .renderer=${renderer}
+        .visTitle=${visTitle}
+        .version=${packageJson.version}
+        .releaseUrl=${releaseUrl}
+        @open-examples=${openExamplePicker}
+        @select-renderer=${(/** @type {CustomEvent<{renderer: import("./rendererMenu.js").Renderer}>} */ event) => selectRenderer(event.detail.renderer)}
+    ></gs-playground-toolbar>`;
 };
 
 const debouncedUpdate = debounce(() => update(), 500, false);

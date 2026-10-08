@@ -1,0 +1,162 @@
+:root {
+    --playground-font-family:
+        system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    --playground-monospace:
+        ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+        monospace;
+    --playground-font-size: 14px;
+    --playground-font-small: 12px;
+    --playground-spacing: 12px;
+    --playground-radius: 4px;
+    --playground-surface: #fff;
+    --playground-panel: #f5f6f7;
+    --playground-hover: #edf0f3;
+    --playground-text: #242a31;
+    --playground-muted: #606a76;
+    --playground-border: #cdd3da;
+    --playground-divider: #e2e6eb;
+    --playground-accent: #548fcc;
+    --playground-accent-hover: #437eb9;
+    --playground-accent-text: #335f8b;
+    --playground-selected: #e8f0f9;
+    --playground-danger: #a32f2f;
+    --playground-warning-border: #d4ab62;
+    --playground-warning-bg: #fff8e8;
+    --playground-backdrop: rgb(17 24 39 / 35%);
+    --playground-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+}
+
+body {
+    margin: 0;
+    font: var(--playground-font-size) / 1.4 var(--playground-font-family);
+    color: var(--playground-text);
+    background: var(--playground-surface);
+}
+
+split-panel {
+    --border-color: var(--playground-divider);
+    --handle-hover-color: rgb(84 143 204 / 15%);
+}
+
+#playground-layout {
+    display: flex;
+    height: 100dvh;
+    flex-direction: column;
+
+    > split-panel {
+        flex: 1;
+        min-height: 0;
+        /* Keep nested resize handles below overlays such as the example picker. */
+        isolation: isolate;
+    }
+}
+
+#genome-spy-container,
+#editor-and-others,
+#editor-pane,
+#input-and-files,
+#input-bindings-pane,
+#inspector-pane,
+file-pane {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+#input-bindings-host {
+    display: none;
+}
+
+#editor-pane {
+    display: flex;
+    flex-direction: column;
+}
+
+code-editor {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+base-url-notice {
+    flex: 0 0 auto;
+}
+
+#input-bindings-pane {
+    overflow: auto;
+    accent-color: var(--playground-accent);
+
+    input,
+    select {
+        font: inherit;
+        color: inherit;
+    }
+
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+    select {
+        border: 1px solid var(--playground-border);
+        border-radius: var(--playground-radius);
+        background: var(--playground-surface);
+        padding: 4px 8px;
+    }
+
+    :is(input, select):focus-visible {
+        outline: 2px solid var(--playground-accent);
+        outline-offset: 2px;
+    }
+
+    /* Core bindings are moved outside their original scoped container. */
+    .gs-input-bindings {
+        font-size: var(--playground-font-size);
+        padding: var(--playground-spacing);
+    }
+
+    .gs-input-binding {
+        display: grid;
+        grid-template-columns: max-content max-content;
+        column-gap: 1em;
+        row-gap: 0.3em;
+        justify-items: start;
+
+        > select,
+        > input:not([type="checkbox"]) {
+            width: 100%;
+        }
+
+        input[type="range"] + span {
+            display: inline-block;
+            margin-left: 0.3em;
+            min-width: 2.2em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type="range"],
+        input[type="radio"] {
+            vertical-align: text-bottom;
+        }
+
+        .radio-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .description {
+            max-width: 26em;
+            grid-column: 1 / -1;
+            color: var(--playground-muted);
+            font-size: 90%;
+            margin-top: -0.5em;
+        }
+    }
+}
+
+#inspector-pane {
+    min-height: 0;
+
+    gs-inspector-panel {
+        display: block;
+        height: 100%;
+        min-height: 0;
+    }
+}
