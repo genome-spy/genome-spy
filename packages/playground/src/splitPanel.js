@@ -142,6 +142,8 @@ class SplitPanel extends LitElement {
         const next = /** @type {HTMLElement} */ (resizables[index + 1]);
 
         const isHorizontal = this.orientation === "horizontal";
+        const panelBounds = this.getBoundingClientRect();
+        const panelSize = isHorizontal ? panelBounds.width : panelBounds.height;
         const startPosition = isHorizontal ? event.clientX : event.clientY;
         const currentStartSize = isHorizontal
             ? current.getBoundingClientRect().width
@@ -156,15 +158,15 @@ class SplitPanel extends LitElement {
             const position = isHorizontal ? event.clientX : event.clientY;
             const delta = position - startPosition;
             const pairSize = currentStartSize + nextStartSize;
-            // Pixel flex sizes avoid border rounding and flex-grow redistribution offsets.
             const currentSize = Math.max(
                 0,
                 Math.min(currentStartSize + delta, pairSize)
             );
             const nextSize = pairSize - currentSize;
 
-            current.style.flex = `0 0 ${currentSize}px`;
-            next.style.flex = `0 0 ${nextSize}px`;
+            // Preserve pointer alignment while letting both panes scale with the container.
+            current.style.flex = `0 0 ${(currentSize / panelSize) * 100}%`;
+            next.style.flex = `0 0 ${(nextSize / panelSize) * 100}%`;
             event.stopPropagation();
         };
 
