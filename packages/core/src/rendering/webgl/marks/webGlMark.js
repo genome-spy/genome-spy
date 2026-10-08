@@ -2,7 +2,6 @@ import {
     bindUniformBlock,
     createBufferInfoFromArrays,
     createProgramInfoFromProgram,
-    createUniformBlockInfo,
     createVertexArrayInfo,
     setAttribInfoBufferFromArray,
     setBlockUniforms,
@@ -45,6 +44,7 @@ import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
 import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { createProgram } from "../gl/webGLHelper.js";
+import { createUniformBlockInfo } from "../gl/uniformBlocks.js";
 import { RASTER_COORDINATE_OFFSET } from "../../renderingConstants.js";
 import { InternMap } from "internmap";
 import ViewError from "../../../view/viewError.js";
