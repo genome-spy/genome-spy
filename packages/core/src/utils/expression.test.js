@@ -4,6 +4,43 @@ import createFunction, { analyzeExpression } from "./expression.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { bindExpression } from "../paramRuntime/expressionRef.js";
 
+test.each(["datum.labelWidth + 10", 'datum["labelWidth"] + 10'])(
+    "validates static datum fields in %s for each evaluator",
+    (expr) => {
+        const expression = createFunction(expr);
+        expect(() => createFunction(expr)({ other: 2 })).toThrow(
+            'Invalid field "labelWidth". Available fields or properties: other'
+        );
+        expect(expression({ labelWidth: 2 })).toBe(12);
+        const snapshot = expression.createEvaluator({});
+        expect(() => snapshot({ other: 2 })).toThrow(
+            'Invalid field "labelWidth"'
+        );
+        expect(createFunction(expr)({ labelWidth: undefined })).toBeNaN();
+    }
+);
+
+test("decodes bracket field literals and validates only once", () => {
+    const expression = createFunction('datum["label\\u0057idth"] + 10');
+    expect(expression({ labelWidth: 2 })).toBe(12);
+    expect(expression({})).toBeNaN();
+});
+
+test("requires fields used in guards but permits undefined values", () => {
+    const expr = "isDefined(datum.width) ? datum.width + 10 : 10";
+    expect(createFunction(expr)({ width: undefined })).toBe(10);
+    expect(() => createFunction(expr)({})).toThrow('Invalid field "width"');
+});
+
+test("leaves computed keys and nested properties unchecked", () => {
+    expect(
+        createFunction("datum[key]", { key: "missing" })({})
+    ).toBeUndefined();
+    expect(
+        createFunction("datum.record.missing")({ record: {} })
+    ).toBeUndefined();
+});
+
 describe("expression helpers", () => {
     test("computes nicely rounded tick steps", () => {
         expect(createFunction("tickStep(0, 12000000, 2)")()).toBe(5000000);

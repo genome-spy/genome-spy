@@ -21,13 +21,9 @@ export function field(fieldExpr, name, location) {
     const path = splitAccessPath(fieldExpr);
     if (path.length === 1) {
         const fieldName = path[0];
-        const validate = function (
+        const validate = (
             /** @type {import("../data/flowNode.js").Datum} */ datum
-        ) {
-            if (!(fieldName in datum)) {
-                logMissingProperty(datum, fieldName, location);
-            }
-        };
+        ) => validateField(datum, fieldName, location);
 
         const fn = /** @type {import("vega-util").AccessorFn} */ (
             new Function(
@@ -51,12 +47,14 @@ export function field(fieldExpr, name, location) {
 }
 
 /**
- *
+ * Requires the property to exist, allowing an undefined value.
  * @param {any} obj
  * @param {string} prop
  * @param {import("../types/embedApi.js").SpecLocation | undefined} location
  */
-function logMissingProperty(obj, prop, location) {
+export function validateField(obj, prop, location) {
+    if (prop in obj) return;
+
     throw annotateSpecError(
         new Error(
             `Invalid field "${prop}". Available fields or properties: ${Object.keys(obj).join(", ")}`

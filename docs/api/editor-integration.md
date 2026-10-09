@@ -35,15 +35,16 @@ identifier for an object in the specification passed to `embed`. Import
 entry point) and call it on an error received by `onError` or caught from `embed`.
 
 The result is `{ origin, path }`, where `origin` is the string returned by your
-callback and `path` identifies a property within that declaration. A syntax error
-or unknown parameter in an expression identifies its `expr` property. Duplicate
-parameters identify the second declaration's `name`; missing `push: "outer"`
-targets identify the referencing parameter's `name`. Transform construction
+callback and `path` identifies a property within that declaration. A syntax error,
+unknown parameter, or missing static top-level `datum` field in an expression
+identifies its `expr` property. Duplicate parameters identify the second
+declaration's `name`; missing `push: "outer"` targets identify the referencing
+parameter's `name`. Transform construction
 failures identify the whole transform (`path: []`). The helper also checks wrapped
 errors' causes. GenomeSpy treats `origin` as an opaque string; using JSON Pointers
 is a choice made by the embedding application.
-Not every error has a location, and this does not validate `datum` field references
-in expressions.
+Not every error has a location. Nested `datum` properties and computed field names
+are not validated.
 
 Track-local processing failures carry the same information in
 [`dataLoading` entries](./instance.md#data-loading) as `errorLocation`. Their

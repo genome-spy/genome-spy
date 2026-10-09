@@ -17,6 +17,7 @@ import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
 import { annotateSpecError } from "./specError.js";
+import { validateField } from "./field.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -457,7 +458,29 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
             functions: (visitor) => buildFunctions(visitor, helperContext),
         });
 
-        const parsed = parseExpression(expr);
+        const parsed = /** @type {ReturnType<typeof parseExpression> & {
+            visit: (visitor: (node: import("estree").Node) => void) => void
+        }} */ (parseExpression(expr));
+        /** @type {Set<string>} */
+        const datumFields = new Set();
+        parsed.visit((node) => {
+            if (
+                node.type === "MemberExpression" &&
+                node.object.type === "Identifier" &&
+                node.object.name === "datum"
+            ) {
+                if (!node.computed && node.property.type === "Identifier") {
+                    datumFields.add(node.property.name);
+                } else if (
+                    node.computed &&
+                    node.property.type === "Literal" &&
+                    (typeof node.property.value === "string" ||
+                        typeof node.property.value === "number")
+                ) {
+                    datumFields.add(String(node.property.value));
+                }
+            }
+        });
         const generatedCode = cg(parsed);
 
         const fn = Function(
@@ -473,13 +496,28 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
             }`
         ).bind(functionContext);
 
-        /** @type { ExpressionFunction } */
-        const exprFunction = /** @param {object} datum */ (datum) =>
-            fn(datum, globalObject);
+        /** @param {Record<string, any>} globals */
+        function createEvaluator(globals) {
+            let validated = datumFields.size === 0;
+            return (
+                /** @type {import("../data/flowNode.js").Datum} */ datum
+            ) => {
+                if (!validated) {
+                    for (const field of datumFields) {
+                        validateField(datum, field, context.specLocation);
+                    }
+                    validated = true;
+                }
+                return fn(datum, globals);
+            };
+        }
+
+        const exprFunction = /** @type {ExpressionFunction} */ (
+            createEvaluator(globalObject)
+        );
         // Reuse the compiled function so consumers can supply optimized global
         // storage without paying another parse/code-generation cost.
-        exprFunction.createEvaluator = (alternateGlobalObject) => (datum) =>
-            fn(datum, alternateGlobalObject);
+        exprFunction.createEvaluator = createEvaluator;
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;

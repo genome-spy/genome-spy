@@ -4,19 +4,21 @@
 
 Make specification experiments easier in Playground by underlining the declaration
 responsible for missing encoding fields, invalid expressions, duplicate parameter
-names, and transform construction failures. Expression errors include parsing,
+names, transform construction failures, and missing static top-level `datum`
+fields. Expression errors include parsing,
 compilation, and unknown parameter names. Preserve the existing
-error messages, failure behavior, and available-field hints. Embedders should receive the same location
+error messages and available-field hints. Embedders should receive the same location
 information without inspecting the visualization.
 
 This builds on the data-loading reporting API merged in #557. JSON Schema remains
 responsible for structural validation. This change adds context to errors raised
-by existing runtime validation; it does not introduce new validation rules.
+by runtime validation, including presence checks for static top-level `datum`
+fields added in the final milestone.
 
 Non-goals:
 
-- Checking `datum` field references in expressions, including nested references.
-- Changing field-access semantics, sparse-data handling, or nested-field checks.
+- Checking nested `datum` properties or computed field names in expressions.
+- Checking every row for sparse fields or adding nested-field checks.
 - Reporting every transform field, generated locus field, or arbitrary runtime
   exception. These can use the same mechanism in later work.
 - Recovery, retries, error history, a general diagnostics registry, or tracking
@@ -146,7 +148,7 @@ event would add state unrelated to the two requested checks.
       representative formula/filter, scale, view/mark property, and guide expressions,
       both syntax failures and unknown params, wrapped source
       failures, and absent origin hooks. Verify lexical scope remains unchanged
-      and `datum.missing` is not newly rejected.
+      and present `undefined` datum fields are accepted.
 - [x] Review related tests and remove overlapping implementation-detail checks.
 - [x] Document the public descriptor/helper and expanded `getSpecOrigin` contract
       in the embedding API docs; add one Core minor changeset for this feature.
@@ -201,12 +203,24 @@ record the tradeoff rather than adding speculative infrastructure.
 Acceptance: existing missing-field and expression parsing/binding errors gain the
 correct authored field/expression location; both reporting routes retain it;
 Playground underlines that value and clears obsolete diagnostics; valid lexical
-references and unchecked `datum` references retain their behavior; no hook means
+references, nested/computed datum references, and present undefined fields retain
+their behavior; no hook means
 ordinary errors still work. Later runtime transform-field diagnostics can reuse
 the descriptor, but are deferred.
 
 Before a future PR, reconcile every remaining task, commit the final plan record,
 then remove this temporary plan in a later commit.
+
+### 3. Static datum-field validation
+
+- [x] Collect static top-level datum property names from the parsed expression,
+      preserving decoded bracket literals and leaving computed keys unchecked.
+- [x] Reuse property-presence errors and expression origins; validate once per
+      evaluator when its first row arrives, allowing present undefined values.
+- [x] Verify formula/filter/encoding failures, source reports, upstream-generated
+      fields, independent snapshot evaluators, and Playground highlights.
+- [x] Update documentation and record the behavior change and migration in the
+      existing changeset. Run integration verification and commit the milestone.
 
 ## Review record
 
@@ -350,3 +364,21 @@ Its introduction defines specification fragments and explains how Playground
 maps object identities to JSON Pointers and resolves reported paths to editor
 character ranges. It presents JSON Schema validation as the structural check
 that precedes these runtime diagnostics.
+
+### Static datum-field milestone record
+
+Static top-level datum references are collected from the existing parsed AST,
+which distinguishes computed keys and decodes bracket literals correctly. Each
+ordinary or snapshot evaluator validates its first row through the shared field
+presence check. Present undefined values pass, including inside guards; absent
+fields fail and carry the expression declaration's location. Fields produced by
+upstream transforms are checked at the correct point in the pipeline. Nested
+properties and computed keys retain their behavior.
+
+Verification: the full suite passes (509 files, 4,639 passed, one skipped, two
+todo), plus all 29 Playground tests. Workspace TypeScript, lint, Playground build,
+and release checks pass. Browser checks verify a failed formula reports
+`/transform/0` plus `["expr"]`, correction clears the highlight, and a present
+undefined field is accepted and produces the guarded result. The changeset now
+requests a major release (2.0.0 for the fixed group), with migration instructions,
+because deliberately probing absent static fields now raises an error.

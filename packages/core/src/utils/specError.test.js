@@ -537,17 +537,90 @@ test.each([false, true])(
     }
 );
 
-test("does not validate datum fields in expressions or require an origin hook", async () => {
+test.each(["formula", "filter", "encoding"])(
+    "locates missing datum fields in %s expressions",
+    async (kind) => {
+        const declaration = { expr: "datum.labelWidth + 10" };
+        const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
+            data: { values: [{ present: 1 }] },
+            mark: "point",
+            ...(kind === "encoding"
+                ? { encoding: { x: { ...declaration, type: "quantitative" } } }
+                : {
+                      transform: [
+                          {
+                              ...declaration,
+                              type: kind,
+                              ...(kind === "formula"
+                                  ? { as: "collisionWidth" }
+                                  : {}),
+                          },
+                      ],
+                  }),
+        });
+        const source =
+            kind === "encoding" ? spec.encoding.x : spec.transform[0];
+        await expect(
+            createHeadlessEngine(spec, { context: locatedContext(source) })
+        ).rejects.toSatisfy((error) => {
+            expect(error.message).toContain('Invalid field "labelWidth"');
+            expect(getSpecErrorLocation(error)).toEqual({
+                origin: "declaration",
+                path: ["expr"],
+            });
+            return true;
+        });
+    }
+);
+
+test("permits present undefined datum fields without an origin hook", async () => {
     const { view } = await createHeadlessEngine({
-        data: { values: [{ present: 1 }] },
+        data: { values: [{ optional: undefined }] },
         mark: "point",
         encoding: {
-            color: {
-                expr: "isValid(datum.missing) ? 'red' : 'gray'",
-                type: "nominal",
-                scale: null,
+            x: {
+                expr: "isDefined(datum.optional) ? 1 : 0",
+                type: "quantitative",
             },
         },
     });
+    const unit = /** @type {import("../view/unitView.js").default} */ (view);
+    expect(
+        getEncoderAccessors(unit.mark.encoders.x)[0]({
+            optional: undefined,
+        })
+    ).toBe(0);
+    view.disposeSubtree();
+});
+
+test("reports missing formula fields through source loading status", async () => {
+    vi.stubGlobal("fetch", async () => new Response("present\n1\n"));
+    const declaration = {
+        type: /** @type {const} */ ("formula"),
+        expr: "datum.labelWidth + 10",
+        as: "collisionWidth",
+    };
+    const spec = {
+        data: { url: "data.csv" },
+        transform: [declaration],
+        mark: /** @type {const} */ ("point"),
+    };
+    const context = locatedContext(declaration);
+    context.getSpecOrigin = (fragment) =>
+        fragment === declaration
+            ? "formula"
+            : fragment === spec.data
+              ? "data"
+              : undefined;
+    const { view } = await createHeadlessEngine(spec, { context });
+    expect(context.dataFlow.loadingStatusRegistry.getSnapshot()).toEqual([
+        expect.objectContaining({
+            status: "error",
+            origin: "data",
+            errorPhase: "processing",
+            errorLocation: { origin: "formula", path: ["expr"] },
+            message: expect.stringContaining('Invalid field "labelWidth"'),
+        }),
+    ]);
     view.disposeSubtree();
 });
