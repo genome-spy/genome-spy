@@ -143,17 +143,12 @@ export function awaitSubtreeLazyReady(
         const checkReady = () => {
             if (settled) return true;
             try {
-                const failure = findLoadingFailure(
-                    context,
-                    subtreeRoot,
-                    shouldConsiderView
-                );
-                if (failure) {
-                    throw new Error(
-                        `Data loading failed at "${failure.viewPath}": ${failure.message ?? failure.sourceId}`
-                    );
-                }
                 if (
+                    !areSubtreeSourcesSettled(
+                        context,
+                        subtreeRoot,
+                        shouldConsiderView
+                    ) ||
                     !isSubtreeLazyReady(
                         subtreeRoot,
                         readinessRequest,
@@ -229,13 +224,15 @@ export function awaitSubtreeLazyReady(
 
 /**
  * Only branches with lazy dependencies participate in lazy waits. Failures on
- * their eager primary or side inputs are relevant too.
+ * their eager primary or side inputs are relevant too. Collector notifications
+ * can precede transaction-end processing, so loading attempts must settle first.
  *
  * @param {import("../types/viewContext.js").default} context
  * @param {View} subtreeRoot
  * @param {(view: View) => boolean} viewFilter
  */
-function findLoadingFailure(context, subtreeRoot, viewFilter) {
+function areSubtreeSourcesSettled(context, subtreeRoot, viewFilter) {
+    let loading = false;
     for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
         const sources = Array.from(iterateDataDependencies(collector)).filter(
             (node) => node instanceof DataSource
@@ -246,9 +243,15 @@ function findLoadingFailure(context, subtreeRoot, viewFilter) {
         for (const source of sources) {
             const entry =
                 context.dataFlow.loadingStatusRegistry.getSource(source);
-            if (entry?.status === "error") return entry;
+            if (entry?.status === "error") {
+                throw new Error(
+                    `Data loading failed at "${entry.viewPath}": ${entry.message ?? entry.sourceId}`
+                );
+            }
+            loading ||= entry?.status === "loading";
         }
     }
+    return !loading;
 }
 
 /**
@@ -297,7 +300,7 @@ function collectSubtreeCollectors(subtreeRoot, viewFilter) {
  * @returns {boolean}
  */
 export function isEffectivelyVisible(view) {
-    return view.isConfiguredVisible() && view.getEffectiveOpacity() > 0;
+    return view.isVisible() && view.getEffectiveOpacity() > 0;
 }
 
 /**

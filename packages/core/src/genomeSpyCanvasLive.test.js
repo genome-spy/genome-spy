@@ -275,7 +275,18 @@ test("keeps main and lookup outcomes independent and replaces errors after a new
     }
 });
 
-test("classifies downstream processing failures without blaming the URL", async () => {
+test.each([
+    {
+        phase: "row propagation",
+        transform: [
+            { type: "formula", expr: "datum.absent.value", as: "value" },
+        ],
+    },
+    {
+        phase: "completion",
+        transform: [{ type: "aggregate", fields: ["missing"], ops: ["sum"] }],
+    },
+])("reports $phase failures as processing errors", async ({ transform }) => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async () => new Response("value\n1"))
@@ -287,9 +298,10 @@ test("classifies downstream processing failures without blaming the URL", async 
             width: 200,
             height: 100,
             data: { url: "valid.csv" },
-            transform: [
-                { type: "formula", expr: "datum.absent.value", as: "value" },
-            ],
+            transform:
+                /** @type {import("./spec/transform.js").TransformParams[]} */ (
+                    transform
+                ),
             mark: "point",
         },
         { renderer: "canvas" }
@@ -299,6 +311,16 @@ test("classifies downstream processing failures without blaming the URL", async 
             status: "error",
             errorPhase: "processing",
         });
+        const root = /** @type {import("./view/view.js").default} */ (
+            api.debug.getViewRoot()
+        );
+        const [source] = root.context.dataFlow.dataSources;
+        const outcomes = vi.fn();
+        api.dataLoading.subscribe(outcomes);
+        await source.load();
+        expect(
+            outcomes.mock.calls.map(([change]) => change.entry.status)
+        ).toEqual(["loading", "error"]);
     } finally {
         api.finalize();
     }

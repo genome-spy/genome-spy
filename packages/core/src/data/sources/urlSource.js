@@ -83,6 +83,8 @@ export default class UrlSource extends DataSource {
         this.setLoadingStatus("loading");
         this.reset();
 
+        /** @type {(Error & { errorPhase?: import("../../types/embedApi.js").DataLoadingEntry["errorPhase"] }) | undefined} */
+        let error;
         try {
             const url = withoutExprRef(this.params.url);
 
@@ -160,21 +162,28 @@ export default class UrlSource extends DataSource {
                     )
                 );
             }
-            if (!isCurrent()) return;
-            this.setLoadingStatus("complete");
-        } catch (e) {
-            if (!isCurrent()) return;
-            if (e instanceof UrlLimitExceededError) {
-                this.setLoadingStatus("complete");
-            } else {
-                this.setLoadingStatus(
-                    "error",
-                    e.message,
-                    e.errorPhase ?? "processing"
-                );
-            }
+        } catch (cause) {
+            if (!(cause instanceof UrlLimitExceededError)) error = cause;
         }
-        this.complete();
+        if (!isCurrent()) return;
+
+        // Finish failed/empty streams too, but never retry completion if it throws.
+        try {
+            this.complete();
+        } catch (cause) {
+            error ??= cause;
+        }
+        if (!isCurrent()) return;
+
+        if (error) {
+            this.setLoadingStatus(
+                "error",
+                error.message,
+                error.errorPhase ?? "processing"
+            );
+        } else {
+            this.setLoadingStatus("complete");
+        }
     }
 }
 

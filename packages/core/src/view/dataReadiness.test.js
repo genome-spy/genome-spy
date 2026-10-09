@@ -3,6 +3,7 @@ import LoadingStatusRegistry from "../genomeSpy/loadingStatusRegistry.js";
 import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
+import IntervalUrlSource from "../data/sources/lazy/intervalUrlSource.js";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
@@ -64,7 +65,7 @@ function createLazySubtree(options = {}) {
 
     // Non-obvious: use UnitView's prototype so instanceof checks pass without full init.
     const unitView = Object.create(UnitView.prototype);
-    unitView.isConfiguredVisible = () => visible;
+    unitView.isVisible = () => visible;
     unitView.getEffectiveOpacity = () => opacity;
 
     unitView.getScaleResolution = () => ({ getDomain: () => [0, 10] });
@@ -186,7 +187,7 @@ describe("dataReadiness", () => {
     it("treats non-lazy sources as ready for lazy readiness checks", () => {
         // Non-obvious: dataSource lacks isDataReadyForDomain and should be ignored.
         const unitView = Object.create(UnitView.prototype);
-        unitView.isConfiguredVisible = () => true;
+        unitView.isVisible = () => true;
         unitView.getEffectiveOpacity = () => 1;
         unitView.flowHandle = {
             dataSource: new DataSource(
@@ -446,7 +447,7 @@ it.each(["primary", "side"])(
     }
 );
 
-it("ignores hidden and wholly eager failures while waiting for a successful visible lazy branch", async () => {
+it("ignores failures under a hidden container and wholly eager failures", async () => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async () => new Response("", { status: 404 }))
@@ -462,8 +463,8 @@ it("ignores hidden and wholly eager failures while waiting for a successful visi
             {
                 name: "hidden",
                 data: controlledData,
-                mark: "point",
                 encoding: xEncoding,
+                layer: [{ mark: "point" }],
             },
             { data: { url: "unrelated.csv" }, mark: "point" },
         ],
@@ -474,3 +475,69 @@ it("ignores hidden and wholly eager failures while waiting for a successful visi
     lazy.find((source) => source.view.name === "visible").succeed();
     await expect(wait).resolves.toBeUndefined();
 });
+
+it.each(["value", "missing"])(
+    "waits for lazy publication to settle with y field %s",
+    async (field) => {
+        /** @extends {IntervalUrlSource<object, import("../data/flowNode.js").Datum[][]>} */
+        class PublishingSource extends IntervalUrlSource {
+            /** @param {any} params @param {import("./view.js").default} view */
+            constructor(params, view) {
+                super(view, "x");
+                this.params = {
+                    ...params,
+                    debounce: 0,
+                    debounceMode: "window",
+                };
+                this.setupUrlLoading({
+                    loadModules: async () => ({}),
+                    createHandle: async () => ({}),
+                });
+            }
+
+            /** @param {number[]} interval */
+            async loadWindow(interval) {
+                return { interval, data: [[{ x: 1, value: 1 }]] };
+            }
+        }
+        disposers.push(
+            registerLazyDataSource(
+                /** @type {(params: import("../spec/data.js").LazyDataParams) => params is any} */
+                (
+                    (/** @type {any} */ params) =>
+                        params.type === "publishingStatus"
+                ),
+                PublishingSource
+            )
+        );
+        const { context, root } = await createLoadingGraph({
+            data: /** @type {any} */ ({
+                lazy: { type: "publishingStatus", url: "valid.data" },
+            }),
+            mark: "point",
+            encoding: {
+                ...xEncoding,
+                y: { field, type: "quantitative" },
+            },
+        });
+        const source = context.dataFlow.dataSources.find(
+            (source) => source instanceof PublishingSource
+        );
+        const wait = awaitSubtreeLazyReady(context, root, { x: [0, 10] });
+        const outcome =
+            field === "missing"
+                ? expect(wait).rejects.toThrow('Invalid field "missing"')
+                : expect(wait).resolves.toBeUndefined();
+
+        // Collector completion precedes transaction-end scale processing.
+        await source.requestInterval([0, 10]);
+        await outcome;
+        expect(
+            context.dataFlow.loadingStatusRegistry.getSource(source)
+        ).toMatchObject(
+            field === "missing"
+                ? { status: "error", errorPhase: "processing" }
+                : { status: "complete" }
+        );
+    }
+);

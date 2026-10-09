@@ -21,6 +21,12 @@ Status: implementation complete. Runtime encoding-field diagnostics remain a def
       including snapshots, origins, local overlays, lazy-wait rejection, and finalization.
       Playground checks covered a URL typo and correction, formatting, tooltip text,
       and configuration fallback ranges for downstream processing and lazy failures.
+- [x] Review fixes: include eager completion in processing outcomes, wait for source
+      attempts to settle before resolving readiness, and exclude descendants of hidden
+      containers. Regression coverage uses a buffered aggregate and transaction-end
+      scale processing with a missing field, plus a hidden layer's inherited source.
+      Verified with 4,544 passing unit tests, all workspace type checks, lint, and
+      release checks. Production changes add 12 lines across the two affected files.
 
 ## Goal and scope
 
