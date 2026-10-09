@@ -2,7 +2,6 @@ import { bisector } from "d3-array";
 import { BEHAVIOR_COLLECTS } from "../flowNode.js";
 import { topK } from "../../utils/topK.js";
 import ReservationMap from "../../utils/reservationMap.js";
-import { field } from "../../utils/field.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import Transform from "./transform.js";
 
@@ -26,7 +25,7 @@ export default class FilterScoredLabelsTransform extends Transform {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        super(params);
+        super(params, view);
 
         this.params = params;
 
@@ -39,15 +38,18 @@ export default class FilterScoredLabelsTransform extends Transform {
             throw new Error("Invalid channel: " + this.channel);
         }
 
-        this.startPosAccessor = field(this.params.pos);
-        this.endPosAccessor = field(this.params.pos2 ?? this.params.pos);
+        this.startPosAccessor = this.createFieldAccessor(params, "pos");
+        this.endPosAccessor = this.createFieldAccessor(
+            params,
+            params.pos2 != null ? "pos2" : "pos"
+        );
         this.startPosBisector = bisector(this.startPosAccessor);
         this.endPosBisector = bisector(this.endPosAccessor);
-        this.scoreAccessor = field(this.params.score);
-        this.widthAccessor = field(this.params.width);
+        this.scoreAccessor = this.createFieldAccessor(params, "score");
+        this.widthAccessor = this.createFieldAccessor(params, "width");
         /** @type {function(any):any} */
         this.laneAccessor = this.params.lane
-            ? field(this.params.lane)
+            ? this.createFieldAccessor(params, "lane")
             : (d) => 0;
         this.padding = this.params.padding ?? 0;
 

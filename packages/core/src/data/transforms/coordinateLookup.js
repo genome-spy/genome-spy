@@ -1,4 +1,3 @@
-import { field } from "../../utils/field.js";
 import SingleAxisLazySource from "../sources/lazy/singleAxisLazySource.js";
 import LookupTransform from "./lookup.js";
 
@@ -29,51 +28,61 @@ export default class CoordinateLookupTransform extends LookupTransform {
             );
         }
 
-        const position = createPositionAccessor(
-            params.fields ?? params.key,
-            foreignSource
-        );
+        /** @type {(datum: import("../flowNode.js").Datum) => number} */
+        let position;
         let min = 0;
         let max = 0;
 
-        super(params, foreignCollector, {
-            isForeignDataReady: () =>
-                foreignCollector.completed &&
-                foreignSource.isDataReadyForDomain({
-                    [channel]: foreignSource.scaleResolution.getDomain(),
-                }),
-            requestForeignData: () =>
-                foreignSource.ensureDataForDomain(
-                    foreignSource.scaleResolution.getDomain()
-                ),
-            prepareBatch: () => {
-                const loadedDomain = foreignSource.getLoadedDomain();
-                if (!loadedDomain) {
-                    throw new Error(
-                        "Coordinate lookup data has no loaded domain."
-                    );
-                }
-                [min, max] =
-                    loadedDomain[0] <= loadedDomain[1]
-                        ? loadedDomain
-                        : [loadedDomain[1], loadedDomain[0]];
+        super(
+            params,
+            foreignCollector,
+            {
+                isForeignDataReady: () =>
+                    foreignCollector.completed &&
+                    foreignSource.isDataReadyForDomain({
+                        [channel]: foreignSource.scaleResolution.getDomain(),
+                    }),
+                requestForeignData: () =>
+                    foreignSource.ensureDataForDomain(
+                        foreignSource.scaleResolution.getDomain()
+                    ),
+                prepareBatch: () => {
+                    const loadedDomain = foreignSource.getLoadedDomain();
+                    if (!loadedDomain) {
+                        throw new Error(
+                            "Coordinate lookup data has no loaded domain."
+                        );
+                    }
+                    [min, max] =
+                        loadedDomain[0] <= loadedDomain[1]
+                            ? loadedDomain
+                            : [loadedDomain[1], loadedDomain[0]];
+                },
+                acceptsDatum: (datum) => {
+                    const value = position(datum);
+                    return value >= min && value <= max;
+                },
             },
-            acceptsDatum: (datum) => {
-                const value = position(datum);
-                return value >= min && value <= max;
-            },
-        });
+            view
+        );
+        position = createPositionAccessor(params, foreignSource, this);
     }
 }
 
 /**
- * @param {string | [string, string]} fields
+ * @param {import("../../spec/transform.js").CoordinateLookupParams} params
  * @param {SingleAxisLazySource} foreignSource
+ * @param {CoordinateLookupTransform} transform
  * @returns {(datum: import("../flowNode.js").Datum) => number}
  */
-function createPositionAccessor(fields, foreignSource) {
+function createPositionAccessor(params, foreignSource, transform) {
+    const fields = params.fields ?? params.key;
+    const accessors = transform.createFieldAccessors(
+        params,
+        params.fields != null ? "fields" : "key"
+    );
     if (typeof fields === "string") {
-        const accessor = field(fields);
+        const accessor = accessors[0];
         return (datum) => +accessor(datum);
     } else if (fields.length == 2) {
         const scale = foreignSource.scaleResolution.getScale();
@@ -84,8 +93,7 @@ function createPositionAccessor(fields, foreignSource) {
             );
         }
 
-        const chromAccessor = field(fields[0]);
-        const posAccessor = field(fields[1]);
+        const [chromAccessor, posAccessor] = accessors;
         return (datum) =>
             genome.toContinuous(chromAccessor(datum), +posAccessor(datum));
     } else {

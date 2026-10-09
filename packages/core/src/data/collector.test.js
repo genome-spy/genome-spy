@@ -71,51 +71,72 @@ test("Collector collects and sorts data in descending order", () => {
     );
 });
 
-test("Collector collects, groups, and sorts data", () => {
-    const collector = new Collector({
-        type: "collect",
-        sort: { field: ["x"] },
-        groupby: ["a", "b"],
-    });
+test.each(["a\\.b", '["a.b"]'])(
+    "Collector sorts strings in escaped field %s",
+    (field) => {
+        const collector = new Collector({ type: "collect", sort: { field } });
+        for (const value of ["z", "a", "m"]) {
+            collector.handle({ "a.b": value });
+        }
+        collector.complete();
 
-    const data = [
-        { a: 1, b: 1, x: 1 },
-        { a: 1, b: 2, x: 2 },
-        { a: 1, b: 2, x: 3 },
-        { a: 2, b: 1, x: 4 },
-        { a: 2, b: 1, x: 5 },
-        { a: 2, b: 2, x: 6 },
-    ];
-
-    for (const d of data) {
-        collector.handle(d);
+        expect(
+            Array.from(collector.getData(), (datum) => datum["a.b"])
+        ).toEqual(["a", "m", "z"]);
     }
-    collector.complete();
+);
 
-    const cd = [...collector.getData()];
+test.each([undefined, {}])(
+    "Collector groups and sorts with provider %s",
+    (provider) => {
+        const collector = new Collector(
+            {
+                type: "collect",
+                sort: { field: ["x"] },
+                groupby: ["a", "b"],
+            },
+            provider
+        );
 
-    expect(cd.map((d) => ({ x: d.x }))).toEqual(
-        [1, 2, 3, 4, 5, 6].map((x) => ({ x }))
-    );
+        const data = [
+            { a: 1, b: 1, x: 1 },
+            { a: 1, b: 2, x: 2 },
+            { a: 1, b: 2, x: 3 },
+            { a: 2, b: 1, x: 4 },
+            { a: 2, b: 1, x: 5 },
+            { a: 2, b: 2, x: 6 },
+        ];
 
-    /** @param {any[]} group*/
-    const getGroupX = (group) =>
-        collector.facetBatches.get(group).map((d) => d.x);
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
 
-    expect(getGroupX([1, 1])).toEqual([1]);
-    expect(getGroupX([1, 2])).toEqual([2, 3]);
-    expect(getGroupX([2, 1])).toEqual([4, 5]);
-    expect(getGroupX([2, 2])).toEqual([6]);
+        const cd = [...collector.getData()];
 
-    expect(new Set(collector.facetBatches.keys())).toEqual(
-        new Set([
-            [1, 1],
-            [1, 2],
-            [2, 1],
-            [2, 2],
-        ])
-    );
-});
+        expect(cd.map((d) => ({ x: d.x }))).toEqual(
+            [1, 2, 3, 4, 5, 6].map((x) => ({ x }))
+        );
+
+        /** @param {any[]} group*/
+        const getGroupX = (group) =>
+            collector.facetBatches.get(group).map((d) => d.x);
+
+        expect(getGroupX([1, 1])).toEqual([1]);
+        expect(getGroupX([1, 2])).toEqual([2, 3]);
+        expect(getGroupX([2, 1])).toEqual([4, 5]);
+        expect(getGroupX([2, 2])).toEqual([6]);
+
+        expect(new Set(collector.facetBatches.keys())).toEqual(
+            new Set([
+                [1, 1],
+                [1, 2],
+                [2, 1],
+                [2, 2],
+            ])
+        );
+    }
+);
 
 test("Collector groups already faceted batches", () => {
     const collector = new Collector({

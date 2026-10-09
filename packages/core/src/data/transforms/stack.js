@@ -1,7 +1,6 @@
 import { compare } from "vega-util";
 import { groups as d3groups, sum as d3sum } from "d3-array";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
-import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 
 export default class StackTransform extends Transform {
@@ -11,9 +10,10 @@ export default class StackTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").StackParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
         this.params = params;
 
         /** @type {any[]} */
@@ -39,12 +39,17 @@ export default class StackTransform extends Transform {
         const as = params.as || ["y0", "y1"]; // TODO: Validate
 
         const comparator = params.sort
-            ? compare(params.sort.field, params.sort.order)
+            ? compare(
+                  this.createFieldAccessors(params.sort, "field"),
+                  params.sort.order
+              )
             : undefined;
 
-        const valueAccessor = params.field ? field(params.field) : () => 1;
+        const valueAccessor = params.field
+            ? this.createFieldAccessor(params, "field")
+            : () => 1;
 
-        const groupFields = params.groupby.map((f) => field(f));
+        const groupFields = this.createFieldAccessors(params, "groupby");
 
         const groups = d3groups(this.buffer, (row) =>
             groupFields.map((f) => f(row)).join()
@@ -54,7 +59,7 @@ export default class StackTransform extends Transform {
         let inclusionPredicate = (_datum) => true;
 
         if (params.baseField) {
-            const baseAccessor = field(params.baseField);
+            const baseAccessor = this.createFieldAccessor(params, "baseField");
             inclusionPredicate = (datum) => baseAccessor(datum) !== null;
         }
 

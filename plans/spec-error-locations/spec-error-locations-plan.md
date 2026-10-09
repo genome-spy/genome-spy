@@ -4,8 +4,8 @@
 
 Make specification experiments easier in Playground by underlining the declaration
 responsible for missing encoding fields, invalid expressions, duplicate parameter
-names, transform construction failures, and missing static top-level `datum`
-fields. Expression errors include parsing,
+names, transform construction failures, missing transform input fields, and
+missing static top-level `datum` fields. Expression errors include parsing,
 compilation, and unknown parameter names. Preserve the existing
 error messages and available-field hints. Embedders should receive the same location
 information without inspecting the visualization.
@@ -13,14 +13,14 @@ information without inspecting the visualization.
 This builds on the data-loading reporting API merged in #557. JSON Schema remains
 responsible for structural validation. This change adds context to errors raised
 by runtime validation, including presence checks for static top-level `datum`
-fields added in the final milestone.
+fields and transform input fields.
 
 Non-goals:
 
 - Checking nested `datum` properties or computed field names in expressions.
 - Adding nested-field checks.
-- Reporting every transform field, generated locus field, or arbitrary runtime
-  exception. These can use the same mechanism in later work.
+- Reporting generated locus fields or arbitrary runtime exceptions beyond the
+  supported validation boundaries.
 - Recovery, retries, error history, a general diagnostics registry, or tracking
   arbitrary dynamic changes to the view hierarchy.
 - Highlighting individual expression tokens. Highlight the expression string.
@@ -98,8 +98,9 @@ Relevant architecture: `ARCHITECTURE.md`, `packages/core/ARCHITECTURE.md`,
    authored configuration to their existing parser catch. Object-form filters
    use `[key, "filter"]`; shorthand strings use `[key]`. The hook receives the
    exact encoding branch, parameter, transform, ExprRef, or interaction config.
-   Paths are relative to that object. Do not add per-row evaluation wrappers or
-   inspect `datum` fields.
+   Paths are relative to that object. Do not add per-row evaluation wrappers.
+   Static top-level `datum` references use the shared generated accessor checks
+   described in milestone 4.
 6. Playground prefers a precise `errorLocation` over the existing URL/data
    fallback. Fatal errors use the same location resolver and lint revision
    machinery. Capture the document/attempt identity before `embed()` starts:
@@ -114,6 +115,13 @@ Relevant architecture: `ARCHITECTURE.md`, `packages/core/ARCHITECTURE.md`,
    Duplicate parameter names identify the second declaration's `name` property
    at the existing registration check. Missing `push: "outer"` targets identify
    the referencing declaration's `name`. No new validation rules are added.
+8. Compile transform input fields through typed helpers on `Transform`. Capture
+   property/array-entry locations during accessor construction, preserving
+   standalone construction without a runtime. Sorting declarations retain their
+   own origins. Omitted defaults and inferred lookup values identify the whole
+   transform. Collector sorting keeps its generated numeric fast path and uses
+   located accessors for complex sorts. Optional alignment quality remains
+   optional; sequence is required only when a mismatch needs it.
 
 `UrlSource.load` and `IntervalUrlSource.requestInterval` catch downstream
 processing errors, including accessor validation, and convert them to error
@@ -206,11 +214,12 @@ correct authored field/expression location; both reporting routes retain it;
 Playground underlines that value and clears obsolete diagnostics; valid lexical
 references, nested/computed datum references, and present undefined fields retain
 their behavior; no hook means
-ordinary errors still work. Later runtime transform-field diagnostics can reuse
-the descriptor, but are deferred.
+ordinary errors still work. Missing transform input fields identify their authored
+property or array entry, including grouping, sorting, and lookup declarations.
 
-Before a future PR, reconcile every remaining task, commit the final plan record,
-then remove this temporary plan in a later commit.
+The final delivery record below reconciles this plan. Commit it with the final
+implementation, then remove this temporary plan in a separate commit before
+opening the PR.
 
 ### 3. Static datum-field validation
 
@@ -238,6 +247,27 @@ use generated bracket chains without additional presence validation.
       diagnostics through the existing headless and browser paths.
 - [x] Measure the final implementation, update documentation and the changeset,
       complete integration checks, and commit the milestone.
+
+### 5. Transform field diagnostics
+
+- [x] Locate displacement fields and consolidate scalar/array accessor creation
+      in typed shared helpers without adding per-row wrappers.
+- [x] Migrate remaining transform field accessors, including grouping, sorting,
+      lookup keys/values, defaults, and coordinate lookup filtering.
+- [x] Preserve standalone construction, optional alignment data, authored
+      declaration identity, escaped field names, and Collector's numeric sort.
+- [x] Verify real headless specs through the shared factory and data-loading
+      reports; retain focused regression coverage for displacement, coordinate
+      lookup, alignment, and Collector sorting.
+- [x] Update the editor documentation and existing minor changeset; review
+      related tests and measure production-line growth.
+
+Outcome: missing flat fields in transforms use the same error-location contract
+as encodings and expressions. Headless tests cover property and array-entry
+locations, inferred/default field fallbacks, side-input pipelines, and retained
+source-report locations. Browser checks cover both displacement transforms and
+clearing their diagnostics after correction. The uncommitted extension adds 84
+net non-comment production JavaScript lines relative to `1af8364e4`.
 
 ## Review record
 
@@ -428,3 +458,25 @@ eight monomorphic streams also benefit. This is not a universal speedup: calling
 eight same-field accessors through one shared caller is slower, consistent with
 reduced opportunities for caller inlining. Unique source also trades compilation
 cache reuse for isolated feedback. No dispatch or recovery machinery was added.
+
+### Final delivery record
+
+- [x] Complete the transform-field milestone and retain regression coverage for
+      escaped string sorts and runtime-free Collector construction.
+- [x] Verify the integrated branch: 511 test files, 4,692 passing tests, one
+      skipped and two todo; 29 tests under Playground's Vite configuration; all
+      workspace TypeScript checks; repository lint; Playground production build;
+      generated API documentation; release policy checks and minor release
+      status (1.2.0 for the fixed package group).
+- [x] Retain the documented boundaries: static top-level presence checks accept
+      present undefined/inherited properties; nested/computed expression access
+      and optional alignment quality keep their existing behavior.
+- [x] Discard from this PR: broader nested/computed-field validation, generated
+      locus-field diagnostics, missing selection references outside expressions,
+      arbitrary runtime exceptions, renderer/font cancellation handling, dynamic
+      hierarchy provenance, and recovery machinery. These require independent
+      requirements and are not outstanding tasks for this feature.
+
+The historical deferred items above are reconciled by the completed milestones
+or the explicit scope exclusions in this record. No implementation tasks remain.
+Commit this completed record, then delete the temporary plan in a later commit.

@@ -1,5 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../../genomeSpy/headlessBootstrap.js";
+import { getSpecErrorLocation } from "../../utils/specError.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { createAndInitialize, renderToLayout } from "../../view/testUtils.js";
 import UnitView from "../../view/unitView.js";
@@ -133,6 +138,68 @@ function expectPairSeparated(offsets, width, height) {
 }
 
 describe("Displace2DTransform", () => {
+    test.each([
+        "x",
+        "y",
+        "key",
+        "width",
+        "height",
+        "anchorWidth",
+        "anchorHeight",
+    ])(
+        "reports missing %s fields at the transform property",
+        async (property) => {
+            const declaration = {
+                type: /** @type {const} */ ("displace2d"),
+                x: "x",
+                y: "y",
+                width: 10,
+                height: 10,
+                [property]: "missing",
+            };
+            const context = createHeadlessViewContext();
+            context.getSpecOrigin = (fragment) =>
+                fragment === declaration ? "/transform/0" : undefined;
+            const onError = (context.reportError = vi.fn());
+            const { view } = await createHeadlessEngine(
+                {
+                    data: { values: [{ x: 0.5, y: 0.5 }] },
+                    transform: [declaration],
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: [0, 1] },
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            scale: { domain: [0, 1] },
+                        },
+                    },
+                },
+                { context }
+            );
+
+            try {
+                // Placement reads fields during replay after scale layout is available.
+                renderToLayout(view, Rectangle.create(0, 0, 100, 100));
+                view.handleBroadcast({ type: "layoutComputed" });
+                expect(() => view.paramRuntime.flushNow()).toThrow(
+                    'Invalid field "missing"'
+                );
+                expect(onError).toHaveBeenCalledOnce();
+                expect(getSpecErrorLocation(onError.mock.calls[0][0])).toEqual({
+                    origin: "/transform/0",
+                    path: [property],
+                });
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
     test("progressively relaxes retained rows and replays descendants", () => {
         const animator = new TestAnimator();
         const transform = createDisplace2D(

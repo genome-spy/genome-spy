@@ -1,6 +1,5 @@
 import { group as d3group } from "d3-array";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
-import { field } from "../../utils/field.js";
 import iterateNestedMaps from "../../utils/iterateNestedMaps.js";
 import Transform from "./transform.js";
 import AGGREGATE_OPS from "./aggregateOps.js";
@@ -12,11 +11,12 @@ export default class AggregateTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").AggregateParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      *
      * @typedef {import("../flowNode.js").Datum} Datum
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
         this.params = params;
 
         /** @type {any[]} */
@@ -42,8 +42,10 @@ export default class AggregateTransform extends Transform {
                 );
             }
 
-            params.fields.forEach((fieldName, i) => {
-                const accessor = field(fieldName);
+            params.fields.forEach((_, i) => {
+                const accessor = this.createFieldAccessor(params, "fields", {
+                    index: i,
+                });
                 const op = AGGREGATE_OPS[params.ops[i]];
                 this.ops.push((arr) => op(arr, accessor));
                 this.as.push(
@@ -71,7 +73,10 @@ export default class AggregateTransform extends Transform {
         const groupby = params?.groupby;
 
         if (groupby?.length > 0) {
-            const groupFieldAccessors = groupby.map((f) => field(f));
+            const groupFieldAccessors = this.createFieldAccessors(
+                params,
+                "groupby"
+            );
 
             // There's something strange in d3-array's typings
             const groups = /** @type {Map<any, any>} */ /** @type {any} */ (

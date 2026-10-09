@@ -28,9 +28,10 @@ line numbers.
 ## Locating specification errors
 
 Editors can locate errors involving missing encoding fields, invalid expressions,
-duplicate parameter names, missing `push: "outer"` targets, and transform
-construction failures. Provide `getSpecOrigin(fragment)` to return your recorded
-identifier for an object in the specification passed to `embed`. Import
+duplicate parameter names, missing `push: "outer"` targets, transform
+construction failures, and missing flat fields referenced by transforms.
+Provide `getSpecOrigin(fragment)` to return your recorded identifier for an object
+in the specification passed to `embed`. Import
 `getSpecErrorLocation` from `@genome-spy/core` (also available from the minimal
 entry point) and call it on an error received by `onError` or caught from `embed`.
 
@@ -39,17 +40,27 @@ callback and `path` identifies a property within that declaration. A syntax erro
 unknown parameter, or missing static top-level `datum` field in an expression
 identifies its `expr` property. Duplicate parameters identify the second
 declaration's `name`; missing `push: "outer"` targets identify the referencing
-parameter's `name`. Transform construction
-failures identify the whole transform (`path: []`). The helper also checks wrapped
-errors' causes. GenomeSpy treats `origin` as an opaque string; using JSON Pointers
-is a choice made by the embedding application.
-Not every error has a location. Nested `datum` properties and computed field names
-are not validated.
+parameter's `name`. Transform construction failures identify the whole transform
+(`path: []`).
+
+Missing flat fields in transforms identify the property or array entry that
+references the field. For example, a misspelled `displace2d` width field can produce
+`{ origin: "/transform/0", path: ["width"] }`, while a missing second field in
+`project` produces `{ origin: "/transform/0", path: ["fields", 1] }`.
+This also covers grouping, sorting, and lookup fields. Sorting errors identify
+the `sort` object's `field` property or array entry. When a field name comes from
+an omitted default or inferred lookup values, the location identifies the whole
+transform because there is no authored field value to underline.
+
+The helper also checks wrapped errors' causes. GenomeSpy treats `origin` as an
+opaque string; using JSON Pointers is a choice made by the embedding application.
+Not every error has a location. Nested `datum` properties and computed field
+names are not validated.
 
 Track-local processing failures carry the same information in
 [`dataLoading` entries](./instance.md#data-loading) as `errorLocation`. Their
 `origin` still identifies the data source declaration, which may differ from
-the encoding or expression that failed.
+the encoding, expression, or transform that failed.
 
 ## Feedback for LLM agents
 

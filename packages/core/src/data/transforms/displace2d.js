@@ -4,7 +4,6 @@ import {
     isExprRef,
 } from "../../paramRuntime/paramUtils.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
-import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import { Displace2DConstraintSolver } from "./displace2dConstraintSolver.js";
 
@@ -78,13 +77,13 @@ export default class Displace2DTransform extends Transform {
     /** @type {[string, string]} */
     #as;
 
-    /** @type {ReturnType<typeof field>} */
+    /** @type {ReturnType<Transform["createFieldAccessor"]>} */
     #xAccessor;
 
-    /** @type {ReturnType<typeof field>} */
+    /** @type {ReturnType<Transform["createFieldAccessor"]>} */
     #yAccessor;
 
-    /** @type {ReturnType<typeof field> | undefined} */
+    /** @type {ReturnType<Transform["createFieldAccessor"]> | undefined} */
     #keyAccessor;
 
     /** @type {DimensionAccessor} */
@@ -119,9 +118,12 @@ export default class Displace2DTransform extends Transform {
         if (params.key && this.#as.includes(params.key)) {
             throw new Error("displace2d output fields must preserve the key.");
         }
-        this.#xAccessor = field(params.x);
-        this.#yAccessor = field(params.y);
-        this.#keyAccessor = params.key ? field(params.key) : undefined;
+
+        this.#xAccessor = this.createFieldAccessor(params, "x");
+        this.#yAccessor = this.createFieldAccessor(params, "y");
+        this.#keyAccessor = params.key
+            ? this.createFieldAccessor(params, "key")
+            : undefined;
         this.#states = params.key ? new Map() : new WeakMap();
 
         const placementProps = {
@@ -148,20 +150,23 @@ export default class Displace2DTransform extends Transform {
                   )
               )
             : /** @type {any} */ (placementProps);
-        this.#widthAccessor = dimensionAccessor(
-            params.width,
-            () => props.width
-        );
-        this.#heightAccessor = dimensionAccessor(
-            params.height,
-            () => props.height
-        );
+
+        /** @param {keyof PlacementProps} property @param {() => number} getValue */
+        const dimensionAccessor = (property, getValue) => {
+            const param = params[property];
+            return typeof param == "string"
+                ? this.createFieldAccessor(params, property)
+                : getValue;
+        };
+
+        this.#widthAccessor = dimensionAccessor("width", () => props.width);
+        this.#heightAccessor = dimensionAccessor("height", () => props.height);
         this.#anchorWidthAccessor = dimensionAccessor(
-            params.anchorWidth,
+            "anchorWidth",
             () => props.anchorWidth
         );
         this.#anchorHeightAccessor = dimensionAccessor(
-            params.anchorHeight,
+            "anchorHeight",
             () => props.anchorHeight
         );
 
@@ -595,17 +600,6 @@ export default class Displace2DTransform extends Transform {
     handle(datum) {
         this.#data.push(datum);
     }
-}
-
-/**
- * @param {import("../../spec/transform.js").Displace2DParams["anchorWidth"]} param
- * @param {() => PlacementProps["width"]} getValue
- * @returns {DimensionAccessor}
- */
-function dimensionAccessor(param, getValue) {
-    return typeof param == "string"
-        ? field(param)
-        : () => /** @type {number} */ (getValue());
 }
 
 /** @param {any} key */

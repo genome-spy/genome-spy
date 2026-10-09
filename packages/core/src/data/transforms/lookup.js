@@ -1,6 +1,5 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import createCloner from "../../utils/cloner.js";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -37,9 +36,10 @@ export default class LookupTransform extends Transform {
      * @param {import("../../spec/transform.js").LookupParams | import("../../spec/transform.js").CoordinateLookupParams} params
      * @param {import("../collector.js").default} [foreignCollector]
      * @param {LookupOptions} [options]
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params, foreignCollector, options = {}) {
-        super(params);
+    constructor(params, foreignCollector, options = {}, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
         this.#foreignCollector = foreignCollector;
         this.params = params;
         const selfInput = isSelfLookup(params);
@@ -73,10 +73,15 @@ export default class LookupTransform extends Transform {
             throw new Error('The "values" property must not be empty.');
         }
 
-        const foreignKeyAccessors = foreignKeyFields.map((name) => field(name));
-        const primaryAccessors = primaryFields.map((name) => field(name));
+        const foreignKeyAccessors = this.createFieldAccessors(params, "key");
+        const primaryAccessors = this.createFieldAccessors(
+            params,
+            params.fields != null ? "fields" : "key"
+        );
         const implicitValues = !values;
-        let valueAccessors = values?.map((name) => field(name)) ?? [];
+        let valueAccessors = values
+            ? this.createFieldAccessors(params, "values")
+            : [];
         let outputFields = as ?? values ?? [];
         const defaultValue = params.default ?? null;
         let pendingInput = false;
@@ -153,20 +158,24 @@ export default class LookupTransform extends Transform {
             }
 
             const foreignData = lookupData ?? foreignCollector.getData();
+            index = buildLookupIndex(
+                foreignData,
+                foreignKeyAccessors,
+                params.key
+            );
             if (implicitValues) {
                 const resolved = resolveImplicitValues(
                     foreignData[Symbol.iterator]().next().value,
                     foreignKeyFields
                 );
                 outputFields = resolved;
-                valueAccessors = resolved.map((name) => field(name));
+                valueAccessors = resolved.map((name) =>
+                    this.createFieldAccessor(params, "values", {
+                        defaultValue: name,
+                    })
+                );
             }
 
-            index = buildLookupIndex(
-                foreignData,
-                foreignKeyAccessors,
-                params.key
-            );
             writeValues = createLookupWriter(
                 outputFields,
                 valueAccessors,

@@ -1,6 +1,5 @@
 import { isLogarithmic } from "vega-scale";
 import { BEHAVIOR_COLLECTS, BEHAVIOR_MODIFIES } from "../flowNode.js";
-import { field } from "../../utils/field.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import {
     boundsOverlap,
@@ -31,9 +30,12 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         this.params = params;
         this.channel = params.channel;
-        this.labelWidthAccessor = field(params.labelWidth);
+        this.labelWidthAccessor = this.createFieldAccessor(
+            params,
+            "labelWidth"
+        );
         this.chromLabelWidthAccessor = params.chromLabelWidth
-            ? field(params.chromLabelWidth)
+            ? this.createFieldAccessor(params, "chromLabelWidth")
             : undefined;
 
         if (

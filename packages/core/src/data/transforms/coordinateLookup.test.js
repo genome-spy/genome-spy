@@ -6,6 +6,7 @@ import { registerLazyDataSource } from "../sources/dataSourceFactory.js";
 import MockLazySource from "../sources/lazy/mockLazySource.js";
 import SingleAxisLazySource from "../sources/lazy/singleAxisLazySource.js";
 import { createHeadlessEngine } from "../../view/testUtils.js";
+import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import CoordinateLookupTransform from "./coordinateLookup.js";
 
 /** @type {(() => void)[]} */
@@ -85,6 +86,48 @@ test("omits primary rows outside loaded side-input coverage", () => {
         { pos: 0, score: 0.2 },
         { pos: 1, score: null },
     ]);
+});
+
+test("locates a missing primary coordinate before the coverage filter", () => {
+    const params = {
+        type: /** @type {const} */ ("coordinateLookup"),
+        from: { data: { lazy: /** @type {any} */ ({ type: "mockLazy" }) } },
+        key: "pos",
+        fields: "missing",
+        values: ["score"],
+    };
+    const runtime = new ViewParamRuntime(undefined, undefined, undefined, {
+        getSpecOrigin: (fragment) =>
+            fragment === params ? "/transform/0" : undefined,
+    });
+    const resolution = { getDomain: () => [0, 1], getScale: () => ({}) };
+    const view = {
+        paramRuntime: runtime,
+        getScaleResolution: () => resolution,
+    };
+    const source = new TestLazySource(view);
+    const foreign = new Collector();
+    source.addChild(foreign);
+    source.publish([{ pos: 0, score: 0.2 }]);
+    const lookup = new CoordinateLookupTransform(
+        params,
+        foreign,
+        source,
+        /** @type {any} */ (view)
+    );
+
+    try {
+        expect(() => processData(lookup, [{ pos: 0 }])).toThrowError(
+            expect.objectContaining({
+                message: expect.stringContaining('Invalid field "missing"'),
+                specLocation: { origin: "/transform/0", path: ["fields"] },
+            })
+        );
+    } finally {
+        lookup.dispose();
+        source.dispose();
+        runtime.dispose();
+    }
 });
 
 test("joins flattened lazy sequence with a lazy coordinate side input", async () => {

@@ -1,4 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../../genomeSpy/headlessBootstrap.js";
+import { getSpecErrorLocation } from "../../utils/specError.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { createAndInitialize, renderToLayout } from "../../view/testUtils.js";
 import UnitView from "../../view/unitView.js";
@@ -37,6 +42,39 @@ function createFlow(data, length, positionFactor = 100, extent) {
 }
 
 describe("Displace1DTransform", () => {
+    test.each(["pos", "length"])(
+        "reports missing %s fields at the transform property",
+        async (property) => {
+            const declaration = {
+                type: /** @type {const} */ ("displace1d"),
+                pos: "pos",
+                length: 10,
+                [property]: "missing",
+            };
+            const context = createHeadlessViewContext();
+            context.getSpecOrigin = (fragment) =>
+                fragment === declaration ? "/transform/0" : undefined;
+
+            await expect(
+                createHeadlessEngine(
+                    {
+                        data: { values: [{ pos: 0 }] },
+                        transform: [declaration],
+                        mark: "point",
+                    },
+                    { context }
+                )
+            ).rejects.toSatisfy((error) => {
+                expect(error.message).toContain('Invalid field "missing"');
+                expect(getSpecErrorLocation(error)).toEqual({
+                    origin: "/transform/0",
+                    path: [property],
+                });
+                return true;
+            });
+        }
+    );
+
     test("bounds centered index marks using domain bounds minus half a band", async () => {
         const view = await createAndInitialize(
             {
@@ -183,6 +221,12 @@ describe("Displace1DTransform", () => {
         ]);
     });
 
+    test("reports missing fields without a runtime or origin hook", () => {
+        expect(() => createFlow([{ pos: 0 }], "missing")).toThrow(
+            'Invalid field "missing"'
+        );
+    });
+
     test("accepts descending raw positions for a negative position factor", () => {
         const { output } = createFlow(
             [{ pos: 0.2 }, { pos: 0 }, { pos: 0 }],
@@ -233,6 +277,7 @@ describe("Displace1DTransform", () => {
         let listener;
         const disposer = vi.fn();
         const paramRuntime = {
+            getSpecLocation: vi.fn(),
             watchExpression: (
                 /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
                 /** @type {() => void} */ callback,
@@ -291,6 +336,7 @@ describe("Displace1DTransform", () => {
         const listeners = new Map();
         const disposer = vi.fn();
         const paramRuntime = {
+            getSpecLocation: vi.fn(),
             watchExpression: (
                 /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
                 /** @type {() => void} */ callback,
@@ -357,6 +403,7 @@ describe("Displace1DTransform", () => {
          */
         const createTransform = (expression, value) => {
             const paramRuntime = {
+                getSpecLocation: vi.fn(),
                 watchExpression: () => () => value,
             };
             const transform = new Displace1DTransform(

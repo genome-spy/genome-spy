@@ -213,7 +213,7 @@ describe("AlignmentMismatches transform", () => {
         ).toEqual([]);
         expect(() =>
             transform(params, [{ start: 0, cigar: "10M", md: "4A5" }])
-        ).toThrow(/sequence/);
+        ).toThrow(/Invalid field "seq"/);
     });
 
     test("fails loudly for missing MD and unavailable CIGARs", () => {
@@ -222,7 +222,7 @@ describe("AlignmentMismatches transform", () => {
 
         expect(() =>
             transform(params, [{ start: 0, cigar: "10M", seq: "AAAAAAAAAA" }])
-        ).toThrow(/MD tag/);
+        ).toThrow(/Invalid field "md"/);
         expect(transform(params, [{ start: 0, cigar: "*" }])).toEqual([]);
     });
 });

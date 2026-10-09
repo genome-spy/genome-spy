@@ -84,7 +84,12 @@ export default function createTransform(params, view, auxiliaryInput) {
                     "Lookup transform requires a foreign collector."
                 );
             }
-            return new LookupTransform(lookupParams, auxiliaryInput?.collector);
+            return new LookupTransform(
+                lookupParams,
+                auxiliaryInput?.collector,
+                undefined,
+                view
+            );
         } else if (params.type == "coordinateLookup") {
             if (!auxiliaryInput || !view) {
                 throw new Error(

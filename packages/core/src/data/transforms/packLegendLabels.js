@@ -1,5 +1,4 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
-import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 
 /**
@@ -26,14 +25,17 @@ export default class PackLegendLabelsTransform extends Transform {
         super(params, paramRuntimeProvider);
 
         this.params = params;
-        this.labelWidthAccessor = field(params.labelWidth);
+        this.labelWidthAccessor = this.createFieldAccessor(
+            params,
+            "labelWidth"
+        );
         this.symbolSizeAccessor =
             typeof params.symbolSize == "string"
-                ? field(params.symbolSize)
+                ? this.createFieldAccessor(params, "symbolSize")
                 : () => params.symbolSize ?? 100;
         this.symbolStrokeWidthAccessor =
             typeof params.symbolStrokeWidth == "string"
-                ? field(params.symbolStrokeWidth)
+                ? this.createFieldAccessor(params, "symbolStrokeWidth")
                 : () => params.symbolStrokeWidth ?? 0;
         /** @type {number | undefined} */
         this.yExtent = undefined;

@@ -1,11 +1,20 @@
 import FlowNode from "../flowNode.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
+import { field } from "../../utils/field.js";
+import { asArray } from "../../utils/arrayUtils.js";
 
 /**
  * @template T
  * @typedef {T extends import("../../spec/parameter.js").ExprRef
  *     ? import("../../paramRuntime/types.js").ExprRefFunction
  *     : () => Exclude<T, import("../../spec/parameter.js").ExprRef>} ExprRefReader<T>
+ */
+
+/**
+ * @template T
+ * @typedef {Extract<{
+ *     [K in keyof T]-?: Extract<T[K], string | readonly (string | null)[]> extends never ? never : K
+ * }[keyof T], string>} FieldProperty
  */
 
 export default class Transform extends FlowNode {
@@ -119,6 +128,43 @@ export default class Transform extends FlowNode {
      */
     get label() {
         return this.#label;
+    }
+
+    /**
+     * Compiles a field property or array entry with its declaration location.
+     * Standalone transforms without a runtime still validate field presence.
+     * Callers must narrow optional, numeric, or expression alternatives first.
+     * @template {object} T
+     * @param {T} params
+     * @param {FieldProperty<T>} property
+     * @param {{ index?: number, defaultValue?: string }} [options]
+     */
+    createFieldAccessor(params, property, { index, defaultValue } = {}) {
+        const value = params[property];
+        const isArray = Array.isArray(value);
+        const runtime = this.paramRuntimeProvider?.paramRuntime;
+        return field(
+            /** @type {string} */ (
+                isArray ? value[index] : (value ?? defaultValue)
+            ),
+            undefined,
+            runtime?.getSpecLocation(
+                params,
+                value == null ? [] : isArray ? [property, index] : [property]
+            )
+        );
+    }
+
+    /**
+     * Compiles a scalar or array of field names, preserving array indices.
+     * @template {object} T
+     * @param {T} params
+     * @param {FieldProperty<T>} property
+     */
+    createFieldAccessors(params, property) {
+        return asArray(params[property]).map((_, index) =>
+            this.createFieldAccessor(params, property, { index })
+        );
     }
 
     /**

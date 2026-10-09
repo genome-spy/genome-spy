@@ -1,6 +1,5 @@
 import { BEHAVIOR_COLLECTS, BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
-import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import { solveDisplacement } from "./displace1dSolver.js";
 
@@ -37,7 +36,7 @@ export default class Displace1DTransform extends Transform {
         super(params, paramRuntimeProvider);
 
         this.as = params.as ?? "displacement";
-        this.positionAccessor = field(params.pos);
+        this.positionAccessor = this.createFieldAccessor(params, "pos");
 
         this.length = typeof params.length == "number" ? params.length : 0;
         /** @type {(datum: import("../flowNode.js").Datum) => number} */
@@ -48,7 +47,7 @@ export default class Displace1DTransform extends Transform {
         } else if (isExprRef(params.length)) {
             lengthAccessor = () => this.length;
         } else {
-            lengthAccessor = field(params.length);
+            lengthAccessor = this.createFieldAccessor(params, "length");
         }
         this.lengthAccessor = lengthAccessor;
 
