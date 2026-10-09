@@ -20,6 +20,7 @@ const groupDescriptions = new Map([
  *   screenshotPath: string | null;
  *   screenshotUrl: string | null;
  *   sourceMode: string;
+ *   documentation: { title: string; url: string }[];
  * }} ExampleCatalogEntry
  */
 

@@ -1,6 +1,8 @@
 import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
+import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faArrowUpRightFromSquare,
     faBug,
     faColumns,
     faDownload,
@@ -19,7 +21,6 @@ import defaultSpec from "./defaultspec.json?raw";
 
 import packageJson from "../package.json";
 import "./splitPanel.js";
-import "./baseUrlNotice.js";
 import "./editor/codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
@@ -98,10 +99,11 @@ let inspectorHandle;
 /** @type {string | undefined} */
 let inheritedBaseUrl;
 
+/** @type {string | undefined} */
+let sourceExampleId;
+
 let visTitle = "";
 let hasInputBindings = false;
-/** @type {{ summary: string, detail: string, canClear: boolean } | null} */
-let effectiveBaseUrlInfo = null;
 let isExamplePickerOpen = false;
 let isExampleCatalogLoading = false;
 let exampleCatalogError = "";
@@ -109,21 +111,7 @@ let exampleCatalogError = "";
 /** @type {Promise<void> | undefined} */
 let exampleCatalogPromise;
 
-/**
- * @typedef {{
- *   id: string;
- *   title: string;
- *   description: string;
- *   sourceGroup: string;
- *   sourceLabel: string;
- *   category: string;
- *   specPath: string;
- *   specUrl: string;
- *   screenshotPath: string | null;
- *   screenshotUrl: string | null;
- *   sourceMode: string;
- * }} ExampleCatalogEntry
- */
+/** @typedef {import("./examplePicker.js").ExampleCatalogEntry} ExampleCatalogEntry */
 
 /** @type {ExampleCatalogEntry[]} */
 let exampleCatalog = [];
@@ -155,6 +143,7 @@ async function loadSpec() {
 
     const storedState = loadStoredState();
     inheritedBaseUrl = storedState?.inheritedBaseUrl;
+    sourceExampleId = storedState?.sourceExampleId;
 
     return storedState?.specText?.length > 0
         ? storedState.specText
@@ -273,6 +262,9 @@ function setEditorSpec(specText) {
         editorRef.value.value = specText;
     }
     void update(true);
+    if (sourceExampleId) {
+        void ensureExampleCatalogLoaded();
+    }
 }
 
 /**
@@ -336,7 +328,7 @@ async function openCatalogEntry(entry) {
 }
 
 /**
- * @typedef {{ specText: string, inheritedBaseUrl?: string }} StoredState
+ * @typedef {{ specText: string, inheritedBaseUrl?: string, sourceExampleId?: string }} StoredState
  */
 
 /**
@@ -375,6 +367,7 @@ function storeState(specText) {
         JSON.stringify({
             specText,
             inheritedBaseUrl,
+            sourceExampleId,
         })
     );
 }
@@ -385,8 +378,20 @@ function storeState(specText) {
 async function loadSpecFromUrl(specParam) {
     const specUrl = new URL(specParam, window.location.href);
     const response = await fetch(specUrl);
+    if (!response.ok) {
+        throw new Error(
+            `Could not load specification: ${response.status} ${response.statusText}`
+        );
+    }
     const specText = await response.text();
     const sourceBaseUrl = inferSpecBaseUrl(specUrl.href);
+    // Keep the original example identity after editing removes the spec query.
+    sourceExampleId =
+        specUrl.origin === window.location.origin
+            ? specUrl.pathname.match(
+                  /^\/(?:examples|docs\/example-specs)\/((?:docs|core|app)\/.+)\.json$/
+              )?.[1]
+            : undefined;
 
     if (shouldInjectBaseUrl(specUrl)) {
         inheritedBaseUrl = undefined;
@@ -419,42 +424,6 @@ function injectBaseUrl(specText, baseUrl) {
     return JSON.stringify(parsedSpec, null, 2) + "\n";
 }
 
-/**
- * @param {string} url
- */
-function formatUrlForDisplay(url) {
-    if (/^(?:[a-z]+:)?\/\//i.test(url)) {
-        const sameOriginPrefix = window.location.origin;
-        if (url.startsWith(sameOriginPrefix)) {
-            return url.slice(sameOriginPrefix.length);
-        }
-    }
-
-    return url;
-}
-
-/**
- * @param {string | undefined} explicitBaseUrl
- * @param {string | undefined} sourceBaseUrl
- */
-function getEffectiveBaseUrlInfo(explicitBaseUrl, sourceBaseUrl) {
-    if (explicitBaseUrl) {
-        return {
-            summary: `Explicit baseUrl: ${formatUrlForDisplay(explicitBaseUrl)}`,
-            detail: "Relative data and import URLs resolve against this base URL.",
-            canClear: true,
-        };
-    } else if (sourceBaseUrl) {
-        return {
-            summary: `Inherited baseUrl: ${formatUrlForDisplay(sourceBaseUrl)}`,
-            detail: "Relative data and import URLs resolve against this base URL until you clear or replace it.",
-            canClear: true,
-        };
-    } else {
-        return null;
-    }
-}
-
 async function formatWithPrettier() {
     const [prettier, prettierPluginBabel, prettierPluginEstree] =
         await Promise.all([
@@ -475,26 +444,6 @@ async function formatWithPrettier() {
     if (editorRef.value) {
         editorRef.value.value = formatted;
     }
-}
-
-function clearBaseUrl() {
-    const value = editorState.getCurrent(editorRef.value);
-    if (!value) {
-        return;
-    }
-
-    const parsedSpec = JSON.parse(value);
-    if (parsedSpec.baseUrl) {
-        delete parsedSpec.baseUrl;
-        editorState.set(JSON.stringify(parsedSpec, null, 2) + "\n");
-        if (editorRef.value) {
-            editorRef.value.value = editorState.get();
-        }
-    } else {
-        inheritedBaseUrl = undefined;
-    }
-
-    update(true);
 }
 
 /** @param {import("./rendererMenu.js").Renderer} value */
@@ -597,10 +546,6 @@ async function updateVisualization(force) {
         }
 
         visTitle = asArray(parsedSpec.description)?.[0];
-        effectiveBaseUrlInfo = getEffectiveBaseUrlInfo(
-            explicitBaseUrl,
-            inheritedBaseUrl
-        );
         renderLayout();
 
         // Wait for uploaded datasets before starting the visualization.
@@ -714,16 +659,7 @@ function handleEditorChange() {
 
 const editorPaneTemplate = () => html`
     <section id="editor-pane" slot="editor">
-        ${
-            effectiveBaseUrlInfo
-                ? html`
-                      <base-url-notice
-                          .info=${effectiveBaseUrlInfo}
-                          @clear=${clearBaseUrl}
-                      ></base-url-notice>
-                  `
-                : null
-        }
+        ${documentationTemplate()}
         <code-editor
             ${ref(editorRef)}
             .value=${editorState.get()}
@@ -731,6 +667,21 @@ const editorPaneTemplate = () => html`
         ></code-editor>
     </section>
 `;
+
+function documentationTemplate() {
+    const links = exampleCatalog.find(
+        (entry) => entry.id === sourceExampleId
+    )?.documentation;
+    return links?.length
+        ? html`<nav
+              class="example-documentation"
+              aria-label="Example documentation"
+          >
+              <span>Described in documentation:</span>
+              ${links.map(({ title, url }) => html`<a href=${url} target="_blank" rel="noreferrer">${title}${icon(faArrowUpRightFromSquare).node[0]}</a>`)}
+          </nav>`
+        : null;
+}
 
 const workspaceTemplate = () => html`
     <gs-playground-workspace

@@ -78,6 +78,29 @@ code-editor {
     overflow: hidden;
 }
 
+.example-documentation {
+    display: flex;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding: 8px var(--playground-spacing);
+    border-bottom: 1px solid var(--playground-divider);
+    background: var(--playground-panel);
+    font-size: var(--playground-font-small);
+    overflow-wrap: anywhere;
+
+    a {
+        color: var(--playground-accent-text);
+    }
+
+    svg {
+        width: 0.85em;
+        height: 0.85em;
+        margin-left: 0.35em;
+    }
+}
+
 #genome-spy-container > .playground-error {
     position: absolute;
     inset: 0;

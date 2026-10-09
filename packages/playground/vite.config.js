@@ -8,6 +8,7 @@ import { generateExampleCatalog } from "./exampleCatalog.mjs";
 const configDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(configDir, "..", "..");
 const examplesDir = path.join(repoRoot, "examples");
+const docsDir = path.join(repoRoot, "docs");
 const vegaDatasetsDir = path.join(
     repoRoot,
     "node_modules",
@@ -19,6 +20,7 @@ export default defineConfig({
     root: "src",
     appType: "mpa",
     base: "",
+    test: { root: configDir },
     plugins: [
         rawPlugin({
             fileRegex: /\.glsl$/,
@@ -48,7 +50,11 @@ export default defineConfig({
                     res.setHeader("Content-Type", "application/json");
                     res.end(
                         JSON.stringify(
-                            generateExampleCatalog(examplesDir, "/examples"),
+                            generateExampleCatalog(
+                                examplesDir,
+                                "/examples",
+                                docsDir
+                            ),
                             null,
                             2
                         )
@@ -67,7 +73,8 @@ export default defineConfig({
                     source: JSON.stringify(
                         generateExampleCatalog(
                             examplesDir,
-                            "/docs/example-specs"
+                            "/docs/example-specs",
+                            docsDir
                         ),
                         null,
                         2

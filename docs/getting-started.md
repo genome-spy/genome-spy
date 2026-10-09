@@ -20,6 +20,10 @@ from a publicly accessible web server or from your computer. The Playground
 does not support saving or sharing visualizations, so keep a copy of your
 specification if you want to reuse it.
 
+When exploring an example, the Playground links directly to the section where
+it appears in the documentation. These links stay available as you edit, so you
+can refer to the original example's explanation while experimenting.
+
 ## Embed a JSON specification in a web page
 
 To use a JSON specification outside the Playground, embed GenomeSpy Core in an
