@@ -17,6 +17,7 @@ const vegaDatasetsDir = path.join(
 
 export default defineConfig({
     root: "src",
+    appType: "mpa",
     base: "",
     plugins: [
         rawPlugin({
