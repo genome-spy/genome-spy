@@ -638,7 +638,13 @@ export default class GenomeSpy {
             if (this.#destroyed) {
                 this.#disposeInitializedResources();
             }
-            if (launched && this.viewRoot) {
+            // Shared root data may have failed while initialization succeeded.
+            if (
+                launched &&
+                this.viewRoot &&
+                this.#loadingStatusRegistry.get(this.viewRoot)?.status !==
+                    "error"
+            ) {
                 this.#loadingStatusRegistry.set(this.viewRoot, "complete");
             }
         }

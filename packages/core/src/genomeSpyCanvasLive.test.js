@@ -60,6 +60,41 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
+test("keeps a shared data-loading error visible after launch", async () => {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(
+            async () =>
+                new Response("", { status: 404, statusText: "Not Found" })
+        )
+    );
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const onError = vi.fn();
+    const genomeSpy = new GenomeSpy(
+        container,
+        {
+            width: 200,
+            height: 100,
+            // A root concat owns its shared data without an implicit wrapper.
+            data: { url: "missing.csv" },
+            vconcat: [{ mark: "point" }, { mark: "point" }],
+        },
+        { renderer: "canvas", onError }
+    );
+
+    try {
+        expect(await genomeSpy.launch()).toBe(true);
+        expect(onError).not.toHaveBeenCalled();
+        expect(
+            container.querySelector(".loading-indicators .error")?.textContent
+        ).toContain("Could not load data: missing.csv. Reason: 404 Not Found");
+    } finally {
+        genomeSpy.destroy();
+        container.remove();
+    }
+});
+
 test("launches, updates expressions, and repaints interactions without a GPU context", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
