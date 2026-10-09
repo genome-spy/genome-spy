@@ -92,7 +92,8 @@ export function getFacetGridSize(
         grid.nRows,
         cellSize.height,
         grid.hasColumnHeaders ? headers.column : 0,
-        spacing
+        spacing,
+        grid.hasColumnHeaders && !grid.hasRowHeaders
     );
 
     return new FlexDimensions(width, height);
@@ -135,7 +136,8 @@ export function getFacetCellLayouts(
         makeSizeItems(
             grid.nRows,
             cellSize.height,
-            grid.hasColumnHeaders ? headers.column : 0
+            grid.hasColumnHeaders ? headers.column : 0,
+            grid.hasColumnHeaders && !grid.hasRowHeaders
         ),
         coords.height,
         {
@@ -154,6 +156,7 @@ export function getFacetCellLayouts(
             rows,
             columnOffset,
             rowOffset,
+            grid.hasColumnHeaders && !grid.hasRowHeaders ? 2 : 1,
             childOverhang
         )
     );
@@ -279,25 +282,38 @@ function getCellSize(childSize, childOverhang) {
  * @param {import("./layout/flexLayout.js").SizeDef} cellSize
  * @param {number} headerSize
  * @param {number} spacing
+ * @param {boolean} [repeatHeader]
  * @returns {import("./layout/flexLayout.js").SizeDef}
  */
-function getAxisSize(cellCount, cellSize, headerSize, spacing) {
-    const visibleItemCount = cellCount + (headerSize > 0 ? 1 : 0);
+function getAxisSize(
+    cellCount,
+    cellSize,
+    headerSize,
+    spacing,
+    repeatHeader = false
+) {
+    const items = makeSizeItems(cellCount, cellSize, headerSize, repeatHeader);
+    const visibleItemCount = items.length;
     const totalSpacing = Math.max(0, visibleItemCount - 1) * spacing;
 
-    return sumSizeDefs([
-        sumSizeDefs(makeSizeItems(cellCount, cellSize, headerSize)),
-        { px: totalSpacing },
-    ]);
+    return sumSizeDefs([sumSizeDefs(items), { px: totalSpacing }]);
 }
 
 /**
  * @param {number} cellCount
  * @param {import("./layout/flexLayout.js").SizeDef} cellSize
  * @param {number} headerSize
+ * @param {boolean} [repeatHeader]
  * @returns {import("./layout/flexLayout.js").SizeDef[]}
  */
-function makeSizeItems(cellCount, cellSize, headerSize) {
+function makeSizeItems(cellCount, cellSize, headerSize, repeatHeader = false) {
+    if (repeatHeader) {
+        return Array.from({ length: cellCount }, () => [
+            { px: headerSize },
+            cellSize,
+        ]).flat();
+    }
+
     const items = Array.from({ length: cellCount }, () => cellSize);
     if (headerSize > 0) {
         items.unshift({ px: headerSize });
@@ -312,6 +328,7 @@ function makeSizeItems(cellCount, cellSize, headerSize) {
  * @param {import("./layout/flexLayout.js").LocSize[]} rows
  * @param {number} columnOffset
  * @param {number} rowOffset
+ * @param {number} rowStride
  * @param {import("./layout/padding.js").default} childOverhang
  * @returns {FacetCellLayout}
  */
@@ -321,10 +338,11 @@ function getFacetCellLayout(
     rows,
     columnOffset,
     rowOffset,
+    rowStride,
     childOverhang
 ) {
     const column = columns[columnOffset + cell.column];
-    const row = rows[rowOffset + cell.row];
+    const row = rows[rowOffset + cell.row * rowStride];
     const viewportCoords = Rectangle.create(
         column.location,
         row.location,

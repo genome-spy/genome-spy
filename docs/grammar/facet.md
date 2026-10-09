@@ -15,5 +15,7 @@ SCHEMA FacetSpec
 Facets currently use shared scales and axes. Independent per-facet scale domains
 and independent axes are not supported.
 
+Legends and interactions inside individual facet cells are not implemented.
+
 The `columns` property wraps one-dimensional column facets only. It cannot be
 used together with `facet.row`.

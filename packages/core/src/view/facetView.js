@@ -29,9 +29,6 @@ import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 /**
  * Repeats a single child view for data-driven facet groups.
  *
- * The implementation is restored incrementally. The current shell exists so
- * facet specs can participate in view-factory registration and root wrapping.
- *
  * @extends {ContainerView<import("../spec/view.js").FacetSpec>}
  */
 export default class FacetView extends ContainerView {
@@ -95,7 +92,7 @@ export default class FacetView extends ContainerView {
         this.#validateInitialLimitations();
 
         this.#gridChild = new FacetGridChild(this.child, this, 0);
-        await this.#gridChild.createAxes();
+        await this.#gridChild.syncGuideViews();
 
         if (this.#facet.column) {
             this.#columnHeaderView = new FacetHeaderView({
@@ -116,6 +113,12 @@ export default class FacetView extends ContainerView {
                 getName: (prefix) => this.getNextAutoName(prefix),
             });
         }
+    }
+
+    /** Refreshes guides after view-level axis and legend properties are attached. */
+    async syncGuideViews() {
+        await this.#gridChild.syncGuideViews();
+        this.invalidateSizeCache();
     }
 
     /**
@@ -200,8 +203,8 @@ export default class FacetView extends ContainerView {
      * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
-    render(context, coords, options = {}) {
-        super.render(context, coords, options);
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
 
         if (!this.isConfiguredVisible()) {
             return;
@@ -332,10 +335,11 @@ export default class FacetView extends ContainerView {
                     layouts,
                     coords,
                     this.#gridChild.getOverhangAndPadding(),
-                    this.#facet
+                    this.#facet,
+                    this.spec.spacing ?? 10
                 )
             );
-            this.#columnHeaderView.render(context, coords, options);
+            this.#columnHeaderView.arrange(context, coords, options);
         }
 
         if (this.#rowHeaderView) {
@@ -346,7 +350,7 @@ export default class FacetView extends ContainerView {
                     this.#gridChild.getOverhangAndPadding()
                 )
             );
-            this.#rowHeaderView.render(context, coords, options);
+            this.#rowHeaderView.arrange(context, coords, options);
         }
     }
 
@@ -356,20 +360,20 @@ export default class FacetView extends ContainerView {
      * @param {import("../types/rendering.js").RenderingOptions} options
      */
     #renderFacetCell(context, layout, options) {
-        this.#gridChild.background?.render(
+        this.#gridChild.background?.arrange(
             context,
             layout.viewportCoords,
             options
         );
 
         for (const gridLineView of Object.values(this.#gridChild.gridLines)) {
-            gridLineView.render(context, layout.childCoords, options);
+            gridLineView.arrange(context, layout.childCoords, options);
         }
 
-        this.#gridChild.view.render(context, layout.childCoords, options);
+        this.#gridChild.view.arrange(context, layout.childCoords, options);
 
         for (const axisView of Object.values(this.#gridChild.axes)) {
-            axisView.render(
+            axisView.arrange(
                 context,
                 translateAxisCoords(
                     layout.childCoords,
@@ -380,7 +384,7 @@ export default class FacetView extends ContainerView {
             );
         }
 
-        this.#gridChild.backgroundStroke?.render(
+        this.#gridChild.backgroundStroke?.arrange(
             context,
             layout.viewportCoords,
             options
@@ -451,9 +455,10 @@ function translateAxisCoords(coords, orient, axisView) {
  * @param {import("./layout/rectangle.js").default} coords
  * @param {import("./layout/padding.js").default} overhang
  * @param {NormalizedFacet} facet
+ * @param {number} spacing
  * @returns {{ x: number, y: number, text: string }[]}
  */
-function createColumnHeaderData(layouts, coords, overhang, facet) {
+function createColumnHeaderData(layouts, coords, overhang, facet, spacing) {
     /** @type {{ x: number, y: number, text: string }[]} */
     const data = [];
     /** @type {Set<number>} */
@@ -466,9 +471,15 @@ function createColumnHeaderData(layouts, coords, overhang, facet) {
 
         columns.add(layout.cell.column);
         const plotCoords = layout.viewportCoords.shrink(overhang);
+        const headerY = facet.row
+            ? DEFAULT_FACET_HEADER_SIZES.column / 2
+            : layout.viewportCoords.y -
+              coords.y -
+              spacing -
+              DEFAULT_FACET_HEADER_SIZES.column / 2;
         data.push({
             x: (plotCoords.x - coords.x + plotCoords.width / 2) / coords.width,
-            y: 1 - DEFAULT_FACET_HEADER_SIZES.column / 2 / coords.height,
+            y: 1 - headerY / coords.height,
             text: String(layout.cell.columnValue),
         });
     }

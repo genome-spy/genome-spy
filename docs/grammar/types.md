@@ -269,6 +269,18 @@ SCHEMA ExprParameter
 
 See the [ExprRef documentation](expressions.md).
 
+## FacetFieldDef
+
+SCHEMA FacetFieldDef
+
+## FacetMapping
+
+SCHEMA FacetMapping
+
+## FacetSpec
+
+See the [FacetSpec documentation](facet.md#properties).
+
 ## FadedMultiscaleStops
 
 See the [FadedMultiscaleStops documentation](composition/multiscale.md#fadedmultiscalestops).

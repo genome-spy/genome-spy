@@ -1,5 +1,4 @@
 {
-  "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
   "padding": 30,
   "data": { "url": "vega-datasets/cars.json" },
   "facet": {

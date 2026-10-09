@@ -524,11 +524,11 @@ test("facet layout wraps column facets into configured columns", () => {
         [["III"], 1, 0],
     ]);
     expect(size.width).toEqual({ px: 204, grow: 0 });
-    expect(size.height).toEqual({ px: 186, grow: 0 });
+    expect(size.height).toEqual({ px: 208, grow: 0 });
     expect(layouts.map((layout) => rectTuple(layout.viewportCoords))).toEqual([
         [0, 22, 100, 80],
         [104, 22, 100, 80],
-        [0, 106, 100, 80],
+        [0, 128, 100, 80],
     ]);
 });
 
@@ -676,7 +676,7 @@ test("facet size grows with wrapped facet count", async () => {
     });
     expect(fourFacetView.getSize()).toMatchObject({
         width: { px: 210, grow: 0 },
-        height: { px: 138, grow: 0 },
+        height: { px: 166, grow: 0 },
     });
 });
 
@@ -705,7 +705,7 @@ test("implicit root grid uses facet viewport height", async () => {
     const facet = /** @type {FacetView} */ (root.children[0]);
 
     expect(facet).toBeInstanceOf(FacetView);
-    expect(facet.getSize().height).toEqual({ px: 138, grow: 0 });
+    expect(facet.getSize().height).toEqual({ px: 166, grow: 0 });
     expect(facet.getViewportSize().height).toEqual({ px: 80, grow: 0 });
     expect(root.getSize().height).toEqual({ px: 80, grow: 0 });
 });
@@ -722,13 +722,13 @@ test("facet root size can be measured before dataflow initialization", async () 
     );
     const facet = /** @type {FacetView} */ (root.children[0]);
 
-    expect(root.getSize().height).toEqual({ px: 18, grow: 0 });
+    expect(root.getSize().height).toEqual({ px: 0, grow: 0 });
 
     const { dataSources } = initializeViewSubtree(root, root.context.dataFlow);
     await loadViewSubtreeData(root, dataSources);
 
-    expect(facet.getSize().height).toEqual({ px: 138, grow: 0 });
-    expect(root.getSize().height).toEqual({ px: 138, grow: 0 });
+    expect(facet.getSize().height).toEqual({ px: 166, grow: 0 });
+    expect(root.getSize().height).toEqual({ px: 166, grow: 0 });
 });
 
 test("facet render repeats child at each facet cell", async () => {
@@ -736,15 +736,15 @@ test("facet render repeats child at each facet cell", async () => {
         createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
         FacetView
     );
-    const layout = renderToLayout(view, Rectangle.create(0, 0, 210, 138));
+    const layout = renderToLayout(view, Rectangle.create(0, 0, 210, 166));
 
     expect(
         findLayoutNodes(layout, "facet0").map((node) => node.coords)
     ).toEqual([
         "Rectangle: x: 0, y: 28, width: 100, height: 50",
         "Rectangle: x: 110, y: 28, width: 100, height: 50",
-        "Rectangle: x: 0, y: 88, width: 100, height: 50",
-        "Rectangle: x: 110, y: 88, width: 100, height: 50",
+        "Rectangle: x: 0, y: 116, width: 100, height: 50",
+        "Rectangle: x: 110, y: 116, width: 100, height: 50",
     ]);
 });
 
@@ -753,11 +753,11 @@ test("facet render marks only first visible cell as first facet", async () => {
         createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
         FacetView
     );
-    const original = view.child.render.bind(view.child);
+    const original = view.child.arrange.bind(view.child);
     /** @type {{ facetId: unknown, firstFacet: boolean | undefined }[]} */
     const calls = [];
 
-    view.child.render = (context, coords, options = {}) => {
+    view.child.arrange = (context, coords, options = {}) => {
         calls.push({
             facetId: options.facetId,
             firstFacet: options.firstFacet,
@@ -765,7 +765,7 @@ test("facet render marks only first visible cell as first facet", async () => {
         return original(context, coords, options);
     };
 
-    renderToLayout(view, Rectangle.create(0, 0, 210, 138));
+    renderToLayout(view, Rectangle.create(0, 0, 210, 166));
 
     expect(calls).toEqual([
         { facetId: ["I"], firstFacet: true },
@@ -780,18 +780,18 @@ test("facet render culls cells outside the clip rectangle", async () => {
         createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
         FacetView
     );
-    const original = view.child.render.bind(view.child);
+    const original = view.child.arrange.bind(view.child);
     /** @type {unknown[]} */
     const facetIds = [];
 
-    view.child.render = (context, coords, options = {}) => {
+    view.child.arrange = (context, coords, options = {}) => {
         facetIds.push(options.facetId);
         return original(context, coords, options);
     };
 
-    view.render(
+    view.arrange(
         new DebugginViewRenderingContext({}),
-        Rectangle.create(0, 0, 210, 138),
+        Rectangle.create(0, 0, 210, 166),
         {
             firstFacet: true,
             clip: {
@@ -828,8 +828,8 @@ test("anscombe wrapped facet example renders stable cell layout", async () => {
           [
             "Rectangle: x: 32, y: 28, width: 300, height: 300",
             "Rectangle: x: 374, y: 28, width: 300, height: 300",
-            "Rectangle: x: 32, y: 370, width: 300, height: 300",
-            "Rectangle: x: 374, y: 370, width: 300, height: 300",
+            "Rectangle: x: 32, y: 398, width: 300, height: 300",
+            "Rectangle: x: 374, y: 398, width: 300, height: 300",
           ]
         `);
 });

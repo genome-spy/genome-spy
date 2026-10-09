@@ -81,8 +81,8 @@ export default class FacetHeaderView {
      * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} options
      */
-    render(context, coords, options) {
-        this.#view.render(context, coords, options);
+    arrange(context, coords, options) {
+        this.#view.arrange(context, coords, options);
     }
 
     /**
