@@ -48,9 +48,11 @@ available. A new loading attempt replaces the previous error. Unrequested hidden
 views and future lazy windows have no certified outcome.
 
 Equivalent declarations may share one source and one entry. `viewId` and `viewPath`
-describe its original declaring view, even if that view is later removed. An
-optional `getSpecOrigin(fragment)` embed option supplies opaque authored context
-reported as `origin`. Unknown imported or generated fragments may omit it.
+describe its original declaring view, even if that view is later removed. The
+optional `getSpecOrigin(fragment)` embed option receives each data definition and
+can return its location, such as a JSON Pointer. Reports include it as `origin`,
+so an editor can locate a failed definition. Return `undefined` when the location
+is unknown. A shared source reports one definition's origin.
 `errorPhase` identifies confirmed request or processing failures and is absent
 when attribution is ambiguous.
 

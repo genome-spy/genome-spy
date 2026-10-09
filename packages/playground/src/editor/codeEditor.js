@@ -61,8 +61,8 @@ export default class CodeEditor extends LitElement {
     /** @type {JsonLanguageServiceClient} */
     _languageService;
 
-    /** @type {Map<string, import("@genome-spy/core/types/embedApi.js").DataLoadingEntry>} */
-    _loadingEntries = new Map();
+    /** @type {import("@genome-spy/core/types/embedApi.js").DataLoadingApi | undefined} */
+    _dataLoading;
 
     /** @type {string | undefined} Semantic identity of the authored embed document. */
     _loadingSpec;
@@ -74,7 +74,7 @@ export default class CodeEditor extends LitElement {
 
     clearDataLoading() {
         this._stopLoading();
-        this._loadingEntries = new Map();
+        this._dataLoading = undefined;
         this._loadingSpec = undefined;
         this._refreshLoadingDiagnostics();
     }
@@ -86,28 +86,24 @@ export default class CodeEditor extends LitElement {
     observeDataLoading(api, specText) {
         this.clearDataLoading();
         this._loadingSpec = JSON.stringify(JSON.parse(specText));
-        const entries = this._loadingEntries;
-        this._stopLoading = api.dataLoading.subscribe((change) => {
-            if (entries !== this._loadingEntries) return;
-            if (change.type === "update")
-                entries.set(change.entry.sourceId, change.entry);
-            else entries.delete(change.sourceId);
+        const loading = (this._dataLoading = api.dataLoading);
+        this._stopLoading = loading.subscribe(() => {
+            if (loading !== this._dataLoading) return;
             this._refreshLoadingDiagnostics();
         });
-        for (const entry of api.dataLoading.getSnapshot())
-            entries.set(entry.sourceId, entry);
         this._refreshLoadingDiagnostics();
     }
 
     /** @param {string} text */
     _getLoadingEntries(text) {
         try {
-            if (JSON.stringify(JSON.parse(text)) === this._loadingSpec)
-                return Array.from(this._loadingEntries.values());
+            if (JSON.stringify(JSON.parse(text)) !== this._loadingSpec)
+                return [];
         } catch {
             // Invalid editor text has no matching runtime specification.
+            return [];
         }
-        return [];
+        return this._dataLoading.getSnapshot();
     }
 
     _refreshLoadingDiagnostics() {
@@ -175,8 +171,8 @@ export default class CodeEditor extends LitElement {
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         if (
-                            this._loadingEntries
-                                .values()
+                            this._dataLoading
+                                ?.getSnapshot()
                                 .some((entry) => entry.status === "error")
                         ) {
                             queueMicrotask(() => forceLinting(this._editor));

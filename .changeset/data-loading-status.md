@@ -7,7 +7,7 @@ Inspect eager URL and lazy data-loading outcomes through the embed API's new
 detect failed sources without reading the visualization or browser console.
 Shared sources retain their status until disposal, and successful sources no
 longer hide another source's error. The optional `getSpecOrigin` embed option
-associates loading outcomes with authored specification fragments.
+links loading outcomes to data definitions in a specification.
 Processing failures include buffered transforms and final data publication.
 
 `awaitVisibleLazyData()` waits for publication to finish and rejects when a required

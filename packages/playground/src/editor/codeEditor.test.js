@@ -90,11 +90,13 @@ function createApi() {
         errorPhase: /** @type {const} */ ("request"),
         message: "Missing CSV",
     };
+    /** @type {Map<string, import("@genome-spy/core/types/embedApi.js").DataLoadingEntry>} */
+    const entries = new Map([[entry.sourceId, entry]]);
     const api =
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult} */ (
             /** @type {unknown} */ ({
                 dataLoading: {
-                    getSnapshot: () => [entry],
+                    getSnapshot: () => Array.from(entries.values()),
                     subscribe: (
                         /** @type {(change: import("@genome-spy/core/types/embedApi.js").DataLoadingChange) => void} */ listener
                     ) => {
@@ -108,6 +110,9 @@ function createApi() {
         );
     /** @param {import("@genome-spy/core/types/embedApi.js").DataLoadingChange} change */
     const emit = (change) => {
+        if (change.type === "update")
+            entries.set(change.entry.sourceId, change.entry);
+        else entries.delete(change.sourceId);
         for (const listener of listeners) listener(change);
     };
     return { api, entry, listeners, emit };

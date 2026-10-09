@@ -54,14 +54,10 @@ export default class LoadingStatusRegistry {
             });
         }
 
-        entry = {
-            sourceId: entry.sourceId,
-            viewId: entry.viewId,
-            viewPath: entry.viewPath,
-            ...(entry.origin === undefined ? {} : { origin: entry.origin }),
-            status,
-            ...(status === "error" ? { message, errorPhase } : {}),
-        };
+        entry = { ...entry, status };
+        delete entry.message;
+        delete entry.errorPhase;
+        if (status === "error") Object.assign(entry, { message, errorPhase });
         this.#sources.set(source, entry);
         this.#publish({ type: "update", entry });
     }

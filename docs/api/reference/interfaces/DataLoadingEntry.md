@@ -34,7 +34,7 @@ Original declaring view's descriptive path, captured at its first attempt.
 
 > `optional` **origin?**: `string`
 
-Opaque context returned by `EmbedOptions.getSpecOrigin`.
+Specification location or identifier returned by `EmbedOptions.getSpecOrigin`.
 
 ***
 

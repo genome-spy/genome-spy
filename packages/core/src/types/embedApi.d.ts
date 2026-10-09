@@ -109,10 +109,16 @@ export interface EmbedOptions {
     onError?: (error: unknown, container: HTMLElement) => boolean | void;
 
     /**
-     * Returns opaque authored-spec context for an original specification fragment.
-     * Initially called for data definitions. Unknown, imported, or generated
-     * fragments may return undefined. The context is reported as a source's
-     * `origin` and does not affect source sharing.
+     * Links data-loading reports to locations in your specification.
+     *
+     * Called with the original data definition object, such as `{ url: "data.csv" }`,
+     * when GenomeSpy creates a data source. Return a string identifying that
+     * definition, such as the JSON Pointer `"/vconcat/0/data"`. Reports include this
+     * string as `origin` in `dataLoading` snapshots and change events, allowing an
+     * editor to highlight the definition when loading fails.
+     *
+     * Return `undefined` if the definition's location is unknown. Equivalent data
+     * definitions may share one source; its reports contain one definition's origin.
      */
     getSpecOrigin?: (fragment: object) => string | undefined;
 }
@@ -903,7 +909,7 @@ export interface DataLoadingEntry {
     viewId: string;
     /** Original declaring view's descriptive path, captured at its first attempt. */
     viewPath: string;
-    /** Opaque context returned by `EmbedOptions.getSpecOrigin`. */
+    /** Specification location or identifier returned by `EmbedOptions.getSpecOrigin`. */
     origin?: string;
     status: "loading" | "complete" | "error";
     /** Present only for errors. */
