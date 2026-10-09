@@ -74,12 +74,11 @@ export default class AxisTickSource extends SingleAxisLazySource {
                 true
             );
             this.#tickCountExpression = paramRuntime.watchExpression(
-                tickCountSpec.expr,
+                tickCountSpec,
                 () => {
                     void this.onDomainChanged();
                 },
                 {
-                    source: tickCountSpec,
                     scopeOwned: false,
                     registerDisposer: (disposer) =>
                         this.registerDisposer(disposer),

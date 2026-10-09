@@ -1,7 +1,10 @@
 import { isContinuous } from "vega-scale";
 import { clampRange } from "vega-util";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
-import { createEventPredicate } from "../../utils/interactionConfig.js";
+import {
+    createEventPredicate,
+    getEventFilterLocation,
+} from "../../utils/interactionConfig.js";
 import { startDocumentDrag } from "../../utils/documentDrag.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
@@ -232,19 +235,32 @@ export class IntervalSelectionController {
             );
         }
 
-        const eventPredicate = createEventPredicate(eventConfig);
+        const source =
+            "select" in param && typeof param.select === "object"
+                ? param.select
+                : undefined;
+        const eventPredicate = createEventPredicate(
+            eventConfig,
+            getEventFilterLocation(paramRuntime, source, "on")
+        );
 
         const zoomEventConfig = resolveIntervalZoomEventConfig(
             select.zoom,
             requiresShiftToBrush,
             name
         );
-        const zoomEventPredicate = createEventPredicate(zoomEventConfig);
+        const zoomEventPredicate = createEventPredicate(
+            zoomEventConfig,
+            getEventFilterLocation(paramRuntime, source, "zoom")
+        );
         const clearEventConfig =
             /** @type {import("../../spec/parameter.js").EventConfig | undefined} */ (
                 select.clear
             );
-        const clearEventPredicate = createEventPredicate(clearEventConfig);
+        const clearEventPredicate = createEventPredicate(
+            clearEventConfig,
+            getEventFilterLocation(paramRuntime, source, "clear")
+        );
 
         // --- Validation and early exits done ---
 

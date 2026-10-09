@@ -69,11 +69,7 @@ export default class LoadingStatusRegistry {
     #publish(change) {
         for (const listener of this.#listeners) {
             try {
-                listener(
-                    change.type === "update"
-                        ? { type: "update", entry: copyEntry(change.entry) }
-                        : { ...change }
-                );
+                listener(structuredClone(change));
             } catch (error) {
                 // Host callbacks must not turn a successful load into a failed one.
                 queueMicrotask(() => reportError(error));
@@ -88,7 +84,9 @@ export default class LoadingStatusRegistry {
 
     /** @returns {DataLoadingEntry[]} */
     getSnapshot() {
-        return Array.from(this.#sources.values(), copyEntry);
+        return Array.from(this.#sources.values(), (entry) =>
+            structuredClone(entry)
+        );
     }
 
     /** @param {DataSource} source */
@@ -138,17 +136,4 @@ export default class LoadingStatusRegistry {
         this.#sources.clear();
         this.#statuses.clear();
     }
-}
-
-/** @param {DataLoadingEntry} entry @returns {DataLoadingEntry} */
-function copyEntry(entry) {
-    const copy = { ...entry };
-    if (entry.errorLocation) {
-        const { origin, path } = entry.errorLocation;
-        copy.errorLocation = {
-            origin,
-            ...(path ? { path: Array.from(path) } : {}),
-        };
-    }
-    return copy;
 }

@@ -1,6 +1,7 @@
 import InlineSource, { isInlineData } from "./inlineSource.js";
 import UrlSource, { isUrlData } from "./urlSource.js";
 import SequenceSource, { isSequenceGenerator } from "./sequenceSource.js";
+import { getSpecLocation } from "../../utils/specOrigin.js";
 import {
     createLazyDataSource,
     registerLazyDataSource,
@@ -11,7 +12,11 @@ import {
  * @param {import("../../view/view.js").default} view
  */
 export default function createDataSource(params, view) {
-    const origin = view.context.getSpecOrigin?.(params);
+    const origin = getSpecLocation(
+        params,
+        view.context.getSpecOrigin,
+        []
+    )?.origin;
     const source = createSource(params, view);
     source.origin = origin;
     return source;

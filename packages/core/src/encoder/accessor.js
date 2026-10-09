@@ -80,10 +80,7 @@ export function createAccessor(channel, channelDef, paramRuntime) {
     function potentialExprRefToAccessor(potentialExprRef) {
         if (isExprRef(potentialExprRef)) {
             const a = asAccessor(
-                paramRuntime.createExpression(
-                    potentialExprRef.expr,
-                    potentialExprRef
-                )
+                paramRuntime.createExpression(potentialExprRef)
             );
             if (a.fields.length > 0) {
                 throw new Error(
@@ -113,9 +110,7 @@ export function createAccessor(channel, channelDef, paramRuntime) {
             });
         }
     } else if (isExprDef(channelDef)) {
-        return asAccessor(
-            paramRuntime.createExpression(channelDef.expr, channelDef)
-        );
+        return asAccessor(paramRuntime.createExpression(channelDef));
     } else if (isDatumDef(channelDef)) {
         return potentialExprRefToAccessor(channelDef.datum);
     } else if (isValueDef(channelDef)) {

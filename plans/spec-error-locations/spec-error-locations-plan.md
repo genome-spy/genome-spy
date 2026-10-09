@@ -72,7 +72,9 @@ Relevant architecture: `ARCHITECTURE.md`, `packages/core/ARCHITECTURE.md`,
    aliases at installation; store object identity, never an embed's resolved
    string. Explicit sites cover positional coverage/text clones, color/opacity
    normalization, offset scale-property clones, named-condition expansion, and
-   expression properties copied by guide/config merging.
+   expression properties copied by guide merging, templates, and annotations.
+   Configuration expression references are atomic values and retain their
+   authored identity when scopes merge.
    Alias copied condition/ExprRef/scale declaration nodes only where their source
    mapping is known. Exact `structuredClone` subtrees are linked before any
    normalization changes; never infer provenance by matching generated objects.
@@ -83,12 +85,17 @@ Relevant architecture: `ARCHITECTURE.md`, `packages/core/ARCHITECTURE.md`,
 5. Capture expression origins where the declaration object is available. Cover
    encoding expressions, named parameter expressions (including deferred ones),
    formula/filter transforms, expression-reference properties, and scale
-   domain/range expressions. Pass the source along existing binding paths. Do
-   not add per-row evaluation wrappers or inspect `datum` fields. Use an optional
-   declaration object argument on view expression creation and a resolved optional
-   location in binding options, including `registerDerived`. The hook receives
-   the exact encoding branch, parameter, transform, or ExprRef object containing
-   the relevant `field`/`expr` property. Paths are relative to that object.
+   domain/range expressions. View expression methods accept the authored ExprRef
+   itself or generated expression text, eliminating parallel text/source arguments.
+   Resolve an optional location in binding options, including `registerDerived`.
+   Annotate compiler failures in the compiler's existing catch and binding
+   failures around global resolution; named-parameter analysis uses the same
+   compiler boundary. Interaction event filters pass a location from their
+   authored configuration to their existing parser catch. Object-form filters
+   use `[key, "filter"]`; shorthand strings use `[key]`. The hook receives the
+   exact encoding branch, parameter, transform, ExprRef, or interaction config.
+   Paths are relative to that object. Do not add per-row evaluation wrappers or
+   inspect `datum` fields.
 6. Playground prefers a precise `errorLocation` over the existing URL/data
    fallback. Fatal errors use the same location resolver and lint revision
    machinery. Capture the document/attempt identity before `embed()` starts:
@@ -264,3 +271,38 @@ eager/lazy sources, switches WebGPU/WebGL, and locates its scale expression erro
 Core/App embedding checks passed across Canvas, WebGL, and WebGPU (18 cases).
 All planned work is complete; retain this record until the future PR workflow
 commits its removal.
+
+### Simplification and review record
+
+A subagent reviewed the implementation and the simplification on 2026-10-09.
+Expression declarations now carry their own text and identity through existing
+binding APIs. Removed separate source arguments/options and redundant error
+wrappers. Compiler catches and the globals-binding loop annotate errors where
+they arise, including dependency cycles from deferred parameter resolution.
+Plain loading-report descriptors use `structuredClone` instead of a custom copier.
+
+The review also found missing origins after configuration merging, template and
+annotation cloning, and interaction-filter parsing. Atomic ExprRefs and the
+existing clone alias helper cover those paths; source reports resolve clone
+aliases too. The alias map also prevents repeated traversal of cyclic/shared
+clones. A regression verifies that a legal style named `expr` still merges as a
+style, rather than being mistaken for an ExprRef.
+
+Kept the small normalization alias map and Playground's document/attempt/lint
+guards: they address distinct identity and stale-result requirements. There is
+no new diagnostics registry, recovery machinery, or per-datum bookkeeping.
+
+Verification: the full suite passed with 4,610 tests across 506 files before the
+final review corrections; all 66 focused review regressions passed afterwards.
+Browser checks cover parameter syntax, object/shorthand interaction filters,
+config expressions, correction, and valid expressions across WebGPU, Canvas,
+and WebGL. Workspace TypeScript, lint, Playground build, and release checks pass.
+Production JavaScript relative to the pre-review commit `dc1c94ca2`: 198 added,
+227 deleted, net -29. The full branch relative to master `5f6467aae`: 412 added,
+190 deleted, net +222, down from +251. Counts cover `packages/` and exclude
+tests, comments, blank lines, and declaration files.
+
+Separate browser observation, outside this location feature: rapidly replacing
+invalid specs can produce an unhandled font-loading rejection after renderer
+disposal (`rendering/webgl/rendererResources.js`). The editor still clears and
+renders corrected specs. Renderer/font cancellation handling is deferred.

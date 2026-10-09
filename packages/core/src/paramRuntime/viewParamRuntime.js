@@ -4,6 +4,7 @@ import ParamRuntime from "./paramRuntime.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 import {
     getDefaultParamValue,
+    isExprRef,
     isSelectionParameter,
     validateParameterName,
 } from "./paramUtils.js";
@@ -65,7 +66,6 @@ export default class ViewParamRuntime {
      * @prop {boolean} [animate=true]
      *
      * @typedef {object} WatchExpressionOptions
-     * @prop {object} [source] Authored declaration containing the expression.
      * @prop {boolean} [scopeOwned=true]
      *      Whether the subscription lifecycle is owned by this runtime scope.
      *      When true, the listener is unsubscribed automatically during
@@ -420,21 +420,15 @@ export default class ViewParamRuntime {
             } else {
                 setter = this.#registerBaseSetter(name, defaultValue);
             }
-        } else if ("expr" in param) {
+        } else if (isExprRef(param)) {
             if ("transition" in param) {
                 this.#registerTransitionedExpression(
                     name,
-                    param.expr,
-                    param.transition,
-                    param
+                    param,
+                    param.transition
                 );
             } else if ("debounce" in param) {
-                this.#registerDebouncedExpression(
-                    name,
-                    param.expr,
-                    param.debounce,
-                    param
-                );
+                this.#registerDebouncedExpression(name, param, param.debounce);
             } else {
                 const ref = this.#runtime.registerDerived(
                     this.#scopeId,
@@ -796,14 +790,13 @@ export default class ViewParamRuntime {
     /**
      * Parse expr and return a function that returns the value of the parameter.
      *
-     * @param {string} expr
-     * @param {object} [source] Authored declaration containing `expr`.
+     * @param {string | import("../spec/parameter.js").ExprRef} expr Authored declaration or generated expression text.
      */
-    createExpression(expr, source) {
+    createExpression(expr) {
         return this.#runtime.createExpression(
             this.#scopeId,
-            expr,
-            this.#expressionOptions(source)
+            typeof expr === "string" ? expr : expr.expr,
+            this.#expressionOptions(typeof expr === "string" ? undefined : expr)
         );
     }
 
@@ -819,13 +812,13 @@ export default class ViewParamRuntime {
      * 3. `registerDisposer` can be used regardless of `scopeOwned` to bind the
      *    same unsubscribe to another lifecycle owner.
      *
-     * @param {string} expr
+     * @param {string | import("../spec/parameter.js").ExprRef} expr
      * @param {() => void} listener
      * @param {WatchExpressionOptions} [options]
      * @returns {ExprRefFunction}
      */
     watchExpression(expr, listener, options = {}) {
-        const fn = this.createExpression(expr, options.source);
+        const fn = this.createExpression(expr);
         const dispose = fn.subscribe(listener);
 
         if (options.scopeOwned ?? true) {
@@ -963,12 +956,11 @@ export default class ViewParamRuntime {
 
     /**
      * @param {string} name
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} expr
      * @param {import("../spec/parameter.js").ParamTransition} transition
-     * @param {object} source
      */
-    #registerTransitionedExpression(name, expr, transition, source) {
-        const expression = this.createExpression(expr, source);
+    #registerTransitionedExpression(name, expr, transition) {
+        const expression = this.createExpression(expr);
         const state = this.#registerTransitionState(
             name,
             expression(null),
@@ -984,12 +976,11 @@ export default class ViewParamRuntime {
 
     /**
      * @param {string} name
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} expr
      * @param {number} wait
-     * @param {object} source
      */
-    #registerDebouncedExpression(name, expr, wait, source) {
-        const expression = this.createExpression(expr, source);
+    #registerDebouncedExpression(name, expr, wait) {
+        const expression = this.createExpression(expr);
         const initialValue = expression(null);
         const ref = this.#runtime.registerBase(
             this.#scopeId,
@@ -1098,11 +1089,10 @@ export default class ViewParamRuntime {
     /**
      * A convenience method for evaluating an expression.
      *
-     * @param {string} expr
-     * @param {object} [source]
+     * @param {string | import("../spec/parameter.js").ExprRef} expr
      */
-    evaluateAndGet(expr, source) {
-        const fn = this.createExpression(expr, source);
+    evaluateAndGet(expr) {
+        const fn = this.createExpression(expr);
         return fn();
     }
 

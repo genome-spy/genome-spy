@@ -1,3 +1,4 @@
+import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
 // eslint-disable-next-line no-unused-vars
 import View from "./view.js";
 
@@ -328,7 +329,7 @@ function findTemplate(name, view) {
     const template = view.spec?.templates?.[name];
     if (template) {
         // Ensure that the template is not altered
-        return structuredClone(template);
+        return cloneWithSpecOrigin(template);
     }
 
     if (view.dataParent) {

@@ -24,20 +24,6 @@ import { annotateSpecError } from "../utils/specError.js";
  * @returns {BoundExpression}
  */
 export function bindExpression(expr, resolve, options = {}) {
-    try {
-        return bind(expr, resolve, options);
-    } catch (error) {
-        throw annotateSpecError(error, options.specLocation);
-    }
-}
-
-/**
- * @param {string} expr
- * @param {(name: string) => import("./types.js").ParamRef<any> | undefined} resolve
- * @param {ExpressionBindingOptions} options
- * @returns {BoundExpression}
- */
-function bind(expr, resolve, options) {
     const globalObject = {};
 
     /** @type {import("./types.js").ExprRefFunction} */
@@ -48,26 +34,33 @@ function bind(expr, resolve, options) {
     /** @type {Map<string, import("./types.js").ParamRef<any>>} */
     const refsForParams = new Map();
 
-    for (const globalName of expression.globals) {
-        if (refsForParams.has(globalName)) {
-            continue;
+    try {
+        for (const globalName of expression.globals) {
+            if (refsForParams.has(globalName)) {
+                continue;
+            }
+
+            const ref = resolve(globalName);
+            if (!ref) {
+                throw new Error(
+                    'Unknown variable "' +
+                        globalName +
+                        '" in expression: ' +
+                        expr
+                );
+            }
+
+            refsForParams.set(globalName, ref);
+
+            Object.defineProperty(globalObject, globalName, {
+                enumerable: true,
+                get() {
+                    return ref.get();
+                },
+            });
         }
-
-        const ref = resolve(globalName);
-        if (!ref) {
-            throw new Error(
-                'Unknown variable "' + globalName + '" in expression: ' + expr
-            );
-        }
-
-        refsForParams.set(globalName, ref);
-
-        Object.defineProperty(globalObject, globalName, {
-            enumerable: true,
-            get() {
-                return ref.get();
-            },
-        });
+    } catch (error) {
+        throw annotateSpecError(error, options.specLocation);
     }
 
     /** @type {Set<() => void>} */

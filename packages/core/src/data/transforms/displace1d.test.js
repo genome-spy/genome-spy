@@ -234,11 +234,10 @@ describe("Displace1DTransform", () => {
         const disposer = vi.fn();
         const paramRuntime = {
             watchExpression: (
-                /** @type {string} */ expression,
+                /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
                 /** @type {() => void} */ callback,
                 /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
             ) => {
-                expect(expression).toBe("factor");
                 listener = callback;
                 options.registerDisposer(disposer);
                 return () => factor;
@@ -293,13 +292,15 @@ describe("Displace1DTransform", () => {
         const disposer = vi.fn();
         const paramRuntime = {
             watchExpression: (
-                /** @type {string} */ expression,
+                /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
                 /** @type {() => void} */ callback,
                 /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
             ) => {
-                listeners.set(expression, callback);
+                listeners.set(expression.expr, callback);
                 options.registerDisposer(disposer);
-                return expression == "length" ? () => length : () => extent;
+                return expression.expr == "length"
+                    ? () => length
+                    : () => extent;
             },
         };
         const source = new Collector();

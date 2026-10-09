@@ -5,6 +5,7 @@ import {
     createHeadlessViewContext,
 } from "../genomeSpy/headlessBootstrap.js";
 import { getEncoderAccessors } from "../encoder/encoder.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -173,6 +174,23 @@ test.each([
     });
 });
 
+test("locates deferred parameter dependency cycles at the responsible expression", () => {
+    const a = { name: "a", expr: "b + 1" };
+    const b = { name: "b", expr: "a + 1" };
+    const runtime = new ViewParamRuntime(undefined, undefined, undefined, {
+        getSpecOrigin: (fragment) => (fragment === b ? "b" : undefined),
+    });
+    runtime.registerParam(a, { defer: true });
+    runtime.registerParam(b, { defer: true });
+    expect(() => runtime.getValue("a")).toThrow(
+        expect.objectContaining({
+            message: expect.stringContaining("dependency cycle"),
+            specLocation: { origin: "b", path: ["expr"] },
+        })
+    );
+    runtime.dispose();
+});
+
 test.each(
     ["missing + 1", "1 +"].flatMap((expr) =>
         [
@@ -189,6 +207,10 @@ test.each(
             "point property",
             "axis ticks",
             "view axis ticks",
+            "config axis ticks",
+            "config point property",
+            "template",
+            "annotation",
         ].map((kind) => ({ kind, expr }))
     )
 )("locates an invalid $kind expression: $expr", async ({ kind, expr }) => {
@@ -230,6 +252,35 @@ test.each(
         spec.encoding.x.axis = { tickCount: declaration };
     if (kind === "view axis ticks")
         spec.axes = { x: { tickCount: declaration } };
+    if (kind === "config axis ticks")
+        spec.config = { axis: { tickCount: declaration } };
+    if (kind === "config point property") {
+        spec.config = { point: { semanticZoomFraction: { expr: "0.5" } } };
+        spec.layer = [
+            {
+                mark: "point",
+                config: { point: { semanticZoomFraction: declaration } },
+            },
+        ];
+        delete spec.mark;
+    }
+    if (kind === "template") {
+        spec.templates = {
+            track: {
+                mark: "point",
+                encoding: { color: { value: declaration } },
+            },
+        };
+        spec.layer = [{ import: { template: "track" } }];
+        delete spec.mark;
+    }
+    if (kind === "annotation") {
+        spec.vconcat = [{ mark: "point" }];
+        spec.annotate = [
+            { mark: { type: "point", semanticZoomFraction: declaration } },
+        ];
+        delete spec.mark;
+    }
     await expect(
         createHeadlessEngine(spec, {
             context: locatedContext(declaration, kind.includes("axis ticks")),
@@ -243,7 +294,7 @@ test.each(
             }
         })
     ).rejects.toSatisfy((error) => {
-        expect(getSpecErrorLocation(error)).toEqual({
+        expect(getSpecErrorLocation(error), error.message).toEqual({
             origin: "declaration",
             path: ["expr"],
         });
@@ -251,63 +302,118 @@ test.each(
     });
 });
 
-test("reports a downstream field location separately from the URL source origin", async () => {
-    vi.stubGlobal("fetch", async () => new Response("present\n1\n"));
-    const declaration = {
-        field: "missing",
-        type: /** @type {const} */ ("quantitative"),
-    };
-    const spec = {
-        data: { url: "data.csv" },
-        mark: /** @type {const} */ ("point"),
-        encoding: { x: declaration },
-    };
-    const context = locatedContext(declaration);
-    context.getSpecOrigin = (fragment) =>
-        fragment === declaration
-            ? "encoding"
-            : fragment === spec.data
-              ? "data"
-              : undefined;
-    const { view } = await createHeadlessEngine(spec, { context });
-    const registry = context.dataFlow.loadingStatusRegistry;
-    const entry = registry
-        .getSnapshot()
-        .find((entry) => entry.origin === "data");
-    expect(entry).toMatchObject({
-        status: "error",
-        errorPhase: "processing",
-        errorLocation: { origin: "encoding", path: ["field"] },
-    });
-    // Public snapshots and events must not let one observer alter another's location.
-    /** @type {string[]} */ (entry.errorLocation.path)[0] = "url";
-    expect(
-        registry.getSnapshot().find((entry) => entry.origin === "data")
-            .errorLocation.path
-    ).toEqual(["field"]);
-    registry.subscribe((change) => {
-        if (change.type === "update" && change.entry.errorLocation)
-            /** @type {string[]} */ (change.entry.errorLocation.path)[0] =
-                "url";
-    });
-    registry.setSource(
-        view.flowHandle.dataSource,
-        "error",
-        entry.message,
-        "processing",
-        { origin: "encoding", path: ["field"] }
-    );
-    expect(
-        registry.getSnapshot().find((entry) => entry.origin === "data")
-            .errorLocation.path
-    ).toEqual(["field"]);
-    registry.setSource(view.flowHandle.dataSource, "complete");
-    expect(
-        registry.getSnapshot().find((entry) => entry.origin === "data")
-            .errorLocation
-    ).toBeUndefined();
-    view.disposeSubtree();
-});
+test.each(
+    [
+        ["point", "on", "click"],
+        ["point", "clear", "dblclick"],
+        ["interval", "on", "mousedown"],
+        ["interval", "zoom", "wheel"],
+        ["interval", "clear", "dblclick"],
+        ["ruler", "on", "mousemove"],
+    ].flatMap(([kind, key, type]) =>
+        [false, true].map((shorthand) => ({ kind, key, type, shorthand }))
+    )
+)(
+    "locates $kind $key event-filter syntax errors (shorthand: $shorthand)",
+    async ({ kind, key, type, shorthand }) => {
+        const config = {
+            type: kind,
+            encodings: ["x"],
+            [key]: shorthand ? type + "[1 +]" : { type, filter: "1 +" },
+        };
+        const param = {
+            name: "interaction",
+            ...(kind === "ruler" ? { ruler: config } : { select: config }),
+        };
+        const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
+            data: { values: [{ x: 1 }] },
+            params: [param],
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        });
+        await expect(
+            createHeadlessEngine(spec, {
+                context: locatedContext(config, true),
+            })
+        ).rejects.toSatisfy((error) => {
+            expect(error.message).toContain("Invalid expression");
+            expect(getSpecErrorLocation(error)).toEqual({
+                origin: "declaration",
+                path: shorthand ? [key] : [key, "filter"],
+            });
+            return true;
+        });
+    }
+);
+
+test.each([false, true])(
+    "reports separate field and URL origins with template=%s",
+    async (template) => {
+        vi.stubGlobal("fetch", async () => new Response("present\n1\n"));
+        const declaration = {
+            field: "missing",
+            type: /** @type {const} */ ("quantitative"),
+        };
+        const spec = {
+            data: { url: "data.csv" },
+            mark: /** @type {const} */ ("point"),
+            encoding: { x: declaration },
+        };
+        const context = locatedContext(declaration);
+        context.getSpecOrigin = (fragment) =>
+            fragment === declaration
+                ? "encoding"
+                : fragment === spec.data
+                  ? "data"
+                  : undefined;
+        const { view } = await createHeadlessEngine(
+            template
+                ? {
+                      templates: { track: spec },
+                      layer: [{ import: { template: "track" } }],
+                  }
+                : spec,
+            { context }
+        );
+        const source = view
+            .getDescendants()
+            .find((v) => v.flowHandle?.dataSource).flowHandle.dataSource;
+        const registry = context.dataFlow.loadingStatusRegistry;
+        const entry = registry
+            .getSnapshot()
+            .find((entry) => entry.origin === "data");
+        expect(entry).toMatchObject({
+            status: "error",
+            errorPhase: "processing",
+            errorLocation: { origin: "encoding", path: ["field"] },
+        });
+        // Public snapshots and events must not let one observer alter another's location.
+        /** @type {string[]} */ (entry.errorLocation.path)[0] = "url";
+        expect(
+            registry.getSnapshot().find((entry) => entry.origin === "data")
+                .errorLocation.path
+        ).toEqual(["field"]);
+        registry.subscribe((change) => {
+            if (change.type === "update" && change.entry.errorLocation)
+                /** @type {string[]} */ (change.entry.errorLocation.path)[0] =
+                    "url";
+        });
+        registry.setSource(source, "error", entry.message, "processing", {
+            origin: "encoding",
+            path: ["field"],
+        });
+        expect(
+            registry.getSnapshot().find((entry) => entry.origin === "data")
+                .errorLocation.path
+        ).toEqual(["field"]);
+        registry.setSource(source, "complete");
+        expect(
+            registry.getSnapshot().find((entry) => entry.origin === "data")
+                .errorLocation
+        ).toBeUndefined();
+        view.disposeSubtree();
+    }
+);
 
 test("does not validate datum fields in expressions or require an origin hook", async () => {
     const { view } = await createHeadlessEngine({

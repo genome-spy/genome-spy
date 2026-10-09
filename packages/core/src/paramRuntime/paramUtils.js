@@ -20,7 +20,6 @@ import { createRulerValue } from "../ruler/rulerValue.js";
 
 /**
  * @typedef {{
- *   source?: object,
  *   scopeOwned?: boolean,
  *   registerDisposer?: (disposer: () => void) => void
  * }} WatchExpressionOptions
@@ -28,9 +27,9 @@ import { createRulerValue } from "../ruler/rulerValue.js";
 
 /**
  * @typedef {{
- *   createExpression: (expr: string, source?: object) => ExprRefFunction,
+ *   createExpression: (expr: string | import("../spec/parameter.js").ExprRef) => ExprRefFunction,
  *   watchExpression?: (
- *     expr: string,
+ *     expr: string | import("../spec/parameter.js").ExprRef,
  *     listener: () => void,
  *     options?: WatchExpressionOptions
  *   ) => ExprRefFunction,
@@ -128,7 +127,7 @@ export function validateParameterName(name) {
  * Computes the default value for a parameter specification.
  *
  * @param {import("../spec/parameter.js").Parameter} param
- * @param {{ createExpression: (expr: string, source?: object) => ExprRefFunction }} [paramRuntime]
+ * @param {{ createExpression: (expr: string | import("../spec/parameter.js").ExprRef) => ExprRefFunction }} [paramRuntime]
  * @param {ExprRefFunction} [exprFn]
  * @returns {any}
  */
@@ -163,8 +162,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
         const expr =
             exprFn ??
             paramRuntime?.createExpression(
-                /** @type {string} */ (param.expr),
-                param
+                /** @type {import("../spec/parameter.js").ExprRef} */ (param)
             );
         if (!expr) {
             throw new Error(
@@ -208,7 +206,7 @@ export function activateExprRefProps(
     const bindings = [];
     for (const [key, value] of Object.entries(props)) {
         if (isExprRef(value)) {
-            const fn = paramRuntime.createExpression(value.expr, value);
+            const fn = paramRuntime.createExpression(value);
             const index = bindings.push({ key, fn }) - 1;
             Object.defineProperty(activatedProps, key, {
                 enumerable: true,
@@ -226,7 +224,7 @@ export function activateExprRefProps(
     for (const { key, expr } of additionalExpressions) {
         bindings.push({
             key,
-            fn: paramRuntime.createExpression(expr.expr, expr),
+            fn: paramRuntime.createExpression(expr),
         });
     }
     if (!bindings.length) {
@@ -296,12 +294,11 @@ export function resolveInitOnlyExprRef(
         throw new Error(errorMessage);
     };
     const fn = paramRuntime.watchExpression
-        ? paramRuntime.watchExpression(value.expr, throwUnsupportedChange, {
-              source: value,
+        ? paramRuntime.watchExpression(value, throwUnsupportedChange, {
               scopeOwned: false,
               registerDisposer,
           })
-        : paramRuntime.createExpression(value.expr, value);
+        : paramRuntime.createExpression(value);
     if (!paramRuntime.watchExpression) {
         const unsubscribe = fn.subscribe(throwUnsupportedChange);
         registerDisposer?.(unsubscribe);

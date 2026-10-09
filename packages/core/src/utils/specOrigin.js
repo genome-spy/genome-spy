@@ -3,21 +3,13 @@ const originals = new WeakMap();
 
 /**
  * Associates a shallow normalization copy with its authored declaration.
- * @template T
- * @param {unknown} source
+ * @template {object} T
+ * @param {object} source
  * @param {T} copy
  * @returns {T}
  */
 export function inheritSpecOrigin(source, copy) {
-    if (
-        source &&
-        copy &&
-        typeof source === "object" &&
-        typeof copy === "object" &&
-        source !== copy
-    ) {
-        originals.set(copy, originals.get(source) ?? source);
-    }
+    originals.set(copy, originals.get(source) ?? source);
     return copy;
 }
 
@@ -32,7 +24,8 @@ export function cloneWithSpecOrigin(source) {
     const copy = structuredClone(source);
     /** @param {any} source @param {any} copy */
     function link(source, copy) {
-        if (!source || typeof source !== "object") return;
+        if (!source || typeof source !== "object" || originals.has(copy))
+            return;
         inheritSpecOrigin(source, copy);
         for (const key of Object.keys(source)) link(source[key], copy[key]);
     }

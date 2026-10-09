@@ -20,7 +20,7 @@ export default class FilterTransform extends Transform {
         let expression;
 
         if (isExprFilterParams(this.params)) {
-            expression = this.params.expr;
+            expression = this.params;
         } else if (isSelectionFilterParams(this.params)) {
             const selection = this.paramRuntime.findValue(this.params.param);
             if (!selection) {
@@ -35,10 +35,7 @@ export default class FilterTransform extends Transform {
             );
         }
 
-        this.predicate = this.watchSnapshottedExpression(
-            expression,
-            isExprFilterParams(this.params) ? this.params : undefined
-        );
+        this.predicate = this.watchSnapshottedExpression(expression);
     }
 
     /**

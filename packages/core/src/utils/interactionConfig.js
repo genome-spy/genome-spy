@@ -32,12 +32,25 @@ export function asEventConfig(eventType) {
 
 /**
  * @param {import("../spec/parameter.js").EventConfig | undefined} eventConfig
+ * @param {import("../types/embedApi.js").SpecLocation} [location]
  * @returns {(event: InteractionUiEvent) => boolean}
  */
-export function createEventPredicate(eventConfig) {
+export function createEventPredicate(eventConfig, location) {
     return eventConfig?.filter
-        ? createEventFilterFunction(eventConfig.filter)
+        ? createEventFilterFunction(eventConfig.filter, location)
         : () => true;
+}
+
+/**
+ * @param {import("../paramRuntime/viewParamRuntime.js").default} runtime
+ * @param {Partial<Record<"on" | "clear" | "zoom", unknown>> | undefined} config Authored interaction config, before shorthand normalization.
+ * @param {"on" | "clear" | "zoom"} key
+ */
+export function getEventFilterLocation(runtime, config, key) {
+    return runtime.getSpecLocation(config, [
+        key,
+        ...(typeof config?.[key] === "object" ? ["filter"] : []),
+    ]);
 }
 
 /**

@@ -135,7 +135,7 @@ export default class Mark {
     getCursor() {
         const cursor = this.getCursorSpec();
         return isExprRef(cursor)
-            ? this.unitView.paramRuntime.evaluateAndGet(cursor.expr, cursor)
+            ? this.unitView.paramRuntime.evaluateAndGet(cursor)
             : cursor;
     }
 
@@ -152,8 +152,7 @@ export default class Mark {
             return;
         }
 
-        this.unitView.paramRuntime.watchExpression(cursor.expr, listener, {
-            source: cursor,
+        this.unitView.paramRuntime.watchExpression(cursor, listener, {
             scopeOwned: false,
             registerDisposer,
         });
@@ -230,19 +229,15 @@ export default class Mark {
                 continue;
             }
 
-            this.unitView.paramRuntime.watchExpression(
-                prop.expr,
-                () => {
-                    const collector = this.unitView.getCollector();
-                    if (!collector?.completed) {
-                        return;
-                    }
+            this.unitView.paramRuntime.watchExpression(prop, () => {
+                const collector = this.unitView.getCollector();
+                if (!collector?.completed) {
+                    return;
+                }
 
-                    this.#encodedDataRevision++;
-                    this.unitView.context.animator.requestRender();
-                },
-                { source: prop }
-            );
+                this.#encodedDataRevision++;
+                this.unitView.context.animator.requestRender();
+            });
         }
     }
 
@@ -472,23 +467,21 @@ export default class Mark {
             });
 
         /**
-         * @param {string} expression
+         * @param {string | import("../spec/parameter.js").ExprRef} expression
          * @param {RenderingRevisionKind} kind
-         * @param {object} [source]
          */
-        const watchExpression = (expression, kind, source) => {
-            const key = kind + ":" + expression;
+        const watchExpression = (expression, kind) => {
+            const key =
+                kind +
+                ":" +
+                (isExprRef(expression) ? expression.expr : expression);
             if (state.expressions.has(key)) {
                 return;
             }
-            this.unitView.paramRuntime.watchExpression(
-                expression,
-                () => {
-                    state[kind]++;
-                    this.unitView.context.animator.requestRender();
-                },
-                { source }
-            );
+            this.unitView.paramRuntime.watchExpression(expression, () => {
+                state[kind]++;
+                this.unitView.context.animator.requestRender();
+            });
             state.expressions.add(key);
         };
         if (!previousState) {
@@ -497,11 +490,7 @@ export default class Mark {
                 for (const branch of encoder.branches ?? []) {
                     const channelDef = branch.accessor.channelDef;
                     if (isExprDef(channelDef)) {
-                        watchExpression(
-                            channelDef.expr,
-                            "configuration",
-                            channelDef
-                        );
+                        watchExpression(channelDef, "configuration");
                     }
                     // Text values and branch selection determine retained glyph
                     // geometry, even when other constants use GPU uniforms.
@@ -521,7 +510,7 @@ export default class Mark {
                     ];
                     for (const value of values) {
                         if (isExprRef(value)) {
-                            watchExpression(value.expr, kind, value);
+                            watchExpression(value, kind);
                         }
                     }
                 }
@@ -563,7 +552,7 @@ export default class Mark {
                 property
             ];
             if (isExprRef(value)) {
-                watchExpression(value.expr, "resources", value);
+                watchExpression(value, "resources");
             }
         }
     }

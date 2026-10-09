@@ -111,9 +111,9 @@ export interface EmbedOptions {
     /**
      * Links reported errors to locations in your specification.
      *
-     * Called with a data definition, encoding branch, parameter, transform, or
-     * expression-reference object from your specification. Return a string
-     * identifying that object, such as the JSON Pointer `"/encoding/x"` for
+     * Called with a data definition, encoding branch, parameter, transform,
+     * expression reference, or interaction configuration from your specification.
+     * Return a string identifying that object, such as the JSON Pointer `"/encoding/x"` for
      * `{ field: "position", type: "quantitative" }`. Located field and expression
      * errors include this string and a relative property path in `SpecLocation`.
      * `getSpecErrorLocation(error)` reads it from errors delivered to `onError`

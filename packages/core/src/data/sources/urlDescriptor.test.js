@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import {
     createDescriptorFieldAttacher,
     getUrlDescriptorExpressions,
@@ -10,22 +11,11 @@ import {
  * @param {Record<string, any>} values
  */
 function createRuntime(values) {
-    return {
-        createExpression: (/** @type {string} */ expr) => {
-            const fn = () => values[expr];
-            fn.subscribe = /** @returns {() => undefined} */ () => {
-                return () => undefined;
-            };
-            return fn;
-        },
-        watchExpression: (/** @type {string} */ expr) => {
-            const fn = () => values[expr];
-            fn.subscribe = /** @returns {() => undefined} */ () => {
-                return () => undefined;
-            };
-            return fn;
-        },
-    };
+    const runtime = new ViewParamRuntime();
+    for (const [name, value] of Object.entries(values)) {
+        runtime.allocateSetter(name, value);
+    }
+    return runtime;
 }
 
 describe("normalizeUrlDescriptors", () => {

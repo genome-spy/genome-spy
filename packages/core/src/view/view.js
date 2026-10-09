@@ -29,7 +29,6 @@ import {
 import { isInChromeSubtree } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
-import { annotateSpecError } from "../utils/specError.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
 import { warnOnce } from "../utils/warning.js";
 
@@ -276,16 +275,10 @@ export default class View {
         for (const param of params) {
             // TODO: If interval selection, validate `encodings` or provides defaults
             if ("expr" in param) {
-                let analysis;
-                try {
-                    analysis = analyzeExpression(param.expr);
-                } catch (error) {
-                    throw annotateSpecError(
-                        error,
-                        this.paramRuntime.getSpecLocation(param, ["expr"])
-                    );
-                }
-                const { usesScaleHelper, globals } = analysis;
+                const { usesScaleHelper, globals } = analyzeExpression(
+                    param.expr,
+                    this.paramRuntime.getSpecLocation(param, ["expr"])
+                );
                 const dependsOnDeferredParam = globals.some((name) =>
                     this.paramRuntime.isPendingParam(name)
                 );
@@ -371,7 +364,7 @@ export default class View {
     getCursor() {
         const cursor = this.getCursorSpec();
         return isExprRef(cursor)
-            ? this.paramRuntime.evaluateAndGet(cursor.expr, cursor)
+            ? this.paramRuntime.evaluateAndGet(cursor)
             : cursor;
     }
 
@@ -385,8 +378,7 @@ export default class View {
             return;
         }
 
-        this.paramRuntime.watchExpression(cursor.expr, listener, {
-            source: cursor,
+        this.paramRuntime.watchExpression(cursor, listener, {
             scopeOwned: false,
             registerDisposer,
         });
@@ -758,14 +750,10 @@ export default class View {
      */
     #registerSizeExprRefReader(key, source) {
         if (!this.#sizeExprRefReaders.has(key)) {
-            const reader = this.paramRuntime.watchExpression(
-                source.expr,
-                () => {
-                    this.invalidateSizeCache();
-                    this.context.requestLayoutReflow();
-                },
-                { source }
-            );
+            const reader = this.paramRuntime.watchExpression(source, () => {
+                this.invalidateSizeCache();
+                this.context.requestLayoutReflow();
+            });
             this.#sizeExprRefReaders.set(key, reader);
         }
     }
@@ -1413,10 +1401,7 @@ export default class View {
             return isString(title)
                 ? title
                 : isExprRef(title.text)
-                  ? this.paramRuntime.evaluateAndGet(
-                        title.text.expr,
-                        title.text
-                    )
+                  ? this.paramRuntime.evaluateAndGet(title.text)
                   : title.text;
         }
     }
@@ -1560,14 +1545,10 @@ function createViewOpacityFunction(view) {
 
             stopReaders = opacityDef.unitsPerPixel.map((stop) => {
                 if (isExprRef(stop)) {
-                    const fn = view.paramRuntime.watchExpression(
-                        stop.expr,
-                        () => {
-                            updateInterpolator();
-                            view.context.animator.requestRender();
-                        },
-                        { source: stop }
-                    );
+                    const fn = view.paramRuntime.watchExpression(stop, () => {
+                        updateInterpolator();
+                        view.context.animator.requestRender();
+                    });
                     return () => fn(null);
                 } else {
                     return () => stop;
@@ -1625,10 +1606,8 @@ function createViewOpacityFunction(view) {
                 return interpolate(getMetric()) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
-            const fn = view.paramRuntime.watchExpression(
-                opacityDef.expr,
-                () => view.context.animator.requestRender(),
-                { source: opacityDef }
+            const fn = view.paramRuntime.watchExpression(opacityDef, () =>
+                view.context.animator.requestRender()
             );
             return (parentOpacity) => fn(null) * parentOpacity;
         }

@@ -231,7 +231,7 @@ export function encodeString(encoder, datum) {
  */
 export function resolveMarkProperty(mark, value) {
     return isExprRef(value)
-        ? mark.unitView.paramRuntime.evaluateAndGet(value.expr, value)
+        ? mark.unitView.paramRuntime.evaluateAndGet(value)
         : value;
 }
 

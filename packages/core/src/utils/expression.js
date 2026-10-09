@@ -16,6 +16,7 @@ import { tickStep } from "d3-array";
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
+import { annotateSpecError } from "./specError.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -127,14 +128,16 @@ const functionContext = {
  * expression to a parameter scope or scale resolution.
  *
  * @param {string} expr
+ * @param {import("../types/embedApi.js").SpecLocation} [specLocation]
  * @returns {{ usesScaleHelper: boolean, globals: string[] }}
  */
-export function analyzeExpression(expr) {
+export function analyzeExpression(expr, specLocation) {
     let usesScaleHelper = false;
     const fn = createFunction(
         expr,
         {},
         {
+            specLocation,
             resolveScaleResolution: () => {
                 usesScaleHelper = true;
                 // The compiler only captures this object in helper closures. The
@@ -199,6 +202,7 @@ function buildFunctions(codegen, context) {
  *
  * @typedef {object} ExpressionCompileContext
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
  * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "linearize" | "zoomLevel"} ScaleHelperKind
  *
@@ -489,9 +493,12 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
 
         return exprFunction;
     } catch (e) {
-        throw new Error(`Invalid expression: ${expr}, ${e.message}`, {
-            cause: e,
-        });
+        throw annotateSpecError(
+            new Error(`Invalid expression: ${expr}, ${e.message}`, {
+                cause: e,
+            }),
+            context.specLocation
+        );
     }
 }
 
@@ -503,9 +510,10 @@ const eventFilterCg = codegenExpression({
 
 /**
  * @param {string} expr
+ * @param {import("../types/embedApi.js").SpecLocation} [location]
  * @returns {(event: UIEvent | import("./interactionEvent.js").WheelLikeEvent) => boolean}
  */
-export function createEventFilterFunction(expr) {
+export function createEventFilterFunction(expr, location) {
     try {
         const parsed = parseExpression(expr);
         const generatedCode = eventFilterCg(parsed);
@@ -527,8 +535,11 @@ export function createEventFilterFunction(expr) {
             /** @type {any} */ (fn)
         );
     } catch (e) {
-        throw new Error(`Invalid expression: ${expr}, ${e.message}`, {
-            cause: e,
-        });
+        throw annotateSpecError(
+            new Error(`Invalid expression: ${expr}, ${e.message}`, {
+                cause: e,
+            }),
+            location
+        );
     }
 }
