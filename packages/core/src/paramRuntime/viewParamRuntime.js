@@ -276,7 +276,14 @@ export default class ViewParamRuntime {
      */
     registerParam(param, options = {}) {
         const name = param.name;
-        validateParameterName(name);
+        try {
+            validateParameterName(name);
+        } catch (error) {
+            throw annotateSpecError(
+                error,
+                this.getSpecLocation(param, ["name"])
+            );
+        }
 
         if (
             this.#paramConfigs.has(name) ||

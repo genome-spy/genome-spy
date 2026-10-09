@@ -100,8 +100,10 @@ test.each(
     /** @type {import("../spec/parameter.js").Parameter[]} */ ([
         { name: "same", value: 2 },
         { name: "same", expr: "span(domain('x'))" },
+        { name: "", value: 2 },
+        { name: "bad.name", expr: "span(domain('x'))" },
     ])
-)("locates the duplicate parameter name for %j", async (declaration) => {
+)("locates invalid or duplicate param names: %j", async (declaration) => {
     await expect(
         createHeadlessEngine(
             {
@@ -112,8 +114,10 @@ test.each(
             { context: locatedContext(declaration) }
         )
     ).rejects.toSatisfy((error) => {
-        expect(error.message).toBe(
-            'Parameter "same" already registered in this scope.'
+        expect(error.message).toContain(
+            declaration.name === "same"
+                ? 'Parameter "same" already registered in this scope.'
+                : "Invalid parameter name:"
         );
         expect(getSpecErrorLocation(error)).toEqual({
             origin: "declaration",

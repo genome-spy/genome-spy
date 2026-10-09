@@ -5,10 +5,10 @@
 
 Playground now underlines declarations responsible for missing encoding fields,
 missing static top-level `datum` fields, invalid expressions and interaction
-filters, duplicate parameter names, missing `push: "outer"` targets, and transform
-construction failures such as invalid regular expressions, alongside the existing
-data-loading diagnostics. Highlights follow formatting and disappear when the
-specification is corrected.
+filters, invalid or duplicate parameter names, missing `push: "outer"` targets,
+and transform construction failures such as invalid regular expressions,
+alongside the existing data-loading diagnostics. Highlights follow formatting
+and disappear when the specification is corrected.
 Missing fields with spaces, punctuation, or escaped property names now report
 errors instead of silently producing empty plots.
 Missing flat fields in transform properties also highlight the affected property

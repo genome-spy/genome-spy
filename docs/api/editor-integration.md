@@ -28,7 +28,7 @@ line numbers.
 ## Locating specification errors
 
 Editors can locate errors involving missing encoding fields, invalid expressions,
-duplicate parameter names, missing `push: "outer"` targets, transform
+invalid or duplicate parameter names, missing `push: "outer"` targets, transform
 construction failures, and missing flat fields referenced by transforms.
 Provide `getSpecOrigin(fragment)` to return your recorded identifier for an object
 in the specification passed to `embed`. Import
@@ -38,10 +38,10 @@ entry point) and call it on an error received by `onError` or caught from `embed
 The result is `{ origin, path }`, where `origin` is the string returned by your
 callback and `path` identifies a property within that declaration. A syntax error,
 unknown parameter, or missing static top-level `datum` field in an expression
-identifies its `expr` property. Duplicate parameters identify the second
-declaration's `name`; missing `push: "outer"` targets identify the referencing
-parameter's `name`. Transform construction failures identify the whole transform
-(`path: []`).
+identifies its `expr` property. Invalid names identify the parameter's `name`;
+duplicates identify the second declaration's `name`. Missing `push: "outer"`
+targets identify the referencing parameter's `name`. Transform construction
+failures identify the whole transform (`path: []`).
 
 Missing flat fields in transforms identify the property or array entry that
 references the field. For example, a misspelled `displace2d` width field can produce
