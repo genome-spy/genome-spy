@@ -87,7 +87,7 @@ export function validateScaleConfig(name, channel, analysis) {
     }
 
     const allowsPackedScalarInput =
-        inputComponents === 2 &&
+        (inputComponents === 2 || inputComponents === 4) &&
         outputComponents === 1 &&
         scalarType === "u32" &&
         Boolean(scaleDef?.allowsPackedScalarInput);

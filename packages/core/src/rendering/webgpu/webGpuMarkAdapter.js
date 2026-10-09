@@ -1,3 +1,7 @@
+import {
+    isFractionalIndexScale,
+    packFractionalIndex,
+} from "../../scales/fractionalIndex.js";
 import { collectAppearanceSelections } from "../../selection/selection.js";
 import { activeMatchResolvedSelectionPredicate } from "../../selection/selectionPredicateTree.js";
 import { color as parseColor } from "d3-color";
@@ -405,6 +409,25 @@ function createSelectionCondition(mark, predicate) {
         };
     }
     if (predicate.type === "interval") {
+        const encoders =
+            /** @type {Record<string, import("../../types/encoder.js").Encoder | undefined>} */ (
+                mark.encoders
+            );
+        for (const projection of predicate.projections) {
+            if (
+                isFractionalIndexScale(encoders[projection.input]?.scale) ||
+                (projection.secondaryInput &&
+                    isFractionalIndexScale(
+                        encoders[projection.secondaryInput]?.scale
+                    ))
+            ) {
+                throw unsupported(
+                    mark,
+                    "GPU interval selection predicates cannot target fractional index positions."
+                );
+            }
+        }
+
         return {
             selection: predicate.param,
             type: "interval",
@@ -1074,7 +1097,43 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
                     : createBandPositionScale(scale, range, readDomain, band),
         });
     } else if (scale?.type == "index" || scale?.type == "locus") {
+        const fractional = isFractionalIndexScale(scale);
         const large = isLargeIndexDomain(scale.domain().map(Number));
+        if (fractional) {
+            const input = encoder.constant
+                ? liveValue(
+                      () => packFractionalIndex(Number(accessor(data[0]))),
+                      "u32"
+                  )
+                : {
+                      data: getCachedSeries(
+                          mark,
+                          channel + ":fractional",
+                          data,
+                          accessor,
+                          () => {
+                              const packed = new Uint32Array(data.length * 4);
+                              const value = [0, 0, 0, 0];
+                              data.forEach((datum, i) =>
+                                  packed.set(
+                                      packFractionalIndex(
+                                          Number(accessor(datum)),
+                                          value
+                                      ),
+                                      i * 4
+                                  )
+                              );
+                              return packed;
+                          }
+                      ),
+                      type: /** @type {const} */ ("u32"),
+                  };
+            return Object.assign(input, {
+                inputComponents: /** @type {const} */ (4),
+                scale: createIndexPositionScale(scale, range, band),
+            });
+        }
+
         const input = encoder.constant
             ? createIndexValue(mark, channel, () => accessor(data[0]), large)
             : {

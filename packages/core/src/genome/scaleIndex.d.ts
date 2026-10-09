@@ -26,6 +26,9 @@ export interface ScaleIndex {
     align(): number;
     align(_: number): this;
 
+    fractional(): boolean;
+    fractional(_: boolean): this;
+
     step(): number;
 
     bandwidth(): number;

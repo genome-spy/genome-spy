@@ -1,3 +1,4 @@
+import { packFractionalIndex } from "../../../scales/fractionalIndex.js";
 import {
     bindUniformBlock,
     createBufferInfoFromArrays,
@@ -405,13 +406,21 @@ export default class WebGLMark {
                         validateParameterName(param) +
                         `_${channel}`;
 
-                    const { attributeType, largeHp } =
+                    const { attributeType, largeHp, fractional } =
                         getAttributeAndArrayTypes(
                             this.unitView
                                 .getScaleResolution(channel)
                                 .getScale(),
                             channel
                         );
+
+                    if (fractional) {
+                        throw new ViewError(
+                            "GPU interval selection predicates cannot target fractional index positions.",
+                            this.unitView
+                        );
+                    }
+
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
                         `    uniform highp ${attributeType}[2] ${uniformName};`
@@ -563,10 +572,8 @@ export default class WebGLMark {
                 dynamicMarkUniforms.push(uniformGlsl);
                 scaleCode.push(accessorGlsl);
 
-                const { largeHp, discrete } = getAttributeAndArrayTypes(
-                    scale,
-                    channel
-                );
+                const { largeHp, fractional, discrete } =
+                    getAttributeAndArrayTypes(scale, channel);
 
                 /**
                  * Discrete variables both numeric and strings must be "indexed",
@@ -578,9 +585,11 @@ export default class WebGLMark {
                 const adjuster =
                     discrete && "domain" in scale
                         ? (d) => scale.domain().indexOf(d)
-                        : largeHp
-                          ? splitLargeHighPrecision
-                          : (d) => +d;
+                        : fractional
+                          ? (d) => packFractionalIndex(+d)
+                          : largeHp
+                            ? splitLargeHighPrecision
+                            : (d) => +d;
 
                 this.#callAfterShaderCompilation.push(() => {
                     this.registerMarkUniformValue(
@@ -590,10 +599,15 @@ export default class WebGLMark {
                     );
                 });
             } else if (isFieldDef(channelDef)) {
-                const dedupedChannels = dedupedEncodingFields.get([
-                    channelDef.field,
-                    true,
-                ]);
+                const fractional = getAttributeAndArrayTypes(
+                    scale,
+                    channel
+                ).fractional;
+                const dedupedChannels = dedupedEncodingFields.get(
+                    fractional
+                        ? [channelDef.field, true, "fractional"]
+                        : [channelDef.field, true]
+                );
                 const { attributeGlsl, accessorGlsl } = generateDataGlsl(
                     channel,
                     scale,

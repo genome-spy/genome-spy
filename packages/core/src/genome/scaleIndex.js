@@ -17,6 +17,7 @@ export default function scaleIndex() {
     let paddingInner = 0;
     let paddingOuter = 0;
     let align = 0.5;
+    let fractional = false;
 
     /** The offset added when formatting tick labels. */
     let numberingOffset = 0;
@@ -34,13 +35,16 @@ export default function scaleIndex() {
 
     const scaleFunction = (/** @type {number} */ x) => {
         const step = getStep();
-        return getStart(step) + (Math.floor(x) - domain[0]) * step;
+        return (
+            getStart(step) +
+            ((fractional ? x : Math.floor(x)) - domain[0]) * step
+        );
     };
 
     /**
      * Returns band starts, like a band scale. Encoders apply within-band
-     * placement. Index inputs are floored, while the domain and inversion
-     * remain continuous for zooming and panning.
+     * placement. Index inputs are floored unless fractional positioning is
+     * enabled. The domain and inversion remain continuous for zooming and panning.
      *
      * @type {import("./scaleIndex.js").ScaleIndex}
      */
@@ -130,6 +134,16 @@ export default function scaleIndex() {
         }
     };
 
+    // @ts-expect-error
+    scale.fractional = function (_) {
+        if (arguments.length) {
+            fractional = _;
+            return scale;
+        } else {
+            return fractional;
+        }
+    };
+
     scale.step = getStep;
 
     scale.bandwidth = () => Math.abs(getStep() * (1 - paddingInner));
@@ -173,6 +187,7 @@ export default function scaleIndex() {
             .paddingInner(paddingInner)
             .paddingOuter(paddingOuter)
             .align(align)
+            .fractional(fractional)
             .numberingOffset(numberingOffset);
 
     return scale;

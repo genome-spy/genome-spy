@@ -260,6 +260,16 @@ export interface Scale {
     zoom?: boolean | ZoomParams;
 
     /**
+     * Interpolate fractional index positions between adjacent rows. Integer
+     * positions and encoding `band` offsets are unchanged; interpolation uses
+     * the full step, including inner padding. Only supported on index scales.
+     * GPU positions must be in [0, 2^44); fractions use float32 precision.
+     *
+     * __Default value:__ `false`
+     */
+    fractional?: boolean;
+
+    /**
      * The offset added to data values when formatting tick labels on index and
      * locus scales. This property does not transform data values.
      *
