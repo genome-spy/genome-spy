@@ -1,3 +1,4 @@
+import { isFractionalIndexScale } from "../../../scales/fractionalIndex.js";
 import {
     isContinuous,
     isDiscrete,
@@ -288,7 +289,10 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeUniformName = RANGE_PREFIX + primary;
 
-    const { hp, attributeType } = getAttributeAndArrayTypes(scale, channel);
+    const { hp, attributeType, fractional } = getAttributeAndArrayTypes(
+        scale,
+        channel
+    );
 
     const domainLength = scale.domain
         ? isDiscretizing(scale.type)
@@ -357,8 +361,9 @@ export function generateScaleGlsl(channel, scale, channelDef) {
 
         case "index":
         case "locus":
-            functionCall = makeScaleCall(
+            functionCall = makeFunctionCall(
                 "scaleBandHp",
+                fractional ? "value.xy" : "value",
                 "domain",
                 rangeUniformName,
                 scale.paddingInner(),
@@ -501,6 +506,12 @@ export function generateScaleGlsl(channel, scale, channelDef) {
         }
 
         scaleBody.push(`float transformed = ${functionCall};`);
+        if (fractional) {
+            // Interpolate over the full step, independently of the band offset.
+            scaleBody.push(
+                `transformed += uintBitsToFloat(value.z) * (${rangeUniformName}.y - ${rangeUniformName}.x) / max(1.0, domain.z - ${toDecimal(scale.paddingInner())} + ${toDecimal(scale.paddingOuter() * 2)});`
+            );
+        }
 
         if (piecewise) {
             // TODO: Handle range correctly. Now this assumes unit range.
@@ -735,19 +746,22 @@ export function getAttributeAndArrayTypes(scale, channel) {
     const discrete = scale && isDiscrete(scale.type);
     const hp = scale && isIndexLikeDomainType(scale.type);
     const largeHp = hp && isLargeIndexDomain(scale.domain());
+    const fractional = isFractionalIndexScale(scale);
 
     /**
      * @type {{attributeType: string, arrayConstructor: Uint32ArrayConstructor | Uint16ArrayConstructor | Float32ArrayConstructor}}
      */
-    const props = largeHp
-        ? { attributeType: "uvec2", arrayConstructor: Uint32Array }
-        : hp
-          ? { attributeType: "uint", arrayConstructor: Uint32Array }
-          : discrete
-            ? { attributeType: "uint", arrayConstructor: Uint16Array }
-            : channel == "uniqueId"
-              ? { attributeType: "uint", arrayConstructor: Uint32Array }
-              : { attributeType: "float", arrayConstructor: Float32Array };
+    const props = fractional
+        ? { attributeType: "uvec4", arrayConstructor: Uint32Array }
+        : largeHp
+          ? { attributeType: "uvec2", arrayConstructor: Uint32Array }
+          : hp
+            ? { attributeType: "uint", arrayConstructor: Uint32Array }
+            : discrete
+              ? { attributeType: "uint", arrayConstructor: Uint16Array }
+              : channel == "uniqueId"
+                ? { attributeType: "uint", arrayConstructor: Uint32Array }
+                : { attributeType: "float", arrayConstructor: Float32Array };
 
     return Object.assign(props, {
         numComponents: +(
@@ -756,6 +770,7 @@ export function getAttributeAndArrayTypes(scale, channel) {
         discrete,
         hp,
         largeHp,
+        fractional,
     });
 }
 
@@ -811,7 +826,7 @@ export function toHighPrecisionDomainUniform(domain) {
 }
 
 /**
- * @typedef {[string, boolean]} FieldKey Tuple: [channel, isQuantitative]]
+ * @typedef {[string, boolean, string?]} FieldKey Tuple: [field, isQuantitative, packing?]
  */
 
 /**
@@ -832,7 +847,7 @@ export function dedupeEncodingFields(encoders) {
         if (isFieldDef(channelDef)) {
             const field = channelDef.field;
 
-            /** @type {[string, boolean]} */
+            /** @type {FieldKey} */
             const key = [
                 field,
                 encoder.scale
@@ -841,6 +856,10 @@ export function dedupeEncodingFields(encoders) {
                       false)
                     : false,
             ];
+
+            if (isFractionalIndexScale(encoder.scale)) {
+                key.push("fractional");
+            }
 
             deduped.set(key, [...(deduped.get(key) ?? []), channel]);
         }

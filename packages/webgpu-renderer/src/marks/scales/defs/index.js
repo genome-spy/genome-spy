@@ -111,13 +111,23 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
         );
     }
 }
+
+// Packed fractional positions preserve the integer path and its zoom precision.
+fn scaleBandHpF(value: vec4<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
+                paddingInner: f32, paddingOuter: f32,
+                align: f32, band: f32) -> f32 {
+    let step = (range.y - range.x) / max(1.0, domainExtent.z - paddingInner + paddingOuter * 2.0);
+    return scaleBandHpU(value.xy, domainExtent, range, paddingInner, paddingOuter, align, band)
+        + bitcast<f32>(value.z) * step;
+}
 `;
 
 /**
  * Index scale: band scale optimized for high-precision genomic coordinates.
  *
  * Technical notes: uses split u32 math and stable subtraction to mitigate
- * float32 precision loss, with two WGSL variants for u32 and vec2<u32> inputs.
+ * float32 precision loss. Fractional positions use vec4<u32> inputs with a
+ * separate float32 fraction.
  *
  * @type {import("../../../index.d.ts").ScaleDef}
  */
@@ -169,10 +179,15 @@ function emitIndexScale({
     inputComponents,
 }) {
     const valueExpr =
-        inputComponents === 2
+        inputComponents > 1
             ? rawValueExpr
             : toU32Expr(rawValueExpr, inputScalarType);
-    const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
+    const fnName =
+        inputComponents === 4
+            ? "scaleBandHpF"
+            : inputComponents === 2
+              ? "scaleBandHpU"
+              : "scaleBandHp";
     return `${makeFnHeader(name, "f32", functionName)} {
     let v = ${valueExpr};
     return ${fnName}(

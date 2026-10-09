@@ -1,3 +1,4 @@
+import { packFractionalIndex } from "../../../scales/fractionalIndex.js";
 import { InternMap } from "internmap";
 import { format } from "d3-format";
 import { isString } from "vega-util";
@@ -81,8 +82,13 @@ export class GeometryBuilder {
             const numberAccessor = accessor.asNumberAccessor();
             const scale = ce.scale;
 
-            const { largeHp, arrayConstructor, discrete, numComponents } =
-                getAttributeAndArrayTypes(scale, channel);
+            const {
+                largeHp,
+                fractional,
+                arrayConstructor,
+                discrete,
+                numComponents,
+            } = getAttributeAndArrayTypes(scale, channel);
             const largeHpArray = [0, 0];
 
             /** @type {ReturnType<typeof createIndexer> | undefined} */
@@ -113,10 +119,15 @@ export class GeometryBuilder {
              */
             const f = indexer
                 ? (d) => indexer(accessor(d))
-                : largeHp
-                  ? (d) =>
-                        splitLargeHighPrecision(numberAccessor(d), largeHpArray)
-                  : numberAccessor;
+                : fractional
+                  ? (d) => packFractionalIndex(numberAccessor(d), largeHpArray)
+                  : largeHp
+                    ? (d) =>
+                          splitLargeHighPrecision(
+                              numberAccessor(d),
+                              largeHpArray
+                          )
+                    : numberAccessor;
 
             const attributeName = makeAttributeName(sharedChannels ?? channel);
             for (const sharedChannel of sharedChannels ?? [channel]) {
@@ -130,7 +141,8 @@ export class GeometryBuilder {
             this.variableBuilder.addConverter(attributeName, {
                 f,
                 numComponents,
-                arrayReference: largeHp ? largeHpArray : undefined,
+                arrayReference:
+                    largeHp || fractional ? largeHpArray : undefined,
                 targetArrayType: arrayConstructor,
             });
         }
@@ -236,6 +248,22 @@ export class GeometryBuilder {
         const createReader = (attributeName) => {
             const attribute = this.variableBuilder.arrays[attributeName];
             const { data, numComponents } = attribute;
+
+            if (numComponents == 4) {
+                const fractions = new Float32Array(
+                    data.buffer,
+                    data.byteOffset,
+                    data.length
+                );
+                return (/** @type {number} */ vertexIndex) => {
+                    const base = vertexIndex * numComponents;
+                    return (
+                        data[base] * HIGH_PRECISION_SPLIT_BASE +
+                        data[base + 1] +
+                        fractions[base + 2]
+                    );
+                };
+            }
 
             if (numComponents == 2) {
                 /** @type {(vertexIndex: number) => number} */

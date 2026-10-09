@@ -10,6 +10,7 @@ const EXACT_LOCUS_LABEL_THINNING_FACTOR = 0.65;
 export default function scaleLocus() {
     /** @type {import("./scaleLocus.js").ScaleLocus} */
     const scale = /** @type {any} */ (scaleIndex().numberingOffset(1));
+    Reflect.deleteProperty(scale, "fractional");
 
     /** @type {import("./genome.js").default} */
     let genome;
@@ -127,22 +128,15 @@ export default function scaleLocus() {
             numberFormat(fixer(x) + numberingOffset);
     };
 
-    const originalCopy = scale.copy;
-
-    scale.copy = () => {
-        const copied = originalCopy();
-        let copiedGenome = genome;
-        // @ts-expect-error
-        copied.genome = function (_) {
-            if (arguments.length) {
-                copiedGenome = _;
-                return copied;
-            } else {
-                return copiedGenome;
-            }
-        };
-        return copied.genome(genome);
-    };
+    scale.copy = () =>
+        scaleLocus()
+            .domain(scale.domain())
+            .range(scale.range())
+            .paddingInner(scale.paddingInner())
+            .paddingOuter(scale.paddingOuter())
+            .align(scale.align())
+            .numberingOffset(scale.numberingOffset())
+            .genome(genome);
 
     return scale;
 }

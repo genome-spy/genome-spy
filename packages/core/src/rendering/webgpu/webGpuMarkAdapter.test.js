@@ -2229,57 +2229,75 @@ describe("WebGPU mark adapter", () => {
         ).toEqual([{ component: "x", input: "x2" }]);
     });
 
-    test("translates a two-component interval target", () => {
-        const mark = createMark("point", [{ x: 1, color: "red" }], {
-            x: createEncoder((datum) => datum.x, {
-                scale: {
-                    type: "index",
-                    domain: () => [0, 2 ** 32 + 1],
-                    paddingInner: () => 0,
-                    paddingOuter: () => 0,
-                    align: () => 0.5,
-                },
-            }),
-            fill: createConditionalEncoder([
-                {
-                    accessor: createAccessor(
-                        /** @param {{color: string}} datum */
-                        (datum) => datum.color,
-                        { field: "color" }
-                    ),
-                    predicate: {
-                        selection: mockSelection("brush", true, "interval"),
+    test.each([false, true])(
+        "interval index target, fractional=%s",
+        (fractional) => {
+            const mark = createMark("point", [{ x: 1, color: "red" }], {
+                x: createEncoder((datum) => datum.x, {
+                    scale: {
+                        type: "index",
+                        domain: () => [0, 2 ** 32 + 1],
+                        fractional: () => fractional,
+                        paddingInner: () => 0,
+                        paddingOuter: () => 0,
+                        align: () => 0.5,
                     },
-                },
-                {
-                    accessor: createAccessor(
-                        () => "gray",
-                        { value: "gray" },
-                        true
-                    ),
-                    predicate: {},
-                },
-            ]),
-        });
-        /** @type {any} */ (mark.unitView).paramRuntime = {
-            findValue: () => ({
-                type: "interval",
-                intervals: { x: [1, 2] },
-            }),
-        };
+                }),
+                fill: createConditionalEncoder([
+                    {
+                        accessor: createAccessor(
+                            /** @param {{color: string}} datum */
+                            (datum) => datum.color,
+                            { field: "color" }
+                        ),
+                        predicate: {
+                            selection: mockSelection("brush", true, "interval"),
+                        },
+                    },
+                    {
+                        accessor: createAccessor(
+                            () => "gray",
+                            { value: "gray" },
+                            true
+                        ),
+                        predicate: {},
+                    },
+                ]),
+            });
+            /** @type {any} */ (mark.unitView).paramRuntime = {
+                findValue: () => ({
+                    type: "interval",
+                    intervals: { x: [1, 2] },
+                }),
+            };
 
-        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
-        const config = /** @type {any} */ (translated).config;
-        expect(config.channels.x.inputComponents).toBe(2);
-        expect(config.channels.fill.conditions[0].when.projections).toEqual([
-            {
-                component: "x",
-                input: "x",
-                secondaryInput: undefined,
-                hitTest: undefined,
-            },
-        ]);
-    });
+            if (fractional) {
+                expect(() =>
+                    createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)
+                ).toThrow(
+                    "GPU interval selection predicates cannot target fractional index positions"
+                );
+            } else {
+                const translated = createWebGpuMarkConfig(
+                    mark,
+                    {},
+                    Rectangle.ZERO
+                );
+                const config = /** @type {any} */ (translated).config;
+                expect(config.channels.x.inputComponents).toBe(2);
+                expect(
+                    config.channels.fill.conditions[0].when.projections
+                ).toEqual([
+                    {
+                        component: "x",
+                        input: "x",
+                        secondaryInput: undefined,
+                        hitTest: undefined,
+                    },
+                ]);
+            }
+        }
+    );
 });
 
 /**
@@ -2482,3 +2500,64 @@ function createThresholdScale(domain, range) {
         range: () => range,
     };
 }
+
+test.each([false, true])(
+    "fractional index adapter supports constant=%s",
+    (constant) => {
+        const start = 2 ** 32;
+        const data = [{ x: start + 4.5 }, { x: start + 9.25 }];
+        const scale = {
+            ...createIndexScale([start, start + 10]),
+            fractional: () => true,
+        };
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x, {
+                scale,
+                channelDef: constant
+                    ? { datum: data[0].x, type: "index" }
+                    : { field: "x", type: "index" },
+            }),
+        });
+        mark.encoders.x.constant = constant;
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(10, 20, 100, 200)
+        );
+        const x = /** @type {any} */ (translated).config.channels.x;
+        const packed = constant ? Uint32Array.from(x.value) : x.data;
+        expect(x.inputComponents).toBe(4);
+        expect(packed[0] * 4096 + packed[1]).toBe(start + 4);
+        expect(new Float32Array(packed.buffer)[2]).toBe(0.5);
+    }
+);
+
+test.each([false, true])(
+    "index reversal uses the same band contract, fractional=%s",
+    (fractional) => {
+        for (const type of ["index", "locus"]) {
+            const scale = {
+                ...createIndexScale([0, 4]),
+                type,
+                props: { reverse: true },
+                align: () => 0.25,
+                fractional: () => fractional,
+            };
+            const mark = createMark("point", [{ x: 1 }], {
+                x: createEncoder((datum) => datum.x, {
+                    scale,
+                    channelDef: { field: "x", band: 0.25 },
+                }),
+            });
+            const translated = createWebGpuMarkConfig(
+                mark,
+                {},
+                Rectangle.create(10, 0, 180, 40)
+            );
+            const x = /** @type {any} */ (translated).config.channels.x;
+            expect(x.scale.range).toEqual([190, 10]);
+            expect(x.scale.align).toBe(type === "index" ? 0.75 : 0.25);
+            expect(x.scale.band).toBe(type === "index" ? 0.75 : 0.25);
+        }
+    }
+);

@@ -109,3 +109,48 @@ test("tickFormat() takes numberingOffset into account", () => {
     // Although the ticks have been offset, the labels should be nice
     expect(scale.ticks(5).map(format)).toEqual(["11", "12", "13", "14", "15"]);
 });
+
+// Zoom uses continuous domain bounds even though row indices remain discrete.
+test.each([0, 2 ** 32])(
+    "fractional positions interpolate padded rows near %s",
+    (start) => {
+        for (const range of [
+            [0, 100],
+            [100, 0],
+        ]) {
+            const scale = scaleIndex()
+                .domain([start + 0.25, start + 8.75])
+                .range(range)
+                .paddingInner(0.3)
+                .paddingOuter(0.4)
+                .align(0.25);
+            const integerPosition = scale(start + 3);
+            scale.fractional(true);
+
+            expect(scale(start + 3)).toBe(integerPosition);
+            expect(scale(start + 3.5)).toBeCloseTo(
+                (scale(start + 3) + scale(start + 4)) / 2
+            );
+            expect(scale.invert(scale(start + 3.5))).toBeCloseTo(start + 3.5);
+            expect(scale.copy().fractional()).toBe(true);
+            expect(scale.copy()(start + 3.5)).toBe(scale(start + 3.5));
+
+            scale.domain([start + 2.25, start + 5.75]);
+            expect(scale(start + 3.5) - scale(start + 3)).toBeCloseTo(
+                scale.step() / 2
+            );
+            scale.fractional(false);
+            expect(scale(start + 3.5)).toBe(scale(start + 3));
+        }
+    }
+);
+
+test("fractional positioning is rejected on locus scales", async () => {
+    const { configureScaleProperties } = await import("../scale/scale.js");
+    const { default: scaleLocus } = await import("./scaleLocus.js");
+    const locus = Object.assign(scaleLocus(), { type: "locus" });
+    expect(() => configureScaleProperties(locus, { fractional: true })).toThrow(
+        "only supported on index scales"
+    );
+    expect(locus(3.9)).toBe(locus(3));
+});

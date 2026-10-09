@@ -5,6 +5,9 @@ import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
+import SoftwarePickingBuffer from "./picking/softwarePickingBuffer.js";
+import SoftwarePickingRasterizer from "./picking/softwarePickingRasterizer.js";
+import SoftwarePickingViewRenderingContext from "./picking/softwarePickingViewRenderingContext.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
 import { createSvg } from "../svg/index.js";
 import NativeTextMetricsProvider from "../nativeTextMetrics.js";
@@ -1597,3 +1600,83 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.context.textBaseline).toBe("alphabetic");
     });
 });
+
+// The same projected rule endpoints feed Canvas, SVG, and software picking.
+test.each([false, true])(
+    "fractional index exports and picking agree, reverse=%s",
+    async (reverse) => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: 0.2, x2: 0.8, y: 0, y2: 0 },
+                    { x: 0.2, x2: 0.8, y: 1, y2: 1 },
+                    { x: 0.2, x2: 0.8, y: 0.5, y2: 0.5 },
+                ],
+            },
+            mark: { type: "rule", size: 2, color: "black" },
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: null,
+                    axis: null,
+                },
+                x2: { field: "x2" },
+                y: {
+                    field: "y",
+                    type: "index",
+                    band: 0.25,
+                    scale: {
+                        domain: [0, 3],
+                        fractional: true,
+                        paddingInner: 0.3,
+                        paddingOuter: 0.2,
+                        reverse,
+                    },
+                    axis: null,
+                },
+                y2: { field: "y2", band: 0.25 },
+            },
+        });
+        const scale = view.getScaleResolution("y").getScale();
+        for (const domain of [
+            [0, 4],
+            [0.25, 2.75],
+        ]) {
+            scale.domain(domain);
+            const recording = createRecordingContext();
+            render(view, recording.context);
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 100,
+            });
+            const lines = Array.from(svg.querySelectorAll("line"));
+            expect(lines).toHaveLength(3);
+            const ys = recording.calls.moves.map((point) => point[1]);
+            expect(ys[2]).toBeCloseTo((ys[0] + ys[1]) / 2);
+            lines.forEach((line, i) => {
+                expect(+line.getAttribute("y1")).toBeCloseTo(ys[i], 1);
+                expect(+line.getAttribute("y2")).toBeCloseTo(
+                    recording.calls.lines[i][1],
+                    1
+                );
+            });
+
+            const buffer = new SoftwarePickingBuffer(100, 100);
+            const rasterizer = new SoftwarePickingRasterizer(buffer);
+            view.arrange(
+                new SoftwarePickingViewRenderingContext({
+                    width: 100,
+                    height: 100,
+                    devicePixelRatio: 1,
+                    getRasterizer: () => rasterizer,
+                }),
+                Rectangle.create(0, 0, 100, 100),
+                { firstFacet: true }
+            );
+            expect(buffer.read(50, Math.floor(ys[2]))).toBeGreaterThan(0);
+            expect(buffer.read(50, Math.floor((ys[0] + ys[2]) / 2))).toBe(0);
+        }
+    }
+);

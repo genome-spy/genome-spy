@@ -1,3 +1,4 @@
+import "../../../scales/scaleResolution.js";
 import { describe, expect, test } from "vitest";
 import {
     LinkVertexBuilder,
@@ -97,4 +98,30 @@ describe("Vertex builders", () => {
         expect(rangeEntry.xIndex).toBeTypeOf("function");
         expect(rangeEntry.xIndex(15.1, 15.9)).toEqual([1, 2]);
     });
+});
+
+test("fractional index vertex buffers retain fractions and culling positions", () => {
+    const start = 2 ** 32;
+    const encoder = makeEncoder("x", true);
+    encoder.scale = {
+        type: "index",
+        domain: () => [start, start + 100],
+        fractional: () => true,
+    };
+    const builder = new PointVertexBuilder({
+        encoders: { x: encoder },
+        attributes: ["x"],
+        numItems: 2,
+    });
+    builder.addBatch("facet", [{ x: start + 3.5 }, { x: start + 20.25 }]);
+    const attribute = builder.toArrays().arrays.attr_x;
+    expect(attribute.numComponents).toBe(4);
+    const bits = new Uint32Array(attribute.data);
+    expect(bits[0] * 4096 + bits[1]).toBe(start + 3);
+    expect(new Float32Array(bits.buffer)[2]).toBe(0.5);
+    expect(bits[4] * 4096 + bits[5]).toBe(start + 20);
+    expect(new Float32Array(bits.buffer)[6]).toBe(0.25);
+    expect(
+        builder.rangeMap.get("facet").xIndex(start + 19, start + 22)
+    ).toEqual([1, 2]);
 });

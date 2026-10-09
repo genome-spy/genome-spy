@@ -489,7 +489,8 @@ ${clauses.join("\n")}
         if (channelIR.inputComponents > 1 && channelIR.scalarType !== "f32") {
             const allowPackedU32 =
                 channelIR.scalarType === "u32" &&
-                channelIR.inputComponents === 2 &&
+                (channelIR.inputComponents === 2 ||
+                    channelIR.inputComponents === 4) &&
                 channelIR.scaleType === "index";
             if (!allowPackedU32) {
                 throw new Error(

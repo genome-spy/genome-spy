@@ -1,6 +1,11 @@
 export default function scaleIndex(): ScaleIndex;
 
-export interface ScaleIndex {
+export interface ScaleIndex extends ScaleIndexBase {
+    fractional(): boolean;
+    fractional(_: boolean): this;
+}
+
+export interface ScaleIndexBase {
     (value: number): number;
 
     invert(x: number): number;

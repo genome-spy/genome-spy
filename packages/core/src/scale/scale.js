@@ -161,6 +161,12 @@ export function configureScale(
  */
 export function configureScaleProperties(scale, _, logger) {
     logger = ensureLogger(logger);
+    if (_.fractional && scale.type !== Index) {
+        throw new Error(
+            "Fractional positioning is only supported on index scales."
+        );
+    }
+
     for (const key in _) {
         if (!SKIP[key]) {
             // padding is a scale property for band/point but not others

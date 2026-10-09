@@ -382,6 +382,14 @@ panning.
 - Use `Float64Array` with `inputComponents: 2` for larger indices. The renderer
   packs them into `[hi, lo]` u32 pairs.
 
+- Fractional indices use pre-packed `Uint32Array` data with
+  `inputComponents: 4`: `[integerHi, integerLo, float32FractionBits, 0]`.
+  The integer is `integerHi * 4096 + integerLo`; the third component contains
+  the IEEE float32 bits of the fraction in `[0, 1)`. Fractions interpolate over
+  the full signed step, independently of padding and `band`. Integer precision
+  follows the existing high-precision path. Visible and picking passes use the
+  same mapping.
+
 Domain updates accept JavaScript numbers. Advanced callers can pre-pack values
 through the high-precision subpath:
 

@@ -1,5 +1,5 @@
 import Genome from "../genome/genome.js";
-import { ScaleIndex } from "../genome/scaleIndex.js";
+import { ScaleIndexBase } from "../genome/scaleIndex.js";
 
 /**
  * Creates a "locus" scale, which works similarly to band scale but the domain
@@ -7,7 +7,7 @@ import { ScaleIndex } from "../genome/scaleIndex.js";
  */
 export default function scaleLocus(): ScaleLocus;
 
-export interface ScaleLocus extends ScaleIndex {
+export interface ScaleLocus extends ScaleIndexBase {
     genome(): Genome;
     genome(genome: Genome): this;
 }

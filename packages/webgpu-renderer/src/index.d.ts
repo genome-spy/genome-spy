@@ -609,8 +609,10 @@ export type ScaleDef = {
     allowsF32InputOverride?: boolean;
 
     /**
-     * Whether the scale can accept packed u32 input (two components) while
+     * Whether the scale can accept packed u32 input (two or four components) while
      * producing scalar output (used by the high-precision index scale).
+     * Four components encode [integerHi, integerLo, float32FractionBits, 0]
+     * with base-4096 integer parts.
      */
     allowsPackedScalarInput?: boolean;
 

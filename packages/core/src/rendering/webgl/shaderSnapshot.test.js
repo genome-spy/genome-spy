@@ -650,3 +650,79 @@ describe("generated shader snapshots", () => {
         expect(sources).toMatchSnapshot();
     });
 });
+
+// Every retained delegate uses the same packed scale/accessor contract.
+test.each(["point", "rect", "link", "arrow", "text"])(
+    "%s shaders retain fractional fields and datums",
+    async (type) => {
+        const sources = await captureShaderSources({
+            data: { values: [{ position: 0.5 }] },
+            mark: /** @type {import("../../spec/mark.js").MarkType} */ (type),
+            encoding: {
+                x: {
+                    field: "position",
+                    type: "index",
+                    scale: { domain: [0, 3], fractional: true },
+                },
+                y: {
+                    datum: 1.5,
+                    type: "index",
+                    scale: { domain: [0, 3], fractional: true },
+                },
+                x2: { datum: 2.5 },
+                y2: { datum: 2.5 },
+                text: { value: "A" },
+            },
+        });
+        expect(sources.vertex).toContain("in highp uvec4 attr_x;");
+        expect(sources.vertex).toContain("uniform highp uvec4 attr_y;");
+        expect(sources.vertex).toContain("scaleBandHp(value.xy,");
+        expect(sources.vertex).toContain("uintBitsToFloat(value.z)");
+    }
+);
+
+test("fractional and discrete index fields do not share a vertex attribute", async () => {
+    const sources = await captureShaderSources({
+        data: { values: [{ position: 0.5 }] },
+        mark: "point",
+        encoding: {
+            x: {
+                field: "position",
+                type: "index",
+                scale: { domain: [0, 3], fractional: true },
+            },
+            y: { field: "position", type: "index", scale: { domain: [0, 3] } },
+        },
+    });
+    expect(sources.vertex).toContain("in highp uvec4 attr_x;");
+    expect(sources.vertex).toContain("in highp uint attr_y;");
+});
+
+test("fractional index interval predicates fail explicitly", async () => {
+    await expect(
+        captureShaderSources({
+            data: { values: [{ x: 0.5 }] },
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "index",
+                    scale: { domain: [0, 3], fractional: true },
+                },
+                y: { value: 0.5 },
+                color: {
+                    condition: { param: "brush", value: "red" },
+                    value: "gray",
+                },
+            },
+        })
+    ).rejects.toThrow(
+        "GPU interval selection predicates cannot target fractional index positions"
+    );
+});
