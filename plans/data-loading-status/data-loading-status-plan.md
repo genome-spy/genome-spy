@@ -26,7 +26,15 @@ Status: implementation complete. Runtime encoding-field diagnostics remain a def
       containers. Regression coverage uses a buffered aggregate and transaction-end
       scale processing with a missing field, plus a hidden layer's inherited source.
       Verified with 4,544 passing unit tests, all workspace type checks, lint, and
-      release checks. Production changes add 12 lines across the two affected files.
+      release checks. Production changes add 7 non-comment runtime lines.
+- [x] Final simplification: removed the editor's duplicate loading-state cache and
+      reused stable registry entry fields. Clarified `getSpecOrigin` documentation
+      and regenerated the API reference. Verified with 45 focused tests, Core and
+      Playground type checks, lint, and release checks. Net reduction: 8 production
+      lines, excluding comments and tests.
+- [x] Delivery scope reconciled: all implementation milestones are complete.
+      Runtime encoding-field diagnostics remain outside this PR and are preserved
+      as a follow-up in its description before this temporary plan is retired.
 
 ## Goal and scope
 
@@ -180,6 +188,9 @@ The generic origin hook allows future expression, transform, and rendering error
 boundaries to retain their authored context. Wiring those error paths is deferred.
 
 ## Deferred: runtime encoding field diagnostics
+
+Disposition: discarded from this PR's implementation scope. Retain the following
+design and verification requirements in the PR description as a future enhancement.
 
 Extend the same origin mapping and editor diagnostics to field mappings validated
 when data becomes available. Capture the original channel definition's origin
