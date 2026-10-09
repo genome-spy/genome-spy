@@ -337,3 +337,16 @@ error message. A real nested-spec regression distinguishes it from the valid
 outer declaration named `brush`. All 143 related parameter/location tests pass,
 as do Core TypeScript, lint, and release checks. Browser verification confirms
 `brushs` is underlined and correcting it to `brush` clears the error and diagnostic.
+
+Editor-specific location contracts are documented on a dedicated
+`docs/api/editor-integration.md` page, linked from the API navigation and the
+embedding error-handling guidance. The introductory embedding page retains only
+the short link; the data-loading reference points to the dedicated contract.
+The editor page also describes an LLM-agent validation loop using fatal errors,
+data-loading reports, and declaration locations to guide revisions. It explains
+that embed success alone does not certify data loading, and that lazy checks
+cover only current visible requests.
+Its introduction defines specification fragments and explains how Playground
+maps object identities to JSON Pointers and resolves reported paths to editor
+character ranges. It presents JSON Schema validation as the structural check
+that precedes these runtime diagnostics.

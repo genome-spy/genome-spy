@@ -58,7 +58,7 @@ when attribution is ambiguous.
 
 Located processing errors also include `errorLocation`, identifying the encoding
 or expression declaration that failed. Its `origin` and relative `path` follow
-the [specification error location contract](./embedding.md#locating-specification-errors).
+the [specification error location contract](./editor-integration.md#locating-specification-errors).
 The entry's own `origin` continues to identify the data definition.
 
 Unsubscribe when observation is no longer needed. Finalization removes all

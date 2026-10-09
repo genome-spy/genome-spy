@@ -9,7 +9,10 @@ invalid expressions and interaction filters, duplicate parameter names, missing
 regular expressions, alongside the existing data-loading diagnostics. Highlights
 follow formatting and disappear when the specification is corrected.
 
-Embedders can locate these errors using the `getSpecOrigin` option and
-`getSpecErrorLocation(error)` helper. Data-loading reports include `errorLocation`
-when a processing failure identifies an encoding or expression, so embedders can
-point users to the declaration that needs correcting instead of the data URL.
+Embedding applications can use the `getSpecOrigin` option and
+`getSpecErrorLocation(error)` helper to connect errors to declarations in an
+editor or generated specification. This supports editor diagnostics and feedback
+for LLM agents that revise specifications. Data-loading reports include
+`errorLocation` when a processing failure identifies an encoding or expression,
+so embedders can point users to the declaration that needs correcting instead of
+the data URL.
