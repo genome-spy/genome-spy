@@ -18,7 +18,7 @@ fields added in the final milestone.
 Non-goals:
 
 - Checking nested `datum` properties or computed field names in expressions.
-- Checking every row for sparse fields or adding nested-field checks.
+- Adding nested-field checks.
 - Reporting every transform field, generated locus field, or arbitrary runtime
   exception. These can use the same mechanism in later work.
 - Recovery, retries, error history, a general diagnostics registry, or tracking
@@ -27,9 +27,10 @@ Non-goals:
 
 ## Current paths and constraints
 
-- `utils/field.js` validates simple field names when an accessor first receives
-  data. `encoder/accessor.js` knows the channel definition when creating that
-  accessor. Location capture belongs here, outside the per-datum hot path.
+- `utils/field.js` and expressions use `utils/compileDatumAccessor.js` to check
+  static top-level properties on every row. `encoder/accessor.js` knows the
+  channel definition when creating that accessor. Location capture belongs here,
+  outside the per-datum hot path.
 - `paramRuntime/expressionRef.js` compiles expressions and rejects unresolved
   globals during binding. Named params also parse during dependency analysis
   before registration; parsing failures there need the same declaration context.
@@ -222,6 +223,22 @@ then remove this temporary plan in a later commit.
 - [x] Update documentation and record the behavior change and migration in the
       existing changeset. Run integration verification and commit the milestone.
 
+### 4. Consolidated accessor compilation
+
+This supersedes milestone 3's first-row-only policy with literal presence checks
+on every row, preserving present undefined values. Each compilation has unique
+source to isolate optimization feedback for unrelated data sources. A shared
+factory compiles field paths and expression bodies; expression parsing, binding,
+metadata, and snapshot refresh stay in their current owners. Nested field paths
+use generated bracket chains without additional presence validation.
+
+- [x] Share code generation and located missing-field errors; remove the mutable
+      validation flags and shared expression evaluation wrapper.
+- [x] Verify field metadata, nested paths, helper context, snapshots, and later-row
+      diagnostics through the existing headless and browser paths.
+- [x] Measure the final implementation, update documentation and the changeset,
+      complete integration checks, and commit the milestone.
+
 ## Review record
 
 Luna reviewed the plan and relevant implementation on 2026-10-09. Addressed the
@@ -382,3 +399,31 @@ and release checks pass. Browser checks verify a failed formula reports
 undefined field is accepted and produces the guarded result. The changeset now
 requests a major release (2.0.0 for the fixed group), with migration instructions,
 because deliberately probing absent static fields now raises an error.
+
+### Consolidated accessor milestone record
+
+Fields and expressions now share a small generated factory with literal `in`
+checks and direct accesses. Every processed row is checked without a mutable
+validation flag or a shared expression wrapper. Present undefined and inherited
+properties remain valid. Nested field paths compile to bracket chains without
+new nested-property validation. Unique source per compilation prevents unrelated
+declarations from sharing optimization feedback; evaluators of the same compiled
+expression still reuse its factory and preserve helper context and snapshots.
+
+Verification: the full suite passes (510 files, 4,641 passed, one skipped, two
+todo), plus all 29 Playground tests. The final focused accessor, expression,
+location, snapshot, formula, and filter suites pass (117 tests, two todo).
+Workspace TypeScript, lint, Playground build, and release checks pass. Browser
+checks verify the Sashimi example loads, a missing field in a later row highlights
+`/transform/0` plus `["expr"]`, and adding an upstream formula that produces a
+present undefined field clears the highlight and permits guarded evaluation.
+
+The runtime source shrank from 647 to 630 lines across the field, expression, and
+shared compiler modules. Warm Chromium 155 microbenchmarks (nine median samples
+of 16,777,216 evaluations) put simple expressions back at pre-validation speed,
+roughly five times faster than the first-row wrapper, and nested fields roughly
+nine times faster than the previous Vega getter. Independent caller sites across
+eight monomorphic streams also benefit. This is not a universal speedup: calling
+eight same-field accessors through one shared caller is slower, consistent with
+reduced opportunities for caller inlining. Unique source also trades compilation
+cache reuse for isolated feedback. No dispatch or recovery machinery was added.

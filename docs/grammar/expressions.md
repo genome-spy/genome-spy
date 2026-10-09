@@ -37,7 +37,7 @@ datum['A very *special* name!'] > 100
 ```
 
 Static top-level field references, such as `datum.foo` and `datum["foo"]`, are
-checked against the first row reaching each expression evaluator. An absent
+checked against every row reaching an expression evaluator. An absent
 field raises an error listing the available fields. A field whose value is
 `undefined` or `null` is present and passes this check. This also applies to
 fields inside guards such as `isDefined(datum.foo)` and conditional branches.

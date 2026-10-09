@@ -17,7 +17,7 @@ import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
 import { annotateSpecError } from "./specError.js";
-import { validateField } from "./field.js";
+import compileDatumAccessor from "./compileDatumAccessor.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -483,34 +483,18 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         });
         const generatedCode = cg(parsed);
 
-        const fn = Function(
-            "datum",
-            "globalObject",
-            `"use strict";
-            try {
+        const createEvaluator = compileDatumAccessor(
+            `try {
                 return (${generatedCode.code});
             } catch (e) {
                 throw new Error("Error evaluating expression: " + ${JSON.stringify(
                     expr
                 )} + ", " + e.message, e);
-            }`
-        ).bind(functionContext);
-
-        /** @param {Record<string, any>} globals */
-        function createEvaluator(globals) {
-            let validated = datumFields.size === 0;
-            return (
-                /** @type {import("../data/flowNode.js").Datum} */ datum
-            ) => {
-                if (!validated) {
-                    for (const field of datumFields) {
-                        validateField(datum, field, context.specLocation);
-                    }
-                    validated = true;
-                }
-                return fn(datum, globals);
-            };
-        }
+            }`,
+            datumFields,
+            context.specLocation,
+            functionContext
+        );
 
         const exprFunction = /** @type {ExpressionFunction} */ (
             createEvaluator(globalObject)

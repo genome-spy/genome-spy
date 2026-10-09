@@ -99,9 +99,10 @@ The Playground also underlines declarations with reported loading failures,
 missing encoding fields, invalid expressions (including syntax errors and unknown
 parameter names), duplicate parameter names, missing `push: "outer"` targets, or
 transform construction failures such as invalid regular expressions. These checks
-run as the visualization loads and executes. Static top-level `datum` field
-references in expressions are also checked; nested properties and computed keys
-are not.
+run as the visualization loads and executes. Flat field mappings and static
+top-level `datum` references in expressions require the property to exist on every
+processed row, even if its value is `undefined` or `null`. Nested properties and
+computed expression keys are not checked.
 
 ## Unit view reference
 

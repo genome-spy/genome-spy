@@ -538,11 +538,11 @@ test.each([false, true])(
 );
 
 test.each(["formula", "filter", "encoding"])(
-    "locates missing datum fields in %s expressions",
+    "locates missing datum fields in later rows of %s expressions",
     async (kind) => {
         const declaration = { expr: "datum.labelWidth + 10" };
         const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
-            data: { values: [{ present: 1 }] },
+            data: { values: [{ present: 1, labelWidth: 2 }, { present: 2 }] },
             mark: "point",
             ...(kind === "encoding"
                 ? { encoding: { x: { ...declaration, type: "quantitative" } } }

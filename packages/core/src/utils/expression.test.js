@@ -20,10 +20,10 @@ test.each(["datum.labelWidth + 10", 'datum["labelWidth"] + 10'])(
     }
 );
 
-test("decodes bracket field literals and validates only once", () => {
+test("decodes bracket field literals and validates every row", () => {
     const expression = createFunction('datum["label\\u0057idth"] + 10');
     expect(expression({ labelWidth: 2 })).toBe(12);
-    expect(expression({})).toBeNaN();
+    expect(() => expression({})).toThrow('Invalid field "labelWidth"');
 });
 
 test("requires fields used in guards but permits undefined values", () => {
