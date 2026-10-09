@@ -4,9 +4,11 @@ import { indentWithTab } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import { EditorState } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
+import { forceLinting } from "@codemirror/lint";
 import {
     createJsonLanguageExtensions,
     JsonLanguageServiceClient,
+    refreshJsonDiagnostics,
 } from "./jsonLanguageService.js";
 
 const editorTheme = EditorView.theme({
@@ -59,6 +61,63 @@ export default class CodeEditor extends LitElement {
     /** @type {JsonLanguageServiceClient} */
     _languageService;
 
+    /** @type {Map<string, import("@genome-spy/core/types/embedApi.js").DataLoadingEntry>} */
+    _loadingEntries = new Map();
+
+    /** @type {string | undefined} Semantic identity of the authored embed document. */
+    _loadingSpec;
+
+    _loadingRevision = 0;
+
+    /** @type {() => void} */
+    _stopLoading = () => {};
+
+    clearDataLoading() {
+        this._stopLoading();
+        this._loadingEntries = new Map();
+        this._loadingSpec = undefined;
+        this._refreshLoadingDiagnostics();
+    }
+
+    /**
+     * @param {import("@genome-spy/core/types/embedApi.js").EmbedResult} api
+     * @param {string} specText Original editor document, before injected base URLs/datasets.
+     */
+    observeDataLoading(api, specText) {
+        this.clearDataLoading();
+        this._loadingSpec = JSON.stringify(JSON.parse(specText));
+        const entries = this._loadingEntries;
+        this._stopLoading = api.dataLoading.subscribe((change) => {
+            if (entries !== this._loadingEntries) return;
+            if (change.type === "update")
+                entries.set(change.entry.sourceId, change.entry);
+            else entries.delete(change.sourceId);
+            this._refreshLoadingDiagnostics();
+        });
+        for (const entry of api.dataLoading.getSnapshot())
+            entries.set(entry.sourceId, entry);
+        this._refreshLoadingDiagnostics();
+    }
+
+    /** @param {string} text */
+    _getLoadingEntries(text) {
+        try {
+            if (JSON.stringify(JSON.parse(text)) === this._loadingSpec)
+                return Array.from(this._loadingEntries.values());
+        } catch {
+            // Invalid editor text has no matching runtime specification.
+        }
+        return [];
+    }
+
+    _refreshLoadingDiagnostics() {
+        this._loadingRevision++;
+        if (this._editor) {
+            this._editor.dispatch({ effects: refreshJsonDiagnostics.of(null) });
+            forceLinting(this._editor);
+        }
+    }
+
     /**
      * @param {string} value
      */
@@ -90,6 +149,7 @@ export default class CodeEditor extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        this._stopLoading();
         this._editor?.destroy();
         this._languageService?.dispose();
     }
@@ -108,9 +168,19 @@ export default class CodeEditor extends LitElement {
                 EditorState.tabSize.of(2),
                 keymap.of([indentWithTab]),
                 editorTheme,
-                createJsonLanguageExtensions(this._languageService),
+                createJsonLanguageExtensions(this._languageService, {
+                    getLoadingEntries: (text) => this._getLoadingEntries(text),
+                    getLoadingRevision: () => this._loadingRevision,
+                }),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
+                        if (
+                            this._loadingEntries
+                                .values()
+                                .some((entry) => entry.status === "error")
+                        ) {
+                            queueMicrotask(() => forceLinting(this._editor));
+                        }
                         this.dispatchEvent(
                             new CustomEvent("change", { detail: {} })
                         );

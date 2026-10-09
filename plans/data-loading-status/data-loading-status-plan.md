@@ -1,6 +1,6 @@
 # Playground diagnostics and public data-loading status
 
-Status: implementation in progress.
+Status: implementation complete. Runtime encoding-field diagnostics remain a deferred follow-up.
 
 - [x] Milestone 1: source reporting API, origin hook, and live-consumer overlays.
       Verified with 158 focused tests, Core/App/Playground type checks, lint, generated
@@ -12,7 +12,15 @@ Status: implementation in progress.
       and eager-only exclusions, successful readiness, abort, and cleanup with 85
       focused tests and Core/App type checks. Both screenshot harnesses already
       propagate non-timeout rejections and need no changes.
-- [ ] Milestone 3: Playground diagnostics and final integration verification.
+- [x] Milestone 3: Playground diagnostics and final integration verification.
+      Verified with 17 editor tests covering origin/range resolution, duplicate URLs,
+      formatting, semantic edits, schema coexistence, disposal, and stale async results.
+      The full unit suite passed (4,541 tests), as did all workspace type checks, lint,
+      the Playground production build, and release checks. In-browser checks passed
+      for eager CSV and lazy BigWig failures through Core/App embeds with Canvas/WebGL,
+      including snapshots, origins, local overlays, lazy-wait rejection, and finalization.
+      Playground checks covered a URL typo and correction, formatting, tooltip text,
+      and configuration fallback ranges for downstream processing and lazy failures.
 
 ## Goal and scope
 
@@ -151,9 +159,11 @@ piece of context without parsing error messages or introducing an error hierarch
 Third-party lazy loaders with ambiguous fetch/parse/index errors remain
 unclassified. Their failures still produce a configuration diagnostic.
 
-Use the existing diagnostic UI: an underline and a hover message. Supply runtime
-diagnostics through an additional linter source so schema diagnostics remain
-visible. Clear a source's diagnostic when its state changes or it is disposed.
+Use the existing diagnostic UI: an underline and a hover message. Combine runtime and schema diagnostics in the existing worker validation
+request so both remain visible. CodeMirror only guards asynchronous lint results
+against document changes; a loading-revision check must also discard results
+superseded by a source update on the same document. A single linter avoids stale
+results from separately batched async sources. Clear a source's diagnostic when its state changes or it is disposed.
 Associate callbacks with the active embed/editor revision and discard stale
 results. Formatting-only edits that retain the same embed must recompute source
 ranges; invalid or semantically changed documents clear obsolete highlights until

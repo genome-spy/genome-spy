@@ -13,6 +13,7 @@ import schema from "@genome-spy/core/schema.json";
 import corePackage from "../../../core/package.json" with { type: "json" };
 import { getLanguageService, TextDocument } from "vscode-json-languageservice";
 import { createSchemaRequestService } from "./schemaRequestService.js";
+import { resolveLoadingDiagnostics } from "./loadingDiagnostics.js";
 
 const SPEC_URI = "inmemory://genome-spy/spec.json";
 const DEFAULT_SCHEMA_URI = "inmemory://genome-spy/core-schema.json";
@@ -48,7 +49,7 @@ function createDocument(text, version) {
 }
 
 workerScope.addEventListener("message", async (event) => {
-    const { id, type, text, offset } = event.data;
+    const { id, type, text, offset, loadingEntries } = event.data;
     const document = createDocument(text, id);
     const jsonDocument = languageService.parseJSONDocument(document);
 
@@ -66,6 +67,20 @@ workerScope.addEventListener("message", async (event) => {
                         schemaValidation: "error",
                         schemaRequest: "error",
                     }
+                );
+                result.push(
+                    ...resolveLoadingDiagnostics(
+                        jsonDocument.root,
+                        loadingEntries
+                    ).map((diagnostic) => ({
+                        range: {
+                            start: document.positionAt(diagnostic.from),
+                            end: document.positionAt(diagnostic.to),
+                        },
+                        message: diagnostic.message,
+                        severity: /** @type {const} */ (1),
+                        source: "GenomeSpy data loading",
+                    }))
                 );
                 break;
             case "complete":

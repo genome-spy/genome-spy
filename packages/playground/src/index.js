@@ -29,6 +29,7 @@ import "./toolbar.js";
 import "./workspace.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
+import { indexSpecOrigins } from "./editor/loadingDiagnostics.js";
 import { getRendererFromUrl } from "./rendererMenu.js";
 import {
     addUploadedDatasets,
@@ -546,6 +547,7 @@ async function updateVisualization(force) {
 
     try {
         const parsedSpec = JSON.parse(value);
+        const origins = indexSpecOrigins(parsedSpec);
         const explicitBaseUrl =
             typeof parsedSpec.baseUrl === "string"
                 ? parsedSpec.baseUrl
@@ -579,6 +581,7 @@ async function updateVisualization(force) {
         addUploadedDatasets(parsedSpec, files);
 
         if (embedResult) {
+            editorRef.value.clearDataLoading();
             embedResult.finalize();
             embedResult = undefined;
         }
@@ -612,8 +615,10 @@ async function updateVisualization(force) {
                 ),
                 powerPreference: "high-performance",
                 renderer: selectedRenderer,
+                getSpecOrigin: (fragment) => origins.get(fragment),
             }
         );
+        editorRef.value.observeDataLoading(embedResult, value);
         hasInputBindings = Boolean(
             document.querySelector(".gs-input-bindings")
         );
