@@ -91,9 +91,10 @@ by `finalize()`.
 ### Locating specification errors
 
 Editors can locate errors involving missing encoding fields, invalid expressions,
-duplicate parameter names, and transform construction failures. Provide
-`getSpecOrigin(fragment)` to identify objects in the specification passed to
-`embed`, for example using a `WeakMap` of objects to JSON Pointers. Then import
+duplicate parameter names, missing `push: "outer"` targets, and transform
+construction failures. Provide `getSpecOrigin(fragment)` to identify objects in
+the specification passed to `embed`, for example using a `WeakMap` of objects to
+JSON Pointers. Then import
 `getSpecErrorLocation` from `@genome-spy/core` (also available from the minimal
 entry point) and call it on an error received by `onError` or caught from `embed`.
 
@@ -102,7 +103,8 @@ callback and `path` identifies a property within that declaration. For an
 unknown field in `encoding.x`, this could be
 `{ origin: "/encoding/x", path: ["field"] }`; a syntax error or unknown parameter
 in an expression identifies its `expr` property. Duplicate parameters identify the
-second declaration's `name`; transform construction failures identify the whole
+second declaration's `name`; missing `push: "outer"` targets identify the
+referencing parameter's `name`. Transform construction failures identify the whole
 transform (`path: []`). The helper also checks wrapped errors' causes.
 Not every error has a location, and this does not validate `datum` field references
 in expressions.

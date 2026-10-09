@@ -109,7 +109,8 @@ Relevant architecture: `ARCHITECTURE.md`, `packages/core/ARCHITECTURE.md`,
    whole declaration (`path: []`). This covers primary and side-input pipelines
    without per-transform wrappers and preserves any more specific inner location.
    Duplicate parameter names identify the second declaration's `name` property
-   at the existing registration check. No new validation rules are added.
+   at the existing registration check. Missing `push: "outer"` targets identify
+   the referencing declaration's `name`. No new validation rules are added.
 
 `UrlSource.load` and `IntervalUrlSource.requestInterval` catch downstream
 processing errors, including accessor validation, and convert them to error
@@ -329,3 +330,10 @@ highlights (including nested side inputs), the duplicate name highlight, the
 existing error box, and clearing after correction. This addition does not cover transform
 row-processing failures or missing selection references outside expressions;
 those remain deferred.
+
+The missing `push: "outer"` lookup also annotates the referencing parameter's
+`name`, covering the reported `brushs` typo with the same helper and unchanged
+error message. A real nested-spec regression distinguishes it from the valid
+outer declaration named `brush`. All 143 related parameter/location tests pass,
+as do Core TypeScript, lint, and release checks. Browser verification confirms
+`brushs` is underlined and correcting it to `brush` clears the error and diagnostic.

@@ -123,6 +123,42 @@ test.each(
     });
 });
 
+test("locates a missing push outer target at the referencing parameter name", async () => {
+    const declaration = {
+        name: "brushs",
+        push: /** @type {const} */ ("outer"),
+        select: {
+            type: /** @type {const} */ ("interval"),
+            encodings: [/** @type {const} */ ("x")],
+        },
+    };
+    await expect(
+        createHeadlessEngine(
+            {
+                data: { values: [] },
+                params: [{ name: "brush" }],
+                layer: [
+                    {
+                        params: [declaration],
+                        mark: "point",
+                        encoding: { x: { datum: 1, type: "quantitative" } },
+                    },
+                ],
+            },
+            { context: locatedContext(declaration) }
+        )
+    ).rejects.toSatisfy((error) => {
+        expect(error.message).toBe(
+            'Parameter "brushs" not found in outer scope!'
+        );
+        expect(getSpecErrorLocation(error)).toEqual({
+            origin: "declaration",
+            path: ["name"],
+        });
+        return true;
+    });
+});
+
 test.each(["point", "rect", "rule", "text"])(
     "locates a missing inherited field after %s normalization",
     async (mark) => {

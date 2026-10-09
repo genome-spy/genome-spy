@@ -380,8 +380,9 @@ export default class ViewParamRuntime {
         if (param.push == "outer") {
             const outerRuntime = this.findRuntimeForParam(name);
             if (!outerRuntime) {
-                throw new Error(
-                    `Parameter "${name}" not found in outer scope!`
+                throw annotateSpecError(
+                    new Error(`Parameter "${name}" not found in outer scope!`),
+                    this.getSpecLocation(param, ["name"])
                 );
             }
 

@@ -97,9 +97,10 @@ data fields, or expression behavior.
 
 The Playground also underlines declarations with reported loading failures,
 missing encoding fields, invalid expressions (including syntax errors and unknown
-parameter names), duplicate parameter names, or transform construction failures
-such as invalid regular expressions. These checks run as the visualization loads
-and executes; `datum` field references inside expressions are not checked.
+parameter names), duplicate parameter names, missing `push: "outer"` targets, or
+transform construction failures such as invalid regular expressions. These checks
+run as the visualization loads and executes; `datum` field references inside
+expressions are not checked.
 
 ## Unit view reference
 
