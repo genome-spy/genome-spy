@@ -111,7 +111,6 @@ test("fractional index picking follows padding, reversal, and zoom", async ({
         renderer.updateGlobals({ width: 200, height: 40, dpr: 1 });
         const start = 2 ** 32 + 4096;
         const packed = new Uint32Array([1048577, 0, 0, 0]);
-        new Float32Array(packed.buffer)[2] = 0.5;
         const results = [];
         for (const [align, band] of [
             [0.5, 0.5],
@@ -121,55 +120,66 @@ test("fractional index picking follows padding, reversal, and zoom", async ({
                 [10, 190],
                 [190, 10],
             ]) {
-                const mark = renderer.createMark(pointMark, {
-                    count: 1,
-                    channels: {
-                        uniqueId: { value: 42, type: "u32" },
-                        x: {
-                            data: packed,
-                            type: "u32",
-                            inputComponents: 4,
-                            scale: indexScale({
-                                domain: [start, start + 3],
-                                range,
-                                paddingInner: 0.3,
-                                paddingOuter: 0.4,
-                                align,
-                                band,
-                            }),
+                for (const fraction of [0, 0.5]) {
+                    new Float32Array(packed.buffer)[2] = fraction;
+                    const mark = renderer.createMark(pointMark, {
+                        count: 1,
+                        channels: {
+                            uniqueId: { value: 42, type: "u32" },
+                            x: {
+                                data: packed,
+                                type: "u32",
+                                inputComponents: 4,
+                                scale: indexScale({
+                                    domain: [start, start + 3],
+                                    range,
+                                    paddingInner: 0.3,
+                                    paddingOuter: 0.4,
+                                    align,
+                                    band,
+                                }),
+                            },
+                            y: { value: 20, scale: identityScale() },
+                            size: { value: 16, scale: identityScale() },
                         },
-                        y: { value: 20, scale: identityScale() },
-                        size: { value: 16, scale: identityScale() },
-                    },
-                });
-                // Retain the same series and pipeline while changing the zoom domain.
-                for (const domain of [
-                    [start, start + 3],
-                    [start + 0.25, start + 1.75],
-                ]) {
-                    mark.scales.x.setDomain(domain);
-                    renderer.render({ draws: [{ mark }] });
-                    await renderer.device.queue.onSubmittedWorkDone();
-                    const n = domain[1] - domain[0];
-                    const step = (range[1] - range[0]) / (n - 0.3 + 0.8);
-                    const origin =
-                        range[0] +
-                        (range[1] - range[0] - step * (n - 0.3)) * align;
-                    const expected =
-                        origin +
-                        (start + 0.5 - domain[0]) * step +
-                        step * 0.7 * band;
-                    results.push(await renderer.pick(expected, 20));
-                    results.push(
-                        await renderer.pick(expected - step * 0.5, 20)
-                    );
+                    });
+                    // Retain the same series and pipeline while changing the zoom domain.
+                    for (const domain of [
+                        [start, start + 3],
+                        [start + 0.25, start + 1.75],
+                    ]) {
+                        mark.scales.x.setDomain(domain);
+                        renderer.render({ draws: [{ mark }] });
+                        await renderer.device.queue.onSubmittedWorkDone();
+                        const n = domain[1] - domain[0];
+                        const step = (range[1] - range[0]) / (n - 0.3 + 0.8);
+                        const reverse = range[1] < range[0];
+                        const positiveStep = Math.abs(step);
+                        const origin =
+                            Math.min(...range) +
+                            (Math.abs(range[1] - range[0]) -
+                                positiveStep * (n - 0.3)) *
+                                align;
+                        const position = start + fraction - domain[0];
+                        const expected =
+                            origin +
+                            (reverse ? n - 1 - position : position) *
+                                positiveStep +
+                            positiveStep * 0.7 * band;
+                        results.push(await renderer.pick(expected, 20));
+                        results.push(
+                            await renderer.pick(expected - step * 0.5, 20)
+                        );
+                    }
+                    renderer.destroyMark(mark.markId);
                 }
-                renderer.destroyMark(mark.markId);
             }
         }
         renderer.destroy();
         canvas.remove();
         return results;
     });
-    expect(results).toEqual(Array.from({ length: 8 }, () => [42, null]).flat());
+    expect(results).toEqual(
+        Array.from({ length: 16 }, () => [42, null]).flat()
+    );
 });

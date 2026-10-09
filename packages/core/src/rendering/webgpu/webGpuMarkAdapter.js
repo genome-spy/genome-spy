@@ -1217,14 +1217,17 @@ function createOrdinalPositionScale(scale, range, readDomain) {
  */
 function createIndexPositionScale(scale, range, band) {
     const configurableScale = /** @type {any} */ (scale);
+    // Core's index band offsets follow the signed range direction.
+    const reverseIndex = scale.type === "index" && range[1] < range[0];
+    const align = configurableScale.align();
     return retainScaleLeaves(
         indexScale({
             domain: scale.domain().map(Number),
             range,
             paddingInner: configurableScale.paddingInner(),
             paddingOuter: configurableScale.paddingOuter(),
-            align: configurableScale.align(),
-            band,
+            align: reverseIndex ? 1 - align : align,
+            band: reverseIndex ? 1 - band : band,
         }),
         () => scale.domain().map(Number)
     );

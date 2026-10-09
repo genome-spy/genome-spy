@@ -106,12 +106,15 @@ EXAMPLE examples/docs/grammar/scale/point-indices-centers.json height=100 spechi
 Set `scale.fractional` to `true` to place branches between rows, for example
 in a dendrogram. A value of `3.5` is halfway between indices 3 and 4.
 Interpolation uses the full row step, including inner padding, and preserves
-the encoding's `band` offset. Integer positions and zoom behavior are unchanged.
+the encoding's `band` offset. Enabling fractional positioning preserves integer
+positions and zoom behavior.
 For branch endpoints at row centers, set `band: 0.5` on both positional channels.
 
 EXAMPLE examples/docs/grammar/scale/fractional-index-dendrogram.json
 
 WebGL, Canvas, SVG, and experimental WebGPU support fractional positioning.
+Experimental WebGPU also corrects reversed index-scale band and alignment offsets
+to match the other renderers, including when fractional positioning is disabled.
 GPU inputs must be non-negative and below 2^44; fractions use float32 precision
 and integer mapping retains the existing high-precision scale limits.
 GPU interval-selection predicates cannot target fractional index channels and

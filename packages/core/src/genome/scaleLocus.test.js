@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, expectTypeOf, test } from "vitest";
 
 import Genome from "./genome.js";
 import {
@@ -156,4 +156,34 @@ describe("scaleLocus ticks", () => {
         expect(scale.ticks(100)).toEqual([100]);
         expect(scale.ticks(100).map(scale.tickFormat(100))).toEqual(["1"]);
     });
+});
+
+test("locus scales and copies keep discrete positions without a fractional API", () => {
+    const genome = new Genome({
+        name: "copy",
+        contigs: [{ name: "chr1", size: 10 }],
+    });
+    const scale = scaleLocus()
+        .genome(genome)
+        .domain([0, 4])
+        .range([100, 0])
+        .paddingInner(0.3)
+        .paddingOuter(0.4)
+        .align(0.25)
+        .numberingOffset(1);
+    const copy = scale.copy();
+
+    expectTypeOf(scale).not.toHaveProperty("fractional");
+    expectTypeOf(copy).toEqualTypeOf(scale);
+    for (const candidate of [scale, copy, copy.copy()]) {
+        expect("fractional" in candidate).toBe(false);
+        expect(candidate(1.5)).toBe(candidate(1));
+        expect(candidate(1)).toBe(scale(1));
+        expect(candidate.domain()).toEqual(scale.domain());
+        expect(candidate.genome()).toBe(genome);
+        expect(candidate.ticks(4)).toEqual(scale.ticks(4));
+    }
+
+    copy.domain([2, 8]);
+    expect(scale.domain()).toEqual([0, 4]);
 });

@@ -2531,3 +2531,33 @@ test.each([false, true])(
         expect(new Float32Array(packed.buffer)[2]).toBe(0.5);
     }
 );
+
+test.each([false, true])(
+    "index reversal uses the same band contract, fractional=%s",
+    (fractional) => {
+        for (const type of ["index", "locus"]) {
+            const scale = {
+                ...createIndexScale([0, 4]),
+                type,
+                props: { reverse: true },
+                align: () => 0.25,
+                fractional: () => fractional,
+            };
+            const mark = createMark("point", [{ x: 1 }], {
+                x: createEncoder((datum) => datum.x, {
+                    scale,
+                    channelDef: { field: "x", band: 0.25 },
+                }),
+            });
+            const translated = createWebGpuMarkConfig(
+                mark,
+                {},
+                Rectangle.create(10, 0, 180, 40)
+            );
+            const x = /** @type {any} */ (translated).config.channels.x;
+            expect(x.scale.range).toEqual([190, 10]);
+            expect(x.scale.align).toBe(type === "index" ? 0.75 : 0.25);
+            expect(x.scale.band).toBe(type === "index" ? 0.75 : 0.25);
+        }
+    }
+);

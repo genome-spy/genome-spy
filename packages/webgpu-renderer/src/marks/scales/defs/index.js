@@ -117,10 +117,7 @@ fn scaleBandHpF(value: vec4<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
                 paddingInner: f32, paddingOuter: f32,
                 align: f32, band: f32) -> f32 {
     let step = (range.y - range.x) / max(1.0, domainExtent.z - paddingInner + paddingOuter * 2.0);
-    // Signed band offsets follow the range direction, including reversed ranges.
-    let reverse = range.y < range.x;
-    return scaleBandHpU(value.xy, domainExtent, range, paddingInner, paddingOuter,
-        select(align, 1.0 - align, reverse), select(band, 1.0 - band, reverse))
+    return scaleBandHpU(value.xy, domainExtent, range, paddingInner, paddingOuter, align, band)
         + bitcast<f32>(value.z) * step;
 }
 `;
