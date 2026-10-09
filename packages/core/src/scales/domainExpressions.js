@@ -7,12 +7,12 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
  * constants and expression refs.
  *
  * @param {any} value
- * @param {(expr: string) => () => any} createExpression
+ * @param {(expr: string, source?: object) => () => any} createExpression
  * @returns {any}
  */
 export function resolveConfiguredDomainValue(value, createExpression) {
     if (isExprRef(value)) {
-        return createExpression(value.expr)();
+        return createExpression(value.expr, value)();
     }
 
     if (Array.isArray(value)) {

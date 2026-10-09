@@ -203,7 +203,8 @@ export default class ScaleResolution {
 
         this.#scaleManager = new ScaleInstanceManager({
             getRuntime: () => this.#runtime,
-            createExpression: (expr) => this.#createExpression(expr),
+            createExpression: (expr, source) =>
+                this.#createExpression(expr, source),
             onRangeChange: () => this.#notifyListeners("range"),
             onDomainChange: (domain) => {
                 void this.#commitDomainUpdate({ type: "set", domain });
@@ -294,12 +295,14 @@ export default class ScaleResolution {
      * scope.
      *
      * @param {string} expr
+     * @param {object} [source]
      * @returns {import("../paramRuntime/types.js").ExprRefFunction}
      */
-    #createExpression(expr) {
+    #createExpression(expr, source) {
         try {
             return this.#expressionScopeView.paramRuntime.createExpression(
-                expr
+                expr,
+                source
             );
         } catch (error) {
             const message = error instanceof Error ? error.message : "";
@@ -513,7 +516,7 @@ export default class ScaleResolution {
             resolveConfiguredDomain(
                 this.#getActiveMembers(),
                 this.#getViewLevelDomainSource(),
-                (expr) => this.#createExpression(expr),
+                (expr, source) => this.#createExpression(expr, source),
                 (param, encoding) =>
                     this.#resolveSelectionBinding(param, encoding),
                 this.fromComplexInterval.bind(this),
@@ -675,7 +678,7 @@ export default class ScaleResolution {
         if (Array.isArray(range)) {
             for (const value of range) {
                 if (isExprRef(value)) {
-                    this.#createExpression(value.expr);
+                    this.#createExpression(value.expr, value);
                 }
             }
         }
@@ -1025,7 +1028,8 @@ export default class ScaleResolution {
             members,
             dataMembers,
             viewLevelDomain: this.#getViewLevelDomainSource(),
-            createExpression: (expr) => this.#createExpression(expr),
+            createExpression: (expr, source) =>
+                this.#createExpression(expr, source),
             resolveSelectionBinding: (param, encoding) =>
                 this.#resolveSelectionBinding(param, encoding),
             fromComplexInterval: this.fromComplexInterval.bind(this),

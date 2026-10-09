@@ -1,3 +1,4 @@
+import { inheritSpecOrigin, cloneWithSpecOrigin } from "../utils/specOrigin.js";
 import createEncoders, {
     findChannelDefWithScale,
     isChannelWithScale,
@@ -134,7 +135,7 @@ export default class Mark {
     getCursor() {
         const cursor = this.getCursorSpec();
         return isExprRef(cursor)
-            ? this.unitView.paramRuntime.evaluateAndGet(cursor.expr)
+            ? this.unitView.paramRuntime.evaluateAndGet(cursor.expr, cursor)
             : cursor;
     }
 
@@ -152,6 +153,7 @@ export default class Mark {
         }
 
         this.unitView.paramRuntime.watchExpression(cursor.expr, listener, {
+            source: cursor,
             scopeOwned: false,
             registerDisposer,
         });
@@ -228,15 +230,19 @@ export default class Mark {
                 continue;
             }
 
-            this.unitView.paramRuntime.watchExpression(prop.expr, () => {
-                const collector = this.unitView.getCollector();
-                if (!collector?.completed) {
-                    return;
-                }
+            this.unitView.paramRuntime.watchExpression(
+                prop.expr,
+                () => {
+                    const collector = this.unitView.getCollector();
+                    if (!collector?.completed) {
+                        return;
+                    }
 
-                this.#encodedDataRevision++;
-                this.unitView.context.animator.requestRender();
-            });
+                    this.#encodedDataRevision++;
+                    this.unitView.context.animator.requestRender();
+                },
+                { source: prop }
+            );
         }
     }
 
@@ -288,7 +294,7 @@ export default class Mark {
              * @param {Record<string, any>} properties
              */
             const withScaleProperties = (channelDef, properties) => {
-                const clone = structuredClone(channelDef);
+                const clone = cloneWithSpecOrigin(channelDef);
                 const scaleDef = findChannelDefWithScale(clone);
                 if (!scaleDef) {
                     throw new Error(
@@ -378,17 +384,20 @@ export default class Mark {
 
                 const conditions = asArray(channelDef.condition);
                 const expanded = conditions.map((condition) =>
-                    expandNamedPredicateCondition(condition, predicates)
+                    inheritSpecOrigin(
+                        condition,
+                        expandNamedPredicateCondition(condition, predicates)
+                    )
                 );
                 if (
                     expanded.some((condition, i) => condition !== conditions[i])
                 ) {
-                    internalEncoding[channel] = {
+                    internalEncoding[channel] = inheritSpecOrigin(channelDef, {
                         ...channelDef,
                         condition: Array.isArray(channelDef.condition)
                             ? expanded
                             : expanded[0],
-                    };
+                    });
                 }
             }
 
@@ -465,16 +474,21 @@ export default class Mark {
         /**
          * @param {string} expression
          * @param {RenderingRevisionKind} kind
+         * @param {object} [source]
          */
-        const watchExpression = (expression, kind) => {
+        const watchExpression = (expression, kind, source) => {
             const key = kind + ":" + expression;
             if (state.expressions.has(key)) {
                 return;
             }
-            this.unitView.paramRuntime.watchExpression(expression, () => {
-                state[kind]++;
-                this.unitView.context.animator.requestRender();
-            });
+            this.unitView.paramRuntime.watchExpression(
+                expression,
+                () => {
+                    state[kind]++;
+                    this.unitView.context.animator.requestRender();
+                },
+                { source }
+            );
             state.expressions.add(key);
         };
         if (!previousState) {
@@ -483,7 +497,11 @@ export default class Mark {
                 for (const branch of encoder.branches ?? []) {
                     const channelDef = branch.accessor.channelDef;
                     if (isExprDef(channelDef)) {
-                        watchExpression(channelDef.expr, "configuration");
+                        watchExpression(
+                            channelDef.expr,
+                            "configuration",
+                            channelDef
+                        );
                     }
                     // Text values and branch selection determine retained glyph
                     // geometry, even when other constants use GPU uniforms.
@@ -503,7 +521,7 @@ export default class Mark {
                     ];
                     for (const value of values) {
                         if (isExprRef(value)) {
-                            watchExpression(value.expr, kind);
+                            watchExpression(value.expr, kind, value);
                         }
                     }
                 }
@@ -545,7 +563,7 @@ export default class Mark {
                 property
             ];
             if (isExprRef(value)) {
-                watchExpression(value.expr, "resources");
+                watchExpression(value.expr, "resources", value);
             }
         }
     }

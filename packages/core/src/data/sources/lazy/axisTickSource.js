@@ -64,7 +64,9 @@ export default class AxisTickSource extends SingleAxisLazySource {
         if (isExprRef(tickCountSpec)) {
             const paramRuntime = new ViewParamRuntime(
                 () => view.paramRuntime,
-                (channel) => view.getScaleResolution(channel)
+                (channel) => view.getScaleResolution(channel),
+                undefined,
+                { getSpecOrigin: view.context.getSpecOrigin }
             );
             this.#setAxisLength = paramRuntime.allocateSetter(
                 "axisLength",
@@ -77,6 +79,7 @@ export default class AxisTickSource extends SingleAxisLazySource {
                     void this.onDomainChanged();
                 },
                 {
+                    source: tickCountSpec,
                     scopeOwned: false,
                     registerDisposer: (disposer) =>
                         this.registerDisposer(disposer),

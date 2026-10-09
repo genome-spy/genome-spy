@@ -15,7 +15,7 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
  *
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef | import("../spec/channel.js").Conditional<import("../spec/channel.js").ChannelDef>} channelDef
- * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
+ * @param {Pick<import("../paramRuntime/viewParamRuntime.js").default, "createExpression"> & Partial<Pick<import("../paramRuntime/viewParamRuntime.js").default, "getSpecLocation">>} paramRuntime
  * @returns {import("../types/encoder.js").Accessor}
  */
 export function createAccessor(channel, channelDef, paramRuntime) {
@@ -80,7 +80,10 @@ export function createAccessor(channel, channelDef, paramRuntime) {
     function potentialExprRefToAccessor(potentialExprRef) {
         if (isExprRef(potentialExprRef)) {
             const a = asAccessor(
-                paramRuntime.createExpression(potentialExprRef.expr)
+                paramRuntime.createExpression(
+                    potentialExprRef.expr,
+                    potentialExprRef
+                )
             );
             if (a.fields.length > 0) {
                 throw new Error(
@@ -97,14 +100,22 @@ export function createAccessor(channel, channelDef, paramRuntime) {
 
     if (isFieldDef(channelDef)) {
         try {
-            return asAccessor(field(channelDef.field));
+            return asAccessor(
+                field(
+                    channelDef.field,
+                    undefined,
+                    paramRuntime?.getSpecLocation?.(channelDef, ["field"])
+                )
+            );
         } catch (e) {
             throw new Error(`Invalid field definition: ${e.message}`, {
                 cause: e,
             });
         }
     } else if (isExprDef(channelDef)) {
-        return asAccessor(paramRuntime.createExpression(channelDef.expr));
+        return asAccessor(
+            paramRuntime.createExpression(channelDef.expr, channelDef)
+        );
     } else if (isDatumDef(channelDef)) {
         return potentialExprRefToAccessor(channelDef.datum);
     } else if (isValueDef(channelDef)) {

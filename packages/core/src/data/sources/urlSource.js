@@ -1,3 +1,4 @@
+import { getSpecErrorLocation } from "../../utils/specError.js";
 import { read } from "vega-loader";
 import {
     getFormat,
@@ -179,7 +180,8 @@ export default class UrlSource extends DataSource {
             this.setLoadingStatus(
                 "error",
                 error.message,
-                error.errorPhase ?? "processing"
+                error.errorPhase ?? "processing",
+                getSpecErrorLocation(error)
             );
         } else {
             this.setLoadingStatus("complete");

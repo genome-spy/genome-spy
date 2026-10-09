@@ -20,6 +20,7 @@ import { createRulerValue } from "../ruler/rulerValue.js";
 
 /**
  * @typedef {{
+ *   source?: object,
  *   scopeOwned?: boolean,
  *   registerDisposer?: (disposer: () => void) => void
  * }} WatchExpressionOptions
@@ -27,7 +28,7 @@ import { createRulerValue } from "../ruler/rulerValue.js";
 
 /**
  * @typedef {{
- *   createExpression: (expr: string) => ExprRefFunction,
+ *   createExpression: (expr: string, source?: object) => ExprRefFunction,
  *   watchExpression?: (
  *     expr: string,
  *     listener: () => void,
@@ -127,7 +128,7 @@ export function validateParameterName(name) {
  * Computes the default value for a parameter specification.
  *
  * @param {import("../spec/parameter.js").Parameter} param
- * @param {{ createExpression: (expr: string) => ExprRefFunction }} [paramRuntime]
+ * @param {{ createExpression: (expr: string, source?: object) => ExprRefFunction }} [paramRuntime]
  * @param {ExprRefFunction} [exprFn]
  * @returns {any}
  */
@@ -161,7 +162,10 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
     if ("expr" in param) {
         const expr =
             exprFn ??
-            paramRuntime?.createExpression(/** @type {string} */ (param.expr));
+            paramRuntime?.createExpression(
+                /** @type {string} */ (param.expr),
+                param
+            );
         if (!expr) {
             throw new Error(
                 'Cannot evaluate expression for parameter "' + param.name + '".'
@@ -204,7 +208,7 @@ export function activateExprRefProps(
     const bindings = [];
     for (const [key, value] of Object.entries(props)) {
         if (isExprRef(value)) {
-            const fn = paramRuntime.createExpression(value.expr);
+            const fn = paramRuntime.createExpression(value.expr, value);
             const index = bindings.push({ key, fn }) - 1;
             Object.defineProperty(activatedProps, key, {
                 enumerable: true,
@@ -220,7 +224,10 @@ export function activateExprRefProps(
     }
 
     for (const { key, expr } of additionalExpressions) {
-        bindings.push({ key, fn: paramRuntime.createExpression(expr.expr) });
+        bindings.push({
+            key,
+            fn: paramRuntime.createExpression(expr.expr, expr),
+        });
     }
     if (!bindings.length) {
         return /** @type {T} */ (activatedProps);
@@ -290,10 +297,11 @@ export function resolveInitOnlyExprRef(
     };
     const fn = paramRuntime.watchExpression
         ? paramRuntime.watchExpression(value.expr, throwUnsupportedChange, {
+              source: value,
               scopeOwned: false,
               registerDisposer,
           })
-        : paramRuntime.createExpression(value.expr);
+        : paramRuntime.createExpression(value.expr, value);
     if (!paramRuntime.watchExpression) {
         const unsubscribe = fn.subscribe(throwUnsupportedChange);
         registerDisposer?.(unsubscribe);

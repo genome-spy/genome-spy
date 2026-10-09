@@ -928,7 +928,8 @@ export default class WebGLMark {
             const set = () => setter(adjuster(fn(null)));
             fn = this.unitView.paramRuntime.watchExpression(
                 propValue.expr,
-                set
+                set,
+                { source: propValue }
             );
 
             // ... and set the initial value

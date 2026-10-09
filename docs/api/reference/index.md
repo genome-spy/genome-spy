@@ -6,6 +6,7 @@ Public TypeScript API for `@genome-spy/core`.
 
 - [FontCatalogEntry](interfaces/FontCatalogEntry.md)
 - [EmbedOptions](interfaces/EmbedOptions.md)
+- [SpecLocation](interfaces/SpecLocation.md)
 - [ParamApi](interfaces/ParamApi.md)
 - [ComplexLocusEndpoint](interfaces/ComplexLocusEndpoint.md)
 - [IntervalSnapshot](interfaces/IntervalSnapshot.md)

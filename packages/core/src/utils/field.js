@@ -1,4 +1,5 @@
 import { field as vegaField, accessor } from "vega-util";
+import { annotateSpecError } from "./specError.js";
 
 /**
  * Creates an accessor function based on the field expression.
@@ -14,14 +15,15 @@ import { field as vegaField, accessor } from "vega-util";
  *
  * @param {string} fieldExpr
  * @param {string} [name]
+ * @param {import("../types/embedApi.js").SpecLocation} [location]
  */
-export function field(fieldExpr, name = fieldExpr) {
+export function field(fieldExpr, name = fieldExpr, location) {
     if (/^[A-Za-z0-9_]+$/.test(fieldExpr)) {
         const validate = function (
             /** @type {import("../data/flowNode.js").Datum} */ datum
         ) {
             if (!(fieldExpr in datum)) {
-                logMissingProperty(datum, fieldExpr);
+                logMissingProperty(datum, fieldExpr, location);
             }
         };
 
@@ -50,9 +52,13 @@ export function field(fieldExpr, name = fieldExpr) {
  *
  * @param {any} obj
  * @param {string} prop
+ * @param {import("../types/embedApi.js").SpecLocation | undefined} location
  */
-function logMissingProperty(obj, prop) {
-    throw new Error(
-        `Invalid field "${prop}". Available fields or properties: ${Object.keys(obj).join(", ")}`
+function logMissingProperty(obj, prop, location) {
+    throw annotateSpecError(
+        new Error(
+            `Invalid field "${prop}". Available fields or properties: ${Object.keys(obj).join(", ")}`
+        ),
+        location
     );
 }

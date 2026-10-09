@@ -138,6 +138,7 @@ export default class Transform extends FlowNode {
                 );
             return /** @type {ExprRefReader<T>} */ (
                 this.paramRuntime.watchExpression(exprRef.expr, listener, {
+                    source: exprRef,
                     scopeOwned: false,
                     registerDisposer: (disposer) =>
                         this.registerDisposer(disposer),
@@ -153,9 +154,10 @@ export default class Transform extends FlowNode {
      * plain snapshot. Passive or otherwise unknown refs retain live getters.
      *
      * @param {string} expr
+     * @param {object} [source] Authored declaration containing `expr`.
      * @returns {((datum?: import("../flowNode.js").Datum) => any) & { refresh: () => void }}
      */
-    watchSnapshottedExpression(expr) {
+    watchSnapshottedExpression(expr, source) {
         /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         let expression;
         /** @type {ReturnType<NonNullable<import("../../paramRuntime/types.js").ExprRefFunction["createSnapshotEvaluator"]>>} */
@@ -170,6 +172,7 @@ export default class Transform extends FlowNode {
                 this.requestReactiveRepropagate();
             },
             {
+                source,
                 scopeOwned: false,
                 registerDisposer: (disposer) => this.registerDisposer(disposer),
             }

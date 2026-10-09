@@ -35,7 +35,10 @@ export default class FilterTransform extends Transform {
             );
         }
 
-        this.predicate = this.watchSnapshottedExpression(expression);
+        this.predicate = this.watchSnapshottedExpression(
+            expression,
+            isExprFilterParams(this.params) ? this.params : undefined
+        );
     }
 
     /**

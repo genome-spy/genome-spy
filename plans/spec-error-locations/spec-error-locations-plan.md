@@ -3,9 +3,9 @@
 ## Goal and scope
 
 Make specification experiments easier in Playground by underlining the declaration
-responsible for two existing errors: a missing encoding field and an unknown
-parameter name in an expression. Preserve the existing error messages, failure
-behavior, and available-field hints. Embedders should receive the same location
+responsible for missing encoding fields and invalid expressions, including
+parsing/compilation failures and unknown parameter names. Preserve the existing
+error messages, failure behavior, and available-field hints. Embedders should receive the same location
 information without inspecting the visualization.
 
 This builds on the data-loading reporting API merged in #557. JSON Schema remains
@@ -27,7 +27,9 @@ Non-goals:
 - `utils/field.js` validates simple field names when an accessor first receives
   data. `encoder/accessor.js` knows the channel definition when creating that
   accessor. Location capture belongs here, outside the per-datum hot path.
-- `paramRuntime/expressionRef.js` rejects unresolved globals during binding.
+- `paramRuntime/expressionRef.js` compiles expressions and rejects unresolved
+  globals during binding. Named params also parse during dependency analysis
+  before registration; parsing failures there need the same declaration context.
   `ViewParamRuntime` owns declaration scope, including named parameters whose
   registration may be deferred until scales exist. Direct expression binding,
   named/deferred parameters, and their transition/debounce paths must agree.
@@ -69,9 +71,11 @@ Relevant architecture: `ARCHITECTURE.md`, `packages/core/ARCHITECTURE.md`,
    with a module-local weak map of clone-to-authored-object aliases. Flatten
    aliases at installation; store object identity, never an embed's resolved
    string. Explicit sites cover positional coverage/text clones, color/opacity
-   normalization, offset scale-property clones, and named-condition expansion.
+   normalization, offset scale-property clones, named-condition expansion, and
+   expression properties copied by guide/config merging.
    Alias copied condition/ExprRef/scale declaration nodes only where their source
-   mapping is known. Do not recursively infer provenance for generated objects.
+   mapping is known. Exact `structuredClone` subtrees are linked before any
+   normalization changes; never infer provenance by matching generated objects.
    Do not introduce a general provenance graph or infer origins from runtime
    hierarchy positions. Generated declarations without a clear authored target
    may have no location. Imported specs outside the editor's indexed object graph
@@ -117,20 +121,22 @@ event would add state unrelated to the two requested checks.
 
 ### 1. Located Core errors
 
-- [ ] Add the descriptor, error helper, and source error-location transport.
-- [ ] Preserve origins across the normalization needed by authored encoding
+- [x] Add the descriptor, error helper, and source error-location transport.
+- [x] Preserve origins across the normalization needed by authored encoding
       fields and expressions, including inherited/conditional definitions.
-- [ ] Annotate existing missing encoding-field and unknown-parameter failures at
-      their declaration/binding boundaries, including deferred parameter setup.
-- [ ] Verify behavior through real spec-to-data/accessor and parameter paths:
+- [x] Annotate existing missing encoding-field and expression parsing/binding
+      failures at their declaration boundaries, including named-param pre-analysis
+      and deferred parameter setup.
+- [x] Verify behavior through real spec-to-data/accessor and parameter paths:
       inherited/conditional encodings and x2/offset clones, named/deferred parameters,
-      representative formula/filter and scale expressions, wrapped source
+      representative formula/filter, scale, view/mark property, and guide expressions,
+      both syntax failures and unknown params, wrapped source
       failures, and absent origin hooks. Verify lexical scope remains unchanged
       and `datum.missing` is not newly rejected.
-- [ ] Review related tests and remove overlapping implementation-detail checks.
-- [ ] Document the public descriptor/helper and expanded `getSpecOrigin` contract
+- [x] Review related tests and remove overlapping implementation-detail checks.
+- [x] Document the public descriptor/helper and expanded `getSpecOrigin` contract
       in the embedding API docs; add one Core minor changeset for this feature.
-- [ ] Run focused tests, Core TypeScript, and relevant lint; update this record
+- [x] Run focused tests, Core TypeScript, and relevant lint; update this record
       and commit `feat(core): attach specification locations to field and expression errors`.
 
 Outcome: embedders can locate these existing errors through `onError` or
@@ -147,8 +153,8 @@ Shared location objects must not allow listeners to mutate retained state.
       coverage and verify correcting a declaration removes its diagnostic.
 - [ ] Smoke-test in a browser: a simple point plot with a misspelled encoding
       field; `params: [{name: "a", expr: "missing + 1"}]`; an encoding expression
-      using an unknown parameter; the vertical-concat documentation example with
-      a failed URL; and the sashimi example's scale expression. Switch renderers
+      using an unknown parameter; malformed named/encoding expressions; the
+      vertical-concat documentation example with a failed URL; and the sashimi example's scale expression. Switch renderers
       for a representative spec and correct errors while an old attempt finishes.
       Verify same-text renderer switches and callbacks during teardown, and that
       binding a successful result does not clear errors from the same attempt.
@@ -157,7 +163,7 @@ Shared location objects must not allow listeners to mutate retained state.
       integration tests/builds; broaden testing only when failures warrant it.
 - [ ] Update user-facing docs in the relevant error/API section (not Getting
       Started), revise the same changeset, update this record, and commit
-      `feat(playground): highlight invalid fields and expression parameters`.
+      `feat(playground): highlight invalid fields and expressions`.
 
 Outcome: the same actionable underlines work for fatal and track-local errors,
 without changing their existing visual presentation.
@@ -166,7 +172,7 @@ without changing their existing visual presentation.
 
 - [x] Luna reviews this plan before implementation; address findings and record
       decisions below before committing the plan.
-- [ ] Inspect the shared API, normalization aliases, downstream callers, and hot
+- [x] Inspect the shared API, normalization aliases, downstream callers, and hot
       paths before the Core milestone commit. An optional hook must not impose
       allocations/lookups on every datum or require changes in custom contexts.
 - [ ] Inspect final integration for errors before embed resolution, competing
@@ -178,7 +184,7 @@ choose the smallest alias mechanism that handles actual normalization sites. If
 that requires broad provenance machinery, narrow supported sites explicitly and
 record the tradeoff rather than adding speculative infrastructure.
 
-Acceptance: existing missing-field and unknown-parameter messages gain the
+Acceptance: existing missing-field and expression parsing/binding errors gain the
 correct authored field/expression location; both reporting routes retain it;
 Playground underlines that value and clears obsolete diagnostics; valid lexical
 references and unchecked `datum` references retain their behavior; no hook means
@@ -199,3 +205,38 @@ expression-bearing forms in scope because each uses existing binding paths;
 arbitrary runtime errors and transform fields remain deferred. The reviewer
 endorsed module-local weak aliases over per-context state, with object identities
 flattened at explicit identity-preserving clone sites and no global origin strings.
+
+### Core milestone record
+
+Implemented optional `SpecLocation`, the exported `getSpecErrorLocation` helper,
+explicit clone aliases, encoding accessor metadata, and declaration-aware
+expression binding. Named/deferred/transitioned/debounced params, formula/filter,
+scale domain/range, ExprRef properties (including URL descriptors), and view size,
+opacity, and cursor bindings pass available declarations. Eager/lazy source catch
+boundaries preserve the location separately from source origin. Snapshot/event
+locations are detached; new statuses clear obsolete error metadata.
+
+Verification: 536 related tests passed across parameter, encoder, scale, eager
+source, and lazy source suites, then 25 focused tests passed including new
+normalization and lazy-failure checks. Core TypeScript and repository lint pass.
+API docs and a Core minor changeset describe the new optional contract. No schema
+or field-validation semantics changed. The helper for exact deep clones aliases
+only the copied subtree before modifications; it does not infer generated origins.
+
+Full-suite integration found smaller tooltip runtime facades without a location
+lookup method. Kept accessor location lookup optional, preserving that existing
+structural contract and the ordinary no-origin behavior. Focused tooltip and
+location regression suites verify the correction.
+
+The scope includes all expression parsing/compilation errors, as requested on
+2026-10-09. Named-param dependency analysis is annotated before binding; remaining
+authored ExprRef entry points pass their declarations. Guide/config merging links
+the object whose `expr` property is copied, without matching expression text.
+There are no new validation rules or evaluation wrappers.
+
+Additional Core verification: 42 location tests cover syntax and binding failures
+through named params, encoding, transforms, scales, URLs, view/mark properties,
+and merged guide expressions. Another 146 related tests passed. All workspace
+TypeScript checks and repository lint passed. Browser checks confirm malformed
+named, encoding, mark, and axis expressions underline their declarations and
+preserve the default error box; correction clears both.

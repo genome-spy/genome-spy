@@ -30,8 +30,9 @@ export default class LoadingStatusRegistry {
      * @param {DataLoadingStatus} status
      * @param {string} [message]
      * @param {DataLoadingEntry["errorPhase"]} [errorPhase]
+     * @param {import("../types/embedApi.js").SpecLocation} [errorLocation]
      */
-    setSource(source, status, message, errorPhase) {
+    setSource(source, status, message, errorPhase, errorLocation) {
         if (source.disposed) return;
 
         let entry = this.#sources.get(source);
@@ -57,7 +58,9 @@ export default class LoadingStatusRegistry {
         entry = { ...entry, status };
         delete entry.message;
         delete entry.errorPhase;
-        if (status === "error") Object.assign(entry, { message, errorPhase });
+        delete entry.errorLocation;
+        if (status === "error")
+            Object.assign(entry, { message, errorPhase, errorLocation });
         this.#sources.set(source, entry);
         this.#publish({ type: "update", entry });
     }
@@ -68,7 +71,7 @@ export default class LoadingStatusRegistry {
             try {
                 listener(
                     change.type === "update"
-                        ? { type: "update", entry: { ...change.entry } }
+                        ? { type: "update", entry: copyEntry(change.entry) }
                         : { ...change }
                 );
             } catch (error) {
@@ -85,7 +88,7 @@ export default class LoadingStatusRegistry {
 
     /** @returns {DataLoadingEntry[]} */
     getSnapshot() {
-        return Array.from(this.#sources.values(), (entry) => ({ ...entry }));
+        return Array.from(this.#sources.values(), copyEntry);
     }
 
     /** @param {DataSource} source */
@@ -135,4 +138,17 @@ export default class LoadingStatusRegistry {
         this.#sources.clear();
         this.#statuses.clear();
     }
+}
+
+/** @param {DataLoadingEntry} entry @returns {DataLoadingEntry} */
+function copyEntry(entry) {
+    const copy = { ...entry };
+    if (entry.errorLocation) {
+        const { origin, path } = entry.errorLocation;
+        copy.errorLocation = {
+            origin,
+            ...(path ? { path: Array.from(path) } : {}),
+        };
+    }
+    return copy;
 }

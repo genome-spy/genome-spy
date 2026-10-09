@@ -56,7 +56,7 @@ export default class ScaleInstanceManager {
     /** @type {(range: any[]) => void} */
     #setRange;
 
-    /** @type {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} */
+    /** @type {(expr: string, source?: object) => import("../paramRuntime/types.js").ExprRefFunction} */
     #createExpression;
 
     /** @type {() => void} */
@@ -82,7 +82,7 @@ export default class ScaleInstanceManager {
     /**
      * @param {object} options
      * @param {() => ViewParamRuntime} options.getRuntime
-     * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
+     * @param {(expr: string, source?: object) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
      * @param {(domain: any[]) => void} options.onDomainChange
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
@@ -263,7 +263,7 @@ export default class ScaleInstanceManager {
         /** @param {any} value */
         const bind = (value) => {
             if (!isExprRef(value)) return () => value;
-            const expression = this.#createExpression(value.expr);
+            const expression = this.#createExpression(value.expr, value);
             dependencies.push(...expression.dependencies);
             return expression;
         };

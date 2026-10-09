@@ -43,14 +43,16 @@ export default class DataSource extends FlowNode {
      * @param {import("../../types/viewContext.js").DataLoadingStatus} status
      * @param {string} [detail] The error message
      * @param {import("../../types/embedApi.js").DataLoadingEntry["errorPhase"]} [errorPhase]
+     * @param {import("../../types/embedApi.js").SpecLocation} [errorLocation]
      * @protected
      */
-    setLoadingStatus(status, detail, errorPhase) {
+    setLoadingStatus(status, detail, errorPhase, errorLocation) {
         this.view.context.dataFlow.loadingStatusRegistry.setSource(
             this,
             status,
             detail,
-            errorPhase
+            errorPhase,
+            errorLocation
         );
     }
 

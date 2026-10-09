@@ -48,7 +48,7 @@ import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
  * @param {Set<import("./scaleResolution.js").ScaleResolutionMember>} options.members
  * @param {Set<import("./scaleResolution.js").ScaleResolutionMember>} options.dataMembers
  * @param {import("./domainPlanner.js").ConfiguredDomainSource | undefined} options.viewLevelDomain
- * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
+ * @param {(expr: string, source?: object) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
  * @param {import("./domainPlanner.js").SelectionBindingResolver} options.resolveSelectionBinding
  * @param {import("./domainPlanner.js").FromComplexInterval} options.fromComplexInterval
  * @param {import("./domainPlanner.js").GetLocusExtent} options.getLocusExtent
@@ -115,7 +115,7 @@ export default function createDomainInputs({
         ]) {
             for (const ref of collectConfiguredDomainExprRefs(domain)) {
                 if (!expressions.has(ref.expr))
-                    expressions.set(ref.expr, createExpression(ref.expr));
+                    expressions.set(ref.expr, createExpression(ref.expr, ref));
             }
         }
         const zoomLevelResolutions = new Set(

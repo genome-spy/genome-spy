@@ -1,3 +1,4 @@
+import { getSpecErrorLocation } from "../../../utils/specError.js";
 import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
 import { debounce } from "../../../utils/debounce.js";
 import {
@@ -183,7 +184,12 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         } catch (e) {
             if (signal.aborted) return;
             this._lastLoadedDomain = undefined;
-            this.setLoadingStatus("error", e.message, errorPhase);
+            this.setLoadingStatus(
+                "error",
+                e.message,
+                errorPhase,
+                getSpecErrorLocation(e)
+            );
         }
     }
 

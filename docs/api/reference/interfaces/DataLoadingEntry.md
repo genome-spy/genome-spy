@@ -57,3 +57,11 @@ Present only for errors.
 > `optional` **errorPhase?**: `"request"` \| `"processing"`
 
 Confirmed failure boundary; absent when attribution is ambiguous.
+
+***
+
+### errorLocation?
+
+> `optional` **errorLocation?**: [`SpecLocation`](SpecLocation.md)
+
+Responsible declaration when a processing error carries a specification location.

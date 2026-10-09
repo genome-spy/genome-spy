@@ -73,7 +73,7 @@ export function createSelectionPredicate(
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, findValue: (param: string) => any }} paramRuntime
+ * @param {Pick<import("../paramRuntime/viewParamRuntime.js").default, "createExpression" | "findValue"> & Partial<Pick<import("../paramRuntime/viewParamRuntime.js").default, "getSpecLocation">>} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @returns {import("../types/encoder.js").EncodingBranch[]}

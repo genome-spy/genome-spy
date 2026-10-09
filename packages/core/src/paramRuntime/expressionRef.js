@@ -1,4 +1,11 @@
 import { compileExpression } from "./expressionCompiler.js";
+import { annotateSpecError } from "../utils/specError.js";
+
+/**
+ * @typedef {object} ExpressionBindingOptions
+ * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
+ */
 
 /**
  * @typedef {{
@@ -13,10 +20,24 @@ import { compileExpression } from "./expressionCompiler.js";
  *
  * @param {string} expr
  * @param {(name: string) => import("./types.js").ParamRef<any> | undefined} resolve
- * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
+ * @param {ExpressionBindingOptions} [options]
  * @returns {BoundExpression}
  */
 export function bindExpression(expr, resolve, options = {}) {
+    try {
+        return bind(expr, resolve, options);
+    } catch (error) {
+        throw annotateSpecError(error, options.specLocation);
+    }
+}
+
+/**
+ * @param {string} expr
+ * @param {(name: string) => import("./types.js").ParamRef<any> | undefined} resolve
+ * @param {ExpressionBindingOptions} options
+ * @returns {BoundExpression}
+ */
+function bind(expr, resolve, options) {
     const globalObject = {};
 
     /** @type {import("./types.js").ExprRefFunction} */

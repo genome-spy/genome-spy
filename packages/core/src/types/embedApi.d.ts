@@ -109,18 +109,29 @@ export interface EmbedOptions {
     onError?: (error: unknown, container: HTMLElement) => boolean | void;
 
     /**
-     * Links data-loading reports to locations in your specification.
+     * Links reported errors to locations in your specification.
      *
-     * Called with the original data definition object, such as `{ url: "data.csv" }`,
-     * when GenomeSpy creates a data source. Return a string identifying that
-     * definition, such as the JSON Pointer `"/vconcat/0/data"`. Reports include this
-     * string as `origin` in `dataLoading` snapshots and change events, allowing an
-     * editor to highlight the definition when loading fails.
+     * Called with a data definition, encoding branch, parameter, transform, or
+     * expression-reference object from your specification. Return a string
+     * identifying that object, such as the JSON Pointer `"/encoding/x"` for
+     * `{ field: "position", type: "quantitative" }`. Located field and expression
+     * errors include this string and a relative property path in `SpecLocation`.
+     * `getSpecErrorLocation(error)` reads it from errors delivered to `onError`
+     * or rejected by `embed`. Data-loading reports expose `errorLocation` for
+     * located processing errors and `origin` for the data definition itself.
      *
      * Return `undefined` if the definition's location is unknown. Equivalent data
      * definitions may share one source; its reports contain one definition's origin.
      */
     getSpecOrigin?: (fragment: object) => string | undefined;
+}
+
+/** A declaration identifier and property path within that declaration. */
+export interface SpecLocation {
+    /** String returned by `EmbedOptions.getSpecOrigin`; Core does not interpret it. */
+    readonly origin: string;
+    /** Property segments relative to the declaration, e.g. `["field"]` or `["expr"]`. */
+    readonly path?: readonly (string | number)[];
 }
 
 /**
@@ -916,6 +927,8 @@ export interface DataLoadingEntry {
     message?: string;
     /** Confirmed failure boundary; absent when attribution is ambiguous. */
     errorPhase?: "request" | "processing";
+    /** Responsible declaration when a processing error carries a specification location. */
+    errorLocation?: SpecLocation;
 }
 
 /** One source update or removal, rather than a complete snapshot. */

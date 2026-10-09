@@ -1,4 +1,5 @@
 import { isString } from "vega-util";
+import { getSpecLocation } from "../utils/specOrigin.js";
 import ParamRuntime from "./paramRuntime.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 import {
@@ -64,6 +65,7 @@ export default class ViewParamRuntime {
      * @prop {boolean} [animate=true]
      *
      * @typedef {object} WatchExpressionOptions
+     * @prop {object} [source] Authored declaration containing the expression.
      * @prop {boolean} [scopeOwned=true]
      *      Whether the subscription lifecycle is owned by this runtime scope.
      *      When true, the listener is unsubscribed automatically during
@@ -130,6 +132,9 @@ export default class ViewParamRuntime {
      */
     #settleTemporalUpdatesImmediately;
 
+    /** @type {((fragment: object) => string | undefined) | undefined} */
+    #getSpecOrigin;
+
     #disposed = false;
 
     /**
@@ -139,13 +144,14 @@ export default class ViewParamRuntime {
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
      * @param {import("../utils/animator.js").default} [animator]
-     * @param {{ settleTemporalUpdatesImmediately?: boolean, onError?: (error: unknown) => void }} [options]
+     * @param {{ settleTemporalUpdatesImmediately?: boolean, onError?: (error: unknown) => void, getSpecOrigin?: (fragment: object) => string | undefined }} [options]
      */
     constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
         this.#scaleResolutionResolver =
             scaleResolutionResolver ?? (() => undefined);
         this.#animator = animator;
+        this.#getSpecOrigin = options.getSpecOrigin;
         this.#settleTemporalUpdatesImmediately =
             options.settleTemporalUpdatesImmediately ?? false;
 
@@ -246,9 +252,11 @@ export default class ViewParamRuntime {
         });
     }
 
-    get #expressionOptions() {
+    /** @param {object} [source] */
+    #expressionOptions(source) {
         return {
             resolveScaleResolution: this.#scaleResolutionResolver,
+            specLocation: this.getSpecLocation(source, ["expr"]),
         };
     }
 
@@ -311,7 +319,7 @@ export default class ViewParamRuntime {
                 this.#scopeId,
                 name,
                 expr,
-                this.#expressionOptions
+                this.#expressionOptions()
             );
             this.#localRefs.set(name, ref);
         });
@@ -346,7 +354,7 @@ export default class ViewParamRuntime {
                 expr,
                 {
                     expressionScope: source.#scopeId,
-                    ...source.#expressionOptions,
+                    ...source.#expressionOptions(),
                 }
             );
             this.#localRefs.set(name, ref);
@@ -417,20 +425,22 @@ export default class ViewParamRuntime {
                 this.#registerTransitionedExpression(
                     name,
                     param.expr,
-                    param.transition
+                    param.transition,
+                    param
                 );
             } else if ("debounce" in param) {
                 this.#registerDebouncedExpression(
                     name,
                     param.expr,
-                    param.debounce
+                    param.debounce,
+                    param
                 );
             } else {
                 const ref = this.#runtime.registerDerived(
                     this.#scopeId,
                     name,
                     param.expr,
-                    this.#expressionOptions
+                    this.#expressionOptions(param)
                 );
                 this.#localRefs.set(name, ref);
             }
@@ -776,15 +786,24 @@ export default class ViewParamRuntime {
     // is disposed. A standalone deallocation API is intentionally not exposed.
 
     /**
+     * @param {object | undefined} source
+     * @param {readonly (string | number)[]} path
+     */
+    getSpecLocation(source, path) {
+        return getSpecLocation(source, this.#getSpecOrigin, path);
+    }
+
+    /**
      * Parse expr and return a function that returns the value of the parameter.
      *
      * @param {string} expr
+     * @param {object} [source] Authored declaration containing `expr`.
      */
-    createExpression(expr) {
+    createExpression(expr, source) {
         return this.#runtime.createExpression(
             this.#scopeId,
             expr,
-            this.#expressionOptions
+            this.#expressionOptions(source)
         );
     }
 
@@ -806,7 +825,7 @@ export default class ViewParamRuntime {
      * @returns {ExprRefFunction}
      */
     watchExpression(expr, listener, options = {}) {
-        const fn = this.createExpression(expr);
+        const fn = this.createExpression(expr, options.source);
         const dispose = fn.subscribe(listener);
 
         if (options.scopeOwned ?? true) {
@@ -946,9 +965,10 @@ export default class ViewParamRuntime {
      * @param {string} name
      * @param {string} expr
      * @param {import("../spec/parameter.js").ParamTransition} transition
+     * @param {object} source
      */
-    #registerTransitionedExpression(name, expr, transition) {
-        const expression = this.createExpression(expr);
+    #registerTransitionedExpression(name, expr, transition, source) {
+        const expression = this.createExpression(expr, source);
         const state = this.#registerTransitionState(
             name,
             expression(null),
@@ -966,9 +986,10 @@ export default class ViewParamRuntime {
      * @param {string} name
      * @param {string} expr
      * @param {number} wait
+     * @param {object} source
      */
-    #registerDebouncedExpression(name, expr, wait) {
-        const expression = this.createExpression(expr);
+    #registerDebouncedExpression(name, expr, wait, source) {
+        const expression = this.createExpression(expr, source);
         const initialValue = expression(null);
         const ref = this.#runtime.registerBase(
             this.#scopeId,
@@ -1078,9 +1099,10 @@ export default class ViewParamRuntime {
      * A convenience method for evaluating an expression.
      *
      * @param {string} expr
+     * @param {object} [source]
      */
-    evaluateAndGet(expr) {
-        const fn = this.createExpression(expr);
+    evaluateAndGet(expr, source) {
+        const fn = this.createExpression(expr, source);
         return fn();
     }
 
