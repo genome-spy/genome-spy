@@ -63,18 +63,7 @@ export default class UrlSource extends DataSource {
         const listUrl = concatUrl(this.baseUrl, props.urlsFromFile);
         const format = { type: props.type ?? "tsv" };
 
-        const result = await fetch(listUrl);
-
-        if (!result.ok) {
-            throw new Error(
-                `Cannot load "${listUrl}": ${result.status} ${result.statusText}`
-            );
-        }
-        const content = await readResponseBody(
-            result,
-            listUrl,
-            responseType(format.type)
-        );
+        const content = await loadResponse(listUrl, responseType(format.type));
 
         const files = /** @type {string[] | {url: string}[]} */ (
             read(content, toVegaLoaderFormat(format))
@@ -94,6 +83,8 @@ export default class UrlSource extends DataSource {
         this.setLoadingStatus("loading");
         this.reset();
 
+        /** @type {(Error & { errorPhase?: import("../../types/embedApi.js").DataLoadingEntry["errorPhase"] }) | undefined} */
+        let error;
         try {
             const url = withoutExprRef(this.params.url);
 
@@ -115,24 +106,6 @@ export default class UrlSource extends DataSource {
             if (urls.length > 0 && urls[0]) {
                 const format = getFormat(this.params, urls);
                 const type = responseType(format.type);
-
-                /** @param {string} url */
-                const load = async (url) => {
-                    try {
-                        const result = await fetch(url);
-                        if (!result.ok) {
-                            throw new Error(
-                                `${result.status} ${result.statusText}`
-                            );
-                        }
-                        return await readResponseBody(result, url, type);
-                    } catch (e) {
-                        throw new Error(
-                            `Could not load data: ${url}. Reason: ${e.message}`,
-                            { cause: e }
-                        );
-                    }
-                };
 
                 /**
                  * @param {any} content
@@ -174,7 +147,7 @@ export default class UrlSource extends DataSource {
                     descriptors.map((descriptor) =>
                         loadUrlDescriptorOrSkip(descriptor, async () => ({
                             descriptor,
-                            content: await load(descriptor.url),
+                            content: await loadResponse(descriptor.url, type),
                         }))
                     )
                 );
@@ -189,18 +162,50 @@ export default class UrlSource extends DataSource {
                     )
                 );
             }
-            if (!isCurrent()) return;
-            this.setLoadingStatus("complete");
-        } catch (e) {
-            if (!isCurrent()) return;
-            if (e instanceof UrlLimitExceededError) {
-                this.setLoadingStatus("complete");
-            } else {
-                this.setLoadingStatus("error", e.message);
-            }
+        } catch (cause) {
+            if (!(cause instanceof UrlLimitExceededError)) error = cause;
         }
-        this.complete();
+        if (!isCurrent()) return;
+
+        // Finish failed/empty streams too, but never retry completion if it throws.
+        try {
+            this.complete();
+        } catch (cause) {
+            error ??= cause;
+        }
+        if (!isCurrent()) return;
+
+        if (error) {
+            this.setLoadingStatus(
+                "error",
+                error.message,
+                error.errorPhase ?? "processing"
+            );
+        } else {
+            this.setLoadingStatus("complete");
+        }
     }
+}
+
+/**
+ * @param {string} url
+ * @param {string} type
+ */
+async function loadResponse(url, type) {
+    let result;
+    try {
+        result = await fetch(url);
+        if (!result.ok)
+            throw new Error(`${result.status} ${result.statusText}`);
+    } catch (cause) {
+        throw Object.assign(
+            new Error(`Could not load data: ${url}. Reason: ${cause.message}`, {
+                cause,
+            }),
+            { errorPhase: "request" }
+        );
+    }
+    return readResponseBody(result, url, type);
 }
 
 /**

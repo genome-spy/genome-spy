@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import LoadingStatusRegistry from "../genomeSpy/loadingStatusRegistry.js";
 import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
+import IntervalUrlSource from "../data/sources/lazy/intervalUrlSource.js";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
@@ -9,6 +11,12 @@ import {
     isSubtreeReady,
 } from "./dataReadiness.js";
 import UnitView from "./unitView.js";
+import { createBroadcastingTestViewContext } from "./testUtils.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
+import { registerLazyDataSource } from "../data/sources/lazy/lazyDataSourceRegistry.js";
 
 /**
  * @param {{ready?: boolean, completed?: boolean}} [options]
@@ -57,7 +65,7 @@ function createLazySubtree(options = {}) {
 
     // Non-obvious: use UnitView's prototype so instanceof checks pass without full init.
     const unitView = Object.create(UnitView.prototype);
-    unitView.isConfiguredVisible = () => visible;
+    unitView.isVisible = () => visible;
     unitView.getEffectiveOpacity = () => opacity;
 
     unitView.getScaleResolution = () => ({ getDomain: () => [0, 10] });
@@ -123,6 +131,7 @@ function createContextStub() {
             }
         },
         getListenerCount: () => listeners.size,
+        dataFlow: { loadingStatusRegistry: new LoadingStatusRegistry() },
     };
 }
 
@@ -178,7 +187,7 @@ describe("dataReadiness", () => {
     it("treats non-lazy sources as ready for lazy readiness checks", () => {
         // Non-obvious: dataSource lacks isDataReadyForDomain and should be ignored.
         const unitView = Object.create(UnitView.prototype);
-        unitView.isConfiguredVisible = () => true;
+        unitView.isVisible = () => true;
         unitView.getEffectiveOpacity = () => 1;
         unitView.flowHandle = {
             dataSource: new DataSource(
@@ -317,3 +326,218 @@ describe("dataReadiness", () => {
         expect(context.getListenerCount()).toBe(0);
     });
 });
+
+/** Controlled loading at the real spec-to-dataflow boundary. */
+class ControlledSource extends SingleAxisLazySource {
+    requests = 0;
+
+    /** @param {any} params @param {import("./view.js").default} view */
+    constructor(params, view) {
+        super(view, "x");
+    }
+
+    onDomainChanged() {
+        this.requests++;
+        this.setLoadingStatus("loading");
+    }
+
+    fail() {
+        this.setLoadingStatus("error", "Indexed data failed");
+    }
+
+    succeed() {
+        this.publishData([[{ x: 1, key: 1, label: "A" }]], [0, 10]);
+        this.setLoadingStatus("complete");
+    }
+}
+
+/** @type {(() => void)[]} */
+const disposers = [];
+afterEach(() => {
+    for (const dispose of disposers.splice(0)) dispose();
+    vi.unstubAllGlobals();
+});
+
+/** @param {import("../spec/root.js").RootSpec} spec */
+async function createLoadingGraph(spec) {
+    disposers.push(
+        registerLazyDataSource(
+            /** @type {(params: import("../spec/data.js").LazyDataParams) => params is any} */
+            ((/** @type {any} */ params) => params.type === "controlledStatus"),
+            ControlledSource
+        )
+    );
+    const context = createBroadcastingTestViewContext();
+    const root = await context.createOrImportView(spec, null, null, "root");
+    disposers.push(() => root.disposeSubtree());
+    const { dataSources } = initializeViewSubtree(root, context.dataFlow);
+    await loadViewSubtreeData(root, dataSources);
+    const lazy = context.dataFlow.dataSources.filter(
+        (source) => source instanceof ControlledSource
+    );
+    return { context, root, lazy };
+}
+
+const controlledData = /** @type {any} */ ({
+    lazy: { type: "controlledStatus" },
+});
+const xEncoding = /** @type {import("../spec/channel.js").Encoding} */ ({
+    x: { field: "x", type: "quantitative", scale: { domain: [0, 10] } },
+});
+
+it.each(["before", "during"])(
+    "rejects an inherited loading failure %s a wait without retrying",
+    async (timing) => {
+        const {
+            context,
+            root,
+            lazy: [source],
+        } = await createLoadingGraph({
+            data: controlledData,
+            encoding: xEncoding,
+            layer: [{ mark: "point" }, { mark: "point" }],
+        });
+        if (timing === "before") source.fail();
+        const requests = source.requests;
+        const wait = awaitSubtreeLazyReady(context, root, { x: [0, 10] });
+        if (timing === "during") source.fail();
+        await expect(wait).rejects.toThrow("Indexed data failed");
+        expect(source.requests).toBe(requests + (timing === "during" ? 1 : 0));
+    }
+);
+
+it.each(["primary", "side"])(
+    "rejects failed eager %s data required by a lazy branch",
+    async (failure) => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response("", { status: 404 }))
+        );
+        const missing = { url: "missing.csv" };
+        const {
+            context,
+            root,
+            lazy: [source],
+        } = await createLoadingGraph({
+            data: failure === "primary" ? missing : controlledData,
+            transform: [
+                failure === "primary"
+                    ? {
+                          type: "coordinateLookup",
+                          from: { data: controlledData },
+                          key: "x",
+                          values: ["label"],
+                      }
+                    : {
+                          type: "lookup",
+                          from: missing,
+                          key: "key",
+                          fields: ["key"],
+                          values: ["label"],
+                      },
+            ],
+            mark: "point",
+            encoding: xEncoding,
+        });
+        const requests = source.requests;
+        await expect(
+            awaitSubtreeLazyReady(context, root, undefined)
+        ).rejects.toThrow("missing.csv");
+        expect(source.requests).toBe(requests);
+    }
+);
+
+it("ignores failures under a hidden container and wholly eager failures", async () => {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response("", { status: 404 }))
+    );
+    const { context, root, lazy } = await createLoadingGraph({
+        vconcat: [
+            {
+                name: "visible",
+                data: controlledData,
+                mark: "point",
+                encoding: xEncoding,
+            },
+            {
+                name: "hidden",
+                data: controlledData,
+                encoding: xEncoding,
+                layer: [{ mark: "point" }],
+            },
+            { data: { url: "unrelated.csv" }, mark: "point" },
+        ],
+    });
+    context.isViewConfiguredVisible = (view) => view.name !== "hidden";
+    lazy.find((source) => source.view.name === "hidden").fail();
+    const wait = awaitSubtreeLazyReady(context, root, { x: [0, 10] });
+    lazy.find((source) => source.view.name === "visible").succeed();
+    await expect(wait).resolves.toBeUndefined();
+});
+
+it.each(["value", "missing"])(
+    "waits for lazy publication to settle with y field %s",
+    async (field) => {
+        /** @extends {IntervalUrlSource<object, import("../data/flowNode.js").Datum[][]>} */
+        class PublishingSource extends IntervalUrlSource {
+            /** @param {any} params @param {import("./view.js").default} view */
+            constructor(params, view) {
+                super(view, "x");
+                this.params = {
+                    ...params,
+                    debounce: 0,
+                    debounceMode: "window",
+                };
+                this.setupUrlLoading({
+                    loadModules: async () => ({}),
+                    createHandle: async () => ({}),
+                });
+            }
+
+            /** @param {number[]} interval */
+            async loadWindow(interval) {
+                return { interval, data: [[{ x: 1, value: 1 }]] };
+            }
+        }
+        disposers.push(
+            registerLazyDataSource(
+                /** @type {(params: import("../spec/data.js").LazyDataParams) => params is any} */
+                (
+                    (/** @type {any} */ params) =>
+                        params.type === "publishingStatus"
+                ),
+                PublishingSource
+            )
+        );
+        const { context, root } = await createLoadingGraph({
+            data: /** @type {any} */ ({
+                lazy: { type: "publishingStatus", url: "valid.data" },
+            }),
+            mark: "point",
+            encoding: {
+                ...xEncoding,
+                y: { field, type: "quantitative" },
+            },
+        });
+        const source = context.dataFlow.dataSources.find(
+            (source) => source instanceof PublishingSource
+        );
+        const wait = awaitSubtreeLazyReady(context, root, { x: [0, 10] });
+        const outcome =
+            field === "missing"
+                ? expect(wait).rejects.toThrow('Invalid field "missing"')
+                : expect(wait).resolves.toBeUndefined();
+
+        // Collector completion precedes transaction-end scale processing.
+        await source.requestInterval([0, 10]);
+        await outcome;
+        expect(
+            context.dataFlow.loadingStatusRegistry.getSource(source)
+        ).toMatchObject(
+            field === "missing"
+                ? { status: "error", errorPhase: "processing" }
+                : { status: "complete" }
+        );
+    }
+);

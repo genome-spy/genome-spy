@@ -6,6 +6,9 @@ export default class DataSource extends FlowNode {
      */
     view;
 
+    /** @type {string | undefined} Authored declaration context, independent of sharing keys. */
+    origin;
+
     /**
      * @param {import("../../view/view.js").default} view
      */
@@ -39,13 +42,15 @@ export default class DataSource extends FlowNode {
      *
      * @param {import("../../types/viewContext.js").DataLoadingStatus} status
      * @param {string} [detail] The error message
+     * @param {import("../../types/embedApi.js").DataLoadingEntry["errorPhase"]} [errorPhase]
      * @protected
      */
-    setLoadingStatus(status, detail) {
-        this.view.context.dataFlow.loadingStatusRegistry.set(
-            this.view,
+    setLoadingStatus(status, detail, errorPhase) {
+        this.view.context.dataFlow.loadingStatusRegistry.setSource(
+            this,
             status,
-            detail
+            detail,
+            errorPhase
         );
     }
 

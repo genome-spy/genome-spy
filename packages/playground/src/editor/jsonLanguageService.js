@@ -12,12 +12,14 @@
 import { pickedCompletion, snippet } from "@codemirror/autocomplete";
 import { jsonLanguage } from "@codemirror/lang-json";
 import { linter } from "@codemirror/lint";
-import { Transaction } from "@codemirror/state";
+import { StateEffect, Transaction } from "@codemirror/state";
 import { hoverTooltip } from "@codemirror/view";
 import { micromark } from "micromark";
 
 // @ts-ignore
 import JsonLanguageServiceWorker from "./jsonLanguageServiceWorker.js?worker";
+
+export const refreshJsonDiagnostics = StateEffect.define();
 
 export class JsonLanguageServiceClient {
     /** @type {Worker} */
@@ -51,13 +53,20 @@ export class JsonLanguageServiceClient {
      * @param {"validate" | "complete" | "hover"} type
      * @param {string} text
      * @param {number} [offset]
+     * @param {readonly import("@genome-spy/core/types/embedApi.js").DataLoadingEntry[]} [loadingEntries]
      */
-    request(type, text, offset = 0) {
+    request(type, text, offset = 0, loadingEntries = []) {
         const id = this._nextRequestId++;
 
         return new Promise((resolve, reject) => {
             this._requests.set(id, { resolve, reject });
-            this._worker.postMessage({ id, type, text, offset });
+            this._worker.postMessage({
+                id,
+                type,
+                text,
+                offset,
+                loadingEntries,
+            });
         });
     }
 
@@ -209,24 +218,46 @@ export function renderHoverMarkdown(contents) {
 
 /**
  * @param {JsonLanguageServiceClient} client
+ * @param {{ getLoadingEntries: (text: string) => readonly import("@genome-spy/core/types/embedApi.js").DataLoadingEntry[], getLoadingRevision: () => number }} [loading]
  */
-export function createJsonLanguageExtensions(client) {
-    const validation = linter(async (view) => {
-        const document = view.state.doc;
-        /** @type {import("vscode-json-languageservice").Diagnostic[]} */
-        const diagnostics = await client.request(
-            "validate",
-            document.toString()
-        );
+export function createJsonLanguageExtensions(client, loading) {
+    const validation = linter(
+        async (view) => {
+            const document = view.state.doc;
+            let revision;
+            /** @type {import("vscode-json-languageservice").Diagnostic[]} */
+            let diagnostics;
+            do {
+                revision = loading?.getLoadingRevision();
+                diagnostics = await client.request(
+                    "validate",
+                    document.toString(),
+                    0,
+                    loading?.getLoadingEntries(document.toString())
+                );
+                // CodeMirror guards document changes, but not source updates on the same document.
+            } while (
+                view.state.doc === document &&
+                revision !== loading?.getLoadingRevision()
+            );
 
-        return diagnostics.map((diagnostic) => ({
-            from: positionToOffset(document, diagnostic.range.start),
-            to: positionToOffset(document, diagnostic.range.end),
-            message: getDocumentation(diagnostic.message) ?? "",
-            severity: convertSeverity(diagnostic.severity),
-            source: diagnostic.source,
-        }));
-    });
+            return diagnostics.map((diagnostic) => ({
+                from: positionToOffset(document, diagnostic.range.start),
+                to: positionToOffset(document, diagnostic.range.end),
+                message: getDocumentation(diagnostic.message) ?? "",
+                severity: convertSeverity(diagnostic.severity),
+                source: diagnostic.source,
+            }));
+        },
+        {
+            needsRefresh: (update) =>
+                update.transactions.some((transaction) =>
+                    transaction.effects.some((effect) =>
+                        effect.is(refreshJsonDiagnostics)
+                    )
+                ),
+        }
+    );
 
     const completion = jsonLanguage.data.of({
         autocomplete: async (

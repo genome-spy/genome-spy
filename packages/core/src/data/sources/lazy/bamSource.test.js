@@ -136,7 +136,7 @@ function createViewStub(initialWindowSize = 300) {
                 undefined,
             dataFlow: {
                 loadingStatusRegistry: {
-                    set: /** @returns {undefined} */ () => undefined,
+                    setSource: /** @returns {undefined} */ () => undefined,
                 },
             },
         },

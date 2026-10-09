@@ -98,7 +98,7 @@ defaults and built-in theme, but before `spec.config`.
 
 > `optional` **onError?**: (`error`, `container`) => `boolean` \| `void`
 
-Optional hook for handling launch errors. Return true to suppress default UI.
+Optional hook for handling launch and runtime errors. Return true to suppress default UI.
 
 #### Parameters
 
@@ -110,3 +110,30 @@ Optional hook for handling launch errors. Return true to suppress default UI.
 #### Returns
 
 `boolean` \| `void`
+
+***
+
+### getSpecOrigin?
+
+> `optional` **getSpecOrigin?**: (`fragment`) => `string`
+
+Links data-loading reports to locations in your specification.
+
+Called with the original data definition object, such as `{ url: "data.csv" }`,
+when GenomeSpy creates a data source. Return a string identifying that
+definition, such as the JSON Pointer `"/vconcat/0/data"`. Reports include this
+string as `origin` in `dataLoading` snapshots and change events, allowing an
+editor to highlight the definition when loading fails.
+
+Return `undefined` if the definition's location is unknown. Equivalent data
+definitions may share one source; its reports contain one definition's origin.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `fragment` | `object` |
+
+#### Returns
+
+`string`

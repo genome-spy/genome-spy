@@ -353,7 +353,8 @@ export default class GenomeSpy {
         this.#loadingStatusRegistry = new LoadingStatusRegistry();
         this.#loadingIndicatorManager = new LoadingIndicatorManager(
             loadingIndicatorsElement,
-            this.#loadingStatusRegistry
+            this.#loadingStatusRegistry,
+            () => this.viewRoot
         );
     }
 
@@ -378,6 +379,8 @@ export default class GenomeSpy {
         this.#keyboardListenerManager.removeAll();
 
         this.#destructionCallbacks.forEach((callback) => callback());
+
+        this.#loadingStatusRegistry?.clear();
 
         this.#disposeInitializedResources();
 
@@ -446,6 +449,7 @@ export default class GenomeSpy {
             genomeStore: this.genomeStore,
             textMetrics: this.#renderingBackend.textMetrics,
             reportError: this.#reportRuntimeError.bind(this),
+            getSpecOrigin: this.options.getSpecOrigin,
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
@@ -638,13 +642,7 @@ export default class GenomeSpy {
             if (this.#destroyed) {
                 this.#disposeInitializedResources();
             }
-            // Shared root data may have failed while initialization succeeded.
-            if (
-                launched &&
-                this.viewRoot &&
-                this.#loadingStatusRegistry.get(this.viewRoot)?.status !==
-                    "error"
-            ) {
+            if (launched) {
                 this.#loadingStatusRegistry.set(this.viewRoot, "complete");
             }
         }

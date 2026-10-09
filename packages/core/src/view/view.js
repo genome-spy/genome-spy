@@ -1083,9 +1083,8 @@ export default class View {
         this.paramRuntime.dispose();
         this.namedDataScope.dispose();
 
-        this.context.dataFlow.loadingStatusRegistry.delete(this);
-
         this.flowHandle = undefined;
+        this.context.dataFlow.loadingStatusRegistry.delete(this);
     }
 
     /**

@@ -16,6 +16,70 @@ const api = await embed(container, spec);
 api.finalize();
 ```
 
+## Data loading
+
+Data sources can fail independently while the rest of the visualization remains
+usable. `dataLoading` exposes those outcomes without reading the visualization or
+browser console. It observes eager URL and lazy loading, including transform side
+inputs. It is separate from `datasets`: named-data updates throw to their callers
+(or reject their parsing promise), and application-owned fetches remain the
+application's responsibility.
+
+```js
+const api = await embed(container, spec);
+const sources = new Map();
+const unsubscribe = api.dataLoading.subscribe((change) => {
+  if (change.type === "update") {
+    sources.set(change.entry.sourceId, change.entry);
+  } else {
+    sources.delete(change.sourceId);
+  }
+});
+for (const entry of api.dataLoading.getSnapshot()) {
+  sources.set(entry.sourceId, entry);
+}
+```
+
+Subscribe and read the snapshot synchronously, with no `await` between them. The
+snapshot includes eager failures preceding embed completion; notifications report
+one future source update or removal. Each detached entry has a stable `sourceId`,
+a `status` (`"loading"`, `"complete"`, or `"error"`), and an error `message` when
+available. A new loading attempt replaces the previous error. Unrequested hidden
+views and future lazy windows have no certified outcome.
+
+Equivalent declarations may share one source and one entry. `viewId` and `viewPath`
+describe its original declaring view, even if that view is later removed. The
+optional `getSpecOrigin(fragment)` embed option receives each data definition and
+can return its location, such as a JSON Pointer. Reports include it as `origin`,
+so an editor can locate a failed definition. Return `undefined` when the location
+is unknown. A shared source reports one definition's origin.
+`errorPhase` identifies confirmed request or processing failures and is absent
+when attribution is ambiguous.
+
+Unsubscribe when observation is no longer needed. Finalization removes all
+subscriptions; subsequent reads or subscriptions throw. Listener exceptions are
+reported asynchronously to the browser and do not change source outcomes.
+
+### Waiting for visible lazy data
+
+For automated validation or capture, `awaitVisibleLazyData(signal)` waits for the
+current visible lazy data and rejects when a required source fails. Check the
+snapshot as well to detect eager failures in branches without lazy dependencies:
+
+```js
+await api.awaitVisibleLazyData();
+const failures = api.dataLoading
+  .getSnapshot()
+  .filter((entry) => entry.status === "error");
+if (failures.length) {
+  throw new Error(failures.map((entry) => entry.message).join("\n"));
+}
+```
+
+Handle the rejected promise in your caller. An already recorded relevant failure
+rejects immediately without retrying. The wait ignores unrelated hidden sources
+and accepts an `AbortSignal` for cancellation.
+
 ## Interaction events
 
 An embed exposes native canvas input through `events.subscribe()`. The listener

@@ -1,140 +1,137 @@
 import { html, nothing, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
+import { iterateDataDependencies } from "../data/dataReadiness.js";
+import DataSource from "../data/sources/dataSource.js";
+import UnitView from "../view/unitView.js";
 import SPINNER from "../img/90-ring-with-bg.svg";
 
 export default class LoadingIndicatorManager {
     /** @type {HTMLElement} */
-    #loadingIndicatorsElement;
+    #element;
+
+    /** @type {import("./loadingStatusRegistry.js").default} */
+    #registry;
+
+    /** @type {() => import("../view/view.js").default | undefined} */
+    #getRoot;
+
+    /** @type {() => void} */
+    #unsubscribe;
+
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    #hideTimeout;
 
     /**
-     * @type {import("./loadingStatusRegistry.js").default}
+     * @param {HTMLElement} element
+     * @param {import("./loadingStatusRegistry.js").default} registry
+     * @param {() => import("../view/view.js").default | undefined} getRoot
      */
-    #loadingStatusRegistry;
-
-    /** @type {(() => void) | null} */
-    #unsubscribe = null;
-
-    /**
-     * @param {HTMLElement} loadingIndicatorsElement
-     * @param {import("./loadingStatusRegistry.js").default} loadingStatusRegistry
-     */
-    constructor(loadingIndicatorsElement, loadingStatusRegistry) {
-        this.#loadingIndicatorsElement = loadingIndicatorsElement;
-
-        this.#loadingStatusRegistry = loadingStatusRegistry;
-
-        this.#unsubscribe = this.#loadingStatusRegistry.subscribe(() =>
-            this.updateLayout()
-        );
+    constructor(element, registry, getRoot) {
+        this.#element = element;
+        this.#registry = registry;
+        this.#getRoot = getRoot;
+        this.#unsubscribe = registry.observe(() => this.updateLayout());
         this.updateLayout();
     }
 
     destroy() {
-        if (this.#unsubscribe) {
-            this.#unsubscribe();
-            this.#unsubscribe = null;
-        }
+        this.#unsubscribe();
+        clearTimeout(this.#hideTimeout);
+    }
+
+    /** Derive placement from live consumers, never the source's original owner. */
+    #getStatuses() {
+        const statuses = Array.from(this.#registry.entries());
+        this.#getRoot()?.visit((view) => {
+            if (!(view instanceof UnitView) || !view.isVisible()) return;
+            const collector = view.flowHandle?.collector;
+            if (!collector) return;
+
+            /** @type {import("./loadingStatusRegistry.js").LoadingStatus | undefined} */
+            let status;
+            for (const node of iterateDataDependencies(collector)) {
+                if (!(node instanceof DataSource)) continue;
+                const entry = this.#registry.getSource(node);
+                if (
+                    entry &&
+                    (status === undefined ||
+                        entry.status === "error" ||
+                        (status.status !== "error" &&
+                            entry.status === "loading"))
+                ) {
+                    status = { status: entry.status, detail: entry.message };
+                }
+            }
+            if (status) statuses.push([view, status]);
+        });
+        return statuses;
     }
 
     updateLayout() {
+        const statuses = this.#getStatuses();
         /** @type {import("lit").TemplateResult[]} */
         const indicators = [];
-
-        const isSomethingVisible = () => {
-            for (const [, status] of this.#loadingStatusRegistry.entries()) {
-                if (status.status == "loading" || status.status == "error") {
-                    return true;
-                }
-            }
-            return false;
-        };
-
-        /** @type {{ status: import("../types/viewContext.js").DataLoadingStatus, detail?: string } | undefined} */
-        let fallbackStatus;
+        /** @type {import("./loadingStatusRegistry.js").LoadingStatus | undefined} */
+        let fallback;
         let hasVisibleWithCoords = false;
 
-        for (const [view, status] of this.#loadingStatusRegistry.entries()) {
-            const isVisible =
-                status.status == "loading" || status.status == "error";
-
-            const c = view.coords;
-            if (!c && isVisible && !fallbackStatus) {
-                fallbackStatus = status;
-            }
-            if (c) {
-                if (isVisible) {
-                    hasVisibleWithCoords = true;
-                }
-
-                const style = {
-                    left: `${c.x}px`,
-                    top: `${c.y}px`,
-                    width: `${c.width}px`,
-                    height: `${c.height}px`,
-                };
+        for (const [view, status] of statuses) {
+            const visible = status.status !== "complete";
+            if (view.coords) {
+                hasVisibleWithCoords ||= visible;
                 indicators.push(
-                    html`<div style=${styleMap(style)}>
-                        <div class=${status.status}>
-                            ${status.status == "error"
-                                ? html`<span
-                                      >Loading
-                                      failed${status.detail
-                                          ? html`: ${status.detail}`
-                                          : nothing}</span
-                                  >`
-                                : html`
-                                      <img src="${SPINNER}" alt="" />
-                                      <span>Loading...</span>
-                                  `}
-                        </div>
-                    </div>`
+                    this.#indicator(status, {
+                        left: `${view.coords.x}px`,
+                        top: `${view.coords.y}px`,
+                        width: `${view.coords.width}px`,
+                        height: `${view.coords.height}px`,
+                    })
                 );
+            } else if (visible && (!fallback || status.status === "error")) {
+                fallback = status;
             }
         }
-
-        if (fallbackStatus && !hasVisibleWithCoords) {
-            const style = {
-                left: "0px",
-                top: "0px",
-                width: "100%",
-                height: "100%",
-            };
+        if (fallback && !hasVisibleWithCoords) {
             indicators.push(
-                html`<div style=${styleMap(style)}>
-                    <div class=${fallbackStatus.status}>
-                        ${fallbackStatus.status == "error"
-                            ? html`<span
-                                  >Loading
-                                  failed${fallbackStatus.detail
-                                      ? html`: ${fallbackStatus.detail}`
-                                      : nothing}</span
-                              >`
-                            : html`
-                                  <img src="${SPINNER}" alt="" />
-                                  <span>Loading...</span>
-                              `}
-                    </div>
-                </div>`
+                this.#indicator(fallback, {
+                    left: "0px",
+                    top: "0px",
+                    width: "100%",
+                    height: "100%",
+                })
             );
         }
 
-        // Do some hacks to stop css animations of the loading indicators.
-        // Otherwise they fire animation frames even when their opacity is zero.
-        // TODO: Instead of this, replace the animated spinners with static images.
-        // Or even better, once more widely supported, use `allow-discrete`
-        // https://developer.mozilla.org/en-US/docs/Web/CSS/transition-behavior
-        // to enable transition of the display property.
-        if (isSomethingVisible()) {
-            this.#loadingIndicatorsElement.style.display = "block";
+        clearTimeout(this.#hideTimeout);
+        if (statuses.some(([, status]) => status.status !== "complete")) {
+            this.#element.style.display = "block";
         } else {
-            // TODO: Clear previous timeout
-            setTimeout(() => {
-                if (!isSomethingVisible()) {
-                    this.#loadingIndicatorsElement.style.display = "none";
-                }
+            // Stop invisible spinner animations after their fade-out transition.
+            this.#hideTimeout = setTimeout(() => {
+                this.#element.style.display = "none";
             }, 3000);
         }
+        render(indicators, this.#element);
+    }
 
-        render(indicators, this.#loadingIndicatorsElement);
+    /**
+     * @param {import("./loadingStatusRegistry.js").LoadingStatus} status
+     * @param {Record<string, string>} style
+     */
+    #indicator(status, style) {
+        return html`<div style=${styleMap(style)}>
+            <div class=${status.status}>
+                ${
+                    status.status === "error"
+                        ? html`<span
+                              >Loading
+                              failed${status.detail ? html`: ${status.detail}` : nothing}</span
+                          >`
+                        : html`<img src=${SPINNER} alt="" /><span
+                                  >Loading...</span
+                              >`
+                }
+            </div>
+        </div>`;
     }
 }

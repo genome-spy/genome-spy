@@ -154,18 +154,22 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         const signal = this.#abortController.signal;
         this.setLoadingStatus("loading");
 
+        /** @type {import("../../../types/embedApi.js").DataLoadingEntry["errorPhase"]} */
+        let errorPhase;
         try {
             const handles = await this.#getHandles(signal);
             signal.throwIfAborted();
 
             if (!handles.length) {
                 const empty = /** @type {D} */ ([]);
+                errorPhase = "processing";
                 this.#publishLoaded(empty, domain, handles, windowSize);
             } else {
                 const loaded = await this.loadWindow(domain, handles, signal);
                 signal.throwIfAborted();
                 if (loaded) {
                     const size = loaded.windowSize ?? windowSize;
+                    errorPhase = "processing";
                     this.#publishLoaded(
                         loaded.data,
                         loaded.interval,
@@ -179,7 +183,7 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         } catch (e) {
             if (signal.aborted) return;
             this._lastLoadedDomain = undefined;
-            this.setLoadingStatus("error", e.message);
+            this.setLoadingStatus("error", e.message, errorPhase);
         }
     }
 

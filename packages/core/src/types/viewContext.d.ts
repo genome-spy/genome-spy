@@ -57,6 +57,9 @@ export default interface ViewContext {
     /** Reports runtime errors without suppressing propagation failures. */
     reportError?: (error: unknown) => void;
 
+    /** Optional opaque authored-spec context for diagnostics. */
+    getSpecOrigin?: (fragment: object) => string | undefined;
+
     requestLayoutReflow: () => void;
 
     /**
