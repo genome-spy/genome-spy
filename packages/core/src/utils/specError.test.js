@@ -163,7 +163,7 @@ test.each(["point", "rect", "rule", "text"])(
     "locates a missing inherited field after %s normalization",
     async (mark) => {
         const declaration = {
-            field: "missing",
+            field: "Beak foobar Length (mm)",
             type: /** @type {const} */ ("nominal"),
         };
         const spec = {
@@ -175,7 +175,7 @@ test.each(["point", "rect", "rule", "text"])(
             createHeadlessEngine(spec, { context: locatedContext(declaration) })
         ).rejects.toSatisfy((error) => {
             expect(error.message).toContain(
-                'Invalid field "missing". Available fields or properties: present'
+                'Invalid field "Beak foobar Length (mm)". Available fields or properties: present'
             );
             expect(getSpecErrorLocation(error)).toEqual({
                 origin: "declaration",

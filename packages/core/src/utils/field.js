@@ -1,4 +1,4 @@
-import { field as vegaField, accessor } from "vega-util";
+import { field as vegaField, accessor, splitAccessPath } from "vega-util";
 import { annotateSpecError } from "./specError.js";
 
 /**
@@ -17,13 +17,15 @@ import { annotateSpecError } from "./specError.js";
  * @param {string} [name]
  * @param {import("../types/embedApi.js").SpecLocation} [location]
  */
-export function field(fieldExpr, name = fieldExpr, location) {
-    if (/^[A-Za-z0-9_]+$/.test(fieldExpr)) {
+export function field(fieldExpr, name, location) {
+    const path = splitAccessPath(fieldExpr);
+    if (path.length === 1) {
+        const fieldName = path[0];
         const validate = function (
             /** @type {import("../data/flowNode.js").Datum} */ datum
         ) {
-            if (!(fieldExpr in datum)) {
-                logMissingProperty(datum, fieldExpr, location);
+            if (!(fieldName in datum)) {
+                logMissingProperty(datum, fieldName, location);
             }
         };
 
@@ -37,11 +39,11 @@ export function field(fieldExpr, name = fieldExpr, location) {
                         validator(datum);
                         validated = true;
                     }
-                    return datum[${JSON.stringify(fieldExpr)}];
+                    return datum[${JSON.stringify(fieldName)}];
                 }`
             )(validate)
         );
-        return accessor(fn, [fieldExpr], name);
+        return accessor(fn, [fieldName], name ?? fieldName);
     } else {
         // TODO: Should implement validation here as well
         return vegaField(fieldExpr);
