@@ -20,11 +20,6 @@ from a publicly accessible web server or from your computer. The Playground
 does not support saving or sharing visualizations, so keep a copy of your
 specification if you want to reuse it.
 
-Loading failures underline the affected data declaration in the editor; hover to
-read the error. A failed request for a single URL highlights that URL, while
-processing errors and ambiguous lazy-source failures highlight the data
-configuration. Fixing the specification clears the obsolete diagnostic.
-
 ## Embed a JSON specification in a web page
 
 To use a JSON specification outside the Playground, embed GenomeSpy Core in an
