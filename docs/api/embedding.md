@@ -90,20 +90,22 @@ by `finalize()`.
 
 ### Locating specification errors
 
-Editors can associate missing encoding-field and invalid-expression errors with
-the responsible declaration. Provide `getSpecOrigin(fragment)` to identify
-objects in the specification passed to `embed`, for example using a `WeakMap`
-of objects to JSON Pointers. Then import `getSpecErrorLocation` from
-`@genome-spy/core` (also available from the minimal entry point) and call it on
-an error received by `onError` or caught from `embed`.
+Editors can locate errors involving missing encoding fields, invalid expressions,
+duplicate parameter names, and transform construction failures. Provide
+`getSpecOrigin(fragment)` to identify objects in the specification passed to
+`embed`, for example using a `WeakMap` of objects to JSON Pointers. Then import
+`getSpecErrorLocation` from `@genome-spy/core` (also available from the minimal
+entry point) and call it on an error received by `onError` or caught from `embed`.
 
 The result is `{ origin, path }`, where `origin` is the string returned by your
 callback and `path` identifies a property within that declaration. For an
 unknown field in `encoding.x`, this could be
 `{ origin: "/encoding/x", path: ["field"] }`; a syntax error or unknown parameter
-in an expression identifies its `expr` property. The helper also checks wrapped
-errors' causes. Not every error has a location, and this does not validate
-`datum` field references in expressions.
+in an expression identifies its `expr` property. Duplicate parameters identify the
+second declaration's `name`; transform construction failures identify the whole
+transform (`path: []`). The helper also checks wrapped errors' causes.
+Not every error has a location, and this does not validate `datum` field references
+in expressions.
 
 Track-local processing failures carry the same information in
 [`dataLoading` entries](./instance.md#data-loading) as `errorLocation`. Their

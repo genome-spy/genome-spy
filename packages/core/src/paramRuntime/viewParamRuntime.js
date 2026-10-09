@@ -1,5 +1,6 @@
 import { isString } from "vega-util";
 import { getSpecLocation } from "../utils/specOrigin.js";
+import { annotateSpecError } from "../utils/specError.js";
 import ParamRuntime from "./paramRuntime.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 import {
@@ -281,8 +282,11 @@ export default class ViewParamRuntime {
             this.#paramConfigs.has(name) ||
             this.#lazyExpressionNames.has(name)
         ) {
-            throw new Error(
-                'Parameter "' + name + '" already registered in this scope.'
+            throw annotateSpecError(
+                new Error(
+                    'Parameter "' + name + '" already registered in this scope.'
+                ),
+                this.getSpecLocation(param, ["name"])
             );
         }
 

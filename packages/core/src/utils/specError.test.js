@@ -6,6 +6,7 @@ import {
 } from "../genomeSpy/headlessBootstrap.js";
 import { getEncoderAccessors } from "../encoder/encoder.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
+import createTransform from "../data/transforms/transformFactory.js";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -36,6 +37,91 @@ function locatedContext(declaration, wrapRoot = false) {
         fragment === declaration ? "declaration" : undefined;
     return context;
 }
+
+test.each(
+    [
+        { type: "regexExtract", regex: "[", field: "present", as: "match" },
+        { type: "project", fields: ["present"], as: [] },
+        { type: "aggregate", fields: ["present"], ops: [] },
+    ].flatMap((declaration) =>
+        [false, true].map((sideInput) => ({ declaration, sideInput }))
+    )
+)(
+    "locates $declaration.type construction errors with sideInput=$sideInput",
+    async ({ declaration, sideInput }) => {
+        const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
+            data: { values: [{ present: 1 }] },
+            // A nested failure must identify its own declaration, not the outer join.
+            transform: sideInput
+                ? [
+                      {
+                          type: "cross",
+                          from: {
+                              data: { values: [{ present: 2 }] },
+                              transform: [declaration],
+                          },
+                      },
+                  ]
+                : [declaration],
+            mark: "point",
+        });
+        await expect(
+            createHeadlessEngine(spec, { context: locatedContext(declaration) })
+        ).rejects.toSatisfy((error) => {
+            expect(error.message).toContain("Cannot initialize");
+            expect(getSpecErrorLocation(error)).toEqual({
+                origin: "declaration",
+                path: [],
+            });
+            if (declaration.type === "regexExtract")
+                expect(error.cause).toBeInstanceOf(SyntaxError);
+            return true;
+        });
+    }
+);
+
+test("standalone transform construction preserves ordinary errors without a view", () => {
+    const declaration = {
+        type: "regexExtract",
+        regex: "[",
+        field: "x",
+        as: "y",
+    };
+    try {
+        createTransform(declaration);
+        expect.unreachable("Invalid regular expression must fail construction");
+    } catch (error) {
+        expect(error).toBeInstanceOf(SyntaxError);
+        expect(getSpecErrorLocation(error)).toBeUndefined();
+    }
+});
+
+test.each(
+    /** @type {import("../spec/parameter.js").Parameter[]} */ ([
+        { name: "same", value: 2 },
+        { name: "same", expr: "span(domain('x'))" },
+    ])
+)("locates the duplicate parameter name for %j", async (declaration) => {
+    await expect(
+        createHeadlessEngine(
+            {
+                data: { values: [] },
+                params: [{ name: "same", value: 1 }, declaration],
+                mark: "point",
+            },
+            { context: locatedContext(declaration) }
+        )
+    ).rejects.toSatisfy((error) => {
+        expect(error.message).toBe(
+            'Parameter "same" already registered in this scope.'
+        );
+        expect(getSpecErrorLocation(error)).toEqual({
+            origin: "declaration",
+            path: ["name"],
+        });
+        return true;
+    });
+});
 
 test.each(["point", "rect", "rule", "text"])(
     "locates a missing inherited field after %s normalization",

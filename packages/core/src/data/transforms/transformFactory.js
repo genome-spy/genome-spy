@@ -1,3 +1,4 @@
+import { annotateSpecError } from "../../utils/specError.js";
 import Collector from "../collector.js";
 import AlignmentMismatchesTransform from "./alignmentMismatches.js";
 import CoordinateLookupTransform from "./coordinateLookup.js";
@@ -72,45 +73,56 @@ export const transforms = {
  * @param {{ collector: import("../collector.js").default, source: import("../sources/dataSource.js").default}} [auxiliaryInput]
  */
 export default function createTransform(params, view, auxiliaryInput) {
-    if (params.type == "lookup") {
-        const lookupParams =
-            /** @type {import("../../spec/transform.js").LookupParams} */ (
-                params
+    try {
+        if (params.type == "lookup") {
+            const lookupParams =
+                /** @type {import("../../spec/transform.js").LookupParams} */ (
+                    params
+                );
+            if (!auxiliaryInput && !isSelfLookup(lookupParams)) {
+                throw new Error(
+                    "Lookup transform requires a foreign collector."
+                );
+            }
+            return new LookupTransform(lookupParams, auxiliaryInput?.collector);
+        } else if (params.type == "coordinateLookup") {
+            if (!auxiliaryInput || !view) {
+                throw new Error(
+                    "Coordinate lookup requires a view and a foreign data source."
+                );
+            }
+            return new CoordinateLookupTransform(
+                /** @type {import("../../spec/transform.js").CoordinateLookupParams} */ (
+                    params
+                ),
+                auxiliaryInput.collector,
+                auxiliaryInput.source,
+                view
             );
-        if (!auxiliaryInput && !isSelfLookup(lookupParams)) {
-            throw new Error("Lookup transform requires a foreign collector.");
-        }
-        return new LookupTransform(lookupParams, auxiliaryInput?.collector);
-    } else if (params.type == "coordinateLookup") {
-        if (!auxiliaryInput || !view) {
-            throw new Error(
-                "Coordinate lookup requires a view and a foreign data source."
+        } else if (params.type == "cross") {
+            if (!auxiliaryInput) {
+                throw new Error(
+                    "Cross transform requires a foreign collector."
+                );
+            }
+            return new CrossTransform(
+                /** @type {import("../../spec/transform.js").CrossParams} */ (
+                    params
+                ),
+                auxiliaryInput.collector
             );
         }
-        return new CoordinateLookupTransform(
-            /** @type {import("../../spec/transform.js").CoordinateLookupParams} */ (
-                params
-            ),
-            auxiliaryInput.collector,
-            auxiliaryInput.source,
-            view
-        );
-    } else if (params.type == "cross") {
-        if (!auxiliaryInput) {
-            throw new Error("Cross transform requires a foreign collector.");
-        }
-        return new CrossTransform(
-            /** @type {import("../../spec/transform.js").CrossParams} */ (
-                params
-            ),
-            auxiliaryInput.collector
-        );
-    }
 
-    const Transform = transforms[params.type];
-    if (Transform) {
-        return new Transform(params, view);
-    } else {
-        throw new Error("Unknown transform: " + params.type);
+        const Transform = transforms[params.type];
+        if (Transform) {
+            return new Transform(params, view);
+        } else {
+            throw new Error("Unknown transform: " + params.type);
+        }
+    } catch (error) {
+        throw annotateSpecError(
+            error,
+            view?.paramRuntime.getSpecLocation(params, [])
+        );
     }
 }

@@ -3,10 +3,11 @@
 "@genome-spy/playground": minor
 ---
 
-Playground now underlines missing encoding fields, unknown parameter names, and
-syntax errors in expressions and interaction filters, alongside the existing
-data-loading diagnostics. The highlight follows formatting and disappears when
-the specification is corrected.
+Playground now underlines declarations responsible for missing encoding fields,
+invalid expressions and interaction filters, duplicate parameter names, and
+transform construction failures such as invalid regular expressions, alongside
+the existing data-loading diagnostics. Highlights follow formatting and disappear
+when the specification is corrected.
 
 Embedders can locate these errors using the `getSpecOrigin` option and
 `getSpecErrorLocation(error)` helper. Data-loading reports include `errorLocation`

@@ -3,8 +3,9 @@
 ## Goal and scope
 
 Make specification experiments easier in Playground by underlining the declaration
-responsible for missing encoding fields and invalid expressions, including
-parsing/compilation failures and unknown parameter names. Preserve the existing
+responsible for missing encoding fields, invalid expressions, duplicate parameter
+names, and transform construction failures. Expression errors include parsing,
+compilation, and unknown parameter names. Preserve the existing
 error messages, failure behavior, and available-field hints. Embedders should receive the same location
 information without inspecting the visualization.
 
@@ -104,6 +105,11 @@ Relevant architecture: `ARCHITECTURE.md`, `packages/core/ARCHITECTURE.md`,
    error display and nonfatal track-local loading behavior. Wire `onError`, and
    handle embed's callback plus rejection without duplicate diagnostics. Use an
    attempt token even when the JSON text is identical (e.g. renderer switches).
+7. Annotate transform constructor failures at the shared factory, identifying the
+   whole declaration (`path: []`). This covers primary and side-input pipelines
+   without per-transform wrappers and preserves any more specific inner location.
+   Duplicate parameter names identify the second declaration's `name` property
+   at the existing registration check. No new validation rules are added.
 
 `UrlSource.load` and `IntervalUrlSource.requestInterval` catch downstream
 processing errors, including accessor validation, and convert them to error
@@ -306,3 +312,20 @@ Separate browser observation, outside this location feature: rapidly replacing
 invalid specs can produce an unhandled font-loading rejection after renderer
 disposal (`rendering/webgl/rendererResources.js`). The editor still clears and
 renders corrected specs. Renderer/font cancellation handling is deferred.
+
+### Additional runtime-check locations
+
+- [x] Annotate transform construction failures at the shared factory, including
+      invalid regular expressions and unequal configuration array lengths.
+- [x] Locate duplicate parameter names in ordinary and deferred registration.
+- [x] Verify nested side-input errors identify the failing inner declaration;
+      standalone construction without a view preserves its native error.
+- [x] Update embedding/Playground documentation and the existing changeset.
+
+Verification: 430 tests passed across 42 parameter, transform, and dataflow suites
+(two todo), including nine new location cases. Core TypeScript, lint, generated
+API documentation, and release checks pass. Browser checks confirm whole-transform
+highlights (including nested side inputs), the duplicate name highlight, the
+existing error box, and clearing after correction. This addition does not cover transform
+row-processing failures or missing selection references outside expressions;
+those remain deferred.
