@@ -15,7 +15,7 @@ vi.mock("./jsonLanguageService.js", async (importOriginal) => {
     );
     const { getLanguageService, TextDocument } =
         await import("vscode-json-languageservice");
-    const { resolveLoadingDiagnostics } =
+    const { resolveRuntimeDiagnostics } =
         await import("./loadingDiagnostics.js");
     return {
         ...actual,
@@ -24,9 +24,14 @@ vi.mock("./jsonLanguageService.js", async (importOriginal) => {
              * @param {string} type
              * @param {string} text
              * @param {number} offset
-             * @param {import("@genome-spy/core/types/embedApi.js").DataLoadingEntry[]} entries
+             * @param {import("./loadingDiagnostics.js").RuntimeDiagnostics} runtime
              */
-            async request(type, text, offset, entries = []) {
+            async request(
+                type,
+                text,
+                offset,
+                { loadingEntries = [], specError } = { loadingEntries: [] }
+            ) {
                 if (validation.holdNext) {
                     validation.holdNext = false;
                     await new Promise((resolve) => {
@@ -50,18 +55,20 @@ vi.mock("./jsonLanguageService.js", async (importOriginal) => {
                         properties: { width: { type: "number" } },
                     }
                 );
+                const runtime = resolveRuntimeDiagnostics(json.root, {
+                    loadingEntries,
+                    specError,
+                });
                 return schema.concat(
-                    resolveLoadingDiagnostics(json.root, entries).map(
-                        ({ from, to, message }) => ({
-                            range: {
-                                start: document.positionAt(from),
-                                end: document.positionAt(to),
-                            },
-                            message,
-                            severity: /** @type {const} */ (1),
-                            source: "GenomeSpy data loading",
-                        })
-                    )
+                    runtime.map(({ from, to, message }) => ({
+                        range: {
+                            start: document.positionAt(from),
+                            end: document.positionAt(to),
+                        },
+                        message,
+                        severity: /** @type {const} */ (1),
+                        source: "GenomeSpy",
+                    }))
                 );
             }
             dispose() {}
@@ -128,7 +135,7 @@ function diagnostics() {
 }
 function loadingDiagnostics() {
     return diagnostics().filter(
-        (diagnostic) => diagnostic.source === "GenomeSpy data loading"
+        (diagnostic) => diagnostic.source === "GenomeSpy"
     );
 }
 
@@ -139,7 +146,10 @@ test("keeps loading diagnostics with schema errors and follows the matching docu
     document.body.appendChild(editor);
     await editor.updateComplete;
     const first = createApi();
-    editor.observeDataLoading(first.api, editor.value);
+    editor.observeDataLoading(
+        first.api,
+        editor.beginRuntimeDiagnostics(editor.value)
+    );
     await vi.waitFor(() => expect(diagnostics()).toHaveLength(2));
     expect(loadingDiagnostics()[0].message).toBe("Missing CSV");
 
@@ -163,7 +173,10 @@ test("keeps loading diagnostics with schema errors and follows the matching docu
 
     const oldListener = first.listeners.values().next().value;
     const second = createApi();
-    editor.observeDataLoading(second.api, editor.value);
+    editor.observeDataLoading(
+        second.api,
+        editor.beginRuntimeDiagnostics(editor.value)
+    );
     expect(first.listeners.size).toBe(0);
     oldListener({
         type: "update",
@@ -197,3 +210,70 @@ test("keeps loading diagnostics with schema errors and follows the matching docu
     editor.remove();
     expect(second.listeners.size).toBe(0);
 });
+
+test.each([
+    { expr: "missing + 1", message: 'Unknown variable "missing"' },
+    {
+        expr: "1 +",
+        message: "Invalid expression: 1 +, Unexpected end of input",
+    },
+])(
+    "shows failed-embed errors and rejects obsolete callbacks: $expr",
+    async ({ expr, message }) => {
+        const spec = {
+            params: [{ name: "a", expr }],
+            mark: "point",
+        };
+        editor = new CodeEditor();
+        editor.value = JSON.stringify(spec);
+        document.body.appendChild(editor);
+        await editor.updateComplete;
+        const attempt = editor.beginRuntimeDiagnostics(editor.value);
+        const error = Object.assign(new Error(message), {
+            specLocation: { origin: "/params/0", path: ["expr"] },
+        });
+        editor.reportRuntimeError(error, attempt);
+        editor.reportRuntimeError(error, attempt);
+        await vi.waitFor(() => expect(loadingDiagnostics()).toHaveLength(1));
+        expect(
+            editor.value.slice(
+                loadingDiagnostics()[0].from,
+                loadingDiagnostics()[0].to
+            )
+        ).toBe(JSON.stringify(expr));
+        expect(loadingDiagnostics()[0].message).toBe(message);
+
+        editor.value = JSON.stringify(spec, null, 2);
+        await vi.waitFor(() =>
+            expect(loadingDiagnostics()[0]?.from).toBe(
+                editor.value.indexOf(JSON.stringify(expr))
+            )
+        );
+        const { api, entry, emit } = createApi();
+        emit({
+            type: "update",
+            entry: {
+                ...entry,
+                errorPhase: "processing",
+                errorLocation: error.specLocation,
+            },
+        });
+        editor.observeDataLoading(api, attempt);
+        await vi.waitFor(() => expect(loadingDiagnostics()).toHaveLength(1));
+
+        // A renderer switch can start another attempt without changing the JSON.
+        const next = editor.beginRuntimeDiagnostics(editor.value);
+        expect(editor.reportRuntimeError(error, attempt)).toBe(true);
+        await vi.waitFor(() => expect(loadingDiagnostics()).toEqual([]));
+        editor.reportRuntimeError(error, next);
+        await vi.waitFor(() => expect(loadingDiagnostics()).toHaveLength(1));
+
+        spec.params[0].expr = "1 + 1";
+        editor.value = JSON.stringify(spec);
+        await vi.waitFor(() => expect(loadingDiagnostics()).toEqual([]));
+        editor.beginRuntimeDiagnostics(editor.value);
+        expect(editor.reportRuntimeError(error, next)).toBe(true);
+        editor.remove();
+        expect(editor.reportRuntimeError(error, next + 1)).toBe(true);
+    }
+);

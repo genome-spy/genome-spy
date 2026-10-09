@@ -565,6 +565,8 @@ async function updateVisualization(force) {
         }
 
         previousStringifiedSpec = stringifiedSpec;
+        const editor = editorRef.value;
+        const runtimeAttempt = editor.beginRuntimeDiagnostics(value);
 
         missingFiles = findMissingNamedData(parsedSpec, files);
         if (
@@ -581,7 +583,6 @@ async function updateVisualization(force) {
         addUploadedDatasets(parsedSpec, files);
 
         if (embedResult) {
-            editorRef.value.clearDataLoading();
             embedResult.finalize();
             embedResult = undefined;
         }
@@ -616,9 +617,11 @@ async function updateVisualization(force) {
                 powerPreference: "high-performance",
                 renderer: selectedRenderer,
                 getSpecOrigin: (fragment) => origins.get(fragment),
+                onError: (error) =>
+                    editor.reportRuntimeError(error, runtimeAttempt),
             }
         );
-        editorRef.value.observeDataLoading(embedResult, value);
+        editor.observeDataLoading(embedResult, runtimeAttempt);
         hasInputBindings = Boolean(
             document.querySelector(".gs-input-bindings")
         );

@@ -53,9 +53,14 @@ export class JsonLanguageServiceClient {
      * @param {"validate" | "complete" | "hover"} type
      * @param {string} text
      * @param {number} [offset]
-     * @param {readonly import("@genome-spy/core/types/embedApi.js").DataLoadingEntry[]} [loadingEntries]
+     * @param {import("./loadingDiagnostics.js").RuntimeDiagnostics} [runtimeDiagnostics]
      */
-    request(type, text, offset = 0, loadingEntries = []) {
+    request(
+        type,
+        text,
+        offset = 0,
+        runtimeDiagnostics = { loadingEntries: [] }
+    ) {
         const id = this._nextRequestId++;
 
         return new Promise((resolve, reject) => {
@@ -65,7 +70,7 @@ export class JsonLanguageServiceClient {
                 type,
                 text,
                 offset,
-                loadingEntries,
+                ...runtimeDiagnostics,
             });
         });
     }
@@ -218,9 +223,9 @@ export function renderHoverMarkdown(contents) {
 
 /**
  * @param {JsonLanguageServiceClient} client
- * @param {{ getLoadingEntries: (text: string) => readonly import("@genome-spy/core/types/embedApi.js").DataLoadingEntry[], getLoadingRevision: () => number }} [loading]
+ * @param {{ getDiagnostics: (text: string) => import("./loadingDiagnostics.js").RuntimeDiagnostics, getRevision: () => number }} [runtime]
  */
-export function createJsonLanguageExtensions(client, loading) {
+export function createJsonLanguageExtensions(client, runtime) {
     const validation = linter(
         async (view) => {
             const document = view.state.doc;
@@ -228,17 +233,17 @@ export function createJsonLanguageExtensions(client, loading) {
             /** @type {import("vscode-json-languageservice").Diagnostic[]} */
             let diagnostics;
             do {
-                revision = loading?.getLoadingRevision();
+                revision = runtime?.getRevision();
                 diagnostics = await client.request(
                     "validate",
                     document.toString(),
                     0,
-                    loading?.getLoadingEntries(document.toString())
+                    runtime?.getDiagnostics(document.toString())
                 );
-                // CodeMirror guards document changes, but not source updates on the same document.
+                // CodeMirror guards document changes, but not runtime diagnostics changing on the same document.
             } while (
                 view.state.doc === document &&
-                revision !== loading?.getLoadingRevision()
+                revision !== runtime?.getRevision()
             );
 
             return diagnostics.map((diagnostic) => ({

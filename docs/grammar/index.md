@@ -95,6 +95,11 @@ The Playground selects the Core schema automatically, and inline documentation
 examples omit `$schema`. Schema validation cannot verify external resources,
 data fields, or expression behavior.
 
+The Playground also underlines declarations with reported loading failures,
+missing encoding fields, or invalid expressions, including syntax errors and
+unknown parameter names. These checks run as the visualization loads and
+executes; `datum` field references inside expressions are not checked.
+
 ## Unit view reference
 
 The following reference lists all properties available on unit views. Most are

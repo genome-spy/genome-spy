@@ -145,23 +145,23 @@ Shared location objects must not allow listeners to mutate retained state.
 
 ### 2. Playground diagnostics and integration
 
-- [ ] Resolve exact field/expression values through the existing JSON AST.
-- [ ] Connect fatal errors reported before embed completion and nonfatal source
+- [x] Resolve exact field/expression values through the existing JSON AST.
+- [x] Connect fatal errors reported before embed completion and nonfatal source
       errors to the editor's diagnostics. Reuse correction, formatting, and stale
       callback/lint guards without creating a separate validation pipeline.
-- [ ] Add representative resolver/editor lifecycle tests. Keep URL/data fallback
+- [x] Add representative resolver/editor lifecycle tests. Keep URL/data fallback
       coverage and verify correcting a declaration removes its diagnostic.
-- [ ] Smoke-test in a browser: a simple point plot with a misspelled encoding
+- [x] Smoke-test in a browser: a simple point plot with a misspelled encoding
       field; `params: [{name: "a", expr: "missing + 1"}]`; an encoding expression
       using an unknown parameter; malformed named/encoding expressions; the
       vertical-concat documentation example with a failed URL; and the sashimi example's scale expression. Switch renderers
       for a representative spec and correct errors while an old attempt finishes.
       Verify same-text renderer switches and callbacks during teardown, and that
       binding a successful result does not clear errors from the same attempt.
-- [ ] Verify Core and App embedding with Canvas/WebGL, plus WebGPU where the
+- [x] Verify Core and App embedding with Canvas/WebGL, plus WebGPU where the
       local environment supports it. Run workspace TypeScript and appropriate
       integration tests/builds; broaden testing only when failures warrant it.
-- [ ] Update user-facing docs in the relevant error/API section (not Getting
+- [x] Update user-facing docs in the relevant error/API section (not Getting
       Started), revise the same changeset, update this record, and commit
       `feat(playground): highlight invalid fields and expressions`.
 
@@ -175,7 +175,7 @@ without changing their existing visual presentation.
 - [x] Inspect the shared API, normalization aliases, downstream callers, and hot
       paths before the Core milestone commit. An optional hook must not impose
       allocations/lookups on every datum or require changes in custom contexts.
-- [ ] Inspect final integration for errors before embed resolution, competing
+- [x] Inspect final integration for errors before embed resolution, competing
       source/fatal routes, document formatting, and stale callbacks before the
       Playground milestone commit.
 
@@ -240,3 +240,27 @@ and merged guide expressions. Another 146 related tests passed. All workspace
 TypeScript checks and repository lint passed. Browser checks confirm malformed
 named, encoding, mark, and axis expressions underline their declarations and
 preserve the default error box; correction clears both.
+
+### Playground milestone record
+
+Implemented exact field/expression ranges using the existing JSON AST and lint
+pipeline. Fatal errors are captured before embed resolves, with semantic document
+identity, per-attempt tokens, and lint revisions preventing obsolete callbacks
+and worker results. Attaching a successful result retains errors from that attempt.
+Source and fatal reports for the same declaration share one underline. Existing
+URL/configuration fallbacks and the default error box remain intact.
+
+Verification: the full repository suite passed (506 files, 4,590 passed, one
+skipped, two todo), as did all 29 Playground tests in its Vite configuration.
+Workspace TypeScript, lint, Playground production build, release checks, and
+changeset status passed. The fixed release group receives a minor bump to 1.2.0
+for the optional location API and Playground feature.
+
+Browser verification covered missing inline/eager fields, unknown params, syntax
+and unknown-function errors, formatting, correction, same-text renderer changes,
+and correction while a previous load finished. Vertical concat retains a local
+404 loading error with a URL underline and no fatal popup. Sashimi loads remote
+eager/lazy sources, switches WebGPU/WebGL, and locates its scale expression error.
+Core/App embedding checks passed across Canvas, WebGL, and WebGPU (18 cases).
+All planned work is complete; retain this record until the future PR workflow
+commits its removal.
