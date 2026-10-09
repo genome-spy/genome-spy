@@ -396,9 +396,10 @@ Verification: the full suite passes (509 files, 4,639 passed, one skipped, two
 todo), plus all 29 Playground tests. Workspace TypeScript, lint, Playground build,
 and release checks pass. Browser checks verify a failed formula reports
 `/transform/0` plus `["expr"]`, correction clears the highlight, and a present
-undefined field is accepted and produces the guarded result. The changeset now
-requests a major release (2.0.0 for the fixed group), with migration instructions,
-because deliberately probing absent static fields now raises an error.
+undefined field is accepted and produces the guarded result. The changeset
+explains how to provide optional fields because deliberately probing absent
+static fields now raises an error. The final release classification is minor,
+as requested by the maintainer.
 
 ### Consolidated accessor milestone record
 

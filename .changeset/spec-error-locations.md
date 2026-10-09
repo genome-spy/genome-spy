@@ -1,5 +1,5 @@
 ---
-"@genome-spy/core": major
+"@genome-spy/core": minor
 "@genome-spy/playground": minor
 ---
 
@@ -12,10 +12,10 @@ specification is corrected.
 Missing fields with spaces, punctuation, or escaped property names now report
 errors instead of silently producing empty plots.
 
-**Breaking:** Flat field references in encodings, transforms, and expressions must
-exist on every processed row, including expression references inside guards and
-conditional branches. Ensure these fields are present in the
-input data or produced by an earlier transform. For optional values, include
+Missing flat fields in encodings, transforms, and expressions now report an error
+on any processed row, including expression references inside guards and
+conditional branches. Ensure these fields are present in the input data or
+produced by an earlier transform. For optional values, include
 `null` (or `undefined` in JavaScript-provided data); use `isValid` when `null`
 should count as missing. Computed keys and nested properties retain their existing
 behavior.
