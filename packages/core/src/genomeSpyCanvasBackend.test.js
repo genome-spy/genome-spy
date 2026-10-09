@@ -14,6 +14,7 @@ vi.mock("./styles/genome-spy.css.js", () => ({ default: "" }));
 
 import GenomeSpy from "./genomeSpyBase.js";
 import { createEmbed } from "./embedFactory.js";
+import { annotateSpecError } from "./utils/specError.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
@@ -235,6 +236,10 @@ test.each([false, true])(
             { renderer: "canvas", onError }
         );
         const runtimeError = new Error("device lost");
+        annotateSpecError(runtimeError, {
+            origin: "/layer/0",
+            path: ["mark"],
+        });
 
         backendOptions.onError(runtimeError);
         backendOptions.onError(runtimeError);
@@ -244,7 +249,18 @@ test.each([false, true])(
         );
         expect(onError).toHaveBeenCalledOnce();
         expect(onError).toHaveBeenCalledWith(runtimeError, container);
-        expect(consoleError).toHaveBeenCalledOnce();
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.stringContaining('Specification: "/layer/0"'),
+            runtimeError
+        );
+        if (!handled) {
+            expect(
+                container.querySelector(".message-box").textContent
+            ).toContain('["mark"]');
+        }
+        expect(
+            container.querySelector(".loading-indicators .error")
+        ).toBeNull();
 
         api.finalize();
         backendOptions.onError(new Error("late loss"));

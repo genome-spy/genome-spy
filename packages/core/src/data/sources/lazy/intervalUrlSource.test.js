@@ -74,6 +74,7 @@ function createViewStub() {
 }
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
     vi.unstubAllGlobals();
 });
@@ -86,9 +87,13 @@ describe("IntervalUrlSource", () => {
             "setSource"
         );
         const location = { origin: "encoding", path: ["field"] };
+        const error = annotateSpecError(new Error("missing field"), location);
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
         class FailingPublicationSource extends TestSource {
             publishInterval() {
-                throw annotateSpecError(new Error("missing field"), location);
+                throw error;
             }
         }
         const source = new FailingPublicationSource(
@@ -104,6 +109,10 @@ describe("IntervalUrlSource", () => {
             "missing field",
             "processing",
             location
+        );
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.stringContaining('Specification: "encoding"'),
+            error
         );
         source.dispose();
     });

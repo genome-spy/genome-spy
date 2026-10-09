@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { forEachDiagnostic } from "@codemirror/lint";
 
 const validation = vi.hoisted(() => ({
@@ -15,7 +15,7 @@ vi.mock("./jsonLanguageService.js", async (importOriginal) => {
     );
     const { getLanguageService, TextDocument } =
         await import("vscode-json-languageservice");
-    const { resolveRuntimeDiagnostics } =
+    const { resolveRuntimeDiagnostics, resolveSpecErrorDiagnostic } =
         await import("./loadingDiagnostics.js");
     return {
         ...actual,
@@ -46,6 +46,9 @@ vi.mock("./jsonLanguageService.js", async (importOriginal) => {
                     text
                 );
                 const json = service.parseJSONDocument(document);
+                if (type === "locate") {
+                    return resolveSpecErrorDiagnostic(json.root, specError);
+                }
                 const schema = await service.doValidation(
                     document,
                     json,
@@ -80,9 +83,21 @@ import CodeEditor from "./codeEditor.js";
 
 /** @type {CodeEditor | undefined} */
 let editor;
+beforeEach(() => {
+    // jsdom has no text geometry; real scrolling is checked in the browser.
+    const createRange = document.createRange.bind(document);
+    vi.spyOn(document, "createRange").mockImplementation(() =>
+        Object.assign(createRange(), {
+            /** @returns {DOMRect[]} */
+            getClientRects: () => [],
+            getBoundingClientRect: () => new DOMRect(),
+        })
+    );
+});
 afterEach(() => {
     editor?.remove();
     editor = undefined;
+    vi.restoreAllMocks();
 });
 
 function createApi() {
@@ -234,6 +249,14 @@ test.each([
         });
         editor.reportRuntimeError(error, attempt);
         editor.reportRuntimeError(error, attempt);
+        await editor.revealRuntimeError(error, attempt);
+        expect(
+            editor._editor.state.sliceDoc(
+                editor._editor.state.selection.main.from,
+                editor._editor.state.selection.main.to
+            )
+        ).toBe(JSON.stringify(expr));
+        expect(editor._editor.hasFocus).toBe(true);
         await vi.waitFor(() => expect(loadingDiagnostics()).toHaveLength(1));
         expect(
             editor.value.slice(
@@ -244,6 +267,10 @@ test.each([
         expect(loadingDiagnostics()[0].message).toBe(message);
 
         editor.value = JSON.stringify(spec, null, 2);
+        await editor.revealRuntimeError(error, attempt);
+        expect(editor._editor.state.selection.main.from).toBe(
+            editor.value.indexOf(JSON.stringify(expr))
+        );
         await vi.waitFor(() =>
             expect(loadingDiagnostics()[0]?.from).toBe(
                 editor.value.indexOf(JSON.stringify(expr))
@@ -269,7 +296,16 @@ test.each([
         await vi.waitFor(() => expect(loadingDiagnostics()).toHaveLength(1));
 
         spec.params[0].expr = "1 + 1";
+        // Navigation must not select an old range if the document changes in flight.
+        validation.holdNext = true;
+        const reveal = editor.revealRuntimeError(error, next);
         editor.value = JSON.stringify(spec);
+        editor._editor.dispatch({ selection: { anchor: 0 } });
+        validation.release();
+        await reveal;
+        expect(editor._editor.state.selection.main.head).toBe(0);
+        // A pending failure for the old text must not show UI before the next embed starts.
+        expect(editor.reportRuntimeError(error, next)).toBe(true);
         await vi.waitFor(() => expect(loadingDiagnostics()).toEqual([]));
         editor.beginRuntimeDiagnostics(editor.value);
         expect(editor.reportRuntimeError(error, next)).toBe(true);

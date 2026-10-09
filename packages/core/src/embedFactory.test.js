@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { createEmbed } from "./embedFactory.js";
 import ViewError from "./view/viewError.js";
+import { annotateSpecError } from "./utils/specError.js";
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -127,6 +128,47 @@ describe("embed factory", () => {
         );
         expect(constructor).not.toHaveBeenCalled();
     });
+
+    test.each(["", "document#plot"])(
+        "displays wrapped specification context without changing the error: %j",
+        async (origin) => {
+            const cause = annotateSpecError(new Error("Missing field"), {
+                origin,
+                path: ["fields", 1],
+            });
+            const error = new Error("Could not initialize transform", {
+                cause,
+            });
+            const constructor = vi.fn(function () {
+                throw error;
+            });
+            const container = document.createElement("div");
+            const onError = vi.fn();
+            const consoleError = vi
+                .spyOn(console, "error")
+                .mockImplementation(() => {});
+
+            await expect(
+                createEmbed(/** @type {any} */ (constructor))(
+                    container,
+                    /** @type {any} */ ({}),
+                    { onError }
+                )
+            ).rejects.toBe(error);
+
+            const text = container.querySelector(".message-box").textContent;
+            expect(text).toContain(error.message);
+            expect(text).toContain(JSON.stringify(origin));
+            expect(text).toContain('["fields",1]');
+            expect(onError).toHaveBeenCalledExactlyOnceWith(error, container);
+            expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+                expect.stringContaining(JSON.stringify(origin)),
+                error
+            );
+            expect(error.message).toBe("Could not initialize transform");
+            expect(error.cause).toBe(cause);
+        }
+    );
 
     test("preserves the setup error if cleanup and error reporting also fail", async () => {
         const error = new Error("Initialization failed");

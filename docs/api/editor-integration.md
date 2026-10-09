@@ -57,10 +57,19 @@ opaque string; using JSON Pointers is a choice made by the embedding application
 Not every error has a location. Nested `datum` properties and computed field
 names are not validated.
 
+Core includes available specification locations in its default error display and
+console reports without changing the error's message. Playground presents the
+message and combined JSON Pointer in an error card alongside the editor
+underline, with a link to select the affected value in the editor. Custom
+embedding applications can render their own display in
+`onError` and return `true` to suppress Core's default display.
+
 Track-local processing failures carry the same information in
 [`dataLoading` entries](./instance.md#data-loading) as `errorLocation`. Their
 `origin` still identifies the data source declaration, which may differ from
 the encoding, expression, or transform that failed.
+Their locations also appear in the visualization's local loading indicators;
+these failures do not open Playground's fatal error card.
 
 ## Feedback for LLM agents
 

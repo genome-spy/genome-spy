@@ -92,7 +92,11 @@ export default class CodeEditor extends LitElement {
     /** @param {unknown} error @param {number} attempt */
     reportRuntimeError(error, attempt) {
         // Obsolete embed callbacks must not replace diagnostics or the default error UI.
-        if (attempt !== this._runtimeAttempt) return true;
+        if (
+            attempt !== this._runtimeAttempt ||
+            !this._matchesRuntimeSpec(this.value)
+        )
+            return true;
         const location = getSpecErrorLocation(error);
         if (!location || this._specError) return;
         this._specError = {
@@ -100,6 +104,33 @@ export default class CodeEditor extends LitElement {
             message: error instanceof Error ? error.message : String(error),
         };
         this._refreshRuntimeDiagnostics();
+    }
+
+    /** @param {unknown} error @param {number} attempt */
+    async revealRuntimeError(error, attempt) {
+        const text = this.value;
+        const location = getSpecErrorLocation(error);
+        if (
+            !location ||
+            attempt !== this._runtimeAttempt ||
+            !this._matchesRuntimeSpec(text)
+        )
+            return;
+
+        /** @type {{ from: number, to: number } | undefined} */
+        const range = await this._languageService.request("locate", text, 0, {
+            loadingEntries: [],
+            specError: { location, message: "" },
+        });
+        // Resolve against current formatting, and ignore edits during the request.
+        if (!range || text !== this.value || attempt !== this._runtimeAttempt)
+            return;
+
+        this._editor.dispatch({
+            selection: { anchor: range.from, head: range.to },
+            effects: EditorView.scrollIntoView(range.from, { y: "center" }),
+        });
+        this._editor.focus();
     }
 
     /**
@@ -116,16 +147,19 @@ export default class CodeEditor extends LitElement {
         this._refreshRuntimeDiagnostics();
     }
 
-    /** @param {string} text @returns {import("./loadingDiagnostics.js").RuntimeDiagnostics} */
-    _getRuntimeDiagnostics(text) {
-        let matches;
+    /** @param {string} text */
+    _matchesRuntimeSpec(text) {
         try {
-            matches = JSON.stringify(JSON.parse(text)) === this._runtimeSpec;
+            return JSON.stringify(JSON.parse(text)) === this._runtimeSpec;
         } catch {
             // Invalid editor text has no matching runtime specification.
-            matches = false;
+            return false;
         }
-        return matches
+    }
+
+    /** @param {string} text @returns {import("./loadingDiagnostics.js").RuntimeDiagnostics} */
+    _getRuntimeDiagnostics(text) {
+        return this._matchesRuntimeSpec(text)
             ? {
                   loadingEntries: this._dataLoading?.getSnapshot() ?? [],
                   specError: this._specError,

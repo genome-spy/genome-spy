@@ -53,6 +53,7 @@ import { mergeConfigScopes } from "./config/mergeConfig.js";
 import { resolveBaseConfig } from "./config/resolveConfig.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./config/themes.js";
 import { warnOnce } from "./utils/warning.js";
+import { formatErrorMessage, logError } from "./utils/errorPresentation.js";
 import {
     getCanvasBackground,
     getExportBackground,
@@ -668,16 +669,14 @@ export default class GenomeSpy {
         }
     }
 
-    /** @param {any} reason */
+    /** @param {unknown} reason */
     #reportError(reason) {
         if (this.#destroyed || this.#reportedErrors.has(reason)) {
             return;
         }
         this.#reportedErrors.add(reason);
-        const message = `${
-            reason.view ? `At "${reason.view.getPathString()}": ` : ""
-        }${reason.toString()}`;
-        console.error(reason.stack);
+        const message = formatErrorMessage(reason);
+        logError(reason);
         let handled;
         try {
             handled = this.options.onError?.(reason, this.container);
@@ -689,7 +688,8 @@ export default class GenomeSpy {
         }
 
         if (this.viewRoot && this.#loadingStatusRegistry) {
-            this.#loadingStatusRegistry.set(this.viewRoot, "error", message);
+            // Fatal UI belongs to the message box or host, not a loading indicator.
+            this.#loadingStatusRegistry.delete(this.viewRoot);
         }
     }
 

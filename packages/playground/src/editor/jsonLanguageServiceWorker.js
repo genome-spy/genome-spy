@@ -13,7 +13,10 @@ import schema from "@genome-spy/core/schema.json";
 import corePackage from "../../../core/package.json" with { type: "json" };
 import { getLanguageService, TextDocument } from "vscode-json-languageservice";
 import { createSchemaRequestService } from "./schemaRequestService.js";
-import { resolveRuntimeDiagnostics } from "./loadingDiagnostics.js";
+import {
+    resolveRuntimeDiagnostics,
+    resolveSpecErrorDiagnostic,
+} from "./loadingDiagnostics.js";
 
 const SPEC_URI = "inmemory://genome-spy/spec.json";
 const DEFAULT_SCHEMA_URI = "inmemory://genome-spy/core-schema.json";
@@ -97,6 +100,12 @@ workerScope.addEventListener("message", async (event) => {
                     document,
                     document.positionAt(offset),
                     jsonDocument
+                );
+                break;
+            case "locate":
+                result = resolveSpecErrorDiagnostic(
+                    jsonDocument.root,
+                    specError
                 );
                 break;
             default:

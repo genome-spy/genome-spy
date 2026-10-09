@@ -50,7 +50,7 @@ export class JsonLanguageServiceClient {
     }
 
     /**
-     * @param {"validate" | "complete" | "hover"} type
+     * @param {"validate" | "complete" | "hover" | "locate"} type
      * @param {string} text
      * @param {number} [offset]
      * @param {import("./loadingDiagnostics.js").RuntimeDiagnostics} [runtimeDiagnostics]

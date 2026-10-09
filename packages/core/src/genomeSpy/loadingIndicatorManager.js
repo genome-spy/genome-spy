@@ -3,6 +3,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import { iterateDataDependencies } from "../data/dataReadiness.js";
 import DataSource from "../data/sources/dataSource.js";
 import UnitView from "../view/unitView.js";
+import { formatSpecLocation } from "../utils/errorPresentation.js";
 import SPINNER from "../img/90-ring-with-bg.svg";
 
 export default class LoadingIndicatorManager {
@@ -59,7 +60,15 @@ export default class LoadingIndicatorManager {
                         (status.status !== "error" &&
                             entry.status === "loading"))
                 ) {
-                    status = { status: entry.status, detail: entry.message };
+                    status = {
+                        status: entry.status,
+                        detail: [
+                            entry.message,
+                            formatSpecLocation(entry.errorLocation),
+                        ]
+                            .filter(Boolean)
+                            .join("\n"),
+                    };
                 }
             }
             if (status) statuses.push([view, status]);

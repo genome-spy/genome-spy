@@ -1,4 +1,4 @@
-import ViewError from "./view/viewError.js";
+import { formatErrorMessage, logError } from "./utils/errorPresentation.js";
 import {
     createContainerStyle,
     createMessageBox,
@@ -60,12 +60,9 @@ export function createEmbedErrorHandler(embedContainer, options) {
             }
 
             if (error !== launchError) {
-                console.error(error);
+                logError(error);
             }
-            const message =
-                error instanceof ViewError
-                    ? `At "${error.view.getPathString()}": ${error}`
-                    : String(error);
+            const message = formatErrorMessage(error);
             let handled;
             try {
                 handled = options.onError?.(error, container);

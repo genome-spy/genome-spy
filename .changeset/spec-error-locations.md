@@ -14,6 +14,11 @@ errors instead of silently producing empty plots.
 Missing flat fields in transform properties also highlight the affected property
 or array entry, including grouping, sorting, and lookup fields.
 
+Error displays and console reports include available specification locations.
+Playground shows the message and specification path in an error card with a
+"Show in editor" action. Data-loading failures retain their local indicators with
+added location context.
+
 Missing flat fields in encodings, transforms, and expressions now report an error
 on any processed row, including expression references inside guards and
 conditional branches. Ensure these fields are present in the input data or
