@@ -58,6 +58,26 @@ Unsubscribe when observation is no longer needed. Finalization removes all
 subscriptions; subsequent reads or subscriptions throw. Listener exceptions are
 reported asynchronously to the browser and do not change source outcomes.
 
+### Waiting for visible lazy data
+
+For automated validation or capture, `awaitVisibleLazyData(signal)` waits for the
+current visible lazy data and rejects when a required source fails. Check the
+snapshot as well to detect eager failures in branches without lazy dependencies:
+
+```js
+await api.awaitVisibleLazyData();
+const failures = api.dataLoading
+  .getSnapshot()
+  .filter((entry) => entry.status === "error");
+if (failures.length) {
+  throw new Error(failures.map((entry) => entry.message).join("\n"));
+}
+```
+
+Handle the rejected promise in your caller. An already recorded relevant failure
+rejects immediately without retrying. The wait ignores unrelated hidden sources
+and accepts an `AbortSignal` for cancellation.
+
 ## Interaction events
 
 An embed exposes native canvas input through `events.subscribe()`. The listener

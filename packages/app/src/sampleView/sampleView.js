@@ -52,7 +52,6 @@ import { SampleLabelView } from "./sampleLabelView.js";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
-    isSubtreeLazyReady,
 } from "@genome-spy/core/view/dataReadiness.js";
 import {
     asSelectionConfig,
@@ -297,12 +296,6 @@ export default class SampleView extends ContainerView {
      * @returns {Promise<void>}
      */
     #awaitSubtreeDataReady(subtreeRoot, signal, readinessRequest) {
-        if (
-            readinessRequest &&
-            isSubtreeLazyReady(subtreeRoot, readinessRequest)
-        ) {
-            return Promise.resolve();
-        }
         if (readinessRequest) {
             return awaitSubtreeLazyReady(
                 this.context,

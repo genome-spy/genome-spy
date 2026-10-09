@@ -6,7 +6,12 @@ Status: implementation in progress.
       Verified with 158 focused tests, Core/App/Playground type checks, lint, generated
       API docs, and the missing-CSV shared-source overlay in the in-app browser.
       Changeset selects a minor release (1.2.0 for the fixed release group).
-- [ ] Milestone 2: lazy waits reject relevant source failures.
+- [x] Milestone 2: lazy waits reject relevant source failures before requesting
+      unavailable data. Removed App's readiness shortcut so it observes failures too.
+      Verified inherited and auxiliary dependency failures, no retry on entry, hidden
+      and eager-only exclusions, successful readiness, abort, and cleanup with 85
+      focused tests and Core/App type checks. Both screenshot harnesses already
+      propagate non-timeout rejections and need no changes.
 - [ ] Milestone 3: Playground diagnostics and final integration verification.
 
 ## Goal and scope

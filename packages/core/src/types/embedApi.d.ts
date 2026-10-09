@@ -1016,7 +1016,9 @@ export interface EmbedResult {
 
     /**
      * Waits until lazy data sources have loaded data for the current visible
-     * positional domain.
+     * positional domain. Rejects if a required source has failed or the signal
+     * is aborted. An existing failure rejects without starting another request.
+     * Entirely eager branches and unrelated hidden failures are ignored.
      */
     awaitVisibleLazyData: (signal?: AbortSignal) => Promise<void>;
 
