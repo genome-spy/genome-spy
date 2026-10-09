@@ -23,7 +23,7 @@ import { concatUrl } from "../../utils/url.js";
  * @typedef {import("../../spec/data.js").IndexUrlTemplate} IndexUrlTemplate
  * @typedef {import("../../spec/parameter.js").ExprRef} ExprRef
  * @typedef {{
- *     createExpression: (expr: string) => () => unknown,
+ *     createExpression: (expr: string | ExprRef) => () => unknown,
  * }} UrlExpressionRuntime
  */
 
@@ -297,7 +297,7 @@ function expandTemplate(templateSpec, indexUrlSpec, options) {
 /** @param {unknown} value @param {UrlDescriptorOptions} options */
 function resolveExprRef(value, options) {
     return isExprRef(value)
-        ? requireParamRuntime(options).createExpression(value.expr)()
+        ? requireParamRuntime(options).createExpression(value)()
         : value;
 }
 

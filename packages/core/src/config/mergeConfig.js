@@ -5,7 +5,12 @@ import { isObject } from "vega-util";
  * @returns {value is Record<string, any>}
  */
 function isPlainObject(value) {
-    return isObject(value) && !Array.isArray(value);
+    // Expression references are atomic values: keep their authored identity.
+    return (
+        isObject(value) &&
+        !Array.isArray(value) &&
+        !("expr" in value && typeof value.expr === "string")
+    );
 }
 
 /**

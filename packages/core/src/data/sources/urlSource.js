@@ -1,3 +1,5 @@
+import { getSpecErrorLocation } from "../../utils/specError.js";
+import { logError } from "../../utils/errorPresentation.js";
 import { read } from "vega-loader";
 import {
     getFormat,
@@ -133,7 +135,6 @@ export default class UrlSource extends DataSource {
                         }
                     } catch (e) {
                         if (!isCurrent()) return;
-                        console.warn(e);
                         throw new Error(
                             `Cannot parse: ${descriptor.url}: ${e.message}`,
                             {
@@ -176,10 +177,12 @@ export default class UrlSource extends DataSource {
         if (!isCurrent()) return;
 
         if (error) {
+            logError(error);
             this.setLoadingStatus(
                 "error",
                 error.message,
-                error.errorPhase ?? "processing"
+                error.errorPhase ?? "processing",
+                getSpecErrorLocation(error)
             );
         } else {
             this.setLoadingStatus("complete");

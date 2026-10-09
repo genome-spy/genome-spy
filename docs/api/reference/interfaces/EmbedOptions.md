@@ -117,13 +117,16 @@ Optional hook for handling launch and runtime errors. Return true to suppress de
 
 > `optional` **getSpecOrigin?**: (`fragment`) => `string`
 
-Links data-loading reports to locations in your specification.
+Links reported errors to locations in your specification.
 
-Called with the original data definition object, such as `{ url: "data.csv" }`,
-when GenomeSpy creates a data source. Return a string identifying that
-definition, such as the JSON Pointer `"/vconcat/0/data"`. Reports include this
-string as `origin` in `dataLoading` snapshots and change events, allowing an
-editor to highlight the definition when loading fails.
+Called with a data definition, encoding branch, parameter, transform,
+expression reference, or interaction configuration from your specification.
+Return a string identifying that object, such as the JSON Pointer `"/encoding/x"` for
+`{ field: "position", type: "quantitative" }`. Located errors include this
+string and a relative property path in `SpecLocation`.
+`getSpecErrorLocation(error)` reads it from errors delivered to `onError`
+or rejected by `embed`. Data-loading reports expose `errorLocation` for
+located processing errors and `origin` for the data definition itself.
 
 Return `undefined` if the definition's location is unknown. Equivalent data
 definitions may share one source; its reports contain one definition's origin.

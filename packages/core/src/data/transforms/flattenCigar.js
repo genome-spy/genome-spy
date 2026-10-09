@@ -1,4 +1,3 @@
-import { field } from "../../utils/field.js";
 import { createCachedCloner } from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import { walkCigar } from "./cigarUtils.js";
@@ -11,12 +10,17 @@ export default class FlattenCigarTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").FlattenCigarParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
-        const startAccessor = field(params.start ?? "start");
-        const cigarAccessor = field(params.cigar ?? "cigar");
+        const startAccessor = this.createFieldAccessor(params, "start", {
+            defaultValue: "start",
+        });
+        const cigarAccessor = this.createFieldAccessor(params, "cigar", {
+            defaultValue: "cigar",
+        });
         const clone = createCachedCloner({ copyFields: params.copyFields });
 
         /** @param {Record<string, any>} datum */

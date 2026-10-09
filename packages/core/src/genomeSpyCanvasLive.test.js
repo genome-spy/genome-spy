@@ -278,53 +278,77 @@ test("keeps main and lookup outcomes independent and replaces errors after a new
 test.each([
     {
         phase: "row propagation",
-        transform: [
-            { type: "formula", expr: "datum.absent.value", as: "value" },
-        ],
+        transform: [{ type: "formula", expr: "datum.missing", as: "value" }],
+        path: ["expr"],
     },
     {
         phase: "completion",
         transform: [{ type: "aggregate", fields: ["missing"], ops: ["sum"] }],
+        path: ["fields", 0],
     },
-])("reports $phase failures as processing errors", async ({ transform }) => {
-    vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => new Response("value\n1"))
-    );
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    const api = await embed(
-        document.createElement("div"),
-        {
-            width: 200,
-            height: 100,
-            data: { url: "valid.csv" },
-            transform:
-                /** @type {import("./spec/transform.js").TransformParams[]} */ (
-                    transform
-                ),
-            mark: "point",
-        },
-        { renderer: "canvas" }
-    );
-    try {
-        expect(api.dataLoading.getSnapshot()[0]).toMatchObject({
-            status: "error",
-            errorPhase: "processing",
-        });
-        const root = /** @type {import("./view/view.js").default} */ (
-            api.debug.getViewRoot()
+])(
+    "reports $phase failures as processing errors",
+    async ({ transform, path }) => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response("value\n1"))
         );
-        const [source] = root.context.dataFlow.dataSources;
-        const outcomes = vi.fn();
-        api.dataLoading.subscribe(outcomes);
-        await source.load();
-        expect(
-            outcomes.mock.calls.map(([change]) => change.entry.status)
-        ).toEqual(["loading", "error"]);
-    } finally {
-        api.finalize();
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
+        const container = document.createElement("div");
+        const onError = vi.fn();
+        const api = await embed(
+            container,
+            {
+                width: 200,
+                height: 100,
+                data: { url: "valid.csv" },
+                transform:
+                    /** @type {import("./spec/transform.js").TransformParams[]} */ (
+                        transform
+                    ),
+                mark: "point",
+            },
+            {
+                renderer: "canvas",
+                onError,
+                getSpecOrigin: (fragment) =>
+                    fragment === transform[0] ? "/transform/0" : undefined,
+            }
+        );
+        try {
+            expect(api.dataLoading.getSnapshot()[0]).toMatchObject({
+                status: "error",
+                errorPhase: "processing",
+                errorLocation: { origin: "/transform/0", path },
+            });
+            expect(onError).not.toHaveBeenCalled();
+            expect(container.querySelector(".message-box")).toBeNull();
+            expect(
+                container.querySelector(".loading-indicators .error")
+                    .textContent
+            ).toContain('Specification: "/transform/0"');
+            expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+                expect.stringContaining('Specification: "/transform/0"'),
+                expect.any(Error)
+            );
+            const root = /** @type {import("./view/view.js").default} */ (
+                api.debug.getViewRoot()
+            );
+            const [source] = root.context.dataFlow.dataSources;
+            const outcomes = vi.fn();
+            api.dataLoading.subscribe(outcomes);
+            await source.load();
+            expect(
+                outcomes.mock.calls.map(([change]) => change.entry.status)
+            ).toEqual(["loading", "error"]);
+            expect(consoleError).toHaveBeenCalledTimes(2);
+        } finally {
+            api.finalize();
+        }
     }
-});
+);
 
 test("launches, updates expressions, and repaints interactions without a GPU context", async () => {
     const container = document.createElement("div");

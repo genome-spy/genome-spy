@@ -78,6 +78,81 @@ code-editor {
     overflow: hidden;
 }
 
+#genome-spy-container > .playground-error {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+
+    .playground-error-card {
+        box-sizing: border-box;
+        max-width: min(100%, 640px);
+        max-height: 100%;
+        overflow: auto;
+        overflow-wrap: anywhere;
+        border: 1px solid var(--playground-danger);
+        border-radius: 8px;
+        background: var(--playground-surface);
+        box-shadow: var(--playground-shadow);
+        padding: 20px 24px;
+
+        h2 {
+            margin: 0 0 12px;
+            font-size: 16px;
+            color: var(--playground-danger);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            svg {
+                width: 1em;
+                height: 1em;
+                flex-shrink: 0;
+            }
+        }
+
+        p {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        .playground-error-location {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 8px 16px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--playground-divider);
+            font-size: var(--playground-font-small);
+            color: var(--playground-muted);
+            white-space: normal;
+
+            span {
+                min-width: 0;
+            }
+
+            button {
+                flex-shrink: 0;
+                padding: 0;
+                border: 0;
+                background: none;
+                color: var(--playground-accent-text);
+                font: inherit;
+                text-decoration: underline;
+                text-underline-offset: 2px;
+                cursor: pointer;
+            }
+        }
+
+        code {
+            font-family: var(--playground-monospace);
+        }
+    }
+}
+
 base-url-notice {
     flex: 0 0 auto;
 }

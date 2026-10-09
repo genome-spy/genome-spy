@@ -250,6 +250,7 @@ export default class View {
             {
                 settleTemporalUpdatesImmediately: true,
                 onError: context.reportError,
+                getSpecOrigin: context.getSpecOrigin,
             }
         );
         this.paramRuntime.setSelectionSource(this);
@@ -275,7 +276,8 @@ export default class View {
             // TODO: If interval selection, validate `encodings` or provides defaults
             if ("expr" in param) {
                 const { usesScaleHelper, globals } = analyzeExpression(
-                    param.expr
+                    param.expr,
+                    this.paramRuntime.getSpecLocation(param, ["expr"])
                 );
                 const dependsOnDeferredParam = globals.some((name) =>
                     this.paramRuntime.isPendingParam(name)
@@ -362,7 +364,7 @@ export default class View {
     getCursor() {
         const cursor = this.getCursorSpec();
         return isExprRef(cursor)
-            ? this.paramRuntime.evaluateAndGet(cursor.expr)
+            ? this.paramRuntime.evaluateAndGet(cursor)
             : cursor;
     }
 
@@ -376,7 +378,7 @@ export default class View {
             return;
         }
 
-        this.paramRuntime.watchExpression(cursor.expr, listener, {
+        this.paramRuntime.watchExpression(cursor, listener, {
             scopeOwned: false,
             registerDisposer,
         });
@@ -716,12 +718,9 @@ export default class View {
     #registerSizeExprRefInvalidationFor(dimension) {
         const { value } = this.#getDimensionValue(dimension);
         if (isExprRef(value)) {
-            this.#registerSizeExprRefReader(dimension, value.expr);
+            this.#registerSizeExprRefReader(dimension, value);
         } else if (isStepSize(value) && isExprRef(value.step)) {
-            this.#registerSizeExprRefReader(
-                dimension + ".step",
-                value.step.expr
-            );
+            this.#registerSizeExprRefReader(dimension + ".step", value.step);
         }
     }
 
@@ -747,11 +746,11 @@ export default class View {
 
     /**
      * @param {string} key
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} source
      */
-    #registerSizeExprRefReader(key, expr) {
+    #registerSizeExprRefReader(key, source) {
         if (!this.#sizeExprRefReaders.has(key)) {
-            const reader = this.paramRuntime.watchExpression(expr, () => {
+            const reader = this.paramRuntime.watchExpression(source, () => {
                 this.invalidateSizeCache();
                 this.context.requestLayoutReflow();
             });
@@ -1402,7 +1401,7 @@ export default class View {
             return isString(title)
                 ? title
                 : isExprRef(title.text)
-                  ? this.paramRuntime.evaluateAndGet(title.text.expr)
+                  ? this.paramRuntime.evaluateAndGet(title.text)
                   : title.text;
         }
     }
@@ -1546,13 +1545,10 @@ function createViewOpacityFunction(view) {
 
             stopReaders = opacityDef.unitsPerPixel.map((stop) => {
                 if (isExprRef(stop)) {
-                    const fn = view.paramRuntime.watchExpression(
-                        stop.expr,
-                        () => {
-                            updateInterpolator();
-                            view.context.animator.requestRender();
-                        }
-                    );
+                    const fn = view.paramRuntime.watchExpression(stop, () => {
+                        updateInterpolator();
+                        view.context.animator.requestRender();
+                    });
                     return () => fn(null);
                 } else {
                     return () => stop;
@@ -1610,7 +1606,7 @@ function createViewOpacityFunction(view) {
                 return interpolate(getMetric()) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
-            const fn = view.paramRuntime.watchExpression(opacityDef.expr, () =>
+            const fn = view.paramRuntime.watchExpression(opacityDef, () =>
                 view.context.animator.requestRender()
             );
             return (parentOpacity) => fn(null) * parentOpacity;

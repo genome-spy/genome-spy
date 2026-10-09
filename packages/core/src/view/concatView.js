@@ -1,3 +1,4 @@
+import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
 import {
     isConcatSpec,
     isHConcatSpec,
@@ -113,7 +114,7 @@ export default class ConcatView extends GridView {
         const layer = {
             layer: annotationSpecs.map((annotation) =>
                 prepareAnnotationSpec(
-                    structuredClone(annotation),
+                    cloneWithSpecOrigin(annotation),
                     channel,
                     perpendicularChannel
                 )

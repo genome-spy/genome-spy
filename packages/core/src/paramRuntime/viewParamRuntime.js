@@ -1,8 +1,11 @@
 import { isString } from "vega-util";
+import { getSpecLocation } from "../utils/specOrigin.js";
+import { annotateSpecError } from "../utils/specError.js";
 import ParamRuntime from "./paramRuntime.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 import {
     getDefaultParamValue,
+    isExprRef,
     isSelectionParameter,
     validateParameterName,
 } from "./paramUtils.js";
@@ -130,6 +133,9 @@ export default class ViewParamRuntime {
      */
     #settleTemporalUpdatesImmediately;
 
+    /** @type {((fragment: object) => string | undefined) | undefined} */
+    #getSpecOrigin;
+
     #disposed = false;
 
     /**
@@ -139,13 +145,14 @@ export default class ViewParamRuntime {
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
      * @param {import("../utils/animator.js").default} [animator]
-     * @param {{ settleTemporalUpdatesImmediately?: boolean, onError?: (error: unknown) => void }} [options]
+     * @param {{ settleTemporalUpdatesImmediately?: boolean, onError?: (error: unknown) => void, getSpecOrigin?: (fragment: object) => string | undefined }} [options]
      */
     constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
         this.#scaleResolutionResolver =
             scaleResolutionResolver ?? (() => undefined);
         this.#animator = animator;
+        this.#getSpecOrigin = options.getSpecOrigin;
         this.#settleTemporalUpdatesImmediately =
             options.settleTemporalUpdatesImmediately ?? false;
 
@@ -246,9 +253,11 @@ export default class ViewParamRuntime {
         });
     }
 
-    get #expressionOptions() {
+    /** @param {object} [source] */
+    #expressionOptions(source) {
         return {
             resolveScaleResolution: this.#scaleResolutionResolver,
+            specLocation: this.getSpecLocation(source, ["expr"]),
         };
     }
 
@@ -267,14 +276,24 @@ export default class ViewParamRuntime {
      */
     registerParam(param, options = {}) {
         const name = param.name;
-        validateParameterName(name);
+        try {
+            validateParameterName(name);
+        } catch (error) {
+            throw annotateSpecError(
+                error,
+                this.getSpecLocation(param, ["name"])
+            );
+        }
 
         if (
             this.#paramConfigs.has(name) ||
             this.#lazyExpressionNames.has(name)
         ) {
-            throw new Error(
-                'Parameter "' + name + '" already registered in this scope.'
+            throw annotateSpecError(
+                new Error(
+                    'Parameter "' + name + '" already registered in this scope.'
+                ),
+                this.getSpecLocation(param, ["name"])
             );
         }
 
@@ -311,7 +330,7 @@ export default class ViewParamRuntime {
                 this.#scopeId,
                 name,
                 expr,
-                this.#expressionOptions
+                this.#expressionOptions()
             );
             this.#localRefs.set(name, ref);
         });
@@ -346,7 +365,7 @@ export default class ViewParamRuntime {
                 expr,
                 {
                     expressionScope: source.#scopeId,
-                    ...source.#expressionOptions,
+                    ...source.#expressionOptions(),
                 }
             );
             this.#localRefs.set(name, ref);
@@ -368,8 +387,9 @@ export default class ViewParamRuntime {
         if (param.push == "outer") {
             const outerRuntime = this.findRuntimeForParam(name);
             if (!outerRuntime) {
-                throw new Error(
-                    `Parameter "${name}" not found in outer scope!`
+                throw annotateSpecError(
+                    new Error(`Parameter "${name}" not found in outer scope!`),
+                    this.getSpecLocation(param, ["name"])
                 );
             }
 
@@ -412,25 +432,21 @@ export default class ViewParamRuntime {
             } else {
                 setter = this.#registerBaseSetter(name, defaultValue);
             }
-        } else if ("expr" in param) {
+        } else if (isExprRef(param)) {
             if ("transition" in param) {
                 this.#registerTransitionedExpression(
                     name,
-                    param.expr,
+                    param,
                     param.transition
                 );
             } else if ("debounce" in param) {
-                this.#registerDebouncedExpression(
-                    name,
-                    param.expr,
-                    param.debounce
-                );
+                this.#registerDebouncedExpression(name, param, param.debounce);
             } else {
                 const ref = this.#runtime.registerDerived(
                     this.#scopeId,
                     name,
                     param.expr,
-                    this.#expressionOptions
+                    this.#expressionOptions(param)
                 );
                 this.#localRefs.set(name, ref);
             }
@@ -776,15 +792,23 @@ export default class ViewParamRuntime {
     // is disposed. A standalone deallocation API is intentionally not exposed.
 
     /**
+     * @param {object | undefined} source
+     * @param {readonly (string | number)[]} path
+     */
+    getSpecLocation(source, path) {
+        return getSpecLocation(source, this.#getSpecOrigin, path);
+    }
+
+    /**
      * Parse expr and return a function that returns the value of the parameter.
      *
-     * @param {string} expr
+     * @param {string | import("../spec/parameter.js").ExprRef} expr Authored declaration or generated expression text.
      */
     createExpression(expr) {
         return this.#runtime.createExpression(
             this.#scopeId,
-            expr,
-            this.#expressionOptions
+            typeof expr === "string" ? expr : expr.expr,
+            this.#expressionOptions(typeof expr === "string" ? undefined : expr)
         );
     }
 
@@ -800,7 +824,7 @@ export default class ViewParamRuntime {
      * 3. `registerDisposer` can be used regardless of `scopeOwned` to bind the
      *    same unsubscribe to another lifecycle owner.
      *
-     * @param {string} expr
+     * @param {string | import("../spec/parameter.js").ExprRef} expr
      * @param {() => void} listener
      * @param {WatchExpressionOptions} [options]
      * @returns {ExprRefFunction}
@@ -944,7 +968,7 @@ export default class ViewParamRuntime {
 
     /**
      * @param {string} name
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} expr
      * @param {import("../spec/parameter.js").ParamTransition} transition
      */
     #registerTransitionedExpression(name, expr, transition) {
@@ -964,7 +988,7 @@ export default class ViewParamRuntime {
 
     /**
      * @param {string} name
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} expr
      * @param {number} wait
      */
     #registerDebouncedExpression(name, expr, wait) {
@@ -1077,7 +1101,7 @@ export default class ViewParamRuntime {
     /**
      * A convenience method for evaluating an expression.
      *
-     * @param {string} expr
+     * @param {string | import("../spec/parameter.js").ExprRef} expr
      */
     evaluateAndGet(expr) {
         const fn = this.createExpression(expr);

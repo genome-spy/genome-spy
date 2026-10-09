@@ -926,10 +926,7 @@ export default class WebGLMark {
             /** @type {import("../../../paramRuntime/types.js").ExprRefFunction} */
             let fn;
             const set = () => setter(adjuster(fn(null)));
-            fn = this.unitView.paramRuntime.watchExpression(
-                propValue.expr,
-                set
-            );
+            fn = this.unitView.paramRuntime.watchExpression(propValue, set);
 
             // ... and set the initial value
             set();

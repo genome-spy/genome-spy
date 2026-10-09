@@ -561,8 +561,9 @@ describe("WebGPU mark adapter", () => {
             }
         );
         /** @type {any} */ (mark.unitView).paramRuntime = {
-            evaluateAndGet: (/** @type {string} */ name) =>
-                name == "fadeWidth" ? 12 : -9,
+            evaluateAndGet: (
+                /** @type {import("../../spec/parameter.js").ExprRef} */ ref
+            ) => (ref.expr == "fadeWidth" ? 12 : -9),
             watchExpression: vi.fn(),
         };
 

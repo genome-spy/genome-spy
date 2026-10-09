@@ -77,6 +77,9 @@ Errors during reactive updates, including debounced updates, also reach
 exception and rejects pending propagation barriers. Continued use of a failed
 instance is not guaranteed; finalize it and embed again to start fresh.
 
+For applications that edit or generate specifications, see
+[linking errors to source declarations](./editor-integration.md).
+
 For practical examples of using the API, explore the
 [live embed examples](https://genomespy.app/docs/api/embed-examples/) or browse
 their source in the

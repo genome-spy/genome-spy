@@ -3,6 +3,7 @@ import { getLanguageService, TextDocument } from "vscode-json-languageservice";
 import {
     indexSpecOrigins,
     resolveLoadingDiagnostics,
+    resolveSpecErrorDiagnostic,
 } from "./loadingDiagnostics.js";
 
 /** @param {string} origin @param {Partial<import("@genome-spy/core/types/embedApi.js").DataLoadingEntry>} [extra] */
@@ -88,4 +89,46 @@ test("uses configuration ranges for processing, URL lists, and ambiguous lazy fa
     expect(
         diagnostics.map(({ from, to }) => JSON.parse(text.slice(from, to)))
     ).toEqual(spec.vconcat.map((view) => view.data));
+});
+
+test("prefers the failing field or expression over the source URL", () => {
+    const spec = {
+        data: { url: "valid.csv" },
+        encoding: { x: { field: "missing" } },
+        params: [{ name: "a", expr: "unknown + 1" }],
+    };
+    const text = JSON.stringify(spec, null, 2);
+    const errors = resolve(text, [
+        failure("/data", {
+            errorPhase: "processing",
+            errorLocation: { origin: "/encoding/x", path: ["field"] },
+        }),
+        failure("/data", {
+            origin: undefined,
+            errorLocation: { origin: "", path: ["params", 0, "expr"] },
+        }),
+        failure("/data", {
+            errorLocation: { origin: "/unindexed", path: ["field"] },
+        }),
+    ]);
+    expect(errors.map(({ from, to }) => text.slice(from, to))).toEqual([
+        '"missing"',
+        '"unknown + 1"',
+        '"valid.csv"',
+    ]);
+
+    const document = TextDocument.create(
+        "inmemory://spec.json",
+        "json",
+        1,
+        text
+    );
+    const root = getLanguageService({}).parseJSONDocument(document).root;
+    expect(
+        resolveSpecErrorDiagnostic(root, {
+            location: { origin: "/encoding/x", path: ["absent"] },
+            message: "error",
+        })
+    ).toBeUndefined();
+    expect(resolveSpecErrorDiagnostic(root, undefined)).toBeUndefined();
 });

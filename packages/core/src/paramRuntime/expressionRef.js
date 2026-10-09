@@ -1,4 +1,11 @@
 import { compileExpression } from "./expressionCompiler.js";
+import { annotateSpecError } from "../utils/specError.js";
+
+/**
+ * @typedef {object} ExpressionBindingOptions
+ * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
+ */
 
 /**
  * @typedef {{
@@ -13,7 +20,7 @@ import { compileExpression } from "./expressionCompiler.js";
  *
  * @param {string} expr
  * @param {(name: string) => import("./types.js").ParamRef<any> | undefined} resolve
- * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
+ * @param {ExpressionBindingOptions} [options]
  * @returns {BoundExpression}
  */
 export function bindExpression(expr, resolve, options = {}) {
@@ -27,26 +34,33 @@ export function bindExpression(expr, resolve, options = {}) {
     /** @type {Map<string, import("./types.js").ParamRef<any>>} */
     const refsForParams = new Map();
 
-    for (const globalName of expression.globals) {
-        if (refsForParams.has(globalName)) {
-            continue;
+    try {
+        for (const globalName of expression.globals) {
+            if (refsForParams.has(globalName)) {
+                continue;
+            }
+
+            const ref = resolve(globalName);
+            if (!ref) {
+                throw new Error(
+                    'Unknown variable "' +
+                        globalName +
+                        '" in expression: ' +
+                        expr
+                );
+            }
+
+            refsForParams.set(globalName, ref);
+
+            Object.defineProperty(globalObject, globalName, {
+                enumerable: true,
+                get() {
+                    return ref.get();
+                },
+            });
         }
-
-        const ref = resolve(globalName);
-        if (!ref) {
-            throw new Error(
-                'Unknown variable "' + globalName + '" in expression: ' + expr
-            );
-        }
-
-        refsForParams.set(globalName, ref);
-
-        Object.defineProperty(globalObject, globalName, {
-            enumerable: true,
-            get() {
-                return ref.get();
-            },
-        });
+    } catch (error) {
+        throw annotateSpecError(error, options.specLocation);
     }
 
     /** @type {Set<() => void>} */

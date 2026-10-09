@@ -16,6 +16,8 @@ import { tickStep } from "d3-array";
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
+import { annotateSpecError } from "./specError.js";
+import compileDatumAccessor from "./compileDatumAccessor.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -127,14 +129,16 @@ const functionContext = {
  * expression to a parameter scope or scale resolution.
  *
  * @param {string} expr
+ * @param {import("../types/embedApi.js").SpecLocation} [specLocation]
  * @returns {{ usesScaleHelper: boolean, globals: string[] }}
  */
-export function analyzeExpression(expr) {
+export function analyzeExpression(expr, specLocation) {
     let usesScaleHelper = false;
     const fn = createFunction(
         expr,
         {},
         {
+            specLocation,
             resolveScaleResolution: () => {
                 usesScaleHelper = true;
                 // The compiler only captures this object in helper closures. The
@@ -199,6 +203,7 @@ function buildFunctions(codegen, context) {
  *
  * @typedef {object} ExpressionCompileContext
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
  * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "linearize" | "zoomLevel"} ScaleHelperKind
  *
@@ -453,29 +458,50 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
             functions: (visitor) => buildFunctions(visitor, helperContext),
         });
 
-        const parsed = parseExpression(expr);
+        const parsed = /** @type {ReturnType<typeof parseExpression> & {
+            visit: (visitor: (node: import("estree").Node) => void) => void
+        }} */ (parseExpression(expr));
+        /** @type {Set<string>} */
+        const datumFields = new Set();
+        parsed.visit((node) => {
+            if (
+                node.type === "MemberExpression" &&
+                node.object.type === "Identifier" &&
+                node.object.name === "datum"
+            ) {
+                if (!node.computed && node.property.type === "Identifier") {
+                    datumFields.add(node.property.name);
+                } else if (
+                    node.computed &&
+                    node.property.type === "Literal" &&
+                    (typeof node.property.value === "string" ||
+                        typeof node.property.value === "number")
+                ) {
+                    datumFields.add(String(node.property.value));
+                }
+            }
+        });
         const generatedCode = cg(parsed);
 
-        const fn = Function(
-            "datum",
-            "globalObject",
-            `"use strict";
-            try {
+        const createEvaluator = compileDatumAccessor(
+            `try {
                 return (${generatedCode.code});
             } catch (e) {
                 throw new Error("Error evaluating expression: " + ${JSON.stringify(
                     expr
                 )} + ", " + e.message, e);
-            }`
-        ).bind(functionContext);
+            }`,
+            datumFields,
+            context.specLocation,
+            functionContext
+        );
 
-        /** @type { ExpressionFunction } */
-        const exprFunction = /** @param {object} datum */ (datum) =>
-            fn(datum, globalObject);
+        const exprFunction = /** @type {ExpressionFunction} */ (
+            createEvaluator(globalObject)
+        );
         // Reuse the compiled function so consumers can supply optimized global
         // storage without paying another parse/code-generation cost.
-        exprFunction.createEvaluator = (alternateGlobalObject) => (datum) =>
-            fn(datum, alternateGlobalObject);
+        exprFunction.createEvaluator = createEvaluator;
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;
@@ -489,9 +515,12 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
 
         return exprFunction;
     } catch (e) {
-        throw new Error(`Invalid expression: ${expr}, ${e.message}`, {
-            cause: e,
-        });
+        throw annotateSpecError(
+            new Error(`Invalid expression: ${expr}, ${e.message}`, {
+                cause: e,
+            }),
+            context.specLocation
+        );
     }
 }
 
@@ -503,9 +532,10 @@ const eventFilterCg = codegenExpression({
 
 /**
  * @param {string} expr
+ * @param {import("../types/embedApi.js").SpecLocation} [location]
  * @returns {(event: UIEvent | import("./interactionEvent.js").WheelLikeEvent) => boolean}
  */
-export function createEventFilterFunction(expr) {
+export function createEventFilterFunction(expr, location) {
     try {
         const parsed = parseExpression(expr);
         const generatedCode = eventFilterCg(parsed);
@@ -527,8 +557,11 @@ export function createEventFilterFunction(expr) {
             /** @type {any} */ (fn)
         );
     } catch (e) {
-        throw new Error(`Invalid expression: ${expr}, ${e.message}`, {
-            cause: e,
-        });
+        throw annotateSpecError(
+            new Error(`Invalid expression: ${expr}, ${e.message}`, {
+                cause: e,
+            }),
+            location
+        );
     }
 }

@@ -36,6 +36,16 @@ or "<code> </code>" (a space) the bracket notation must be used:
 datum['A very *special* name!'] > 100
 ```
 
+Static top-level field references, such as `datum.foo` and `datum["foo"]`, are
+checked against every row reaching an expression evaluator. An absent
+field raises an error listing the available fields. A field whose value is
+`undefined` or `null` is present and passes this check. This also applies to
+fields inside guards such as `isDefined(datum.foo)` and conditional branches.
+Nested properties and computed keys such as `datum[fieldName]` are not checked.
+
+For optional values, include the field in the input rows. Use `isDefined` to test
+for `undefined`, or `isValid` to also reject `null` and `NaN`.
+
 ## Conditional operators
 
 [Ternary](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Conditional_Operator) operator:

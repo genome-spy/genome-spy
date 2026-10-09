@@ -1,3 +1,4 @@
+import { inheritSpecOrigin, cloneWithSpecOrigin } from "../utils/specOrigin.js";
 import {
     isValueDef,
     getSecondaryChannel,
@@ -59,10 +60,14 @@ export function fixCoveragePositional(
     const secondaryChannel = getSecondaryChannel(channel);
 
     // Must make copies because the definition may be shared with other views/marks
-    let primary = encoding[channel] && { ...encoding[channel] };
-    let secondary = encoding[secondaryChannel] && {
-        ...encoding[secondaryChannel],
-    };
+    let primary =
+        encoding[channel] &&
+        inheritSpecOrigin(encoding[channel], { ...encoding[channel] });
+    let secondary =
+        encoding[secondaryChannel] &&
+        inheritSpecOrigin(encoding[secondaryChannel], {
+            ...encoding[secondaryChannel],
+        });
 
     if (isValueDef(primary) || isValueDef(secondary)) {
         return;
@@ -80,7 +85,7 @@ export function fixCoveragePositional(
                 // Bar plot, anchor the other end to zero
                 secondary = { datum: 0, domainInert: true };
             } else {
-                secondary = { ...primary };
+                secondary = inheritSpecOrigin(primary, { ...primary });
 
                 // Fill the bands (bar plot / heatmap)
                 // We are following the Vega-Lite convention:
@@ -148,8 +153,11 @@ export function fixHalfOpenRangedText(encoding, channel) {
 
     const band = primaryBand ?? secondaryBand ?? 0;
 
-    encoding[channel] = { ...primary, band };
-    encoding[secondaryChannel] = { ...secondary, band: secondaryBand ?? band };
+    encoding[channel] = inheritSpecOrigin(primary, { ...primary, band });
+    encoding[secondaryChannel] = inheritSpecOrigin(secondary, {
+        ...secondary,
+        band: secondaryBand ?? band,
+    });
 }
 
 /**
@@ -173,7 +181,7 @@ export function fixStroke(encoding, filled) {
         if (filled) {
             encoding.stroke = { value: null };
         } else {
-            encoding.stroke = structuredClone(encoding.color);
+            encoding.stroke = cloneWithSpecOrigin(encoding.color);
             setResolutionChannel(encoding.stroke, "color");
             // TODO: Whattabout default strokeWidth?
         }
@@ -184,7 +192,7 @@ export function fixStroke(encoding, filled) {
     }
 
     if (!encoding.strokeOpacity) {
-        encoding.strokeOpacity = structuredClone(encoding.opacity);
+        encoding.strokeOpacity = cloneWithSpecOrigin(encoding.opacity);
         setResolutionChannel(encoding.strokeOpacity, "opacity");
     }
 }
@@ -197,7 +205,7 @@ export function fixFill(encoding, filled) {
     if (isValueDef(encoding.fill) && encoding.fill.value === null) {
         encoding.fillOpacity = { value: 0 };
     } else if (!encoding.fill) {
-        encoding.fill = structuredClone(encoding.color);
+        encoding.fill = cloneWithSpecOrigin(encoding.color);
         setResolutionChannel(encoding.fill, "color");
 
         if (!filled && !encoding.fillOpacity) {
@@ -207,7 +215,7 @@ export function fixFill(encoding, filled) {
 
     if (!encoding.fillOpacity) {
         if (filled) {
-            encoding.fillOpacity = structuredClone(encoding.opacity);
+            encoding.fillOpacity = cloneWithSpecOrigin(encoding.opacity);
             setResolutionChannel(encoding.fillOpacity, "opacity");
         } else {
             encoding.fillOpacity = { value: 0 };

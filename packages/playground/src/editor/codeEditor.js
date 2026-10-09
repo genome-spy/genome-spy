@@ -5,6 +5,7 @@ import { json } from "@codemirror/lang-json";
 import { EditorState } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { forceLinting } from "@codemirror/lint";
+import { getSpecErrorLocation } from "@genome-spy/core/utils/specError.js";
 import {
     createJsonLanguageExtensions,
     JsonLanguageServiceClient,
@@ -65,49 +66,109 @@ export default class CodeEditor extends LitElement {
     _dataLoading;
 
     /** @type {string | undefined} Semantic identity of the authored embed document. */
-    _loadingSpec;
+    _runtimeSpec;
 
-    _loadingRevision = 0;
+    _diagnosticsRevision = 0;
 
     /** @type {() => void} */
     _stopLoading = () => {};
 
-    clearDataLoading() {
+    _runtimeAttempt = 0;
+
+    /** @type {import("./loadingDiagnostics.js").LocatedSpecError | undefined} */
+    _specError;
+
+    /** @param {string} specText Original document, before injected base URLs/datasets. */
+    beginRuntimeDiagnostics(specText) {
         this._stopLoading();
         this._dataLoading = undefined;
-        this._loadingSpec = undefined;
-        this._refreshLoadingDiagnostics();
+        this._specError = undefined;
+        this._runtimeSpec = JSON.stringify(JSON.parse(specText));
+        this._runtimeAttempt++;
+        this._refreshRuntimeDiagnostics();
+        return this._runtimeAttempt;
+    }
+
+    /** @param {unknown} error @param {number} attempt */
+    reportRuntimeError(error, attempt) {
+        // Obsolete embed callbacks must not replace diagnostics or the default error UI.
+        if (
+            attempt !== this._runtimeAttempt ||
+            !this._matchesRuntimeSpec(this.value)
+        )
+            return true;
+        const location = getSpecErrorLocation(error);
+        if (!location || this._specError) return;
+        this._specError = {
+            location,
+            message: error instanceof Error ? error.message : String(error),
+        };
+        this._refreshRuntimeDiagnostics();
+    }
+
+    /** @param {unknown} error @param {number} attempt */
+    async revealRuntimeError(error, attempt) {
+        const text = this.value;
+        const location = getSpecErrorLocation(error);
+        if (
+            !location ||
+            attempt !== this._runtimeAttempt ||
+            !this._matchesRuntimeSpec(text)
+        )
+            return;
+
+        /** @type {{ from: number, to: number } | undefined} */
+        const range = await this._languageService.request("locate", text, 0, {
+            loadingEntries: [],
+            specError: { location, message: "" },
+        });
+        // Resolve against current formatting, and ignore edits during the request.
+        if (!range || text !== this.value || attempt !== this._runtimeAttempt)
+            return;
+
+        this._editor.dispatch({
+            selection: { anchor: range.from, head: range.to },
+            effects: EditorView.scrollIntoView(range.from, { y: "center" }),
+        });
+        this._editor.focus();
     }
 
     /**
      * @param {import("@genome-spy/core/types/embedApi.js").EmbedResult} api
-     * @param {string} specText Original editor document, before injected base URLs/datasets.
+     * @param {number} attempt
      */
-    observeDataLoading(api, specText) {
-        this.clearDataLoading();
-        this._loadingSpec = JSON.stringify(JSON.parse(specText));
+    observeDataLoading(api, attempt) {
+        if (attempt !== this._runtimeAttempt) return;
         const loading = (this._dataLoading = api.dataLoading);
         this._stopLoading = loading.subscribe(() => {
             if (loading !== this._dataLoading) return;
-            this._refreshLoadingDiagnostics();
+            this._refreshRuntimeDiagnostics();
         });
-        this._refreshLoadingDiagnostics();
+        this._refreshRuntimeDiagnostics();
     }
 
     /** @param {string} text */
-    _getLoadingEntries(text) {
+    _matchesRuntimeSpec(text) {
         try {
-            if (JSON.stringify(JSON.parse(text)) !== this._loadingSpec)
-                return [];
+            return JSON.stringify(JSON.parse(text)) === this._runtimeSpec;
         } catch {
             // Invalid editor text has no matching runtime specification.
-            return [];
+            return false;
         }
-        return this._dataLoading.getSnapshot();
     }
 
-    _refreshLoadingDiagnostics() {
-        this._loadingRevision++;
+    /** @param {string} text @returns {import("./loadingDiagnostics.js").RuntimeDiagnostics} */
+    _getRuntimeDiagnostics(text) {
+        return this._matchesRuntimeSpec(text)
+            ? {
+                  loadingEntries: this._dataLoading?.getSnapshot() ?? [],
+                  specError: this._specError,
+              }
+            : { loadingEntries: [] };
+    }
+
+    _refreshRuntimeDiagnostics() {
+        this._diagnosticsRevision++;
         if (this._editor) {
             this._editor.dispatch({ effects: refreshJsonDiagnostics.of(null) });
             forceLinting(this._editor);
@@ -145,6 +206,7 @@ export default class CodeEditor extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        this._runtimeAttempt++;
         this._stopLoading();
         this._editor?.destroy();
         this._languageService?.dispose();
@@ -165,12 +227,13 @@ export default class CodeEditor extends LitElement {
                 keymap.of([indentWithTab]),
                 editorTheme,
                 createJsonLanguageExtensions(this._languageService, {
-                    getLoadingEntries: (text) => this._getLoadingEntries(text),
-                    getLoadingRevision: () => this._loadingRevision,
+                    getDiagnostics: (text) => this._getRuntimeDiagnostics(text),
+                    getRevision: () => this._diagnosticsRevision,
                 }),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         if (
+                            this._specError ||
                             this._dataLoading
                                 ?.getSnapshot()
                                 .some((entry) => entry.status === "error")

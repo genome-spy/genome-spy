@@ -1,4 +1,3 @@
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -10,13 +9,16 @@ export default class FlattenSequenceTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").FlattenSequenceParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
-        const accessor = field(params.field ?? "sequence");
+        const accessor = this.createFieldAccessor(params, "field", {
+            defaultValue: "sequence",
+        });
         const [asPos, asSequence] = params.as ?? ["pos", "sequence"];
 
         /** @param {any[]} datum */

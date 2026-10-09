@@ -2,6 +2,7 @@ import { bindRulerDisabled } from "./rulerDisabled.js";
 import {
     asEventConfig,
     createEventPredicate,
+    getEventFilterLocation,
     validateEventType,
 } from "../utils/interactionConfig.js";
 import Point from "../view/layout/point.js";
@@ -51,7 +52,10 @@ export class RulerMouseEventController {
             `Ruler param "${paramName}" currently supports only "mousemove" and "mousedown" in "on".`
         );
 
-        this.eventPredicate = createEventPredicate(this.eventConfig);
+        this.eventPredicate = createEventPredicate(
+            this.eventConfig,
+            getEventFilterLocation(paramRuntime, config, "on")
+        );
         this.clear =
             config.clear ??
             (this.eventConfig.type === "mousemove" ? "mouseleave" : false);

@@ -1,5 +1,4 @@
 import { accessorName } from "vega-util";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -11,9 +10,10 @@ export default class ProjectTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").ProjectParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
@@ -23,7 +23,7 @@ export default class ProjectTransform extends Transform {
 
         // TODO: "If unspecified, all fields will be copied using their existing names."
 
-        const accessors = params.fields.map((f) => field(f));
+        const accessors = this.createFieldAccessors(params, "fields");
         const as = params.as ? params.as : accessors.map(accessorName);
 
         /**

@@ -1,11 +1,20 @@
 import FlowNode from "../flowNode.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
+import { field } from "../../utils/field.js";
+import { asArray } from "../../utils/arrayUtils.js";
 
 /**
  * @template T
  * @typedef {T extends import("../../spec/parameter.js").ExprRef
  *     ? import("../../paramRuntime/types.js").ExprRefFunction
  *     : () => Exclude<T, import("../../spec/parameter.js").ExprRef>} ExprRefReader<T>
+ */
+
+/**
+ * @template T
+ * @typedef {Extract<{
+ *     [K in keyof T]-?: Extract<T[K], string | readonly (string | null)[]> extends never ? never : K
+ * }[keyof T], string>} FieldProperty
  */
 
 export default class Transform extends FlowNode {
@@ -122,6 +131,43 @@ export default class Transform extends FlowNode {
     }
 
     /**
+     * Compiles a field property or array entry with its declaration location.
+     * Standalone transforms without a runtime still validate field presence.
+     * Callers must narrow optional, numeric, or expression alternatives first.
+     * @template {object} T
+     * @param {T} params
+     * @param {FieldProperty<T>} property
+     * @param {{ index?: number, defaultValue?: string }} [options]
+     */
+    createFieldAccessor(params, property, { index, defaultValue } = {}) {
+        const value = params[property];
+        const isArray = Array.isArray(value);
+        const runtime = this.paramRuntimeProvider?.paramRuntime;
+        return field(
+            /** @type {string} */ (
+                isArray ? value[index] : (value ?? defaultValue)
+            ),
+            undefined,
+            runtime?.getSpecLocation(
+                params,
+                value == null ? [] : isArray ? [property, index] : [property]
+            )
+        );
+    }
+
+    /**
+     * Compiles a scalar or array of field names, preserving array indices.
+     * @template {object} T
+     * @param {T} params
+     * @param {FieldProperty<T>} property
+     */
+    createFieldAccessors(params, property) {
+        return asArray(params[property]).map((_, index) =>
+            this.createFieldAccessor(params, property, { index })
+        );
+    }
+
+    /**
      * Resolves a static value or ExprRef to a reader and owns the expression
      * subscription for the lifetime of this transform.
      *
@@ -137,7 +183,7 @@ export default class Transform extends FlowNode {
                     value
                 );
             return /** @type {ExprRefReader<T>} */ (
-                this.paramRuntime.watchExpression(exprRef.expr, listener, {
+                this.paramRuntime.watchExpression(exprRef, listener, {
                     scopeOwned: false,
                     registerDisposer: (disposer) =>
                         this.registerDisposer(disposer),
@@ -152,7 +198,7 @@ export default class Transform extends FlowNode {
      * Watches an expression while evaluating batch-stable parameters through a
      * plain snapshot. Passive or otherwise unknown refs retain live getters.
      *
-     * @param {string} expr
+     * @param {string | import("../../spec/parameter.js").ExprRef} expr
      * @returns {((datum?: import("../flowNode.js").Datum) => any) & { refresh: () => void }}
      */
     watchSnapshottedExpression(expr) {

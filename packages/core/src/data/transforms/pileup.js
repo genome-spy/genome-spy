@@ -1,6 +1,5 @@
 import FlatQueue from "flatqueue";
 import { isNumber } from "vega-util";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -14,9 +13,10 @@ export default class PileupTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").PileupParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
     }
@@ -31,8 +31,8 @@ export default class PileupTransform extends Transform {
 
         const laneField = params.as || "lane";
         const spacing = isNumber(params.spacing) ? params.spacing : 1;
-        const startAccessor = field(params.start);
-        const endAccessor = field(params.end);
+        const startAccessor = this.createFieldAccessor(params, "start");
+        const endAccessor = this.createFieldAccessor(params, "end");
 
         // We choose the implementation based on the need of order preference.
         // The preference-aware algorithm has a lousy O(n^2) time complexity but
@@ -48,7 +48,10 @@ export default class PileupTransform extends Transform {
         } else if (params.preference) {
             const freeLaneMap = new Float64Array(maxDepth);
 
-            const preferenceAccessor = field(params.preference);
+            const preferenceAccessor = this.createFieldAccessor(
+                params,
+                "preference"
+            );
             /** @type {any[]} */
             const preferredOrder = params.preferredOrder;
 

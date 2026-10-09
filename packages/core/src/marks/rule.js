@@ -1,3 +1,4 @@
+import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import Mark from "./mark.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 import { fixRuleLikeEncoding } from "./ruleLikeEncoding.js";
@@ -108,10 +109,12 @@ function isBandChannelDef(channelDef) {
 
 /** @param {import("../spec/channel.js").ChannelDefWithScale} channelDef @param {number} band */
 function withBand(channelDef, band) {
-    return /** @type {import("../spec/channel.js").ChannelDefWithScale} */ ({
-        ...channelDef,
-        band,
-    });
+    return /** @type {import("../spec/channel.js").ChannelDefWithScale} */ (
+        inheritSpecOrigin(channelDef, {
+            ...channelDef,
+            band,
+        })
+    );
 }
 
 /** @param {import("../spec/channel.js").ChannelDefWithScale} channelDef */

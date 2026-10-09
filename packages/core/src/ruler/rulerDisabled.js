@@ -10,7 +10,7 @@ import { createRulerValue } from "./rulerValue.js";
 export function bindRulerDisabled(controller) {
     const { config, paramRuntime, paramName, channels } = controller;
     const read = isExprRef(config.disabled)
-        ? paramRuntime.createExpression(config.disabled.expr)
+        ? paramRuntime.createExpression(config.disabled)
         : makeConstantExprRef(config.disabled ?? false);
     const update = () => {
         const wasDisabled = controller.disabled;

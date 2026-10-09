@@ -1,6 +1,6 @@
 import { InternMap } from "internmap";
 import { bisector, group } from "d3-array";
-import { compare } from "vega-util";
+import { compare, splitAccessPath } from "vega-util";
 import iterateNestedMaps from "../utils/iterateNestedMaps.js";
 import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
 import { field } from "../utils/field.js";
@@ -67,9 +67,10 @@ export default class Collector extends FlowNode {
 
     /**
      * @param {import("../spec/transform.js").CollectParams} [params]
+     * @param {import("./flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super();
+    constructor(params, paramRuntimeProvider) {
+        super(paramRuntimeProvider);
 
         this.params = params ?? { type: "collect" };
         this.#viewportDomains = new ViewportDomainManager(
@@ -88,7 +89,10 @@ export default class Collector extends FlowNode {
         /** @type {Map<import("../spec/channel.js").Scalar[], Data>} TODO: proper type for key */
         this.facetBatches = new InternMap([], JSON.stringify);
 
-        this.#comparator = makeComparator(this.params?.sort);
+        this.#comparator = makeComparator(
+            this.params.sort,
+            paramRuntimeProvider
+        );
 
         this.#init();
     }
@@ -132,8 +136,15 @@ export default class Collector extends FlowNode {
         this.#buffer = [];
 
         if (this.params.groupby?.length) {
-            const accessors = this.params.groupby.map((fieldName) =>
-                field(fieldName)
+            const accessors = this.params.groupby.map((fieldName, index) =>
+                field(
+                    fieldName,
+                    undefined,
+                    this.paramRuntimeProvider?.paramRuntime?.getSpecLocation(
+                        this.params,
+                        ["groupby", index]
+                    )
+                )
             );
             const data =
                 this.facetBatches.size > 1
@@ -591,30 +602,44 @@ function groupBy(data, accessor) {
  * Creates a comparator function based on the provided sort parameters.
  *
  * @param {import("../spec/transform.js").CompareParams} sort
+ * @param {import("./flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
  * @returns {(a: Datum, b: Datum) => number}
  */
-function makeComparator(sort) {
-    // For simple cases, create a simple comparator.
-    // For more complex cases, use Vega's compare function. However,
-    // is uses megamorphic field accessors, which makes it slow.
+function makeComparator(sort, paramRuntimeProvider) {
+    // Keep the generated numeric fast path. Complex sorts use Vega's comparator
+    // with our compiled accessors to keep field accesses monomorphic.
     if (sort?.field) {
         const fields = asArray(sort.field);
-        if (fields.length == 1 && !fields[0].includes(".")) {
+        const accessors = fields.map((name, index) =>
+            field(
+                name,
+                undefined,
+                paramRuntimeProvider?.paramRuntime?.getSpecLocation(
+                    sort,
+                    Array.isArray(sort.field) ? ["field", index] : ["field"]
+                )
+            )
+        );
+        const path = fields.length == 1 ? splitAccessPath(fields[0]) : [];
+        if (path.length == 1 && !fields[0].includes(".")) {
             const order = asArray(sort.order)[0] ?? "ascending";
-            const fieldName = JSON.stringify(fields[0]);
+            const fieldName = JSON.stringify(path[0]);
             return /** @type {(a: Datum, b: Datum) => number} */ (
                 new Function(
-                    "a",
-                    "b",
-                    `return ${
-                        order === "ascending"
-                            ? `a[${fieldName}] - b[${fieldName}]`
-                            : `b[${fieldName}] - a[${fieldName}]`
+                    "accessor",
+                    `return (a, b) => {
+                        if (!(${fieldName} in a)) accessor(a);
+                        if (!(${fieldName} in b)) accessor(b);
+                        return ${
+                            order === "ascending"
+                                ? `a[${fieldName}] - b[${fieldName}]`
+                                : `b[${fieldName}] - a[${fieldName}]`
+                        };
                     };`
-                )
+                )(accessors[0])
             );
         }
 
-        return compare(sort.field, sort.order);
+        return compare(accessors, sort.order);
     }
 }

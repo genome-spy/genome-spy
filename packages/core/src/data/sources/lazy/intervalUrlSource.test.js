@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import IntervalUrlSource from "./intervalUrlSource.js";
+import { annotateSpecError } from "../../../utils/specError.js";
 
 /** @extends {IntervalUrlSource<object, import("../../flowNode.js").Datum[][]>} */
 class TestSource extends IntervalUrlSource {
@@ -73,11 +74,49 @@ function createViewStub() {
 }
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
     vi.unstubAllGlobals();
 });
 
 describe("IntervalUrlSource", () => {
+    it("preserves a downstream declaration location in processing failures", async () => {
+        const view = createViewStub();
+        const report = vi.spyOn(
+            view.context.dataFlow.loadingStatusRegistry,
+            "setSource"
+        );
+        const location = { origin: "encoding", path: ["field"] };
+        const error = annotateSpecError(new Error("missing field"), location);
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
+        class FailingPublicationSource extends TestSource {
+            publishInterval() {
+                throw error;
+            }
+        }
+        const source = new FailingPublicationSource(
+            "window",
+            createCalls(),
+            view
+        );
+
+        await source.requestInterval([0, 10]);
+        expect(report).toHaveBeenLastCalledWith(
+            source,
+            "error",
+            "missing field",
+            "processing",
+            location
+        );
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.stringContaining('Specification: "encoding"'),
+            error
+        );
+        source.dispose();
+    });
+
     it("defers descriptor and handle work until a window is requested", async () => {
         vi.useFakeTimers();
         vi.stubGlobal("window", { setTimeout, clearTimeout });

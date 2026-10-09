@@ -66,7 +66,7 @@ import {
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {ConfiguredDomainSource | undefined} viewLevelDomain
- * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
+ * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
  * @param {SelectionBindingResolver} resolveSelectionBinding
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
@@ -214,7 +214,7 @@ function mergeConfiguredDomainResolution(state, resolved) {
 
 /**
  * @param {ConfiguredDomainSource} source
- * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
+ * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
  * @param {SelectionBindingResolver} resolveSelectionBinding
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial

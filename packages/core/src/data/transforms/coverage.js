@@ -1,6 +1,5 @@
 import FlatQueue from "flatqueue";
 
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -23,20 +22,23 @@ export default class CoverageTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").CoverageParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
         this.params = params;
 
-        this.startAccessor = field(params.start);
-        this.endAccessor = field(params.end);
+        this.startAccessor = this.createFieldAccessor(params, "start");
+        this.endAccessor = this.createFieldAccessor(params, "end");
 
         /** @type {function(any):string} */
         this.chromAccessor = params.chrom
-            ? field(params.chrom)
+            ? this.createFieldAccessor(params, "chrom")
             : (d) => undefined;
         /** @type {function(any):number} */
-        this.weightAccessor = params.weight ? field(params.weight) : (d) => 1;
+        this.weightAccessor = params.weight
+            ? this.createFieldAccessor(params, "weight")
+            : (d) => 1;
 
         this.as = {
             coverage: params.as ?? "coverage",

@@ -62,7 +62,7 @@ function createController(ruler, scaleResolutions, runtime) {
                 listeners.delete(type);
             }
         },
-        paramRuntime: runtime ?? { setValue },
+        paramRuntime: runtime ?? { setValue, getSpecLocation: () => undefined },
     };
     const previousDocument = globalThis.document;
     installMockDocument(documentListeners);

@@ -56,6 +56,11 @@ is unknown. A shared source reports one definition's origin.
 `errorPhase` identifies confirmed request or processing failures and is absent
 when attribution is ambiguous.
 
+Located processing errors also include `errorLocation`, identifying the encoding
+or expression declaration that failed. Its `origin` and relative `path` follow
+the [specification error location contract](./editor-integration.md#locating-specification-errors).
+The entry's own `origin` continues to identify the data definition.
+
 Unsubscribe when observation is no longer needed. Finalization removes all
 subscriptions; subsequent reads or subscriptions throw. Listener exceptions are
 reported asynchronously to the browser and do not change source outcomes.

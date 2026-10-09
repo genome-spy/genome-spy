@@ -31,6 +31,7 @@ import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
 import { indexSpecOrigins } from "./editor/loadingDiagnostics.js";
 import { getRendererFromUrl } from "./rendererMenu.js";
+import { clearErrorDisplay, showError } from "./errorDisplay.js";
 import {
     addUploadedDatasets,
     findMissingNamedData,
@@ -565,6 +566,12 @@ async function updateVisualization(force) {
         }
 
         previousStringifiedSpec = stringifiedSpec;
+        const editor = editorRef.value;
+        const runtimeAttempt = editor.beginRuntimeDiagnostics(value);
+        const container = /** @type {HTMLElement} */ (
+            genomeSpyContainerRef.value
+        );
+        clearErrorDisplay(container);
 
         missingFiles = findMissingNamedData(parsedSpec, files);
         if (
@@ -581,7 +588,6 @@ async function updateVisualization(force) {
         addUploadedDatasets(parsedSpec, files);
 
         if (embedResult) {
-            editorRef.value.clearDataLoading();
             embedResult.finalize();
             embedResult = undefined;
         }
@@ -606,19 +612,37 @@ async function updateVisualization(force) {
         // update reach the browser before GenomeSpy measures its container.
         await new Promise((resolve) => requestAnimationFrame(resolve));
 
-        embedResult = await embed(
-            /** @type {HTMLElement} */ (genomeSpyContainerRef.value),
-            parsedSpec,
-            {
+        try {
+            embedResult = await embed(container, parsedSpec, {
                 inputBindingContainer: /** @type {HTMLElement} */ (
                     inputBindingsHostRef.value
                 ),
                 powerPreference: "high-performance",
                 renderer: selectedRenderer,
                 getSpecOrigin: (fragment) => origins.get(fragment),
-            }
-        );
-        editorRef.value.observeDataLoading(embedResult, value);
+                onError: (error, element) => {
+                    if (
+                        editor.reportRuntimeError(error, runtimeAttempt) !==
+                        true
+                    ) {
+                        showError(
+                            element,
+                            error,
+                            () =>
+                                void editor.revealRuntimeError(
+                                    error,
+                                    runtimeAttempt
+                                )
+                        );
+                    }
+                    return true;
+                },
+            });
+        } catch {
+            // Embed already reported the error to the UI and console.
+            return;
+        }
+        editor.observeDataLoading(embedResult, runtimeAttempt);
         hasInputBindings = Boolean(
             document.querySelector(".gs-input-bindings")
         );

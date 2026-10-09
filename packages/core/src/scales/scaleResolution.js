@@ -293,7 +293,7 @@ export default class ScaleResolution {
      * Binds an ordinary scale expression through its effective parameter
      * scope.
      *
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} expr
      * @returns {import("../paramRuntime/types.js").ExprRefFunction}
      */
     #createExpression(expr) {
@@ -675,7 +675,7 @@ export default class ScaleResolution {
         if (Array.isArray(range)) {
             for (const value of range) {
                 if (isExprRef(value)) {
-                    this.#createExpression(value.expr);
+                    this.#createExpression(value);
                 }
             }
         }

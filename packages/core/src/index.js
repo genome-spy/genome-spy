@@ -13,3 +13,5 @@ export const embed = createEmbed(GenomeSpy);
 
 export { loadSpec };
 export { intervalSelection } from "./selection/index.js";
+
+export { getSpecErrorLocation } from "./utils/specError.js";

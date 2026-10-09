@@ -78,6 +78,11 @@ color: firebrick;
 display: block;
 }
 
+> span {
+white-space: pre-line;
+overflow-wrap: anywhere;
+}
+
 img {
 width: 1.5em;
 height: 1.5em;
@@ -259,6 +264,11 @@ width: 100%;
 border: 1px solid red;
 padding: 10px;
 background: #fff0f0;
+white-space: pre-wrap;
+overflow-wrap: anywhere;
+max-width: calc(100% - 40px);
+max-height: calc(100% - 40px);
+overflow: auto;
 }
 }
 }
