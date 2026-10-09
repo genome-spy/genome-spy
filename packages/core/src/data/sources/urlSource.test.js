@@ -51,7 +51,11 @@ function createViewStub() {
                          * @param {string} status
                          * @param {string} [detail]
                          */
-                        set: (/** @type {any} */ _view, status, detail) => {
+                        setSource: (
+                            /** @type {any} */ _view,
+                            status,
+                            detail
+                        ) => {
                             loadingStatus.status = status;
                             loadingStatus.detail = detail;
                         },

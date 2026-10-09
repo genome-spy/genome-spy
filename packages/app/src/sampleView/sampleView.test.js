@@ -610,7 +610,7 @@ describe("sample data and metadata wiring", () => {
                     context: {
                         dataFlow: {
                             loadingStatusRegistry: {
-                                set: () => undefined,
+                                setSource: () => undefined,
                             },
                         },
                     },

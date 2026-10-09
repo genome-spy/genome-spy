@@ -8,6 +8,9 @@ import "./rendering/registerCanvas.js";
 import "./rendering/registerSvg.js";
 import "./rendering/registerWebGL.js";
 import GenomeSpy from "./genomeSpyBase.js";
+import { createEmbed } from "./embedFactory.js";
+
+const embed = createEmbed(/** @type {any} */ (GenomeSpy));
 
 /** @type {ReturnType<typeof createContext>[]} */
 let contexts;
@@ -92,6 +95,212 @@ test("keeps a shared data-loading error visible after launch", async () => {
     } finally {
         genomeSpy.destroy();
         container.remove();
+    }
+});
+
+test("reports canonical source outcomes through the embed API until final disposal", async () => {
+    const fetchData = vi.fn(
+        async () => new Response("", { status: 404, statusText: "Not Found" })
+    );
+    vi.stubGlobal("fetch", fetchData);
+    const container = document.createElement("div");
+    const data = { url: "missing.csv" };
+    const api = await embed(
+        container,
+        {
+            vconcat: [
+                { name: "first", width: 200, height: 100, data, mark: "point" },
+                {
+                    name: "second",
+                    width: 200,
+                    height: 100,
+                    data: { ...data },
+                    mark: "point",
+                },
+            ],
+        },
+        {
+            renderer: "canvas",
+            getSpecOrigin: (fragment) =>
+                fragment === data ? "/vconcat/0/data" : undefined,
+        }
+    );
+
+    try {
+        const [entry] = api.dataLoading.getSnapshot();
+        expect(api.dataLoading.getSnapshot()).toHaveLength(1);
+        expect(entry).toMatchObject({
+            status: "error",
+            origin: "/vconcat/0/data",
+            errorPhase: "request",
+        });
+        expect(fetchData).toHaveBeenCalledOnce();
+        expect(
+            container.querySelectorAll(".loading-indicators .error")
+        ).toHaveLength(2);
+        const changed = vi.fn();
+        const unsubscribe = api.dataLoading.subscribe(changed);
+        expect(changed).not.toHaveBeenCalled();
+
+        // Removing the canonical source's original owner must preserve its live consumer.
+        await api.views.remove(api.views.get({ scope: [], view: "first" }));
+        expect(api.dataLoading.getSnapshot()).toEqual([entry]);
+        expect(changed).not.toHaveBeenCalled();
+        expect(
+            container.querySelectorAll(".loading-indicators .error")
+        ).toHaveLength(1);
+
+        await api.views.remove(api.views.get({ scope: [], view: "second" }));
+        expect(api.dataLoading.getSnapshot()).toEqual([]);
+        expect(changed).toHaveBeenCalledExactlyOnceWith({
+            type: "remove",
+            sourceId: entry.sourceId,
+        });
+        unsubscribe();
+    } finally {
+        api.finalize();
+    }
+    expect(() => api.dataLoading.getSnapshot()).toThrow("finalized embed");
+    expect(() => api.dataLoading.subscribe(() => {})).toThrow(
+        "finalized embed"
+    );
+});
+
+test("keeps main and lookup outcomes independent and replaces errors after a new load", async () => {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url) =>
+            url === "main.csv"
+                ? new Response("key\n1")
+                : new Response("", { status: 404, statusText: "Not Found" })
+        )
+    );
+    const container = document.createElement("div");
+    const api = await embed(
+        container,
+        {
+            width: 200,
+            height: 100,
+            data: { url: "main.csv" },
+            transform: [
+                {
+                    type: "lookup",
+                    from: { url: "side.csv" },
+                    key: "key",
+                    fields: ["key"],
+                    values: ["label"],
+                },
+            ],
+            mark: "point",
+        },
+        { renderer: "canvas" }
+    );
+
+    try {
+        expect(
+            api.dataLoading
+                .getSnapshot()
+                .map((entry) => entry.status)
+                .sort()
+        ).toEqual(["complete", "error"]);
+        expect(
+            container.querySelector(".loading-indicators .error").textContent
+        ).toContain("side.csv");
+        const changed = vi.fn();
+        api.dataLoading.subscribe(changed);
+        const subscriberError = new Error("Host listener failed");
+        const report = vi.fn();
+        vi.stubGlobal("reportError", report);
+        const stopFailing = api.dataLoading.subscribe((change) => {
+            if (change.type === "update") change.entry.status = "error";
+            throw subscriberError;
+        });
+        const root = /** @type {import("./view/view.js").default} */ (
+            api.debug.getViewRoot()
+        );
+        const side = root.context.dataFlow.dataSources.find(
+            (source) =>
+                root.context.dataFlow.loadingStatusRegistry.getSource(source)
+                    ?.status === "error"
+        );
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async (url) =>
+                    new Response(
+                        url === "main.csv" ? "key\n1" : "key,label\n1,A"
+                    )
+            )
+        );
+        await side.load();
+        await vi.waitFor(() =>
+            expect(
+                api.dataLoading
+                    .getSnapshot()
+                    .every((entry) => entry.status === "complete")
+            ).toBe(true)
+        );
+        stopFailing();
+        expect(report).toHaveBeenCalledWith(subscriberError);
+        const sideId =
+            root.context.dataFlow.loadingStatusRegistry.getSource(
+                side
+            ).sourceId;
+        const updates = changed.mock.calls
+            .map(([change]) => change)
+            .filter((change) => change.entry.sourceId === sideId);
+        expect(updates.map((change) => change.entry.status)).toEqual([
+            "loading",
+            "complete",
+        ]);
+        expect(updates[1].entry).not.toHaveProperty("message");
+        expect(updates[1].entry).not.toHaveProperty("errorPhase");
+        expect(
+            container.querySelector(".loading-indicators .error")
+        ).toBeNull();
+
+        // Public entries are detached from the source of truth and other listeners.
+        const snapshot = api.dataLoading.getSnapshot();
+        snapshot[0].status = "error";
+        expect(
+            api.dataLoading
+                .getSnapshot()
+                .every((entry) => entry.status === "complete")
+        ).toBe(true);
+        changed.mockClear();
+        api.finalize();
+        expect(changed).not.toHaveBeenCalled();
+    } finally {
+        api.finalize();
+    }
+});
+
+test("classifies downstream processing failures without blaming the URL", async () => {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response("value\n1"))
+    );
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const api = await embed(
+        document.createElement("div"),
+        {
+            width: 200,
+            height: 100,
+            data: { url: "valid.csv" },
+            transform: [
+                { type: "formula", expr: "datum.absent.value", as: "value" },
+            ],
+            mark: "point",
+        },
+        { renderer: "canvas" }
+    );
+    try {
+        expect(api.dataLoading.getSnapshot()[0]).toMatchObject({
+            status: "error",
+            errorPhase: "processing",
+        });
+    } finally {
+        api.finalize();
     }
 });
 

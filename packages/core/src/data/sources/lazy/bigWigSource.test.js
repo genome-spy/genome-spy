@@ -117,7 +117,7 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
                     undefined,
                 dataFlow: {
                     loadingStatusRegistry: {
-                        set: (
+                        setSource: (
                             /** @type {any} */ _view,
                             /** @type {import("../../../types/viewContext.js").DataLoadingStatus} */ status,
                             /** @type {string | undefined} */ detail

@@ -63,18 +63,7 @@ export default class UrlSource extends DataSource {
         const listUrl = concatUrl(this.baseUrl, props.urlsFromFile);
         const format = { type: props.type ?? "tsv" };
 
-        const result = await fetch(listUrl);
-
-        if (!result.ok) {
-            throw new Error(
-                `Cannot load "${listUrl}": ${result.status} ${result.statusText}`
-            );
-        }
-        const content = await readResponseBody(
-            result,
-            listUrl,
-            responseType(format.type)
-        );
+        const content = await loadResponse(listUrl, responseType(format.type));
 
         const files = /** @type {string[] | {url: string}[]} */ (
             read(content, toVegaLoaderFormat(format))
@@ -116,24 +105,6 @@ export default class UrlSource extends DataSource {
                 const format = getFormat(this.params, urls);
                 const type = responseType(format.type);
 
-                /** @param {string} url */
-                const load = async (url) => {
-                    try {
-                        const result = await fetch(url);
-                        if (!result.ok) {
-                            throw new Error(
-                                `${result.status} ${result.statusText}`
-                            );
-                        }
-                        return await readResponseBody(result, url, type);
-                    } catch (e) {
-                        throw new Error(
-                            `Could not load data: ${url}. Reason: ${e.message}`,
-                            { cause: e }
-                        );
-                    }
-                };
-
                 /**
                  * @param {any} content
                  * @param {import("./urlDescriptor.js").UrlDescriptor} descriptor
@@ -174,7 +145,7 @@ export default class UrlSource extends DataSource {
                     descriptors.map((descriptor) =>
                         loadUrlDescriptorOrSkip(descriptor, async () => ({
                             descriptor,
-                            content: await load(descriptor.url),
+                            content: await loadResponse(descriptor.url, type),
                         }))
                     )
                 );
@@ -196,11 +167,36 @@ export default class UrlSource extends DataSource {
             if (e instanceof UrlLimitExceededError) {
                 this.setLoadingStatus("complete");
             } else {
-                this.setLoadingStatus("error", e.message);
+                this.setLoadingStatus(
+                    "error",
+                    e.message,
+                    e.errorPhase ?? "processing"
+                );
             }
         }
         this.complete();
     }
+}
+
+/**
+ * @param {string} url
+ * @param {string} type
+ */
+async function loadResponse(url, type) {
+    let result;
+    try {
+        result = await fetch(url);
+        if (!result.ok)
+            throw new Error(`${result.status} ${result.statusText}`);
+    } catch (cause) {
+        throw Object.assign(
+            new Error(`Could not load data: ${url}. Reason: ${cause.message}`, {
+                cause,
+            }),
+            { errorPhase: "request" }
+        );
+    }
+    return readResponseBody(result, url, type);
 }
 
 /**

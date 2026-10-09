@@ -1,6 +1,13 @@
 # Playground diagnostics and public data-loading status
 
-Status: implementation authorized; milestones pending.
+Status: implementation in progress.
+
+- [x] Milestone 1: source reporting API, origin hook, and live-consumer overlays.
+      Verified with 158 focused tests, Core/App/Playground type checks, lint, generated
+      API docs, and the missing-CSV shared-source overlay in the in-app browser.
+      Changeset selects a minor release (1.2.0 for the fixed release group).
+- [ ] Milestone 2: lazy waits reject relevant source failures.
+- [ ] Milestone 3: Playground diagnostics and final integration verification.
 
 ## Goal and scope
 

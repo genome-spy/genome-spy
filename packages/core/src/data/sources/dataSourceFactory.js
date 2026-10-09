@@ -11,6 +11,17 @@ import {
  * @param {import("../../view/view.js").default} view
  */
 export default function createDataSource(params, view) {
+    const origin = view.context.getSpecOrigin?.(params);
+    const source = createSource(params, view);
+    source.origin = origin;
+    return source;
+}
+
+/**
+ * @param {Partial<import("../../spec/data.js").Data>} params
+ * @param {import("../../view/view.js").default} view
+ */
+function createSource(params, view) {
     if (isInlineData(params)) {
         return new InlineSource(params, view);
     } else if (isUrlData(params)) {

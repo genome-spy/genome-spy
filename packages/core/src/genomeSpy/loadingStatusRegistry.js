@@ -1,21 +1,101 @@
-/**
- * @typedef {import("../view/view.js").default} View
- * @typedef {import("../types/viewContext.js").DataLoadingStatus} DataLoadingStatus
- * @typedef {{ status: DataLoadingStatus, detail?: string }} LoadingStatus
- * @typedef {{ view: View, status: DataLoadingStatus, detail?: string }} LoadingStatusChange
- */
+import { getViewIdentityRegistry } from "../view/viewIdentityRegistry.js";
 
 /**
- * Central registry for per-view loading status that decouples data sources
- * from UI rendering. Consumers can subscribe to changes and query the current
- * status map when needed (e.g., for overlay rendering).
+ * @typedef {import("../view/view.js").default} View
+ * @typedef {import("../data/sources/dataSource.js").default} DataSource
+ * @typedef {import("../types/viewContext.js").DataLoadingStatus} DataLoadingStatus
+ * @typedef {import("../types/embedApi.js").DataLoadingEntry} DataLoadingEntry
+ * @typedef {import("../types/embedApi.js").DataLoadingChange} DataLoadingChange
+ * @typedef {{status: DataLoadingStatus, detail?: string}} LoadingStatus
  */
+
+/** Source outcomes and separate root initialization/runtime indicators. */
 export default class LoadingStatusRegistry {
     /** @type {Map<View, LoadingStatus>} */
     #statuses = new Map();
 
-    /** @type {Set<(change: LoadingStatusChange) => void>} */
+    /** @type {Map<DataSource, DataLoadingEntry>} */
+    #sources = new Map();
+
+    /** @type {Set<(change: DataLoadingChange) => void>} */
     #listeners = new Set();
+
+    /** @type {Set<() => void>} */
+    #observers = new Set();
+
+    #nextId = 0;
+
+    /**
+     * @param {DataSource} source
+     * @param {DataLoadingStatus} status
+     * @param {string} [message]
+     * @param {DataLoadingEntry["errorPhase"]} [errorPhase]
+     */
+    setSource(source, status, message, errorPhase) {
+        if (source.disposed) return;
+
+        let entry = this.#sources.get(source);
+        if (!entry) {
+            const view = source.view;
+            const root = view.getLayoutAncestors().at(-1);
+            entry = {
+                sourceId: "source-" + this.#nextId++,
+                viewId: getViewIdentityRegistry(root).getId(view),
+                viewPath: view.getPathString(),
+                ...(source.origin === undefined
+                    ? {}
+                    : { origin: source.origin }),
+                status,
+            };
+            const sourceId = entry.sourceId;
+            source.registerDisposer(() => {
+                this.#sources.delete(source);
+                this.#publish({ type: "remove", sourceId });
+            });
+        }
+
+        entry = {
+            sourceId: entry.sourceId,
+            viewId: entry.viewId,
+            viewPath: entry.viewPath,
+            ...(entry.origin === undefined ? {} : { origin: entry.origin }),
+            status,
+            ...(status === "error" ? { message, errorPhase } : {}),
+        };
+        this.#sources.set(source, entry);
+        this.#publish({ type: "update", entry });
+    }
+
+    /** @param {DataLoadingChange} change */
+    #publish(change) {
+        for (const listener of this.#listeners) {
+            try {
+                listener(
+                    change.type === "update"
+                        ? { type: "update", entry: { ...change.entry } }
+                        : { ...change }
+                );
+            } catch (error) {
+                // Host callbacks must not turn a successful load into a failed one.
+                queueMicrotask(() => reportError(error));
+            }
+        }
+        this.#notify();
+    }
+
+    #notify() {
+        for (const observer of this.#observers) observer();
+    }
+
+    /** @returns {DataLoadingEntry[]} */
+    getSnapshot() {
+        return Array.from(this.#sources.values(), (entry) => ({ ...entry }));
+    }
+
+    /** @param {DataSource} source */
+    getSource(source) {
+        return this.#sources.get(source);
+    }
 
     /**
      * @param {View} view
@@ -23,64 +103,40 @@ export default class LoadingStatusRegistry {
      * @param {string} [detail]
      */
     set(view, status, detail) {
-        if (!view) {
-            throw new Error("LoadingStatusRegistry.set requires a view.");
-        }
-
         this.#statuses.set(view, { status, detail });
-
-        const change = { view, status, detail };
-        for (const listener of this.#listeners) {
-            listener(change);
-        }
+        this.#notify();
     }
 
-    /**
-     * @param {View} view
-     */
+    /** @param {View} view */
     delete(view) {
-        const previous = this.#statuses.get(view);
-        if (!previous) {
-            return;
-        }
-
         this.#statuses.delete(view);
-
-        const change = {
-            view,
-            status: previous.status,
-            detail: previous.detail,
-        };
-        for (const listener of this.#listeners) {
-            listener(change);
-        }
+        this.#notify();
     }
 
-    /**
-     * @param {View} view
-     * @returns {LoadingStatus | undefined}
-     */
-    get(view) {
-        return this.#statuses.get(view);
-    }
-
-    /**
-     * @returns {IterableIterator<[View, LoadingStatus]>}
-     */
     entries() {
         return this.#statuses.entries();
     }
 
-    /**
-     * Subscribe to status changes.
-     *
-     * @param {(change: LoadingStatusChange) => void} listener
-     * @returns {() => void} Unsubscribe callback
-     */
+    /** @param {(change: DataLoadingChange) => void} listener */
     subscribe(listener) {
         this.#listeners.add(listener);
         return () => {
             this.#listeners.delete(listener);
         };
+    }
+
+    /** @param {() => void} observer */
+    observe(observer) {
+        this.#observers.add(observer);
+        return () => {
+            this.#observers.delete(observer);
+        };
+    }
+
+    clear() {
+        this.#listeners.clear();
+        this.#observers.clear();
+        this.#sources.clear();
+        this.#statuses.clear();
     }
 }

@@ -102,7 +102,7 @@ function createSource(Source, params, chromosome = "chr1") {
             addBroadcastListener: /** @returns {undefined} */ () => undefined,
             dataFlow: {
                 loadingStatusRegistry: {
-                    set: (
+                    setSource: (
                         /** @type {any} */ _view,
                         /** @type {string} */ status,
                         /** @type {string | undefined} */ detail

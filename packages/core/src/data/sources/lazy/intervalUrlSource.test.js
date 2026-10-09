@@ -62,7 +62,7 @@ function createViewStub() {
         context: {
             dataFlow: {
                 loadingStatusRegistry: {
-                    set: (
+                    setSource: (
                         /** @type {any} */ _view,
                         /** @type {import("../../../types/viewContext.js").DataLoadingStatus} */ status
                     ) => loadingStatuses.push(status),

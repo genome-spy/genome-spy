@@ -28,6 +28,14 @@ search nested views.
 
 ***
 
+### dataLoading
+
+> `readonly` **dataLoading**: [`DataLoadingApi`](DataLoadingApi.md)
+
+Observes loading performed by GenomeSpy, independently of named-data updates.
+
+***
+
 ### events
 
 > `readonly` **events**: [`EmbedEventApi`](EmbedEventApi.md)

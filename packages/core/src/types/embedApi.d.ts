@@ -107,6 +107,14 @@ export interface EmbedOptions {
      * Optional hook for handling launch and runtime errors. Return true to suppress default UI.
      */
     onError?: (error: unknown, container: HTMLElement) => boolean | void;
+
+    /**
+     * Returns opaque authored-spec context for an original specification fragment.
+     * Initially called for data definitions. Unknown, imported, or generated
+     * fragments may return undefined. The context is reported as a source's
+     * `origin` and does not affect source sharing.
+     */
+    getSpecOrigin?: (fragment: object) => string | undefined;
 }
 
 /**
@@ -887,6 +895,44 @@ export interface ImageExportApi {
     ) => Promise<SvgExportAnalysis>;
 }
 
+/** Current outcome of one canonical source that has attempted loading. */
+export interface DataLoadingEntry {
+    /** Stable source identity within this embed. Equivalent sources may be shared. */
+    sourceId: string;
+    /** Original declaring view's id. That view may no longer be live. */
+    viewId: string;
+    /** Original declaring view's descriptive path, captured at its first attempt. */
+    viewPath: string;
+    /** Opaque context returned by `EmbedOptions.getSpecOrigin`. */
+    origin?: string;
+    status: "loading" | "complete" | "error";
+    /** Present only for errors. */
+    message?: string;
+    /** Confirmed failure boundary; absent when attribution is ambiguous. */
+    errorPhase?: "request" | "processing";
+}
+
+/** One source update or removal, rather than a complete snapshot. */
+export type DataLoadingChange =
+    | { type: "update"; entry: DataLoadingEntry }
+    | { type: "remove"; sourceId: string };
+
+/**
+ * Observes eager URL and lazy loading attempts, including transform side inputs.
+ * Does not validate unrequested data or report synchronous named-data updates.
+ */
+export interface DataLoadingApi {
+    /** Returns detached current entries, including errors preceding embed completion. */
+    getSnapshot: () => readonly DataLoadingEntry[];
+    /**
+     * Observes future changes. Subscribe, then read the snapshot synchronously
+     * for initial state and subsequent changes. Finalization unsubscribes all
+     * listeners. Listener exceptions are reported asynchronously to the browser
+     * and cannot change loading outcomes or prevent delivery to other listeners.
+     */
+    subscribe: (listener: (change: DataLoadingChange) => void) => () => void;
+}
+
 /**
  * An API for controlling the embedded GenomeSpy instance.
  */
@@ -906,6 +952,9 @@ export interface EmbedResult {
      * search nested views.
      */
     readonly datasets: DatasetApi;
+
+    /** Observes loading performed by GenomeSpy, independently of named-data updates. */
+    readonly dataLoading: DataLoadingApi;
 
     /** Synchronous native input subscriptions for the embedded canvas. */
     readonly events: EmbedEventApi;

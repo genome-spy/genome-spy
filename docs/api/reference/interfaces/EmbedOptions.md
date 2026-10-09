@@ -98,7 +98,7 @@ defaults and built-in theme, but before `spec.config`.
 
 > `optional` **onError?**: (`error`, `container`) => `boolean` \| `void`
 
-Optional hook for handling launch errors. Return true to suppress default UI.
+Optional hook for handling launch and runtime errors. Return true to suppress default UI.
 
 #### Parameters
 
@@ -110,3 +110,24 @@ Optional hook for handling launch errors. Return true to suppress default UI.
 #### Returns
 
 `boolean` \| `void`
+
+***
+
+### getSpecOrigin?
+
+> `optional` **getSpecOrigin?**: (`fragment`) => `string`
+
+Returns opaque authored-spec context for an original specification fragment.
+Initially called for data definitions. Unknown, imported, or generated
+fragments may return undefined. The context is reported as a source's
+`origin` and does not affect source sharing.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `fragment` | `object` |
+
+#### Returns
+
+`string`

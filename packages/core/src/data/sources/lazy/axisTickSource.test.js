@@ -97,7 +97,7 @@ function createViewStub({
                 },
                 dataFlow: {
                     loadingStatusRegistry: {
-                        set: /** @returns {undefined} */ () => undefined,
+                        setSource: /** @returns {undefined} */ () => undefined,
                     },
                 },
             },

@@ -55,7 +55,7 @@ function createViewStub() {
             removeBroadcastListener: vi.fn(),
             dataFlow: {
                 loadingStatusRegistry: {
-                    set: vi.fn(),
+                    setSource: vi.fn(),
                 },
             },
         },
