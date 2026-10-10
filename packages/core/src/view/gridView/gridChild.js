@@ -271,6 +271,9 @@ export default class GridChild {
             this.#setupIntervalSelection();
             this.#setupRulers();
         }
+
+        // Cancel document drags before this view's parameter runtime is disposed.
+        view.registerDisposer(() => this.#disposeControllers());
     }
 
     #setupRulers() {
@@ -804,6 +807,11 @@ export default class GridChild {
      * Disposes GridChild-owned controllers and generated guide views.
      */
     dispose() {
+        this.#disposeControllers();
+        this.#disposeAxisViews();
+    }
+
+    #disposeControllers() {
         for (const controllers of [
             this.#intervalSelectionControllers,
             this.#rulerViewportControllers,
@@ -816,8 +824,6 @@ export default class GridChild {
         this.#intervalSelectionControllers = [];
         this.#rulerViewportControllers = [];
         this.#rulerMouseEventControllers = [];
-
-        this.#disposeAxisViews();
     }
 
     /**

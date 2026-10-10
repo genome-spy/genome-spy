@@ -24,3 +24,6 @@ when they share the same datum. Mark hits and custom tooltip contexts expose a
 Pan and zoom update shared scales using the pointed cell's plot bounds, also
 inside scrolled facet viewports. Existing viewport drag-scrolling and gesture
 cleanup apply to facet cells.
+
+Removing a facet or disposing its visualization cancels active interval-brush
+gestures and releases their document listeners.

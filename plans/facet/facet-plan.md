@@ -51,7 +51,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
 | Rulers in repeated cells | Incorrect projection/ownership and cell-crossing clears; review fix required |
 | Hover transitions after layout refresh | Can emit false cell leave/enter; review fix required |
-| Removing a facet during a brush drag | Inner wrapper is not disposed; document listeners remain active |
+| Removing a facet during a brush drag | Fixed; controller cleanup precedes parameter disposal |
 | Child viewport options | Accepted but compress content instead of scrolling; reject unsupported options |
 
 ### Completed validation fixes
@@ -137,7 +137,7 @@ flow, one repeated child, and shared grid chrome. Do not introduce a new scale
 instance system, header framework, or Vega-Lite normalization layer for this
 completion pass.
 
-- [ ] Dispose the facet-owned inner `GridChild`, including active brush/ruler
+- [x] Dispose the facet-owned inner `GridChild`, including active brush/ruler
   sessions, when the facet is removed. Cancel listeners before their parameter
   runtime is destroyed.
 - [ ] Route rulers through the pointed cell's coordinates, install one logical

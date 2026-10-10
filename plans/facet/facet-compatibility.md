@@ -150,3 +150,9 @@ viewport, then remove a facet during a drag. Use focused subsystem tests and
 WebGL/Canvas checks where input/rendering contracts require them. Confirm one
 child/dataflow subtree as category count grows. No optional Vega-Lite feature
 blocks this acceptance.
+
+## Completion record
+
+- Controller lifecycle: GridChild registers controller cleanup on its content
+  view, before parameter disposal. Guide views retain ordinary subtree cleanup.
+  Focused tests cover facet removal and whole-root disposal during a brush.

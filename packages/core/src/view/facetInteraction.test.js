@@ -347,6 +347,49 @@ test("a brush in a later cell uses its own projection and stays anchored during 
     expect(child.facetCoords.size).toBe(3);
 });
 
+test.each([true, false])(
+    "facet disposal cancels an active brush (remove subtree: %s)",
+    async (removeSubtree) => {
+        const { root, facet, child, dispatcher } = await createFacet({
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+        });
+        const add = vi.spyOn(document, "addEventListener");
+        const remove = vi.spyOn(document, "removeEventListener");
+        const resume = vi.spyOn(root.context, "resumeHoverTracking");
+        const point = pointIn(child.facetCoords.get(["B"]));
+        dispatcher.dispatch(
+            point,
+            new MouseEvent("mousedown", {
+                clientX: point.x,
+                clientY: point.y,
+            })
+        );
+        const listeners = add.mock.calls.filter(([type]) =>
+            ["mousemove", "mouseup"].includes(type)
+        );
+        expect(listeners).toHaveLength(2);
+
+        if (removeSubtree) {
+            root.removeChildView(facet);
+        } else {
+            root.disposeSubtree();
+        }
+
+        for (const [type, listener] of listeners) {
+            expect(remove).toHaveBeenCalledWith(type, listener);
+        }
+        expect(resume).toHaveBeenCalledOnce();
+        document.dispatchEvent(new MouseEvent("mousemove"));
+        document.dispatchEvent(new MouseEvent("mouseup"));
+        expect(resume).toHaveBeenCalledOnce();
+    }
+);
+
 test("shared scales use the pointed cell's wheel and touch coordinates once per resolution", async () => {
     const { root, facet, child, dispatcher } = await createFacet({
         spec: {
