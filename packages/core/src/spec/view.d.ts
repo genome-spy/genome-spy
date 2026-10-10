@@ -543,6 +543,8 @@ export interface FacetSpec extends ViewSpecBase {
      *
      * Facets currently use shared scales and axes. Independent per-facet scale
      * domains are not supported.
+     * Set `viewportWidth` or `viewportHeight` on the facet container to scroll
+     * the grid. Viewports inside the repeated child are not supported.
      */
     spec: LayerSpec | UnitSpec | ImportSpec;
 

@@ -164,3 +164,6 @@ blocks this acceptance.
 - Hover identity: dispatch compares tuple values, avoiding synthetic leave/enter
   events after unchanged layout rebuilds. A real-spec regression also verifies
   that moving to another category still produces transitions.
+- Child viewports: reject width/height viewport declarations anywhere in the
+  repeated subtree with a message directing authors to the facet container.
+  Existing container scrolling tests remain the supported contract.

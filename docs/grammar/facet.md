@@ -51,6 +51,10 @@ and independent axes are not supported.
 The `columns` property wraps one-dimensional column facets only. It cannot be
 used together with `facet.row`.
 
+Set `viewportWidth` or `viewportHeight` on the facet container to scroll the
+grid. Viewports inside the repeated child are not supported and produce an
+error.
+
 Explicit `collect.groupby` is unsupported on inherited facet data; collection
 and sorting without grouping are supported. The placement transforms
 `displace1d`, `filterScoredLabels`, `packLegendLabels`, and `axisLabelLayout`

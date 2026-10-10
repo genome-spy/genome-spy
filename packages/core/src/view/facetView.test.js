@@ -203,6 +203,23 @@ test("facet rejects an immediate nested facet child", async () => {
     ).rejects.toThrow("Facet specs cannot contain an immediate facet child.");
 });
 
+test.each(["viewportWidth", "viewportHeight"])(
+    "facet rejects child %s instead of compressing content",
+    async (viewport) => {
+        await expect(
+            createAndInitialize(
+                {
+                    facet: { field: "g" },
+                    spec: { layer: [{ mark: "point", [viewport]: 60 }] },
+                },
+                FacetView
+            )
+        ).rejects.toThrow(
+            "Facet children do not support viewportWidth or viewportHeight. Set the viewport on the facet instead."
+        );
+    }
+);
+
 test("facet creates one non-chrome child view", async () => {
     const context = createTestViewContext();
     const view = /** @type {FacetView} */ (

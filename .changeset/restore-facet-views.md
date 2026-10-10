@@ -30,3 +30,5 @@ gestures and releases their document listeners.
 Rulers use the pointed cell's coordinates, retain their values across cell
 transitions, and keep document drags anchored to their starting cell.
 Layout refreshes preserve hover identity for unchanged facet categories.
+Unsupported child viewports fail with an error directing authors to put the
+viewport on the facet container.

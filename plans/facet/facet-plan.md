@@ -52,7 +52,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Rulers in repeated cells | Fixed; one controller uses the pointed cell and retains drag projection |
 | Hover transitions after layout refresh | Fixed; facet tuples are compared by value |
 | Removing a facet during a brush drag | Fixed; controller cleanup precedes parameter disposal |
-| Child viewport options | Accepted but compress content instead of scrolling; reject unsupported options |
+| Child viewport options | Rejected clearly; container viewport scrolling remains supported |
 
 ### Completed validation fixes
 
@@ -144,7 +144,7 @@ completion pass.
   controller, and prevent old-cell leave events from clearing the new value.
 - [x] Compare facet tuples by value when synthesizing hover transitions, so
   rebuilding layout metadata does not imply entering another category.
-- [ ] Reject child viewport options rather than compressing content; use the
+- [x] Reject child viewport options rather than compressing content; use the
   supported viewport on the facet container.
 - [ ] Reject unsupported per-cell non-positional scale/legend resolution with a
   clear error. Preserve legitimate independence between layers.

@@ -94,7 +94,17 @@ export default class FacetView extends ContainerView {
                 "Facet specs cannot contain an immediate facet child."
             );
         }
-        this.child.visit((view) => this.#validateResolutions(view));
+        this.child.visit((view) => {
+            if (
+                view.spec.viewportWidth !== undefined ||
+                view.spec.viewportHeight !== undefined
+            ) {
+                throw new Error(
+                    "Facet children do not support viewportWidth or viewportHeight. Set the viewport on the facet instead."
+                );
+            }
+            this.#validateResolutions(view);
+        });
 
         this.#gridChild = new FacetGridChild(this.child, this, 0);
         await this.#gridChild.syncGuideViews();
