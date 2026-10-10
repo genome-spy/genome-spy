@@ -4,13 +4,122 @@
 
 **Goal:** Restore `facet` specs by implementing a modern `FacetView` that repeats one child view over many facet cells without creating one child view per facet.
 
+The intended behavior should be roughly equivalent to the basic
+[Vega-Lite facet operator](https://vega.github.io/vega-lite/docs/facet.html).
+Restoring repeated rendering alone does not meet that goal.
+
 **Architecture:** `FacetView` remains a specialized `ContainerView`, not a `GridView` subclass. It owns one heavy child view and one `GridChild` chrome wrapper, computes lightweight facet-cell instances with the existing `Grid` and flex layout helpers, and renders the same child/chrome repeatedly with different `facetId` options. A parent `GridView`, including the implicit root wrapper, owns viewport scrolling through `viewportHeight` and `viewportWidth`.
 
 **Tech Stack:** JavaScript with JSDoc types, existing GenomeSpy view/dataflow APIs, `Grid`, `flexLayout`, `GridChild`, `InlineSource.updateDynamicData`, Vitest layout snapshots.
 
 ---
 
-## Investigation Summary
+## Current Status and Remaining Gaps (2026-10-10)
+
+Simple small multiples work, but the implementation does not yet meet the basic
+Vega-Lite equivalence goal. This section records the current implementation;
+the restoration investigation, algorithms, and task checklists below describe
+the original work and are not an up-to-date completion record.
+
+| Capability | Verified status |
+| --- | --- |
+| Single-field, row-only, column-only, and wrapped facets | Working |
+| Faceted unit and layered plots | Working |
+| Shared positional scales and repeated axes | Working |
+| Matrix layout, including empty row/column combinations | Working |
+| Dynamic factor membership and labels | Working |
+| Headers, cell titles, backgrounds, clipping, and visible-cell culling | Working |
+| Child transforms evaluated separately for each facet | Incorrect; see below |
+| Default shared color legend | Missing |
+| Interaction routing into repeated cells | Missing |
+| Independent positional scales and axes | Unsupported |
+| Custom facet ordering and header formatting | Unsupported |
+
+### Child transforms are not scoped to facets
+
+`packages/core/src/view/flowBuilder.js` appends the collector with
+`groupby: view.getFacetFields()` after the child's transforms. This partitions
+the final mark data, but does not establish a facet boundary for those
+transforms. The issue predates the simplification refactors.
+
+Reproduced with these rows:
+
+```json
+[
+  { "g": "A", "v": 1 },
+  { "g": "A", "v": 3 },
+  { "g": "B", "v": 10 },
+  { "g": "B", "v": 20 }
+]
+```
+
+With `facet: { field: "g" }`:
+
+- A child aggregate computing the mean of `v`, without an explicit `groupby`,
+  should produce A = 2 and B = 15. Instead it aggregates across both groups,
+  discards `g`, and fails with `Invalid field "g". Available fields or
+  properties: mean, __uniqueId`.
+- A child stack of `v` with an empty `groupby` continues across facet groups.
+  A occupies [0, 1] and [1, 4]; B occupies [4, 14] and [14, 34]. B should start
+  at zero and occupy [0, 10] and [10, 30].
+- Explicit `groupby: ["g"]` works around both examples, but users should not
+  have to repeat the facet fields in every child transform.
+
+Facet-aware execution must preserve the distinction between transforms on the
+outer facet specification and transforms inside its child. Keep the single
+child subtree and shared mark resources while correcting dataflow semantics.
+
+### Shared legends have no layout host
+
+A normal faceted point plot with a nominal color encoding creates a color
+legend resolution owned by `FacetView`, but produces no legend view or legend
+placement. `getLegendOwners(...)` in
+`packages/core/src/view/gridView/gridChild.js` handles unit and layer views,
+but returns no owners for a facet view. The current shared legend host lookup
+also does not assign a host to that owner.
+
+The required basic behavior is one shared legend for the complete facet view.
+The original plan already intended this; silently omitting the legend does
+not satisfy that requirement.
+
+### Cell interactions are not routed
+
+`FacetView` has no `propagateInteraction(...)` implementation and inherits the
+empty base method. A headless click dispatched through the implicit root grid
+at a point inside a facet cell reached neither the repeated child nor an
+interaction target. Rendering selection chrome does not establish functioning
+cell interaction. Cell-aware event routing and coordinates still need work;
+mark picking and tooltip behavior require separate browser verification.
+
+### Remaining acceptance criteria, in priority order
+
+- [ ] Correct per-facet child transform semantics. Cover aggregate and stack
+  with the rows above, row/column tuple groups, and a layered child. Verify
+  outer transforms retain their intended scope and repeated marks receive the
+  correct facet batches without creating a subtree per cell.
+- [ ] Render one shared color legend for the whole facet view. Verify its
+  entries, placement, size reservation, and behavior inside an enclosing concat.
+- [ ] Route interactions to the pointed cell with the correct facet identity
+  and coordinates. Verify representative click/selection and shared-scale
+  pan/zoom behavior across multiple cells in a browser, including a scrolled
+  facet viewport.
+- [ ] Re-run the wrapped Anscombe and cars matrix examples through WebGL and
+  Canvas; use focused SVG assertions for grouped marks, guides, and clipping.
+  Add durable regression tests for the semantic gaps above.
+- [ ] Define the remaining compatibility scope explicitly. Independent
+  positional scales/axes, custom sort, header titles/formatting/styling, and
+  facet-field bin/time-unit options remain unsupported. They are separate
+  follow-up decisions, not substitutes for fixing transform semantics and
+  shared legends.
+
+Verification at the time of this assessment: the 40 existing facet/layout/SVG
+tests pass. The preceding full run passed 4,747 tests, workspace TypeScript
+checks, lint, the Core production build, and three representative WebGL/Canvas
+smoke checks. The aggregate, stack, legend, and click probes above exposed gaps
+outside that permanent coverage; passing the existing suite is not sufficient
+evidence of Vega-Lite equivalence.
+
+## Original Restoration Investigation (Historical)
 
 `packages/core/src/view/facetView.js` is stale:
 
