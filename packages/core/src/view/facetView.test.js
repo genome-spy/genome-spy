@@ -622,20 +622,36 @@ test.each(
     }
 );
 
-test.each([false, [], "none", { labels: "false" }, { title: "Group" }])(
-    "facet rejects unsupported header options %j",
-    async (header) => {
-        await expect(
-            createAndInitialize(
-                {
-                    facet: /** @type {any} */ ({ field: "g", header }),
-                    spec: { mark: "point" },
-                },
-                FacetView
-            )
-        ).rejects.toThrow("Facet header must be");
-    }
-);
+test.each([
+    false,
+    [],
+    "none",
+    { labels: "false" },
+    { title: "Group" },
+    { format: 1 },
+])("facet rejects unsupported header options %j", async (header) => {
+    await expect(
+        createAndInitialize(
+            {
+                facet: /** @type {any} */ ({ field: "g", header }),
+                spec: { mark: "point" },
+            },
+            FacetView
+        )
+    ).rejects.toThrow("Facet header must be");
+});
+
+test("invalid numeric header formats fail before rendering", async () => {
+    await expect(
+        createAndInitialize(
+            {
+                facet: { field: "g", header: { format: "invalid" } },
+                spec: { mark: "point" },
+            },
+            FacetView
+        )
+    ).rejects.toThrow("invalid format");
+});
 
 test("facet layout reflows only when factor membership changes", async () => {
     const data = [

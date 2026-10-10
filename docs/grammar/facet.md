@@ -26,6 +26,9 @@ Each facet field can configure its category labels through `header`. For
 example, `"column": {"field": "group", "header": null}` hides column labels
 and removes their reserved space while retaining the same facet cells.
 
+For numeric categories, `"header": {"format": ",.0f"}` displays thousands
+separators. Formatting changes labels while preserving category identity and order.
+
 ## Transforms and Data Scope
 
 Transforms on the facet specification run before grouping. Transforms inside

@@ -1,4 +1,5 @@
 import UnitView from "./unitView.js";
+import { format as numberFormat } from "d3-format";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 /**
@@ -14,12 +15,16 @@ import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
  * Dynamic text labels for facet row or column headers.
  */
 export default class FacetHeaderView extends UnitView {
+    /** @type {(value: import("../spec/channel.js").Scalar) => string} */
+    formatLabel = String;
+
     /**
      * @param {FacetHeaderOrient} orient
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent
+     * @param {string} [format]
      */
-    constructor(orient, layoutParent, dataParent) {
+    constructor(orient, layoutParent, dataParent, format) {
         super(
             createHeaderSpec(orient),
             layoutParent.context,
@@ -31,6 +36,11 @@ export default class FacetHeaderView extends UnitView {
         );
         markViewAsNonAddressable(this, { skipSubtree: true });
         markViewAsChrome(this, { skipSubtree: true });
+        if (format !== undefined) {
+            const formatter = numberFormat(format);
+            this.formatLabel = (value) =>
+                typeof value === "number" ? formatter(value) : String(value);
+        }
     }
 
     /** @param {FacetHeaderDatum[]} data */

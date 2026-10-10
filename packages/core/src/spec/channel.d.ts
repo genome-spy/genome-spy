@@ -87,6 +87,12 @@ export interface FacetHeader {
      * __Default value:__ `true`
      */
     labels?: boolean;
+
+    /**
+     * D3 number format for numeric category labels, for example `".1f"` or
+     * `",.0f"`. String and boolean categories retain their original labels.
+     */
+    format?: string;
 }
 
 // TODO: Belongs to "guide"

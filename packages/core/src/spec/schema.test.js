@@ -41,6 +41,7 @@ describe("generated core schema", () => {
             {},
             { labels: false },
             { labels: true },
+            { format: ".1f" },
         ])) {
             expect(
                 validate({ ...spec, facet: { field: "group", header } })
@@ -51,6 +52,7 @@ describe("generated core schema", () => {
             "none",
             { labels: "false" },
             { title: "Group" },
+            { format: 1 },
         ]) {
             expect(
                 validate({ ...spec, facet: { field: "group", header } })

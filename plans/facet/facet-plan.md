@@ -42,7 +42,7 @@ outside scope.
   titles. Verify rendered layout and SVG output with hidden row and column
   headers. Update types, docs, and changeset. Commit:
   `feat(core): support hiding facet headers`.
-- [ ] **Numeric header formatting** — Add `header.format` using D3 number
+- [x] **Numeric header formatting** — Add `header.format` using D3 number
   formatting compiled once per header. Format numeric labels only; preserve
   category identity, ordering, and nonnumeric labels. Reject invalid format
   specifications clearly. Verify SVG labels and unchanged underlying facet

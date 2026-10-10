@@ -63,6 +63,64 @@ test("hidden row headers preserve matrix columns and empty cells in SVG", async 
     }
 });
 
+test("numeric header formatting preserves cell keys and nonnumeric labels", async () => {
+    const { view } = await createHeadlessEngine(
+        {
+            data: {
+                values: [
+                    { r: 2000, c: "control" },
+                    { r: 1000, c: true },
+                ],
+            },
+            facet: {
+                row: {
+                    field: "r",
+                    sort: "descending",
+                    header: { format: ",.0f" },
+                },
+                column: {
+                    field: "c",
+                    sort: ["control", true],
+                    header: { format: ".1f" },
+                },
+            },
+            spec: { name: "points", width: 100, height: 50, mark: "point" },
+        },
+        { contextOptions }
+    );
+    try {
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 400,
+            logicalHeight: 200,
+        });
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-name="facetHeaderRow0"] text'),
+                (text) => text.textContent
+            )
+        ).toEqual(["2,000", "1,000"]);
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
+                (text) => text.textContent
+            )
+        ).toEqual(["control", "true"]);
+        const points = view
+            .getDescendants()
+            .find((child) => child.name === "points");
+        expect(Array.from(points.facetCoords.keys())).toEqual([
+            [2000, "control"],
+            [2000, true],
+            [1000, "control"],
+            [1000, true],
+        ]);
+        expect(warnings).toEqual([]);
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
 test("exports separate means after child aggregation drops the facet field", async () => {
     const { view } = await createHeadlessEngine(
         loadSharedExampleSpec("examples/docs/grammar/facet/means.json"),

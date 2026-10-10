@@ -113,7 +113,12 @@ export default class FacetView extends ContainerView {
             if (isFacetHeaderVisible(this.#facet[channel])) {
                 this.#headerViews.set(
                     channel,
-                    new FacetHeaderView(channel, this, this.child)
+                    new FacetHeaderView(
+                        channel,
+                        this,
+                        this.child,
+                        this.#facet[channel].header?.format
+                    )
                 );
             }
         }
@@ -244,7 +249,8 @@ export default class FacetView extends ContainerView {
                     layouts,
                     coords,
                     this.#getFacetGrid(),
-                    this.spec.spacing ?? 10
+                    this.spec.spacing ?? 10,
+                    header.formatLabel
                 )
             );
             header.arrange(context, coords, options);
@@ -374,9 +380,17 @@ class FacetGridChild extends GridChild {
  * @param {import("./layout/rectangle.js").default} coords
  * @param {import("./facetLayout.js").FacetGrid} grid
  * @param {number} spacing
+ * @param {(value: import("../spec/channel.js").Scalar) => string} formatLabel
  * @returns {import("./facetHeaderView.js").FacetHeaderDatum[]}
  */
-function createFacetHeaderData(orient, layouts, coords, grid, spacing) {
+function createFacetHeaderData(
+    orient,
+    layouts,
+    coords,
+    grid,
+    spacing,
+    formatLabel
+) {
     const isRow = orient === "row";
     const count = isRow
         ? grid.nRows
@@ -402,7 +416,7 @@ function createFacetHeaderData(orient, layouts, coords, grid, spacing) {
         return {
             x: x / coords.width,
             y: 1 - y / coords.height,
-            text: String(isRow ? cell.facetId[0] : cell.facetId.at(-1)),
+            text: formatLabel(isRow ? cell.facetId[0] : cell.facetId.at(-1)),
         };
     });
 }
@@ -559,11 +573,15 @@ function normalizeFacetFieldDef(fieldDef, channel) {
         header !== null &&
         (typeof header !== "object" ||
             Array.isArray(header) ||
-            Object.keys(header).some((key) => key !== "labels") ||
-            (header.labels !== undefined && typeof header.labels !== "boolean"))
+            Object.keys(header).some(
+                (key) => key !== "labels" && key !== "format"
+            ) ||
+            (header.labels !== undefined &&
+                typeof header.labels !== "boolean") ||
+            (header.format !== undefined && typeof header.format !== "string"))
     ) {
         throw new Error(
-            'Facet header must be null or an object with a boolean "labels" option.'
+            'Facet header must be null or an object with boolean "labels" and string "format" options.'
         );
     }
 
