@@ -3,20 +3,17 @@
 ---
 
 Add `facet` composition for displaying data groups as wrapped columns or a
-row/column matrix, with shared scales, axes, and legends, group labels, and scrollable
-viewports. Facet culling respects clipping in either or both directions.
-Cell titles, backgrounds, and guide layering follow the same layout rules as
-concatenated views. Independent per-facet scales and axes are not supported.
-Explicit independent positional resolutions on the facet or its children are
-rejected with a clear error.
-Wrapping column counts must be positive integers.
-Grouped and sorted data retain physical row shapes when materialized or replayed.
-Stacks restart within each facet instead of accumulating across groups.
-Sampling applies its requested size independently to each facet.
-Pileup lane allocation restarts for each facet.
-Logical facet reductions and self-lookups span physical files while preserving
-row shapes through buffered transforms.
+row/column matrix, with shared scales, axes, and legends, group labels, and
+scrollable viewports. Cell titles, backgrounds, guide layering, clipping, and
+visible-cell culling follow the existing layout rules.
+
 Child transforms run independently within each facet, including aggregates that
-drop the facet fields. Child filters retain empty input cells; a child with its
-own dataset repeats that data in every cell. Unsupported placement transforms
-and explicit `collect.groupby` on inherited facet data fail with clear errors.
+drop the facet fields, window calculations, stacks, sampling, and pileup.
+Buffered transforms and self-lookups span physical files while preserving row
+shapes through grouping, sorting, and replay. Child filters retain empty input
+cells; a child with its own dataset repeats that data in every cell.
+
+Independent positional scales and axes, unsupported placement transforms, and
+explicit `collect.groupby` on inherited facet data fail with clear errors.
+Wrapping column counts must be positive integers. Interactions inside individual
+facet cells are not yet supported.

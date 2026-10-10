@@ -527,7 +527,7 @@ test("facet factors retain input membership across differently filtered layers",
                     },
                     {
                         transform: [
-                            { type: "filter", expr: "datum.series === 'C'" },
+                            { type: "filter", expr: "datum.series === 'B'" },
                         ],
                         mark: "point",
                     },

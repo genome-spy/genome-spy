@@ -5,6 +5,8 @@ import Collector from "../../collector.js";
 import Gff3Source from "./gff3Source.js";
 import TabixTsvSource from "./tabixTsvSource.js";
 import VcfSource from "./vcfSource.js";
+import WindowTransform from "../../transforms/window.js";
+import CloneTransform from "../../transforms/clone.js";
 
 const fixtureDirectory = new URL(
     "../../../../testFixtures/tabix/",
@@ -60,8 +62,9 @@ afterEach(() => {
  * @param {typeof Gff3Source | typeof TabixTsvSource | typeof VcfSource} Source
  * @param {import("../../../spec/data.js").Gff3Data | import("../../../spec/data.js").TabixTsvData | import("../../../spec/data.js").VcfData} params
  * @param {string} [chromosome]
+ * @param {import("../../../spec/transform.js").CollectParams} [collectParams]
  */
-function createSource(Source, params, chromosome = "chr1") {
+function createSource(Source, params, chromosome = "chr1", collectParams) {
     /** @type {any} */
     let scaleResolution;
     const paramRuntime = new ViewParamRuntime(
@@ -116,7 +119,7 @@ function createSource(Source, params, chromosome = "chr1") {
         /** @type {any} */ (view)
     );
     sources.push(source);
-    const collector = new Collector();
+    const collector = new Collector(collectParams);
     source.addChild(collector);
 
     return {
@@ -130,6 +133,51 @@ function createSource(Source, params, chromosome = "chr1") {
         statuses,
     };
 }
+
+it("replays a facet-local window across lazy files and replacement intervals", async () => {
+    const { source, collector } = createSource(
+        TabixTsvSource,
+        {
+            type: "tabix",
+            // Query aliases serve the fixture as distinct physical files.
+            url: {
+                template: "intervals.tsv.gz?part={part}",
+                values: [1, 2],
+                field: "part",
+            },
+            indexUrl: "intervals.tsv.gz.tbi",
+        },
+        "1",
+        { type: "collect", groupby: ["value"] }
+    );
+    const window = new WindowTransform({
+        type: "window",
+        ops: ["row_number"],
+        as: ["rank"],
+    });
+    const clone = new CloneTransform();
+    const output = new Collector();
+    collector.addChild(window);
+    window.addChild(clone);
+    clone.addChild(output);
+
+    await source.requestInterval([100, 101]);
+    expect(output.facetBatches.get(["alpha"])).toMatchObject([
+        { part: 1, rank: 1 },
+        { part: 2, rank: 2 },
+    ]);
+    collector.repropagate();
+    expect(output.facetBatches.get(["alpha"])).toHaveLength(2);
+
+    await source.requestInterval([200, 201]);
+    expect(Array.from(output.getData())).toEqual([]);
+    expect(source.isDataReadyForDomain({ x: [200, 201] })).toBe(true);
+    await source.requestInterval([100, 101]);
+    expect(output.facetBatches.get(["alpha"])).toMatchObject([
+        { part: 1, rank: 1 },
+        { part: 2, rank: 2 },
+    ]);
+});
 
 it.each([
     {

@@ -164,7 +164,7 @@ describe("Aggregate transform", () => {
         ).toThrow();
     });
 
-    test("Flushes each facet batch before the next one starts", () => {
+    test("groupby subdivides each facet independently", () => {
         const aggregate = new AggregateTransform({
             type: "aggregate",
             groupby: ["sample"],
@@ -177,20 +177,23 @@ describe("Aggregate transform", () => {
 
         // BeginBatch is what closes the previous facet in faceted flows.
         aggregate.beginBatch({ type: "facet", facetId: ["A"] });
-        aggregate.handle({ sample: "A", value: 1 });
-        aggregate.handle({ sample: "A", value: 2 });
+        aggregate.handle({ sample: "x", value: 1 });
+        aggregate.handle({ sample: "y", value: 2 });
+        aggregate.handle({ sample: "x", value: 3 });
 
         aggregate.beginBatch({ type: "facet", facetId: ["B"] });
-        aggregate.handle({ sample: "B", value: 4 });
-        aggregate.handle({ sample: "B", value: 5 });
+        aggregate.handle({ sample: "x", value: 4 });
+        aggregate.handle({ sample: "y", value: 5 });
 
         aggregate.complete();
 
         expect(collector.facetBatches.get(["A"])).toEqual([
-            { sample: "A", total: 3 },
+            { sample: "x", total: 4 },
+            { sample: "y", total: 2 },
         ]);
         expect(collector.facetBatches.get(["B"])).toEqual([
-            { sample: "B", total: 9 },
+            { sample: "x", total: 4 },
+            { sample: "y", total: 5 },
         ]);
     });
 });

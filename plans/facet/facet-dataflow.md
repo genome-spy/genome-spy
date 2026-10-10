@@ -263,7 +263,7 @@ can aggregate to count zero. Focused transform checks and Core type checks pass.
        remain unique. Preserve App mergeFacets and sample-count behavior. Document
        any still-unsupported transforms with explicit errors.
        Tentative commit: `fix(core): isolate stateful transforms within facet batches`.
-3. [ ] **Verify updates and rendering across the shared contracts.** Exercise
+3. [x] **Verify updates and rendering across the shared contracts.** Exercise
        parameter replay, foreign-data changes, factor additions/removals, lazy
        multi-file input, shared domains and legends, and collector disposal. Check
        WebGL, Canvas, and SVG with transformed variants of the Anscombe/cars
@@ -281,6 +281,41 @@ global identifiers, constant graph size for 2 versus 50 facets, and disposal.
 Unaudited placement transforms and explicit collect grouping reject inherited
 facet data. Focused builder/layout/replay/App mergeFacets checks pass (75 tests).
 
-Review the shared batch/collector contract before proceeding to broader
-stateful support, then review final cross-subsystem integration. Commit the plan
-first, and commit independently meaningful fixes separately during implementation.
+The shared batch contract and final integration have been reviewed against
+collector replay, source lifecycle, App sample flows, scale publication, and the
+three rendering paths. Related tests were consolidated: the new multi-file set
+intersection test replaces its single-boundary predecessor; aggregate grouping
+now tests subdivisions within facets rather than repeating the facet keys.
+
+### Integration results and cost
+
+- Full unit suite: 517 files pass, 4,779 tests pass, one skipped, two todo.
+  Workspace TypeScript checks, lint, Core production build, release-policy
+  checks, release status, and shared-example schema validation pass.
+- SVG exports the field-dropping means example as A = 2 and B = 15. The same
+  example and the original Anscombe/cars specs pass WebGL and Canvas checks.
+  Temporary variants additionally exercise Anscombe window → filter and cars
+  per-cell aggregate in both browser renderers.
+- Real BGZF/TBI loading verifies that a facet-local window spans physical files,
+  collector replay preserves it, and replacement intervals clear/restore output.
+- Runtime JavaScript changes relative to `2f9cf354d`: 284 non-comment lines added,
+  65 deleted, net +219, excluding tests and declarations. FacetView decreases from
+  476 to 450 physical lines. The growth provides file-shape provenance and state
+  isolation, without adding per-cell graphs, a scheduler, or another evaluator.
+- A local Node 26.8.1 probe used 100,000 rows through grouped collector → aggregate
+  → stack → collector, one physical file, with medians of five runs after three
+  warmups. Grouping plus output / cached replay: 2 facets = 4.20 / 1.74 ms;
+  50 facets = 5.22 / 2.65 ms; 500 facets = 8.99 / 7.25 ms. This is a small
+  synthetic baseline, not a browser throughput or memory benchmark. Multi-file
+  provenance still uses a row-identity WeakMap; profile representative genomic
+  loads before optimizing it.
+
+### Remaining scope
+
+Cell interaction routing, independent positional scales/axes, custom facet
+ordering/header formatting, and facet bin/time-unit definitions remain separate
+follow-ups. The rejected placement transforms need retained-state audits before
+support can be enabled. Explicit collect grouping needs a separate local-group
+identity contract. Optimizer TODOs are recorded at the partition builder,
+collector fusion, and file-provenance helper; no optimizer rewrite is required
+for the supported behavior.

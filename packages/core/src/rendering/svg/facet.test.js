@@ -11,6 +11,7 @@ import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import AxisView from "../../view/axisView.js";
 import LegendView from "../../view/legendView.js";
 import { createSvg } from "./index.js";
+import { loadSharedExampleSpec } from "../../spec/exampleFiles.js";
 
 const contextOptions = {
     baseConfig: resolveBaseConfig({
@@ -19,6 +20,35 @@ const contextOptions = {
     }),
     viewFactoryOptions: { wrapRoot: true },
 };
+
+test("exports separate means after child aggregation drops the facet field", async () => {
+    const { view } = await createHeadlessEngine(
+        loadSharedExampleSpec("examples/docs/grammar/facet/means.json"),
+        { contextOptions }
+    );
+    try {
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 400,
+            logicalHeight: 200,
+        });
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-name="means"] text'),
+                (text) => text.textContent
+            )
+        ).toEqual(["2", "15"]);
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
+                (text) => text.textContent
+            )
+        ).toEqual(["A", "B"]);
+        expect(warnings).toEqual([]);
+    } finally {
+        view.disposeSubtree();
+    }
+});
 
 test.each([false, true])(
     "exports one shared facet legend with reserved space (layered in concat: %s)",
