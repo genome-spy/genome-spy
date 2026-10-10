@@ -118,82 +118,51 @@ test("row facet cannot be combined with wrapping columns", async () => {
     );
 });
 
-test("facet rejects independent child scale resolution", async () => {
+test.each(
+    /** @type {Array<["scale" | "axis", "x" | "y", "facet" | "unit" | "layer"]>} */ ([
+        ["scale", "x", "facet"],
+        ["axis", "y", "facet"],
+        ["scale", "x", "unit"],
+        ["axis", "x", "unit"],
+        ["scale", "x", "layer"],
+    ])
+)("facet rejects independent %s.%s on a %s", async (type, channel, owner) => {
     const context = createTestViewContext();
+    /** @type {import("../spec/view.js").ResolveSpec["resolve"]} */
+    const resolve = { [type]: { [channel]: "independent" } };
+    // Pair scale and axis declarations to pass the generic shared-axis contract first.
+    if (type === "scale") {
+        resolve.axis = { [channel]: "independent" };
+    }
+    /** @type {import("../spec/view.js").UnitSpec} */
+    const points = {
+        mark: "point",
+        encoding: {
+            x: { field: "x", type: "quantitative" },
+            y: { field: "y", type: "quantitative" },
+        },
+    };
 
-    await expect(() =>
-        context.createOrImportView(
-            {
-                facet: { field: "Series" },
-                spec: {
-                    resolve: { scale: { x: "independent" } },
-                    mark: "point",
-                    encoding: {
-                        x: { field: "x", type: "quantitative" },
-                        y: { field: "y", type: "quantitative" },
-                    },
-                },
-            },
-            null,
-            null,
-            "facet"
-        )
-    ).rejects.toThrow(
-        'FacetView currently supports only shared scale resolutions. Channel "x" is resolved independently in child view "facet0".'
-    );
-});
-
-test("facet rejects independent child axis resolution", async () => {
-    const context = createTestViewContext();
-
-    await expect(() =>
-        context.createOrImportView(
-            {
-                facet: { field: "Series" },
-                spec: {
-                    resolve: { axis: { x: "independent" } },
-                    mark: "point",
-                    encoding: {
-                        x: { field: "x", type: "quantitative" },
-                        y: { field: "y", type: "quantitative" },
-                    },
-                },
-            },
-            null,
-            null,
-            "facet"
-        )
-    ).rejects.toThrow(
-        'FacetView currently supports only shared axis resolutions. Channel "x" is resolved independently in child view "facet0".'
-    );
-});
-
-test("facet rejects independent resolutions declared on a layer", async () => {
-    const context = createTestViewContext();
     await expect(
         context.createOrImportView(
             {
-                facet: { field: "series" },
-                spec: {
-                    resolve: {
-                        scale: { x: "independent" },
-                        axis: { x: "independent" },
-                    },
-                    layer: [
-                        {
-                            mark: "point",
-                            encoding: {
-                                x: { field: "x", type: "quantitative" },
-                            },
-                        },
-                    ],
-                },
+                facet: { field: "Series" },
+                resolve: owner === "facet" ? resolve : undefined,
+                spec:
+                    owner === "layer"
+                        ? { resolve, layer: [points] }
+                        : {
+                              ...points,
+                              resolve: owner === "unit" ? resolve : undefined,
+                          },
             },
             null,
             null,
             "facet"
         )
-    ).rejects.toThrow("only shared scale resolutions");
+    ).rejects.toThrow(
+        `FacetView currently supports only shared ${type} resolutions. Channel "${channel}"`
+    );
 });
 
 test("facet rejects an immediate nested facet child", async () => {

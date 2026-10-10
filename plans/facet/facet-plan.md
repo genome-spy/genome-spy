@@ -35,6 +35,12 @@ the original work and are not an up-to-date completion record.
 | Independent positional scales and axes | Unsupported |
 | Custom facet ordering and header formatting | Unsupported |
 
+### Completed validation fixes
+
+- Independent positional resolution validation now covers the facet declaration
+  itself as well as unit and layer children. Previously an unsupported
+  `resolve.scale` or `resolve.axis` on the facet was silently accepted.
+
 ### Child transforms are not scoped to facets
 
 `packages/core/src/view/flowBuilder.js` appends the collector with

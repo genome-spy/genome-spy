@@ -7,3 +7,5 @@ row/column matrix, with shared scales, axes, and legends, group labels, and scro
 viewports. Facet culling respects clipping in either or both directions.
 Cell titles, backgrounds, and guide layering follow the same layout rules as
 concatenated views. Independent per-facet scales and axes are not supported.
+Explicit independent positional resolutions on the facet or its children are
+rejected with a clear error.

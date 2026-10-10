@@ -80,6 +80,7 @@ export default class FacetView extends ContainerView {
      * @override
      */
     async initializeChildren() {
+        this.#validateResolutions(this);
         this.child = await this.context.createOrImportView(
             this.spec.spec,
             this,
@@ -89,7 +90,12 @@ export default class FacetView extends ContainerView {
             { inheritEncoding: true }
         );
 
-        this.#validateInitialLimitations();
+        if (this.child instanceof FacetView) {
+            throw new Error(
+                "Facet specs cannot contain an immediate facet child."
+            );
+        }
+        this.child.visit((view) => this.#validateResolutions(view));
 
         this.#gridChild = new FacetGridChild(this.child, this, 0);
         await this.#gridChild.syncGuideViews();
@@ -288,30 +294,23 @@ export default class FacetView extends ContainerView {
         return true;
     }
 
-    #validateInitialLimitations() {
-        if (this.child instanceof FacetView) {
-            throw new Error(
-                "Facet specs cannot contain an immediate facet child."
-            );
-        }
-
-        this.child.visit((view) => {
-            for (const channel of /** @type {const} */ (["x", "y"])) {
-                for (const resolutionType of /** @type {const} */ ([
-                    "scale",
-                    "axis",
-                ])) {
-                    const behavior =
-                        view.getConfiguredResolution(channel, resolutionType) ??
-                        view.getConfiguredResolution("default", resolutionType);
-                    if (behavior === "independent") {
-                        throw new Error(
-                            `FacetView currently supports only shared ${resolutionType} resolutions. Channel "${channel}" is resolved independently in child view "${view.name}".`
-                        );
-                    }
+    /** @param {import("./view.js").default} view */
+    #validateResolutions(view) {
+        for (const channel of /** @type {const} */ (["x", "y"])) {
+            for (const resolutionType of /** @type {const} */ ([
+                "scale",
+                "axis",
+            ])) {
+                const behavior =
+                    view.getConfiguredResolution(channel, resolutionType) ??
+                    view.getConfiguredResolution("default", resolutionType);
+                if (behavior === "independent") {
+                    throw new Error(
+                        `FacetView currently supports only shared ${resolutionType} resolutions. Channel "${channel}" is resolved independently in view "${view.name}".`
+                    );
                 }
             }
-        });
+        }
     }
 }
 
