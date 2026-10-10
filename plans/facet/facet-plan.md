@@ -21,6 +21,30 @@ ascending category order, and simple value labels are sufficient defaults.
 
 ## Current Status and Remaining Work (2026-10-10)
 
+### Follow-up: missing xy ruler in the cars matrix
+
+The cars example's ruler updated its x/y parameter values but remained invisible
+in WebGL. Its generated overlay starts with an empty filtered dataset. Cached
+WebGL drawing callbacks therefore captured empty facet ranges instead of the
+overlay's own unpartitioned range. Data replay filled that unpartitioned range,
+but the callbacks retained the empty ranges until a layout refresh. Canvas and
+SVG rendered correctly. The earlier browser check verified parameter updates,
+which did not establish live WebGL visibility.
+
+- [x] Choose between the retained unpartitioned and facet ranges at draw time,
+  preserving cached callbacks and range references. This also covers other
+  repeated child-owned data that starts empty. Consolidate the sample-facet and
+  ordinary draw closures; WebGLMark shrinks 1,542→1,537 physical lines.
+- [x] Add retained-draw regression coverage for empty/nonempty/empty/re-entry
+  data updates, with both shared own data and facet-partitioned data.
+- [x] Verify the real cars matrix crosshair appears, clears on pointer leave,
+  and reappears in WebGL and Canvas without exporting or resizing first.
+
+Verification: WebGL and facet suites pass (24 files, 217 tests), as do Core
+TypeScript, focused lint, and release checks. Screenshot pixel checks verify
+visible lines on hover and re-entry and their absence after pointer leave in
+both renderers. The existing facet changeset includes the corrected behavior.
+
 ### Shared outer axes (authorized follow-up)
 
 Replace repeated per-cell axes with outer axes using GridView's existing axis

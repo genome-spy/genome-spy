@@ -1293,28 +1293,23 @@ export default class WebGLMark {
             }
         };
 
-        // If is either faceted or non-faceted, not both.
-        // An undefined key with vertices means that the mark is non-faceted.
-        // In such case, the same non-faceted data is repeated for each facet.
-        const facetId =
-            this.rangeMap.get(undefined).count == 0
-                ? options.facetId
-                : undefined;
-        const rangeEntry = this.rangeMap.get(facetId);
+        const unfacetedRange = this.rangeMap.get(undefined);
+        const facetRange = this.rangeMap.get(options.facetId);
 
-        return options.sampleFacetRenderingOptions
-            ? function renderSampleFacetRange() {
-                  if (rangeEntry.count) {
-                      if (self.prepareSampleFacetRendering(options)) {
-                          drawWithRangeEntry(rangeEntry);
-                      }
-                  }
-              }
-            : function renderRange() {
-                  if (rangeEntry.count) {
-                      drawWithRangeEntry(rangeEntry);
-                  }
-              };
+        return function renderRange() {
+            // Filtered own data can become nonempty after callbacks are cached.
+            // Repeat it in every facet, choosing the live range on each draw.
+            const rangeEntry = unfacetedRange.count
+                ? unfacetedRange
+                : facetRange;
+            if (
+                rangeEntry.count &&
+                (!options.sampleFacetRenderingOptions ||
+                    self.prepareSampleFacetRendering(options))
+            ) {
+                drawWithRangeEntry(rangeEntry);
+            }
+        };
     }
 
     /**
