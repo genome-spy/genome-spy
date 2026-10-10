@@ -74,15 +74,26 @@ each cell does not have a separate parameter runtime.
 
 Legends render once beside the complete facet grid.
 
-## Initial Limitations
+## Differences from Vega-Lite
 
-Facets currently use shared scales and repeated axes. Independent per-cell scale
-domains, legends, and axes are not supported and produce an error. Layers inside
-the repeated plot can still use independent non-positional scales; each layer's
-scale spans all facet cells.
+GenomeSpy supports basic category repetition with a smaller facet grammar:
 
-Facet field `title` and general header styling are not supported. A `title` on
-the repeated child still titles each plot.
+- Scales and legends are shared across cells, and axes repeat in every cell.
+  Independent per-cell resolution is not supported.
+- Faceting uses the explicit `facet` operator. The `row`, `column`, and `facet`
+  encoding shortcuts are not supported. Compute binned or temporal categories
+  in advance; facet fields do not accept `bin` or `timeUnit`.
+- Headers support visibility and numeric formatting, but not facet field
+  titles, time formatting, or general styling. Sorting by another field or
+  aggregate is not supported.
+- Selection parameters have one shared value across cells. Per-cell selection
+  state and Vega-Lite's `union`/`intersect` selection resolution are not supported.
+
+Layers inside the repeated plot can still use independent non-positional
+scales; each layer's scale spans all facet cells. A `title` on the repeated
+child titles each plot.
+
+## Additional Limitations
 
 The `columns` property wraps one-dimensional column facets only. It cannot be
 used together with `facet.row`.
