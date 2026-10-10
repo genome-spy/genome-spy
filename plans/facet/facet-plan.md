@@ -23,9 +23,9 @@ ascending category order, and simple value labels are sufficient defaults.
 
 Category repetition, supported child transforms, shared legends, picking,
 tooltips, and shared-scale navigation are implemented through one static child
-subtree. The independent simplification review found interaction and cleanup
-issues that should be fixed before expanding features. The current acceptance
-target and review are in [facet-compatibility.md](facet-compatibility.md).
+subtree. The independent simplification review's correctness issues are fixed,
+unsupported options fail clearly, and the consolidation pass is complete.
+The acceptance results and review are in [facet-compatibility.md](facet-compatibility.md).
 Vega-Lite differences are recorded as optional capabilities rather than
 requirements. The restoration investigation and checklists below are historical.
 
@@ -129,13 +129,12 @@ are recorded in [facet-interactions.md](facet-interactions.md).
   The narrowed scope and independent review below supersede the original
   compatibility roadmap.
 
-### Remaining correctness and simplification work
+### Completed correctness and simplification work
 
-Fix the confirmed lifecycle and interaction issues first, then make small
-consolidations that reduce duplicated code. Retain the existing static batched
-flow, one repeated child, and shared grid chrome. Do not introduce a new scale
-instance system, header framework, or Vega-Lite normalization layer for this
-completion pass.
+The completion pass fixes lifecycle and interaction issues, rejects unsupported
+options, and reduces duplicated layout code. It retains the existing static
+batched flow, one repeated child, and shared grid chrome. No new scale instance
+system, header framework, or Vega-Lite normalization layer was introduced.
 
 - [x] Dispose the facet-owned inner `GridChild`, including active brush/ruler
   sessions, when the facet is removed. Cancel listeners before their parameter
@@ -156,11 +155,21 @@ completion pass.
 - [x] Avoid republishing unchanged facet header positions and text.
 - [x] Discard sorting/header/outer-axis/independent-domain milestones as
   prerequisites for completion. These remain optional future capabilities.
+- [x] Verify the completion pass with the full unit suite, workspace TypeScript,
+  lint, Core build/schema/declarations, release checks, and representative
+  browser input and example checks in WebGL and Canvas.
 
 The [review and completion plan](facet-compatibility.md) records findings,
 measurements, concrete follow-ups, and verification. Keep current examples and
 supported interactions predictable; optimizer improvements and full Vega-Lite
 behavior are outside this work.
+
+Completion verification: 518 test files and 4,806 tests pass (one skipped,
+two todo). Fourteen browser scenarios cover picking, tooltips, shared point
+selection, pan/zoom, viewport scrolling, inherited/child-owned rulers, stable
+hover after layout refresh, brushes, and subtree removal during active drags.
+Anscombe wrapped, cars matrix, and means pass in both renderers. All review
+fixes and the simplification/header-update changes are committed separately.
 
 Verification for the static dataflow implementation includes the full unit
 suite, workspace TypeScript checks, lint, Core build, release checks, and schema

@@ -21,12 +21,13 @@ Precomputed category fields suffice; bin/time-unit syntax, encoding macros,
 per-cell parameter runtimes, and advanced layout/configuration are also outside
 scope. Dynamic dataflow branches and optimizer improvements are unnecessary.
 
-## Independent review: confirmed correctness issues
+## Independent review: baseline correctness findings (resolved)
 
 A read-only subagent review inspected the accumulated branch and ran focused
 Node/jsdom probes through real view creation, layout, interaction dispatch,
 parameter state, and dynamic removal. No runtime code was edited. These are
 supported-path defects or accepted-option surprises, not parity requests.
+All six findings below are now resolved; the completion record follows.
 
 1. **Facet-owned controllers are not disposed.** `facetView.js:99` creates the
    inner `FacetGridChild`, but its lifecycle is not wired to teardown. Removing
@@ -123,7 +124,7 @@ removing the redundant spec assignment: facetLayout 223 to 211 and FacetView
 token count or an applied change. Other savings are unmeasured; measure the
 actual diff rather than promise a large reduction.
 
-## Next work and acceptance
+## Completed work sequence and acceptance
 
 1. **Lifecycle and interaction correctness.** Fix inner wrapper disposal, ruler
    ownership/projection/clearing, and false hover transitions. Reuse existing
@@ -193,3 +194,42 @@ blocks this acceptance.
   refreshes without a second cached state or memoization subsystem. Resizing
   and membership changes still update the labels, covered in the existing
   dynamic-header regression.
+
+## Final verification and status
+
+Basic category repetition meets the agreed acceptance target. There is no
+remaining known correctness issue from this review. Full Vega-Lite syntax and
+per-cell scales/runtimes remain outside scope. The existing TODOs for facet
+scroll reflow, partition optimization, collector fusion, and file provenance
+remain profiling-led future work rather than prerequisites.
+
+- Full suite: 518 files pass; 4,806 tests pass, one skipped, two todo.
+- Workspace TypeScript checks, lint, Core production build/schema/declarations,
+  generated-schema regressions, release policy, and release status pass. The
+  existing feature changeset retains a minor release for the synchronized group.
+- Six browser scenarios cover inherited/repeated child-owned data and scrolling
+  in WebGL and Canvas: picking, facet identity, custom tooltip content, point
+  selection, wheel zoom, and document pan.
+- Eight additional browser scenarios cover facet-owned and child-owned rulers,
+  stable hover across layout refresh, ruler drags beyond their starting cell,
+  interval brushes, and removing the subtree before releasing an active drag.
+  Native mouse assertions allow one screen pixel of coordinate rounding.
+  Screenshots confirm ruler/brush placement in scrolled cells. No application
+  console errors occurred; development HMR connection messages were excluded.
+- Anscombe wrapped, cars matrix, and the per-facet means example pass smoke
+  checks in both WebGL and Canvas.
+
+Parser-based runtime JavaScript counts exclude tests, declarations, comments,
+and blank lines. The consolidation commit (`fae42612a`, compared with
+`ded9aaca2`) adds 51/deletes 80: **net -29 production lines**. The complete review
+fix pass through `a06f1134f`, compared with the plan commit `6e1537b6e`, adds
+140/deletes 87: **net +53 production lines**, including necessary validation,
+controller cleanup, ruler routing, hover equality, and header-update checks.
+The final branch compared with master `e35d3bee9` adds 1,397/deletes 752:
+**net +645 production lines** across 34 runtime files. These are branch deltas;
+master contains an inactive old FacetView. The completion pass does not add
+per-cell view/dataflow/controller instances.
+
+The plans remain versioned as requested. Reconcile and retire them before a
+future PR/merge under the repository workflow; no PR or merge is part of this
+completion pass.

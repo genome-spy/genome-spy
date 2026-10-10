@@ -314,7 +314,7 @@ now tests subdivisions within facets rather than repeating the facet keys.
 
 Cell interaction routing and shared-scale navigation are completed in
 [facet-interactions.md](facet-interactions.md). The independent review and
-remaining correctness/simplification work are tracked in
+completed correctness/simplification work are tracked in
 [facet-compatibility.md](facet-compatibility.md). Vega-Lite ordering, header,
 outer-axis, independent-scale, and derived-key features are optional under the
 clarified category-repetition goal. The rejected placement transforms need

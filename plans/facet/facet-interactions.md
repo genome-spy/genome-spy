@@ -1,5 +1,9 @@
 # Facet cell interactions
 
+The subsequent correctness and simplification review is complete; its final
+verification and supported scope are recorded in
+[facet-compatibility.md](facet-compatibility.md).
+
 ## Goal and contract
 
 Route pointer input to the visible facet cell, resolve its picked datum, show
