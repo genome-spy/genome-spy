@@ -19,6 +19,11 @@ unlisted values retain input order even when matrix rows are interleaved.
 Set a facet field's `header` to `null` or `{ "labels": false }` to hide category
 labels and reclaim their space.
 Numeric category labels support D3 number formatting through `header.format`.
+Facet headers support view-title placement and named styles, including
+horizontal track labels and overlays inside the plot. Reserved labels grow to
+fit their text, while existing default placement and header bands are preserved.
+Configure shared defaults with `config.header`, `config.headerRow`, and
+`config.headerColumn`, using the same property names as view titles.
 Facet `spacing` accepts separate `row` and `column` gaps as well as one number.
 
 Child transforms run independently within each facet, including aggregates that

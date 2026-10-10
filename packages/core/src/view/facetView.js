@@ -1,18 +1,19 @@
 import ContainerView from "./containerView.js";
 import { shallowArrayEquals, asArray } from "../utils/arrayUtils.js";
 import {
-    FACET_HEADER_SIZES,
     createFacetGrid,
     getFacetCellLayouts,
     getFacetGridSize,
     isFacetHeaderVisible,
 } from "./facetLayout.js";
-import FacetHeaderView from "./facetHeaderView.js";
+import FacetHeaderView, { FACET_HEADER_PROPERTIES } from "./facetHeaderView.js";
+import Padding from "./layout/padding.js";
 import GridChild from "./gridView/gridChild.js";
 import {
     createGridArrangement,
     queueGridChild,
     getOuterAxes,
+    DECORATION_ORDER,
 } from "./gridView/gridChildArrangement.js";
 import { ZERO_FLEXDIMENSIONS } from "./layout/flexLayout.js";
 import {
@@ -116,15 +117,15 @@ export default class FacetView extends ContainerView {
 
         for (const channel of /** @type {const} */ (["column", "row"])) {
             if (isFacetHeaderVisible(this.#facet[channel])) {
-                this.#headerViews.set(
+                const header = FacetHeaderView.create(
                     channel,
-                    new FacetHeaderView(
-                        channel,
-                        this,
-                        this.child,
-                        this.#facet[channel].header?.format
-                    )
+                    this,
+                    this.child,
+                    this.#facet[channel].header
                 );
+                if (header) {
+                    this.#headerViews.set(channel, header);
+                }
             }
         }
     }
@@ -185,8 +186,25 @@ export default class FacetView extends ContainerView {
             this.#getFacetGrid(),
             this.child.getViewportSize(),
             (cell) => this.#getCellOverhang(cell),
-            this.#spacing
+            this.#spacing,
+            this.#getHeaderPadding()
         );
+    }
+
+    /** @returns {import("./facetLayout.js").FacetHeaderPadding} */
+    #getHeaderPadding() {
+        return {
+            row:
+                this.#headerViews
+                    .get("row")
+                    ?.getLabelOverhang(this.#facetFactors.row) ??
+                Padding.zero(),
+            column:
+                this.#headerViews
+                    .get("column")
+                    ?.getLabelOverhang(this.#facetFactors.column) ??
+                Padding.zero(),
+        };
     }
 
     /** @param {import("./facetLayout.js").FacetCell} cell */
@@ -231,7 +249,8 @@ export default class FacetView extends ContainerView {
             this.child.getViewportSize(),
             (cell) => this.#getCellOverhang(cell),
             this.#spacing,
-            context.getDevicePixelRatio()
+            context.getDevicePixelRatio(),
+            this.#getHeaderPadding()
         );
         const parentClip = normalizeClipOptions(options);
         const arrangement = createGridArrangement();
@@ -266,21 +285,21 @@ export default class FacetView extends ContainerView {
                 arrangement
             );
         }
-        arrangement.arrange();
-
         for (const [orient, header] of this.#headerViews) {
-            header.updateData(
-                createFacetHeaderData(
-                    orient,
-                    layouts,
-                    coords,
-                    this.#getFacetGrid(),
-                    this.#spacing.row,
-                    header.formatLabel
-                )
+            header.updateLayout(
+                orient,
+                layouts,
+                this.#getFacetGrid(),
+                coords,
+                this.#spacing
             );
-            header.arrange(context, coords, options);
+            arrangement.queueDecoration(
+                header.titleSpec.zindex,
+                DECORATION_ORDER.title,
+                () => header.arrange(context, coords, options)
+            );
         }
+        arrangement.arrange();
 
         context.popView(this);
     }
@@ -398,53 +417,6 @@ class FacetGridChild extends GridChild {
     getAxisResolutionForAxis(channel) {
         return this.view.getAxisResolution(channel);
     }
-}
-
-/**
- * @param {FacetChannel} orient
- * @param {import("./facetLayout.js").FacetCellLayout[]} layouts
- * @param {import("./layout/rectangle.js").default} coords
- * @param {import("./facetLayout.js").FacetGrid} grid
- * @param {number} spacing
- * @param {(value: import("../spec/channel.js").Scalar) => string} formatLabel
- * @returns {import("./facetHeaderView.js").FacetHeaderDatum[]}
- */
-function createFacetHeaderData(
-    orient,
-    layouts,
-    coords,
-    grid,
-    spacing,
-    formatLabel
-) {
-    const isRow = orient === "row";
-    const count = isRow
-        ? grid.nRows
-        : grid.hasRowFacet
-          ? grid.nCols
-          : layouts.length;
-
-    return Array.from({ length: count }, (_, index) => {
-        const { cell, childCoords, viewportCoords } =
-            layouts[isRow ? index * grid.nCols : index];
-        const x = isRow
-            ? FACET_HEADER_SIZES.row / 2
-            : childCoords.x - coords.x + childCoords.width / 2;
-        const y = isRow
-            ? childCoords.y - coords.y + childCoords.height / 2
-            : grid.hasRowFacet
-              ? FACET_HEADER_SIZES.column / 2
-              : viewportCoords.y -
-                coords.y -
-                spacing -
-                FACET_HEADER_SIZES.column / 2;
-
-        return {
-            x: x / coords.width,
-            y: 1 - y / coords.height,
-            text: formatLabel(isRow ? cell.facetId[0] : cell.facetId.at(-1)),
-        };
-    });
 }
 
 /**
@@ -600,14 +572,14 @@ function normalizeFacetFieldDef(fieldDef, channel) {
         (typeof header !== "object" ||
             Array.isArray(header) ||
             Object.keys(header).some(
-                (key) => key !== "labels" && key !== "format"
+                (key) => !FACET_HEADER_PROPERTIES.has(key)
             ) ||
             (header.labels !== undefined &&
                 typeof header.labels !== "boolean") ||
             (header.format !== undefined && typeof header.format !== "string"))
     ) {
         throw new Error(
-            'Facet header must be null or an object with boolean "labels" and string "format" options.'
+            'Facet header must be null or an object with supported title properties, boolean "labels", and string "format".'
         );
     }
 

@@ -24,16 +24,15 @@ import Rectangle from "./layout/rectangle.js";
  * @prop {boolean} hasRowHeaders
  * @prop {boolean} hasColumnHeaders
  *
+ * @typedef {{row: Padding, column: Padding}} FacetHeaderPadding
+ *
  * @typedef {object} FacetCellLayout
  * @prop {FacetCell} cell
  * @prop {Rectangle} viewportCoords
  * @prop {Rectangle} childCoords
  */
 
-export const FACET_HEADER_SIZES = {
-    row: 18,
-    column: 18,
-};
+export const FACET_HEADER_SIZE = 18;
 
 /**
  * @param {NormalizedFacet} facet
@@ -84,15 +83,23 @@ export function isFacetHeaderVisible(field) {
  * @param {FlexDimensions} childSize
  * @param {(cell: FacetCell) => Padding} getCellOverhang
  * @param {Required<import("../spec/view.js").FacetSpacing>} [spacing]
+ * @param {FacetHeaderPadding} [headers]
  * @returns {FlexDimensions}
  */
 export function getFacetGridSize(
     grid,
     childSize,
     getCellOverhang,
-    spacing = { row: 0, column: 0 }
+    spacing = { row: 0, column: 0 },
+    headers
 ) {
-    const tracks = getFacetTracks(grid, childSize, getCellOverhang);
+    const tracks = getFacetTracks(
+        grid,
+        childSize,
+        getCellOverhang,
+        spacing,
+        headers
+    );
     const width = getAxisSize(
         tracks.columns,
         spacing.column,
@@ -110,6 +117,7 @@ export function getFacetGridSize(
  * @param {(cell: FacetCell) => Padding} getCellOverhang
  * @param {Required<import("../spec/view.js").FacetSpacing>} [spacing]
  * @param {number} [devicePixelRatio]
+ * @param {FacetHeaderPadding} [headers]
  * @returns {FacetCellLayout[]}
  */
 export function getFacetCellLayouts(
@@ -118,9 +126,16 @@ export function getFacetCellLayouts(
     childSize,
     getCellOverhang,
     spacing = { row: 0, column: 0 },
-    devicePixelRatio
+    devicePixelRatio,
+    headers
 ) {
-    const tracks = getFacetTracks(grid, childSize, getCellOverhang);
+    const tracks = getFacetTracks(
+        grid,
+        childSize,
+        getCellOverhang,
+        spacing,
+        headers
+    );
     const columns = mapToPixelCoords(tracks.columns, coords.width, {
         devicePixelRatio,
         offset: coords.x,
@@ -131,20 +146,25 @@ export function getFacetCellLayouts(
         offset: coords.y,
         spacing: spacing.row,
     });
-    const columnOffset = grid.hasRowHeaders ? 1 : 0;
-    const rowOffset = grid.hasColumnHeaders ? 1 : 0;
-
-    const rowStride = grid.hasColumnHeaders && !grid.hasRowFacet ? 2 : 1;
     return grid.cells.map((cell) => {
-        const column = columns[columnOffset + cell.column];
-        const row = rows[rowOffset + cell.row * rowStride];
+        const column = columns[cell.column];
+        const row = rows[cell.row];
         const columnOverhang = tracks.columnOverhangs[cell.column];
         const rowOverhang = tracks.rowOverhangs[cell.row];
+        const columnHeader = tracks.columnHeaders[cell.column];
+        const rowHeader = tracks.rowHeaders[cell.row];
         const viewportCoords = Rectangle.create(
             column.location,
             row.location,
             column.size,
             row.size
+        ).shrink(
+            new Padding(
+                rowHeader.top,
+                columnHeader.right,
+                rowHeader.bottom,
+                columnHeader.left
+            )
         );
         return {
             cell,
@@ -165,31 +185,80 @@ export function getFacetCellLayouts(
  * @param {FacetGrid} grid
  * @param {FlexDimensions} childSize
  * @param {(cell: FacetCell) => Padding} getCellOverhang
+ * @param {Required<import("../spec/view.js").FacetSpacing>} spacing
+ * @param {FacetHeaderPadding} [headers]
  */
-function getFacetTracks(grid, childSize, getCellOverhang) {
+function getFacetTracks(
+    grid,
+    childSize,
+    getCellOverhang,
+    spacing,
+    headers = {
+        row: new Padding(0, 0, 0, grid.hasRowHeaders ? FACET_HEADER_SIZE : 0),
+        column: new Padding(
+            grid.hasColumnHeaders ? FACET_HEADER_SIZE : 0,
+            0,
+            0,
+            0
+        ),
+    }
+) {
+    const rows = grid.rowIndices;
+    const columns = grid.colIndices;
     const overhangs = grid.cells.map(getCellOverhang);
-    // Match GridView: a track reserves the largest overhang of its cells.
-    const mergeOverhangs = (/** @type {number[]} */ indices) =>
+    const headerOverhangs = grid.cells.map((cell) => {
+        const row = headers.row;
+        const column = headers.column;
+        const lastColumn = rows[cell.row].length - 1;
+        const lastRow = columns[cell.column].length - 1;
+        const padding = new Padding(
+            row.top + (!grid.hasRowFacet || cell.row === 0 ? column.top : 0),
+            column.right + (cell.column === lastColumn ? row.right : 0),
+            row.bottom +
+                (!grid.hasRowFacet || cell.row === lastRow ? column.bottom : 0),
+            column.left + (cell.column === 0 ? row.left : 0)
+        );
+        return new Padding(
+            padding.top > 0 ? padding.top + spacing.row : 0,
+            padding.right > 0 ? padding.right + spacing.column : 0,
+            padding.bottom > 0 ? padding.bottom + spacing.row : 0,
+            padding.left > 0 ? padding.left + spacing.column : 0
+        );
+    });
+    // Match GridView: each track reserves its cells' largest guide/header extent.
+    const mergeOverhangs = (
+        /** @type {Padding[]} */ paddings,
+        /** @type {number[]} */ indices
+    ) =>
         indices.reduce(
-            (padding, index) => padding.union(overhangs[index]),
+            (padding, index) => padding.union(paddings[index]),
             Padding.zero()
         );
-    const columnOverhangs = grid.colIndices.map(mergeOverhangs);
-    const rowOverhangs = grid.rowIndices.map(mergeOverhangs);
+    const columnOverhangs = columns.map((indices) =>
+        mergeOverhangs(overhangs, indices)
+    );
+    const rowOverhangs = rows.map((indices) =>
+        mergeOverhangs(overhangs, indices)
+    );
+    const columnHeaders = columns.map((indices) =>
+        mergeOverhangs(headerOverhangs, indices)
+    );
+    const rowHeaders = rows.map((indices) =>
+        mergeOverhangs(headerOverhangs, indices)
+    );
 
     return {
         columnOverhangs,
         rowOverhangs,
-        columns: makeSizeItems(
-            columnOverhangs.map(
-                (padding) => childSize.addPadding(padding).width
-            ),
-            grid.hasRowHeaders ? FACET_HEADER_SIZES.row : 0
+        columnHeaders,
+        rowHeaders,
+        columns: columnOverhangs.map(
+            (padding, index) =>
+                childSize.addPadding(padding.add(columnHeaders[index])).width
         ),
-        rows: makeSizeItems(
-            rowOverhangs.map((padding) => childSize.addPadding(padding).height),
-            grid.hasColumnHeaders ? FACET_HEADER_SIZES.column : 0,
-            grid.hasColumnHeaders && !grid.hasRowFacet
+        rows: rowOverhangs.map(
+            (padding, index) =>
+                childSize.addPadding(padding.add(rowHeaders[index])).height
         ),
     };
 }
@@ -209,22 +278,4 @@ function getAxisSize(items, spacing, grow) {
     const totalSpacing = Math.max(0, items.length - 1) * spacing;
     items.push({ px: totalSpacing });
     return sumSizeDefs(items);
-}
-
-/**
- * @param {import("./layout/flexLayout.js").SizeDef[]} sizes
- * @param {number} headerSize
- * @param {boolean} [repeatHeader]
- * @returns {import("./layout/flexLayout.js").SizeDef[]}
- */
-function makeSizeItems(sizes, headerSize, repeatHeader = false) {
-    if (repeatHeader) {
-        return sizes.flatMap((size) => [{ px: headerSize }, size]);
-    }
-
-    if (sizes.length && headerSize > 0) {
-        sizes.unshift({ px: headerSize });
-    }
-
-    return sizes;
 }

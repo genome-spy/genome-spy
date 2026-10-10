@@ -41,6 +41,34 @@ and removes their reserved space while retaining the same facet cells.
 For numeric categories, `"header": {"format": ",.0f"}` displays thousands
 separators. Formatting changes labels while preserving category identity and order.
 
+Headers use [view-title](title.md) placement and style properties. Defaults
+remain centered above columns and rotated beside rows. For horizontal,
+right-aligned row labels, use:
+
+```json
+"row": {
+  "field": "group",
+  "header": { "angle": 0, "align": "right" }
+}
+```
+
+Named title styles also work: `"header": {"style": "track-title"}` produces
+horizontal track labels, while `"header": {"style": "overlay-title"}` places
+labels inside the plot. Set `reserve: false` for placement that reserves no
+space. Reserved headers keep at least the default 18-pixel band and grow to
+fit longer labels. `orient`, `anchor`, `frame`, `offset`, `dx`, and `dy` have
+the same meaning as for view titles. Headers scroll and clip with the facet grid.
+
+Matrices keep one label per row or column; column facets with wrapping keep
+one label per cell. Overlay placement preserves these label counts.
+
+`config.header` supplies defaults for all headers. `config.headerRow` and
+`config.headerColumn` override them for their respective channels. Named
+styles override those defaults, and explicit `header` properties override
+styles. `header: null` always hides labels. These configuration scopes follow
+Vega-Lite's pattern, but properties use GenomeSpy's view-title names, such as
+`angle` and `align`, rather than Vega-Lite's `labelAngle` and `labelAlign`.
+
 ## Scales and Guides
 
 Scales and legends are shared across cells. Axes appear along the outer edges,
@@ -91,9 +119,9 @@ GenomeSpy supports basic category repetition with a smaller facet grammar:
 - Faceting uses the explicit `facet` operator. The `row`, `column`, and `facet`
   encoding shortcuts are not supported. Compute binned or temporal categories
   in advance; facet fields do not accept `bin` or `timeUnit`.
-- Headers support visibility and numeric formatting, but not facet field
-  titles, time formatting, or general styling. Sorting by another field or
-  aggregate is not supported.
+- Headers support numeric formatting and view-title placement/styles, but not
+  facet field titles or time formatting. Sorting by another field or aggregate
+  is not supported.
 - Selection parameters have one shared value across cells. Per-cell selection
   state and Vega-Lite's `union`/`intersect` selection resolution are not supported.
 

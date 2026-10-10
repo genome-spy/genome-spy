@@ -1439,3 +1439,34 @@ async function createAndInitializeWrappedRoot(spec) {
 
     return view;
 }
+
+test("horizontal header reservations follow replacement category text", async ({
+    onTestFinished,
+}) => {
+    const view = await createAndInitialize(
+        {
+            data: { values: [{ g: "A" }] },
+            facet: {
+                row: { field: "g", header: { angle: 0, align: "right" } },
+            },
+            spec: { width: 100, height: 50, mark: "point" },
+        },
+        FacetView
+    );
+    onTestFinished(() => view.disposeSubtree());
+    const initialWidth = view.getSize().width.px;
+    const source =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            view.flowHandle.dataSource
+        );
+    source.updateDynamicData([{ g: "A substantially longer category label" }]);
+    expect(view.getSize().width.px).toBeGreaterThan(initialWidth);
+    renderToLayout(view);
+    expect(view.child.coords.width).toBe(100);
+    expect(
+        Array.from(
+            getFacetHeaderViews(view)[0].getCollector().getData(),
+            (datum) => datum.text
+        )
+    ).toEqual(["A substantially longer category label"]);
+});

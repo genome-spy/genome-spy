@@ -27,11 +27,27 @@ The subsequently authorized additions are complete: ascending/descending and
 explicit category ordering, `header: null`/`labels: false` with reclaimed space,
 numeric `header.format`, and separate row/column `spacing`. Matrix ordering
 preserves input order for unlisted categories even with interleaved rows.
-These options retain one child and the static batched flow. Field titles,
-general header styling and independent domains remain deferred.
+These options retain one child and the static batched flow. Field titles
+and independent domains remain deferred. The subsequently authorized header
+placement/styles are recorded below.
 The [main plan](facet-plan.md#small-compatibility-additions-authorized-follow-up)
 records individual milestones, verification, and the net +110 runtime-line
 measurement against `70533c581`.
+
+### Title-style headers follow-up
+
+Facet category labels now share view-title style resolution, positioning,
+reference frames, and text measurement. Existing centered/rotated defaults and
+18-pixel bands remain; larger labels expand their reservation and overlays
+reserve no space. Row/column matrices retain one label per factor, while
+wrapped column facets retain one per cell. The batched header marks and facet
+dataflow remain shared.
+
+General, row, and column header configuration buckets follow Vega-Lite's
+pattern, using GenomeSpy's existing title property names. Field titles,
+subtitles, and Vega-Lite's prefixed `label*` aliases are outside this addition.
+The [main plan](facet-plan.md#follow-up-title-style-facet-category-labels)
+records verification and size measurements.
 
 ### Shared outer axes follow-up
 

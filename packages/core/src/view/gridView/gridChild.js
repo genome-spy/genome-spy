@@ -11,7 +11,7 @@ import AxisView, {
 import LayerView from "../layerView.js";
 import Padding, { applyOverhangConfig } from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
-import TitleView from "../titleView.js";
+import TitleView, { getTitleCoords } from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
     hasChromeAncestor,
@@ -957,30 +957,11 @@ export default class GridChild {
             return viewportCoords;
         }
 
-        const guideCoords = viewportCoords.expand(this.#getGuideOverhang(axes));
-        const frame = titleSpec.frame ?? "group";
-        if (titleSpec.reserve === false) {
-            return frame == "bounds" ? guideCoords : viewportCoords;
-        } else if (frame == "bounds") {
-            return guideCoords;
-        }
-
-        switch (titleSpec.orient) {
-            case "top":
-            case "bottom":
-                return guideCoords.modify({
-                    x: () => viewportCoords.x,
-                    width: () => viewportCoords.width,
-                });
-            case "left":
-            case "right":
-                return guideCoords.modify({
-                    y: () => viewportCoords.y,
-                    height: () => viewportCoords.height,
-                });
-            default:
-                return viewportCoords;
-        }
+        return getTitleCoords(
+            viewportCoords,
+            viewportCoords.expand(this.#getGuideOverhang(axes)),
+            titleSpec
+        );
     }
 
     /** @param {GridChild["axes"]} [axes] */

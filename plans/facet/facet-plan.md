@@ -21,6 +21,53 @@ ascending category order, and simple value labels are sufficient defaults.
 
 ## Current Status and Remaining Work (2026-10-10)
 
+### Follow-up: title-style facet category labels
+
+Preserve the current centered row/column labels, their rotation, and default
+header bands. Extend `header` with view-title placement and style properties;
+category values still supply the text. Keep one batched header mark per
+orientation and the static facet dataflow. Reuse title style resolution,
+measurement, and placement instead of introducing a second title system.
+
+- [x] Share title helpers and expose the applicable title properties on facet
+  headers. Support named styles, all four sides, anchors, alignment, rotation,
+  offsets, reference frames, space reservation, and paint order. Preserve
+  visibility, numeric formatting, and current defaults. Keep one label per
+  row/column in matrices and one per cell in wrapped column facets.
+- [x] Replace fixed-band assumptions with measured header reservations and
+  plot-relative overlay placement. Verify default geometry, long labels,
+  incomplete wrapped rows, dynamic categories, resizing, and scrolling through
+  real layout/SVG paths. Check ordinary titles after sharing their helpers.
+- [x] Make the sine example's row labels horizontal and right-aligned; retain
+  its container sizing, fixed y domain, x-only clipping, and view stroke.
+  Update grammar docs and the existing facet changeset, exercise WebGL and
+  Canvas, and record the size/check results here.
+
+Verification: view/layout, SVG, and shared example/schema suites pass (70
+files, 1,510 tests). Workspace TypeScript checks, lint, schema generation,
+formatting, and release checks pass. WebGL and Canvas browser checks cover
+the actual sine example's labels, all-cell wheel zoom, fixed y domain, and
+container resizing; plot-area overlays; incomplete wrapped rows with scrolling
+in both directions; and the unchanged default row/column labels in the cars
+matrix. SVG tests cover all four header sides, configuration/style precedence,
+numeric formatting, hidden defaults, overlay reservation, and paint order.
+Replacement category text updates measured reservations through real dataflow.
+
+The Vega-Lite adaptation adds `config.header`, `headerRow`, and `headerColumn`
+default buckets. Header properties retain GenomeSpy's title vocabulary rather
+than duplicating it with `label*` aliases; field-title/subtitle machinery remains
+outside scope. Both title kinds reuse the same placement helpers and the grid
+decoration queue. A shared minimum band constant replaces the redundant row
+and column constants.
+
+Runtime physical sizes against `10be3eccc`: FacetHeaderView 103→271,
+facetLayout 230→281, FacetView 643→615, TitleView 557→597, and GridChild
+1,071→1,052. Combined size is 2,604→2,816 (**net +212 physical lines**).
+The growth implements measured reservations, all four sides, overlays, and
+header defaults while sharing title style/placement/measurement and keeping
+one batched header view per orientation. No per-category dataflow or view
+instances are introduced.
+
 ### Follow-up: missing xy ruler in the cars matrix
 
 The cars example's ruler updated its x/y parameter values but remained invisible

@@ -12,6 +12,7 @@ import { ExprRef } from "./parameter.js";
 import { Scale } from "./scale.js";
 import { GenomeAxis } from "./axis.js";
 import { Legend } from "./legend.js";
+import { Title } from "./title.js";
 
 // TODO: Rename Scalar to PrimitiveValue
 export type Scalar = string | number | boolean;
@@ -80,7 +81,31 @@ export interface FacetFieldDef extends FieldDefBase {
     header?: FacetHeader | null;
 }
 
-export interface FacetHeader {
+/**
+ * Category labels use view-title placement and styling properties. Defaults
+ * are 12-pixel centered text above columns and rotated -90 degrees beside rows,
+ * with a 9-pixel offset and at least 18 pixels of reserved header space.
+ */
+export interface FacetHeader extends Pick<
+    Title,
+    | "style"
+    | "orient"
+    | "anchor"
+    | "frame"
+    | "offset"
+    | "reserve"
+    | "zindex"
+    | "align"
+    | "angle"
+    | "baseline"
+    | "dx"
+    | "dy"
+    | "color"
+    | "font"
+    | "fontSize"
+    | "fontStyle"
+    | "fontWeight"
+> {
     /**
      * Whether category labels are shown. Hidden labels reserve no space.
      *

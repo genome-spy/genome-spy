@@ -1,0 +1,56 @@
+{
+  "description": [
+    "Sine Curves with Phase Offsets",
+    "Four facets show sin(x + offset) with offsets of 0, 90, 180, and 270 degrees. Zoom the shared x scale; y stays fixed at [-1, 1]."
+  ],
+
+  "data": {
+    "values": [
+      { "offset": 0 },
+      { "offset": 90 },
+      { "offset": 180 },
+      { "offset": 270 }
+    ]
+  },
+  "transform": [
+    {
+      "type": "cross",
+      "from": {
+        "data": {
+          "sequence": { "start": 0, "stop": 361, "step": 5, "as": "x" }
+        }
+      }
+    },
+    {
+      "type": "formula",
+      "expr": "sin((datum.x + datum.offset) * PI / 180)",
+      "as": "y"
+    }
+  ],
+
+  "facet": {
+    "row": { "field": "offset", "header": { "angle": 0, "align": "right" } }
+  },
+  "spec": {
+    "width": "container",
+    "height": "container",
+    "view": { "stroke": "lightgray" },
+    "mark": { "type": "point", "clip": "x" },
+    "encoding": {
+      "x": {
+        "field": "x",
+        "type": "quantitative",
+        "scale": { "domain": [0, 360], "zoom": true },
+        "axis": { "title": "Angle (degrees)" }
+      },
+      "y": {
+        "field": "y",
+        "type": "quantitative",
+        "scale": { "domain": [-1, 1], "nice": false, "zoom": false },
+        "axis": { "title": "sin(x + offset)" }
+      },
+      "size": { "value": 12 },
+      "opacity": { "value": 1 }
+    }
+  }
+}
