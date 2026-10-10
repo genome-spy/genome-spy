@@ -12,3 +12,4 @@ rejected with a clear error.
 Wrapping column counts must be positive integers.
 Grouped and sorted data retain physical row shapes when materialized or replayed.
 Stacks restart within each facet instead of accumulating across groups.
+Sampling applies its requested size independently to each facet.
