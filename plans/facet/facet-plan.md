@@ -45,7 +45,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Interactions after scrolling a facet viewport | Working in WebGL and Canvas |
 | Vega-Lite-style outer axes and independent axes | Optional; not required for category repetition |
 | Independent positional scale domains | Unsupported and rejected; intentionally outside the current scope |
-| Independent non-positional scales and legends per cell | Unsupported; declarations can currently be accepted without per-cell domains |
+| Independent non-positional scales and legends per cell | Unsupported and rejected; layer independence remains supported |
 | Custom facet ordering | Optional; ascending factor order is sufficient for the current scope |
 | Facet field titles and configurable headers | General header API is optional; unused schema-supported `title` needs a clear contract |
 | Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
@@ -146,7 +146,7 @@ completion pass.
   rebuilding layout metadata does not imply entering another category.
 - [x] Reject child viewport options rather than compressing content; use the
   supported viewport on the facet container.
-- [ ] Reject unsupported per-cell non-positional scale/legend resolution with a
+- [x] Reject unsupported per-cell non-positional scale/legend resolution with a
   clear error. Preserve legitimate independence between layers.
 - [ ] Resolve the unused facet field `title` contract without adding a general
   header API: use existing title machinery if small, or narrow the facet type.

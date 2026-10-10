@@ -317,6 +317,22 @@ export default class FacetView extends ContainerView {
 
     /** @param {import("./view.js").default} view */
     #validateResolutions(view) {
+        // A layer can separate its marks' scales, but the facet cannot create
+        // separate scale/legend instances for occurrences of that layer.
+        if (view === this) {
+            for (const type of /** @type {const} */ (["scale", "legend"])) {
+                for (const [channel, behavior] of Object.entries(
+                    this.spec.resolve?.[type] ?? {}
+                )) {
+                    if (behavior === "independent") {
+                        throw new Error(
+                            `FacetView currently supports only shared ${type} resolutions. Channel "${channel}" is resolved independently in view "${view.name}".`
+                        );
+                    }
+                }
+            }
+        }
+
         for (const channel of /** @type {const} */ (["x", "y"])) {
             for (const resolutionType of /** @type {const} */ ([
                 "scale",

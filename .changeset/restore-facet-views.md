@@ -32,3 +32,5 @@ transitions, and keep document drags anchored to their starting cell.
 Layout refreshes preserve hover identity for unchanged facet categories.
 Unsupported child viewports fail with an error directing authors to put the
 viewport on the facet container.
+Independent per-cell scales and legends fail clearly, while layers can retain
+separate non-positional scales shared across cells.

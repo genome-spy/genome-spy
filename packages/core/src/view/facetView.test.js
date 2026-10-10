@@ -203,6 +203,69 @@ test("facet rejects an immediate nested facet child", async () => {
     ).rejects.toThrow("Facet specs cannot contain an immediate facet child.");
 });
 
+test.each(
+    /** @type {const} */ ([
+        ["scale", "color"],
+        ["legend", "color"],
+        ["scale", "size"],
+        ["legend", "default"],
+    ])
+)("facet rejects independent per-cell %s.%s", async (type, channel) => {
+    await expect(
+        createAndInitialize(
+            {
+                facet: { field: "g" },
+                resolve: { [type]: { [channel]: "independent" } },
+                spec: { mark: "point" },
+            },
+            FacetView
+        )
+    ).rejects.toThrow(
+        `FacetView currently supports only shared ${type} resolutions. Channel "${channel}"`
+    );
+});
+
+test("layers retain independent color scales shared across facet cells", async () => {
+    const facet = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    { g: "A", a: "red", b: "small" },
+                    { g: "B", a: "blue", b: "large" },
+                ],
+            },
+            facet: { field: "g" },
+            spec: {
+                resolve: { scale: { color: "independent" } },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: { color: { field: "a", type: "nominal" } },
+                    },
+                    {
+                        mark: "point",
+                        encoding: { color: { field: "b", type: "nominal" } },
+                    },
+                ],
+            },
+        },
+        FacetView
+    );
+    try {
+        const layer = /** @type {import("./layerView.js").default} */ (
+            facet.child
+        );
+        const [a, b] = layer.children.map((view) =>
+            view.getScaleResolution("color")
+        );
+        expect(a).not.toBe(b);
+        expect(a.getDomain()).toEqual(["red", "blue"]);
+        expect(b.getDomain()).toEqual(["small", "large"]);
+    } finally {
+        facet.disposeSubtree();
+    }
+});
+
 test.each(["viewportWidth", "viewportHeight"])(
     "facet rejects child %s instead of compressing content",
     async (viewport) => {

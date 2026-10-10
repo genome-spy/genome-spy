@@ -167,3 +167,7 @@ blocks this acceptance.
 - Child viewports: reject width/height viewport declarations anywhere in the
   repeated subtree with a message directing authors to the facet container.
   Existing container scrolling tests remain the supported contract.
+- Per-cell resolutions: reject independent scale/legend declarations on the
+  facet boundary, including default declarations. Layers retain independent
+  non-positional scales whose domains span cells; a real-spec test verifies
+  their distinct color domains. Positional independence remains rejected.
