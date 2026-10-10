@@ -14,3 +14,5 @@ Grouped and sorted data retain physical row shapes when materialized or replayed
 Stacks restart within each facet instead of accumulating across groups.
 Sampling applies its requested size independently to each facet.
 Pileup lane allocation restarts for each facet.
+Logical facet reductions and self-lookups span physical files while preserving
+row shapes through buffered transforms.

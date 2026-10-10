@@ -122,7 +122,10 @@ export default class AggregateTransform extends Transform {
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
-        if (this.buffer.length > 0) {
+        if (flowBatch.type == "file" && this.inFacet) {
+            return;
+        }
+        if (this.buffer.length > 0 || this.inFacet) {
             this.#flushBuffer();
             this.buffer = [];
         }
@@ -131,7 +134,7 @@ export default class AggregateTransform extends Transform {
     }
 
     complete() {
-        if (this.buffer.length > 0) {
+        if (this.buffer.length > 0 || this.inFacet) {
             this.#flushBuffer();
         }
 

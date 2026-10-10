@@ -2,6 +2,10 @@ import { asArray } from "../../utils/arrayUtils.js";
 import createCloner from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
+import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "../fileBatchUtils.js";
 
 /** @typedef {import("../flowNode.js").Datum} Datum */
 /** @typedef {(datum: Datum) => any} FieldAccessor */
@@ -90,6 +94,8 @@ export default class LookupTransform extends Transform {
         // references can be resolved.
         /** @type {Datum[]} */
         let bufferedData = [];
+        /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
+        let bufferedFiles = [];
         /** @type {FlowBatch | undefined} */
         let bufferedBatch;
         let hasBufferedBatch = false;
@@ -255,11 +261,21 @@ export default class LookupTransform extends Transform {
                 // Forward the delayed boundary immediately before its rows.
                 beginBatch(/** @type {FlowBatch} */ (bufferedBatch));
             }
+            const propagate = createFileBatchPropagator(
+                createFileBatchAccessor(bufferedData, bufferedFiles),
+                (batch) => {
+                    clone = undefined;
+                    this.handle = specializeAndPropagate;
+                    beginBatch(batch);
+                },
+                (datum) => this.handle(datum)
+            );
             for (const datum of bufferedData) {
-                this.handle(datum);
+                propagate(datum);
             }
 
             bufferedData = [];
+            bufferedFiles = [];
             bufferedBatch = undefined;
             hasBufferedBatch = false;
             index = null;
@@ -282,6 +298,7 @@ export default class LookupTransform extends Transform {
             clone = undefined;
             if (selfInput) {
                 bufferedData = [];
+                bufferedFiles = [];
                 bufferedBatch = undefined;
                 hasBufferedBatch = false;
                 index = null;
@@ -300,6 +317,16 @@ export default class LookupTransform extends Transform {
         /** @param {FlowBatch} flowBatch */
         this.beginBatch = (flowBatch) => {
             if (selfInput) {
+                if (
+                    flowBatch.type == "file" &&
+                    bufferedBatch?.type == "facet"
+                ) {
+                    bufferedFiles.push({
+                        index: bufferedData.length,
+                        batch: flowBatch,
+                    });
+                    return;
+                }
                 // A new boundary proves that the preceding group is complete.
                 if (hasBufferedBatch || bufferedData.length > 0) {
                     flushBufferedBatch();

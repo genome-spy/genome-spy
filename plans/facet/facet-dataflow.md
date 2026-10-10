@@ -245,6 +245,11 @@ Progress: physical file-shape preservation is implemented in collectors and
 shared buffered-publication helpers. Grouping/sorting/replay and reactive replay
 regressions pass (45 tests). Single-file inputs use constant provenance;
 multi-file inputs currently use row identity, with a focused optimization TODO.
+Stack, sample, and pileup now restart at facet boundaries. Aggregate, window,
+coverage, set intersection, and self lookup distinguish logical facets from
+physical files; a mixed lookup → window → aggregate regression verifies forward
+references, preserved row shapes, and independent results. Existing empty facets
+can aggregate to count zero. Focused transform checks and Core type checks pass.
 
 1. [ ] **Establish the static partition contract.** Update flow building, collector
        preservation, and data-scope handling. Verify spec-to-collector aggregate,

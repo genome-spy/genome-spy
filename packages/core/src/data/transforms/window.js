@@ -2,6 +2,10 @@ import { compare } from "vega-util";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "../fileBatchUtils.js";
+import {
     createAggregatePartitionEvaluator,
     WINDOW_AGGREGATE_OPS,
 } from "./windowAggregateOps.js";
@@ -31,6 +35,9 @@ import {
  * propagation order. The transform buffers one FlowNode batch at a time.
  */
 export default class WindowTransform extends Transform {
+    /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
+    #fileBatchStarts = [];
+
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
@@ -58,6 +65,7 @@ export default class WindowTransform extends Transform {
     reset() {
         super.reset();
         this.buffer = [];
+        this.#fileBatchStarts = [];
     }
 
     /** @param {Datum} datum */
@@ -69,6 +77,13 @@ export default class WindowTransform extends Transform {
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
+        if (flowBatch.type == "file" && this.inFacet) {
+            this.#fileBatchStarts.push({
+                index: this.buffer.length,
+                batch: flowBatch,
+            });
+            return;
+        }
         this.#flushBuffer();
         super.beginBatch(flowBatch);
     }
@@ -79,6 +94,12 @@ export default class WindowTransform extends Transform {
     }
 
     #flushBuffer() {
+        const propagate = createFileBatchPropagator(
+            createFileBatchAccessor(this.buffer, this.#fileBatchStarts),
+            (batch) => super.beginBatch(batch),
+            (datum) => this._propagate(datum)
+        );
+        this.#fileBatchStarts = [];
         if (this.buffer.length == 0) {
             return;
         }
@@ -91,7 +112,7 @@ export default class WindowTransform extends Transform {
         }
 
         for (const datum of buffer) {
-            this._propagate(datum);
+            propagate(datum);
         }
     }
 
