@@ -14,6 +14,20 @@ It coordinates four major systems:
 ## Entry and orchestration
 
 - `src/index.js` exports `embed()` and `GenomeSpy`.
+- `src/viewQuery.js` is the optional `@genome-spy/core/view-query` entry.
+  It owns detached metadata, bounded loaded-row previews and cooperative
+  viewport/interval slice queries. Request-specific assessment and execution share
+  preparation, including collector, scope and positional-accessor checks.
+  Assessment does not scan rows or guarantee later success. Scope filtering precedes row output limits;
+  exact loaded-data aggregates reuse the existing aggregate operations and yield
+  between passes. Restricted scoped analysis projects explicitly disclosed fields
+  and reuses filter, aggregate and full-partition window transforms on detached
+  rows before output limits; it records the pipeline and output population.
+  A module-local WeakMap in `src/view/viewQueryAccess.js` connects
+  it to the view API's existing checked address resolver; both entries must share
+  one Core module instance.
+  Default, minimal and full entry points do not import the query implementation.
+  View handles retain scale access and visualization control.
 - `src/genomeSpy.js` is the central orchestrator. It builds the view hierarchy,
   initializes subtree dataflows, manages rendering contexts, and schedules
   animation.

@@ -34,7 +34,7 @@ view declared by the input spec.
 
 ### resolve
 
-> **resolve**: (`address`) => [`ViewHandle`](ViewHandle.md)
+> **resolve**: (`address`) => [`ViewHandle`](ViewHandle.md) \| `undefined`
 
 Resolves an address to a live view handle.
 
@@ -50,7 +50,7 @@ returns `undefined`.
 
 #### Returns
 
-[`ViewHandle`](ViewHandle.md)
+[`ViewHandle`](ViewHandle.md) \| `undefined`
 
 ***
 
@@ -77,7 +77,7 @@ longer refers to a live view.
 
 ### getLayoutBounds
 
-> **getLayoutBounds**: (`address`) => [`ViewLayoutBounds`](ViewLayoutBounds.md)
+> **getLayoutBounds**: (`address`) => [`ViewLayoutBounds`](ViewLayoutBounds.md) \| `undefined`
 
 Returns the last rendered layout bounds for a view.
 
@@ -93,7 +93,7 @@ view is no longer live, or the view has not been rendered yet.
 
 #### Returns
 
-[`ViewLayoutBounds`](ViewLayoutBounds.md)
+[`ViewLayoutBounds`](ViewLayoutBounds.md) \| `undefined`
 
 ***
 

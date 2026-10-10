@@ -177,6 +177,39 @@ try {
         directory: "src/rendering/svg/",
     });
 
+    const fullOutput = await buildEntry(
+        "full.js",
+        "genomeSpyFull",
+        path.join(tempDir, "full")
+    );
+    const querySources = ["src/viewQuery.js", "src/view/viewDataApi.js"];
+    for (const output of [minimalOutput, productionOutput, fullOutput]) {
+        const sources = readAllOutputSources(output);
+        if (
+            sources.some((source) =>
+                querySources.some((query) => source.endsWith(query))
+            )
+        ) {
+            throw new Error(
+                "Core entry points must not include optional view queries in any chunk."
+            );
+        }
+    }
+
+    const queryOutput = await buildEntry(
+        path.resolve("scripts/fixtures/viewQuery.js"),
+        "genomeSpyViewQuery",
+        path.join(tempDir, "view-query")
+    );
+    const consumerSources = readAllOutputSources(queryOutput);
+    for (const source of querySources) {
+        if (!consumerSources.some((included) => included.endsWith(source))) {
+            throw new Error(
+                `Explicit view-query consumer is missing ${source}.`
+            );
+        }
+    }
+
     console.log("Minimal bundle verification passed.");
 } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

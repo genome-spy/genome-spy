@@ -96,23 +96,11 @@ such as genomic coordinates.
 
 ### getLinkedSelectionDomainInfo()
 
-> **getLinkedSelectionDomainInfo**(): `object`
+> **getLinkedSelectionDomainInfo**(): \{ `param`: `string`; `encoding`: `"x"` \| `"y"`; `persist`: `boolean`; \} \| `undefined`
 
 #### Returns
 
-`object`
-
-##### param
-
-> **param**: `string`
-
-##### encoding
-
-> **encoding**: `"x"` \| `"y"`
-
-##### persist
-
-> **persist**: `boolean`
+\{ `param`: `string`; `encoding`: `"x"` \| `"y"`; `persist`: `boolean`; \} \| `undefined`
 
 ***
 
