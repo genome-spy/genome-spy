@@ -161,3 +161,6 @@ blocks this acceptance.
   the plot clears it. Document drags retain their initiating cell's rectangle.
   Real-spec tests cover facet/child parameter ownership and later-cell drags;
   existing concat-gap and ruler suites preserve ordinary ruler behavior.
+- Hover identity: dispatch compares tuple values, avoiding synthetic leave/enter
+  events after unchanged layout rebuilds. A real-spec regression also verifies
+  that moving to another category still produces transitions.

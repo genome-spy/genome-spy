@@ -29,3 +29,4 @@ Removing a facet or disposing its visualization cancels active interval-brush
 gestures and releases their document listeners.
 Rulers use the pointed cell's coordinates, retain their values across cell
 transitions, and keep document drags anchored to their starting cell.
+Layout refreshes preserve hover identity for unchanged facet categories.

@@ -1,4 +1,17 @@
 import Interaction from "../utils/interaction.js";
+import { shallowArrayEquals } from "../utils/arrayUtils.js";
+
+/**
+ * Layout rebuilds may replace tuple arrays without changing the category.
+ * @param {import("../spec/channel.js").Scalar[] | undefined} a
+ * @param {import("../spec/channel.js").Scalar[] | undefined} b
+ */
+function sameFacet(a, b) {
+    return (
+        a === b ||
+        (a !== undefined && b !== undefined && shallowArrayEquals(a, b))
+    );
+}
 
 /**
  * Dispatches `Interaction` objects through the view hierarchy and synthesizes
@@ -114,12 +127,18 @@ export default class InteractionDispatcher {
         const leavingViews = previousViews.filter(
             (view) =>
                 !currentViewSet.has(view) ||
-                currentViewSet.get(view) !== this.#previousViews.get(view)
+                !sameFacet(
+                    currentViewSet.get(view),
+                    this.#previousViews.get(view)
+                )
         );
         const enteringViews = currentViews.filter(
             (view) =>
                 !this.#previousViews.has(view) ||
-                currentViewSet.get(view) !== this.#previousViews.get(view)
+                !sameFacet(
+                    currentViewSet.get(view),
+                    this.#previousViews.get(view)
+                )
         );
 
         if (leavingViews.length > 0) {

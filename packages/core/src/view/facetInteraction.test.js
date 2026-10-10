@@ -301,6 +301,28 @@ test.each(["click", "mouseover"])(
     }
 );
 
+test("layout refresh preserves hover identity while category changes still transition", async () => {
+    const { root, facet, child, dispatcher } = await createFacet();
+    const enter = vi.fn();
+    const leave = vi.fn();
+    child.addInteractionListener("mouseenter", enter);
+    child.addInteractionListener("mouseleave", leave);
+    const point = pointIn(child.facetCoords.get(["B"]));
+    dispatcher.dispatch(point, new MouseEvent("mousemove"));
+    facet.invalidateSizeCache();
+    renderToLayout(root);
+    dispatcher.dispatch(point, new MouseEvent("mousemove"));
+    expect(enter).toHaveBeenCalledOnce();
+    expect(leave).not.toHaveBeenCalled();
+
+    dispatcher.dispatch(
+        pointIn(child.facetCoords.get(["C"])),
+        new MouseEvent("mousemove")
+    );
+    expect(leave).toHaveBeenCalledOnce();
+    expect(enter).toHaveBeenCalledTimes(2);
+});
+
 test("headers, gaps, and clipped cell areas do not acquire a child target", async () => {
     const { facet, child } = await createFacet();
     const coords = Rectangle.create(0, 0, 210, 166);
