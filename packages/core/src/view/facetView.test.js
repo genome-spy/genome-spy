@@ -9,7 +9,7 @@ import ConcatView from "./concatView.js";
 import FacetView from "./facetView.js";
 import UnitView from "./unitView.js";
 import { isChromeView, visitAddressableViews } from "./viewSelectors.js";
-import { getFlattenedViews } from "./viewUtils.js";
+import { calculateCanvasSize, getFlattenedViews } from "./viewUtils.js";
 import {
     createFacetGrid,
     getFacetCellLayouts,
@@ -1084,6 +1084,35 @@ test("facet root size can be measured before dataflow initialization", async () 
     expect(root.getSize().height).toEqual({ px: 166, grow: 0 });
 });
 
+test("flexible facet root fits its container before and after data initialization", async () => {
+    const context = createTestViewContext({ wrapRoot: true });
+    const spec = createFixedSizeFacetSpec(["I", "II", "III", "IV"]);
+    delete spec.spec.width;
+    delete spec.spec.height;
+    const root = await context.createOrImportView(
+        spec,
+        null,
+        null,
+        VIEW_ROOT_NAME
+    );
+
+    // Browser startup measures the root before loading the facet categories.
+    expect(root.getSize().isGrowing()).toBe(true);
+    expect(calculateCanvasSize(root)).toEqual({
+        width: undefined,
+        height: undefined,
+    });
+
+    const { dataSources } = initializeViewSubtree(root, context.dataFlow);
+    await loadViewSubtreeData(root, dataSources);
+
+    expect(root.getSize().isGrowing()).toBe(true);
+    expect(calculateCanvasSize(root)).toEqual({
+        width: undefined,
+        height: undefined,
+    });
+});
+
 test("facet render repeats child at each facet cell", async () => {
     const view = await createAndInitialize(
         createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
@@ -1355,7 +1384,7 @@ function findLayoutNodesByPrefix(layout, prefix) {
 
 /**
  * @param {string[]} series
- * @returns {import("../spec/root.js").RootSpec}
+ * @returns {import("../spec/view.js").FacetSpec & {spec: import("../spec/view.js").UnitSpec}}
  */
 function createFixedSizeFacetSpec(series) {
     return {

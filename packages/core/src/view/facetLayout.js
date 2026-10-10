@@ -192,6 +192,11 @@ function getAxisSize(
     spacing,
     repeatHeader = false
 ) {
+    // Container growth and resize observation are decided before data loads.
+    if (cellCount === 0) {
+        return { px: 0, grow: cellSize.grow ?? 0 };
+    }
+
     const items = makeSizeItems(cellCount, cellSize, headerSize, repeatHeader);
     const totalSpacing = Math.max(0, items.length - 1) * spacing;
     items.push({ px: totalSpacing });

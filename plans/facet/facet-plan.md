@@ -21,6 +21,26 @@ ascending category order, and simple value labels are sufficient defaults.
 
 ## Current Status and Remaining Work (2026-10-10)
 
+### Follow-up: collapsed documentation example
+
+The reported `anscombe-wrapped.json` page collapses to a 20-pixel canvas.
+Before data initialization, an empty facet grid loses its child's flexible
+growth. Browser startup consequently disables container growth and resize
+observation. Fully initialized headless layout checks missed this lifecycle
+contract. The documentation sample also contains only one point per series.
+
+- [x] Preserve flexible dimensions while facet categories are unavailable.
+      Keep fixed empty dimensions at zero. Cover sizing before and after real
+      data initialization and verify the original browser URL with both WebGL and
+      Canvas. Commit: `fix(core): preserve flexible facet sizing before data loads`.
+      Verified the unchanged reported sample at 1280×680 and resized Canvas at
+      900×560, with four visible cells and no browser errors. Facet/GridView tests
+      pass (166 tests); the sizing fix adds five physical runtime lines (222→227).
+- [ ] Replace the documentation sample with the full local `vega-datasets`
+      Anscombe quartet and sensible fixed cell dimensions. Record provenance beside
+      the example and verify four rendered plots with eleven points each. Commit:
+      `docs(core): show the complete Anscombe quartet in the facet example`.
+
 ### Small compatibility additions (authorized follow-up)
 
 Baseline: `70533c581`. Implement four small options while retaining one child,
