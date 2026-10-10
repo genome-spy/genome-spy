@@ -10,6 +10,10 @@ import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 import KeyIndex from "./keyIndex.js";
 import ViewportDomainManager from "./viewportDomain.js";
 import createDomain from "../utils/domainArray.js";
+import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "./fileBatchUtils.js";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -28,6 +32,14 @@ export default class Collector extends FlowNode {
      * @type {Data}
      */
     #buffer = [];
+
+    /** @type {import("./fileBatchUtils.js").FileBatchStart[]} */
+    #fileBatchStarts = [];
+
+    /** @type {import("./fileBatchUtils.js").FileBatchAccessor} */
+    #getFileBatch = () => undefined;
+
+    #rowCount = 0;
 
     #uniqueIdAccessor = field(UNIQUE_ID_KEY);
 
@@ -99,6 +111,9 @@ export default class Collector extends FlowNode {
 
     #init() {
         this.#buffer = [];
+        this.#fileBatchStarts = [];
+        this.#getFileBatch = () => undefined;
+        this.#rowCount = 0;
         this.#uniqueIdIndex = [];
         this.#keyIndex.invalidate();
         this.#viewportDomains.reset();
@@ -117,6 +132,7 @@ export default class Collector extends FlowNode {
      */
     handle(datum) {
         this.#buffer.push(datum);
+        this.#rowCount++;
     }
 
     /**
@@ -128,10 +144,20 @@ export default class Collector extends FlowNode {
         if (isFacetBatch(flowBatch)) {
             this.#buffer = [];
             this.facetBatches.set(asArray(flowBatch.facetId), this.#buffer);
+        } else {
+            this.#fileBatchStarts.push({
+                index: this.#rowCount,
+                batch: flowBatch,
+            });
         }
     }
 
     complete() {
+        this.#getFileBatch = createFileBatchAccessor(
+            iterateFacetBatchData(this.facetBatches.values()),
+            this.#fileBatchStarts
+        );
+
         // Free some memory
         this.#buffer = [];
 
@@ -199,8 +225,17 @@ export default class Collector extends FlowNode {
                         child.beginBatch(facetBatch);
                     }
                 }
+                const propagate = createFileBatchPropagator(
+                    this.#getFileBatch,
+                    (batch) => {
+                        for (const child of this.children) {
+                            child.beginBatch(batch);
+                        }
+                    },
+                    (datum) => this._propagate(datum)
+                );
                 for (let i = 0, n = data.length; i < n; i++) {
-                    this._propagate(data[i]);
+                    propagate(data[i]);
                 }
             }
         }

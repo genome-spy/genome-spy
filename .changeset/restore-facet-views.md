@@ -10,3 +10,4 @@ concatenated views. Independent per-facet scales and axes are not supported.
 Explicit independent positional resolutions on the facet or its children are
 rejected with a clear error.
 Wrapping column counts must be positive integers.
+Grouped and sorted data retain physical row shapes when materialized or replayed.

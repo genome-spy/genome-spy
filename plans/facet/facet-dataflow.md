@@ -241,6 +241,11 @@ optimizer code, without implementing an optimizer in this change:
 
 ## Implementation milestones and verification
 
+Progress: physical file-shape preservation is implemented in collectors and
+shared buffered-publication helpers. Grouping/sorting/replay and reactive replay
+regressions pass (45 tests). Single-file inputs use constant provenance;
+multi-file inputs currently use row identity, with a focused optimization TODO.
+
 1. [ ] **Establish the static partition contract.** Update flow building, collector
        preservation, and data-scope handling. Verify spec-to-collector aggregate,
        window, project, tuple facets, layered children, outer transform scope,
