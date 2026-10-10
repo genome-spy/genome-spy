@@ -1,6 +1,7 @@
 # Facet View Implementation Plan
 
-The active dataflow implementation plan is in [facet-dataflow.md](facet-dataflow.md).
+The active interaction implementation plan is in [facet-interactions.md](facet-interactions.md).
+The completed dataflow implementation is recorded in [facet-dataflow.md](facet-dataflow.md).
 The restoration tasks below are historical and do not prescribe the current workflow.
 
 **Goal:** Restore `facet` specs by implementing a modern `FacetView` that repeats one child view over many facet cells without creating one child view per facet.
