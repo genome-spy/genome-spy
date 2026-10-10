@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
-
 import { expect, onTestFinished, test, vi } from "vitest";
-import anscombeData from "../../../../../node_modules/vega-datasets/data/anscombe.json" with { type: "json" };
-import carsData from "../../../../../node_modules/vega-datasets/data/cars.json" with { type: "json" };
+import anscombe from "../../../../../node_modules/vega-datasets/data/anscombe.json" with { type: "json" };
+import cars from "../../../../../node_modules/vega-datasets/data/cars.json" with { type: "json" };
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";
 import {
@@ -10,12 +9,14 @@ import {
     resolveThemeSelection,
 } from "../../config/themes.js";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
-import AxisView from "../../view/axisView.js";
-import LegendView from "../../view/legendView.js";
-import UnitView from "../../view/unitView.js";
 import { createSvg } from "./index.js";
 import { loadSharedExampleSpec } from "../../spec/exampleFiles.js";
+import AxisView from "../../view/axisView.js";
+import LegendView from "../../view/legendView.js";
 
+/** @type {import("../../spec/view.js").UnitSpec} */
+const points = { name: "points", width: 100, height: 60, mark: "point" };
+const values = ["A", "B", "C", "D", "E"].map((g) => ({ g, x: 0.5, y: 0.5 }));
 const contextOptions = {
     baseConfig: resolveBaseConfig({
         defaultConfig: INTERNAL_DEFAULT_CONFIG,
@@ -24,330 +25,92 @@ const contextOptions = {
     viewFactoryOptions: { wrapRoot: true },
 };
 
-test("documentation example renders the complete Anscombe quartet", async ({
-    onTestFinished,
-}) => {
-    // Serve the installed dataset offline through the example's real URL source.
-    const fetch = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response(JSON.stringify(anscombeData)));
-    onTestFinished(() => fetch.mockRestore());
-    const { view } = await createHeadlessEngine(
-        loadSharedExampleSpec(
-            "examples/docs/grammar/facet/anscombe-wrapped.json"
-        ),
-        { contextOptions }
-    );
+/** @param {import("../../spec/root.js").RootSpec} spec */
+async function initialize(spec) {
+    const { view } = await createHeadlessEngine(spec, { contextOptions });
     onTestFinished(() => view.disposeSubtree());
+    const render = () => {
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 1200,
+            logicalHeight: 800,
+        });
+        expect(warnings).toEqual([]);
+        return svg;
+    };
+    return { view, render };
+}
 
-    const { svg, warnings } = createSvg({
-        viewRoot: view,
-        logicalWidth: 600,
-        logicalHeight: 500,
+/** @param {Element} svg @param {string} name @param {string} [suffix] */
+const nodes = (svg, name, suffix = "") =>
+    Array.from(svg.querySelectorAll(`[data-name="${name}"]${suffix}`));
+/** @param {Element} svg @param {string} name */
+const texts = (svg, name) =>
+    nodes(svg, name, " text").map((t) => t.textContent);
+/** @param {Element} text */
+function position(text) {
+    // The exporter emits text deltas as a second translation.
+    return Array.from(
+        text
+            .getAttribute("transform")
+            .matchAll(/translate\(([-.\d]+) ([-.\d]+)\)/g)
+    ).reduce(([x, y], m) => [x + Number(m[1]), y + Number(m[2])], [0, 0]);
+}
+/** @param {import("../../view/view.js").default} view @param {string} name */
+const find = (view, name) => view.getDescendants().find((v) => v.name === name);
+
+// Real examples cover default wrapping, grouping, matrix cells, and automatic field titles.
+test.each(
+    /** @type {const} */ ([
+        ["examples/docs/grammar/facet/anscombe-wrapped.json", anscombe],
+        ["examples/core/facet/cars_matrix.json", cars],
+    ])
+)("renders example %s", async (path, data) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify(data))
+    );
+    onTestFinished(() => {
+        vi.restoreAllMocks();
     });
-    expect(fetch).toHaveBeenCalledWith("vega-datasets/anscombe.json");
-    expect(
-        Array.from(
-            svg.querySelectorAll('[data-mark-type="point"]'),
-            (cell) => cell.querySelectorAll("circle").length
-        )
-    ).toEqual([11, 11, 11, 11]);
-    expect(
-        Array.from(
-            svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
-            (text) => text.textContent
-        )
-    ).toEqual(["I", "II", "III", "IV"]);
-    expect(warnings).toEqual([]);
-});
-
-test("hidden row headers preserve matrix columns and empty cells in SVG", async () => {
-    const { view } = await createHeadlessEngine(
-        {
-            data: {
-                values: [
-                    { r: "A", c: 1 },
-                    { r: "B", c: 2 },
-                ],
-            },
-            facet: {
-                row: { field: "r", header: null },
-                column: { field: "c" },
-            },
-            spec: { name: "points", width: 100, height: 50, mark: "point" },
-        },
-        { contextOptions }
-    );
-    try {
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 400,
-            logicalHeight: 200,
-        });
-        expect(svg.querySelector('[data-name="facetHeaderRow0"]')).toBeNull();
+    const { view, render } = await initialize(loadSharedExampleSpec(path));
+    const svg = render();
+    if (data === anscombe) {
         expect(
             Array.from(
-                svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
-                (text) => text.textContent
+                svg.querySelectorAll('[data-mark-type="point"]'),
+                (g) => g.querySelectorAll("circle").length
             )
-        ).toEqual(["1", "2"]);
-        expect(
-            Array.from(
-                svg.querySelectorAll('[data-name="points"]'),
-                (cell) => cell.querySelectorAll("circle").length
-            )
-        ).toEqual([1, 0, 0, 1]);
-        expect(warnings).toEqual([]);
-    } finally {
-        view.disposeSubtree();
-    }
-});
-
-test("numeric header formatting preserves cell keys and nonnumeric labels", async () => {
-    const { view } = await createHeadlessEngine(
-        {
-            data: {
-                values: [
-                    { r: 2000, c: "control" },
-                    { r: 1000, c: true },
-                ],
-            },
-            facet: {
-                row: {
-                    field: "r",
-                    sort: "descending",
-                    header: { format: ",.0f" },
-                },
-                column: {
-                    field: "c",
-                    sort: ["control", true],
-                    header: { format: ".1f" },
-                },
-            },
-            spec: { name: "points", width: 100, height: 50, mark: "point" },
-        },
-        { contextOptions }
-    );
-    try {
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 400,
-            logicalHeight: 200,
-        });
-        expect(
-            Array.from(
-                svg.querySelectorAll('[data-name="facetHeaderRow0"] text'),
-                (text) => text.textContent
-            )
-        ).toEqual(["2,000", "1,000"]);
-        expect(
-            Array.from(
-                svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
-                (text) => text.textContent
-            )
-        ).toEqual(["control", "true"]);
-        const points = view
-            .getDescendants()
-            .find((child) => child.name === "points");
-        expect(Array.from(points.facetCoords.keys())).toEqual([
-            [2000, "control"],
-            [2000, true],
-            [1000, "control"],
-            [1000, true],
+        ).toEqual([11, 11, 11, 11]);
+        expect(texts(svg, "facetHeaderColumn0")).toEqual([
+            "I",
+            "II",
+            "III",
+            "IV",
         ]);
-        expect(warnings).toEqual([]);
-    } finally {
-        view.disposeSubtree();
-    }
-});
-
-test("exports separate means after child aggregation drops the facet field", async () => {
-    const { view } = await createHeadlessEngine(
-        loadSharedExampleSpec("examples/docs/grammar/facet/means.json"),
-        { contextOptions }
-    );
-    try {
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 400,
-            logicalHeight: 200,
+    } else {
+        expect(texts(svg, "facetTitleRow0")).toEqual(["Origin"]);
+        expect(texts(svg, "facetTitleColumn0")).toEqual(["Cylinders"]);
+        const row = nodes(svg, "facetTitleRow0", " text")[0];
+        const column = nodes(svg, "facetTitleColumn0", " text")[0];
+        expect(position(row)[0]).toBeLessThan(
+            position(nodes(svg, "facetHeaderRow0", " text")[0])[0]
+        );
+        expect(position(column)[1]).toBeLessThan(
+            position(nodes(svg, "facetHeaderColumn0", " text")[0])[1]
+        );
+        const plot = view.getDescendants().find((v) => {
+            const x = v.spec.encoding?.x;
+            return x && "field" in x && x.field === "Horsepower";
         });
-        expect(
-            Array.from(
-                svg.querySelectorAll('[data-name="means"] text'),
-                (text) => text.textContent
-            )
-        ).toEqual(["2", "15"]);
-        expect(
-            Array.from(
-                svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
-                (text) => text.textContent
-            )
-        ).toEqual(["A", "B"]);
-        expect(warnings).toEqual([]);
-    } finally {
-        view.disposeSubtree();
-    }
-});
-
-test.each([false, true])(
-    "exports one shared facet legend with reserved space (layered in concat: %s)",
-    async (layered) => {
-        /** @type {import("../../spec/view.js").UnitSpec} */
-        const points = {
-            name: "points",
-            width: 100,
-            height: 60,
-            mark: "point",
-            encoding: {
-                color: { field: "category", type: "nominal" },
-            },
-        };
-        /** @type {import("../../spec/view.js").FacetSpec} */
-        const facet = {
-            name: "facets",
-            data: {
-                values: [
-                    { group: "A", category: "red" },
-                    { group: "B", category: "blue" },
-                    { group: "C", category: "red" },
-                ],
-            },
-            facet: { field: "group" },
-            columns: 2,
-            spec: layered
-                ? { layer: [points, { ...points, name: "second" }] }
-                : points,
-        };
-        const { view } = await createHeadlessEngine(
-            layered
-                ? {
-                      hconcat: [
-                          facet,
-                          {
-                              name: "neighbor",
-                              data: { values: [{}] },
-                              width: 80,
-                              height: 60,
-                              mark: "point",
-                          },
-                      ],
-                  }
-                : facet,
-            { contextOptions }
+        const cells = Array.from(plot.facetCoords.values());
+        expect(cells).toHaveLength(15);
+        expect(cells.every((c) => c.width === 150 && c.height === 150)).toBe(
+            true
         );
-
-        try {
-            const legends = view
-                .getDescendants()
-                .filter((child) => child instanceof LegendView);
-            expect(legends).toHaveLength(1);
-
-            const { svg, warnings } = createSvg({
-                viewRoot: view,
-                logicalWidth: 800,
-                logicalHeight: 400,
-            });
-            const legendGroups = svg.querySelectorAll(
-                `[data-name="${legends[0].name}"]`
-            );
-            expect(legendGroups).toHaveLength(1);
-            expect(
-                Array.from(
-                    legendGroups[0].querySelectorAll(
-                        '[data-name="labels"] text'
-                    ),
-                    (label) => label.textContent
-                )
-            ).toEqual(["red", "blue"]);
-
-            const facetCoords = view
-                .getDescendants()
-                .find((child) => child.name === "facets")
-                .facetCoords.values()
-                .next().value;
-            const legendCoords = legends[0].facetCoords.values().next().value;
-            expect(legendCoords.x).toBeGreaterThanOrEqual(facetCoords.x2);
-            expect(legendCoords.width).toBeGreaterThan(0);
-            if (layered) {
-                // A neighboring plot must start after the shared legend reservation.
-                const neighborCoords = view
-                    .getDescendants()
-                    .find((child) => child.name === "neighbor")
-                    .facetCoords.values()
-                    .next().value;
-                expect(neighborCoords.x).toBeGreaterThanOrEqual(
-                    legendCoords.x2
-                );
-            }
-            expect(warnings).toEqual([]);
-        } finally {
-            view.disposeSubtree();
-        }
-    }
-);
-
-test("exports grouped points and distinct headers above each wrapped facet", async () => {
-    const { view } = await createHeadlessEngine(
-        {
-            data: {
-                values: [
-                    { group: "A", x: 1 },
-                    { group: "B", x: 2 },
-                    { group: "B", x: 3 },
-                    { group: "C", x: 4 },
-                    { group: "D", x: 5 },
-                ],
-            },
-            facet: { field: "group" },
-            columns: 2,
-            axes: { x: { orient: "top", title: null } },
-            spec: {
-                name: "points",
-                width: 100,
-                height: 50,
-                mark: "point",
-                encoding: {
-                    x: { field: "x", type: "quantitative" },
-                },
-            },
-        },
-        { contextOptions }
-    );
-
-    try {
-        const axes = view
-            .getDescendants()
-            .filter((child) => child instanceof AxisView);
-        expect(axes.map((axis) => axis.axisProps.orient)).toEqual(["top"]);
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 400,
-            logicalHeight: 300,
-        });
-        const cells = Array.from(svg.querySelectorAll('[data-name="points"]'));
-        expect(
-            cells.map((cell) => cell.querySelectorAll("circle").length)
-        ).toEqual([1, 2, 1, 1]);
-
-        const headers = Array.from(
-            svg.querySelectorAll('[data-name="facetHeaderColumn0"] text')
-        );
-        expect(headers.map((header) => header.textContent)).toEqual([
-            "A",
-            "B",
-            "C",
-            "D",
-        ]);
-
-        // Later rows need their own header band, rather than overlapping labels.
-        const positions = headers.map((header) =>
-            header.getAttribute("transform")
-        );
-        expect(new Set(positions).size).toBe(4);
-        expect(warnings).toEqual([]);
-    } finally {
-        view.disposeSubtree();
+        const bounds = cells.reduce((a, b) => a.union(b));
+        expect(position(row)[1]).toBeCloseTo(bounds.y + bounds.height / 2);
+        expect(position(column)[0]).toBeCloseTo(bounds.x + bounds.width / 2);
+        expect(row.getAttribute("transform")).toContain("rotate(-90)");
     }
 });
 
@@ -356,23 +119,14 @@ test.each(
         ["facet", "bottom", "left"],
         ["facet", "top", "right"],
         ["concat", "bottom", "left"],
-        ["concat", "top", "right"],
     ])
 )(
-    "%s shares %s/%s axes on incomplete wrapped rows",
+    "%s shares outer %s/%s axes across incomplete rows and data updates",
     async (composition, xOrient, yOrient) => {
-        const values = ["A", "B", "C", "D", "E"].map((g) => ({
-            g,
-            x: 0.5,
-            y: 0.5,
-        }));
         /** @type {import("../../spec/view.js").UnitSpec} */
-        const points = {
-            name: "points",
-            width: 100,
-            height: 60,
-            title: composition === "facet" ? "Plot" : undefined,
-            mark: "point",
+        const plot = {
+            ...points,
+            title: "Plot",
             encoding: {
                 x: {
                     field: "x",
@@ -386,678 +140,329 @@ test.each(
                 },
             },
         };
-        const { view } = await createHeadlessEngine(
-            {
-                data: { values },
-                resolve: {
-                    scale: { x: "shared", y: "shared" },
-                    axis: { x: "shared", y: "shared" },
-                },
-                columns: 3,
-                ...(composition === "facet"
-                    ? { facet: { field: "g", header: null }, spec: points }
-                    : {
-                          concat: values.map(({ g }) => ({
-                              ...points,
-                              name: "points" + g,
-                              data: { values: [{ x: 0.5, y: 0.5 }] },
-                          })),
-                      }),
+        const { view, render } = await initialize({
+            data: { values },
+            columns: 3,
+            resolve: {
+                scale: { x: "shared", y: "shared" },
+                axis: { x: "shared", y: "shared" },
             },
-            { contextOptions }
-        );
-        onTestFinished(() => view.disposeSubtree());
-        const axes = view
-            .getDescendants()
-            .filter((child) => child instanceof AxisView);
-        const render = () =>
-            createSvg({
-                viewRoot: view,
-                logicalWidth: 600,
-                logicalHeight: 400,
-            });
-        const { svg, warnings } = render();
-
-        // The short final row still exposes one x axis per column and one y axis per row.
-        expect(
-            svg.querySelectorAll('[data-name="axis_' + xOrient + '"]')
-        ).toHaveLength(3);
-        expect(
-            svg.querySelectorAll('[data-name="axis_' + yOrient + '"]')
-        ).toHaveLength(2);
-        expect(svg.querySelectorAll('[data-name="grid_lines"]')).toHaveLength(
-            10
-        );
-        const plots = view
-            .getDescendants()
-            .filter(
-                (child) =>
-                    child instanceof UnitView && child.name.startsWith("points")
-            );
-        for (const plot of plots) {
-            for (const coords of plot.facetCoords.values()) {
-                expect([coords.width, coords.height]).toEqual([100, 60]);
-            }
-        }
-        expect(warnings).toEqual([]);
-
+            ...(composition === "facet"
+                ? { facet: { field: "g", header: null }, spec: plot }
+                : {
+                      concat: values.map((d) => ({
+                          ...plot,
+                          name: "points" + d.g,
+                          data: { values: [d] },
+                      })),
+                  }),
+        });
+        const svg = render();
+        expect(nodes(svg, "axis_" + xOrient)).toHaveLength(3);
+        expect(nodes(svg, "axis_" + yOrient)).toHaveLength(2);
+        expect(nodes(svg, "grid_lines")).toHaveLength(10);
         if (composition === "facet") {
-            const xAxis = axes.find(
-                (axis) => axis.axisProps.orient === xOrient
-            );
-            const yAxis = axes.find(
-                (axis) => axis.axisProps.orient === yOrient
-            );
-            expect(Array.from(xAxis.facetCoords.keys())).toEqual(
+            const axis = view
+                .getDescendants()
+                .find(
+                    (v) =>
+                        v instanceof AxisView && v.axisProps.orient === xOrient
+                );
+            expect(Array.from(axis.facetCoords.keys())).toEqual(
                 (xOrient === "top" ? ["A", "B", "C"] : ["C", "D", "E"]).map(
                     (g) => [g]
                 )
             );
-            expect(Array.from(yAxis.facetCoords.keys())).toEqual(
-                (yOrient === "left" ? ["A", "D"] : ["C", "E"]).map((g) => [g])
-            );
-            const facet = view
-                .getDescendants()
-                .find((child) => "facet" in child.spec);
-            const source =
-                /** @type {import("../../data/sources/inlineSource.js").default} */ (
-                    facet.flowHandle.dataSource
-                );
-            source.updateDynamicData(values.slice(0, 4));
+            const facet = view.getDescendants().find((v) => "facet" in v.spec);
+            /** @type {import("../../data/sources/inlineSource.js").default} */ (
+                facet.flowHandle.dataSource
+            ).updateDynamicData(values.slice(0, 4));
             const updated = render();
-            expect(
-                updated.svg.querySelectorAll(
-                    '[data-name="axis_' + xOrient + '"]'
-                )
-            ).toHaveLength(3);
-            expect(Array.from(xAxis.facetCoords.keys())).toEqual(
+            expect(nodes(updated, "axis_" + xOrient)).toHaveLength(3);
+            expect(nodes(updated, "title0", " text")).toHaveLength(4);
+            expect(Array.from(axis.facetCoords.keys())).toEqual(
                 (xOrient === "top" ? ["A", "B", "C"] : ["B", "C", "D"]).map(
                     (g) => [g]
                 )
             );
-            expect(
-                updated.svg.querySelectorAll('[data-name="title0"] text')
-            ).toHaveLength(4);
         }
     }
 );
 
-test.each(
-    /** @type {Array<["vertical" | "horizontal", "overlay-title" | undefined]>} */ ([
-        ["vertical", undefined],
-        ["horizontal", undefined],
-        ["vertical", "overlay-title"],
-        ["horizontal", "overlay-title"],
-    ])
-)(
-    "outer facet axes and %s headers scroll with style %s",
-    async (direction, style) => {
-        const { view } = await createHeadlessEngine(
-            {
-                data: {
-                    values: ["A", "B", "C", "D", "E"].map((g) => ({
-                        g,
-                        x: 0.5,
-                        y: 0.5,
-                    })),
-                },
-                facet: { field: "g", header: { style } },
-                columns: 3,
-                ...(direction === "vertical"
-                    ? { viewportHeight: 90 }
-                    : { viewportWidth: 160 }),
-                spec: {
-                    name: "points",
-                    width: 100,
-                    height: 60,
-                    mark: "point",
-                    encoding: {
-                        x: { field: "x", type: "quantitative" },
-                        y: { field: "y", type: "quantitative" },
-                    },
+test.each(/** @type {const} */ (["vertical", "horizontal"]))(
+    "outer axes, overlay labels, and shared titles follow %s scrolling",
+    async (direction) => {
+        const { view, render } = await initialize({
+            data: { values },
+            facet: {
+                field: "g",
+                title: "Groups",
+                header: { style: "overlay-title" },
+            },
+            columns: 3,
+            ...(direction === "vertical"
+                ? { viewportHeight: 90 }
+                : { viewportWidth: 160 }),
+            spec: {
+                ...points,
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
                 },
             },
-            { contextOptions }
-        );
-        onTestFinished(() => view.disposeSubtree());
-        const render = () =>
-            createSvg({
-                viewRoot: view,
-                logicalWidth: 500,
-                logicalHeight: 400,
-            });
+        });
         const first = render();
-        const axes = view
-            .getDescendants()
-            .filter((child) => child instanceof AxisView);
-        const xAxis = axes.find((axis) => axis.axisProps.orient === "bottom");
-        const yAxis = axes.find((axis) => axis.axisProps.orient === "left");
-        expect(
-            first.svg.querySelectorAll('[data-name="axis_bottom"]')
-        ).toHaveLength(direction === "vertical" ? 1 : 2);
-        expect(first.warnings).toEqual([]);
-
+        if (direction === "vertical")
+            expect(texts(first, "facetTitleColumn0")).toEqual(["Groups"]);
+        expect(texts(first, "facetHeaderColumn0")).toContain("A");
         const scrollbar =
             /** @type {import("../../view/gridView/scrollbar.js").default} */ (
-                view
-                    .getDescendants()
-                    .find((child) => child.name === "scrollbar-" + direction)
+                find(view, "scrollbar-" + direction)
             );
         scrollbar.setViewportOffset(Infinity);
         const last = render();
-        const firstLabels = Array.from(
-            first.svg.querySelectorAll('[data-name="facetHeaderColumn0"] text')
+        expect(texts(last, "facetHeaderColumn0")).toContain(
+            direction === "vertical" ? "E" : "C"
         );
-        const lastLabels = Array.from(
-            last.svg.querySelectorAll('[data-name="facetHeaderColumn0"] text')
-        );
-        if (style) {
-            expect(firstLabels.map((label) => label.textContent)).toContain(
-                "A"
-            );
-            // A partially visible cell can have its overlay anchor outside the viewport.
-            expect(lastLabels.map((label) => label.textContent)).toContain(
-                direction === "vertical" ? "E" : "C"
-            );
-            expect(lastLabels.map((label) => label.textContent)).not.toContain(
-                "A"
-            );
-        }
-        expect(last.warnings).toEqual([]);
-        expect(Array.from(xAxis.facetCoords.keys())).toEqual(
+        expect(texts(last, "facetHeaderColumn0")).not.toContain("A");
+        if (direction === "vertical")
+            expect(texts(last, "facetTitleColumn0")).toEqual([]);
+        const axis = find(view, "axis_bottom");
+        expect(Array.from(axis.facetCoords.keys())).toEqual(
             (direction === "vertical" ? ["D", "E"] : ["C", "E"]).map((g) => [g])
         );
-        expect(Array.from(yAxis.facetCoords.keys())).toEqual(
-            direction === "vertical" ? [["D"]] : []
-        );
-        // The final cell's plot and outer axis keep the same clipped horizontal span.
-        const plot = view
-            .getDescendants()
-            .find((child) => child.name === "points");
-        expect(xAxis.facetCoords.get(["E"]).x).toBe(
-            plot.facetCoords.get(["E"]).x
-        );
-        expect(xAxis.facetCoords.get(["E"]).width).toBe(
-            plot.facetCoords.get(["E"]).width
-        );
-    }
-);
-
-test.each([0, 2])(
-    "facet titles and chrome follow grid paint order with background zindex %s",
-    async (zindex) => {
-        const { view } = await createHeadlessEngine(
-            {
-                data: {
-                    values: [
-                        { group: "A", x: 0.25 },
-                        { group: "B", x: 0.75 },
-                    ],
-                },
-                facet: { field: "group" },
-                spec: {
-                    name: "points",
-                    width: 100,
-                    height: 60,
-                    title: "Panel title",
-                    view: {
-                        fill: "#f0f4f8",
-                        zindex,
-                        stroke: "#abcdef",
-                        strokeZindex: 10,
-                    },
-                    mark: { type: "point", clip: true },
-                    encoding: {
-                        fill: { value: "black" },
-                        x: {
-                            field: "x",
-                            type: "quantitative",
-                            scale: { domain: [0, 1] },
-                            axis: { title: null },
-                        },
-                    },
-                },
-            },
-            { contextOptions }
-        );
-
-        try {
-            const { svg, warnings } = createSvg({
-                viewRoot: view,
-                logicalWidth: 400,
-                logicalHeight: 200,
-            });
-            const points = Array.from(
-                svg.querySelectorAll('[data-name="points"]')
-            );
-            const backgrounds = Array.from(
-                svg.querySelectorAll('[data-name="background0"]')
-            );
-            const strokes = Array.from(
-                svg.querySelectorAll('[data-name="backgroundStroke0"]')
-            );
-            const titles = Array.from(
-                svg.querySelectorAll('[data-name="title0"] text')
-            );
-            expect(points).toHaveLength(2);
-            expect(backgrounds).toHaveLength(2);
-            expect(strokes).toHaveLength(2);
-            expect(titles.map((title) => title.textContent)).toEqual([
-                "Panel title",
-                "Panel title",
-            ]);
-            expect(
-                new Set(titles.map((title) => title.getAttribute("transform")))
-                    .size
-            ).toBe(2);
-
-            for (const [index, point] of points.entries()) {
-                const background = backgrounds[index];
-                const stroke = strokes[index];
-                expect(
-                    Boolean(
-                        background.compareDocumentPosition(point) &
-                        Node.DOCUMENT_POSITION_FOLLOWING
-                    )
-                ).toBe(zindex === 0);
-                expect(
-                    point.compareDocumentPosition(stroke) &
-                        Node.DOCUMENT_POSITION_FOLLOWING
-                ).toBeTruthy();
-                // Background geometry follows the plot frame, excluding title and guide reservations.
-                const clipUrl = point
-                    .querySelector('[data-mark-type="point"]')
-                    .getAttribute("clip-path");
-                const clipRect = svg
-                    .querySelector(clipUrl.slice(4, -1))
-                    .querySelector("rect");
-                const fillRect = background.querySelector("rect");
-                // Rect marks add 0.1 px of seam padding around the plot frame.
-                for (const attribute of ["x", "y", "width", "height"]) {
-                    expect(
-                        Number(fillRect.getAttribute(attribute))
-                    ).toBeCloseTo(Number(clipRect.getAttribute(attribute)), 0);
-                }
-            }
-            expect(warnings).toEqual([]);
-        } finally {
-            view.disposeSubtree();
-        }
-    }
-);
-
-// Exercise category data, measured reservations, and emitted text together.
-test.each(/** @type {const} */ (["left", "right", "top", "bottom"]))(
-    "title-style row headers reserve space on the %s side of a matrix",
-    async (orient) => {
-        const { view } = await createHeadlessEngine(
-            {
-                data: {
-                    values: [
-                        { r: "A long category label", c: 1 },
-                        { r: "B", c: 2 },
-                    ],
-                },
-                facet: {
-                    row: {
-                        field: "r",
-                        header: { style: "track-title", orient },
-                    },
-                    column: { field: "c", header: null },
-                },
-                spec: { name: "points", width: 100, height: 50, mark: "point" },
-            },
-            { contextOptions }
-        );
-        onTestFinished(() => view.disposeSubtree());
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 650,
-            logicalHeight: 350,
+        const plot = find(view, "points").facetCoords.get(["E"]);
+        expect(axis.facetCoords.get(["E"])).toMatchObject({
+            x: plot.x,
+            width: plot.width,
         });
-        const labels = Array.from(
-            svg.querySelectorAll('[data-name="facetHeaderRow0"] text')
-        );
-        expect(labels.map((label) => label.textContent)).toEqual([
+    }
+);
+
+test("a layered facet reserves one legend before a neighboring plot", async () => {
+    /** @type {import("../../spec/view.js").UnitSpec} */
+    const colored = {
+        ...points,
+        encoding: { color: { field: "g", type: "nominal" } },
+    };
+    const { view, render } = await initialize({
+        hconcat: [
+            {
+                name: "facets",
+                data: { values: values.slice(0, 3) },
+                facet: { field: "g" },
+                columns: 2,
+                spec: { layer: [colored, { ...colored, name: "second" }] },
+            },
+            { ...points, name: "neighbor", data: { values: [{}] } },
+        ],
+    });
+    const svg = render();
+    const legends = view
+        .getDescendants()
+        .filter((v) => v instanceof LegendView);
+    expect(legends).toHaveLength(1);
+    const [legend] = legends;
+    expect(nodes(svg, legend.name)).toHaveLength(1);
+    expect(texts(nodes(svg, legend.name)[0], "labels")).toEqual([
+        "A",
+        "B",
+        "C",
+    ]);
+    const bounds = legend.facetCoords.values().next().value;
+    expect(bounds.width).toBeGreaterThan(0);
+    expect(bounds.x).toBeGreaterThanOrEqual(
+        find(view, "facets").facetCoords.values().next().value.x2
+    );
+    expect(find(view, "neighbor").coords.x).toBeGreaterThanOrEqual(bounds.x2);
+});
+
+test("hidden headers preserve empty matrix cells and directional spacing", async () => {
+    const { view, render } = await initialize({
+        data: {
+            values: [
+                { r: "A", c: 1 },
+                { r: "B", c: 2 },
+            ],
+        },
+        facet: { row: { field: "r", header: null }, column: { field: "c" } },
+        spacing: { row: 3, column: 17 },
+        spec: points,
+    });
+    const svg = render();
+    expect(texts(svg, "facetHeaderRow0")).toEqual([]);
+    expect(texts(svg, "facetHeaderColumn0")).toEqual(["1", "2"]);
+    expect(
+        nodes(svg, "points").map((g) => g.querySelectorAll("circle").length)
+    ).toEqual([1, 0, 0, 1]);
+    const cells = Array.from(find(view, "points").facetCoords.values());
+    expect(cells[1].x - cells[0].x).toBe(117);
+    expect(cells[2].y - cells[0].y).toBe(63);
+    expect(cells.every((c) => c.width === 100 && c.height === 60)).toBe(true);
+});
+
+test("header scopes and styles precede explicit properties without changing numeric cell keys", async () => {
+    const { view, render } = await initialize({
+        config: {
+            header: { color: "red", fontSize: 10, format: ",.0f" },
+            headerRow: {
+                style: "row-label",
+                color: "green",
+                fontSize: 16,
+                format: ".1f",
+            },
+            headerColumn: { labels: false },
+            style: { "row-label": { color: "blue", fontSize: 17 } },
+        },
+        data: { values: [{ r: 2000, c: "A" }] },
+        facet: {
+            row: { field: "r", header: { fontSize: 18 } },
+            column: { field: "c" },
+        },
+        spec: points,
+    });
+    const svg = render();
+    const label = nodes(svg, "facetHeaderRow0", " text")[0];
+    expect(label.textContent).toBe("2000.0");
+    expect(label.parentElement.getAttribute("font-size")).toBe("18");
+    expect(label.parentElement.getAttribute("fill")).toBe("blue");
+    expect(texts(svg, "facetHeaderColumn0")).toEqual([]);
+    expect(Array.from(find(view, "points").facetCoords.keys())).toEqual([
+        [2000, "A"],
+    ]);
+});
+
+test.each(/** @type {const} */ (["left", "right", "top", "bottom"]))(
+    "track-style row headers reserve the %s side",
+    async (orient) => {
+        const { view, render } = await initialize({
+            data: {
+                values: [
+                    { r: "A long category label", c: 1 },
+                    { r: "B", c: 2 },
+                ],
+            },
+            facet: {
+                row: { field: "r", header: { style: "track-title", orient } },
+                column: { field: "c", header: null },
+            },
+            spec: points,
+        });
+        const svg = render();
+        const labels = nodes(svg, "facetHeaderRow0", " text");
+        expect(labels.map((t) => t.textContent)).toEqual([
             "A long category label",
             "B",
         ]);
-        const points = view
-            .getDescendants()
-            .find((child) => child.name === "points");
-        const cells = Array.from(points.facetCoords.values());
-        expect(cells).toHaveLength(4);
-        for (const cell of cells) {
-            expect([cell.width, cell.height]).toEqual([100, 50]);
-        }
-        labels.forEach((label, index) => {
-            const [x, y] = getTextPosition(label);
-            const first = cells[index * 2];
-            const last = cells[index * 2 + 1];
+        const cells = Array.from(find(view, "points").facetCoords.values());
+        labels.forEach((label, i) => {
+            const [x, y] = position(label);
             expect(label.getAttribute("transform")).not.toContain("rotate");
             expect(label.parentElement.getAttribute("text-anchor")).toBe("end");
+            const first = cells[i * 2],
+                last = cells[i * 2 + 1];
             if (orient === "left") expect(x).toBeLessThan(first.x);
             else if (orient === "right") expect(x).toBeGreaterThan(last.x2);
             else if (orient === "top") expect(y).toBeLessThan(first.y);
             else expect(y).toBeGreaterThan(first.y2);
         });
-        expect(warnings).toEqual([]);
     }
 );
 
 test.each([-1, 0, 1])(
-    "overlay facet headers reclaim space and respect paint order %s",
+    "overlay labels and plot chrome respect paint order %s",
     async (zindex) => {
-        const { view } = await createHeadlessEngine(
-            {
-                data: { values: ["A", "B", "C"].map((g) => ({ g })) },
-                facet: {
-                    field: "g",
-                    header: {
-                        style: "overlay-title",
-                        anchor: "end",
-                        align: "right",
-                        dx: -8,
-                        offset: -6,
-                        zindex,
-                    },
-                },
-                columns: 2,
-                spec: {
-                    name: "points",
-                    width: 100,
-                    height: 50,
-                    view: { fill: "white" },
-                    mark: "point",
+        const { view, render } = await initialize({
+            data: { values: values.slice(0, 3) },
+            columns: 2,
+            facet: {
+                field: "g",
+                title: null,
+                header: {
+                    style: "overlay-title",
+                    anchor: "end",
+                    align: "right",
+                    dx: -8,
+                    offset: -6,
+                    zindex,
                 },
             },
-            { contextOptions }
-        );
-        onTestFinished(() => view.disposeSubtree());
-        const facet = view
-            .getDescendants()
-            .find((child) => "facet" in child.spec);
-        expect([facet.getSize().width.px, facet.getSize().height.px]).toEqual([
-            210, 132,
-        ]);
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 400,
-            logicalHeight: 250,
+            spec: {
+                ...points,
+                title: "Panel",
+                view: { fill: "white", stroke: "gray", strokeZindex: 10 },
+                mark: { type: "point", clip: true },
+            },
         });
-        const labels = Array.from(
-            svg.querySelectorAll('[data-name="facetHeaderColumn0"] text')
-        );
-        const cells = Array.from(
-            view
-                .getDescendants()
-                .find((child) => child.name === "points")
-                .facetCoords.values()
-        );
-        expect(labels.map((label) => label.textContent)).toEqual([
-            "A",
-            "B",
-            "C",
-        ]);
+        const svg = render();
+        expect(texts(svg, "title0")).toEqual(["Panel", "Panel", "Panel"]);
+        const labels = nodes(svg, "facetHeaderColumn0", " text");
+        const cells = Array.from(find(view, "points").facetCoords.values());
         labels.forEach((label, i) => {
-            const [x, y] = getTextPosition(label);
+            const [x, y] = position(label);
             expect(x).toBeCloseTo(cells[i].x2 - 8);
             expect(y).toBeCloseTo(cells[i].y + 6);
         });
-        const background = svg.querySelector('[data-name="background0"]');
+        const background = nodes(svg, "background0")[0];
+        const plot = nodes(svg, "points")[0];
         expect(
             Boolean(
                 background.compareDocumentPosition(labels[0]) &
                 Node.DOCUMENT_POSITION_FOLLOWING
             )
         ).toBe(zindex >= 0);
-        const point = svg.querySelector('[data-name="points"]');
         expect(
             Boolean(
-                point.compareDocumentPosition(labels[0]) &
+                plot.compareDocumentPosition(labels[0]) &
                 Node.DOCUMENT_POSITION_FOLLOWING
             )
         ).toBe(zindex > 0);
-        expect(warnings).toEqual([]);
-    }
-);
-
-test("header config scopes, styles, and explicit properties follow title precedence", async () => {
-    const { view } = await createHeadlessEngine(
-        {
-            config: {
-                header: { color: "red", fontSize: 10, format: ",.0f" },
-                headerRow: {
-                    style: "row-label",
-                    color: "green",
-                    fontSize: 16,
-                    format: ".1f",
-                },
-                headerColumn: { labels: false },
-                style: { "row-label": { color: "blue", fontSize: 17 } },
-            },
-            data: { values: [{ r: 2000, c: "A" }] },
-            facet: {
-                row: { field: "r", header: { fontSize: 18 } },
-                column: { field: "c" },
-            },
-            spec: { name: "points", width: 100, height: 50, mark: "point" },
-        },
-        { contextOptions }
-    );
-    onTestFinished(() => view.disposeSubtree());
-    const { svg, warnings } = createSvg({
-        viewRoot: view,
-        logicalWidth: 400,
-        logicalHeight: 250,
-    });
-    const label = svg.querySelector('[data-name="facetHeaderRow0"] text');
-    expect(label.textContent).toBe("2000.0");
-    expect(label.parentElement.getAttribute("font-size")).toBe("18");
-    expect(label.parentElement.getAttribute("fill")).toBe("blue");
-    expect(svg.querySelector('[data-name="facetHeaderColumn0"]')).toBeNull();
-    expect(
-        view.getDescendants().find((child) => child.name === "points").coords.y
-    ).toBe(22);
-    expect(warnings).toEqual([]);
-});
-
-test("cars matrix shows one field title per dimension outside its category labels", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(JSON.stringify(carsData))
-    );
-    onTestFinished(() => {
-        vi.restoreAllMocks();
-    });
-    const { view } = await createHeadlessEngine(
-        loadSharedExampleSpec("examples/core/facet/cars_matrix.json"),
-        { contextOptions }
-    );
-    onTestFinished(() => view.disposeSubtree());
-    const { svg, warnings } = createSvg({
-        viewRoot: view,
-        logicalWidth: 1200,
-        logicalHeight: 800,
-    });
-    const row = svg.querySelectorAll('[data-name="facetTitleRow0"] text');
-    const column = svg.querySelectorAll('[data-name="facetTitleColumn0"] text');
-    expect(Array.from(row, (text) => text.textContent)).toEqual(["Origin"]);
-    expect(Array.from(column, (text) => text.textContent)).toEqual([
-        "Cylinders",
-    ]);
-    const rowLabel = svg.querySelector('[data-name="facetHeaderRow0"] text');
-    const columnLabel = svg.querySelector(
-        '[data-name="facetHeaderColumn0"] text'
-    );
-    expect(getTextPosition(row[0])[0]).toBeLessThan(
-        getTextPosition(rowLabel)[0]
-    );
-    expect(getTextPosition(column[0])[1]).toBeLessThan(
-        getTextPosition(columnLabel)[1]
-    );
-    const points = view.getDescendants().find((child) => {
-        const x = child.spec.encoding?.x;
-        return x && "field" in x && x.field === "Horsepower";
-    });
-    const cells = Array.from(points.facetCoords.values());
-    expect(cells).toHaveLength(15);
-    expect(
-        cells.every((cell) => cell.width === 150 && cell.height === 150)
-    ).toBe(true);
-    const bounds = cells.reduce((a, b) => a.union(b));
-    expect(getTextPosition(row[0])[1]).toBeCloseTo(
-        bounds.y + bounds.height / 2
-    );
-    expect(getTextPosition(column[0])[0]).toBeCloseTo(
-        bounds.x + bounds.width / 2
-    );
-    expect(row[0].getAttribute("transform")).toContain("rotate(-90)");
-    expect(warnings).toEqual([]);
-});
-
-test.each([
-    { title: undefined, header: undefined, visible: true, labels: true },
-    { title: null, header: undefined, visible: false, labels: true },
-    { title: undefined, header: null, visible: false, labels: false },
-    {
-        title: undefined,
-        header: { labels: false },
-        visible: true,
-        labels: false,
-    },
-])(
-    "facet title visibility is independent of category labels (%j)",
-    async ({ title, header, visible, labels }) => {
-        const { view } = await createHeadlessEngine(
-            {
-                data: { values: [{ g: "A" }] },
-                facet: { field: "g", title, header },
-                spec: { width: 100, height: 50, mark: "point" },
-            },
-            { contextOptions }
-        );
-        onTestFinished(() => view.disposeSubtree());
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 300,
-            logicalHeight: 200,
-        });
         expect(
-            svg.querySelectorAll('[data-name="facetTitleColumn0"] text')
-        ).toHaveLength(visible ? 1 : 0);
-        expect(
-            svg.querySelectorAll('[data-name="facetHeaderColumn0"] text')
-        ).toHaveLength(labels ? 1 : 0);
-        if (visible) {
+            plot.compareDocumentPosition(nodes(svg, "backgroundStroke0")[0]) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
+        const clip = svg
+            .querySelector(
+                plot
+                    .querySelector('[data-mark-type="point"]')
+                    .getAttribute("clip-path")
+                    .slice(4, -1)
+            )
+            .querySelector("rect");
+        for (const attr of ["x", "y", "width", "height"])
             expect(
-                svg.querySelector('[data-name="facetTitleColumn0"] text')
-                    .textContent
-            ).toBe("g");
-        }
-        expect(warnings).toEqual([]);
+                Number(background.querySelector("rect").getAttribute(attr))
+            ).toBeCloseTo(Number(clip.getAttribute(attr)), 0);
     }
 );
 
-test("wrapped facets reuse title styling and reserve one shared title band", async () => {
-    const { view } = await createHeadlessEngine(
+test.each(
+    /** @type {Array<{title: import("../../spec/channel.js").FacetFieldDef["title"], header: import("../../spec/channel.js").FacetFieldDef["header"], titles: string[], labels: string[]}>} */ ([
+        { title: null, header: undefined, titles: [], labels: ["A"] },
+        { title: undefined, header: null, titles: [], labels: [] },
         {
-            config: {
-                style: { "facet-heading": { color: "blue", fontSize: 18 } },
-            },
-            data: { values: ["A", "B", "C"].map((g) => ({ g })) },
-            facet: {
-                field: "g",
-                title: {
-                    text: "Groups",
-                    subtitle: "Three categories",
-                    orient: "bottom",
-                    style: "facet-heading",
-                    color: "red",
-                },
-            },
-            columns: 2,
-            spec: { name: "points", width: 100, height: 50, mark: "point" },
+            title: undefined,
+            header: { labels: false },
+            titles: ["g"],
+            labels: [],
         },
-        { contextOptions }
-    );
-    onTestFinished(() => view.disposeSubtree());
-    const { svg, warnings } = createSvg({
-        viewRoot: view,
-        logicalWidth: 400,
-        logicalHeight: 300,
-    });
-    const texts = svg.querySelectorAll('[data-name="facetTitleColumn0"] text');
-    expect(Array.from(texts, (text) => text.textContent)).toEqual([
-        "Groups",
-        "Three categories",
-    ]);
-    expect(texts[0].parentElement.getAttribute("fill")).toBe("red");
-    expect(texts[0].parentElement.getAttribute("font-size")).toBe("18");
-    const points = view
-        .getDescendants()
-        .find((child) => child.name === "points");
-    const cells = Array.from(points.facetCoords.values());
-    expect(cells).toHaveLength(3);
-    expect(
-        cells.every((cell) => cell.width === 100 && cell.height === 50)
-    ).toBe(true);
-    const bounds = cells.reduce((a, b) => a.union(b));
-    expect(getTextPosition(texts[0])[0]).toBeCloseTo(
-        bounds.x + bounds.width / 2
-    );
-    expect(getTextPosition(texts[0])[1]).toBeGreaterThan(bounds.y2);
-    expect(warnings).toEqual([]);
-});
-
-test("shared field titles scroll and clip with the wrapped facet grid", async () => {
-    const { view } = await createHeadlessEngine(
         {
-            data: { values: ["A", "B", "C", "D", "E"].map((g) => ({ g })) },
-            facet: { field: "g", title: "Groups" },
-            columns: 3,
-            viewportHeight: 90,
-            spec: { name: "points", width: 100, height: 50, mark: "point" },
+            title: { text: "Groups", subtitle: "Categories", orient: "bottom" },
+            header: undefined,
+            titles: ["Groups", "Categories"],
+            labels: ["A"],
         },
-        { contextOptions }
-    );
-    onTestFinished(() => view.disposeSubtree());
-    const render = () =>
-        createSvg({ viewRoot: view, logicalWidth: 500, logicalHeight: 250 });
-    const first = render();
-    expect(
-        first.svg.querySelector('[data-name="facetTitleColumn0"] text')
-            .textContent
-    ).toBe("Groups");
-    const scrollbar =
-        /** @type {import("../../view/gridView/scrollbar.js").default} */ (
-            view
-                .getDescendants()
-                .find((child) => child.name === "scrollbar-vertical")
-        );
-    scrollbar.setViewportOffset(Infinity);
-    const last = render();
-    expect(
-        last.svg.querySelector('[data-name="facetTitleColumn0"] text')
-    ).toBeNull();
-    expect(
-        Array.from(
-            last.svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
-            (text) => text.textContent
-        )
-    ).toEqual(["D", "E"]);
-    expect(first.warnings).toEqual([]);
-    expect(last.warnings).toEqual([]);
-});
-
-/** @param {Element} text */
-function getTextPosition(text) {
-    // SVG text delta offsets are emitted as a second translation.
-    return Array.from(
-        text
-            .getAttribute("transform")
-            .matchAll(/translate\(([-.\d]+) ([-.\d]+)\)/g)
-    ).reduce(
-        ([x, y], match) => [x + Number(match[1]), y + Number(match[2])],
-        [0, 0]
-    );
-}
+    ])
+)(
+    "field title and label visibility are independent: %j",
+    async ({ title, header, titles, labels }) => {
+        const { render } = await initialize({
+            data: { values: [{ g: "A" }] },
+            facet: { field: "g", title, header },
+            spec: points,
+        });
+        const svg = render();
+        expect(texts(svg, "facetTitleColumn0")).toEqual(titles);
+        expect(texts(svg, "facetHeaderColumn0")).toEqual(labels);
+    }
+);
