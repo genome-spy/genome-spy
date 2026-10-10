@@ -6,7 +6,6 @@ import {
     getSizeDefMinPx,
     mapToPixelCoords,
     parseSizeDef,
-    ZERO_SIZEDEF,
 } from "../layout/flexLayout.js";
 import Grid from "../layout/grid.js";
 import Padding from "../layout/padding.js";
@@ -229,8 +228,6 @@ export default class GridView extends ContainerView {
 
         this.#spacing = spec.spacing ?? 10;
         this.#columns = columns;
-
-        this.wrappingFacet = false;
 
         const separatorProps = resolveSeparatorProps(spec.separator);
         if (separatorProps) {
@@ -939,20 +936,8 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * An example layout with two children, either column or row-based direction:
-     *
-     * 0. title
-     * 1. header
-     * 2. axis/padding
-     * 3. view
-     * 4. axis/padding
-     * 5. footer (if column and wrapping)
-     * 5. spacing
-     * 6. header (if column and wrapping)
-     * 7. axis/padding
-     * 8. view
-     * 9. axis/padding
-     * 10. footer
+     * Each track has before-overhang, plot, and after-overhang slots, with
+     * a spacing slot between adjacent tracks.
      *
      * @param {Direction} direction
      */
@@ -962,18 +947,10 @@ export default class GridView extends ContainerView {
         /** @type {import("../layout/flexLayout.js").SizeDef[]} */
         const items = [];
 
-        // Title
-        items.push(ZERO_SIZEDEF);
-
         for (const [i, size] of sizes.entries()) {
             if (i > 0) {
                 // Spacing
                 items.push({ px: this.#spacing, grow: 0 });
-            }
-
-            if (i == 0 || this.wrappingFacet) {
-                // Header
-                items.push(ZERO_SIZEDEF);
             }
 
             // Axis/padding
@@ -984,11 +961,6 @@ export default class GridView extends ContainerView {
 
             // Axis/padding
             items.push({ px: size.axisAfter, grow: 0 });
-
-            if (i == sizes.length - 1 || this.wrappingFacet) {
-                //Footer
-                items.push(ZERO_SIZEDEF);
-            }
         }
 
         return items;
@@ -1070,18 +1042,9 @@ export default class GridView extends ContainerView {
             : measuredSize;
     }
 
-    /**
-     * Locates a view slot in FlexLayout
-     *
-     * @param {Direction} direction
-     * @param {number} index column/row number
-     */
-    #getViewSlot(direction, index) {
-        return direction == "row" && this.wrappingFacet
-            ? // Views have header/footer on every row
-              1 + 6 * index + 2
-            : // Only first row has header, last row has footer.
-              2 + 4 * index + 1;
+    /** @param {number} index Row or column index. */
+    #getViewSlot(index) {
+        return 4 * index + 1;
     }
 
     /**
@@ -1219,9 +1182,8 @@ export default class GridView extends ContainerView {
             let layoutChanged = false;
             for (const [i, gridChild] of this.#visibleChildren.entries()) {
                 const [col, row] = grid.getCellCoords(i);
-                const colLocSize =
-                    columnFlexCoords[this.#getViewSlot("column", col)];
-                const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
+                const colLocSize = columnFlexCoords[this.#getViewSlot(col)];
+                const rowLocSize = rowFlexCoords[this.#getViewSlot(row)];
                 const availableWidth = getVisibleSlotSize(
                     colLocSize,
                     coords.width
@@ -1280,9 +1242,8 @@ export default class GridView extends ContainerView {
             const { view } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
-            const colLocSize =
-                columnFlexCoords[this.#getViewSlot("column", col)];
-            const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
+            const colLocSize = columnFlexCoords[this.#getViewSlot(col)];
+            const rowLocSize = rowFlexCoords[this.#getViewSlot(row)];
 
             const viewportSize = view.getViewportSize();
             const viewSize = view.getSize();
@@ -1390,8 +1351,7 @@ export default class GridView extends ContainerView {
                 direction === "vertical" ? columnFlexCoords : rowFlexCoords,
                 direction === "vertical" ? grid.nCols : grid.nRows,
                 coords,
-                (direction, index) => this.#getViewSlot(direction, index),
-                this.wrappingFacet,
+                (index) => this.#getViewSlot(index),
                 gridOverhang
             );
             queueDecoration(
