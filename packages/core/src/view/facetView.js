@@ -441,6 +441,13 @@ function normalizeFacetSpec(spec) {
         );
     }
 
+    if (
+        spec.columns !== undefined &&
+        (!Number.isInteger(spec.columns) || spec.columns < 1)
+    ) {
+        throw new Error('Facet "columns" must be a positive integer.');
+    }
+
     const fields = [row?.field, column?.field].filter(
         (field) => field !== undefined
     );

@@ -551,6 +551,10 @@ export interface FacetSpec extends ViewSpecBase {
      *
      * This property is valid only when `facet` is a single field definition or
      * when only `facet.column` is defined.
+     * The column count must be a positive integer.
+     *
+     * @minimum 1
+     * @multipleOf 1
      */
     columns?: number;
 

@@ -40,6 +40,9 @@ the original work and are not an up-to-date completion record.
 - Independent positional resolution validation now covers the facet declaration
   itself as well as unit and layer children. Previously an unsupported
   `resolve.scale` or `resolve.axis` on the facet was silently accepted.
+- Wrapping `columns` must now be a positive integer. Zero, negative, fractional,
+  and non-finite counts fail before layout; the generated JSON Schema also
+  enforces positive integer counts. Omitting `columns` still gives one row.
 
 ### Child transforms are not scoped to facets
 
@@ -125,6 +128,12 @@ evidence of Vega-Lite equivalence.
 
 After the legend fix, the focused facet, SVG, legend collection, and legend
 extent suites pass all 53 tests, including the two new legend regressions.
+
+After the legend and validation fixes, all 515 test files pass (4,756 tests
+passed, one skipped, two todo), as do workspace TypeScript checks, lint, and the
+Core production build. The generated schema contains the wrapping-count
+constraints. WebGL smoke checking passes for the cars matrix, and Canvas smoke
+checking passes for both core facet examples and the wrapped docs example.
 
 ## Original Restoration Investigation (Historical)
 

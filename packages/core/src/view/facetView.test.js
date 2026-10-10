@@ -96,6 +96,25 @@ test("row and column facets group by row then column fields", async () => {
     expect(view.getFacetFields()).toEqual(["Origin", "Cylinders"]);
 });
 
+test.each([0, -1, 1.5, Infinity])(
+    "facet rejects invalid wrapping column count %s before layout",
+    async (columns) => {
+        const context = createTestViewContext();
+        await expect(
+            context.createOrImportView(
+                {
+                    facet: { field: "Series" },
+                    columns,
+                    spec: { mark: "point" },
+                },
+                null,
+                null,
+                "facet"
+            )
+        ).rejects.toThrow('Facet "columns" must be a positive integer.');
+    }
+);
+
 test("row facet cannot be combined with wrapping columns", async () => {
     const context = createTestViewContext();
 

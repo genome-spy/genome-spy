@@ -28,6 +28,21 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("facet wrapping columns must be positive integers", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            facet: { field: "group" },
+            spec: { mark: "point" },
+        };
+
+        expect(validate(spec)).toBe(true);
+        expect(validate({ ...spec, columns: 1 })).toBe(true);
+        expect(validate({ ...spec, columns: 2 })).toBe(true);
+        for (const columns of [0, -1, 1.5]) {
+            expect(validate({ ...spec, columns })).toBe(false);
+        }
+    });
+
     test("accepts viewport scale domains and rejects unknown sources", () => {
         const validate = createCoreValidator();
         const spec = {
