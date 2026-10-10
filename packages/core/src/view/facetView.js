@@ -1,7 +1,7 @@
 import ContainerView from "./containerView.js";
 import { shallowArrayEquals, asArray } from "../utils/arrayUtils.js";
 import {
-    DEFAULT_FACET_HEADER_SIZES,
+    FACET_HEADER_SIZES,
     createFacetGrid,
     getFacetCellLayouts,
     getFacetGridSize,
@@ -71,7 +71,6 @@ export default class FacetView extends ContainerView {
     constructor(spec, context, layoutParent, dataParent, name, options) {
         super(spec, context, layoutParent, dataParent, name, options);
 
-        this.spec = spec;
         this.#facet = normalizeFacetSpec(spec);
     }
 
@@ -175,7 +174,6 @@ export default class FacetView extends ContainerView {
             this.#getFacetGrid(),
             this.child.getViewportSize(),
             this.#gridChild.getOverhangAndPadding(),
-            undefined,
             this.spec.spacing ?? 10
         );
     }
@@ -201,24 +199,25 @@ export default class FacetView extends ContainerView {
             coords,
             this.child.getViewportSize(),
             this.#gridChild.getOverhangAndPadding(),
-            undefined,
             this.spec.spacing ?? 10,
             context.getDevicePixelRatio()
         );
         const parentClip = normalizeClipOptions(options);
-        const visibleLayouts = layouts.filter((layout) => {
-            const visible = clipCoords(layout.viewportCoords, parentClip);
-            return (
-                visible.isDefined() && visible.width > 0 && visible.height > 0
-            );
-        });
-        this.#interactionCells = visibleLayouts.map((layout) => ({
-            ...layout,
-            viewportCoords: clipCoords(layout.viewportCoords, parentClip),
-        }));
-
         const arrangement = createGridArrangement();
-        for (const [index, layout] of visibleLayouts.entries()) {
+        for (const layout of layouts) {
+            const viewportCoords = clipCoords(
+                layout.viewportCoords,
+                parentClip
+            );
+            if (
+                !viewportCoords.isDefined() ||
+                viewportCoords.width <= 0 ||
+                viewportCoords.height <= 0
+            ) {
+                continue;
+            }
+            this.#interactionCells.push({ ...layout, viewportCoords });
+
             queueGridChild(
                 context,
                 {
@@ -230,7 +229,7 @@ export default class FacetView extends ContainerView {
                 {
                     ...options,
                     facetId: layout.cell.facetId,
-                    firstFacet: index === 0,
+                    firstFacet: this.#interactionCells.length === 1,
                 },
                 arrangement
             );
@@ -317,33 +316,24 @@ export default class FacetView extends ContainerView {
 
     /** @param {import("./view.js").default} view */
     #validateResolutions(view) {
-        // A layer can separate its marks' scales, but the facet cannot create
-        // separate scale/legend instances for occurrences of that layer.
-        if (view === this) {
-            for (const type of /** @type {const} */ (["scale", "legend"])) {
-                for (const [channel, behavior] of Object.entries(
-                    this.spec.resolve?.[type] ?? {}
-                )) {
-                    if (behavior === "independent") {
-                        throw new Error(
-                            `FacetView currently supports only shared ${type} resolutions. Channel "${channel}" is resolved independently in view "${view.name}".`
-                        );
-                    }
-                }
+        // Layers may separate non-positional scales between marks, while the
+        // facet cannot create separate scale/guide instances for its cells.
+        for (const type of /** @type {const} */ (["scale", "axis", "legend"])) {
+            if (view !== this && type === "legend") {
+                continue;
             }
-        }
-
-        for (const channel of /** @type {const} */ (["x", "y"])) {
-            for (const resolutionType of /** @type {const} */ ([
-                "scale",
-                "axis",
-            ])) {
-                const behavior =
-                    view.getConfiguredResolution(channel, resolutionType) ??
-                    view.getConfiguredResolution("default", resolutionType);
+            const configured = view.spec.resolve?.[type] ?? {};
+            const resolutions =
+                view === this
+                    ? configured
+                    : {
+                          x: configured.x ?? configured.default,
+                          y: configured.y ?? configured.default,
+                      };
+            for (const [channel, behavior] of Object.entries(resolutions)) {
                 if (behavior === "independent") {
                     throw new Error(
-                        `FacetView currently supports only shared ${resolutionType} resolutions. Channel "${channel}" is resolved independently in view "${view.name}".`
+                        `FacetView currently supports only shared ${type} resolutions. Channel "${channel}" is resolved independently in view "${view.name}".`
                     );
                 }
             }
@@ -361,13 +351,11 @@ class FacetGridChild extends GridChild {
     }
 
     /**
-     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} _channel
      * @param {import("./layout/point.js").default} point
      */
-    getProjectionCoords(channel, point) {
-        return /** @type {FacetView} */ (this.layoutParent).getInteractionCell(
-            point
-        ).childCoords;
+    getProjectionCoords(_channel, point) {
+        return this.getInteractionCoords(point);
     }
 
     /**
@@ -399,16 +387,16 @@ function createFacetHeaderData(orient, layouts, coords, grid, spacing) {
         const { cell, childCoords, viewportCoords } =
             layouts[isRow ? index * grid.nCols : index];
         const x = isRow
-            ? DEFAULT_FACET_HEADER_SIZES.row / 2
+            ? FACET_HEADER_SIZES.row / 2
             : childCoords.x - coords.x + childCoords.width / 2;
         const y = isRow
             ? childCoords.y - coords.y + childCoords.height / 2
             : grid.hasRowHeaders
-              ? DEFAULT_FACET_HEADER_SIZES.column / 2
+              ? FACET_HEADER_SIZES.column / 2
               : viewportCoords.y -
                 coords.y -
                 spacing -
-                DEFAULT_FACET_HEADER_SIZES.column / 2;
+                FACET_HEADER_SIZES.column / 2;
 
         return {
             x: x / coords.width,

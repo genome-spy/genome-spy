@@ -32,10 +32,7 @@ import {
     defaultAxisZindex,
     translateAxisCoords,
 } from "./gridChildArrangement.js";
-export {
-    isClippedChildren,
-    translateAxisCoords,
-} from "./gridChildArrangement.js";
+export { translateAxisCoords } from "./gridChildArrangement.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
 import { arrangeLocalLegends } from "./legendLayout.js";
 import {

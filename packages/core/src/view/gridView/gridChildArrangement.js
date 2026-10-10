@@ -151,9 +151,10 @@ export function queueGridChild(
         rulerOverlays,
     } = gridChild;
 
-    const clippedChildren = isClippedChildren(view);
+    const { all: clippedChildren, any: anyClippedChildren } =
+        getChildClipFlags(view);
     const clipped = clippedChildren || scrollable;
-    const clippedDecorations = hasClippedChildren(view) || scrollable;
+    const clippedDecorations = anyClippedChildren || scrollable;
 
     for (const gridLineView of Object.values(gridLines)) {
         queueDecoration(
@@ -309,32 +310,19 @@ export function queueGridChild(
 /**
  * @param {View} view
  */
-export function isClippedChildren(view) {
-    let clipped = true;
-
-    view.visit((v) => {
-        if (v instanceof UnitView) {
-            clipped &&= v.mark.properties.clip === true;
-        }
-    });
-
-    return clipped;
-}
-
-/**
- * @param {View} view
- */
-function hasClippedChildren(view) {
-    let clipped = false;
+function getChildClipFlags(view) {
+    let all = true;
+    let any = false;
 
     view.visit((v) => {
         if (v instanceof UnitView) {
             const clip = v.mark.properties.clip;
-            clipped ||= clip === true || clip === "x" || clip === "y";
+            all &&= clip === true;
+            any ||= clip === true || clip === "x" || clip === "y";
         }
     });
 
-    return clipped;
+    return { all, any };
 }
 
 /**

@@ -150,9 +150,10 @@ completion pass.
   clear error. Preserve legitimate independence between layers.
 - [x] Resolve the unused facet field `title` contract without adding a general
   header API: use existing title machinery if small, or narrow the facet type.
-- [ ] Consolidate point-to-cell projection, remove unused layout parameters,
+- [x] Consolidate point-to-cell projection, remove unused layout parameters,
   avoid redundant clipping/copies, and trim implementation-detail test overlap
   where the independent review identifies concrete savings.
+- [ ] Avoid republishing unchanged facet header positions and text.
 - [x] Discard sorting/header/outer-axis/independent-domain milestones as
   prerequisites for completion. These remain optional future capabilities.
 

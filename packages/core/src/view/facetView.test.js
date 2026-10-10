@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { ViewFactory, VIEW_ROOT_NAME } from "./viewFactory.js";
+import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import {
     createAndInitialize,
     createTestViewContext,
@@ -25,17 +25,6 @@ import {
 } from "../data/flowInit.js";
 import { loadSharedExampleSpec } from "../spec/exampleFiles.js";
 
-test("factory recognizes facet specs", () => {
-    const factory = new ViewFactory();
-
-    expect(
-        factory.isViewSpec({
-            facet: { field: "Series" },
-            spec: { mark: "point" },
-        })
-    ).toBeTruthy();
-});
-
 test("root facet spec is wrapped in an implicit grid root", async () => {
     const context = createTestViewContext({ wrapRoot: true });
     const view = /** @type {ConcatView} */ (
@@ -57,43 +46,6 @@ test("root facet spec is wrapped in an implicit grid root", async () => {
     expect(view.name).toBe("implicitRoot");
     expect(view.children).toHaveLength(1);
     expect(view.children[0]).toBeInstanceOf(FacetView);
-});
-
-test("shorthand facet groups by the column field", async () => {
-    const context = createTestViewContext();
-    const view = /** @type {FacetView} */ (
-        await context.createOrImportView(
-            {
-                facet: { field: "Series" },
-                spec: { mark: "point" },
-            },
-            null,
-            null,
-            "facet"
-        )
-    );
-
-    expect(view.getFacetFields()).toEqual(["Series"]);
-});
-
-test("row and column facets group by row then column fields", async () => {
-    const context = createTestViewContext();
-    const view = /** @type {FacetView} */ (
-        await context.createOrImportView(
-            {
-                facet: {
-                    row: { field: "Origin" },
-                    column: { field: "Cylinders" },
-                },
-                spec: { mark: "point" },
-            },
-            null,
-            null,
-            "facet"
-        )
-    );
-
-    expect(view.getFacetFields()).toEqual(["Origin", "Cylinders"]);
 });
 
 test.each([0, -1, 1.5, Infinity])(
@@ -292,35 +244,6 @@ test.each(["viewportWidth", "viewportHeight"])(
     }
 );
 
-test("facet creates one non-chrome child view", async () => {
-    const context = createTestViewContext();
-    const view = /** @type {FacetView} */ (
-        await context.createOrImportView(
-            {
-                facet: { field: "Series" },
-                spec: {
-                    data: { values: [] },
-                    mark: "point",
-                    encoding: {
-                        x: { field: "x", type: "quantitative" },
-                        y: { field: "y", type: "quantitative" },
-                    },
-                },
-            },
-            null,
-            null,
-            "facet"
-        )
-    );
-
-    const nonChromeChildren = Array.from(view).filter(
-        (child) => !isChromeView(child)
-    );
-
-    expect(nonChromeChildren).toEqual([view.child]);
-    expect(view.child).toBeInstanceOf(UnitView);
-});
-
 test("column facet creates one chrome header view", async () => {
     const view = await createAndInitialize(
         createFixedSizeFacetSpec(["I", "II"]),
@@ -338,6 +261,9 @@ test("column facet creates one chrome header view", async () => {
         "facetHeaderColumn0",
     ]);
     expect(headers.every((header) => isChromeView(header))).toBe(true);
+    expect(Array.from(view).filter((child) => !isChromeView(child))).toEqual([
+        view.child,
+    ]);
     expect(addressableViews).not.toContain(headers[0]);
 });
 
@@ -363,48 +289,6 @@ test("column facet headers reflect placement and replacement data", async () => 
         Array.from(header.getCollector().getData(), (datum) => datum.text)
     ).toEqual(["III"]);
     view.disposeSubtree();
-});
-
-test("row and column facet creates one chrome header view per orientation", async () => {
-    const view = await createAndInitialize(
-        {
-            data: {
-                values: [
-                    { Origin: "Europe", Cylinders: 4, x: 1, y: 2 },
-                    { Origin: "Japan", Cylinders: 6, x: 3, y: 4 },
-                ],
-            },
-            facet: {
-                row: { field: "Origin" },
-                column: { field: "Cylinders" },
-            },
-            spec: {
-                width: 100,
-                height: 50,
-                mark: "point",
-                encoding: {
-                    x: {
-                        field: "x",
-                        type: "quantitative",
-                        axis: null,
-                    },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        axis: null,
-                    },
-                },
-            },
-        },
-        FacetView
-    );
-    const headers = getFacetHeaderViews(view);
-
-    expect(headers.map((header) => header.name)).toEqual([
-        "facetHeaderColumn0",
-        "facetHeaderRow0",
-    ]);
-    expect(headers.every((header) => isChromeView(header))).toBe(true);
 });
 
 test("facet headers are centered over plot area excluding overhang", async () => {
@@ -670,19 +554,12 @@ test("facet layout wraps column facets into configured columns", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(
-        grid,
-        childSize,
-        Padding.zero(),
-        undefined,
-        4
-    );
+    const size = getFacetGridSize(grid, childSize, Padding.zero(), 4);
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         Padding.zero(),
-        undefined,
         4
     );
 
@@ -717,19 +594,12 @@ test("facet layout creates row and column matrix cells", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(
-        grid,
-        childSize,
-        Padding.zero(),
-        undefined,
-        4
-    );
+    const size = getFacetGridSize(grid, childSize, Padding.zero(), 4);
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         Padding.zero(),
-        undefined,
         4
     );
 
@@ -798,9 +668,7 @@ test("facet layout places child plot inside reserved overhang", () => {
         grid,
         Rectangle.create(0, 0, 160, 140),
         childSize,
-        childOverhang,
-        undefined,
-        0
+        childOverhang
     );
 
     expect(rectTuple(layouts[0].viewportCoords)).toEqual([0, 18, 160, 120]);
@@ -817,19 +685,12 @@ test("facet layout creates row-only facets", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(
-        grid,
-        childSize,
-        Padding.zero(),
-        undefined,
-        4
-    );
+    const size = getFacetGridSize(grid, childSize, Padding.zero(), 4);
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         Padding.zero(),
-        undefined,
         4
     );
 

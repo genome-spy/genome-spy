@@ -6,9 +6,6 @@ import {
 import Grid from "./layout/grid.js";
 import Rectangle from "./layout/rectangle.js";
 
-const COLUMN_HEADER_HEIGHT = 18;
-const ROW_HEADER_WIDTH = 18;
-
 /**
  * @typedef {import("./facetView.js").FacetFactors} FacetFactors
  * @typedef {import("./facetView.js").NormalizedFacet} NormalizedFacet
@@ -25,20 +22,15 @@ const ROW_HEADER_WIDTH = 18;
  * @prop {boolean} hasRowHeaders
  * @prop {boolean} hasColumnHeaders
  *
- * @typedef {object} FacetHeaderSizes
- * @prop {number} row
- * @prop {number} column
- *
  * @typedef {object} FacetCellLayout
  * @prop {FacetCell} cell
  * @prop {Rectangle} viewportCoords
  * @prop {Rectangle} childCoords
  */
 
-/** @type {FacetHeaderSizes} */
-export const DEFAULT_FACET_HEADER_SIZES = {
-    row: ROW_HEADER_WIDTH,
-    column: COLUMN_HEADER_HEIGHT,
+export const FACET_HEADER_SIZES = {
+    row: 18,
+    column: 18,
 };
 
 /**
@@ -81,28 +73,21 @@ export function createFacetGrid(facet, factors, columns) {
  * @param {FacetGrid} grid
  * @param {FlexDimensions} childSize
  * @param {import("./layout/padding.js").default} childOverhang
- * @param {FacetHeaderSizes} [headers]
  * @param {number} [spacing]
  * @returns {FlexDimensions}
  */
-export function getFacetGridSize(
-    grid,
-    childSize,
-    childOverhang,
-    headers = DEFAULT_FACET_HEADER_SIZES,
-    spacing = 0
-) {
+export function getFacetGridSize(grid, childSize, childOverhang, spacing = 0) {
     const cellSize = childSize.addPadding(childOverhang);
     const width = getAxisSize(
         grid.nCols,
         cellSize.width,
-        grid.hasRowHeaders ? headers.row : 0,
+        grid.hasRowHeaders ? FACET_HEADER_SIZES.row : 0,
         spacing
     );
     const height = getAxisSize(
         grid.nRows,
         cellSize.height,
-        grid.hasColumnHeaders ? headers.column : 0,
+        grid.hasColumnHeaders ? FACET_HEADER_SIZES.column : 0,
         spacing,
         grid.hasColumnHeaders && !grid.hasRowHeaders
     );
@@ -115,7 +100,6 @@ export function getFacetGridSize(
  * @param {Rectangle} coords
  * @param {FlexDimensions} childSize
  * @param {import("./layout/padding.js").default} childOverhang
- * @param {FacetHeaderSizes} [headers]
  * @param {number} [spacing]
  * @param {number} [devicePixelRatio]
  * @returns {FacetCellLayout[]}
@@ -125,7 +109,6 @@ export function getFacetCellLayouts(
     coords,
     childSize,
     childOverhang,
-    headers = DEFAULT_FACET_HEADER_SIZES,
     spacing = 0,
     devicePixelRatio
 ) {
@@ -134,7 +117,7 @@ export function getFacetCellLayouts(
         makeSizeItems(
             grid.nCols,
             cellSize.width,
-            grid.hasRowHeaders ? headers.row : 0
+            grid.hasRowHeaders ? FACET_HEADER_SIZES.row : 0
         ),
         coords.width,
         {
@@ -147,7 +130,7 @@ export function getFacetCellLayouts(
         makeSizeItems(
             grid.nRows,
             cellSize.height,
-            grid.hasColumnHeaders ? headers.column : 0,
+            grid.hasColumnHeaders ? FACET_HEADER_SIZES.column : 0,
             grid.hasColumnHeaders && !grid.hasRowHeaders
         ),
         coords.height,

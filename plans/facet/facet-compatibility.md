@@ -175,3 +175,16 @@ blocks this acceptance.
   reject title declarations at runtime. Category value labels and repeated
   child titles remain supported. Schema and real-spec tests cover shorthand
   and mapped facet definitions without growing header configuration.
+- Consolidation: fixed header sizes have one source of truth, point projection
+  delegates to cell lookup, visible-cell clipping is computed once, and shared
+  arrangement computes both clip flags in one subtree scan. Removed the unused
+  clip-helper re-export and redundant spec assignment, and combined resolution
+  validation into one path. Five overlapping
+  factory/grouping/header-structure tests were removed; broader dataflow,
+  layout, SVG, and chrome/addressability tests retain the contracts.
+  Runtime files shrink by 44 physical lines (FacetView 532→520, facetLayout
+  223→206, gridChildArrangement 408→396, GridView 2059→2056). The focused facet
+  test file shrinks by 139 physical lines. These are before/after line counts,
+  distinct from the parser-based branch production count above.
+  All 344 focused facet, grid, SVG, and layout tests pass. The broader grid
+  check also updated a keyboard fixture to model the disposer lifecycle.

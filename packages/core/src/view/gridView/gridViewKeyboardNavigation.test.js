@@ -161,6 +161,7 @@ describe("GridView keyboard navigation", () => {
             needsAxes: { x: false, y: false },
             spec: {},
             paramRuntime: { paramConfigs: new Map() },
+            registerDisposer: vi.fn(),
             context: /** @type {any} */ ({}),
             isConfiguredVisible: () => true,
             getParentGridChromePolicy: () => ({
