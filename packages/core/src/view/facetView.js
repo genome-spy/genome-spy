@@ -1,4 +1,7 @@
 import ContainerView from "./containerView.js";
+import { shallowArrayEquals, asArray } from "../utils/arrayUtils.js";
+import { VISIT_SKIP } from "./view.js";
+import { isChromeView } from "./viewSelectors.js";
 import {
     DEFAULT_FACET_HEADER_SIZES,
     createFacetGrid,
@@ -50,14 +53,8 @@ export default class FacetView extends ContainerView {
     /** @type {FacetHeaderView | undefined} */
     #rowHeaderView;
 
-    /** @type {import("../spec/channel.js").Scalar[][]} */
-    #facetIds = [];
-
     /** @type {FacetFactors} */
     #facetFactors = { row: [], column: [] };
-
-    /** @type {string} */
-    #facetSignature = "[]";
 
     /** @type {Set<import("../data/collector.js").default>} */
     #observedCollectors = new Set();
@@ -149,26 +146,6 @@ export default class FacetView extends ContainerView {
     }
 
     /**
-     * Returns facet ids derived from completed child collectors.
-     *
-     * @returns {import("../spec/channel.js").Scalar[][]}
-     */
-    getFacetIds() {
-        this.#syncFacetCollectors();
-        return this.#facetIds;
-    }
-
-    /**
-     * Returns sorted row and column factor values.
-     *
-     * @returns {FacetFactors}
-     */
-    getFacetFactors() {
-        this.#syncFacetCollectors();
-        return this.#facetFactors;
-    }
-
-    /**
      * @returns {import("./layout/flexLayout.js").FlexDimensions}
      */
     getSize() {
@@ -182,10 +159,14 @@ export default class FacetView extends ContainerView {
             return this.#getFacetGridSize();
         }
 
-        return this._cache("size/size", () => {
-            this.#syncFacetCollectors();
-            return this.#getFacetGridSize();
-        });
+        return this._cache("size/size", () => this.#getFacetGridSize());
+    }
+
+    /** @returns {import("./facetLayout.js").FacetGrid} */
+    #getFacetGrid() {
+        return this._cache("size/facetGrid", () =>
+            createFacetGrid(this.#facet, this.#facetFactors, this.spec.columns)
+        );
     }
 
     /**
@@ -193,7 +174,7 @@ export default class FacetView extends ContainerView {
      */
     #getFacetGridSize() {
         return getFacetGridSize(
-            createFacetGrid(this.#facet, this.#facetFactors, this.spec.columns),
+            this.#getFacetGrid(),
             this.child.getViewportSize(),
             this.#gridChild.getOverhangAndPadding(),
             undefined,
@@ -217,7 +198,7 @@ export default class FacetView extends ContainerView {
         context.pushView(this, coords);
 
         const layouts = getFacetCellLayouts(
-            createFacetGrid(this.#facet, this.#facetFactors, this.spec.columns),
+            this.#getFacetGrid(),
             coords,
             this.child.getViewportSize(),
             this.#gridChild.getOverhangAndPadding(),
@@ -249,8 +230,12 @@ export default class FacetView extends ContainerView {
     #syncFacetCollectors() {
         const hadPendingCollectors = this.#hasPendingCollectors;
         this.#hasPendingCollectors = false;
+        let addedCollectors = false;
 
         this.child.visit((view) => {
+            if (isChromeView(view)) {
+                return VISIT_SKIP;
+            }
             if (view instanceof UnitView) {
                 const collector = view.getCollector();
 
@@ -258,10 +243,10 @@ export default class FacetView extends ContainerView {
                     this.#hasPendingCollectors = true;
                 } else if (!this.#observedCollectors.has(collector)) {
                     this.#observedCollectors.add(collector);
+                    addedCollectors = true;
                     this.registerDisposer(
                         collector.observe(() => {
-                            if (this.#updateFacetStateFromCollectors()) {
-                                this.invalidateSizeCache();
+                            if (this.#updateFacetFactors()) {
                                 this.context.requestLayoutReflow();
                             }
                         })
@@ -274,24 +259,27 @@ export default class FacetView extends ContainerView {
             this.invalidateSizeCache();
         }
 
-        this.#updateFacetStateFromCollectors();
+        if (addedCollectors) {
+            this.#updateFacetFactors();
+        }
     }
 
-    /**
-     * @returns {boolean} True when facet ids or factors changed.
-     */
-    #updateFacetStateFromCollectors() {
-        const facetIds = collectFacetIds(this.child).sort(compareFacetIds);
-        const signature = JSON.stringify(facetIds);
-
-        if (signature === this.#facetSignature) {
+    /** @returns {boolean} Whether the row or column membership changed. */
+    #updateFacetFactors() {
+        const factors = collectFacetFactors(
+            this.#facet,
+            this.#observedCollectors
+        );
+        if (
+            shallowArrayEquals(factors.row, this.#facetFactors.row) &&
+            shallowArrayEquals(factors.column, this.#facetFactors.column)
+        ) {
             return false;
-        } else {
-            this.#facetSignature = signature;
-            this.#facetIds = facetIds;
-            this.#facetFactors = createFacetFactors(this.#facet, facetIds);
-            return true;
         }
+
+        this.#facetFactors = factors;
+        this.invalidateSizeCache();
+        return true;
     }
 
     #validateInitialLimitations() {
@@ -301,28 +289,20 @@ export default class FacetView extends ContainerView {
             );
         }
 
-        const channels = /** @type {const} */ (["x", "y"]);
-        for (const channel of channels) {
-            this.#validateSharedResolution(channel, "scale");
-            this.#validateSharedResolution(channel, "axis");
-        }
-    }
-
-    /**
-     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
-     * @param {"scale" | "axis"} resolutionType
-     */
-    #validateSharedResolution(channel, resolutionType) {
         this.child.visit((view) => {
-            if (view instanceof UnitView) {
-                const behavior =
-                    view.getConfiguredResolution(channel, resolutionType) ??
-                    view.getConfiguredResolution("default", resolutionType);
-
-                if (behavior === "independent") {
-                    throw new Error(
-                        `FacetView currently supports only shared ${resolutionType} resolutions. Channel "${channel}" is resolved independently in child view "${view.name}".`
-                    );
+            for (const channel of /** @type {const} */ (["x", "y"])) {
+                for (const resolutionType of /** @type {const} */ ([
+                    "scale",
+                    "axis",
+                ])) {
+                    const behavior =
+                        view.getConfiguredResolution(channel, resolutionType) ??
+                        view.getConfiguredResolution("default", resolutionType);
+                    if (behavior === "independent") {
+                        throw new Error(
+                            `FacetView currently supports only shared ${resolutionType} resolutions. Channel "${channel}" is resolved independently in child view "${view.name}".`
+                        );
+                    }
                 }
             }
         });
@@ -478,103 +458,38 @@ function createRowHeaderData(layouts, coords, overhang) {
 }
 
 /**
- * @param {import("./view.js").default} childView
- * @returns {import("../spec/channel.js").Scalar[][]}
- */
-function collectFacetIds(childView) {
-    /** @type {Set<string>} */
-    const encoded = new Set();
-    /** @type {import("../spec/channel.js").Scalar[][]} */
-    const facetIds = [];
-
-    childView.visit((view) => {
-        if (view instanceof UnitView) {
-            const collector = view.getCollector();
-
-            if (collector?.completed) {
-                for (const key of collector.facetBatches.keys()) {
-                    if (key !== undefined) {
-                        const facetId = Array.isArray(key) ? key : [key];
-                        const encodedKey = JSON.stringify(facetId);
-                        if (!encoded.has(encodedKey)) {
-                            encoded.add(encodedKey);
-                            facetIds.push(facetId);
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    return facetIds;
-}
-
-/**
  * @param {NormalizedFacet} facet
- * @param {import("../spec/channel.js").Scalar[][]} facetIds
+ * @param {Iterable<import("../data/collector.js").default>} collectors
  * @returns {FacetFactors}
  */
-function createFacetFactors(facet, facetIds) {
-    /** @type {import("../spec/channel.js").Scalar[]} */
-    const rowValues = [];
-    /** @type {import("../spec/channel.js").Scalar[]} */
-    const columnValues = [];
-    const rowKeys = new Set();
-    const columnKeys = new Set();
+function collectFacetFactors(facet, collectors) {
+    /** @type {Set<import("../spec/channel.js").Scalar>} */
+    const row = new Set();
+    /** @type {Set<import("../spec/channel.js").Scalar>} */
+    const column = new Set();
 
-    for (const facetId of facetIds) {
-        const rowValue = facet.row ? facetId[0] : undefined;
-        /** @type {import("../spec/channel.js").Scalar | undefined} */
-        let columnValue;
-        if (facet.row && facet.column) {
-            columnValue = facetId[1];
-        } else if (facet.column) {
-            columnValue = facetId[0];
+    for (const collector of collectors) {
+        if (!collector.completed) {
+            continue;
         }
-
-        if (rowValue !== undefined) {
-            addUniqueFactor(rowValues, rowKeys, rowValue);
-        }
-
-        if (columnValue !== undefined) {
-            addUniqueFactor(columnValues, columnKeys, columnValue);
+        for (const key of collector.facetBatches.keys()) {
+            if (key === undefined) {
+                continue;
+            }
+            const facetId = asArray(key);
+            if (facet.row) {
+                row.add(facetId[0]);
+            }
+            if (facet.column) {
+                column.add(facetId.at(-1));
+            }
         }
     }
 
-    rowValues.sort(compareScalars);
-    columnValues.sort(compareScalars);
-
-    return { row: rowValues, column: columnValues };
-}
-
-/**
- * @param {import("../spec/channel.js").Scalar[]} values
- * @param {Set<string>} keys
- * @param {import("../spec/channel.js").Scalar} value
- */
-function addUniqueFactor(values, keys, value) {
-    const key = JSON.stringify(value);
-    if (!keys.has(key)) {
-        keys.add(key);
-        values.push(value);
-    }
-}
-
-/**
- * @param {import("../spec/channel.js").Scalar[]} a
- * @param {import("../spec/channel.js").Scalar[]} b
- * @returns {number}
- */
-function compareFacetIds(a, b) {
-    const length = Math.min(a.length, b.length);
-    for (let i = 0; i < length; i++) {
-        const order = compareScalars(a[i], b[i]);
-        if (order !== 0) {
-            return order;
-        }
-    }
-
-    return a.length - b.length;
+    return {
+        row: Array.from(row).sort(compareScalars),
+        column: Array.from(column).sort(compareScalars),
+    };
 }
 
 /**

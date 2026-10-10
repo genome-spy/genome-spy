@@ -168,6 +168,34 @@ test("facet rejects independent child axis resolution", async () => {
     );
 });
 
+test("facet rejects independent resolutions declared on a layer", async () => {
+    const context = createTestViewContext();
+    await expect(
+        context.createOrImportView(
+            {
+                facet: { field: "series" },
+                spec: {
+                    resolve: {
+                        scale: { x: "independent" },
+                        axis: { x: "independent" },
+                    },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+            },
+            null,
+            null,
+            "facet"
+        )
+    ).rejects.toThrow("only shared scale resolutions");
+});
+
 test("facet rejects an immediate nested facet child", async () => {
     const context = createTestViewContext();
 
@@ -389,7 +417,7 @@ test("descendant unit collectors group data by facet fields", async () => {
     ]);
 });
 
-test("anscombe-style facets expose sorted facet ids", async () => {
+test("column facet labels follow sorted collector factors", async () => {
     const view = await createAndInitialize(
         {
             data: {
@@ -414,14 +442,14 @@ test("anscombe-style facets expose sorted facet ids", async () => {
         FacetView
     );
 
-    expect(view.getFacetIds()).toEqual([["I"], ["II"], ["III"], ["IV"]]);
-    expect(view.getFacetFactors()).toEqual({
-        row: [],
-        column: ["I", "II", "III", "IV"],
-    });
+    renderToLayout(view);
+    const [header] = getFacetHeaderViews(view);
+    expect(
+        Array.from(header.getCollector().getData(), (datum) => datum.text)
+    ).toEqual(["I", "II", "III", "IV"]);
 });
 
-test("row and column facets expose sorted factors", async () => {
+test("matrix facets retain empty combinations in sorted factor order", async () => {
     const view = await createAndInitialize(
         {
             data: {
@@ -448,17 +476,80 @@ test("row and column facets expose sorted factors", async () => {
         FacetView
     );
 
-    expect(view.getFacetIds()).toEqual([
-        ["Europe", 4],
-        ["Europe", 6],
-        ["Japan", 4],
-        ["USA", 6],
-        ["USA", 8],
-    ]);
-    expect(view.getFacetFactors()).toEqual({
-        row: ["Europe", "Japan", "USA"],
-        column: [4, 6, 8],
-    });
+    const layout = renderToLayout(view);
+    const [columns, rows] = getFacetHeaderViews(view);
+    expect(
+        Array.from(columns.getCollector().getData(), (datum) => datum.text)
+    ).toEqual(["4", "6", "8"]);
+    expect(
+        Array.from(rows.getCollector().getData(), (datum) => datum.text)
+    ).toEqual(["Europe", "Japan", "USA"]);
+    expect(findLayoutNodes(layout, view.child.name)).toHaveLength(9);
+});
+
+test("facet layout reflows only when factor membership changes", async () => {
+    const data = [
+        { r: "A", c: 1 },
+        { r: "B", c: 2 },
+    ];
+    const view = await createAndInitialize(
+        {
+            data: { values: data },
+            facet: { row: { field: "r" }, column: { field: "c" } },
+            spec: { width: 100, height: 80, mark: "point" },
+        },
+        FacetView
+    );
+    const initialSize = view.getSize();
+    const reflow = vi.spyOn(view.context, "requestLayoutReflow");
+    const source =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            view.flowHandle.dataSource
+        );
+
+    // This changes occupied combinations, but the Cartesian grid stays the same.
+    source.updateDynamicData([...data, { r: "A", c: 2 }]);
+    expect(view.getSize()).toEqual(initialSize);
+    expect(reflow).not.toHaveBeenCalled();
+
+    source.updateDynamicData([...data, { r: "C", c: 1 }]);
+    expect(view.getSize().height.px).toBeGreaterThan(initialSize.height.px);
+    expect(reflow).toHaveBeenCalledOnce();
+    view.disposeSubtree();
+});
+
+test("facet factors include the union of differently filtered layers", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [{ series: "C" }, { series: "B" }, { series: "A" }],
+            },
+            facet: { field: "series" },
+            spec: {
+                layer: [
+                    {
+                        transform: [
+                            { type: "filter", expr: "datum.series !== 'C'" },
+                        ],
+                        mark: "point",
+                    },
+                    {
+                        transform: [
+                            { type: "filter", expr: "datum.series === 'C'" },
+                        ],
+                        mark: "point",
+                    },
+                ],
+            },
+        },
+        FacetView
+    );
+    renderToLayout(view);
+    const [header] = getFacetHeaderViews(view);
+    expect(
+        Array.from(header.getCollector().getData(), (datum) => datum.text)
+    ).toEqual(["A", "B", "C"]);
+    view.disposeSubtree();
 });
 
 test("facet collector observers are disposed with the view", async () => {
@@ -481,7 +572,7 @@ test("facet collector observers are disposed with the view", async () => {
     const collector = getNonChromeUnitView(view).getCollector();
     const observerCount = collector.observers.size;
 
-    view.getFacetIds();
+    view.getSize();
     expect(collector.observers.size).toBe(observerCount + 1);
 
     view.dispose();
@@ -958,12 +1049,12 @@ function getNonChromeUnitView(view) {
 
 /**
  * @param {FacetView} view
- * @returns {import("./view.js").default[]}
+ * @returns {UnitView[]}
  */
 function getFacetHeaderViews(view) {
-    return getFlattenedViews(view).filter((candidate) =>
-        candidate.name?.startsWith("facetHeader")
-    );
+    return getFlattenedViews(view)
+        .filter((candidate) => candidate instanceof UnitView)
+        .filter((candidate) => candidate.name.startsWith("facetHeader"));
 }
 
 /**
