@@ -279,6 +279,14 @@ test("column facet headers reflect placement and replacement data", async () => 
         { x: 160 / 210, y: 1 - 9 / 78, text: "II" },
     ]);
 
+    // Layout invalidation alone must not republish identical label data.
+    const revision = header.getCollector().dataRevision;
+    view.invalidateSizeCache();
+    renderToLayout(view, Rectangle.create(0, 0, 210, 78));
+    expect(header.getCollector().dataRevision).toBe(revision);
+    renderToLayout(view, Rectangle.create(0, 0, 320, 78));
+    expect(header.getCollector().dataRevision).toBeGreaterThan(revision);
+
     const source =
         /** @type {import("../data/sources/inlineSource.js").default} */ (
             view.flowHandle.dataSource

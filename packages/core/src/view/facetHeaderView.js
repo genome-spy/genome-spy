@@ -40,6 +40,23 @@ export default class FacetHeaderView extends UnitView {
                 this.flowHandle?.dataSource
             );
         if (source) {
+            const collector = this.getCollector();
+            if (collector.completed) {
+                const previous = collector.getData()[Symbol.iterator]();
+                const unchanged = data.every(({ x, y, text }) => {
+                    const old = previous.next().value;
+                    return (
+                        old !== undefined &&
+                        old.x === x &&
+                        old.y === y &&
+                        old.text === text
+                    );
+                });
+                if (unchanged && previous.next().done) {
+                    return;
+                }
+            }
+
             source.updateDynamicData(data);
         }
     }

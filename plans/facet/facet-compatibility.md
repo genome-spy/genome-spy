@@ -188,3 +188,8 @@ blocks this acceptance.
   distinct from the parser-based branch production count above.
   All 344 focused facet, grid, SVG, and layout tests pass. The broader grid
   check also updated a keyboard fixture to model the disposer lifecycle.
+- Header updates: compare new label values with the existing collector's rows
+  before republishing. This keeps the dataflow unchanged after identical layout
+  refreshes without a second cached state or memoization subsystem. Resizing
+  and membership changes still update the labels, covered in the existing
+  dynamic-header regression.
