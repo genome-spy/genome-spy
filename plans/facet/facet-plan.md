@@ -1,14 +1,17 @@
 # Facet View Implementation Plan
 
-The active interaction implementation plan is in [facet-interactions.md](facet-interactions.md).
-The completed dataflow implementation is recorded in [facet-dataflow.md](facet-dataflow.md).
+The current scope, simplification review, and remaining correctness work are in
+[facet-compatibility.md](facet-compatibility.md).
+The completed interaction and dataflow implementations are recorded in
+[facet-interactions.md](facet-interactions.md) and [facet-dataflow.md](facet-dataflow.md).
 The restoration tasks below are historical and do not prescribe the current workflow.
 
 **Goal:** Restore `facet` specs by implementing a modern `FacetView` that repeats one child view over many facet cells without creating one child view per facet.
 
-The intended behavior should be roughly equivalent to the basic
-[Vega-Lite facet operator](https://vega.github.io/vega-lite/docs/facet.html).
-Restoring repeated rendering alone does not meet that goal.
+The user clarified the target on 2026-10-10: a plot can be repeated for
+different categories with predictable data, layout, and interactions. Full
+Vega-Lite facet compatibility is not a goal. Shared domains, repeated axes,
+ascending category order, and simple value labels are sufficient defaults.
 
 **Architecture:** `FacetView` remains a specialized `ContainerView`, not a `GridView` subclass. It owns one heavy child view and one `GridChild` chrome wrapper, computes lightweight facet-cell instances with the existing `Grid` and flex layout helpers, and renders the same child/chrome repeatedly with different `facetId` options. A parent `GridView`, including the implicit root wrapper, owns viewport scrolling through `viewportHeight` and `viewportWidth`.
 
@@ -16,29 +19,40 @@ Restoring repeated rendering alone does not meet that goal.
 
 ---
 
-## Current Status and Remaining Gaps (2026-10-10)
+## Current Status and Remaining Work (2026-10-10)
 
-Small multiples, supported child transforms, cell interactions, and shared-scale
-navigation now work through one static child subtree. The remaining Vega-Lite
-compatibility differences are listed below. This section records the current
-implementation; the restoration investigation, algorithms, and task checklists
-below describe the original work and are not an up-to-date completion record.
+Category repetition, supported child transforms, shared legends, picking,
+tooltips, and shared-scale navigation are implemented through one static child
+subtree. The independent simplification review found interaction and cleanup
+issues that should be fixed before expanding features. The current acceptance
+target and review are in [facet-compatibility.md](facet-compatibility.md).
+Vega-Lite differences are recorded as optional capabilities rather than
+requirements. The restoration investigation and checklists below are historical.
 
 | Capability | Verified status |
 | --- | --- |
 | Single-field, row-only, column-only, and wrapped facets | Working |
 | Faceted unit and layered plots | Working |
-| Shared positional scales and repeated axes | Working |
+| Shared positional scale domains | Working |
+| Repeated axes in every cell | Working; sufficient for the agreed scope |
 | Matrix layout, including empty row/column combinations | Working |
 | Dynamic factor membership and labels | Working |
-| Headers, cell titles, backgrounds, clipping, and visible-cell culling | Working |
+| Raw value labels, repeated child titles, backgrounds, clipping, and visible-cell culling | Working |
 | Child transforms evaluated separately for each facet | Working for supported transforms; see scope below |
 | Default shared color legend | Working; one legend beside the complete grid |
 | Cell routing, picking, tooltips, and shared point/interval selections | Working |
 | Shared-scale wheel zoom, mouse pan, and touch gesture routing | Working |
 | Interactions after scrolling a facet viewport | Working in WebGL and Canvas |
-| Independent positional scales and axes | Unsupported |
-| Custom facet ordering and header formatting | Unsupported |
+| Vega-Lite-style outer axes and independent axes | Optional; not required for category repetition |
+| Independent positional scale domains | Unsupported and rejected; intentionally outside the current scope |
+| Independent non-positional scales and legends per cell | Unsupported; declarations can currently be accepted without per-cell domains |
+| Custom facet ordering | Optional; ascending factor order is sufficient for the current scope |
+| Facet field titles and configurable headers | General header API is optional; unused schema-supported `title` needs a clear contract |
+| Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
+| Rulers in repeated cells | Incorrect projection/ownership and cell-crossing clears; review fix required |
+| Hover transitions after layout refresh | Can emit false cell leave/enter; review fix required |
+| Removing a facet during a brush drag | Inner wrapper is not disposed; document listeners remain active |
+| Child viewport options | Accepted but compress content instead of scrolling; reject unsupported options |
 
 ### Completed validation fixes
 
@@ -96,7 +110,7 @@ refreshes layouts containing facets, so newly visible cells acquire current
 rendering and picking geometry. Optimization TODOs and detailed verification
 are recorded in [facet-interactions.md](facet-interactions.md).
 
-### Remaining acceptance criteria, in priority order
+### Completed restoration acceptance
 
 - [x] Correct per-facet child transform semantics. Cover aggregate and stack
   with the A/B example, row/column tuple groups, and a layered child. Verify
@@ -111,11 +125,41 @@ are recorded in [facet-interactions.md](facet-interactions.md).
 - [x] Re-run the wrapped Anscombe and cars matrix examples through WebGL and
   Canvas; use focused SVG assertions for grouped marks, guides, and clipping.
   Add durable regression tests for the semantic gaps above.
-- [x] Define the remaining compatibility scope explicitly. Independent
-  positional scales/axes, custom sort, header titles/formatting/styling, and
-  facet-field bin/time-unit options remain unsupported. They are separate
-  follow-up decisions, not substitutes for fixing transform semantics and
-  shared legends.
+- [x] Record the supported subset and remaining compatibility differences.
+  The narrowed scope and independent review below supersede the original
+  compatibility roadmap.
+
+### Remaining correctness and simplification work
+
+Fix the confirmed lifecycle and interaction issues first, then make small
+consolidations that reduce duplicated code. Retain the existing static batched
+flow, one repeated child, and shared grid chrome. Do not introduce a new scale
+instance system, header framework, or Vega-Lite normalization layer for this
+completion pass.
+
+- [ ] Dispose the facet-owned inner `GridChild`, including active brush/ruler
+  sessions, when the facet is removed. Cancel listeners before their parameter
+  runtime is destroyed.
+- [ ] Route rulers through the pointed cell's coordinates, install one logical
+  controller, and prevent old-cell leave events from clearing the new value.
+- [ ] Compare facet tuples by value when synthesizing hover transitions, so
+  rebuilding layout metadata does not imply entering another category.
+- [ ] Reject child viewport options rather than compressing content; use the
+  supported viewport on the facet container.
+- [ ] Reject unsupported per-cell non-positional scale/legend resolution with a
+  clear error. Preserve legitimate independence between layers.
+- [ ] Resolve the unused facet field `title` contract without adding a general
+  header API: use existing title machinery if small, or narrow the facet type.
+- [ ] Consolidate point-to-cell projection, remove unused layout parameters,
+  avoid redundant clipping/copies, and trim implementation-detail test overlap
+  where the independent review identifies concrete savings.
+- [x] Discard sorting/header/outer-axis/independent-domain milestones as
+  prerequisites for completion. These remain optional future capabilities.
+
+The [review and completion plan](facet-compatibility.md) records findings,
+measurements, concrete follow-ups, and verification. Keep current examples and
+supported interactions predictable; optimizer improvements and full Vega-Lite
+behavior are outside this work.
 
 Verification for the static dataflow implementation includes the full unit
 suite, workspace TypeScript checks, lint, Core build, release checks, and schema

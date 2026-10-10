@@ -312,10 +312,14 @@ now tests subdivisions within facets rather than repeating the facet keys.
 
 ### Remaining scope
 
-Cell interaction routing, independent positional scales/axes, custom facet
-ordering/header formatting, and facet bin/time-unit definitions remain separate
-follow-ups. The rejected placement transforms need retained-state audits before
-support can be enabled. Explicit collect grouping needs a separate local-group
-identity contract. Optimizer TODOs are recorded at the partition builder,
-collector fusion, and file-provenance helper; no optimizer rewrite is required
-for the supported behavior.
+Cell interaction routing and shared-scale navigation are completed in
+[facet-interactions.md](facet-interactions.md). The independent review and
+remaining correctness/simplification work are tracked in
+[facet-compatibility.md](facet-compatibility.md). Vega-Lite ordering, header,
+outer-axis, independent-scale, and derived-key features are optional under the
+clarified category-repetition goal. The rejected placement transforms need
+retained-state audits before support can be enabled. Explicit collect
+grouping needs a separate local-group identity contract. These are GenomeSpy
+transform extensions, not missing Vega-Lite facet syntax. Optimizer TODOs are
+recorded at the partition builder, collector fusion, and file-provenance helper;
+no optimizer rewrite is required for the supported behavior.
