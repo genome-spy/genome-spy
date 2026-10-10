@@ -67,13 +67,31 @@ revision recorded in [facet-compatibility.md](facet-compatibility.md). Adopt
 the small public contracts, without copying compiler code. Aggregate/field
 sorts, time formatting, arbitrary header styling, and `labelExpr` remain deferred.
 
-Final inspection found that nested collector grouping visits all combinations
+Final inspection found that nested collector grouping visited all combinations
 of the first row category before the next row. This can change the encounter
-order of unlisted column values in an explicit sort array. Preserve group
-first-occurrence order during grouping with one Map traversal; keep the existing
-batch publication, membership, and file provenance contracts. Extend the real
-matrix regression with interleaved rows and verify the collector/dataflow suite.
-Record this correction in a separate `fix(core)` commit.
+order of unlisted column values in an explicit sort array. Fixed in `57f250258`:
+one Map traversal preserves group first-occurrence order and retains batch
+publication, membership, and file provenance. The real matrix regression now
+covers interleaved rows; collector/dataflow checks pass.
+
+Completion: all four additions are committed separately. The full suite passes
+(518 files, 4,844 tests, one skipped, two todo), as do workspace TypeScript,
+lint, Core build/schema/declarations, generated documentation checks, and
+release checks. Four combined-option browser cases cover wrapped and matrix
+facets in WebGL and Canvas: picking, tooltips, point selection, shared wheel
+zoom, and mouse pan. Screenshots confirm numeric formatting, requested order,
+asymmetric gaps, and removal of the row-header gutter. The existing Core minor
+changeset includes the additions.
+Anscombe wrapped, cars matrix, and per-facet means also pass smoke checks in
+both renderers after the grouping correction.
+
+Size against `70533c581`: FacetView 520→621, facetLayout 206→222, and
+facetHeaderView 93→103 physical lines (819→946 total). Collector changes from
+680→681 lines while consolidating single/compound grouping paths. Parser-based
+runtime JavaScript count across these four files adds 149/deletes 39, **net
++110 production lines**, excluding tests, declarations, comments, and blank
+lines. Growth implements the requested options and boundary validation; no
+per-cell objects, dataflow branches, header framework, or new cache is added.
 
 Category repetition, supported child transforms, shared legends, picking,
 tooltips, and shared-scale navigation are implemented through one static child
@@ -100,8 +118,8 @@ requirements. The restoration investigation and checklists below are historical.
 | Vega-Lite-style outer axes and independent axes | Optional; not required for category repetition |
 | Independent positional scale domains | Unsupported and rejected; intentionally outside the current scope |
 | Independent non-positional scales and legends per cell | Unsupported and rejected; layer independence remains supported |
-| Custom facet ordering | Authorized follow-up above; ascending remains the default |
-| Facet field titles and configurable headers | Basic visibility/number format authorized above; field titles remain unsupported |
+| Custom facet ordering | Working: ascending, descending, and explicit arrays |
+| Facet field titles and configurable headers | Visibility and numeric formatting work; field titles remain unsupported |
 | Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
 | Rulers in repeated cells | Fixed; one controller uses the pointed cell and retains drag projection |
 | Hover transitions after layout refresh | Fixed; facet tuples are compared by value |

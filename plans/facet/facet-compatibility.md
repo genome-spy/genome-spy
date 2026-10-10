@@ -21,6 +21,18 @@ Precomputed category fields suffice; bin/time-unit syntax, encoding macros,
 per-cell parameter runtimes, and advanced layout/configuration are also outside
 scope. Dynamic dataflow branches and optimizer improvements are unnecessary.
 
+### Completed small compatibility follow-up
+
+The subsequently authorized additions are complete: ascending/descending and
+explicit category ordering, `header: null`/`labels: false` with reclaimed space,
+numeric `header.format`, and separate row/column `spacing`. Matrix ordering
+preserves input order for unlisted categories even with interleaved rows.
+These options retain one child and the static batched flow. Field titles,
+general header styling, independent domains, and outer axes remain deferred.
+The [main plan](facet-plan.md#small-compatibility-additions-authorized-follow-up)
+records individual milestones, verification, and the net +110 runtime-line
+measurement against `70533c581`.
+
 ## Independent review: baseline correctness findings (resolved)
 
 A read-only subagent review inspected the accumulated branch and ran focused
@@ -225,7 +237,7 @@ and blank lines. The consolidation commit (`fae42612a`, compared with
 fix pass through `a06f1134f`, compared with the plan commit `6e1537b6e`, adds
 140/deletes 87: **net +53 production lines**, including necessary validation,
 controller cleanup, ruler routing, hover equality, and header-update checks.
-The final branch compared with master `e35d3bee9` adds 1,397/deletes 752:
+The review-completion baseline compared with master `e35d3bee9` adds 1,397/deletes 752:
 **net +645 production lines** across 34 runtime files. These are branch deltas;
 master contains an inactive old FacetView. The completion pass does not add
 per-cell view/dataflow/controller instances.
