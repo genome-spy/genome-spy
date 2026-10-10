@@ -1,7 +1,6 @@
 import { InternMap } from "internmap";
-import { bisector, group } from "d3-array";
+import { bisector } from "d3-array";
 import { compare, splitAccessPath } from "vega-util";
-import iterateNestedMaps from "../utils/iterateNestedMaps.js";
 import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
 import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
@@ -179,7 +178,7 @@ export default class Collector extends FlowNode {
             const groups = groupData(data, accessors);
 
             this.facetBatches.clear();
-            for (const [key, data] of iterateNestedMaps(groups)) {
+            for (const [key, data] of groups) {
                 this.facetBatches.set(key, data);
             }
         }
@@ -603,30 +602,32 @@ function iterateFacetBatchData(batches) {
  * @param {((data: Datum) => import("../spec/channel.js").Scalar)[]} accessors
  */
 function groupData(data, accessors) {
-    return accessors.length > 1
-        ? // There's something strange in d3-array's typings
-          /** @type {Map<any, any>} */ /** @type {any} */ (
-              group(data, ...accessors)
-          )
-        : // D3's group is SLOW!
-          groupBy(data, accessors[0]);
-}
+    // Keep first-occurrence order across compound keys, so facet column order
+    // does not depend on which row category was encountered first.
+    const root = new Map();
+    /** @type {[import("../spec/channel.js").Scalar[], Data][]} */
+    const groups = [];
+    const parentAccessors = accessors.slice(0, -1);
+    const lastAccessor = accessors.at(-1);
 
-/**
- * Like D3's group but without InternMap, which is slow.
- * TODO: Implement multi-level grouping
- *
- * @param {Iterable<Datum>} data
- * @param {(data: Datum) => import("../spec/channel.js").Scalar} accessor
- */
-function groupBy(data, accessor) {
-    const groups = new Map();
     for (const datum of data) {
-        const key = accessor(datum);
-        let group = groups.get(key);
+        let node = root;
+        for (const accessor of parentAccessors) {
+            const key = accessor(datum);
+            let next = node.get(key);
+            if (!next) {
+                next = new Map();
+                node.set(key, next);
+            }
+            node = next;
+        }
+
+        const key = lastAccessor(datum);
+        let group = node.get(key);
         if (!group) {
             group = [];
-            groups.set(key, group);
+            node.set(key, group);
+            groups.push([accessors.map((accessor) => accessor(datum)), group]);
         }
         group.push(datum);
     }

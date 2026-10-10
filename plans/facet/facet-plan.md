@@ -67,6 +67,14 @@ revision recorded in [facet-compatibility.md](facet-compatibility.md). Adopt
 the small public contracts, without copying compiler code. Aggregate/field
 sorts, time formatting, arbitrary header styling, and `labelExpr` remain deferred.
 
+Final inspection found that nested collector grouping visits all combinations
+of the first row category before the next row. This can change the encounter
+order of unlisted column values in an explicit sort array. Preserve group
+first-occurrence order during grouping with one Map traversal; keep the existing
+batch publication, membership, and file provenance contracts. Extend the real
+matrix regression with interleaved rows and verify the collector/dataflow suite.
+Record this correction in a separate `fix(core)` commit.
+
 Category repetition, supported child transforms, shared legends, picking,
 tooltips, and shared-scale navigation are implemented through one static child
 subtree. The independent simplification review's correctness issues are fixed,

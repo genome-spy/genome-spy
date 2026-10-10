@@ -457,6 +457,8 @@ test("matrix sorting applies independently and follows replacement input order",
             data: {
                 values: [
                     { r: "A", c: 2 },
+                    { r: "B", c: 3 },
+                    { r: "A", c: 4 },
                     { r: "B", c: 1 },
                 ],
             },
@@ -472,8 +474,12 @@ test("matrix sorting applies independently and follows replacement input order",
     expect(Array.from(view.child.facetCoords.keys())).toEqual([
         ["B", 1],
         ["B", 2],
+        ["B", 3],
+        ["B", 4],
         ["A", 1],
         ["A", 2],
+        ["A", 3],
+        ["A", 4],
     ]);
 
     const source =

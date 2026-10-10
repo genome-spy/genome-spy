@@ -8,7 +8,8 @@ scrollable viewports. Cell titles, backgrounds, guide layering, clipping, and
 visible-cell culling follow the existing layout rules.
 
 Facet fields support ascending, descending, and explicit category order with
-`sort`. Explicit arrays order present values without creating absent categories.
+`sort`. Explicit arrays order present values without creating absent categories;
+unlisted values retain input order even when matrix rows are interleaved.
 Set a facet field's `header` to `null` or `{ "labels": false }` to hide category
 labels and reclaim their space.
 Numeric category labels support D3 number formatting through `header.format`.
