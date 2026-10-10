@@ -163,20 +163,6 @@ export function getFacetCellLayouts(
 }
 
 /**
- * @param {Rectangle} rect
- * @param {{ rect: Rectangle } | undefined} clip
- * @returns {boolean}
- */
-export function isRectVisible(rect, clip) {
-    if (!clip) {
-        return true;
-    }
-
-    const visible = rect.intersect(clip.rect);
-    return visible.isDefined() && visible.width > 0 && visible.height > 0;
-}
-
-/**
  * @param {FacetFactors} factors
  * @param {number | undefined} columns
  * @returns {FacetGrid}

@@ -14,7 +14,6 @@ import {
     createFacetGrid,
     getFacetCellLayouts,
     getFacetGridSize,
-    isRectVisible,
 } from "./facetLayout.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import Padding from "./layout/padding.js";
@@ -652,14 +651,6 @@ test("facet layout creates row-only facets", () => {
     ]);
 });
 
-test("facet layout culls rectangles outside a clip", () => {
-    const clip = { rect: Rectangle.create(0, 0, 10, 10) };
-
-    expect(isRectVisible(Rectangle.create(20, 20, 5, 5), clip)).toBe(false);
-    expect(isRectVisible(Rectangle.create(8, 8, 5, 5), clip)).toBe(true);
-    expect(isRectVisible(Rectangle.create(20, 20, 5, 5), undefined)).toBe(true);
-});
-
 test("facet size grows with wrapped facet count", async () => {
     const twoFacetView = await createAndInitialize(
         createFixedSizeFacetSpec(["I", "II"]),
@@ -775,35 +766,42 @@ test("facet render marks only first visible cell as first facet", async () => {
     ]);
 });
 
-test("facet render culls cells outside the clip rectangle", async () => {
-    const view = await createAndInitialize(
-        createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
-        FacetView
-    );
-    const original = view.child.arrange.bind(view.child);
-    /** @type {unknown[]} */
-    const facetIds = [];
+test.each([
+    { clipX: true, clipY: true, visible: ["I"] },
+    { clipX: false, clipY: true, visible: ["I", "II"] },
+    { clipX: true, clipY: false, visible: ["I", "III"] },
+])(
+    "facet culling respects clip directions: $clipX/$clipY",
+    async ({ clipX, clipY, visible }) => {
+        const view = await createAndInitialize(
+            createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
+            FacetView
+        );
+        const original = view.child.arrange.bind(view.child);
+        /** @type {unknown[]} */
+        const facetIds = [];
 
-    view.child.arrange = (context, coords, options = {}) => {
-        facetIds.push(options.facetId);
-        return original(context, coords, options);
-    };
+        view.child.arrange = (context, coords, options = {}) => {
+            facetIds.push(options.facetId);
+            return original(context, coords, options);
+        };
 
-    view.arrange(
-        new DebugginViewRenderingContext({}),
-        Rectangle.create(0, 0, 210, 166),
-        {
-            firstFacet: true,
-            clip: {
-                rect: Rectangle.create(0, 0, 210, 80),
-                clipX: true,
-                clipY: true,
-            },
-        }
-    );
+        view.arrange(
+            new DebugginViewRenderingContext({}),
+            Rectangle.create(0, 0, 210, 166),
+            {
+                firstFacet: true,
+                clip: {
+                    rect: Rectangle.create(0, 0, 100, 80),
+                    clipX,
+                    clipY,
+                },
+            }
+        );
 
-    expect(facetIds).toEqual([["I"], ["II"]]);
-});
+        expect(facetIds).toEqual(visible.map((id) => [id]));
+    }
+);
 
 test("anscombe wrapped facet example renders stable cell layout", async () => {
     const spec = loadSharedExampleSpec(

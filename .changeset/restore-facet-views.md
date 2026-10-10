@@ -4,4 +4,5 @@
 
 Add `facet` composition for displaying data groups as wrapped columns or a
 row/column matrix, with shared scales and axes, group labels, and scrollable
-viewports. Independent per-facet scales and axes are not supported.
+viewports. Facet culling respects clipping in either or both directions.
+Independent per-facet scales and axes are not supported.

@@ -4,12 +4,15 @@ import {
     createFacetGrid,
     getFacetCellLayouts,
     getFacetGridSize,
-    isRectVisible,
 } from "./facetLayout.js";
 import FacetHeaderView from "./facetHeaderView.js";
 import GridChild from "./gridView/gridChild.js";
+import { translateAxisCoords } from "./gridView/gridView.js";
 import { ZERO_FLEXDIMENSIONS } from "./layout/flexLayout.js";
-import { normalizeClipOptions } from "./renderingContext/clipOptions.js";
+import {
+    clipCoords,
+    normalizeClipOptions,
+} from "./renderingContext/clipOptions.js";
 import UnitView from "./unitView.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 
@@ -223,9 +226,12 @@ export default class FacetView extends ContainerView {
             context.getDevicePixelRatio()
         );
         const parentClip = normalizeClipOptions(options);
-        const visibleLayouts = layouts.filter((layout) =>
-            isRectVisible(layout.viewportCoords, parentClip)
-        );
+        const visibleLayouts = layouts.filter((layout) => {
+            const visible = clipCoords(layout.viewportCoords, parentClip);
+            return (
+                visible.isDefined() && visible.width > 0 && visible.height > 0
+            );
+        });
 
         for (const [index, layout] of visibleLayouts.entries()) {
             this.#renderFacetCell(context, layout, {
@@ -399,54 +405,6 @@ class FacetGridChild extends GridChild {
      */
     getAxisResolutionForAxis(channel) {
         return this.view.getAxisResolution(channel);
-    }
-}
-
-/**
- * @param {import("./layout/rectangle.js").default} coords
- * @param {import("../spec/axis.js").AxisOrient} orient
- * @param {import("./axisView.js").default} axisView
- */
-function translateAxisCoords(coords, orient, axisView) {
-    const props = axisView.axisProps;
-    const perpendicularSize = axisView.getPerpendicularSize();
-    const inside = props.placement === "inside";
-    const offset = props.offset ?? 0;
-
-    if (orient === "bottom") {
-        return inside
-            ? coords
-                  .translate(0, coords.height - perpendicularSize - offset)
-                  .modify({
-                      height: perpendicularSize,
-                  })
-            : coords.translate(0, coords.height + offset).modify({
-                  height: perpendicularSize,
-              });
-    } else if (orient === "top") {
-        return inside
-            ? coords.translate(0, offset).modify({ height: perpendicularSize })
-            : coords.translate(0, -perpendicularSize - offset).modify({
-                  height: perpendicularSize,
-              });
-    } else if (orient === "left") {
-        return inside
-            ? coords.translate(offset, 0).modify({ width: perpendicularSize })
-            : coords.translate(-perpendicularSize - offset, 0).modify({
-                  width: perpendicularSize,
-              });
-    } else if (orient === "right") {
-        return inside
-            ? coords
-                  .translate(coords.width - perpendicularSize - offset, 0)
-                  .modify({
-                      width: perpendicularSize,
-                  })
-            : coords.translate(coords.width + offset, 0).modify({
-                  width: perpendicularSize,
-              });
-    } else {
-        throw new Error("Invalid axis orientation: " + orient);
     }
 }
 
