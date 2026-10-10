@@ -1,0 +1,58 @@
+{
+  "description": [
+    "Five H3K27ac BigWigs",
+    "Using the facet operator to create a multi-track view of the same region across multiple samples."
+  ],
+
+  "data": {
+    "lazy": {
+      "type": "bigwig",
+      "url": {
+        "template": "https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/bigwigs/{sample}.bigWig",
+        "values": [
+          "forebrain-e12-5-rep1",
+          "forebrain-e12-5-rep2",
+          "heart-e12-5-rep1",
+          "heart-e12-5-rep2",
+          "limb-e12-5-rep1"
+        ],
+        "field": "sample"
+      }
+    }
+  },
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr10", "pos": 82400000 },
+        { "chrom": "chr10", "pos": 92400000 }
+      ],
+      "assembly": "mm10"
+    }
+  },
+
+  "facet": {
+    "row": {
+      "field": "sample",
+      "header": { "style": "overlay-title", "offset": 0, "dx": 5 }
+    }
+  },
+  "spec": {
+    "mark": { "type": "rect", "color": "#4c78a8", "minWidth": 0.5 },
+    "encoding": {
+      "x": {
+        "chrom": "chrom",
+        "pos": "start",
+        "type": "locus",
+        "axis": { "grid": true, "chromGrid": true }
+      },
+      "x2": { "chrom": "chrom", "pos": "end" },
+      "y": {
+        "field": "score",
+        "type": "quantitative",
+        "scale": { "zero": true },
+        "axis": { "title": null, "tickCount": 2, "labelFlush": true }
+      }
+    }
+  }
+}

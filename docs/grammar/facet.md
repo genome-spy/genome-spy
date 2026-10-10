@@ -4,12 +4,48 @@ The `facet` operator repeats one child view for groups of data. A shorthand
 facet field creates column facets, and a `row`/`column` mapping creates a facet
 matrix.
 
+## Basic Examples
+
+### Wrapped Plots
+
 EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json
 
 !!! disclaimer ""
 
     Data: Anscombe's quartet, served unchanged from
     [vega-datasets](https://github.com/vega/vega-datasets).
+
+### Genomic Tracks
+
+This example repeats a signal track for five samples. A
+[BigWig URL template](data/multi-url.md#lazy-bigwig-files) loads each sample's
+data and attaches its identifier to the records. The row facet uses that
+identifier to separate the tracks, which share a genomic x-axis. Headers use
+the `overlay-title` style to place sample labels inside each plot.
+
+EXAMPLE examples/docs/grammar/facet/multi-url-bigwig.json height=350
+
+!!! disclaimer ""
+
+    These regional BigWigs retain H3K27ac values from [five released ENCODE
+    files](https://www.encodeproject.org/search/?type=File&accession=ENCFF549YDI&accession=ENCFF539MQF&accession=ENCFF587ZRD&accession=ENCFF724HYE&accession=ENCFF896KSI)
+    produced by the Bing Ren laboratory for [Gorkin et al.
+    (2020)](https://doi.org/10.1038/s41586-020-2093-3). Only the displayed 10 Mb
+    mm10 region was retained.
+
+!!! note "Sample Collections in GenomeSpy App"
+
+    For very large datasets, GenomeSpy App's
+    [sample views](../sample-collections/visualizing.md#specifying-a-sample-view)
+    provide more efficient rendering and interactions than general-purpose facets.
+    Sample views can combine layers with different data sources and partition
+    each layer by its `sample` channel. A `facet` partitions one shared input;
+    a layer with its own `data` repeats its result in every cell.
+    The App also displays
+    [sample-specific metadata](../sample-collections/metadata-sources.md) alongside
+    the tracks and supports interactive sorting, filtering, and grouping of samples.
+    The [App BigWig example](data/multi-url.md#app-example) shows the same five
+    signal tracks using a sample view.
 
 ## Properties
 
@@ -110,8 +146,9 @@ Cell membership comes from the input after the outer transforms. A child filter
 can leave an empty cell, and an ungrouped count aggregate in that cell produces
 zero. An outer filter removes groups before cells are created.
 
-A child with its own `data` uses that dataset in every cell. Lookup tables also
-retain their own data scope.
+A child or layer with its own `data` repeats its result in every cell, even if
+the dataset contains the facet fields. That dataset is not partitioned by the
+surrounding facet. Lookup tables retain their own data scope.
 
 ## Interactions
 
