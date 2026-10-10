@@ -66,7 +66,8 @@ export type ChannelWithoutScale =
 
 export type Channel = ChannelWithScale | ChannelWithoutScale;
 
-export type FacetFieldDef = FieldDefWithoutScale;
+/** A category field whose values are used as facet labels. */
+export type FacetFieldDef = FieldDefBase;
 
 // TODO: Belongs to "guide"
 export interface TitleMixins {

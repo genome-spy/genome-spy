@@ -203,6 +203,15 @@ test("facet rejects an immediate nested facet child", async () => {
     ).rejects.toThrow("Facet specs cannot contain an immediate facet child.");
 });
 
+test.each([
+    { field: "g", title: "Group" },
+    { row: { field: "g", title: null } },
+])("facet rejects unused field titles (%j)", async (facet) => {
+    await expect(
+        createAndInitialize({ facet, spec: { mark: "point" } }, FacetView)
+    ).rejects.toThrow("Facet field titles are not supported.");
+});
+
 test.each(
     /** @type {const} */ ([
         ["scale", "color"],

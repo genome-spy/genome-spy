@@ -50,6 +50,10 @@ domains, legends, and axes are not supported and produce an error. Layers inside
 the repeated plot can still use independent non-positional scales; each layer's
 scale spans all facet cells.
 
+Category values are used as labels in ascending order. Facet field `title`
+and configurable headers are not supported. A `title` on the repeated child
+still titles each plot.
+
 The `columns` property wraps one-dimensional column facets only. It cannot be
 used together with `facet.row`.
 

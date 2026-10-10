@@ -171,3 +171,7 @@ blocks this acceptance.
   facet boundary, including default declarations. Layers retain independent
   non-positional scales whose domains span cells; a real-spec test verifies
   their distinct color domains. Positional independence remains rejected.
+- Field titles: narrowed FacetFieldDef to its field/description contract and
+  reject title declarations at runtime. Category value labels and repeated
+  child titles remain supported. Schema and real-spec tests cover shorthand
+  and mapped facet definitions without growing header configuration.

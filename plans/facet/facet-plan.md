@@ -47,7 +47,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Independent positional scale domains | Unsupported and rejected; intentionally outside the current scope |
 | Independent non-positional scales and legends per cell | Unsupported and rejected; layer independence remains supported |
 | Custom facet ordering | Optional; ascending factor order is sufficient for the current scope |
-| Facet field titles and configurable headers | General header API is optional; unused schema-supported `title` needs a clear contract |
+| Facet field titles and configurable headers | Outside scope; field titles are rejected and excluded from the schema |
 | Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
 | Rulers in repeated cells | Fixed; one controller uses the pointed cell and retains drag projection |
 | Hover transitions after layout refresh | Fixed; facet tuples are compared by value |
@@ -148,7 +148,7 @@ completion pass.
   supported viewport on the facet container.
 - [x] Reject unsupported per-cell non-positional scale/legend resolution with a
   clear error. Preserve legitimate independence between layers.
-- [ ] Resolve the unused facet field `title` contract without adding a general
+- [x] Resolve the unused facet field `title` contract without adding a general
   header API: use existing title machinery if small, or narrow the facet type.
 - [ ] Consolidate point-to-cell projection, remove unused layout parameters,
   avoid redundant clipping/copies, and trim implementation-detail test overlap

@@ -34,3 +34,5 @@ Unsupported child viewports fail with an error directing authors to put the
 viewport on the facet container.
 Independent per-cell scales and legends fail clearly, while layers can retain
 separate non-positional scales shared across cells.
+Facet field titles are excluded from the schema and rejected at runtime;
+category values provide the labels.

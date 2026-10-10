@@ -24,8 +24,8 @@ import { propagateInteraction } from "./interactionRouting.js";
  * @typedef {"row" | "column"} FacetChannel
  *
  * @typedef {object} NormalizedFacet
- * @prop {import("../spec/channel.js").FieldDefWithoutScale | undefined} row
- * @prop {import("../spec/channel.js").FieldDefWithoutScale | undefined} column
+ * @prop {import("../spec/channel.js").FacetFieldDef | undefined} row
+ * @prop {import("../spec/channel.js").FacetFieldDef | undefined} column
  * @prop {string[]} fields Collector groupby fields in facetId tuple order.
  *
  * @typedef {object} FacetFactors
@@ -468,14 +468,14 @@ function compareScalars(a, b) {
  * @returns {NormalizedFacet}
  */
 function normalizeFacetSpec(spec) {
-    /** @type {import("../spec/channel.js").FieldDefWithoutScale | undefined} */
+    /** @type {import("../spec/channel.js").FacetFieldDef | undefined} */
     let row;
-    /** @type {import("../spec/channel.js").FieldDefWithoutScale | undefined} */
+    /** @type {import("../spec/channel.js").FacetFieldDef | undefined} */
     let column;
     const facet = spec.facet;
 
     if (isFacetFieldDef(facet)) {
-        column = facet;
+        column = normalizeFacetFieldDef(facet, "column");
     } else if (isFacetMapping(facet)) {
         row = normalizeFacetFieldDef(facet.row, "row");
         column = normalizeFacetFieldDef(facet.column, "column");
@@ -511,7 +511,7 @@ function normalizeFacetSpec(spec) {
 /**
  * @param {unknown} fieldDef
  * @param {FacetChannel} channel
- * @returns {import("../spec/channel.js").FieldDefWithoutScale | undefined}
+ * @returns {import("../spec/channel.js").FacetFieldDef | undefined}
  */
 function normalizeFacetFieldDef(fieldDef, channel) {
     if (fieldDef === undefined) {
@@ -520,6 +520,12 @@ function normalizeFacetFieldDef(fieldDef, channel) {
 
     if (!isFacetFieldDef(fieldDef)) {
         throw new Error(`Facet ${channel} definition must define a field.`);
+    }
+
+    if ("title" in fieldDef) {
+        throw new Error(
+            "Facet field titles are not supported. Category values are used as labels."
+        );
     }
 
     return fieldDef;
