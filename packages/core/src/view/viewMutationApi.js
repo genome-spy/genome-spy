@@ -396,7 +396,7 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
     }
 
     /**
-     * @param {{ mark: { unitView: import("./view.js").default }, datum: Record<string, unknown>, uniqueId: number }} hit
+     * @param {import("../types/interactionApi.js").InternalMarkHit} hit
      * @returns {import("../types/embedApi.js").MarkHit}
      */
     function toPublicMarkHit(hit) {
@@ -405,6 +405,9 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
         return {
             view: getHandle(hit.mark.unitView),
             uniqueId: hit.uniqueId,
+            ...(hit.facetId === undefined
+                ? {}
+                : { facetId: hit.facetId.slice() }),
             datum,
         };
     }

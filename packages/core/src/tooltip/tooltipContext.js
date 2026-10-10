@@ -33,9 +33,10 @@ const linearizationMappingCache = new WeakMap();
  * @param {Record<string, any>} datum
  * @param {import("../marks/mark.js").default} mark
  * @param {import("./tooltipHandler.js").TooltipHandlerParams} [params]
+ * @param {import("../spec/channel.js").Scalar[]} [facetId]
  * @returns {TooltipContext}
  */
-export default function createTooltipContext(datum, mark, params) {
+export default function createTooltipContext(datum, mark, params, facetId) {
     const mappingByLinearizedField = getLinearizationMappings(mark);
 
     const xGenomic = buildGenomicRowsForAxis(
@@ -89,6 +90,7 @@ export default function createTooltipContext(datum, mark, params) {
     }
 
     return {
+        facetId: facetId?.slice(),
         tooltipRows: getConfiguredTooltipRows(datum, mark),
         hiddenRowKeys: [...hiddenRowKeys],
         genomicRows,

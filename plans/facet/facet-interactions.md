@@ -61,7 +61,7 @@ and pan distance).
 
 - [x] Click and point selection reach the correct cell/layer with facet identity.
 - [x] Enter/leave transitions use the correct old/new cell, including canvas exit.
-- [ ] Picking and tooltips resolve marks in later cells and repeated own datasets.
+- [x] Picking and tooltips resolve marks in later cells and repeated own datasets.
 - [ ] Shared scales zoom/pan once per gesture using the pointed cell's bounds.
 - [ ] Clipped cells and facet headers/gaps do not acquire a child target.
 - [ ] Scrolled facets retain correct picking and gestures; drag-scroll and
@@ -83,3 +83,12 @@ the outer grid wrapper does not install a duplicate facet brush. Dispatcher
 hover paths now use one map of views to facet tuples instead of a redundant
 array/set pair. Focused tests cover layers, stops, tuple transitions, headers,
 gaps, clipping, and a brush started in the second cell.
+
+Picking milestone: collector indexing now skips empty leading batches, which
+otherwise prevented inherited facet data from being picked. Hits and custom
+tooltip contexts include `facetId`; public hits copy the tuple. Shared datum
+occurrences have distinct hover/tooltip identity, and stale asynchronous tooltip
+results cannot replace a newer cell's content. Real laid-out collector tests
+cover inherited and child-owned datasets through explicit picking, public hit
+conversion, hover notifications, and tooltip content. Existing asynchronous
+picking and scoped interaction tests remain passing.

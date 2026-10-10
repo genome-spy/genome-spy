@@ -390,6 +390,9 @@ export interface MarkHit {
     /** Picking identifier for the mark in the current rendered scene. */
     readonly uniqueId: number;
 
+    /** Facet tuple in row/column order, or undefined outside a facet cell. */
+    readonly facetId?: readonly Scalar[];
+
     /** Data row associated with the mark, without the internal picking id. */
     readonly datum: Readonly<Record<string, unknown>>;
 }

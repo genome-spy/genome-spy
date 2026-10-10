@@ -429,7 +429,7 @@ export default class Collector extends FlowNode {
         this.#facetIndices = [];
 
         /** @type {Datum} */
-        const obj = this.facetBatches.values().next().value?.[0];
+        const obj = this.facetBatches.values().find((data) => data.length)?.[0];
         if (obj == null || !(UNIQUE_ID_KEY in obj)) {
             return; // No unique ids in the data
         }

@@ -22,6 +22,7 @@ export interface MarkRenderingDebugState {
 export interface Hover {
     mark: Mark;
     datum: Datum;
+    facetId?: import("../spec/channel.js").Scalar[];
 }
 
 export type DataLoadingStatus = "loading" | "complete" | "error";

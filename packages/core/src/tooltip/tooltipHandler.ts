@@ -2,11 +2,7 @@ import { TemplateResult } from "lit";
 import Mark from "../marks/mark.js";
 
 export type TooltipGenomicDisplayMode =
-    | "auto"
-    | "locus"
-    | "interval"
-    | "endpoints"
-    | "disabled";
+    "auto" | "locus" | "interval" | "endpoints" | "disabled";
 
 export interface TooltipGenomicAxisConfig {
     mode?: TooltipGenomicDisplayMode;
@@ -27,6 +23,9 @@ export interface TooltipRow {
 }
 
 export interface TooltipContext {
+    /** Facet tuple in row/column order, or undefined outside a facet cell. */
+    readonly facetId?: readonly import("../spec/channel.js").Scalar[];
+
     /**
      * Rows selected by `encoding.tooltip`. If undefined, the default tooltip
      * handler uses flattened datum rows.

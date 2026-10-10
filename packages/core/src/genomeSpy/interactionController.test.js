@@ -118,7 +118,7 @@ function createPickingHarness({
     const pickerUnitView = Object.create(UnitView.prototype);
     pickerUnitView.mark = mark;
     pickerUnitView.facetCoords = new Map([
-        ["facet", { containsPoint: () => true }],
+        [undefined, { containsPoint: () => true }],
     ]);
     pickerUnitView.getLayoutAncestors = () => [scope];
     pickerUnitView.getCollector = () => ({
@@ -267,7 +267,7 @@ describe("InteractionController", () => {
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
             [
-                "facet",
+                undefined,
                 /** @type {{ containsPoint: () => boolean }} */ ({
                     containsPoint: () => true,
                 }),
@@ -415,7 +415,7 @@ describe("InteractionController", () => {
         const pickerUnitView = Object.create(UnitView.prototype);
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
-            ["facet", { containsPoint: () => true }],
+            [undefined, { containsPoint: () => true }],
         ]);
         pickerUnitView.getCollector = () => ({
             findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
@@ -787,7 +787,7 @@ describe("InteractionController", () => {
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
             [
-                "facet",
+                undefined,
                 /** @type {{ containsPoint: () => boolean }} */ ({
                     containsPoint: () => true,
                 }),
@@ -1197,7 +1197,7 @@ describe("InteractionController", () => {
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
             [
-                "facet",
+                undefined,
                 /** @type {{ containsPoint: () => boolean }} */ ({
                     containsPoint: () => true,
                 }),
@@ -1429,7 +1429,7 @@ describe("InteractionController", () => {
         const pickerUnitView = Object.create(UnitView.prototype);
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
-            ["facet", { containsPoint: () => true }],
+            [undefined, { containsPoint: () => true }],
         ]);
         pickerUnitView.getCollector = () => ({
             findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
@@ -1540,7 +1540,7 @@ describe("InteractionController", () => {
         const pickerUnitView = Object.create(UnitView.prototype);
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
-            ["facet", { containsPoint: () => true }],
+            [undefined, { containsPoint: () => true }],
         ]);
         pickerUnitView.getCollector = () => ({
             findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
@@ -1624,7 +1624,7 @@ describe("InteractionController", () => {
         const pickerUnitView = Object.create(UnitView.prototype);
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
-            ["facet", { containsPoint: () => true }],
+            [undefined, { containsPoint: () => true }],
         ]);
         pickerUnitView.getCollector = () => ({
             findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
@@ -1722,7 +1722,7 @@ describe("InteractionController", () => {
         const pickerUnitView = Object.create(UnitView.prototype);
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
-            ["facet", { containsPoint: () => true }],
+            [undefined, { containsPoint: () => true }],
         ]);
         pickerUnitView.getCollector = () => ({
             findDatumByUniqueId: (/** @type {number} */ uniqueId) =>

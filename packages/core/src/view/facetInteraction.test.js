@@ -7,14 +7,112 @@ import Rectangle from "./layout/rectangle.js";
 import InteractionDispatcher from "../genomeSpy/interactionDispatcher.js";
 import DebuggingViewRenderingContext from "./renderingContext/debuggingViewRenderingContext.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import InteractionController from "../genomeSpy/interactionController.js";
+import Tooltip from "../utils/ui/tooltip.js";
+import { createViewMutationApi } from "./viewMutationApi.js";
 
 /** @type {ConcatView[]} */
 const roots = [];
+/** @type {(() => void)[]} */
+const disposers = [];
 afterEach(() => {
+    disposers.splice(0).forEach((dispose) => dispose());
     roots.forEach((root) => root.disposeSubtree());
     roots.length = 0;
     vi.restoreAllMocks();
 });
+
+test.each([false, true])(
+    "picking and tooltips retain the pointed cell (child-owned data: %s)",
+    async (ownData) => {
+        const { root, facet, child } = await createFacet({
+            spec: {
+                width: 100,
+                height: 60,
+                ...(ownData
+                    ? { data: { values: [{ label: "repeated", x: 5 }] } }
+                    : {}),
+                mark: { type: "point", tooltip: { handler: "cell" } },
+            },
+        });
+        const unit = /** @type {import("./unitView.js").default} */ (child);
+        const canvas = document.createElement("canvas");
+        Object.defineProperties(canvas, {
+            clientWidth: { value: 1000 },
+            clientHeight: { value: 1000 },
+        });
+        const tooltipContainer = document.createElement("div");
+        const tooltip = new Tooltip(tooltipContainer);
+        tooltip.mouseCoords = [0, 0];
+        const rows = Array.from(unit.getCollector().getData());
+        let pickedId = 0;
+        const controller = new InteractionController({
+            viewRoot: root,
+            canvas,
+            tooltip,
+            animator: root.context.animator,
+            emitEvent() {},
+            tooltipHandlers: {
+                cell: async (datum, mark, params, context) =>
+                    `${context.facetId[0]}: ${datum.x}`,
+            },
+            renderPickingFramebuffer() {},
+            readPickingId: () => pickedId,
+        });
+        vi.spyOn(root.context, "getCurrentHover").mockImplementation(() =>
+            controller.getCurrentHover()
+        );
+        const now = vi.spyOn(performance, "now").mockReturnValue(0);
+        disposers.push(controller.registerInteractionEvents());
+        now.mockReturnValue(1000);
+        // Tooltip movement penalties are orthogonal to cell picking/content.
+        vi.spyOn(tooltip, "handleMouseMove").mockImplementation(() => {});
+        const hover = vi.fn();
+        controller.subscribeHover(facet, hover);
+        const api = createViewMutationApi({
+            viewRoot: root,
+            pick: controller.pick.bind(controller),
+        });
+        for (const g of ["A", "B"]) {
+            const datum = ownData ? rows[0] : rows.find((row) => row.g === g);
+            pickedId = datum[UNIQUE_ID_KEY];
+            const point = pointIn(child.facetCoords.get([g]));
+            const hit = await controller.pick(point, facet);
+            expect(hit).toMatchObject({
+                status: "hit",
+                hit: { datum, facetId: [g] },
+            });
+            const publicPick = await api.root().marks.pick(point);
+            expect(publicPick).toMatchObject({
+                status: "hit",
+                hit: { facetId: [g] },
+            });
+            if (publicPick.status === "hit") {
+                expect(publicPick.hit.facetId).not.toBe(
+                    child.facetCoords.keys().find((id) => id[0] === g)
+                );
+            }
+            canvas.dispatchEvent(
+                new MouseEvent("mousemove", {
+                    clientX: point.x,
+                    clientY: point.y,
+                })
+            );
+            await vi.waitFor(() =>
+                expect(tooltipContainer.textContent).toBe(`${g}: ${datum.x}`)
+            );
+            expect(hover.mock.lastCall[0]).toMatchObject({
+                datum,
+                facetId: [g],
+            });
+        }
+        // The same datum in a second cell is still a new hover occurrence.
+        expect(hover).toHaveBeenCalledTimes(3);
+        expect(await controller.pick(new Point(105, 30))).toEqual({
+            status: "empty",
+        });
+    }
+);
 
 /** @param {Partial<import("../spec/view.js").FacetSpec>} [overrides] */
 async function createFacet(overrides = {}) {
@@ -189,7 +287,6 @@ test.each(["click", "mouseover"])(
             getHover.mockReturnValue({
                 mark: unit.mark,
                 datum,
-                uniqueId: datum[UNIQUE_ID_KEY],
             });
             dispatcher.dispatch(
                 pointIn(child.facetCoords.get([g])),

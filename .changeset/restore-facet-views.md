@@ -17,5 +17,6 @@ Independent positional scales and axes, unsupported placement transforms, and
 explicit `collect.groupby` on inherited facet data fail with clear errors.
 Wrapping column counts must be positive integers. Pointer events and point
 selections route into the pointed facet cell, and shared interval brushes use
-that cell's plot bounds. Picking/tooltips and shared-scale navigation still
-require verification.
+that cell's plot bounds. Picking and tooltips distinguish repeated cells even
+when they share the same datum. Mark hits and custom tooltip contexts expose a
+`facetId` tuple identifying the pointed cell.
