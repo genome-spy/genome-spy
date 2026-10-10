@@ -510,7 +510,7 @@ test("facet layout reflows only when factor membership changes", async () => {
     view.disposeSubtree();
 });
 
-test("facet factors include the union of differently filtered layers", async () => {
+test("facet factors retain input membership across differently filtered layers", async () => {
     const view = await createAndInitialize(
         {
             data: {
@@ -561,7 +561,7 @@ test("facet collector observers are disposed with the view", async () => {
         },
         FacetView
     );
-    const collector = getNonChromeUnitView(view).getCollector();
+    const collector = view.flowHandle.collector;
     const observerCount = collector.observers.size;
 
     view.getSize();

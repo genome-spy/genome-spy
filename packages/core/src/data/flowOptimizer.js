@@ -58,6 +58,8 @@ export function removeRedundantCloneTransforms(node, cloneRequired = false) {
 
 export function removeRedundantCollectors() {
     // TODO: Remove chained collectors, e.g., first collect and sort, then just collect
+    // Facet partition collectors are semantic boundaries: preserve empty input
+    // groups, physical shape transitions, and the owner used for reactive replay.
 }
 
 export function combineAndPullCollectorsUp() {

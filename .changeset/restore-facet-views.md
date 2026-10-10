@@ -16,3 +16,7 @@ Sampling applies its requested size independently to each facet.
 Pileup lane allocation restarts for each facet.
 Logical facet reductions and self-lookups span physical files while preserving
 row shapes through buffered transforms.
+Child transforms run independently within each facet, including aggregates that
+drop the facet fields. Child filters retain empty input cells; a child with its
+own dataset repeats that data in every cell. Unsupported placement transforms
+and explicit `collect.groupby` on inherited facet data fail with clear errors.

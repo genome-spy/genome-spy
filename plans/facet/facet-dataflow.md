@@ -124,8 +124,8 @@ their count stays constant as facet membership changes.
    chain for each key, or implement the unused `data/facetNode.js` subflow stub.
 2. Carry the facet tuple as batch metadata through the entire child flow.
    Terminal collectors retain that identity instead of regrouping by fields
-   that may have been removed or changed. Preserve explicit user `collect`
-   grouping as a separate, documented operation within the ambient partition.
+   that may have been removed or changed. Explicit user `collect.groupby` is
+   initially rejected until it can preserve the ambient partition separately.
 3. A buffering transform must either flush the old facet before forwarding the
    next facet boundary, or retain the boundary metadata and emit it with the
    corresponding output later. Its `groupby` subdivides the ambient facet.
@@ -251,13 +251,13 @@ physical files; a mixed lookup → window → aggregate regression verifies forw
 references, preserved row shapes, and independent results. Existing empty facets
 can aggregate to count zero. Focused transform checks and Core type checks pass.
 
-1. [ ] **Establish the static partition contract.** Update flow building, collector
+1. [x] **Establish the static partition contract.** Update flow building, collector
        preservation, and data-scope handling. Verify spec-to-collector aggregate,
        window, project, tuple facets, layered children, outer transform scope,
        overridden data, empty partitions, and heterogeneous file shapes. Resolve
        the observable compatibility decisions above before exposing behavior.
        Tentative commit: `fix(core): establish facet partitions before child transforms`.
-2. [ ] **Complete stateful transform support.** Adapt stack, sample, and pileup;
+2. [x] **Complete stateful transform support.** Adapt stack, sample, and pileup;
        audit coverage, self lookup, and retained placement transforms. Use mixed
        pipelines such as aggregate → stack and filter → window, and verify IDs
        remain unique. Preserve App mergeFacets and sample-count behavior. Document
@@ -271,6 +271,15 @@ can aggregate to count zero. Focused transform checks and Core type checks pass.
        between two and many facets. Measure grouping/replay cost and relevant SLOC;
        update user docs and the existing feature Changeset when behavior ships.
        Tentative commit: `test(core): cover facet transform replay and rendering`.
+
+The builder now inserts one grouped input collector per facet specification.
+Terminal collectors preserve batch identity. FacetView observes that input
+collector directly, removing the child-collector union and preserving empty
+cells. Spec-level tests cover tuple/layered pipelines, outer transforms, field
+edits, overridden data, parameter replay, foreign updates, heterogeneous files,
+global identifiers, constant graph size for 2 versus 50 facets, and disposal.
+Unaudited placement transforms and explicit collect grouping reject inherited
+facet data. Focused builder/layout/replay/App mergeFacets checks pass (75 tests).
 
 Review the shared batch/collector contract before proceeding to broader
 stateful support, then review final cross-subsystem integration. Commit the plan

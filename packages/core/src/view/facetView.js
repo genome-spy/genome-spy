@@ -1,7 +1,5 @@
 import ContainerView from "./containerView.js";
 import { shallowArrayEquals, asArray } from "../utils/arrayUtils.js";
-import { VISIT_SKIP } from "./view.js";
-import { isChromeView } from "./viewSelectors.js";
 import {
     DEFAULT_FACET_HEADER_SIZES,
     createFacetGrid,
@@ -19,7 +17,6 @@ import {
     clipCoords,
     normalizeClipOptions,
 } from "./renderingContext/clipOptions.js";
-import UnitView from "./unitView.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 
 /**
@@ -56,10 +53,8 @@ export default class FacetView extends ContainerView {
     /** @type {FacetFactors} */
     #facetFactors = { row: [], column: [] };
 
-    /** @type {Set<import("../data/collector.js").default>} */
-    #observedCollectors = new Set();
-
-    #hasPendingCollectors = false;
+    /** @type {import("../data/collector.js").default | undefined} */
+    #observedCollector;
 
     /**
      * @param {import("../spec/view.js").FacetSpec} spec
@@ -142,9 +137,9 @@ export default class FacetView extends ContainerView {
             return ZERO_FLEXDIMENSIONS;
         }
 
-        this.#syncFacetCollectors();
+        this.#syncFacetCollector();
 
-        if (this.#hasPendingCollectors) {
+        if (!this.#observedCollector?.completed) {
             return this.#getFacetGridSize();
         }
 
@@ -183,7 +178,7 @@ export default class FacetView extends ContainerView {
             return;
         }
 
-        this.#syncFacetCollectors();
+        this.#syncFacetCollector();
         context.pushView(this, coords);
 
         const layouts = getFacetCellLayouts(
@@ -239,48 +234,32 @@ export default class FacetView extends ContainerView {
         context.popView(this);
     }
 
-    #syncFacetCollectors() {
-        const hadPendingCollectors = this.#hasPendingCollectors;
-        this.#hasPendingCollectors = false;
-        let addedCollectors = false;
+    #syncFacetCollector() {
+        const collector = this.flowHandle?.collector;
+        if (!collector || collector === this.#observedCollector) {
+            return;
+        }
 
-        this.child.visit((view) => {
-            if (isChromeView(view)) {
-                return VISIT_SKIP;
-            }
-            if (view instanceof UnitView) {
-                const collector = view.getCollector();
-
-                if (!collector) {
-                    this.#hasPendingCollectors = true;
-                } else if (!this.#observedCollectors.has(collector)) {
-                    this.#observedCollectors.add(collector);
-                    addedCollectors = true;
-                    this.registerDisposer(
-                        collector.observe(() => {
-                            if (this.#updateFacetFactors()) {
-                                this.context.requestLayoutReflow();
-                            }
-                        })
-                    );
+        this.#observedCollector = collector;
+        this.registerDisposer(
+            collector.observe(() => {
+                if (this.#updateFacetFactors()) {
+                    this.context.requestLayoutReflow();
                 }
-            }
-        });
-
-        if (hadPendingCollectors && !this.#hasPendingCollectors) {
-            this.invalidateSizeCache();
-        }
-
-        if (addedCollectors) {
-            this.#updateFacetFactors();
-        }
+            })
+        );
+        this.#updateFacetFactors();
+        this.invalidateSizeCache();
     }
 
     /** @returns {boolean} Whether the row or column membership changed. */
     #updateFacetFactors() {
+        if (!this.#observedCollector.completed) {
+            return false;
+        }
         const factors = collectFacetFactors(
             this.#facet,
-            this.#observedCollectors
+            this.#observedCollector
         );
         if (
             shallowArrayEquals(factors.row, this.#facetFactors.row) &&
@@ -365,30 +344,25 @@ function createFacetHeaderData(orient, layouts, coords, grid, spacing) {
 
 /**
  * @param {NormalizedFacet} facet
- * @param {Iterable<import("../data/collector.js").default>} collectors
+ * @param {import("../data/collector.js").default} collector
  * @returns {FacetFactors}
  */
-function collectFacetFactors(facet, collectors) {
+function collectFacetFactors(facet, collector) {
     /** @type {Set<import("../spec/channel.js").Scalar>} */
     const row = new Set();
     /** @type {Set<import("../spec/channel.js").Scalar>} */
     const column = new Set();
 
-    for (const collector of collectors) {
-        if (!collector.completed) {
+    for (const key of collector.facetBatches.keys()) {
+        if (key === undefined) {
             continue;
         }
-        for (const key of collector.facetBatches.keys()) {
-            if (key === undefined) {
-                continue;
-            }
-            const facetId = asArray(key);
-            if (facet.row) {
-                row.add(facetId[0]);
-            }
-            if (facet.column) {
-                column.add(facetId.at(-1));
-            }
+        const facetId = asArray(key);
+        if (facet.row) {
+            row.add(facetId[0]);
+        }
+        if (facet.column) {
+            column.add(facetId.at(-1));
         }
     }
 
