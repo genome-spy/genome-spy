@@ -347,6 +347,64 @@ test("a brush in a later cell uses its own projection and stays anchored during 
     expect(child.facetCoords.size).toBe(3);
 });
 
+test.each([false, true])(
+    "rulers update once in the pointed cell and survive cell transitions (child-owned: %s)",
+    async (childOwned) => {
+        const params = [{ name: "cursor", ruler: { snap: false } }];
+        const { facet, child, dispatcher } = await createFacet({
+            params: childOwned ? [] : params,
+            spec: {
+                width: 100,
+                height: 60,
+                mark: "point",
+                params: childOwned ? params : [],
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        axis: null,
+                        scale: { domain: [0, 10] },
+                    },
+                },
+            },
+        });
+        const owner = childOwned ? child : facet;
+        const setValue = vi.spyOn(owner.paramRuntime, "setValue");
+        for (const g of ["B", "C"]) {
+            setValue.mockClear();
+            dispatcher.dispatch(
+                pointIn(child.facetCoords.get([g]), 0.2),
+                new MouseEvent("mousemove")
+            );
+            expect(setValue).toHaveBeenCalledOnce();
+            expect(owner.paramRuntime.findValue("cursor").values.x).toBeCloseTo(
+                2
+            );
+        }
+        dispatcher.handlePointerLeave(new MouseEvent("mouseleave"));
+        expect(owner.paramRuntime.findValue("cursor").values.x).toBeNull();
+    }
+);
+
+test("a ruler drag stays anchored to its starting cell outside the plot", async () => {
+    const { facet, child, dispatcher } = await createFacet({
+        params: [{ name: "cursor", ruler: { on: "mousedown", snap: false } }],
+    });
+    const coords = child.facetCoords.get(["B"]);
+    const start = pointIn(coords, 0.2);
+    dispatcher.dispatch(
+        start,
+        new MouseEvent("mousedown", { clientX: start.x, clientY: start.y })
+    );
+    expect(facet.paramRuntime.findValue("cursor").values.x).toBeCloseTo(2);
+    const end = pointIn(coords, 1.2);
+    document.dispatchEvent(
+        new MouseEvent("mousemove", { clientX: end.x, clientY: end.y })
+    );
+    expect(facet.paramRuntime.findValue("cursor").values.x).toBeCloseTo(12);
+    document.dispatchEvent(new MouseEvent("mouseup"));
+});
+
 test.each([true, false])(
     "facet disposal cancels an active brush (remove subtree: %s)",
     async (removeSubtree) => {

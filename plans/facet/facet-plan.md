@@ -49,7 +49,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Custom facet ordering | Optional; ascending factor order is sufficient for the current scope |
 | Facet field titles and configurable headers | General header API is optional; unused schema-supported `title` needs a clear contract |
 | Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
-| Rulers in repeated cells | Incorrect projection/ownership and cell-crossing clears; review fix required |
+| Rulers in repeated cells | Fixed; one controller uses the pointed cell and retains drag projection |
 | Hover transitions after layout refresh | Can emit false cell leave/enter; review fix required |
 | Removing a facet during a brush drag | Fixed; controller cleanup precedes parameter disposal |
 | Child viewport options | Accepted but compress content instead of scrolling; reject unsupported options |
@@ -140,7 +140,7 @@ completion pass.
 - [x] Dispose the facet-owned inner `GridChild`, including active brush/ruler
   sessions, when the facet is removed. Cancel listeners before their parameter
   runtime is destroyed.
-- [ ] Route rulers through the pointed cell's coordinates, install one logical
+- [x] Route rulers through the pointed cell's coordinates, install one logical
   controller, and prevent old-cell leave events from clearing the new value.
 - [ ] Compare facet tuples by value when synthesizing hover transitions, so
   rebuilding layout metadata does not imply entering another category.

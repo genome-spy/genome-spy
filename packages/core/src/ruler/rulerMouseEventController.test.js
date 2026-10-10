@@ -66,7 +66,7 @@ function createController(ruler, scaleResolutions, runtime) {
     };
     const previousDocument = globalThis.document;
     installMockDocument(documentListeners);
-    const gridChild = { view };
+    const gridChild = { view, getProjectionCoords: () => view.coords };
     const controller = new RulerMouseEventController(
         /** @type {any} */ (gridChild),
         "cursor",
@@ -209,7 +209,7 @@ describe("RulerMouseEventController", () => {
             { x: createScaleResolution("linear") }
         );
 
-        listeners.get("mouseleave")({});
+        listeners.get("mouseleave")({ pointedViews: new Map() });
 
         expect(setValue).toHaveBeenCalledWith("cursor", {
             type: "ruler",
@@ -413,7 +413,7 @@ test("disabling one pushed binding leaves another able to update the shared coor
         bindings[1].listeners.get("mousemove")(event);
         await parent.whenPropagated();
         expect(parent.findValue("cursor").values.x).toBe(25);
-        bindings[0].listeners.get("mouseleave")({});
+        bindings[0].listeners.get("mouseleave")({ pointedViews: new Map() });
         expect(parent.findValue("cursor").values.x).toBe(25);
     } finally {
         for (const { controller } of bindings) controller.dispose();

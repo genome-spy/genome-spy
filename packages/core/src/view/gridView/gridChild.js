@@ -277,6 +277,11 @@ export default class GridChild {
     }
 
     #setupRulers() {
+        // The repeated child owns rulers and projects through the pointed cell.
+        if (isFacetSpec(this.view.spec)) {
+            return;
+        }
+
         for (const { owner, paramName, param } of this.#getInheritedParams()) {
             if (!isRulerParameter(param)) {
                 continue;

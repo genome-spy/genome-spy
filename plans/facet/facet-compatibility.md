@@ -156,3 +156,8 @@ blocks this acceptance.
 - Controller lifecycle: GridChild registers controller cleanup on its content
   view, before parameter disposal. Guide views retain ordinary subtree cleanup.
   Focused tests cover facet removal and whole-root disposal during a brush.
+- Rulers: the repeated child owns the controller and uses its pointed-cell
+  projection. Cell transitions preserve the newly written value, while leaving
+  the plot clears it. Document drags retain their initiating cell's rectangle.
+  Real-spec tests cover facet/child parameter ownership and later-cell drags;
+  existing concat-gap and ruler suites preserve ordinary ruler behavior.
