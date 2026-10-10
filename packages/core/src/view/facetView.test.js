@@ -535,6 +535,108 @@ test("matrix facets retain empty combinations in sorted factor order", async () 
     expect(findLayoutNodes(layout, view.child.name)).toHaveLength(9);
 });
 
+test.each(
+    /** @type {Array<[import("../spec/view.js").FacetSpec["facet"], number | undefined, [number, number], number]>} */ ([
+        [
+            { row: { field: "r", header: null }, column: { field: "c" } },
+            undefined,
+            [210, 138],
+            1,
+        ],
+        [
+            {
+                row: { field: "r", header: { labels: false } },
+                column: { field: "c" },
+            },
+            undefined,
+            [210, 138],
+            1,
+        ],
+        [
+            { row: { field: "r" }, column: { field: "c", header: null } },
+            undefined,
+            [238, 110],
+            1,
+        ],
+        [
+            {
+                row: { field: "r", header: null },
+                column: { field: "c", header: null },
+            },
+            undefined,
+            [210, 110],
+            0,
+        ],
+        [{ field: "c", header: { labels: false } }, 1, [100, 110], 0],
+        [{ row: { field: "r", header: null } }, undefined, [100, 110], 0],
+    ])
+)(
+    "hidden headers reclaim space without changing facet layout %j",
+    async (facet, columns, size, headerCount) => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [
+                        { r: "A", c: 1 },
+                        { r: "B", c: 2 },
+                    ],
+                },
+                facet,
+                columns,
+                spec: { width: 100, height: 50, mark: "point" },
+            },
+            FacetView
+        );
+        expect([view.getSize().width.px, view.getSize().height.px]).toEqual(
+            size
+        );
+        renderToLayout(view, Rectangle.create(0, 0, ...size));
+        expect(getFacetHeaderViews(view)).toHaveLength(headerCount);
+        const cells = Array.from(view.child.facetCoords.values());
+        expect(cells.map((cell) => [cell.width, cell.height])).toEqual(
+            cells.map(() => [100, 50])
+        );
+        // Matrix orientation and empty combinations survive hidden row headers.
+        if ("row" in facet && "column" in facet) {
+            expect(Array.from(view.child.facetCoords.keys())).toEqual([
+                ["A", 1],
+                ["A", 2],
+                ["B", 1],
+                ["B", 2],
+            ]);
+            expect(cells[0].y).toBe(cells[1].y);
+            expect(cells[2].y - cells[0].y).toBe(60);
+            const columnHeader = getFacetHeaderViews(view).find((header) =>
+                header.name.startsWith("facetHeaderColumn")
+            );
+            if (columnHeader) {
+                expect(
+                    Array.from(
+                        columnHeader.getCollector().getData(),
+                        (datum) => datum.text
+                    )
+                ).toEqual(["1", "2"]);
+            }
+        }
+        view.disposeSubtree();
+    }
+);
+
+test.each([false, [], "none", { labels: "false" }, { title: "Group" }])(
+    "facet rejects unsupported header options %j",
+    async (header) => {
+        await expect(
+            createAndInitialize(
+                {
+                    facet: /** @type {any} */ ({ field: "g", header }),
+                    spec: { mark: "point" },
+                },
+                FacetView
+            )
+        ).rejects.toThrow("Facet header must be");
+    }
+);
+
 test("facet layout reflows only when factor membership changes", async () => {
     const data = [
         { r: "A", c: 1 },

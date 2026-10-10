@@ -75,6 +75,18 @@ export interface FacetFieldDef extends FieldDefBase {
      * __Default value:__ `"ascending"`
      */
     sort?: "ascending" | "descending" | Scalar[];
+
+    /** Category label options. `null` hides labels and removes their reserved space. */
+    header?: FacetHeader | null;
+}
+
+export interface FacetHeader {
+    /**
+     * Whether category labels are shown. Hidden labels reserve no space.
+     *
+     * __Default value:__ `true`
+     */
+    labels?: boolean;
 }
 
 // TODO: Belongs to "guide"

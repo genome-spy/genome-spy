@@ -9,6 +9,8 @@ visible-cell culling follow the existing layout rules.
 
 Facet fields support ascending, descending, and explicit category order with
 `sort`. Explicit arrays order present values without creating absent categories.
+Set a facet field's `header` to `null` or `{ "labels": false }` to hide category
+labels and reclaim their space.
 
 Child transforms run independently within each facet, including aggregates that
 drop the facet fields, window calculations, stacks, sampling, and pileup.

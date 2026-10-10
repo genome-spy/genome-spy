@@ -21,6 +21,48 @@ const contextOptions = {
     viewFactoryOptions: { wrapRoot: true },
 };
 
+test("hidden row headers preserve matrix columns and empty cells in SVG", async () => {
+    const { view } = await createHeadlessEngine(
+        {
+            data: {
+                values: [
+                    { r: "A", c: 1 },
+                    { r: "B", c: 2 },
+                ],
+            },
+            facet: {
+                row: { field: "r", header: null },
+                column: { field: "c" },
+            },
+            spec: { name: "points", width: 100, height: 50, mark: "point" },
+        },
+        { contextOptions }
+    );
+    try {
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 400,
+            logicalHeight: 200,
+        });
+        expect(svg.querySelector('[data-name="facetHeaderRow0"]')).toBeNull();
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
+                (text) => text.textContent
+            )
+        ).toEqual(["1", "2"]);
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-name="points"]'),
+                (cell) => cell.querySelectorAll("circle").length
+            )
+        ).toEqual([1, 0, 0, 1]);
+        expect(warnings).toEqual([]);
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
 test("exports separate means after child aggregation drops the facet field", async () => {
     const { view } = await createHeadlessEngine(
         loadSharedExampleSpec("examples/docs/grammar/facet/means.json"),

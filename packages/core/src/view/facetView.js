@@ -5,6 +5,7 @@ import {
     createFacetGrid,
     getFacetCellLayouts,
     getFacetGridSize,
+    isFacetHeaderVisible,
 } from "./facetLayout.js";
 import FacetHeaderView from "./facetHeaderView.js";
 import GridChild from "./gridView/gridChild.js";
@@ -109,7 +110,7 @@ export default class FacetView extends ContainerView {
         await this.#gridChild.syncGuideViews();
 
         for (const channel of /** @type {const} */ (["column", "row"])) {
-            if (this.#facet[channel]) {
+            if (isFacetHeaderVisible(this.#facet[channel])) {
                 this.#headerViews.set(
                     channel,
                     new FacetHeaderView(channel, this, this.child)
@@ -379,7 +380,7 @@ function createFacetHeaderData(orient, layouts, coords, grid, spacing) {
     const isRow = orient === "row";
     const count = isRow
         ? grid.nRows
-        : grid.hasRowHeaders
+        : grid.hasRowFacet
           ? grid.nCols
           : layouts.length;
 
@@ -391,7 +392,7 @@ function createFacetHeaderData(orient, layouts, coords, grid, spacing) {
             : childCoords.x - coords.x + childCoords.width / 2;
         const y = isRow
             ? childCoords.y - coords.y + childCoords.height / 2
-            : grid.hasRowHeaders
+            : grid.hasRowFacet
               ? FACET_HEADER_SIZES.column / 2
               : viewportCoords.y -
                 coords.y -
@@ -549,6 +550,20 @@ function normalizeFacetFieldDef(fieldDef, channel) {
     ) {
         throw new Error(
             'Facet sort must be "ascending", "descending", or an array of scalar values.'
+        );
+    }
+
+    const header = fieldDef.header;
+    if (
+        header !== undefined &&
+        header !== null &&
+        (typeof header !== "object" ||
+            Array.isArray(header) ||
+            Object.keys(header).some((key) => key !== "labels") ||
+            (header.labels !== undefined && typeof header.labels !== "boolean"))
+    ) {
+        throw new Error(
+            'Facet header must be null or an object with a boolean "labels" option.'
         );
     }
 

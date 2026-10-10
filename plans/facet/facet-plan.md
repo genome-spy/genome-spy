@@ -36,7 +36,7 @@ outside scope.
   including after data replacement. Reject unsupported sort forms. Verify real
   collector-to-cell/header output and schema acceptance. Update grammar docs and
   the existing feature changeset. Commit: `feat(core): support facet category ordering`.
-- [ ] **Header visibility** — Support `header: null` and
+- [x] **Header visibility** — Support `header: null` and
   `header: {labels: false}` without reserving a header band or its gap. Preserve
   matrix orientation, empty combinations, wrapped layouts, axes, and child
   titles. Verify rendered layout and SVG output with hidden row and column

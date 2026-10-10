@@ -19,6 +19,7 @@ import Rectangle from "./layout/rectangle.js";
  * @prop {FacetCell[]} cells
  * @prop {number} nRows
  * @prop {number} nCols
+ * @prop {boolean} hasRowFacet
  * @prop {boolean} hasRowHeaders
  * @prop {boolean} hasColumnHeaders
  *
@@ -64,9 +65,19 @@ export function createFacetGrid(facet, factors, columns) {
         }),
         nRows: grid.nRows,
         nCols: grid.nCols,
-        hasRowHeaders: Boolean(facet.row),
-        hasColumnHeaders: Boolean(facet.column),
+        hasRowFacet: Boolean(facet.row),
+        hasRowHeaders: isFacetHeaderVisible(facet.row),
+        hasColumnHeaders: isFacetHeaderVisible(facet.column),
     };
+}
+
+/** @param {import("../spec/channel.js").FacetFieldDef | undefined} field */
+export function isFacetHeaderVisible(field) {
+    return (
+        field !== undefined &&
+        field.header !== null &&
+        field.header?.labels !== false
+    );
 }
 
 /**
@@ -89,7 +100,7 @@ export function getFacetGridSize(grid, childSize, childOverhang, spacing = 0) {
         cellSize.height,
         grid.hasColumnHeaders ? FACET_HEADER_SIZES.column : 0,
         spacing,
-        grid.hasColumnHeaders && !grid.hasRowHeaders
+        grid.hasColumnHeaders && !grid.hasRowFacet
     );
 
     return new FlexDimensions(width, height);
@@ -131,7 +142,7 @@ export function getFacetCellLayouts(
             grid.nRows,
             cellSize.height,
             grid.hasColumnHeaders ? FACET_HEADER_SIZES.column : 0,
-            grid.hasColumnHeaders && !grid.hasRowHeaders
+            grid.hasColumnHeaders && !grid.hasRowFacet
         ),
         coords.height,
         {
@@ -143,7 +154,7 @@ export function getFacetCellLayouts(
     const columnOffset = grid.hasRowHeaders ? 1 : 0;
     const rowOffset = grid.hasColumnHeaders ? 1 : 0;
 
-    const rowStride = grid.hasColumnHeaders && !grid.hasRowHeaders ? 2 : 1;
+    const rowStride = grid.hasColumnHeaders && !grid.hasRowFacet ? 2 : 1;
     return grid.cells.map((cell) => {
         const column = columns[columnOffset + cell.column];
         const row = rows[rowOffset + cell.row * rowStride];

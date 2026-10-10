@@ -36,6 +36,26 @@ describe("generated core schema", () => {
         };
 
         expect(validate(spec)).toBe(true);
+        for (const header of /** @type {unknown[]} */ ([
+            null,
+            {},
+            { labels: false },
+            { labels: true },
+        ])) {
+            expect(
+                validate({ ...spec, facet: { field: "group", header } })
+            ).toBe(true);
+        }
+        for (const header of [
+            false,
+            "none",
+            { labels: "false" },
+            { title: "Group" },
+        ]) {
+            expect(
+                validate({ ...spec, facet: { field: "group", header } })
+            ).toBe(false);
+        }
         for (const sort of [
             "ascending",
             "descending",

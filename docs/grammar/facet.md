@@ -18,6 +18,14 @@ Row and column fields can have different orders. For example,
 `"row": {"field": "group", "sort": ["control", "treated"]}` puts control
 first even if treated occurs first in the data.
 
+### Headers
+
+SCHEMA FacetHeader
+
+Each facet field can configure its category labels through `header`. For
+example, `"column": {"field": "group", "header": null}` hides column labels
+and removes their reserved space while retaining the same facet cells.
+
 ## Transforms and Data Scope
 
 Transforms on the facet specification run before grouping. Transforms inside
@@ -58,9 +66,8 @@ domains, legends, and axes are not supported and produce an error. Layers inside
 the repeated plot can still use independent non-positional scales; each layer's
 scale spans all facet cells.
 
-Category values are used as labels. Facet field `title`
-and configurable headers are not supported. A `title` on the repeated child
-still titles each plot.
+Facet field `title` and general header styling are not supported. A `title` on
+the repeated child still titles each plot.
 
 The `columns` property wraps one-dimensional column facets only. It cannot be
 used together with `facet.row`.
