@@ -6,6 +6,8 @@ import Transform from "./transform.js";
 const maxDepth = 65536;
 
 export default class PileupTransform extends Transform {
+    #resetPartition = () => {};
+
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
@@ -24,6 +26,14 @@ export default class PileupTransform extends Transform {
     reset() {
         super.reset();
         this.initialize();
+    }
+
+    /** @param {import("../../types/flowBatch.js").FlowBatch} batch */
+    beginBatch(batch) {
+        if (batch.type == "facet") {
+            this.#resetPartition();
+        }
+        super.beginBatch(batch);
     }
 
     initialize() {
@@ -56,6 +66,10 @@ export default class PileupTransform extends Transform {
             const preferredOrder = params.preferredOrder;
 
             let lastStart = Infinity;
+            this.#resetPartition = () => {
+                freeLaneMap.fill(-Infinity);
+                lastStart = Infinity;
+            };
 
             /** @param {Record<string, any>} datum */
             this.handle = (datum) => {
@@ -100,6 +114,12 @@ export default class PileupTransform extends Transform {
             let lastStart = -Infinity;
 
             let maxLane = 0;
+            this.#resetPartition = () => {
+                ends.clear();
+                freeLanes.clear();
+                lastStart = -Infinity;
+                maxLane = 0;
+            };
 
             /** @param {Record<string, any>} datum */
             this.handle = (datum) => {
