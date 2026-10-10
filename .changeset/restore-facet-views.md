@@ -6,6 +6,8 @@ Add `facet` composition for displaying data groups as wrapped columns or a
 row/column matrix, with shared scales, axes, and legends, group labels, and
 scrollable viewports. Cell titles, backgrounds, guide layering, clipping, and
 visible-cell culling follow the existing layout rules.
+Axes appear along the occupied outer edges, including incomplete wrapped rows,
+while grid lines remain in every cell. Axes scroll and clip with the grid.
 Facets without fixed cell dimensions fill their container from startup, before
 their categories have loaded.
 The facet grammar example shows the complete Anscombe quartet in four plots.

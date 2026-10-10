@@ -41,6 +41,16 @@ and removes their reserved space while retaining the same facet cells.
 For numeric categories, `"header": {"format": ",.0f"}` displays thousands
 separators. Formatting changes labels while preserving category identity and order.
 
+## Scales and Guides
+
+Scales and legends are shared across cells. Axes appear along the outer edges,
+with one horizontal axis per occupied column and one vertical axis per row.
+In an incomplete wrapped row, each bottom axis follows the last occupied cell
+in its column. Grid lines remain in every cell.
+
+Legends render once beside the complete facet grid. When the facet container
+scrolls, its axes move with the grid and are clipped by the viewport.
+
 ## Transforms and Data Scope
 
 Transforms on the facet specification run before grouping. Transforms inside
@@ -72,14 +82,12 @@ viewports. Interval brushes also use the initiating cell's coordinates and
 share their selection across cells. Selection parameters have one shared value;
 each cell does not have a separate parameter runtime.
 
-Legends render once beside the complete facet grid.
-
 ## Differences from Vega-Lite
 
 GenomeSpy supports basic category repetition with a smaller facet grammar:
 
-- Scales and legends are shared across cells, and axes repeat in every cell.
-  Independent per-cell resolution is not supported.
+- Scales, axes, and legends share their resolution across cells. Independent
+  per-cell resolution is not supported.
 - Faceting uses the explicit `facet` operator. The `row`, `column`, and `facet`
   encoding shortcuts are not supported. Compute binned or temporal categories
   in advance; facet fields do not accept `bin` or `timeUnit`.

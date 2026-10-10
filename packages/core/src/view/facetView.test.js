@@ -761,7 +761,7 @@ test("facet layout wraps column facets into configured columns", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, Padding.zero(), {
+    const size = getFacetGridSize(grid, childSize, () => Padding.zero(), {
         row: 4,
         column: 4,
     });
@@ -769,7 +769,7 @@ test("facet layout wraps column facets into configured columns", () => {
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
-        Padding.zero(),
+        () => Padding.zero(),
         { row: 4, column: 4 }
     );
 
@@ -804,7 +804,7 @@ test("facet layout creates row and column matrix cells", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, Padding.zero(), {
+    const size = getFacetGridSize(grid, childSize, () => Padding.zero(), {
         row: 4,
         column: 4,
     });
@@ -812,7 +812,7 @@ test("facet layout creates row and column matrix cells", () => {
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
-        Padding.zero(),
+        () => Padding.zero(),
         { row: 4, column: 4 }
     );
 
@@ -847,12 +847,12 @@ test("facet sizing preserves flex constraints while reserving guides", () => {
         { px: 80, grow: 0 }
     );
     const overhang = new Padding(0, 10, 0, 10);
-    const size = getFacetGridSize(grid, childSize, overhang);
+    const size = getFacetGridSize(grid, childSize, () => overhang);
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, 1000, 98),
         childSize,
-        overhang
+        () => overhang
     );
 
     expect(size.width).toMatchObject({
@@ -881,7 +881,7 @@ test("facet layout places child plot inside reserved overhang", () => {
         grid,
         Rectangle.create(0, 0, 160, 140),
         childSize,
-        childOverhang
+        () => childOverhang
     );
 
     expect(rectTuple(layouts[0].viewportCoords)).toEqual([0, 18, 160, 120]);
@@ -898,7 +898,7 @@ test("facet layout creates row-only facets", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, Padding.zero(), {
+    const size = getFacetGridSize(grid, childSize, () => Padding.zero(), {
         row: 4,
         column: 4,
     });
@@ -906,7 +906,7 @@ test("facet layout creates row-only facets", () => {
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
-        Padding.zero(),
+        () => Padding.zero(),
         { row: 4, column: 4 }
     );
 
@@ -1216,9 +1216,9 @@ test("anscombe wrapped facet example renders stable cell layout", async () => {
         .toMatchInlineSnapshot(`
           [
             "Rectangle: x: 32, y: 28, width: 300, height: 300",
-            "Rectangle: x: 374, y: 28, width: 300, height: 300",
-            "Rectangle: x: 32, y: 398, width: 300, height: 300",
-            "Rectangle: x: 374, y: 398, width: 300, height: 300",
+            "Rectangle: x: 342, y: 28, width: 300, height: 300",
+            "Rectangle: x: 32, y: 366, width: 300, height: 300",
+            "Rectangle: x: 342, y: 366, width: 300, height: 300",
           ]
         `);
 });
@@ -1263,19 +1263,19 @@ test("cars matrix facet example renders stable cell layout", async () => {
         .toMatchInlineSnapshot(`
           [
             "Rectangle: x: 60, y: 28, width: 150, height: 150",
-            "Rectangle: x: 252, y: 28, width: 150, height: 150",
-            "Rectangle: x: 444, y: 28, width: 150, height: 150",
-            "Rectangle: x: 60, y: 220, width: 150, height: 150",
-            "Rectangle: x: 252, y: 220, width: 150, height: 150",
-            "Rectangle: x: 444, y: 220, width: 150, height: 150",
-            "Rectangle: x: 60, y: 412, width: 150, height: 150",
-            "Rectangle: x: 252, y: 412, width: 150, height: 150",
-            "Rectangle: x: 444, y: 412, width: 150, height: 150",
+            "Rectangle: x: 220, y: 28, width: 150, height: 150",
+            "Rectangle: x: 380, y: 28, width: 150, height: 150",
+            "Rectangle: x: 60, y: 188, width: 150, height: 150",
+            "Rectangle: x: 220, y: 188, width: 150, height: 150",
+            "Rectangle: x: 380, y: 188, width: 150, height: 150",
+            "Rectangle: x: 60, y: 348, width: 150, height: 150",
+            "Rectangle: x: 220, y: 348, width: 150, height: 150",
+            "Rectangle: x: 380, y: 348, width: 150, height: 150",
           ]
         `);
 });
 
-test("cars matrix facet example renders repeated chrome", async () => {
+test("cars matrix facet example renders shared outer chrome", async () => {
     const spec = loadSharedExampleSpec("examples/core/facet/cars_matrix.json");
     spec.spec.width = 150;
     spec.spec.height = 150;
@@ -1301,7 +1301,7 @@ test("cars matrix facet example renders repeated chrome", async () => {
 
     expect(findLayoutNodes(layout, "facetHeaderColumn0")).toHaveLength(1);
     expect(findLayoutNodes(layout, "facetHeaderRow0")).toHaveLength(1);
-    expect(findLayoutNodesByPrefix(layout, "axis_")).toHaveLength(8);
+    expect(findLayoutNodesByPrefix(layout, "axis_")).toHaveLength(4);
 });
 
 /**

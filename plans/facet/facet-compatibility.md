@@ -6,7 +6,7 @@ Review date: 2026-10-10. Runtime baseline: `6f2d4f210`.
 
 The user clarified the goal: **a plot can be repeated for different categories
 without odd behavior**. Full Vega-Lite facet compatibility is not a requirement.
-Retain one child subtree, shared scales, repeated axes, simple category labels,
+Retain one child subtree, shared scales and outer axes, simple category labels,
 and static batched dataflow. Ascending factor order is a sufficient default.
 
 Grouping, supported partition-local transforms, shared legends, picking,
@@ -28,10 +28,22 @@ explicit category ordering, `header: null`/`labels: false` with reclaimed space,
 numeric `header.format`, and separate row/column `spacing`. Matrix ordering
 preserves input order for unlisted categories even with interleaved rows.
 These options retain one child and the static batched flow. Field titles,
-general header styling, independent domains, and outer axes remain deferred.
+general header styling and independent domains remain deferred.
 The [main plan](facet-plan.md#small-compatibility-additions-authorized-follow-up)
 records individual milestones, verification, and the net +110 runtime-line
 measurement against `70533c581`.
+
+### Shared outer axes follow-up
+
+Facets now reuse GridView's occupied-edge selection and GridChild's existing
+axis arrangement. Track overhangs reserve guide space only where needed while
+keeping plot sizes aligned. Bottom axes follow the last occupied cell in each
+column of a wrapped grid; right axes follow the last cell in each row. Grid
+lines remain in every cell, and axes move and clip with a scrolled viewport.
+Dynamic membership and scrolling clear stale axis coordinates. Independent
+per-cell scales and axes remain unsupported.
+The [main plan](facet-plan.md#shared-outer-axes-authorized-follow-up) records
+verification and size measurements.
 
 ## Independent review: baseline correctness findings (resolved)
 

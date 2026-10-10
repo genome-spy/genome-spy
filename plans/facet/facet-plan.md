@@ -10,7 +10,7 @@ The restoration tasks below are historical and do not prescribe the current work
 
 The user clarified the target on 2026-10-10: a plot can be repeated for
 different categories with predictable data, layout, and interactions. Full
-Vega-Lite facet compatibility is not a goal. Shared domains, repeated axes,
+Vega-Lite facet compatibility is not a goal. Shared domains, outer axes,
 ascending category order, and simple value labels are sufficient defaults.
 
 **Architecture:** `FacetView` remains a specialized `ContainerView`, not a `GridView` subclass. It owns one heavy child view and one `GridChild` chrome wrapper, computes lightweight facet-cell instances with the existing `Grid` and flex layout helpers, and renders the same child/chrome repeatedly with different `facetId` options. A parent `GridView`, including the implicit root wrapper, owns viewport scrolling through `viewportHeight` and `viewportWidth`.
@@ -20,6 +20,52 @@ ascending category order, and simple value labels are sufficient defaults.
 ---
 
 ## Current Status and Remaining Work (2026-10-10)
+
+### Shared outer axes (authorized follow-up)
+
+Replace repeated per-cell axes with outer axes using GridView's existing axis
+views and arrangement path. This supersedes the earlier decision to defer outer
+axes; independent scales and axes remain outside scope. Keep one repeated child
+and one set of guide views, with grid lines in every cell.
+
+- [x] Extract GridView's edge selection into a shared helper. The bottom axis
+  follows the last occupied cell in each column, and the right axis follows the
+  last occupied cell in each row, including incomplete wrapped rows. Reuse the
+  helper for GridView's axis placement and legend offsets.
+- [x] Let the existing GridChild arrangement and overhang calculation use the
+  axes selected for a placement. Facet tracks reserve the largest applicable
+  chrome overhang, preserving equal plot spans and child titles while removing
+  interior axis reservations. Avoid another axis ownership or rendering system.
+- [x] Verify all four orientations, ragged wrapping, matrix empty combinations,
+  dynamic membership, hidden headers, per-cell grid lines, titles, legends, and
+  scrolling through real layout/SVG paths. Axes scroll with the complete grid
+  and are clipped by its enclosing viewport; they do not jump to visible cells.
+- [x] Exercise the Anscombe example and a wrapped, scrollable grid in WebGL and
+  Canvas, including picking and shared pan/zoom after scrolling. Run focused
+  facet/GridView/layout tests, TypeScript, lint, and release checks. Measure the
+  runtime diff against `a0a7f0a51` (four main layout files: 3,300 physical lines).
+- [x] Update the grammar comparison and existing facet changeset. Commit this
+  feature separately as `feat(core): share outer axes across facet cells`.
+
+Verification: focused facet, interaction, GridView, and SVG suites pass (202
+tests), as does the full suite (518 files, 4,852 passed, one skipped, two todo).
+Workspace TypeScript, lint, generated documentation checks, and release checks
+pass. Browser checks in WebGL and Canvas confirm the complete Anscombe quartet
+with two x axes and two y axes, plus picking, tooltips, point selection, shared
+wheel zoom, and mouse pan after scrolling a five-cell wrapped grid in both
+directions. SVG checks cover all orientations, moving exposed edges after data
+replacement, per-cell grid lines, fixed plot dimensions, title repetition, and
+axis clipping. Clearing facet-owned axis coordinates before arrangement avoids
+retaining cells when an axis moves out of view or changes its outer placement.
+
+Size against `a0a7f0a51`: FacetView 621→643, facetLayout 227→230,
+gridChildArrangement 396→427, GridView 2,056→2,021, and GridChild 1,066→1,071
+physical lines. The four main files grow 3,300→3,321; including GridChild, the
+runtime total is 4,366→4,392 (**net +26 physical lines**). The shared helper
+replaces both GridView edge predicates, and the existing guide views, clipping,
+paint queue, and title geometry are reused. No per-cell guide instances,
+resolution, or persistent placement cache is introduced. The existing Core
+minor changeset covers this feature (next fixed-group release: 1.2.0).
 
 ### Follow-up: collapsed documentation example
 
@@ -49,8 +95,8 @@ contract. The documentation sample also contains only one point per series.
 Baseline: `70533c581`. Implement four small options while retaining one child,
 the static batched dataflow, and existing grid chrome. This supersedes the
 historical decision to defer all ordering and header configuration. Field
-titles, independent domains, outer axes, and a general header framework remain
-outside scope.
+titles, independent domains, and a general header framework remain outside
+scope. Outer axes are covered by the later follow-up above.
 
 - [x] **Category ordering** — Add `sort: "ascending" | "descending" | Scalar[]`
   to facet fields. Default to ascending; explicit arrays place present listed
@@ -129,7 +175,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Single-field, row-only, column-only, and wrapped facets | Working |
 | Faceted unit and layered plots | Working |
 | Shared positional scale domains | Working |
-| Repeated axes in every cell | Working; sufficient for the agreed scope |
+| Shared outer axes | Working; one per occupied column/row, including incomplete wrapped rows |
 | Matrix layout, including empty row/column combinations | Working |
 | Dynamic factor membership and labels | Working |
 | Raw value labels, repeated child titles, backgrounds, clipping, and visible-cell culling | Working |
@@ -138,7 +184,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Cell routing, picking, tooltips, and shared point/interval selections | Working |
 | Shared-scale wheel zoom, mouse pan, and touch gesture routing | Working |
 | Interactions after scrolling a facet viewport | Working in WebGL and Canvas |
-| Vega-Lite-style outer axes and independent axes | Optional; not required for category repetition |
+| Independent axes per cell | Unsupported and rejected |
 | Independent positional scale domains | Unsupported and rejected; intentionally outside the current scope |
 | Independent non-positional scales and legends per cell | Unsupported and rejected; layer independence remains supported |
 | Custom facet ordering | Working: ascending, descending, and explicit arrays |

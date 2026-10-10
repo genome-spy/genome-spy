@@ -12,6 +12,7 @@ import GridChild from "./gridView/gridChild.js";
 import {
     createGridArrangement,
     queueGridChild,
+    getOuterAxes,
 } from "./gridView/gridChildArrangement.js";
 import { ZERO_FLEXDIMENSIONS } from "./layout/flexLayout.js";
 import {
@@ -183,9 +184,24 @@ export default class FacetView extends ContainerView {
         return getFacetGridSize(
             this.#getFacetGrid(),
             this.child.getViewportSize(),
-            this.#gridChild.getOverhangAndPadding(),
+            (cell) => this.#getCellOverhang(cell),
             this.#spacing
         );
+    }
+
+    /** @param {import("./facetLayout.js").FacetCell} cell */
+    #getCellAxes(cell) {
+        return getOuterAxes(
+            Object.values(this.#gridChild.axes),
+            cell.column,
+            cell.row,
+            this.#getFacetGrid()
+        );
+    }
+
+    /** @param {import("./facetLayout.js").FacetCell} cell */
+    #getCellOverhang(cell) {
+        return this.#gridChild.getOverhangAndPadding(this.#getCellAxes(cell));
     }
 
     /**
@@ -201,6 +217,11 @@ export default class FacetView extends ContainerView {
             return;
         }
 
+        // Outer axes need not occur in the first visible cell.
+        for (const axis of Object.values(this.#gridChild.axes)) {
+            axis.visit((view) => view.facetCoords.clear());
+        }
+
         this.#syncFacetCollector();
         context.pushView(this, coords);
 
@@ -208,7 +229,7 @@ export default class FacetView extends ContainerView {
             this.#getFacetGrid(),
             coords,
             this.child.getViewportSize(),
-            this.#gridChild.getOverhangAndPadding(),
+            (cell) => this.#getCellOverhang(cell),
             this.#spacing,
             context.getDevicePixelRatio()
         );
@@ -235,6 +256,7 @@ export default class FacetView extends ContainerView {
                     containerCoords: coords,
                     viewportCoords: layout.childCoords,
                     viewCoords: layout.childCoords,
+                    axes: this.#getCellAxes(layout.cell),
                 },
                 {
                     ...options,

@@ -16,6 +16,7 @@ import {
  * @prop {import("../layout/rectangle.js").default} containerCoords
  * @prop {import("../layout/rectangle.js").default} viewportCoords
  * @prop {import("../layout/rectangle.js").default} viewCoords
+ * @prop {import("./gridChild.js").default["axes"]} [axes] Axes drawn for this placement.
  */
 
 // Secondary ordering within a z-index bucket for grid and facet decorations.
@@ -39,6 +40,36 @@ export const DECORATION_ORDER = Object.freeze({
 // scrollable. This keeps guides above content-edge artifacts while still
 // letting an explicit user zindex override the default.
 const CLIPPED_DECORATION_ZINDEX = 10;
+
+/**
+ * Selects the outer axes, including the exposed edges of an incomplete row.
+ *
+ * @param {AxisView[]} axes
+ * @param {number} column
+ * @param {number} row
+ * @param {import("../layout/grid.js").default} grid
+ * @returns {import("./gridChild.js").default["axes"]}
+ */
+export function getOuterAxes(axes, column, row, grid) {
+    return Object.fromEntries(
+        axes
+            .filter(({ axisProps: { orient } }) => {
+                switch (orient) {
+                    case "left":
+                        return column === 0;
+                    case "right":
+                        return grid.getCellIndex(column + 1, row) === undefined;
+                    case "top":
+                        return row === 0;
+                    case "bottom":
+                        return grid.getCellIndex(column, row + 1) === undefined;
+                    default:
+                        throw new Error("Unknown axis orientation: " + orient);
+                }
+            })
+            .map((axis) => [axis.axisProps.orient, axis])
+    );
+}
 
 /** Orders local and container decorations around their content placements. */
 export function createGridArrangement() {
@@ -115,7 +146,7 @@ export function queueGridChild(
     item,
     options,
     queue,
-    legendAxes = item.gridChild.axes
+    legendAxes = item.axes ?? item.gridChild.axes
 ) {
     const {
         gridChild,
@@ -143,13 +174,13 @@ export function queueGridChild(
 
     const {
         view,
-        axes,
         gridLines,
         backgroundStroke,
         title,
         selectionRect,
         rulerOverlays,
     } = gridChild;
+    const axes = item.axes ?? gridChild.axes;
 
     const { all: clippedChildren, any: anyClippedChildren } =
         getChildClipFlags(view);
@@ -300,7 +331,7 @@ export function queueGridChild(
         queueDecoration(
             gridChild.getTitleZindex(),
             DECORATION_ORDER.title,
-            () => gridChild.arrangeTitle(context, viewportCoords, options)
+            () => gridChild.arrangeTitle(context, viewportCoords, options, axes)
         );
     }
 

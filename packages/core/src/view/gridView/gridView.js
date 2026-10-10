@@ -31,6 +31,7 @@ import {
     DECORATION_ORDER,
     defaultAxisZindex,
     translateAxisCoords,
+    getOuterAxes,
 } from "./gridChildArrangement.js";
 export { translateAxisCoords } from "./gridChildArrangement.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
@@ -1388,45 +1389,41 @@ export default class GridView extends ContainerView {
 
         for (const item of layoutItems) {
             const { gridChild, viewportCoords, col, row } = item;
+            const sharedAxes = getOuterAxes(
+                Object.values(this.#sharedAxes),
+                col,
+                row,
+                grid
+            );
             const clippedDecorations = queueGridChild(
                 context,
                 item,
                 options,
                 arrangement,
-                this.#getLegendOffsetAxes(gridChild.axes, col, row, grid)
+                { ...sharedAxes, ...gridChild.axes }
             );
             // Axes shared between children
             // TODO: What if some have scrollable viewports?
             // Should throw an error because cannot have shared axes in such cases.
-            for (const axisView of Object.values(this.#sharedAxes)) {
+            for (const axisView of Object.values(sharedAxes)) {
                 const props = axisView.axisProps;
                 const orient = props.orient;
-                if (
-                    (orient == "left" && col == 0) ||
-                    (orient == "right" && col == grid.nCols - 1) ||
-                    (orient == "top" && row == 0) ||
-                    (orient == "bottom" && row == grid.nRows - 1)
-                ) {
-                    queueDecoration(
-                        defaultAxisZindex(
-                            axisView.axisProps,
-                            clippedDecorations
-                        ),
-                        DECORATION_ORDER.axis,
-                        () =>
-                            axisView.arrange(
-                                context,
-                                translateAxisCoords(
-                                    viewportCoords.shrink(
-                                        gridChild.getViewOverhang()
-                                    ),
-                                    orient,
-                                    axisView
+                queueDecoration(
+                    defaultAxisZindex(axisView.axisProps, clippedDecorations),
+                    DECORATION_ORDER.axis,
+                    () =>
+                        axisView.arrange(
+                            context,
+                            translateAxisCoords(
+                                viewportCoords.shrink(
+                                    gridChild.getViewOverhang()
                                 ),
-                                options
-                            )
-                    );
-                }
+                                orient,
+                                axisView
+                            ),
+                            options
+                        )
+                );
             }
         }
 
@@ -1474,38 +1471,6 @@ export default class GridView extends ContainerView {
         }
 
         context.popView(this);
-    }
-
-    /**
-     * Local legends are GridChild-owned, but shared axes are GridView-owned.
-     * When they share an orient, the axis should remain next to the plot and
-     * the legend should move outside it. Give legend placement the applicable
-     * shared edge axes so `arrangeLocalLegends()` can apply the same offset it
-     * already uses for local axes.
-     *
-     * @param {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} axes
-     * @param {number} col
-     * @param {number} row
-     * @param {Grid} grid
-     */
-    #getLegendOffsetAxes(axes, col, row, grid) {
-        /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} */
-        const offsetAxes = { ...axes };
-
-        for (const axisView of Object.values(this.#sharedAxes)) {
-            const orient = axisView.axisProps.orient;
-            const isEdge =
-                (orient == "left" && col == 0) ||
-                (orient == "right" && col == grid.nCols - 1) ||
-                (orient == "top" && row == 0) ||
-                (orient == "bottom" && row == grid.nRows - 1);
-
-            if (isEdge && !offsetAxes[orient]) {
-                offsetAxes[orient] = axisView;
-            }
-        }
-
-        return offsetAxes;
     }
 
     dispose() {

@@ -872,10 +872,11 @@ export default class GridChild {
             : "pixel";
     }
 
-    getOverhang() {
+    /** @param {GridChild["axes"]} [axes] */
+    getOverhang(axes = this.axes) {
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return applyOverhangConfig(
-            this.#getGuideOverhang()
+            this.#getGuideOverhang(axes)
                 .add(this.title?.getOverhang() ?? Padding.zero())
                 .add(this.view.getOverhang()),
             this.view.spec.overhang
@@ -907,10 +908,11 @@ export default class GridChild {
         );
     }
 
-    #getGuideOverhang() {
+    /** @param {GridChild["axes"]} [axes] */
+    #getGuideOverhang(axes = this.axes) {
         const calculate = (
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
-        ) => getExternalAxisOverhang(this.axes[orient]);
+        ) => getExternalAxisOverhang(axes[orient]);
         const legend = (
             /** @type {import("../../spec/legend.js").LegendOrient} */ orient
         ) => getLegendOverhang(this.legends, orient);
@@ -931,11 +933,12 @@ export default class GridChild {
      * @param {import("../renderingContext/viewRenderingContext.js").default} context
      * @param {Rectangle} viewportCoords
      * @param {import("../../types/rendering.js").RenderingOptions} options
+     * @param {GridChild["axes"]} [axes]
      */
-    arrangeTitle(context, viewportCoords, options) {
+    arrangeTitle(context, viewportCoords, options, axes = this.axes) {
         this.title?.arrange(
             context,
-            this.#getTitleCoords(viewportCoords),
+            this.#getTitleCoords(viewportCoords, axes),
             options
         );
     }
@@ -946,14 +949,15 @@ export default class GridChild {
      * the parallel anchor range.
      *
      * @param {Rectangle} viewportCoords
+     * @param {GridChild["axes"]} axes
      */
-    #getTitleCoords(viewportCoords) {
+    #getTitleCoords(viewportCoords, axes) {
         const titleSpec = this.title?.titleSpec;
         if (!titleSpec) {
             return viewportCoords;
         }
 
-        const guideCoords = viewportCoords.expand(this.#getGuideOverhang());
+        const guideCoords = viewportCoords.expand(this.#getGuideOverhang(axes));
         const frame = titleSpec.frame ?? "group";
         if (titleSpec.reserve === false) {
             return frame == "bounds" ? guideCoords : viewportCoords;
@@ -979,8 +983,9 @@ export default class GridChild {
         }
     }
 
-    getOverhangAndPadding() {
-        return this.getOverhang().add(this.view.getPadding());
+    /** @param {GridChild["axes"]} [axes] */
+    getOverhangAndPadding(axes = this.axes) {
+        return this.getOverhang(axes).add(this.view.getPadding());
     }
 }
 

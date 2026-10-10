@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { expect, test, vi } from "vitest";
+import { expect, onTestFinished, test, vi } from "vitest";
 import anscombeData from "../../../../../node_modules/vega-datasets/data/anscombe.json" with { type: "json" };
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";
@@ -11,6 +11,7 @@ import {
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import AxisView from "../../view/axisView.js";
 import LegendView from "../../view/legendView.js";
+import UnitView from "../../view/unitView.js";
 import { createSvg } from "./index.js";
 import { loadSharedExampleSpec } from "../../spec/exampleFiles.js";
 
@@ -348,6 +349,213 @@ test("exports grouped points and distinct headers above each wrapped facet", asy
         view.disposeSubtree();
     }
 });
+
+test.each(
+    /** @type {const} */ ([
+        ["facet", "bottom", "left"],
+        ["facet", "top", "right"],
+        ["concat", "bottom", "left"],
+        ["concat", "top", "right"],
+    ])
+)(
+    "%s shares %s/%s axes on incomplete wrapped rows",
+    async (composition, xOrient, yOrient) => {
+        const values = ["A", "B", "C", "D", "E"].map((g) => ({
+            g,
+            x: 0.5,
+            y: 0.5,
+        }));
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const points = {
+            name: "points",
+            width: 100,
+            height: 60,
+            title: composition === "facet" ? "Plot" : undefined,
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: { orient: xOrient, grid: true, title: null },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    axis: { orient: yOrient, grid: true, title: null },
+                },
+            },
+        };
+        const { view } = await createHeadlessEngine(
+            {
+                data: { values },
+                resolve: {
+                    scale: { x: "shared", y: "shared" },
+                    axis: { x: "shared", y: "shared" },
+                },
+                columns: 3,
+                ...(composition === "facet"
+                    ? { facet: { field: "g", header: null }, spec: points }
+                    : {
+                          concat: values.map(({ g }) => ({
+                              ...points,
+                              name: "points" + g,
+                              data: { values: [{ x: 0.5, y: 0.5 }] },
+                          })),
+                      }),
+            },
+            { contextOptions }
+        );
+        onTestFinished(() => view.disposeSubtree());
+        const axes = view
+            .getDescendants()
+            .filter((child) => child instanceof AxisView);
+        const render = () =>
+            createSvg({
+                viewRoot: view,
+                logicalWidth: 600,
+                logicalHeight: 400,
+            });
+        const { svg, warnings } = render();
+
+        // The short final row still exposes one x axis per column and one y axis per row.
+        expect(
+            svg.querySelectorAll('[data-name="axis_' + xOrient + '"]')
+        ).toHaveLength(3);
+        expect(
+            svg.querySelectorAll('[data-name="axis_' + yOrient + '"]')
+        ).toHaveLength(2);
+        expect(svg.querySelectorAll('[data-name="grid_lines"]')).toHaveLength(
+            10
+        );
+        const plots = view
+            .getDescendants()
+            .filter(
+                (child) =>
+                    child instanceof UnitView && child.name.startsWith("points")
+            );
+        for (const plot of plots) {
+            for (const coords of plot.facetCoords.values()) {
+                expect([coords.width, coords.height]).toEqual([100, 60]);
+            }
+        }
+        expect(warnings).toEqual([]);
+
+        if (composition === "facet") {
+            const xAxis = axes.find(
+                (axis) => axis.axisProps.orient === xOrient
+            );
+            const yAxis = axes.find(
+                (axis) => axis.axisProps.orient === yOrient
+            );
+            expect(Array.from(xAxis.facetCoords.keys())).toEqual(
+                (xOrient === "top" ? ["A", "B", "C"] : ["C", "D", "E"]).map(
+                    (g) => [g]
+                )
+            );
+            expect(Array.from(yAxis.facetCoords.keys())).toEqual(
+                (yOrient === "left" ? ["A", "D"] : ["C", "E"]).map((g) => [g])
+            );
+            const facet = view
+                .getDescendants()
+                .find((child) => "facet" in child.spec);
+            const source =
+                /** @type {import("../../data/sources/inlineSource.js").default} */ (
+                    facet.flowHandle.dataSource
+                );
+            source.updateDynamicData(values.slice(0, 4));
+            const updated = render();
+            expect(
+                updated.svg.querySelectorAll(
+                    '[data-name="axis_' + xOrient + '"]'
+                )
+            ).toHaveLength(3);
+            expect(Array.from(xAxis.facetCoords.keys())).toEqual(
+                (xOrient === "top" ? ["A", "B", "C"] : ["B", "C", "D"]).map(
+                    (g) => [g]
+                )
+            );
+            expect(
+                updated.svg.querySelectorAll('[data-name="title0"] text')
+            ).toHaveLength(4);
+        }
+    }
+);
+
+test.each(["vertical", "horizontal"])(
+    "outer facet axes scroll with the grid in the %s direction",
+    async (direction) => {
+        const { view } = await createHeadlessEngine(
+            {
+                data: {
+                    values: ["A", "B", "C", "D", "E"].map((g) => ({
+                        g,
+                        x: 0.5,
+                        y: 0.5,
+                    })),
+                },
+                facet: { field: "g" },
+                columns: 3,
+                ...(direction === "vertical"
+                    ? { viewportHeight: 90 }
+                    : { viewportWidth: 160 }),
+                spec: {
+                    name: "points",
+                    width: 100,
+                    height: 60,
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+            },
+            { contextOptions }
+        );
+        onTestFinished(() => view.disposeSubtree());
+        const render = () =>
+            createSvg({
+                viewRoot: view,
+                logicalWidth: 500,
+                logicalHeight: 400,
+            });
+        const first = render();
+        const axes = view
+            .getDescendants()
+            .filter((child) => child instanceof AxisView);
+        const xAxis = axes.find((axis) => axis.axisProps.orient === "bottom");
+        const yAxis = axes.find((axis) => axis.axisProps.orient === "left");
+        expect(
+            first.svg.querySelectorAll('[data-name="axis_bottom"]')
+        ).toHaveLength(direction === "vertical" ? 1 : 2);
+        expect(first.warnings).toEqual([]);
+
+        const scrollbar =
+            /** @type {import("../../view/gridView/scrollbar.js").default} */ (
+                view
+                    .getDescendants()
+                    .find((child) => child.name === "scrollbar-" + direction)
+            );
+        scrollbar.setViewportOffset(Infinity);
+        const last = render();
+        expect(last.warnings).toEqual([]);
+        expect(Array.from(xAxis.facetCoords.keys())).toEqual(
+            (direction === "vertical" ? ["D", "E"] : ["C", "E"]).map((g) => [g])
+        );
+        expect(Array.from(yAxis.facetCoords.keys())).toEqual(
+            direction === "vertical" ? [["D"]] : []
+        );
+        // The final cell's plot and outer axis keep the same clipped horizontal span.
+        const plot = view
+            .getDescendants()
+            .find((child) => child.name === "points");
+        expect(xAxis.facetCoords.get(["E"]).x).toBe(
+            plot.facetCoords.get(["E"]).x
+        );
+        expect(xAxis.facetCoords.get(["E"]).width).toBe(
+            plot.facetCoords.get(["E"]).width
+        );
+    }
+);
 
 test.each([0, 2])(
     "facet titles and chrome follow grid paint order with background zindex %s",
