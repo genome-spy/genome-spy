@@ -84,22 +84,27 @@ export function isFacetHeaderVisible(field) {
  * @param {FacetGrid} grid
  * @param {FlexDimensions} childSize
  * @param {import("./layout/padding.js").default} childOverhang
- * @param {number} [spacing]
+ * @param {Required<import("../spec/view.js").FacetSpacing>} [spacing]
  * @returns {FlexDimensions}
  */
-export function getFacetGridSize(grid, childSize, childOverhang, spacing = 0) {
+export function getFacetGridSize(
+    grid,
+    childSize,
+    childOverhang,
+    spacing = { row: 0, column: 0 }
+) {
     const cellSize = childSize.addPadding(childOverhang);
     const width = getAxisSize(
         grid.nCols,
         cellSize.width,
         grid.hasRowHeaders ? FACET_HEADER_SIZES.row : 0,
-        spacing
+        spacing.column
     );
     const height = getAxisSize(
         grid.nRows,
         cellSize.height,
         grid.hasColumnHeaders ? FACET_HEADER_SIZES.column : 0,
-        spacing,
+        spacing.row,
         grid.hasColumnHeaders && !grid.hasRowFacet
     );
 
@@ -111,7 +116,7 @@ export function getFacetGridSize(grid, childSize, childOverhang, spacing = 0) {
  * @param {Rectangle} coords
  * @param {FlexDimensions} childSize
  * @param {import("./layout/padding.js").default} childOverhang
- * @param {number} [spacing]
+ * @param {Required<import("../spec/view.js").FacetSpacing>} [spacing]
  * @param {number} [devicePixelRatio]
  * @returns {FacetCellLayout[]}
  */
@@ -120,7 +125,7 @@ export function getFacetCellLayouts(
     coords,
     childSize,
     childOverhang,
-    spacing = 0,
+    spacing = { row: 0, column: 0 },
     devicePixelRatio
 ) {
     const cellSize = childSize.addPadding(childOverhang);
@@ -134,7 +139,7 @@ export function getFacetCellLayouts(
         {
             devicePixelRatio,
             offset: coords.x,
-            spacing,
+            spacing: spacing.column,
         }
     );
     const rows = mapToPixelCoords(
@@ -148,7 +153,7 @@ export function getFacetCellLayouts(
         {
             devicePixelRatio,
             offset: coords.y,
-            spacing,
+            spacing: spacing.row,
         }
     );
     const columnOffset = grid.hasRowHeaders ? 1 : 0;

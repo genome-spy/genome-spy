@@ -560,7 +560,34 @@ export interface FacetSpec extends ViewSpecBase {
      */
     columns?: number;
 
-    spacing?: number;
+    /**
+     * Space in pixels between facet rows and columns, including header bands.
+     * A number sets both directions. An object sets each direction separately;
+     * omitted directions use the default. Zero removes the gap.
+     *
+     * __Default value:__ `10`
+     *
+     * @minimum 0
+     */
+    spacing?: number | FacetSpacing;
+}
+
+export interface FacetSpacing {
+    /**
+     * Vertical gap in pixels.
+     * __Default value:__ `10`
+     *
+     * @minimum 0
+     */
+    row?: number;
+
+    /**
+     * Horizontal gap in pixels.
+     * __Default value:__ `10`
+     *
+     * @minimum 0
+     */
+    column?: number;
 }
 
 export type ResolutionTarget = "scale" | "axis" | "legend";

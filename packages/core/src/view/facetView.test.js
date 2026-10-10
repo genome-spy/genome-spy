@@ -755,13 +755,16 @@ test("facet layout wraps column facets into configured columns", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, Padding.zero(), 4);
+    const size = getFacetGridSize(grid, childSize, Padding.zero(), {
+        row: 4,
+        column: 4,
+    });
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         Padding.zero(),
-        4
+        { row: 4, column: 4 }
     );
 
     expect(grid).toMatchObject({ nRows: 2, nCols: 2 });
@@ -795,13 +798,16 @@ test("facet layout creates row and column matrix cells", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, Padding.zero(), 4);
+    const size = getFacetGridSize(grid, childSize, Padding.zero(), {
+        row: 4,
+        column: 4,
+    });
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         Padding.zero(),
-        4
+        { row: 4, column: 4 }
     );
 
     expect(grid).toMatchObject({
@@ -886,13 +892,16 @@ test("facet layout creates row-only facets", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, Padding.zero(), 4);
+    const size = getFacetGridSize(grid, childSize, Padding.zero(), {
+        row: 4,
+        column: 4,
+    });
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         Padding.zero(),
-        4
+        { row: 4, column: 4 }
     );
 
     expect(grid).toMatchObject({
@@ -933,6 +942,89 @@ test("facet size grows with wrapped facet count", async () => {
         width: { px: 210, grow: 0 },
         height: { px: 166, grow: 0 },
     });
+});
+
+test.each(
+    /** @type {Array<[boolean, import("../spec/view.js").FacetSpacing, number, number]>} */ ([
+        [false, { row: 3, column: 17 }, 3, 17],
+        [true, { row: 3, column: 17 }, 3, 17],
+        [false, { column: 17 }, 10, 17],
+        [true, { row: 0, column: 0 }, 0, 0],
+    ])
+)(
+    "directional spacing sizes and positions cells and headers (wrapped: %s, %j)",
+    async (wrapped, spacing, rowGap, columnGap) => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [
+                        { r: "A", c: 1 },
+                        { r: "B", c: 2 },
+                    ],
+                },
+                facet: wrapped
+                    ? { field: "c" }
+                    : { row: { field: "r" }, column: { field: "c" } },
+                columns: wrapped ? 1 : undefined,
+                spacing,
+                spec: { width: 100, height: 50, mark: "point" },
+            },
+            FacetView
+        );
+        const width = wrapped ? 100 : 218 + 2 * columnGap;
+        const height = wrapped ? 136 + 3 * rowGap : 118 + 2 * rowGap;
+        expect([view.getSize().width.px, view.getSize().height.px]).toEqual([
+            width,
+            height,
+        ]);
+        renderToLayout(view, Rectangle.create(0, 0, width, height));
+        const cells = Array.from(view.child.facetCoords.values());
+        expect(rectTuple(cells[0])).toEqual([
+            wrapped ? 0 : 18 + columnGap,
+            18 + rowGap,
+            100,
+            50,
+        ]);
+        expect(cells.at(-1).y - cells[0].y).toBe(
+            wrapped ? 68 + 2 * rowGap : 50 + rowGap
+        );
+        if (!wrapped) {
+            expect(cells[1].x - cells[0].x).toBe(100 + columnGap);
+        }
+        const [header] = getFacetHeaderViews(view);
+        const labels = Array.from(header.getCollector().getData());
+        expect((1 - labels[0].y) * height).toBeCloseTo(9);
+        if (wrapped) {
+            expect((labels[0].y - labels[1].y) * height).toBeCloseTo(
+                68 + 2 * rowGap
+            );
+        }
+        view.disposeSubtree();
+    }
+);
+
+test.each([
+    -1,
+    Infinity,
+    null,
+    [],
+    "10",
+    { row: -1 },
+    { column: null },
+    { row: NaN },
+    { column: "10" },
+    { extra: 10 },
+])("facet rejects invalid spacing %j before layout", async (spacing) => {
+    await expect(
+        createAndInitialize(
+            {
+                facet: { field: "g" },
+                spacing: /** @type {any} */ (spacing),
+                spec: { mark: "point" },
+            },
+            FacetView
+        )
+    ).rejects.toThrow("Facet spacing must");
 });
 
 test("invisible facet size is zero", async () => {

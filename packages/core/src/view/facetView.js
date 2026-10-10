@@ -46,6 +46,9 @@ export default class FacetView extends ContainerView {
     /** @type {NormalizedFacet} */
     #facet;
 
+    /** @type {Required<import("../spec/view.js").FacetSpacing>} */
+    #spacing;
+
     /** @type {GridChild} */
     #gridChild;
 
@@ -73,6 +76,7 @@ export default class FacetView extends ContainerView {
         super(spec, context, layoutParent, dataParent, name, options);
 
         this.#facet = normalizeFacetSpec(spec);
+        this.#spacing = normalizeFacetSpacing(spec.spacing);
     }
 
     /**
@@ -180,7 +184,7 @@ export default class FacetView extends ContainerView {
             this.#getFacetGrid(),
             this.child.getViewportSize(),
             this.#gridChild.getOverhangAndPadding(),
-            this.spec.spacing ?? 10
+            this.#spacing
         );
     }
 
@@ -205,7 +209,7 @@ export default class FacetView extends ContainerView {
             coords,
             this.child.getViewportSize(),
             this.#gridChild.getOverhangAndPadding(),
-            this.spec.spacing ?? 10,
+            this.#spacing,
             context.getDevicePixelRatio()
         );
         const parentClip = normalizeClipOptions(options);
@@ -249,7 +253,7 @@ export default class FacetView extends ContainerView {
                     layouts,
                     coords,
                     this.#getFacetGrid(),
-                    this.spec.spacing ?? 10,
+                    this.#spacing.row,
                     header.formatLabel
                 )
             );
@@ -586,4 +590,32 @@ function normalizeFacetFieldDef(fieldDef, channel) {
     }
 
     return fieldDef;
+}
+
+/**
+ * @param {import("../spec/view.js").FacetSpec["spacing"]} spacing
+ * @returns {Required<import("../spec/view.js").FacetSpacing>}
+ */
+function normalizeFacetSpacing(spacing = 10) {
+    if (
+        typeof spacing !== "number" &&
+        (typeof spacing !== "object" ||
+            spacing === null ||
+            Array.isArray(spacing) ||
+            Object.keys(spacing).some(
+                (key) => key !== "row" && key !== "column"
+            ))
+    ) {
+        throw new Error(
+            'Facet spacing must be a number or an object with "row" and "column" gaps.'
+        );
+    }
+    const { row = 10, column = 10 } =
+        typeof spacing === "number"
+            ? { row: spacing, column: spacing }
+            : spacing;
+    if (![row, column].every((value) => Number.isFinite(value) && value >= 0)) {
+        throw new Error("Facet spacing must use finite nonnegative numbers.");
+    }
+    return { row, column };
 }

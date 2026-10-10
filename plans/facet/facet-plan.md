@@ -48,7 +48,7 @@ outside scope.
   specifications clearly. Verify SVG labels and unchanged underlying facet
   keys. Update types, docs, and changeset. Commit:
   `feat(core): format numeric facet labels`.
-- [ ] **Separate spacing** — Accept `spacing: {row, column}` alongside numbers.
+- [x] **Separate spacing** — Accept `spacing: {row, column}` alongside numbers.
   Each omitted direction defaults to 10 pixels; zero removes the gap. Require
   finite nonnegative values. Use the same directional gaps in sizing,
   arrangement, and header placement. Verify matrix and wrapped geometry,

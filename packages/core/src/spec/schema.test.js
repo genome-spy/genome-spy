@@ -93,6 +93,27 @@ describe("generated core schema", () => {
         for (const columns of [0, -1, 1.5]) {
             expect(validate({ ...spec, columns })).toBe(false);
         }
+        for (const spacing of [
+            0,
+            10,
+            {},
+            { row: 0 },
+            { column: 20 },
+            { row: 3, column: 17 },
+        ]) {
+            expect(validate({ ...spec, spacing })).toBe(true);
+        }
+        for (const spacing of /** @type {unknown[]} */ ([
+            -1,
+            null,
+            [],
+            { row: -1 },
+            { column: null },
+            { row: "3" },
+            { extra: 10 },
+        ])) {
+            expect(validate({ ...spec, spacing })).toBe(false);
+        }
     });
 
     test("accepts viewport scale domains and rejects unknown sources", () => {

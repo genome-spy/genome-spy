@@ -12,6 +12,7 @@ Facet fields support ascending, descending, and explicit category order with
 Set a facet field's `header` to `null` or `{ "labels": false }` to hide category
 labels and reclaim their space.
 Numeric category labels support D3 number formatting through `header.format`.
+Facet `spacing` accepts separate `row` and `column` gaps as well as one number.
 
 Child transforms run independently within each facet, including aggregates that
 drop the facet fields, window calculations, stacks, sampling, and pileup.

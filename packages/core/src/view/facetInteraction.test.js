@@ -470,8 +470,10 @@ test.each([true, false])(
     }
 );
 
-test("shared scales use the pointed cell's wheel and touch coordinates once per resolution", async () => {
+test("shared scales use reordered cells with hidden headers and directional gaps once per resolution", async () => {
     const { root, facet, child, dispatcher } = await createFacet({
+        facet: { field: "g", sort: ["C", "B", "A"], header: null },
+        spacing: { row: 3, column: 17 },
         spec: {
             width: 100,
             height: 60,

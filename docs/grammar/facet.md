@@ -10,6 +10,13 @@ EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json
 
 SCHEMA FacetSpec
 
+### Spacing
+
+SCHEMA FacetSpacing
+
+For example, `"spacing": {"row": 10, "column": 20}` gives columns wider gaps
+than rows. Hidden headers contribute neither a band nor an adjacent gap.
+
 ### Facet Fields
 
 SCHEMA FacetFieldDef

@@ -271,11 +271,19 @@ See the [ExprRef documentation](expressions.md).
 
 ## FacetFieldDef
 
-SCHEMA FacetFieldDef
+See the [FacetFieldDef documentation](facet.md#facet-fields).
+
+## FacetHeader
+
+See the [FacetHeader documentation](facet.md#headers).
 
 ## FacetMapping
 
 SCHEMA FacetMapping
+
+## FacetSpacing
+
+See the [FacetSpacing documentation](facet.md#spacing).
 
 ## FacetSpec
 
