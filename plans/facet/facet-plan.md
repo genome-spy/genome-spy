@@ -21,6 +21,51 @@ ascending category order, and simple value labels are sufficient defaults.
 
 ## Current Status and Remaining Work (2026-10-10)
 
+### Follow-up: facet field titles
+
+Default each field title to its field name. `FacetFieldDef.title` accepts a
+replacement string, regular view-title object, or `null` to hide it. Create at
+most one ordinary `TitleView` per facet dimension, outside the category labels,
+with row titles on the left and column titles above the complete grid. Reuse title
+styles, measurement, reference frames, and the grid decoration queue. Keep
+category-header configuration separate; `header: null` hides both, while
+`header.labels: false` hides only category values.
+
+Vega-Lite also separates shared field titles from category labels (see
+`tmp/vega-lite/src/compile/header/parse.ts`). Reuse GenomeSpy's title contract
+instead of adding prefixed title properties or another text renderer. Separate
+header-title config buckets are outside scope.
+
+- [x] Add title types and shared title views to facet sizing/placement; preserve
+  fixed cell spans, allow title objects, and avoid per-category title instances.
+- [x] Verify automatic field-name titles, matrices, incomplete wrapped rows,
+  hidden titles/labels, title styling/placement, scrolling, and container resizing
+  through layout/SVG and WebGL/Canvas checks. Remove the superseded field-title
+  rejection test.
+- [x] Show Origin and Cylinders in `cars_matrix.json`; update the grammar,
+  compatibility record, and existing facet changeset. Record checks and runtime
+  size changes. Tentative commit: `feat(core): add shared facet field titles`.
+
+Verification: view/layout, SVG, specification-schema, and shared example suites
+pass (71 files, 1,547 tests), as do Core TypeScript, lint, schema generation,
+formatting, and release checks. WebGL and Canvas checks cover the actual cars
+matrix using automatic field-name titles, title-bearing sine facets with
+container resizing/shared x zoom/fixed y, and an incomplete wrapped grid scrolled
+in both directions. Title text appears
+once per dimension and clips with the grid. SVG coverage checks title objects,
+named styles, subtitles, hidden titles versus labels, outer placement, and fixed
+cell sizes. The real cars SVG check replaces its redundant absolute-position
+snapshot; the earlier title-rejection tests are removed. Header position checks
+use their actual coordinate frame, and clipping/zoom checks account for shared
+title bands rather than assuming the old header-only plot position.
+
+Runtime size against `22ecd400b`: FacetView 615→668 (**net +53 physical lines**).
+TitleView (597) and facetLayout (281) are unchanged. The addition reuses title
+views and helpers, reserves a shared outer band per dimension, and uses the
+existing decoration queue. No new renderer, per-category view, or dataflow
+branching machinery is introduced. The existing minor facet changeset targets
+1.2.0 for the fixed release group.
+
 ### Follow-up: title-style facet category labels
 
 Preserve the current centered row/column labels, their rotation, and default

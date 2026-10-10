@@ -7,6 +7,7 @@ import {
     isFacetHeaderVisible,
 } from "./facetLayout.js";
 import FacetHeaderView, { FACET_HEADER_PROPERTIES } from "./facetHeaderView.js";
+import TitleView, { getTitleCoords, resolveTitleSpec } from "./titleView.js";
 import Padding from "./layout/padding.js";
 import GridChild from "./gridView/gridChild.js";
 import {
@@ -56,6 +57,9 @@ export default class FacetView extends ContainerView {
 
     /** @type {Map<FacetChannel, FacetHeaderView>} */
     #headerViews = new Map();
+
+    /** @type {TitleView[]} */
+    #fieldTitles = [];
 
     /** @type {FacetFactors} */
     #facetFactors = { row: [], column: [] };
@@ -116,15 +120,38 @@ export default class FacetView extends ContainerView {
         await this.#gridChild.syncGuideViews();
 
         for (const channel of /** @type {const} */ (["column", "row"])) {
-            if (isFacetHeaderVisible(this.#facet[channel])) {
+            const field = this.#facet[channel];
+            if (isFacetHeaderVisible(field)) {
                 const header = FacetHeaderView.create(
                     channel,
                     this,
                     this.child,
-                    this.#facet[channel].header
+                    field.header
                 );
                 if (header) {
                     this.#headerViews.set(channel, header);
+                }
+            }
+            if (field && field.header !== null) {
+                const titleSpec = resolveTitleSpec(
+                    field.title === undefined ? field.field : field.title,
+                    this.getConfigScopes(),
+                    { orient: channel === "row" ? "left" : "top" }
+                );
+                if (titleSpec) {
+                    this.#fieldTitles.push(
+                        new TitleView(
+                            titleSpec,
+                            this.context,
+                            this,
+                            this.child,
+                            this.getNextAutoName(
+                                channel === "row"
+                                    ? "facetTitleRow"
+                                    : "facetTitleColumn"
+                            )
+                        )
+                    );
                 }
             }
         }
@@ -143,6 +170,7 @@ export default class FacetView extends ContainerView {
         yield* this.#gridChild.getChildren();
 
         yield* this.#headerViews.values();
+        yield* this.#fieldTitles;
     }
 
     /**
@@ -178,6 +206,14 @@ export default class FacetView extends ContainerView {
         );
     }
 
+    /** @returns {Padding} */
+    #getFieldTitlePadding() {
+        return this.#fieldTitles.reduce(
+            (padding, title) => padding.add(title.getOverhang()),
+            Padding.zero()
+        );
+    }
+
     /**
      * @returns {import("./layout/flexLayout.js").FlexDimensions}
      */
@@ -188,7 +224,7 @@ export default class FacetView extends ContainerView {
             (cell) => this.#getCellOverhang(cell),
             this.#spacing,
             this.#getHeaderPadding()
-        );
+        ).addPadding(this.#getFieldTitlePadding());
     }
 
     /** @returns {import("./facetLayout.js").FacetHeaderPadding} */
@@ -243,9 +279,15 @@ export default class FacetView extends ContainerView {
         this.#syncFacetCollector();
         context.pushView(this, coords);
 
+        // Each dimension has one outer title, independent of the cell count.
+        let gridCoords = coords;
+        const titleFrames = this.#fieldTitles.map((title) => {
+            gridCoords = gridCoords.shrink(title.getOverhang());
+            return { title, frame: gridCoords };
+        });
         const layouts = getFacetCellLayouts(
             this.#getFacetGrid(),
-            coords,
+            gridCoords,
             this.child.getViewportSize(),
             (cell) => this.#getCellOverhang(cell),
             this.#spacing,
@@ -290,14 +332,31 @@ export default class FacetView extends ContainerView {
                 orient,
                 layouts,
                 this.#getFacetGrid(),
-                coords,
+                gridCoords,
                 this.#spacing
             );
             arrangement.queueDecoration(
                 header.titleSpec.zindex,
                 DECORATION_ORDER.title,
-                () => header.arrange(context, coords, options)
+                () => header.arrange(context, gridCoords, options)
             );
+        }
+        if (titleFrames.length && layouts.length) {
+            const plotBounds = layouts
+                .map((layout) => layout.childCoords)
+                .reduce((a, b) => a.union(b));
+            for (const { title, frame } of titleFrames) {
+                arrangement.queueDecoration(
+                    title.titleSpec.zindex,
+                    DECORATION_ORDER.title,
+                    () =>
+                        title.arrange(
+                            context,
+                            getTitleCoords(plotBounds, frame, title.titleSpec),
+                            options
+                        )
+                );
+            }
         }
         arrangement.arrange();
 
@@ -537,12 +596,6 @@ function normalizeFacetFieldDef(fieldDef, channel) {
 
     if (!isFacetFieldDef(fieldDef)) {
         throw new Error(`Facet ${channel} definition must define a field.`);
-    }
-
-    if ("title" in fieldDef) {
-        throw new Error(
-            "Facet field titles are not supported. Category values are used as labels."
-        );
     }
 
     const sort = fieldDef.sort;

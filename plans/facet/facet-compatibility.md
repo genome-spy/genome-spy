@@ -27,9 +27,9 @@ The subsequently authorized additions are complete: ascending/descending and
 explicit category ordering, `header: null`/`labels: false` with reclaimed space,
 numeric `header.format`, and separate row/column `spacing`. Matrix ordering
 preserves input order for unlisted categories even with interleaved rows.
-These options retain one child and the static batched flow. Field titles
-and independent domains remain deferred. The subsequently authorized header
-placement/styles are recorded below.
+These options retain one child and the static batched flow. Independent domains
+remain deferred. The subsequently authorized header placement/styles and field
+titles are recorded below.
 The [main plan](facet-plan.md#small-compatibility-additions-authorized-follow-up)
 records individual milestones, verification, and the net +110 runtime-line
 measurement against `70533c581`.
@@ -44,10 +44,22 @@ wrapped column facets retain one per cell. The batched header marks and facet
 dataflow remain shared.
 
 General, row, and column header configuration buckets follow Vega-Lite's
-pattern, using GenomeSpy's existing title property names. Field titles,
-subtitles, and Vega-Lite's prefixed `label*` aliases are outside this addition.
+pattern, using GenomeSpy's existing title property names. Category-label
+subtitles and Vega-Lite's prefixed `label*` aliases are outside this addition.
 The [main plan](facet-plan.md#follow-up-title-style-facet-category-labels)
 records verification and size measurements.
+
+### Field titles follow-up
+
+Facet titles default to their field names. String or view-title object `title`
+properties customize them, and `title: null` hides them.
+One ordinary title view per dimension shares the existing title styling,
+measurement, and placement; no per-category instances are added. Titles sit
+outside category labels, preserve fixed plot sizes, and scroll with the grid.
+`header: null` hides both labels and the title, while `labels: false` preserves
+the field title. The cars matrix demonstrates automatic Origin and Cylinders titles.
+The [main plan](facet-plan.md#follow-up-facet-field-titles) records verification
+and size measurements. This supersedes the earlier rejection of field titles.
 
 ### Shared outer axes follow-up
 

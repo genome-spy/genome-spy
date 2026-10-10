@@ -70,6 +70,16 @@ export type Channel = ChannelWithScale | ChannelWithoutScale;
 /** A category field whose values are used as facet labels. */
 export interface FacetFieldDef extends FieldDefBase {
     /**
+     * A shared title for this facet dimension. A string uses the regular view
+     * title style; an object supports view-title placement and styling.
+     * Row titles default to the left, and column titles to the top.
+     * Set to `null` to hide the title.
+     *
+     * __Default value:__ The field name.
+     */
+    title?: string | Title | null;
+
+    /**
      * Category order. An array places listed values first, followed by unlisted
      * values in their input order. Values absent from the data do not add cells.
      *
@@ -77,7 +87,7 @@ export interface FacetFieldDef extends FieldDefBase {
      */
     sort?: "ascending" | "descending" | Scalar[];
 
-    /** Category label options. `null` hides labels and removes their reserved space. */
+    /** Category label options. `null` hides labels and the field title, reclaiming their space. */
     header?: FacetHeader | null;
 }
 

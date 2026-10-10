@@ -30,13 +30,27 @@ Row and column fields can have different orders. For example,
 `"row": {"field": "group", "sort": ["control", "treated"]}` puts control
 first even if treated occurs first in the data.
 
+### Field Titles
+
+Each facet field has a shared title that defaults to its field name. For example,
+`"column": {"field": "Cylinders"}` displays “Cylinders” once above the complete
+grid, outside the category labels. Row titles default to the left.
+Set `title` to a string to replace the text or to `null` to hide it.
+
+A title object uses the full [view-title](title.md) placement and styling
+options, such as `"title": {"text": "Origin", "orient": "right"}`.
+Field titles use `config.title` and named title styles. They reserve space
+without changing fixed cell dimensions, and scroll and clip with the grid.
+
 ### Headers
 
 SCHEMA FacetHeader
 
 Each facet field can configure its category labels through `header`. For
 example, `"column": {"field": "group", "header": null}` hides column labels
-and removes their reserved space while retaining the same facet cells.
+and its field title, reclaiming their space while retaining the same facet
+cells. `"header": {"labels": false}` hides only category labels, preserving
+the field title.
 
 For numeric categories, `"header": {"format": ",.0f"}` displays thousands
 separators. Formatting changes labels while preserving category identity and order.
@@ -120,8 +134,7 @@ GenomeSpy supports basic category repetition with a smaller facet grammar:
   encoding shortcuts are not supported. Compute binned or temporal categories
   in advance; facet fields do not accept `bin` or `timeUnit`.
 - Headers support numeric formatting and view-title placement/styles, but not
-  facet field titles or time formatting. Sorting by another field or aggregate
-  is not supported.
+  time formatting. Sorting by another field or aggregate is not supported.
 - Selection parameters have one shared value across cells. Per-cell selection
   state and Vega-Lite's `union`/`intersect` selection resolution are not supported.
 

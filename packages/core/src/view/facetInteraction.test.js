@@ -325,19 +325,24 @@ test("layout refresh preserves hover identity while category changes still trans
 
 test("headers, gaps, and clipped cell areas do not acquire a child target", async () => {
     const { facet, child } = await createFacet();
-    const coords = Rectangle.create(0, 0, 210, 166);
-    facet.arrange(new DebuggingViewRenderingContext({}), coords, {
+    const second = child.facetCoords.get(["B"]);
+    const y = second.y + 2;
+    facet.arrange(new DebuggingViewRenderingContext({}), facet.coords, {
         firstFacet: true,
-        clipRect: Rectangle.create(0, 0, 150, 55),
+        clipRect: Rectangle.create(0, 0, second.x + 40, second.y + 25),
     });
     const dispatcher = new InteractionDispatcher({ viewRoot: facet });
     expect(
-        dispatcher.dispatch(new Point(140, 30), new MouseEvent("click")).target
+        dispatcher.dispatch(
+            new Point(second.x + 30, y),
+            new MouseEvent("click")
+        ).target
     ).toBe(child);
     for (const point of [
-        new Point(140, 65),
-        new Point(170, 30),
-        new Point(105, 30),
+        new Point(second.x + 30, second.y + 35),
+        new Point(second.x + 60, y),
+        new Point(second.x - 5, y),
+        new Point(50, second.y - 5),
         new Point(50, 5),
     ]) {
         expect(
@@ -593,7 +598,8 @@ test("a stale hover in another cell does not snap the wheel anchor", async () =>
 
 test("partly clipped cells retain full plot coordinates for shared-scale zoom", async () => {
     const { root, facet, child, dispatcher } = await createFacet({
-        viewportHeight: 55,
+        // Keep the zoom anchor visible below the shared title and category header.
+        viewportHeight: 80,
         columns: 1,
         spec: {
             width: 100,

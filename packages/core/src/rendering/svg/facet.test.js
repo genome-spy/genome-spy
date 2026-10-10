@@ -2,6 +2,7 @@
 
 import { expect, onTestFinished, test, vi } from "vitest";
 import anscombeData from "../../../../../node_modules/vega-datasets/data/anscombe.json" with { type: "json" };
+import carsData from "../../../../../node_modules/vega-datasets/data/cars.json" with { type: "json" };
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";
 import {
@@ -777,7 +778,7 @@ test.each([-1, 0, 1])(
             .getDescendants()
             .find((child) => "facet" in child.spec);
         expect([facet.getSize().width.px, facet.getSize().height.px]).toEqual([
-            210, 110,
+            210, 132,
         ]);
         const { svg, warnings } = createSvg({
             viewRoot: view,
@@ -857,8 +858,195 @@ test("header config scopes, styles, and explicit properties follow title precede
     expect(svg.querySelector('[data-name="facetHeaderColumn0"]')).toBeNull();
     expect(
         view.getDescendants().find((child) => child.name === "points").coords.y
-    ).toBe(0);
+    ).toBe(22);
     expect(warnings).toEqual([]);
+});
+
+test("cars matrix shows one field title per dimension outside its category labels", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify(carsData))
+    );
+    onTestFinished(() => {
+        vi.restoreAllMocks();
+    });
+    const { view } = await createHeadlessEngine(
+        loadSharedExampleSpec("examples/core/facet/cars_matrix.json"),
+        { contextOptions }
+    );
+    onTestFinished(() => view.disposeSubtree());
+    const { svg, warnings } = createSvg({
+        viewRoot: view,
+        logicalWidth: 1200,
+        logicalHeight: 800,
+    });
+    const row = svg.querySelectorAll('[data-name="facetTitleRow0"] text');
+    const column = svg.querySelectorAll('[data-name="facetTitleColumn0"] text');
+    expect(Array.from(row, (text) => text.textContent)).toEqual(["Origin"]);
+    expect(Array.from(column, (text) => text.textContent)).toEqual([
+        "Cylinders",
+    ]);
+    const rowLabel = svg.querySelector('[data-name="facetHeaderRow0"] text');
+    const columnLabel = svg.querySelector(
+        '[data-name="facetHeaderColumn0"] text'
+    );
+    expect(getTextPosition(row[0])[0]).toBeLessThan(
+        getTextPosition(rowLabel)[0]
+    );
+    expect(getTextPosition(column[0])[1]).toBeLessThan(
+        getTextPosition(columnLabel)[1]
+    );
+    const points = view.getDescendants().find((child) => {
+        const x = child.spec.encoding?.x;
+        return x && "field" in x && x.field === "Horsepower";
+    });
+    const cells = Array.from(points.facetCoords.values());
+    expect(cells).toHaveLength(15);
+    expect(
+        cells.every((cell) => cell.width === 150 && cell.height === 150)
+    ).toBe(true);
+    const bounds = cells.reduce((a, b) => a.union(b));
+    expect(getTextPosition(row[0])[1]).toBeCloseTo(
+        bounds.y + bounds.height / 2
+    );
+    expect(getTextPosition(column[0])[0]).toBeCloseTo(
+        bounds.x + bounds.width / 2
+    );
+    expect(row[0].getAttribute("transform")).toContain("rotate(-90)");
+    expect(warnings).toEqual([]);
+});
+
+test.each([
+    { title: undefined, header: undefined, visible: true, labels: true },
+    { title: null, header: undefined, visible: false, labels: true },
+    { title: undefined, header: null, visible: false, labels: false },
+    {
+        title: undefined,
+        header: { labels: false },
+        visible: true,
+        labels: false,
+    },
+])(
+    "facet title visibility is independent of category labels (%j)",
+    async ({ title, header, visible, labels }) => {
+        const { view } = await createHeadlessEngine(
+            {
+                data: { values: [{ g: "A" }] },
+                facet: { field: "g", title, header },
+                spec: { width: 100, height: 50, mark: "point" },
+            },
+            { contextOptions }
+        );
+        onTestFinished(() => view.disposeSubtree());
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 300,
+            logicalHeight: 200,
+        });
+        expect(
+            svg.querySelectorAll('[data-name="facetTitleColumn0"] text')
+        ).toHaveLength(visible ? 1 : 0);
+        expect(
+            svg.querySelectorAll('[data-name="facetHeaderColumn0"] text')
+        ).toHaveLength(labels ? 1 : 0);
+        if (visible) {
+            expect(
+                svg.querySelector('[data-name="facetTitleColumn0"] text')
+                    .textContent
+            ).toBe("g");
+        }
+        expect(warnings).toEqual([]);
+    }
+);
+
+test("wrapped facets reuse title styling and reserve one shared title band", async () => {
+    const { view } = await createHeadlessEngine(
+        {
+            config: {
+                style: { "facet-heading": { color: "blue", fontSize: 18 } },
+            },
+            data: { values: ["A", "B", "C"].map((g) => ({ g })) },
+            facet: {
+                field: "g",
+                title: {
+                    text: "Groups",
+                    subtitle: "Three categories",
+                    orient: "bottom",
+                    style: "facet-heading",
+                    color: "red",
+                },
+            },
+            columns: 2,
+            spec: { name: "points", width: 100, height: 50, mark: "point" },
+        },
+        { contextOptions }
+    );
+    onTestFinished(() => view.disposeSubtree());
+    const { svg, warnings } = createSvg({
+        viewRoot: view,
+        logicalWidth: 400,
+        logicalHeight: 300,
+    });
+    const texts = svg.querySelectorAll('[data-name="facetTitleColumn0"] text');
+    expect(Array.from(texts, (text) => text.textContent)).toEqual([
+        "Groups",
+        "Three categories",
+    ]);
+    expect(texts[0].parentElement.getAttribute("fill")).toBe("red");
+    expect(texts[0].parentElement.getAttribute("font-size")).toBe("18");
+    const points = view
+        .getDescendants()
+        .find((child) => child.name === "points");
+    const cells = Array.from(points.facetCoords.values());
+    expect(cells).toHaveLength(3);
+    expect(
+        cells.every((cell) => cell.width === 100 && cell.height === 50)
+    ).toBe(true);
+    const bounds = cells.reduce((a, b) => a.union(b));
+    expect(getTextPosition(texts[0])[0]).toBeCloseTo(
+        bounds.x + bounds.width / 2
+    );
+    expect(getTextPosition(texts[0])[1]).toBeGreaterThan(bounds.y2);
+    expect(warnings).toEqual([]);
+});
+
+test("shared field titles scroll and clip with the wrapped facet grid", async () => {
+    const { view } = await createHeadlessEngine(
+        {
+            data: { values: ["A", "B", "C", "D", "E"].map((g) => ({ g })) },
+            facet: { field: "g", title: "Groups" },
+            columns: 3,
+            viewportHeight: 90,
+            spec: { name: "points", width: 100, height: 50, mark: "point" },
+        },
+        { contextOptions }
+    );
+    onTestFinished(() => view.disposeSubtree());
+    const render = () =>
+        createSvg({ viewRoot: view, logicalWidth: 500, logicalHeight: 250 });
+    const first = render();
+    expect(
+        first.svg.querySelector('[data-name="facetTitleColumn0"] text')
+            .textContent
+    ).toBe("Groups");
+    const scrollbar =
+        /** @type {import("../../view/gridView/scrollbar.js").default} */ (
+            view
+                .getDescendants()
+                .find((child) => child.name === "scrollbar-vertical")
+        );
+    scrollbar.setViewportOffset(Infinity);
+    const last = render();
+    expect(
+        last.svg.querySelector('[data-name="facetTitleColumn0"] text')
+    ).toBeNull();
+    expect(
+        Array.from(
+            last.svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
+            (text) => text.textContent
+        )
+    ).toEqual(["D", "E"]);
+    expect(first.warnings).toEqual([]);
+    expect(last.warnings).toEqual([]);
 });
 
 /** @param {Element} text */

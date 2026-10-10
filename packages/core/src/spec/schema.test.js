@@ -81,12 +81,28 @@ describe("generated core schema", () => {
         }
         expect(
             validate({ ...spec, facet: { field: "group", title: "Group" } })
-        ).toBe(false);
+        ).toBe(true);
         expect(
             validate({
                 ...spec,
                 facet: { row: { field: "group", title: null } },
             })
+        ).toBe(true);
+        expect(
+            validate({
+                ...spec,
+                facet: {
+                    field: "group",
+                    title: {
+                        text: "Group",
+                        orient: "bottom",
+                        style: "group-title",
+                    },
+                },
+            })
+        ).toBe(true);
+        expect(
+            validate({ ...spec, facet: { field: "group", title: 42 } })
         ).toBe(false);
         expect(validate({ ...spec, columns: 1 })).toBe(true);
         expect(validate({ ...spec, columns: 2 })).toBe(true);

@@ -24,6 +24,10 @@ horizontal track labels and overlays inside the plot. Reserved labels grow to
 fit their text, while existing default placement and header bands are preserved.
 Configure shared defaults with `config.header`, `config.headerRow`, and
 `config.headerColumn`, using the same property names as view titles.
+Each facet dimension displays its field name as a shared title outside the
+category labels. A string or view-title object `title` customizes it, and
+`title: null` hides it. `header: null` hides
+both the field title and category labels; `labels: false` hides only the labels.
 Facet `spacing` accepts separate `row` and `column` gaps as well as one number.
 
 Child transforms run independently within each facet, including aggregates that
@@ -55,7 +59,6 @@ Unsupported child viewports fail with an error directing authors to put the
 viewport on the facet container.
 Independent per-cell scales and legends fail clearly, while layers can retain
 separate non-positional scales shared across cells.
-Facet field titles are excluded from the schema and rejected at runtime;
-category values provide the labels.
+Category values provide the cell labels, independently of shared field titles.
 Unchanged facet labels are retained across layout refreshes without restarting
 their dataflow.

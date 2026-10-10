@@ -155,15 +155,6 @@ test("facet rejects an immediate nested facet child", async () => {
     ).rejects.toThrow("Facet specs cannot contain an immediate facet child.");
 });
 
-test.each([
-    { field: "g", title: "Group" },
-    { row: { field: "g", title: null } },
-])("facet rejects unused field titles (%j)", async (facet) => {
-    await expect(
-        createAndInitialize({ facet, spec: { mark: "point" } }, FacetView)
-    ).rejects.toThrow("Facet field titles are not supported.");
-});
-
 test.each([null, "invalid", { field: "x" }, ["A", null], [Infinity]])(
     "facet rejects unsupported category sort %j",
     async (sort) => {
@@ -288,7 +279,7 @@ test("column facet headers reflect placement and replacement data", async () => 
         FacetView
     );
     const [header] = getFacetHeaderViews(view);
-    renderToLayout(view, Rectangle.create(0, 0, 210, 78));
+    renderToLayout(view, Rectangle.create(0, 0, 210, 100));
     expect(Array.from(header.getCollector().getData())).toMatchObject([
         { x: 50 / 210, y: 1 - 9 / 78, text: "I" },
         { x: 160 / 210, y: 1 - 9 / 78, text: "II" },
@@ -297,9 +288,9 @@ test("column facet headers reflect placement and replacement data", async () => 
     // Layout invalidation alone must not republish identical label data.
     const revision = header.getCollector().dataRevision;
     view.invalidateSizeCache();
-    renderToLayout(view, Rectangle.create(0, 0, 210, 78));
+    renderToLayout(view, Rectangle.create(0, 0, 210, 100));
     expect(header.getCollector().dataRevision).toBe(revision);
-    renderToLayout(view, Rectangle.create(0, 0, 320, 78));
+    renderToLayout(view, Rectangle.create(0, 0, 320, 100));
     expect(header.getCollector().dataRevision).toBeGreaterThan(revision);
 
     const source =
@@ -340,37 +331,18 @@ test("facet headers are centered over plot area excluding overhang", async () =>
         FacetView
     );
     const [columnHeader, rowHeader] = getFacetHeaderViews(view);
-    const columnSource =
-        /** @type {import("../data/sources/inlineSource.js").default} */ (
-            columnHeader.flowHandle.dataSource
-        );
-    const rowSource =
-        /** @type {import("../data/sources/inlineSource.js").default} */ (
-            rowHeader.flowHandle.dataSource
-        );
-    const columnUpdateSpy = vi.spyOn(columnSource, "updateDynamicData");
-    const rowUpdateSpy = vi.spyOn(rowSource, "updateDynamicData");
-
     const layout = renderToLayout(view);
-    const rootCoords = parseRectString(layout.coords);
     const firstPlotCoords = parseRectString(
         findLayoutNodes(layout, "facet0")[0].coords
     );
-    const plotCenterX =
-        (firstPlotCoords.x + firstPlotCoords.width / 2) / rootCoords.width;
-    const plotCenterY =
-        1 -
-        (firstPlotCoords.y + firstPlotCoords.height / 2) / rootCoords.height;
-
-    const columnData = /** @type {{ x: number, y: number, text: string }[]} */ (
-        columnUpdateSpy.mock.calls[0][0]
-    );
-    const rowData = /** @type {{ x: number, y: number, text: string }[]} */ (
-        rowUpdateSpy.mock.calls[0][0]
-    );
-
-    expect(columnData[0].x).toBeCloseTo(plotCenterX);
-    expect(rowData[0].y).toBeCloseTo(plotCenterY);
+    const [columnData] = columnHeader.getCollector().getData();
+    const [rowData] = rowHeader.getCollector().getData();
+    expect(
+        columnHeader.coords.x + columnData.x * columnHeader.coords.width
+    ).toBeCloseTo(firstPlotCoords.x + firstPlotCoords.width / 2);
+    expect(
+        rowHeader.coords.y + (1 - rowData.y) * rowHeader.coords.height
+    ).toBeCloseTo(firstPlotCoords.y + firstPlotCoords.height / 2);
 });
 
 test("descendant unit collectors group data by facet fields", async () => {
@@ -546,7 +518,7 @@ test.each(
         [
             { row: { field: "r", header: null }, column: { field: "c" } },
             undefined,
-            [210, 138],
+            [210, 160],
             1,
         ],
         [
@@ -555,13 +527,13 @@ test.each(
                 column: { field: "c" },
             },
             undefined,
-            [210, 138],
+            [232, 160],
             1,
         ],
         [
             { row: { field: "r" }, column: { field: "c", header: null } },
             undefined,
-            [238, 110],
+            [260, 110],
             1,
         ],
         [
@@ -573,7 +545,7 @@ test.each(
             [210, 110],
             0,
         ],
-        [{ field: "c", header: { labels: false } }, 1, [100, 110], 0],
+        [{ field: "c", header: { labels: false } }, 1, [100, 132], 0],
         [{ row: { field: "r", header: null } }, undefined, [100, 110], 0],
     ])
 )(
@@ -942,11 +914,11 @@ test("facet size grows with wrapped facet count", async () => {
 
     expect(twoFacetView.getSize()).toMatchObject({
         width: { px: 210, grow: 0 },
-        height: { px: 78, grow: 0 },
+        height: { px: 100, grow: 0 },
     });
     expect(fourFacetView.getSize()).toMatchObject({
         width: { px: 210, grow: 0 },
-        height: { px: 166, grow: 0 },
+        height: { px: 188, grow: 0 },
     });
 });
 
@@ -977,8 +949,8 @@ test.each(
             },
             FacetView
         );
-        const width = wrapped ? 100 : 218 + 2 * columnGap;
-        const height = wrapped ? 136 + 3 * rowGap : 118 + 2 * rowGap;
+        const width = wrapped ? 100 : 240 + 2 * columnGap;
+        const height = wrapped ? 158 + 3 * rowGap : 140 + 2 * rowGap;
         expect([view.getSize().width.px, view.getSize().height.px]).toEqual([
             width,
             height,
@@ -986,8 +958,8 @@ test.each(
         renderToLayout(view, Rectangle.create(0, 0, width, height));
         const cells = Array.from(view.child.facetCoords.values());
         expect(rectTuple(cells[0])).toEqual([
-            wrapped ? 0 : 18 + columnGap,
-            18 + rowGap,
+            wrapped ? 0 : 40 + columnGap,
+            40 + rowGap,
             100,
             50,
         ]);
@@ -999,11 +971,11 @@ test.each(
         }
         const [header] = getFacetHeaderViews(view);
         const labels = Array.from(header.getCollector().getData());
-        expect((1 - labels[0].y) * height).toBeCloseTo(9);
+        expect((1 - labels[0].y) * header.coords.height).toBeCloseTo(9);
         if (wrapped) {
-            expect((labels[0].y - labels[1].y) * height).toBeCloseTo(
-                68 + 2 * rowGap
-            );
+            expect(
+                (labels[0].y - labels[1].y) * header.coords.height
+            ).toBeCloseTo(68 + 2 * rowGap);
         }
         view.disposeSubtree();
     }
@@ -1058,7 +1030,7 @@ test("implicit root grid uses facet viewport height", async () => {
     const facet = /** @type {FacetView} */ (root.children[0]);
 
     expect(facet).toBeInstanceOf(FacetView);
-    expect(facet.getSize().height).toEqual({ px: 166, grow: 0 });
+    expect(facet.getSize().height).toEqual({ px: 188, grow: 0 });
     expect(facet.getViewportSize().height).toEqual({ px: 80, grow: 0 });
     expect(root.getSize().height).toEqual({ px: 80, grow: 0 });
 });
@@ -1075,13 +1047,14 @@ test("facet root size can be measured before dataflow initialization", async () 
     );
     const facet = /** @type {FacetView} */ (root.children[0]);
 
-    expect(root.getSize().height).toEqual({ px: 0, grow: 0 });
+    // The shared title can be measured before category data arrives.
+    expect(root.getSize().height).toEqual({ px: 22, grow: 0 });
 
     const { dataSources } = initializeViewSubtree(root, root.context.dataFlow);
     await loadViewSubtreeData(root, dataSources);
 
-    expect(facet.getSize().height).toEqual({ px: 166, grow: 0 });
-    expect(root.getSize().height).toEqual({ px: 166, grow: 0 });
+    expect(facet.getSize().height).toEqual({ px: 188, grow: 0 });
+    expect(root.getSize().height).toEqual({ px: 188, grow: 0 });
 });
 
 test("flexible facet root fits its container before and after data initialization", async () => {
@@ -1118,15 +1091,15 @@ test("facet render repeats child at each facet cell", async () => {
         createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
         FacetView
     );
-    const layout = renderToLayout(view, Rectangle.create(0, 0, 210, 166));
+    const layout = renderToLayout(view, Rectangle.create(0, 0, 210, 188));
 
     expect(
         findLayoutNodes(layout, "facet0").map((node) => node.coords)
     ).toEqual([
-        "Rectangle: x: 0, y: 28, width: 100, height: 50",
-        "Rectangle: x: 110, y: 28, width: 100, height: 50",
-        "Rectangle: x: 0, y: 116, width: 100, height: 50",
-        "Rectangle: x: 110, y: 116, width: 100, height: 50",
+        "Rectangle: x: 0, y: 50, width: 100, height: 50",
+        "Rectangle: x: 110, y: 50, width: 100, height: 50",
+        "Rectangle: x: 0, y: 138, width: 100, height: 50",
+        "Rectangle: x: 110, y: 138, width: 100, height: 50",
     ]);
 });
 
@@ -1215,62 +1188,10 @@ test("anscombe wrapped facet example renders stable cell layout", async () => {
     expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
         .toMatchInlineSnapshot(`
           [
-            "Rectangle: x: 32, y: 28, width: 300, height: 300",
-            "Rectangle: x: 342, y: 28, width: 300, height: 300",
-            "Rectangle: x: 32, y: 366, width: 300, height: 300",
-            "Rectangle: x: 342, y: 366, width: 300, height: 300",
-          ]
-        `);
-});
-
-test("cars matrix facet example renders stable cell layout", async () => {
-    const spec = loadSharedExampleSpec("examples/core/facet/cars_matrix.json");
-    spec.spec.width = 150;
-    spec.spec.height = 150;
-    spec.data = {
-        values: [
-            {
-                Origin: "Europe",
-                Cylinders: 4,
-                Horsepower: 76,
-                Miles_per_Gallon: 30,
-            },
-            {
-                Origin: "Europe",
-                Cylinders: 6,
-                Horsepower: 90,
-                Miles_per_Gallon: 25,
-            },
-            {
-                Origin: "Japan",
-                Cylinders: 4,
-                Horsepower: 65,
-                Miles_per_Gallon: 35,
-            },
-            {
-                Origin: "USA",
-                Cylinders: 8,
-                Horsepower: 150,
-                Miles_per_Gallon: 18,
-            },
-        ],
-    };
-
-    const view = await createAndInitialize(spec, FacetView);
-    const layout = renderToLayout(view);
-
-    expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
-        .toMatchInlineSnapshot(`
-          [
-            "Rectangle: x: 60, y: 28, width: 150, height: 150",
-            "Rectangle: x: 220, y: 28, width: 150, height: 150",
-            "Rectangle: x: 380, y: 28, width: 150, height: 150",
-            "Rectangle: x: 60, y: 188, width: 150, height: 150",
-            "Rectangle: x: 220, y: 188, width: 150, height: 150",
-            "Rectangle: x: 380, y: 188, width: 150, height: 150",
-            "Rectangle: x: 60, y: 348, width: 150, height: 150",
-            "Rectangle: x: 220, y: 348, width: 150, height: 150",
-            "Rectangle: x: 380, y: 348, width: 150, height: 150",
+            "Rectangle: x: 32, y: 50, width: 300, height: 300",
+            "Rectangle: x: 342, y: 50, width: 300, height: 300",
+            "Rectangle: x: 32, y: 388, width: 300, height: 300",
+            "Rectangle: x: 342, y: 388, width: 300, height: 300",
           ]
         `);
 });
