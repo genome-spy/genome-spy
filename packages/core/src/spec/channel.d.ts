@@ -67,7 +67,15 @@ export type ChannelWithoutScale =
 export type Channel = ChannelWithScale | ChannelWithoutScale;
 
 /** A category field whose values are used as facet labels. */
-export type FacetFieldDef = FieldDefBase;
+export interface FacetFieldDef extends FieldDefBase {
+    /**
+     * Category order. An array places listed values first, followed by unlisted
+     * values in their input order. Values absent from the data do not add cells.
+     *
+     * __Default value:__ `"ascending"`
+     */
+    sort?: "ascending" | "descending" | Scalar[];
+}
 
 // TODO: Belongs to "guide"
 export interface TitleMixins {

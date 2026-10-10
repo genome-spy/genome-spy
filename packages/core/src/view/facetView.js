@@ -431,9 +431,25 @@ function collectFacetFactors(facet, collector) {
     }
 
     return {
-        row: Array.from(row).sort(compareScalars),
-        column: Array.from(column).sort(compareScalars),
+        row: sortFacetFactors(row, facet.row?.sort),
+        column: sortFacetFactors(column, facet.column?.sort),
     };
+}
+
+/**
+ * @param {Set<import("../spec/channel.js").Scalar>} values
+ * @param {import("../spec/channel.js").FacetFieldDef["sort"]} sort
+ */
+function sortFacetFactors(values, sort = "ascending") {
+    if (Array.isArray(sort)) {
+        const order = new Set(sort);
+        return Array.from(order)
+            .filter((value) => values.has(value))
+            .concat(Array.from(values).filter((value) => !order.has(value)));
+    }
+    return Array.from(values).sort(
+        sort === "descending" ? (a, b) => compareScalars(b, a) : compareScalars
+    );
 }
 
 /**
@@ -513,6 +529,26 @@ function normalizeFacetFieldDef(fieldDef, channel) {
     if ("title" in fieldDef) {
         throw new Error(
             "Facet field titles are not supported. Category values are used as labels."
+        );
+    }
+
+    const sort = fieldDef.sort;
+    if (
+        sort !== undefined &&
+        sort !== "ascending" &&
+        sort !== "descending" &&
+        !(
+            Array.isArray(sort) &&
+            sort.every(
+                (value) =>
+                    typeof value === "string" ||
+                    typeof value === "boolean" ||
+                    (typeof value === "number" && Number.isFinite(value))
+            )
+        )
+    ) {
+        throw new Error(
+            'Facet sort must be "ascending", "descending", or an array of scalar values.'
         );
     }
 

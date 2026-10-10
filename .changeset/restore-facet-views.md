@@ -7,6 +7,9 @@ row/column matrix, with shared scales, axes, and legends, group labels, and
 scrollable viewports. Cell titles, backgrounds, guide layering, clipping, and
 visible-cell culling follow the existing layout rules.
 
+Facet fields support ascending, descending, and explicit category order with
+`sort`. Explicit arrays order present values without creating absent categories.
+
 Child transforms run independently within each facet, including aggregates that
 drop the facet fields, window calculations, stacks, sampling, and pileup.
 Buffered transforms and self-lookups span physical files while preserving row

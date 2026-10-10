@@ -164,6 +164,21 @@ test.each([
     ).rejects.toThrow("Facet field titles are not supported.");
 });
 
+test.each([null, "invalid", { field: "x" }, ["A", null], [Infinity]])(
+    "facet rejects unsupported category sort %j",
+    async (sort) => {
+        await expect(
+            createAndInitialize(
+                {
+                    facet: /** @type {any} */ ({ field: "g", sort }),
+                    spec: { mark: "point" },
+                },
+                FacetView
+            )
+        ).rejects.toThrow("Facet sort must be");
+    }
+);
+
 test.each(
     /** @type {const} */ ([
         ["scale", "color"],
@@ -390,7 +405,17 @@ test("descendant unit collectors group data by facet fields", async () => {
     ]);
 });
 
-test("column facet labels follow sorted collector factors", async () => {
+test.each(
+    /** @type {Array<[import("../spec/channel.js").FacetFieldDef["sort"], string[]]>} */ ([
+        [undefined, ["I", "II", "III", "IV"]],
+        ["descending", ["IV", "III", "II", "I"]],
+        [
+            ["III", "absent", "III", "I"],
+            ["III", "I", "IV", "II"],
+        ],
+        [[], ["IV", "II", "I", "III"]],
+    ])
+)("column facet cells and labels follow sort %j", async (sort, expected) => {
     const view = await createAndInitialize(
         {
             data: {
@@ -402,7 +427,7 @@ test("column facet labels follow sorted collector factors", async () => {
                     { Series: "I", X: 8, Y: 6.95 },
                 ],
             },
-            facet: { field: "Series" },
+            facet: { field: "Series", sort },
             columns: 2,
             spec: {
                 mark: "point",
@@ -419,7 +444,57 @@ test("column facet labels follow sorted collector factors", async () => {
     const [header] = getFacetHeaderViews(view);
     expect(
         Array.from(header.getCollector().getData(), (datum) => datum.text)
-    ).toEqual(["I", "II", "III", "IV"]);
+    ).toEqual(expected);
+    expect(Array.from(view.child.facetCoords.keys())).toEqual(
+        expected.map((value) => [value])
+    );
+    view.disposeSubtree();
+});
+
+test("matrix sorting applies independently and follows replacement input order", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    { r: "A", c: 2 },
+                    { r: "B", c: 1 },
+                ],
+            },
+            facet: {
+                row: { field: "r", sort: "descending" },
+                column: { field: "c", sort: [1] },
+            },
+            spec: { mark: "point" },
+        },
+        FacetView
+    );
+    renderToLayout(view);
+    expect(Array.from(view.child.facetCoords.keys())).toEqual([
+        ["B", 1],
+        ["B", 2],
+        ["A", 1],
+        ["A", 2],
+    ]);
+
+    const source =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            view.flowHandle.dataSource
+        );
+    source.updateDynamicData([
+        { r: "C", c: 3 },
+        { r: "A", c: 2 },
+        { r: "C", c: 1 },
+    ]);
+    renderToLayout(view);
+    expect(Array.from(view.child.facetCoords.keys())).toEqual([
+        ["C", 1],
+        ["C", 3],
+        ["C", 2],
+        ["A", 1],
+        ["A", 3],
+        ["A", 2],
+    ]);
+    view.disposeSubtree();
 });
 
 test("matrix facets retain empty combinations in sorted factor order", async () => {

@@ -29,7 +29,7 @@ historical decision to defer all ordering and header configuration. Field
 titles, independent domains, outer axes, and a general header framework remain
 outside scope.
 
-- [ ] **Category ordering** — Add `sort: "ascending" | "descending" | Scalar[]`
+- [x] **Category ordering** — Add `sort: "ascending" | "descending" | Scalar[]`
   to facet fields. Default to ascending; explicit arrays place present listed
   values first, then other values in input encounter order. Do not invent cells
   for absent array entries. Apply ordering independently to rows and columns,

@@ -10,6 +10,14 @@ EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json
 
 SCHEMA FacetSpec
 
+### Facet Fields
+
+SCHEMA FacetFieldDef
+
+Row and column fields can have different orders. For example,
+`"row": {"field": "group", "sort": ["control", "treated"]}` puts control
+first even if treated occurs first in the data.
+
 ## Transforms and Data Scope
 
 Transforms on the facet specification run before grouping. Transforms inside
@@ -50,7 +58,7 @@ domains, legends, and axes are not supported and produce an error. Layers inside
 the repeated plot can still use independent non-positional scales; each layer's
 scale spans all facet cells.
 
-Category values are used as labels in ascending order. Facet field `title`
+Category values are used as labels. Facet field `title`
 and configurable headers are not supported. A `title` on the repeated child
 still titles each plot.
 

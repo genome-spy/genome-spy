@@ -28,7 +28,7 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
-    test("facet fields exclude titles and wrapping columns must be positive integers", () => {
+    test("facet options accept supported forms and reject unsupported forms", () => {
         const validate = createCoreValidator();
         const spec = {
             facet: { field: "group" },
@@ -36,6 +36,27 @@ describe("generated core schema", () => {
         };
 
         expect(validate(spec)).toBe(true);
+        for (const sort of [
+            "ascending",
+            "descending",
+            ["B", "A"],
+            [2, true],
+            [],
+        ]) {
+            expect(validate({ ...spec, facet: { field: "group", sort } })).toBe(
+                true
+            );
+        }
+        for (const sort of /** @type {unknown[]} */ ([
+            null,
+            "invalid",
+            { field: "x" },
+            [null],
+        ])) {
+            expect(validate({ ...spec, facet: { field: "group", sort } })).toBe(
+                false
+            );
+        }
         expect(
             validate({ ...spec, facet: { field: "group", title: "Group" } })
         ).toBe(false);
