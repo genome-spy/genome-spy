@@ -9,6 +9,7 @@ import {
 } from "../../config/themes.js";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import AxisView from "../../view/axisView.js";
+import LegendView from "../../view/legendView.js";
 import { createSvg } from "./index.js";
 
 const contextOptions = {
@@ -18,6 +19,103 @@ const contextOptions = {
     }),
     viewFactoryOptions: { wrapRoot: true },
 };
+
+test.each([false, true])(
+    "exports one shared facet legend with reserved space (layered in concat: %s)",
+    async (layered) => {
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const points = {
+            name: "points",
+            width: 100,
+            height: 60,
+            mark: "point",
+            encoding: {
+                color: { field: "category", type: "nominal" },
+            },
+        };
+        /** @type {import("../../spec/view.js").FacetSpec} */
+        const facet = {
+            name: "facets",
+            data: {
+                values: [
+                    { group: "A", category: "red" },
+                    { group: "B", category: "blue" },
+                    { group: "C", category: "red" },
+                ],
+            },
+            facet: { field: "group" },
+            columns: 2,
+            spec: layered
+                ? { layer: [points, { ...points, name: "second" }] }
+                : points,
+        };
+        const { view } = await createHeadlessEngine(
+            layered
+                ? {
+                      hconcat: [
+                          facet,
+                          {
+                              name: "neighbor",
+                              data: { values: [{}] },
+                              width: 80,
+                              height: 60,
+                              mark: "point",
+                          },
+                      ],
+                  }
+                : facet,
+            { contextOptions }
+        );
+
+        try {
+            const legends = view
+                .getDescendants()
+                .filter((child) => child instanceof LegendView);
+            expect(legends).toHaveLength(1);
+
+            const { svg, warnings } = createSvg({
+                viewRoot: view,
+                logicalWidth: 800,
+                logicalHeight: 400,
+            });
+            const legendGroups = svg.querySelectorAll(
+                `[data-name="${legends[0].name}"]`
+            );
+            expect(legendGroups).toHaveLength(1);
+            expect(
+                Array.from(
+                    legendGroups[0].querySelectorAll(
+                        '[data-name="labels"] text'
+                    ),
+                    (label) => label.textContent
+                )
+            ).toEqual(["red", "blue"]);
+
+            const facetCoords = view
+                .getDescendants()
+                .find((child) => child.name === "facets")
+                .facetCoords.values()
+                .next().value;
+            const legendCoords = legends[0].facetCoords.values().next().value;
+            expect(legendCoords.x).toBeGreaterThanOrEqual(facetCoords.x2);
+            expect(legendCoords.width).toBeGreaterThan(0);
+            if (layered) {
+                // A neighboring plot must start after the shared legend reservation.
+                const neighborCoords = view
+                    .getDescendants()
+                    .find((child) => child.name === "neighbor")
+                    .facetCoords.values()
+                    .next().value;
+                expect(neighborCoords.x).toBeGreaterThanOrEqual(
+                    legendCoords.x2
+                );
+            }
+            expect(warnings).toEqual([]);
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
 
 test("exports grouped points and distinct headers above each wrapped facet", async () => {
     const { view } = await createHeadlessEngine(

@@ -30,7 +30,7 @@ the original work and are not an up-to-date completion record.
 | Dynamic factor membership and labels | Working |
 | Headers, cell titles, backgrounds, clipping, and visible-cell culling | Working |
 | Child transforms evaluated separately for each facet | Incorrect; see below |
-| Default shared color legend | Missing |
+| Default shared color legend | Working; one legend beside the complete grid |
 | Interaction routing into repeated cells | Missing |
 | Independent positional scales and axes | Unsupported |
 | Custom facet ordering and header formatting | Unsupported |
@@ -69,18 +69,16 @@ Facet-aware execution must preserve the distinction between transforms on the
 outer facet specification and transforms inside its child. Keep the single
 child subtree and shared mark resources while correcting dataflow semantics.
 
-### Shared legends have no layout host
+### Shared legends: fixed
 
-A normal faceted point plot with a nominal color encoding creates a color
-legend resolution owned by `FacetView`, but produces no legend view or legend
-placement. `getLegendOwners(...)` in
-`packages/core/src/view/gridView/gridChild.js` handles unit and layer views,
-but returns no owners for a facet view. The current shared legend host lookup
-also does not assign a host to that owner.
+The missing legend was caused by `getLegendOwners(...)` in
+`packages/core/src/view/gridView/gridChild.js` omitting facet views. It now
+includes the facet view's legend resolutions, so the parent's existing
+`GridChild` renders and reserves space for one shared legend beside the whole
+grid. No per-cell legend host or additional layout path is needed.
 
-The required basic behavior is one shared legend for the complete facet view.
-The original plan already intended this; silently omitting the legend does
-not satisfy that requirement.
+SVG regressions cover a wrapped unit facet and a layered facet inside a concat,
+including category labels, one rendered legend, and space before the next plot.
 
 ### Cell interactions are not routed
 
@@ -97,7 +95,7 @@ mark picking and tooltip behavior require separate browser verification.
   with the rows above, row/column tuple groups, and a layered child. Verify
   outer transforms retain their intended scope and repeated marks receive the
   correct facet batches without creating a subtree per cell.
-- [ ] Render one shared color legend for the whole facet view. Verify its
+- [x] Render one shared color legend for the whole facet view. Verify its
   entries, placement, size reservation, and behavior inside an enclosing concat.
 - [ ] Route interactions to the pointed cell with the correct facet identity
   and coordinates. Verify representative click/selection and shared-scale
@@ -118,6 +116,9 @@ checks, lint, the Core production build, and three representative WebGL/Canvas
 smoke checks. The aggregate, stack, legend, and click probes above exposed gaps
 outside that permanent coverage; passing the existing suite is not sufficient
 evidence of Vega-Lite equivalence.
+
+After the legend fix, the focused facet, SVG, legend collection, and legend
+extent suites pass all 53 tests, including the two new legend regressions.
 
 ## Original Restoration Investigation (Historical)
 

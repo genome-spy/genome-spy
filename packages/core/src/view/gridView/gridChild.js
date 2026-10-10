@@ -38,6 +38,7 @@ import { IntervalSelectionController } from "./intervalSelectionController.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
 import {
     isConcatSpec,
+    isFacetSpec,
     isHConcatSpec,
     isVConcatSpec,
 } from "../viewSpecGuards.js";
@@ -62,7 +63,7 @@ export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js
 function getLegendOwners(view) {
     if (hasChromeAncestor(view)) {
         return [];
-    } else if (view instanceof UnitView) {
+    } else if (view instanceof UnitView || isFacetSpec(view.spec)) {
         return Object.keys(view.resolutions.legend).length > 0 ? [view] : [];
     } else if (view instanceof LayerView) {
         return [
