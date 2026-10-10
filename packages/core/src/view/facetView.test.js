@@ -264,24 +264,28 @@ test("column facet creates one chrome header view", async () => {
     expect(addressableViews).not.toContain(headers[0]);
 });
 
-test("column facet header updates dynamic label data during render", async () => {
+test("column facet headers reflect placement and replacement data", async () => {
     const view = await createAndInitialize(
         createFixedSizeFacetSpec(["I", "II"]),
         FacetView
     );
-    const header = /** @type {UnitView} */ (getFacetHeaderViews(view)[0]);
-    const dataSource =
-        /** @type {import("../data/sources/inlineSource.js").default} */ (
-            header.flowHandle.dataSource
-        );
-    const updateSpy = vi.spyOn(dataSource, "updateDynamicData");
-
+    const [header] = getFacetHeaderViews(view);
     renderToLayout(view, Rectangle.create(0, 0, 210, 78));
-
-    expect(updateSpy).toHaveBeenCalledWith([
+    expect(Array.from(header.getCollector().getData())).toMatchObject([
         { x: 50 / 210, y: 1 - 9 / 78, text: "I" },
         { x: 160 / 210, y: 1 - 9 / 78, text: "II" },
     ]);
+
+    const source =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            view.flowHandle.dataSource
+        );
+    source.updateDynamicData([{ Series: "III", x: 1, y: 2 }]);
+    renderToLayout(view);
+    expect(
+        Array.from(header.getCollector().getData(), (datum) => datum.text)
+    ).toEqual(["III"]);
+    view.disposeSubtree();
 });
 
 test("row and column facet creates one chrome header view per orientation", async () => {

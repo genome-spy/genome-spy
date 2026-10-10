@@ -13,102 +13,35 @@ import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 /**
  * Dynamic text labels for facet row or column headers.
  */
-export default class FacetHeaderView {
-    /** @type {FacetHeaderOrient} */
-    #orient;
-
-    /** @type {UnitView} */
-    #view;
-
-    /** @type {FacetHeaderDatum[]} */
-    #data = [];
-
+export default class FacetHeaderView extends UnitView {
     /**
-     * @param {{
-     *   orient: FacetHeaderOrient,
-     *   context: import("../types/viewContext.js").default,
-     *   layoutParent: import("./containerView.js").default,
-     *   dataParent: import("./view.js").default,
-     *   getName: (prefix: string) => string
-     * }} options
-     */
-    constructor({ orient, context, layoutParent, dataParent, getName }) {
-        this.#orient = orient;
-        this.#view = this.#createView(
-            context,
-            layoutParent,
-            dataParent,
-            getName
-        );
-    }
-
-    /**
-     * @returns {UnitView}
-     */
-    get view() {
-        return this.#view;
-    }
-
-    /**
-     * @param {FacetHeaderDatum[]} data
-     */
-    updateData(data) {
-        this.#data.length = data.length;
-
-        for (let i = 0; i < data.length; i++) {
-            const source = data[i];
-            const target = /** @type {FacetHeaderDatum} */ (
-                this.#data[i] ?? {}
-            );
-            target.x = source.x;
-            target.y = source.y;
-            target.text = source.text;
-            this.#data[i] = target;
-        }
-
-        const dataSource =
-            /** @type {import("../data/sources/inlineSource.js").default | undefined} */ (
-                this.#view.flowHandle?.dataSource
-            );
-
-        if (dataSource) {
-            dataSource.updateDynamicData(this.#data);
-        }
-    }
-
-    /**
-     * @param {import("./renderingContext/viewRenderingContext.js").default} context
-     * @param {import("./layout/rectangle.js").default} coords
-     * @param {import("../types/rendering.js").RenderingOptions} options
-     */
-    arrange(context, coords, options) {
-        this.#view.arrange(context, coords, options);
-    }
-
-    /**
-     * @param {import("../types/viewContext.js").default} context
+     * @param {FacetHeaderOrient} orient
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent
-     * @param {(prefix: string) => string} getName
-     * @returns {UnitView}
      */
-    #createView(context, layoutParent, dataParent, getName) {
-        const view = new UnitView(
-            createHeaderSpec(this.#orient),
-            context,
+    constructor(orient, layoutParent, dataParent) {
+        super(
+            createHeaderSpec(orient),
+            layoutParent.context,
             layoutParent,
             dataParent,
-            getName(
-                this.#orient === "column"
-                    ? "facetHeaderColumn"
-                    : "facetHeaderRow"
+            layoutParent.getNextAutoName(
+                orient === "column" ? "facetHeaderColumn" : "facetHeaderRow"
             )
         );
+        markViewAsNonAddressable(this, { skipSubtree: true });
+        markViewAsChrome(this, { skipSubtree: true });
+    }
 
-        markViewAsNonAddressable(view, { skipSubtree: true });
-        markViewAsChrome(view, { skipSubtree: true });
-
-        return view;
+    /** @param {FacetHeaderDatum[]} data */
+    updateData(data) {
+        const source =
+            /** @type {import("../data/sources/inlineSource.js").default | undefined} */ (
+                this.flowHandle?.dataSource
+            );
+        if (source) {
+            source.updateDynamicData(data);
+        }
     }
 }
 
