@@ -21,6 +21,52 @@ ascending category order, and simple value labels are sufficient defaults.
 
 ## Current Status and Remaining Work (2026-10-10)
 
+### Small compatibility additions (authorized follow-up)
+
+Baseline: `70533c581`. Implement four small options while retaining one child,
+the static batched dataflow, and existing grid chrome. This supersedes the
+historical decision to defer all ordering and header configuration. Field
+titles, independent domains, outer axes, and a general header framework remain
+outside scope.
+
+- [ ] **Category ordering** — Add `sort: "ascending" | "descending" | Scalar[]`
+  to facet fields. Default to ascending; explicit arrays place present listed
+  values first, then other values in input encounter order. Do not invent cells
+  for absent array entries. Apply ordering independently to rows and columns,
+  including after data replacement. Reject unsupported sort forms. Verify real
+  collector-to-cell/header output and schema acceptance. Update grammar docs and
+  the existing feature changeset. Commit: `feat(core): support facet category ordering`.
+- [ ] **Header visibility** — Support `header: null` and
+  `header: {labels: false}` without reserving a header band or its gap. Preserve
+  matrix orientation, empty combinations, wrapped layouts, axes, and child
+  titles. Verify rendered layout and SVG output with hidden row and column
+  headers. Update types, docs, and changeset. Commit:
+  `feat(core): support hiding facet headers`.
+- [ ] **Numeric header formatting** — Add `header.format` using D3 number
+  formatting compiled once per header. Format numeric labels only; preserve
+  category identity, ordering, and nonnumeric labels. Reject invalid format
+  specifications clearly. Verify SVG labels and unchanged underlying facet
+  keys. Update types, docs, and changeset. Commit:
+  `feat(core): format numeric facet labels`.
+- [ ] **Separate spacing** — Accept `spacing: {row, column}` alongside numbers.
+  Each omitted direction defaults to 10 pixels; zero removes the gap. Require
+  finite nonnegative values. Use the same directional gaps in sizing,
+  arrangement, and header placement. Verify matrix and wrapped geometry,
+  schema, and interaction routing with asymmetric gaps. Update docs and
+  changeset. Commit: `feat(core): support directional facet spacing`.
+
+Final integration: run focused facet/dataflow/SVG/schema tests, workspace
+TypeScript, lint, Core build/schema generation, and release checks. Exercise
+combined options with picking, tooltips, and shared pan/zoom in WebGL and
+Canvas. Measure the three facet runtime files before and after (baseline 819
+physical lines) and inspect added machinery for opportunities to simplify.
+
+Compatibility references: local Vega-Lite `src/spec/facet.ts`,
+`src/compile/header/parse.ts`, `src/header.ts`, and `src/spec/base.ts` at the
+revision recorded in [facet-compatibility.md](facet-compatibility.md). Adopt
+the small public contracts, without copying compiler code. Aggregate/field
+sorts, time formatting, arbitrary header styling, and `labelExpr` remain deferred.
+
 Category repetition, supported child transforms, shared legends, picking,
 tooltips, and shared-scale navigation are implemented through one static child
 subtree. The independent simplification review's correctness issues are fixed,
@@ -46,8 +92,8 @@ requirements. The restoration investigation and checklists below are historical.
 | Vega-Lite-style outer axes and independent axes | Optional; not required for category repetition |
 | Independent positional scale domains | Unsupported and rejected; intentionally outside the current scope |
 | Independent non-positional scales and legends per cell | Unsupported and rejected; layer independence remains supported |
-| Custom facet ordering | Optional; ascending factor order is sufficient for the current scope |
-| Facet field titles and configurable headers | Outside scope; field titles are rejected and excluded from the schema |
+| Custom facet ordering | Authorized follow-up above; ascending remains the default |
+| Facet field titles and configurable headers | Basic visibility/number format authorized above; field titles remain unsupported |
 | Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
 | Rulers in repeated cells | Fixed; one controller uses the pointed cell and retains drag projection |
 | Hover transitions after layout refresh | Fixed; facet tuples are compared by value |
