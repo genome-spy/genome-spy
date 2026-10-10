@@ -21,6 +21,30 @@ ascending category order, and simple value labels are sufficient defaults.
 
 ## Current Status and Remaining Work (2026-10-10)
 
+### Follow-up: final review fixes
+
+The independent review at `6b0335b22` found one import-validation gap and two
+small cleanup opportunities. Keep the supported repeated-plot scope; do not
+add nested facet execution or another layout abstraction.
+
+- [x] Validate imported children using the existing factory validator, accepting
+  unit/layer/multiscale plots and rejecting compositions containing nested
+  facets before they create child views. Cover the reported template import
+  and supported imports; update the grammar and existing feature changeset.
+  Commit: `fix(core): validate imported facet children`.
+- [ ] Make measured header padding explicit in the facet layout helpers; remove
+  test-only fixed-band fallbacks and redundant header-visibility flags. Preserve
+  matrix/wrapped layout coverage with explicit padding inputs.
+  Commit: `refactor(core): require explicit facet header padding`.
+- [ ] Delete the unreferenced dynamic-subflow `FacetNode` stub. Reconcile the
+  historical checklist and current status against the completed implementation.
+  Commit: `chore(core): remove unused facet dataflow stub`.
+
+Import validation verification: facet, layer, and multiscale suites pass
+(111 tests), as do Core TypeScript, focused lint, formatting, and release checks.
+FacetView grows 668→682 physical lines; the guard uses the existing factory
+callback and spec guards, with no additional import or composition machinery.
+
 ### Follow-up: facet field titles
 
 Default each field title to its field name. `FacetFieldDef.title` accepts a
@@ -304,7 +328,7 @@ requirements. The restoration investigation and checklists below are historical.
 | Independent positional scale domains | Unsupported and rejected; intentionally outside the current scope |
 | Independent non-positional scales and legends per cell | Unsupported and rejected; layer independence remains supported |
 | Custom facet ordering | Working: ascending, descending, and explicit arrays |
-| Facet field titles and configurable headers | Visibility and numeric formatting work; field titles remain unsupported |
+| Facet field titles and configurable headers | Working: automatic field titles, title-style placement, visibility, and numeric formatting |
 | Facet-field bin/time-unit definitions | Optional; precomputed category fields are sufficient |
 | Rulers in repeated cells | Fixed; one controller uses the pointed cell and retains drag projection |
 | Hover transitions after layout refresh | Fixed; facet tuples are compared by value |

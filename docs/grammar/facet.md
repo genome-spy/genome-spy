@@ -144,6 +144,9 @@ child titles each plot.
 
 ## Additional Limitations
 
+An imported child must resolve to a unit, layer, or multiscale plot. Imported
+concatenations and nested facet compositions are rejected.
+
 The `columns` property wraps one-dimensional column facets only. It cannot be
 used together with `facet.row`.
 

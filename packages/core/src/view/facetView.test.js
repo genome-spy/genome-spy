@@ -136,6 +136,67 @@ test.each(
     );
 });
 
+test("facet rejects imported compositions containing nested facets", async () => {
+    const context = createTestViewContext();
+    // Imports must obey the same child-type boundary as the inline facet grammar.
+    await expect(
+        context.createOrImportView(
+            {
+                data: {
+                    values: [
+                        { g: "A", h: "C" },
+                        { g: "B", h: "D" },
+                    ],
+                },
+                templates: {
+                    inner: {
+                        vconcat: [
+                            { facet: { field: "h" }, spec: { mark: "point" } },
+                        ],
+                    },
+                },
+                facet: { field: "g" },
+                spec: { import: { template: "inner" } },
+            },
+            null,
+            null,
+            "facet"
+        )
+    ).rejects.toThrow(
+        "Facet children must import unit, layer, or multiscale specs."
+    );
+});
+
+test.each(
+    /** @type {import("../spec/view.js").ViewSpec[]} */ ([
+        { name: "points", mark: "point" },
+        { layer: [{ name: "points", mark: "point" }] },
+        { multiscale: [{ name: "points", mark: "point" }], stops: [] },
+    ])
+)("facet imports supported child plots (%j)", async (template) => {
+    const facet = await createAndInitialize(
+        {
+            data: { values: [{ g: "A" }, { g: "B" }] },
+            templates: { plot: template },
+            facet: { field: "g" },
+            spec: { import: { template: "plot" } },
+        },
+        FacetView
+    );
+    try {
+        const points = /** @type {UnitView} */ (
+            facet.child.getDescendants().find((view) => view.name === "points")
+        );
+        expect(
+            Array.from(points.getCollector().facetBatches.keys()).filter(
+                Boolean
+            )
+        ).toEqual([["A"], ["B"]]);
+    } finally {
+        facet.disposeSubtree();
+    }
+});
+
 test("facet rejects an immediate nested facet child", async () => {
     const context = createTestViewContext();
 

@@ -23,6 +23,9 @@ import {
 } from "./renderingContext/clipOptions.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 import { propagateInteraction } from "./interactionRouting.js";
+import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
+import { isMultiscaleSpec } from "./multiscale.js";
+import ViewError from "./viewError.js";
 
 /**
  * @typedef {"row" | "column"} FacetChannel
@@ -95,7 +98,18 @@ export default class FacetView extends ContainerView {
             this,
             this,
             this.getNextAutoName("facet"),
-            undefined,
+            (importedSpec) => {
+                if (
+                    !isUnitSpec(importedSpec) &&
+                    !isLayerSpec(importedSpec) &&
+                    !isMultiscaleSpec(importedSpec)
+                ) {
+                    throw new ViewError(
+                        "Facet children must import unit, layer, or multiscale specs.",
+                        this
+                    );
+                }
+            },
             { inheritEncoding: true }
         );
 

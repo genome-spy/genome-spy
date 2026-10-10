@@ -14,6 +14,20 @@ tooltips, selections with shared state, shared pan/zoom, and container viewport
 scrolling are implemented. Complete predictable behavior and simplify existing
 paths before adding capabilities.
 
+### Final review follow-up
+
+The subagent review at `6b0335b22` found no blocker in basic repetition or the
+supported title/header paths. It identified an imported-child validation gap:
+a schema-valid template import could introduce a concat with a nested facet,
+repeating all inner categories in every outer cell. Imported children now use
+the factory's validator to accept unit/layer/multiscale plots and reject these
+unsupported compositions before child initialization. Regression coverage also
+preserves supported imported plots.
+
+The review also identified obsolete fixed-header fallback state in the layout
+helpers and an entirely unreferenced dynamic-subflow stub. Their cleanup and
+the final plan audit are tracked in the [main plan](facet-plan.md#follow-up-final-review-fixes).
+
 The earlier sorting, configurable-header, outer-axis, and independent-domain
 milestones are discarded as requirements for this completion pass. They may be
 useful later, but their absence does not make category repetition incomplete.
