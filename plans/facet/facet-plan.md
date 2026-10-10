@@ -32,7 +32,7 @@ add nested facet execution or another layout abstraction.
   facets before they create child views. Cover the reported template import
   and supported imports; update the grammar and existing feature changeset.
   Commit: `fix(core): validate imported facet children`.
-- [ ] Make measured header padding explicit in the facet layout helpers; remove
+- [x] Make measured header padding explicit in the facet layout helpers; remove
   test-only fixed-band fallbacks and redundant header-visibility flags. Preserve
   matrix/wrapped layout coverage with explicit padding inputs.
   Commit: `refactor(core): require explicit facet header padding`.
@@ -44,6 +44,13 @@ Import validation verification: facet, layer, and multiscale suites pass
 (111 tests), as do Core TypeScript, focused lint, formatting, and release checks.
 FacetView grows 668→682 physical lines; the guard uses the existing factory
 callback and spec guards, with no additional import or composition machinery.
+
+Header cleanup verification: all four facet suites pass (150 tests), including
+real matrix/wrapped SVG geometry and interactions, as do Core TypeScript,
+focused lint, and release checks. Layout tests now supply their header padding
+explicitly and no longer assert removed visibility flags. FacetLayout shrinks
+281→263 physical lines; FacetView's size is unchanged. This internal refactor
+has an empty changeset and does not change header rendering or release scope.
 
 ### Follow-up: facet field titles
 

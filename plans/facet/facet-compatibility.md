@@ -24,9 +24,10 @@ the factory's validator to accept unit/layer/multiscale plots and reject these
 unsupported compositions before child initialization. Regression coverage also
 preserves supported imported plots.
 
-The review also identified obsolete fixed-header fallback state in the layout
-helpers and an entirely unreferenced dynamic-subflow stub. Their cleanup and
-the final plan audit are tracked in the [main plan](facet-plan.md#follow-up-final-review-fixes).
+The obsolete fixed-header fallback and redundant visibility flags are removed;
+layout helpers now require the measured padding already supplied in production.
+All 150 facet tests pass. The unreferenced dynamic-subflow stub and final plan
+audit are tracked in the [main plan](facet-plan.md#follow-up-final-review-fixes).
 
 The earlier sorting, configurable-header, outer-axis, and independent-domain
 milestones are discarded as requirements for this completion pass. They may be

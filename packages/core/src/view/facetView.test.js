@@ -794,15 +794,23 @@ test("facet layout wraps column facets into configured columns", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, () => Padding.zero(), {
-        row: 4,
-        column: 4,
-    });
+    const headers = { row: Padding.zero(), column: new Padding(18, 0, 0, 0) };
+    const size = getFacetGridSize(
+        grid,
+        childSize,
+        () => Padding.zero(),
+        headers,
+        {
+            row: 4,
+            column: 4,
+        }
+    );
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         () => Padding.zero(),
+        headers,
         { row: 4, column: 4 }
     );
 
@@ -837,24 +845,30 @@ test("facet layout creates row and column matrix cells", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, () => Padding.zero(), {
-        row: 4,
-        column: 4,
-    });
+    const headers = {
+        row: new Padding(0, 0, 0, 18),
+        column: new Padding(18, 0, 0, 0),
+    };
+    const size = getFacetGridSize(
+        grid,
+        childSize,
+        () => Padding.zero(),
+        headers,
+        {
+            row: 4,
+            column: 4,
+        }
+    );
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         () => Padding.zero(),
+        headers,
         { row: 4, column: 4 }
     );
 
-    expect(grid).toMatchObject({
-        nRows: 2,
-        nCols: 3,
-        hasRowHeaders: true,
-        hasColumnHeaders: true,
-    });
+    expect(grid).toMatchObject({ nRows: 2, nCols: 3 });
     expect(grid.cells.map((cell) => cell.facetId)).toEqual([
         ["Europe", 4],
         ["Europe", 6],
@@ -880,12 +894,14 @@ test("facet sizing preserves flex constraints while reserving guides", () => {
         { px: 80, grow: 0 }
     );
     const overhang = new Padding(0, 10, 0, 10);
-    const size = getFacetGridSize(grid, childSize, () => overhang);
+    const headers = { row: Padding.zero(), column: Padding.zero() };
+    const size = getFacetGridSize(grid, childSize, () => overhang, headers);
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, 1000, 98),
         childSize,
-        () => overhang
+        () => overhang,
+        headers
     );
 
     expect(size.width).toMatchObject({
@@ -914,7 +930,8 @@ test("facet layout places child plot inside reserved overhang", () => {
         grid,
         Rectangle.create(0, 0, 160, 140),
         childSize,
-        () => childOverhang
+        () => childOverhang,
+        { row: Padding.zero(), column: new Padding(18, 0, 0, 0) }
     );
 
     expect(rectTuple(layouts[0].viewportCoords)).toEqual([0, 18, 160, 120]);
@@ -931,24 +948,27 @@ test("facet layout creates row-only facets", () => {
         { px: 100, grow: 0 },
         { px: 80, grow: 0 }
     );
-    const size = getFacetGridSize(grid, childSize, () => Padding.zero(), {
-        row: 4,
-        column: 4,
-    });
+    const headers = { row: new Padding(0, 0, 0, 18), column: Padding.zero() };
+    const size = getFacetGridSize(
+        grid,
+        childSize,
+        () => Padding.zero(),
+        headers,
+        {
+            row: 4,
+            column: 4,
+        }
+    );
     const layouts = getFacetCellLayouts(
         grid,
         Rectangle.create(0, 0, size.width.px, size.height.px),
         childSize,
         () => Padding.zero(),
+        headers,
         { row: 4, column: 4 }
     );
 
-    expect(grid).toMatchObject({
-        nRows: 2,
-        nCols: 1,
-        hasRowHeaders: true,
-        hasColumnHeaders: false,
-    });
+    expect(grid).toMatchObject({ nRows: 2, nCols: 1 });
     expect(
         grid.cells.map((cell) => [cell.facetId, cell.row, cell.column])
     ).toEqual([

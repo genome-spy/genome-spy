@@ -21,8 +21,6 @@ import Rectangle from "./layout/rectangle.js";
  * @typedef {object} FacetGridContents
  * @prop {FacetCell[]} cells
  * @prop {boolean} hasRowFacet
- * @prop {boolean} hasRowHeaders
- * @prop {boolean} hasColumnHeaders
  *
  * @typedef {{row: Padding, column: Padding}} FacetHeaderPadding
  *
@@ -64,8 +62,6 @@ export function createFacetGrid(facet, factors, columns) {
             return { facetId, row, column };
         }),
         hasRowFacet: Boolean(facet.row),
-        hasRowHeaders: isFacetHeaderVisible(facet.row),
-        hasColumnHeaders: isFacetHeaderVisible(facet.column),
     });
 }
 
@@ -82,16 +78,16 @@ export function isFacetHeaderVisible(field) {
  * @param {FacetGrid} grid
  * @param {FlexDimensions} childSize
  * @param {(cell: FacetCell) => Padding} getCellOverhang
+ * @param {FacetHeaderPadding} headers
  * @param {Required<import("../spec/view.js").FacetSpacing>} [spacing]
- * @param {FacetHeaderPadding} [headers]
  * @returns {FlexDimensions}
  */
 export function getFacetGridSize(
     grid,
     childSize,
     getCellOverhang,
-    spacing = { row: 0, column: 0 },
-    headers
+    headers,
+    spacing = { row: 0, column: 0 }
 ) {
     const tracks = getFacetTracks(
         grid,
@@ -115,9 +111,9 @@ export function getFacetGridSize(
  * @param {Rectangle} coords
  * @param {FlexDimensions} childSize
  * @param {(cell: FacetCell) => Padding} getCellOverhang
+ * @param {FacetHeaderPadding} headers
  * @param {Required<import("../spec/view.js").FacetSpacing>} [spacing]
  * @param {number} [devicePixelRatio]
- * @param {FacetHeaderPadding} [headers]
  * @returns {FacetCellLayout[]}
  */
 export function getFacetCellLayouts(
@@ -125,9 +121,9 @@ export function getFacetCellLayouts(
     coords,
     childSize,
     getCellOverhang,
+    headers,
     spacing = { row: 0, column: 0 },
-    devicePixelRatio,
-    headers
+    devicePixelRatio
 ) {
     const tracks = getFacetTracks(
         grid,
@@ -186,23 +182,9 @@ export function getFacetCellLayouts(
  * @param {FlexDimensions} childSize
  * @param {(cell: FacetCell) => Padding} getCellOverhang
  * @param {Required<import("../spec/view.js").FacetSpacing>} spacing
- * @param {FacetHeaderPadding} [headers]
+ * @param {FacetHeaderPadding} headers
  */
-function getFacetTracks(
-    grid,
-    childSize,
-    getCellOverhang,
-    spacing,
-    headers = {
-        row: new Padding(0, 0, 0, grid.hasRowHeaders ? FACET_HEADER_SIZE : 0),
-        column: new Padding(
-            grid.hasColumnHeaders ? FACET_HEADER_SIZE : 0,
-            0,
-            0,
-            0
-        ),
-    }
-) {
+function getFacetTracks(grid, childSize, getCellOverhang, spacing, headers) {
     const rows = grid.rowIndices;
     const columns = grid.colIndices;
     const overhangs = grid.cells.map(getCellOverhang);

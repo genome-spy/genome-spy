@@ -236,8 +236,8 @@ export default class FacetView extends ContainerView {
             this.#getFacetGrid(),
             this.child.getViewportSize(),
             (cell) => this.#getCellOverhang(cell),
-            this.#spacing,
-            this.#getHeaderPadding()
+            this.#getHeaderPadding(),
+            this.#spacing
         ).addPadding(this.#getFieldTitlePadding());
     }
 
@@ -304,9 +304,9 @@ export default class FacetView extends ContainerView {
             gridCoords,
             this.child.getViewportSize(),
             (cell) => this.#getCellOverhang(cell),
+            this.#getHeaderPadding(),
             this.#spacing,
-            context.getDevicePixelRatio(),
-            this.#getHeaderPadding()
+            context.getDevicePixelRatio()
         );
         const parentClip = normalizeClipOptions(options);
         const arrangement = createGridArrangement();
