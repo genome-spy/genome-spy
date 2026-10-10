@@ -2,8 +2,15 @@ import { compare } from "vega-util";
 import { groups as d3groups, sum as d3sum } from "d3-array";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
+import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "../fileBatchUtils.js";
 
 export default class StackTransform extends Transform {
+    /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
+    #fileBatchStarts = [];
+
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
@@ -23,6 +30,7 @@ export default class StackTransform extends Transform {
     reset() {
         super.reset();
         this.buffer = [];
+        this.#fileBatchStarts = [];
     }
 
     /**
@@ -33,7 +41,27 @@ export default class StackTransform extends Transform {
         this.buffer.push(datum);
     }
 
+    /** @param {import("../../types/flowBatch.js").FlowBatch} batch */
+    beginBatch(batch) {
+        if (batch.type == "file") {
+            this.#fileBatchStarts.push({ index: this.buffer.length, batch });
+        } else {
+            this.#flushBuffer();
+            super.beginBatch(batch);
+        }
+    }
+
     complete() {
+        this.#flushBuffer();
+        super.complete();
+    }
+
+    #flushBuffer() {
+        const propagate = createFileBatchPropagator(
+            createFileBatchAccessor(this.buffer, this.#fileBatchStarts),
+            (batch) => super.beginBatch(batch),
+            (datum) => this._propagate(datum)
+        );
         const params = this.params;
 
         const as = params.as || ["y0", "y1"]; // TODO: Validate
@@ -130,12 +158,13 @@ export default class StackTransform extends Transform {
                     datum[as[0]] = offsetF(prev, sum);
                     datum[as[1]] = offsetF(current, sum);
 
-                    this._propagate(datum);
+                    propagate(datum);
                     prev = current;
                 }
             }
         }
 
-        super.complete();
+        this.buffer = [];
+        this.#fileBatchStarts = [];
     }
 }

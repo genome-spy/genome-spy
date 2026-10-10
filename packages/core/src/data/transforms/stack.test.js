@@ -1,12 +1,44 @@
 import { describe, expect, test } from "vitest";
 import { processData } from "../flowTestUtils.js";
 import StackTransform from "./stack.js";
+import Collector from "../collector.js";
+import CloneTransform from "./clone.js";
 
 const sampleData = [
     { group: "a", choice: "q", value: 1 },
     { group: "b", choice: "x", value: 1 },
     { group: "b", choice: "y", value: 3 },
 ];
+
+test("stack isolates facets while sorting rows from multiple physical files", () => {
+    const stack = new StackTransform({
+        type: "stack",
+        field: "value",
+        groupby: [],
+        sort: { field: "value" },
+    });
+    const clone = new CloneTransform();
+    const output = new Collector();
+    stack.addChild(clone);
+    clone.addChild(output);
+
+    stack.beginBatch({ type: "facet", facetId: ["A"] });
+    stack.beginBatch({ type: "file", url: "first" });
+    stack.handle({ value: 3 });
+    stack.beginBatch({ type: "file", url: "second" });
+    stack.handle({ value: 1, extra: 9 });
+    stack.beginBatch({ type: "facet", facetId: ["B"] });
+    stack.handle({ value: 10 });
+    stack.complete();
+
+    expect(output.facetBatches.get(["A"])).toEqual([
+        { value: 1, extra: 9, y0: 0, y1: 1 },
+        { value: 3, y0: 1, y1: 4 },
+    ]);
+    expect(output.facetBatches.get(["B"])).toEqual([
+        { value: 10, y0: 0, y1: 10 },
+    ]);
+});
 
 /** @type {import("../../spec/transform.js").StackParams} */
 const baseParams = {
