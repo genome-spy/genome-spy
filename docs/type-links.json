@@ -24,7 +24,7 @@
   "FacetFieldDef": "/grammar/facet/#facet-fields",
   "FacetHeader": "/grammar/facet/#headers",
   "FacetSpacing": "/grammar/facet/#spacing",
-  "FacetSpec": "/grammar/facet/#properties",
+  "FacetSpec": "/grammar/facet/#defining-a-facet",
   "FadedMultiscaleStops": "/grammar/composition/multiscale/#fadedmultiscalestops",
   "FilterScoredLabelsParams": "/grammar/transform/filter-scored-labels/#parameters",
   "FlattenCigarParams": "/grammar/transform/flatten-cigar/#parameters",

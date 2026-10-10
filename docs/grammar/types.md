@@ -287,7 +287,7 @@ See the [FacetSpacing documentation](facet.md#spacing).
 
 ## FacetSpec
 
-See the [FacetSpec documentation](facet.md#properties).
+See the [FacetSpec documentation](facet.md#defining-a-facet).
 
 ## FadedMultiscaleStops
 

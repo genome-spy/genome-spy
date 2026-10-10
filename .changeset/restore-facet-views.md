@@ -13,8 +13,10 @@ while grid lines remain in every cell. Axes scroll and clip with the grid.
 Facets without fixed cell dimensions fill their container from startup, before
 their categories have loaded.
 The facet grammar example shows the complete Anscombe quartet in four plots.
-The grammar reference includes a per-sample BigWig example, compares facets
-with App sample views, and summarizes the supported differences from Vega-Lite.
+The grammar guide starts with examples, then explains facet arrangements,
+layout, headers, and interactions. It includes a per-sample BigWig example,
+compares facets with App sample views, and summarizes the supported differences
+from Vega-Lite.
 
 Facet fields support ascending, descending, and explicit category order with
 `sort`. Explicit arrays order present values without creating absent categories;

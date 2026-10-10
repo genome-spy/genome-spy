@@ -1,8 +1,7 @@
 # Facet
 
-The `facet` operator repeats one child view for groups of data. A shorthand
-facet field creates column facets, and a `row`/`column` mapping creates a facet
-matrix.
+The `facet` operator repeats a plot for each category in a dataset, making it
+easy to compare groups using the same marks and scales.
 
 ## Basic Examples
 
@@ -17,11 +16,9 @@ EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json
 
 ### Genomic Tracks
 
-This example repeats a signal track for five samples. A
-[BigWig URL template](data/multi-url.md#lazy-bigwig-files) loads each sample's
-data and attaches its identifier to the records. The row facet uses that
-identifier to separate the tracks, which share a genomic x-axis. Headers use
-the `overlay-title` style to place sample labels inside each plot.
+A [BigWig URL template](data/multi-url.md#lazy-bigwig-files) adds a `sample`
+field to records from five files. The row facet groups by that field, with
+`overlay-title` labels inside the plots.
 
 EXAMPLE examples/docs/grammar/facet/multi-url-bigwig.json height=350
 
@@ -37,63 +34,78 @@ EXAMPLE examples/docs/grammar/facet/multi-url-bigwig.json height=350
 
     For very large datasets, GenomeSpy App's
     [sample views](../sample-collections/visualizing.md#specifying-a-sample-view)
-    provide more efficient rendering and interactions than general-purpose facets.
-    Sample views can combine layers with different data sources and partition
-    each layer by its `sample` channel. A `facet` partitions one shared input;
-    a layer with its own `data` repeats its result in every cell.
-    The App also displays
-    [sample-specific metadata](../sample-collections/metadata-sources.md) alongside
-    the tracks and supports interactive sorting, filtering, and grouping of samples.
+    provide more efficient rendering and interactions than facets. Each layer can
+    partition its own data source using the `sample` channel; Core facets partition
+    [one shared input](#transforms-and-data-scope). The App displays
+    [sample metadata](../sample-collections/metadata-sources.md) alongside tracks
+    and supports interactive sorting, filtering, and grouping.
     The [App BigWig example](data/multi-url.md#app-example) shows the same five
     signal tracks using a sample view.
 
-## Properties
+## Defining a Facet
 
-SCHEMA FacetSpec
+The `facet` property specifies how to group the data, and `spec` defines the plot
+repeated for each group. Both properties are required. The facet can declare
+shared `data` alongside them or inherit it from a parent view.
 
-### Spacing
+| Arrangement | `facet` definition                                               |
+| ----------- | ---------------------------------------------------------------- |
+| Columns     | `{"field": "group"}` or `{"column": {"field": "group"}}`         |
+| Rows        | `{"row": {"field": "group"}}`                                    |
+| Matrix      | `{"row": {"field": "Origin"}, "column": {"field": "Cylinders"}}` |
 
-SCHEMA FacetSpacing
+The repeated `spec` can be a single plot, a [layered plot](composition/layer.md),
+or an [import](import.md) that resolves to a unit, layer, or multiscale plot.
+Concatenations and nested facets are not supported inside `spec`.
 
-For example, `"spacing": {"row": 10, "column": 20}` gives columns wider gaps
-than rows. Hidden headers contribute neither a band nor an adjacent gap.
+Other properties are covered in the [common view reference](index.md#unit-view-reference).
 
 ### Facet Fields
 
+Row and column categories can be ordered independently.
+
 SCHEMA FacetFieldDef
 
-Row and column fields can have different orders. For example,
-`"row": {"field": "group", "sort": ["control", "treated"]}` puts control
-first even if treated occurs first in the data.
+## Layout
 
-### Field Titles
+### Wrapping
 
-Each facet field has a shared title that defaults to its field name. For example,
-`"column": {"field": "Cylinders"}` displays “Cylinders” once above the complete
-grid, outside the category labels. Row titles default to the left.
-Set `title` to a string to replace the text or to `null` to hide it.
+Column facets form a single row unless `columns` specifies a positive integer
+for wrapping. For example, `"columns": 2` creates rows of at most two plots.
+Wrapping cannot be combined with `facet.row`.
 
-A title object uses the full [view-title](title.md) placement and styling
-options, such as `"title": {"text": "Origin", "orient": "right"}`.
-Field titles use `config.title` and named title styles. They reserve space
-without changing fixed cell dimensions, and scroll and clip with the grid.
+### Spacing
 
-### Headers
+The `spacing` property sets gaps between cells: a number sets both directions,
+and an object such as `{"row": 10, "column": 20}` sets them separately.
+Zero removes the gap; hidden headers add no space.
 
-SCHEMA FacetHeader
+SCHEMA FacetSpacing
 
-Each facet field can configure its category labels through `header`. For
-example, `"column": {"field": "group", "header": null}` hides column labels
-and its field title, reclaiming their space while retaining the same facet
-cells. `"header": {"labels": false}` hides only category labels, preserving
-the field title.
+### Sizing and Scrolling
 
-For numeric categories, `"header": {"format": ",.0f"}` displays thousands
-separators. Formatting changes labels while preserving category identity and order.
+The repeated plot's `width` and `height` determine each cell's size, using the
+same [sizing rules as concatenated views](composition/concat.md#child-sizing).
+Without fixed cell dimensions, the facets share the available container space.
 
-Headers use [view-title](title.md) placement and style properties. Defaults
-remain centered above columns and rotated beside rows. For horizontal,
-right-aligned row labels, use:
+Set `viewportWidth` or `viewportHeight` on the facet container to scroll the
+grid. Headers and axes scroll and clip with it. Child viewports are not supported.
+
+## Headers
+
+Headers combine a shared field title, such as “Origin”, with category labels,
+such as “Europe” and “Japan”. Both use [view-title](title.md) styling and
+placement. A `title` inside the repeated `spec` labels each plot instead.
+
+SCHEMA FacetHeader labels format
+
+### Category Labels
+
+Set `header` to `null` to hide both labels and the field title, or to
+`{"labels": false}` to preserve the title.
+
+Labels default to centered above columns and rotated beside rows. For
+horizontal, right-aligned row labels, use:
 
 ```json
 "row": {
@@ -102,32 +114,23 @@ right-aligned row labels, use:
 }
 ```
 
-Named title styles also work: `"header": {"style": "track-title"}` produces
-horizontal track labels, while `"header": {"style": "overlay-title"}` places
-labels inside the plot. Set `reserve: false` for placement that reserves no
-space. Reserved headers keep at least the default 18-pixel band and grow to
-fit longer labels. `orient`, `anchor`, `frame`, `offset`, `dx`, and `dy` have
-the same meaning as for view titles. Headers scroll and clip with the facet grid.
+Named title styles include `track-title` for horizontal track labels and
+`overlay-title` for labels inside the plot.
 
-Matrices keep one label per row or column; column facets with wrapping keep
-one label per cell. Overlay placement preserves these label counts.
+### Header Defaults
 
-`config.header` supplies defaults for all headers. `config.headerRow` and
-`config.headerColumn` override them for their respective channels. Named
-styles override those defaults, and explicit `header` properties override
-styles. `header: null` always hides labels. These configuration scopes follow
-Vega-Lite's pattern, but properties use GenomeSpy's view-title names, such as
-`angle` and `align`, rather than Vega-Lite's `labelAngle` and `labelAlign`.
+`config.header` supplies shared defaults; `config.headerRow` and
+`config.headerColumn` override them per channel. Named styles override config,
+and explicit `header` properties override styles.
 
 ## Scales and Guides
 
-Scales and legends are shared across cells. Axes appear along the outer edges,
-with one horizontal axis per occupied column and one vertical axis per row.
-In an incomplete wrapped row, each bottom axis follows the last occupied cell
-in its column. Grid lines remain in every cell.
+Scales are shared across cells, with legends drawn once beside the grid. Axes
+appear along the outer edges: one horizontal axis per occupied column and one
+vertical axis per row. In incomplete wrapped rows, bottom axes follow the last
+occupied cell in each column. Grid lines remain in every cell.
 
-Legends render once beside the complete facet grid. When the facet container
-scrolls, its axes move with the grid and are clipped by the viewport.
+Layers can retain separate non-positional scales, each shared across cells.
 
 ## Transforms and Data Scope
 
@@ -137,61 +140,23 @@ Transforms on the facet specification run before grouping. Transforms inside
 
 EXAMPLE examples/docs/grammar/facet/means.json
 
-Child transforms may remove or overwrite the facet fields without changing the
-group to which their output belongs. The facet fields are not implicitly added
-to aggregate or project output; include them explicitly if later transforms
-need them.
+Child transforms can drop facet fields without changing cell membership.
+Include those fields in aggregate or project output if later transforms need
+them. Child filters can leave empty cells; outer filters remove groups before
+cells are created.
 
-Cell membership comes from the input after the outer transforms. A child filter
-can leave an empty cell, and an ungrouped count aggregate in that cell produces
-zero. An outer filter removes groups before cells are created.
-
-A child or layer with its own `data` repeats its result in every cell, even if
-the dataset contains the facet fields. That dataset is not partitioned by the
-surrounding facet. Lookup tables retain their own data scope.
+A child or layer with its own `data` repeats its result in every cell. That
+dataset is not partitioned, even if it contains the facet fields.
 
 ## Interactions
 
-Picking, tooltips, and point selections follow the pointed cell. Mark hits and
-custom tooltip contexts include a `facetId` tuple in row/column order.
-
-Pan and zoom gestures update shared scales across all cells. Their anchor and
-pan distance use the pointed cell's plot bounds, including in scrolled facet
-viewports. Interval brushes also use the initiating cell's coordinates and
-share their selection across cells. Selection parameters have one shared value;
-each cell does not have a separate parameter runtime.
+Picking and tooltips use the pointed cell's data. Pan and zoom update shared
+scales across all cells. Point and interval selections also share their state
+across cells.
 
 ## Differences from Vega-Lite
 
-GenomeSpy supports basic category repetition with a smaller facet grammar:
-
-- Scales, axes, and legends share their resolution across cells. Independent
-  per-cell resolution is not supported.
-- Faceting uses the explicit `facet` operator. The `row`, `column`, and `facet`
-  encoding shortcuts are not supported. Compute binned or temporal categories
-  in advance; facet fields do not accept `bin` or `timeUnit`.
-- Headers support numeric formatting and view-title placement/styles, but not
-  time formatting. Sorting by another field or aggregate is not supported.
-- Selection parameters have one shared value across cells. Per-cell selection
-  state and Vega-Lite's `union`/`intersect` selection resolution are not supported.
-
-Layers inside the repeated plot can still use independent non-positional
-scales; each layer's scale spans all facet cells. A `title` on the repeated
-child titles each plot.
-
-## Additional Limitations
-
-An imported child must resolve to a unit, layer, or multiscale plot. Imported
-concatenations and nested facet compositions are rejected.
-
-The `columns` property wraps one-dimensional column facets only. It cannot be
-used together with `facet.row`.
-
-Set `viewportWidth` or `viewportHeight` on the facet container to scroll the
-grid. Viewports inside the repeated child are not supported and produce an
-error.
-
-Explicit `collect.groupby` is unsupported on inherited facet data; collection
-and sorting without grouping are supported. The placement transforms
-`displace1d`, `filterScoredLabels`, `packLegendLabels`, and `axisLabelLayout`
-also reject inherited facet data.
+Vega-Lite's facet encoding shortcuts, independent per-cell resolution, time
+formatting, and sorting by another field or aggregate are not supported.
+Header styling uses view-title names such as `angle` and `align`, rather than
+`labelAngle` and `labelAlign`.
