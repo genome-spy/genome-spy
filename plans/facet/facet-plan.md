@@ -1,6 +1,7 @@
 # Facet View Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+The active dataflow implementation plan is in [facet-dataflow.md](facet-dataflow.md).
+The restoration tasks below are historical and do not prescribe the current workflow.
 
 **Goal:** Restore `facet` specs by implementing a modern `FacetView` that repeats one child view over many facet cells without creating one child view per facet.
 
@@ -77,6 +78,11 @@ With `facet: { field: "g" }`:
 Facet-aware execution must preserve the distinction between transforms on the
 outer facet specification and transforms inside its child. Keep the single
 child subtree and shared mark resources while correcting dataflow semantics.
+
+The [batched dataflow investigation](facet-dataflow.md) compares a static,
+partitioned flow with Vega-Lite's grouping rewrites and other alternatives.
+It records executable probes, lifecycle constraints, and a proposed direction;
+no dataflow implementation has changed as part of that investigation.
 
 ### Shared legends: fixed
 
