@@ -10,11 +10,10 @@ scales and per-cell parameter runtimes are outside this change.
 
 ## Current implementation and decisions
 
-`FacetView.arrange` already computes cell rectangles and repeats the child with
-a tuple `facetId`. WebGL and Canvas picking already render those occurrences.
-`FacetView` currently inherits an empty interaction router, while `GridView`
-only navigates unit/layer children. `InteractionController` resolves a picked
-identifier without retaining which occurrence was pointed.
+`FacetView.arrange` computes cell rectangles and repeats the child with a tuple
+`facetId`. WebGL and Canvas picking render those occurrences. The cell router
+now carries that tuple to the child, picking retains it in mark hits, and the
+parent grid navigates shared scales through the cell's full plot bounds.
 
 - Retain the visible cell layout for hit testing, including the parent clip.
   Headers and spacing do not route input to an arbitrary child. Preserve the
@@ -62,13 +61,13 @@ and pan distance).
 - [x] Click and point selection reach the correct cell/layer with facet identity.
 - [x] Enter/leave transitions use the correct old/new cell, including canvas exit.
 - [x] Picking and tooltips resolve marks in later cells and repeated own datasets.
-- [ ] Shared scales zoom/pan once per gesture using the pointed cell's bounds.
-- [ ] Clipped cells and facet headers/gaps do not acquire a child target.
-- [ ] Scrolled facets retain correct picking and gestures; drag-scroll and
+- [x] Shared scales zoom/pan once per gesture using the pointed cell's bounds.
+- [x] Clipped cells and facet headers/gaps do not acquire a child target.
+- [x] Scrolled facets retain correct picking and gestures; drag-scroll and
       disposal behavior follow the existing grid policy.
-- [ ] Browser input checks cover WebGL and Canvas with wrapped cells and a
+- [x] Browser input checks cover WebGL and Canvas with wrapped cells and a
       scrolled viewport; smoke the Anscombe and cars examples.
-- [ ] Focused subsystem tests, relevant full tests, workspace types, lint, Core
+- [x] Focused subsystem tests, relevant full tests, workspace types, lint, Core
       build, and release checks pass. Measure runtime growth against `8ba72e478`
       and review additions for opportunities to consolidate.
 
@@ -92,3 +91,37 @@ results cannot replace a newer cell's content. Real laid-out collector tests
 cover inherited and child-owned datasets through explicit picking, public hit
 conversion, hover notifications, and tooltip content. Existing asynchronous
 picking and scoped interaction tests remain passing.
+
+Navigation milestone: GridView selects the facet cell's full plot bounds and
+uses its existing resolution/gesture path. It ignores stale mark snapping from
+another cell. Tests cover shared layered resolutions, wheel claiming and
+anchors, touch pan, document drag and disposal, clipped bounds, and viewport
+drag-scroll fallback. Scrolling originally left the retained culled cell list
+stale; scrollbar callbacks now schedule reflow when the scrolled subtree
+contains facets, including an enclosing concat. The nearby TODO records
+caching facet presence and refreshing only facet placements as future work.
+
+Browser checks passed for inherited data, repeated child-owned data, and a
+scrolled viewport in both WebGL and Canvas. Every scenario verifies explicit
+picking, facet identity, custom tooltip content, click selection, wheel zoom,
+and document mouse pan. Only development HMR websocket connection messages
+were excluded from console-error checks; application errors were checked.
+
+Final verification: all 518 unit-test files passed (4,796 tests; one skipped,
+two todo). Workspace TypeScript checks, lint, Core build/schema/declarations,
+API documentation generation, and release checks passed. Anscombe wrapped,
+cars matrix, and the means example passed smoke checks in WebGL and Canvas.
+The existing Core minor changeset covers this additive facet functionality;
+the synchronized release group remains a minor release.
+
+Physical lines in the principal runtime files changed from 450 to 500 in
+FacetView, 2,027 to 2,059 in GridView, 1,206 to 1,246 in InteractionController,
+and 201 to 212 in InteractionDispatcher. The additions implement occurrence
+identity and cell geometry while retaining one child and one gesture owner;
+the dispatcher's redundant array/set tracking was consolidated into one map.
+Across runtime JavaScript under `packages/core/src`, the physical diff against
+`8ba72e478` is +302/-116 lines, net +186, excluding tests and type declarations.
+
+Public cell identity is limited to the `facet` operator. App sample faceting
+uses overlapping shader-transformed bounds, which cannot identify the sample
+from a rectangle hit; it retains its existing picking and navigation contract.

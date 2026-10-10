@@ -18,9 +18,9 @@ Restoring repeated rendering alone does not meet that goal.
 
 ## Current Status and Remaining Gaps (2026-10-10)
 
-Small multiples and supported child transforms now work through static facet
-batches. Full Vega-Lite equivalence still requires cell interactions and the
-compatibility features listed below. This section records the current
+Small multiples, supported child transforms, cell interactions, and shared-scale
+navigation now work through one static child subtree. The remaining Vega-Lite
+compatibility differences are listed below. This section records the current
 implementation; the restoration investigation, algorithms, and task checklists
 below describe the original work and are not an up-to-date completion record.
 
@@ -34,7 +34,9 @@ below describe the original work and are not an up-to-date completion record.
 | Headers, cell titles, backgrounds, clipping, and visible-cell culling | Working |
 | Child transforms evaluated separately for each facet | Working for supported transforms; see scope below |
 | Default shared color legend | Working; one legend beside the complete grid |
-| Interaction routing into repeated cells | Missing |
+| Cell routing, picking, tooltips, and shared point/interval selections | Working |
+| Shared-scale wheel zoom, mouse pan, and touch gesture routing | Working |
+| Interactions after scrolling a facet viewport | Working in WebGL and Canvas |
 | Independent positional scales and axes | Unsupported |
 | Custom facet ordering and header formatting | Unsupported |
 
@@ -80,14 +82,19 @@ grid. No per-cell legend host or additional layout path is needed.
 SVG regressions cover a wrapped unit facet and a layered facet inside a concat,
 including category labels, one rendered legend, and space before the next plot.
 
-### Cell interactions are not routed
+### Cell interactions and shared navigation: implemented
 
-`FacetView` has no `propagateInteraction(...)` implementation and inherits the
-empty base method. A headless click dispatched through the implicit root grid
-at a point inside a facet cell reached neither the repeated child nor an
-interaction target. Rendering selection chrome does not establish functioning
-cell interaction. Cell-aware event routing and coordinates still need work;
-mark picking and tooltip behavior require separate browser verification.
+`FacetView` routes input through visible cell bounds into its shared child.
+Events and mark hits retain the facet tuple; enter/leave transitions distinguish
+cells. Point selections share the child runtime, and interval brushes project
+through their initiating cell. Mark hits and custom tooltip contexts expose
+`facetId`, including for child-owned data repeated in multiple cells.
+
+The parent grid owns pan/zoom and drag-scroll sessions. It uses the pointed
+cell's full plot bounds and updates each shared resolution once. Scrolling
+refreshes layouts containing facets, so newly visible cells acquire current
+rendering and picking geometry. Optimization TODOs and detailed verification
+are recorded in [facet-interactions.md](facet-interactions.md).
 
 ### Remaining acceptance criteria, in priority order
 
@@ -97,7 +104,7 @@ mark picking and tooltip behavior require separate browser verification.
   correct facet batches without creating a subtree per cell.
 - [x] Render one shared color legend for the whole facet view. Verify its
   entries, placement, size reservation, and behavior inside an enclosing concat.
-- [ ] Route interactions to the pointed cell with the correct facet identity
+- [x] Route interactions to the pointed cell with the correct facet identity
   and coordinates. Verify representative click/selection and shared-scale
   pan/zoom behavior across multiple cells in a browser, including a scrolled
   facet viewport.

@@ -23,7 +23,7 @@ export interface TooltipRow {
 }
 
 export interface TooltipContext {
-    /** Facet tuple in row/column order, or undefined outside a facet cell. */
+    /** Tuple for a `facet` cell in row/column order, or undefined outside one. */
     readonly facetId?: readonly import("../spec/channel.js").Scalar[];
 
     /**

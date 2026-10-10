@@ -158,6 +158,7 @@ function createPickingHarness({
         otherScope,
         scope,
         updateWithDatum,
+        pickerUnitView,
     };
 }
 
@@ -1823,6 +1824,25 @@ describe("InteractionController", () => {
     );
 
     describe("explicit picking", () => {
+        it("does not infer facet operator identity from overlapping sample bounds", async () => {
+            const { controller, pickerUnitView } = createPickingHarness({
+                reader: () => 1,
+            });
+            const coords = { containsPoint: () => true };
+            pickerUnitView.facetCoords = new Map([
+                [["sampleA"], coords],
+                [["sampleB"], coords],
+            ]);
+            pickerUnitView.getLayoutAncestors = () => [
+                { spec: { mark: "point" } },
+            ];
+            const result = await controller.pick({ x: 10, y: 20 });
+            expect(result.status).toBe("hit");
+            if (result.status === "hit") {
+                expect(result.hit).not.toHaveProperty("facetId");
+            }
+        });
+
         it("checks support before validating coordinates", async () => {
             const canPick = vi.fn(() => false);
             const { controller } = createPickingHarness({

@@ -346,3 +346,242 @@ test("a brush in a later cell uses its own projection and stays anchored during 
     renderToLayout(root);
     expect(child.facetCoords.size).toBe(3);
 });
+
+test("shared scales use the pointed cell's wheel and touch coordinates once per resolution", async () => {
+    const { root, facet, child, dispatcher } = await createFacet({
+        spec: {
+            width: 100,
+            height: 60,
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: null,
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+            layer: [{ mark: "point" }, { mark: "point" }],
+        },
+    });
+    const resolution = child.getScaleResolution("x");
+    const zoom = vi.spyOn(resolution, "zoom");
+    const coords = child.facetCoords.get(["B"]);
+    const point = pointIn(coords, 0.25);
+    const probe = dispatcher.dispatch(point, { type: "wheelclaimprobe" });
+    expect(probe.wheelClaimed).toBe(true);
+    expect(zoom).not.toHaveBeenCalled();
+    const wheel = new WheelEvent("wheel", { deltaY: -300, cancelable: true });
+    dispatcher.dispatch(point, wheel);
+    expect(wheel.defaultPrevented).toBe(true);
+    expect(zoom).toHaveBeenCalledExactlyOnceWith(0.5, 0.25, 0);
+    expect(resolution.getDomain()).toEqual([1.25, 6.25]);
+    expect(facet.child.getScaleResolution("x")).toBe(resolution);
+
+    dispatcher.dispatch(point, {
+        type: "touchgesture",
+        phase: "move",
+        pointerCount: 2,
+        xDelta: 10,
+        yDelta: 0,
+        zDelta: 0,
+    });
+    expect(zoom).toHaveBeenLastCalledWith(1, 0.25, expect.closeTo(0.1));
+    expect(resolution.getDomain()).toEqual([
+        expect.closeTo(0.75),
+        expect.closeTo(5.75),
+    ]);
+    expect(
+        dispatcher.dispatch(new Point(105, 30), { type: "wheelclaimprobe" })
+            .wheelClaimed
+    ).toBe(false);
+    root.disposeSubtree();
+});
+
+test("a cell pan uses its plot width and the routing grid cancels it on disposal", async () => {
+    const { root, child, dispatcher } = await createFacet({
+        spec: {
+            width: 100,
+            height: 60,
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: null,
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+        },
+    });
+    const resolution = child.getScaleResolution("x");
+    const point = pointIn(child.facetCoords.get(["C"]));
+    const zoom = vi.spyOn(resolution, "zoom");
+    const resume = vi.spyOn(root.context, "resumeHoverTracking");
+    dispatcher.dispatch(
+        point,
+        new MouseEvent("mousedown", { clientX: point.x, clientY: point.y })
+    );
+    document.dispatchEvent(
+        new MouseEvent("mousemove", { clientX: point.x - 10, clientY: point.y })
+    );
+    expect(zoom).toHaveBeenCalledExactlyOnceWith(1, 0.5, expect.closeTo(-0.1));
+    root.disposeSubtree();
+    document.dispatchEvent(
+        new MouseEvent("mousemove", { clientX: point.x - 20, clientY: point.y })
+    );
+    expect(zoom).toHaveBeenCalledOnce();
+    expect(resume).toHaveBeenCalledOnce();
+});
+
+test("a stale hover in another cell does not snap the wheel anchor", async () => {
+    const { child, dispatcher } = await createFacet({
+        spec: {
+            width: 100,
+            height: 60,
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: null,
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+        },
+    });
+    const unit = /** @type {import("./unitView.js").default} */ (child);
+    const datum = Array.from(unit.getCollector().getData()).find(
+        (datum) => datum.g === "A"
+    );
+    vi.spyOn(child.context, "getCurrentHover").mockReturnValue({
+        mark: unit.mark,
+        datum,
+        facetId: ["A"],
+    });
+    const zoom = vi.spyOn(child.getScaleResolution("x"), "zoom");
+    dispatcher.dispatch(
+        pointIn(child.facetCoords.get(["B"]), 0.75),
+        new WheelEvent("wheel", { deltaY: -300 })
+    );
+    expect(zoom).toHaveBeenCalledExactlyOnceWith(0.5, 0.75, expect.closeTo(0));
+});
+
+test("partly clipped cells retain full plot coordinates for shared-scale zoom", async () => {
+    const { root, facet, child, dispatcher } = await createFacet({
+        viewportHeight: 55,
+        columns: 1,
+        spec: {
+            width: 100,
+            height: 60,
+            mark: "point",
+            encoding: {
+                y: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: null,
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+        },
+    });
+    renderToLayout(root);
+    const cell = facet.getInteractionCell(pointIn(child.coords, 0.5, 0.2));
+    expect(cell.childCoords.height).toBe(60);
+    expect(child.coords.height).toBeLessThan(60);
+    const point = pointIn(cell.childCoords, 0.5, 0.25);
+    const zoom = vi.spyOn(child.getScaleResolution("y"), "zoom");
+    dispatcher.dispatch(point, new WheelEvent("wheel", { deltaY: -300 }));
+    expect(zoom).toHaveBeenCalledExactlyOnceWith(0.5, 0.75, expect.closeTo(0));
+});
+
+test("dragging an unzoomable cell direction scrolls the enclosing facet viewport", async () => {
+    const { root, child, dispatcher } = await createFacet({
+        viewportHeight: 55,
+        columns: 1,
+        spec: {
+            width: 100,
+            height: 60,
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: null,
+                    scale: { domain: [0, 10], zoom: true },
+                },
+            },
+        },
+    });
+    const scrollbar = /** @type {import("./gridView/scrollbar.js").default} */ (
+        root.getDescendants().find((view) => view.name === "scrollbar-vertical")
+    );
+    const point = pointIn(child.coords);
+    dispatcher.dispatch(
+        point,
+        new MouseEvent("mousedown", { clientX: point.x, clientY: point.y })
+    );
+    document.dispatchEvent(
+        new MouseEvent("mousemove", { clientX: point.x, clientY: point.y - 20 })
+    );
+    document.dispatchEvent(new MouseEvent("mouseup"));
+    expect(scrollbar.viewportOffset).toBe(20);
+    expect(child.getScaleResolution("x").getDomain()).toEqual([0, 10]);
+    renderToLayout(root);
+    expect(child.coords.y).toBeLessThan(point.y);
+});
+
+test("scrolling refreshes culled cells and routes to the newly visible cell", async () => {
+    const { root, child, dispatcher } = await createFacet({
+        viewportHeight: 55,
+        columns: 1,
+    });
+    expect(child.facetCoords.has(["B"])).toBe(false);
+    root.context.requestLayoutReflow = () => {
+        renderToLayout(root);
+    };
+    const scrollbar = /** @type {import("./gridView/scrollbar.js").default} */ (
+        root.getDescendants().find((view) => view.name === "scrollbar-vertical")
+    );
+    scrollbar.setViewportOffset(100);
+    const coords = child.facetCoords.get(["B"]);
+    expect(coords.height).toBeGreaterThan(0);
+    const event = dispatcher.dispatch(pointIn(coords), new MouseEvent("click"));
+    expect(event.target).toBe(child);
+    expect(event.facetId).toEqual(["B"]);
+});
+
+test("an enclosing concat viewport refreshes its facet descendants when scrolled", async () => {
+    const { facet } = await createFacet({ columns: 1 });
+    const root = await createAndInitialize(
+        {
+            vconcat: [
+                {
+                    viewportHeight: 55,
+                    vconcat: [facet.spec],
+                },
+            ],
+        },
+        ConcatView
+    );
+    roots.push(root);
+    renderToLayout(root);
+    const container = /** @type {ConcatView} */ (root.children[0]);
+    const nestedFacet = /** @type {import("./facetView.js").default} */ (
+        container.children[0]
+    );
+    root.context.requestLayoutReflow = () => {
+        renderToLayout(root);
+    };
+    const scrollbar = /** @type {import("./gridView/scrollbar.js").default} */ (
+        root.getDescendants().find((view) => view.name === "scrollbar-vertical")
+    );
+    expect(nestedFacet.child.facetCoords.has(["B"])).toBe(false);
+    scrollbar.setViewportOffset(100);
+    const dispatcher = new InteractionDispatcher({ viewRoot: root });
+    const event = dispatcher.dispatch(
+        pointIn(nestedFacet.child.facetCoords.get(["B"])),
+        new MouseEvent("click")
+    );
+    expect(event.target).toBe(nestedFacet.child);
+    expect(event.facetId).toEqual(["B"]);
+});

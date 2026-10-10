@@ -30,13 +30,23 @@ zero. An outer filter removes groups before cells are created.
 A child with its own `data` uses that dataset in every cell. Lookup tables also
 retain their own data scope.
 
+## Interactions
+
+Picking, tooltips, and point selections follow the pointed cell. Mark hits and
+custom tooltip contexts include a `facetId` tuple in row/column order.
+
+Pan and zoom gestures update shared scales across all cells. Their anchor and
+pan distance use the pointed cell's plot bounds, including in scrolled facet
+viewports. Interval brushes also use the initiating cell's coordinates and
+share their selection across cells. Selection parameters have one shared value;
+each cell does not have a separate parameter runtime.
+
+Legends render once beside the complete facet grid.
+
 ## Initial Limitations
 
 Facets currently use shared scales and axes. Independent per-facet scale domains
 and independent axes are not supported.
-
-Legends render once beside the complete facet grid. Interactions inside
-individual facet cells are not implemented.
 
 The `columns` property wraps one-dimensional column facets only. It cannot be
 used together with `facet.row`.

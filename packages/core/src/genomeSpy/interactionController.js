@@ -7,6 +7,7 @@ import createTooltipContext from "../tooltip/tooltipContext.js";
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import { isFacetSpec } from "../view/viewSpecGuards.js";
 import CursorManager from "./cursorManager.js";
 import EventListenerRegistry from "./eventListenerRegistry.js";
 
@@ -1068,11 +1069,22 @@ export default class InteractionController {
                         .getCollector()
                         ?.findDatumByUniqueId(uniqueId);
                     if (datum) {
+                        // Shader-based sample facets can share the same bounds;
+                        // only facet operators establish cell identity by point.
+                        const cellFacetId =
+                            facetId !== undefined &&
+                            view
+                                .getLayoutAncestors()
+                                .some((ancestor) => isFacetSpec(ancestor.spec))
+                                ? facetId
+                                : undefined;
                         hit = {
                             mark: view.mark,
                             datum,
                             uniqueId,
-                            ...(facetId === undefined ? {} : { facetId }),
+                            ...(cellFacetId === undefined
+                                ? {}
+                                : { facetId: cellFacetId }),
                         };
                     }
                     break;

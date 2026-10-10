@@ -53,8 +53,12 @@ import {
 } from "./legendCollection.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
-import { moveArrayItem } from "../../utils/arrayUtils.js";
-import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
+import { moveArrayItem, shallowArrayEquals } from "../../utils/arrayUtils.js";
+import {
+    isFacetSpec,
+    isHConcatSpec,
+    isVConcatSpec,
+} from "../viewSpecGuards.js";
 import {
     combineClipOptions,
     createClipOptions,
@@ -1607,15 +1611,28 @@ export default class GridView extends ContainerView {
                 event,
                 () => true,
                 () => pointedView.propagateInteraction(event),
-                isZoomInteractionView(pointedView)
-                    ? () =>
-                          this.#propagateZoomInteraction(
-                              event,
-                              pointedChild.coords,
-                              getZoomableResolutions(pointedView),
-                              pointedChild
-                          )
-                    : undefined
+                () => {
+                    if (
+                        event.type !== "wheel" &&
+                        event.type !== "mousedown" &&
+                        event.type !== "touchgesture"
+                    ) {
+                        return;
+                    }
+                    const target = getZoomInteractionTarget(
+                        pointedView,
+                        event.point,
+                        pointedChild.coords
+                    );
+                    if (target) {
+                        this.#propagateZoomInteraction(
+                            event,
+                            target.coords,
+                            getZoomableResolutions(target.view),
+                            pointedChild
+                        );
+                    }
+                }
             );
         });
     }
@@ -1634,12 +1651,13 @@ export default class GridView extends ContainerView {
             return;
         }
 
-        if (!isZoomInteractionView(pointedView)) {
+        const target = getZoomInteractionTarget(pointedView, event.point);
+        if (!target) {
             pointedView.propagateInteraction(event);
             return;
         }
 
-        const zoomableResolutions = getZoomableResolutions(pointedView);
+        const zoomableResolutions = getZoomableResolutions(target.view);
         if (
             Object.values(zoomableResolutions).some(
                 (resolutions) => resolutions.size > 0
@@ -1725,6 +1743,11 @@ export default class GridView extends ContainerView {
                   }
                 : {};
 
+        const hover = this.context.getCurrentHover();
+        const sameFacet =
+            !event.facetId ||
+            (hover?.facetId &&
+                shallowArrayEquals(event.facetId, hover.facetId));
         const cancelPan = interactionToZoom(
             event,
             coords,
@@ -1742,7 +1765,7 @@ export default class GridView extends ContainerView {
                 }
                 return zoomed || scrolledX || scrolledY;
             },
-            this.context.getCurrentHover(),
+            sameFacet ? hover : undefined,
             this.context.animator,
             // When dragging can scroll, lock to one axis so that a vertical
             // drag doesn't also pan horizontally (and vice versa).
@@ -1918,10 +1941,19 @@ function zoomResolutions(coords, zoomEvent, zoomableResolutions, animator) {
 
 /**
  * @param {View} view
- * @returns {view is UnitView | LayerView}
+ * @param {import("../layout/point.js").default} point
+ * @param {Rectangle} [coords]
  */
-function isZoomInteractionView(view) {
-    return view instanceof UnitView || view instanceof LayerView;
+function getZoomInteractionTarget(view, point, coords) {
+    if (isFacetSpec(view.spec)) {
+        const facet = /** @type {import("../facetView.js").default} */ (view);
+        const cell = facet.getInteractionCell(point);
+        return cell
+            ? { view: facet.child, coords: cell.childCoords }
+            : undefined;
+    } else if (view instanceof UnitView || view instanceof LayerView) {
+        return { view, coords };
+    }
 }
 
 /**

@@ -20,3 +20,7 @@ selections route into the pointed facet cell, and shared interval brushes use
 that cell's plot bounds. Picking and tooltips distinguish repeated cells even
 when they share the same datum. Mark hits and custom tooltip contexts expose a
 `facetId` tuple identifying the pointed cell.
+
+Pan and zoom update shared scales using the pointed cell's plot bounds, also
+inside scrolled facet viewports. Existing viewport drag-scrolling and gesture
+cleanup apply to facet cells.
