@@ -10,7 +10,10 @@ import {
 } from "./facetLayout.js";
 import FacetHeaderView from "./facetHeaderView.js";
 import GridChild from "./gridView/gridChild.js";
-import { translateAxisCoords } from "./gridView/gridView.js";
+import {
+    createGridArrangement,
+    queueGridChild,
+} from "./gridView/gridChildArrangement.js";
 import { ZERO_FLEXDIMENSIONS } from "./layout/flexLayout.js";
 import {
     clipCoords,
@@ -194,13 +197,25 @@ export default class FacetView extends ContainerView {
             );
         });
 
+        const arrangement = createGridArrangement();
         for (const [index, layout] of visibleLayouts.entries()) {
-            this.#renderFacetCell(context, layout, {
-                ...options,
-                facetId: layout.cell.facetId,
-                firstFacet: index === 0,
-            });
+            queueGridChild(
+                context,
+                {
+                    gridChild: this.#gridChild,
+                    containerCoords: coords,
+                    viewportCoords: layout.childCoords,
+                    viewCoords: layout.childCoords,
+                },
+                {
+                    ...options,
+                    facetId: layout.cell.facetId,
+                    firstFacet: index === 0,
+                },
+                arrangement
+            );
         }
+        arrangement.arrange();
 
         for (const [orient, header] of this.#headerViews) {
             header.updateData(
@@ -297,43 +312,6 @@ export default class FacetView extends ContainerView {
                 }
             }
         });
-    }
-
-    /**
-     * @param {import("./renderingContext/viewRenderingContext.js").default} context
-     * @param {import("./facetLayout.js").FacetCellLayout} layout
-     * @param {import("../types/rendering.js").RenderingOptions} options
-     */
-    #renderFacetCell(context, layout, options) {
-        this.#gridChild.background?.arrange(
-            context,
-            layout.viewportCoords,
-            options
-        );
-
-        for (const gridLineView of Object.values(this.#gridChild.gridLines)) {
-            gridLineView.arrange(context, layout.childCoords, options);
-        }
-
-        this.#gridChild.view.arrange(context, layout.childCoords, options);
-
-        for (const axisView of Object.values(this.#gridChild.axes)) {
-            axisView.arrange(
-                context,
-                translateAxisCoords(
-                    layout.childCoords,
-                    axisView.axisProps.orient,
-                    axisView
-                ),
-                options
-            );
-        }
-
-        this.#gridChild.backgroundStroke?.arrange(
-            context,
-            layout.viewportCoords,
-            options
-        );
     }
 }
 

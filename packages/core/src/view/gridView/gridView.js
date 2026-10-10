@@ -26,6 +26,17 @@ import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
+import {
+    createGridArrangement,
+    queueGridChild,
+    DECORATION_ORDER,
+    defaultAxisZindex,
+    translateAxisCoords,
+} from "./gridChildArrangement.js";
+export {
+    isClippedChildren,
+    translateAxisCoords,
+} from "./gridChildArrangement.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
 import { arrangeLocalLegends } from "./legendLayout.js";
 import {
@@ -46,7 +57,6 @@ import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { moveArrayItem } from "../../utils/arrayUtils.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
 import {
-    clipCoords,
     combineClipOptions,
     createClipOptions,
     normalizeClipOptions,
@@ -65,23 +75,6 @@ import {
     isIntervalSelectionConfig,
 } from "../../selection/selection.js";
 
-// Secondary ordering within a z-index bucket for GridView-owned decorations.
-// These are not z-indices themselves: actual layering is decided first by the
-// decoration's zindex (underlay vs overlay relative to content), and these
-// values are only used as tie-break phases among decorations in the same batch.
-const DECORATION_ORDER = Object.freeze({
-    background: 0,
-    separator: 10,
-    grid: 20,
-    backgroundStroke: 30,
-    axis: 40,
-    legend: 50,
-    selectionRect: 80,
-    ruler: 82,
-    scrollbar: 90,
-    title: 100,
-});
-
 const MAX_CONSTRAINT_LAYOUT_PASSES = 10;
 
 // Nested layouts can differ by half a physical pixel after device-pixel
@@ -98,11 +91,6 @@ const HALF_PHYSICAL_PIXEL = 0.5;
 function getVisibleSlotSize(locSize, extent) {
     return Math.max(0, Math.min(locSize.size, extent - locSize.location));
 }
-
-// Default z-index for axes and view strokes when the content is clipped or
-// scrollable. This keeps guides above content-edge artifacts while still
-// letting an explicit user zindex override the default.
-const CLIPPED_DECORATION_ZINDEX = 10;
 
 /**
  * Treat an explicit concat/grid size as preferred available space while still
@@ -1350,8 +1338,6 @@ export default class GridView extends ContainerView {
                 ? () => round(vScrollbar.viewportOffset)
                 : () => 0;
 
-            // TODO: Part of the following rendering logic could be moved to GridChild
-
             const viewportCoords = new Rectangle(
                 () => coords.x + x,
                 () => coords.y + y,
@@ -1373,19 +1359,12 @@ export default class GridView extends ContainerView {
             gridChild.coords = viewportCoords;
             gridChild.plotCoords = viewCoords;
 
-            const parentClip = normalizeClipOptions(options);
-            const visibleChildCoords = clipCoords(viewportCoords, parentClip);
-
             layoutItems.push({
                 col,
                 row,
                 viewportCoords,
                 viewCoords,
-                parentClip,
-                visibleChildCoords,
-                viewWidth,
-                viewHeight,
-                scrollable,
+                containerCoords: coords,
                 gridChild,
             });
         }
@@ -1395,57 +1374,8 @@ export default class GridView extends ContainerView {
             layoutItems.map((item) => item.viewCoords)
         );
 
-        /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */
-        const underlays = [];
-        /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */
-        const overlays = [];
-        /** @type {{ zindex: number, arrange: () => void }[]} */
-        const contents = [];
-        let sequence = 0;
-
-        const queueDecoration = (
-            /** @type {number} */ zindex,
-            /** @type {number} */ order,
-            /** @type {() => void} */ arrange
-        ) => {
-            const target = zindex > 0 ? overlays : underlays;
-            target.push({
-                zindex,
-                order,
-                sequence: sequence++,
-                arrange,
-            });
-        };
-
-        const arrangeDecorations = (
-            /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */ items
-        ) => {
-            items.sort(
-                (a, b) =>
-                    a.zindex - b.zindex ||
-                    a.order - b.order ||
-                    a.sequence - b.sequence
-            );
-
-            for (const item of items) {
-                item.arrange();
-            }
-        };
-
-        for (const item of layoutItems) {
-            const { background } = item.gridChild;
-            if (background) {
-                queueDecoration(
-                    item.gridChild.backgroundZindex,
-                    DECORATION_ORDER.background,
-                    () =>
-                        background.arrange(context, item.visibleChildCoords, {
-                            ...options,
-                            clipRect: undefined,
-                        })
-                );
-            }
-        }
+        const arrangement = createGridArrangement();
+        const { queueDecoration } = arrangement;
 
         for (const direction of /** @type {const} */ ([
             "vertical",
@@ -1496,162 +1426,14 @@ export default class GridView extends ContainerView {
         }
 
         for (const item of layoutItems) {
-            const {
-                viewportCoords,
-                viewCoords,
-                parentClip,
-                visibleChildCoords,
-                viewWidth,
-                viewHeight,
-                scrollable,
-                gridChild,
-                col,
-                row,
-            } = item;
-            const {
-                view,
-                axes,
-                gridLines,
-                backgroundStroke,
-                title,
-                selectionRect,
-                rulerOverlays,
-            } = gridChild;
-
-            const clippedChildren = isClippedChildren(view);
-            const clipped = clippedChildren || scrollable;
-            const clippedDecorations = hasClippedChildren(view) || scrollable;
-
-            for (const gridLineView of Object.values(gridLines)) {
-                queueDecoration(
-                    gridLineView.axisProps.zindex ?? 0,
-                    DECORATION_ORDER.grid,
-                    () => gridLineView.arrange(context, viewportCoords, options)
-                );
-            }
-
-            const childClip = clipped
-                ? combineClipOptions(
-                      parentClip,
-                      createClipOptions(
-                          visibleChildCoords,
-                          clippedChildren ||
-                              Boolean(gridChild.scrollbars.horizontal),
-                          clippedChildren ||
-                              Boolean(gridChild.scrollbars.vertical)
-                      )
-                  )
-                : options.clip;
-
-            const arrangeContent = () =>
-                view.arrange(
-                    context,
-                    viewCoords,
-                    clipped
-                        ? {
-                              ...options,
-                              clipRect: childClip?.rect,
-                              clip: childClip,
-                          }
-                        : options
-                );
-
-            contents.push({
-                zindex: view.getZindex(),
-                arrange: arrangeContent,
-            });
-
-            if (backgroundStroke) {
-                queueDecoration(
-                    defaultBackgroundStrokeZindex(
-                        gridChild.backgroundStrokeZindex,
-                        clippedDecorations
-                    ),
-                    DECORATION_ORDER.backgroundStroke,
-                    () =>
-                        backgroundStroke?.arrange(context, visibleChildCoords, {
-                            ...options,
-                            clipRect: undefined,
-                        })
-                );
-            }
-
-            // Independent axes
-            for (const [orient, axisView] of Object.entries(axes)) {
-                const direction =
-                    orient == "left" || orient == "right"
-                        ? "vertical"
-                        : "horizontal";
-
-                const scrollable = gridChild.scrollbars[direction];
-
-                // Axes should stick to the viewport edge but move with the view
-                // when scrolling.
-                const coords = scrollable
-                    ? viewportCoords.modify(
-                          direction == "vertical"
-                              ? {
-                                    y: () => viewCoords.y,
-                                    height: viewHeight,
-                                }
-                              : {
-                                    x: () => viewCoords.x,
-                                    width: viewWidth,
-                                }
-                      )
-                    : viewportCoords;
-
-                const translatedCoords = translateAxisCoords(
-                    coords,
-                    orient,
-                    axisView
-                );
-
-                let clip = normalizeClipOptions(options);
-                let clipRect = clip?.rect;
-
-                // Scrollable axes must be clipped along the scroll direction.
-                if (scrollable) {
-                    const axisClip = createClipOptions(
-                        viewportCoords,
-                        direction == "horizontal",
-                        direction == "vertical"
-                    );
-                    clip = combineClipOptions(clip, axisClip);
-                    clipRect = clip?.rect;
-                }
-
-                if (clip && axisView.labelClipPolicy === "anchor") {
-                    clip = createClipOptions(
-                        clip.rect,
-                        ORIENT_CHANNELS[orient] === "x",
-                        ORIENT_CHANNELS[orient] === "y"
-                    );
-                    clipRect = clip?.rect;
-                }
-
-                queueDecoration(
-                    defaultAxisZindex(axisView.axisProps, clippedDecorations),
-                    DECORATION_ORDER.axis,
-                    () =>
-                        axisView.arrange(context, translatedCoords, {
-                            ...options,
-                            clipRect,
-                            clip,
-                        })
-                );
-            }
-
-            arrangeLocalLegends(
-                gridChild.legends,
-                this.#getLegendOffsetAxes(axes, col, row, grid),
-                viewportCoords,
+            const { gridChild, viewportCoords, col, row } = item;
+            const clippedDecorations = queueGridChild(
                 context,
+                item,
                 options,
-                queueDecoration,
-                DECORATION_ORDER.legend
+                arrangement,
+                this.#getLegendOffsetAxes(gridChild.axes, col, row, grid)
             );
-
             // Axes shared between children
             // TODO: What if some have scrollable viewports?
             // Should throw an error because cannot have shared axes in such cases.
@@ -1685,37 +1467,6 @@ export default class GridView extends ContainerView {
                     );
                 }
             }
-
-            if (selectionRect) {
-                queueDecoration(
-                    selectionRect.zindex,
-                    DECORATION_ORDER.selectionRect,
-                    () =>
-                        selectionRect.view.arrange(context, viewCoords, options)
-                );
-            }
-
-            for (const overlay of rulerOverlays) {
-                queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
-                    overlay.view.arrange(context, viewCoords, options)
-                );
-            }
-
-            for (const scrollbar of Object.values(gridChild.scrollbars)) {
-                queueDecoration(1, DECORATION_ORDER.scrollbar, () => {
-                    scrollbar.updateScrollbar(viewportCoords, viewCoords);
-                    scrollbar.arrange(context, coords, options);
-                });
-            }
-
-            if (title) {
-                queueDecoration(
-                    gridChild.getTitleZindex(),
-                    DECORATION_ORDER.title,
-                    () =>
-                        gridChild.arrangeTitle(context, viewportCoords, options)
-                );
-            }
         }
 
         // A declared scale can keep its guide even when the grid has no tracks.
@@ -1742,15 +1493,7 @@ export default class GridView extends ContainerView {
             DECORATION_ORDER.legend
         );
 
-        arrangeDecorations(underlays);
-
-        for (const content of contents.toSorted(
-            (a, b) => a.zindex - b.zindex
-        )) {
-            content.arrange();
-        }
-
-        arrangeDecorations(overlays);
+        arrangement.arrange();
 
         const annotationLayer = this.getAnnotationLayer();
         const annotationGeometry = annotationLayer
@@ -2215,37 +1958,6 @@ function zoomResolutions(coords, zoomEvent, zoomableResolutions, animator) {
 
 /**
  * @param {View} view
- */
-export function isClippedChildren(view) {
-    let clipped = true;
-
-    view.visit((v) => {
-        if (v instanceof UnitView) {
-            clipped &&= v.mark.properties.clip === true;
-        }
-    });
-
-    return clipped;
-}
-
-/**
- * @param {View} view
- */
-function hasClippedChildren(view) {
-    let clipped = false;
-
-    view.visit((v) => {
-        if (v instanceof UnitView) {
-            const clip = v.mark.properties.clip;
-            clipped ||= clip === true || clip === "x" || clip === "y";
-        }
-    });
-
-    return clipped;
-}
-
-/**
- * @param {View} view
  * @returns {view is UnitView | LayerView}
  */
 function isZoomInteractionView(view) {
@@ -2352,74 +2064,4 @@ function getCrossTrackBounds(gridChildren, sharedAxes, channel) {
     }
 
     return Rectangle.create(min[0], min[1], max[0] - min[0], max[1] - min[1]);
-}
-
-/**
- * Default z-index for axes. Inside axes default to overlays because they share
- * plot space with marks. Clipped or scrollable outside axes get a higher
- * default to keep guides above visible edge artifacts.
- *
- * @param {import("../../spec/axis.js").Axis} axisProps
- * @param {boolean} clipped
- * @returns {number}
- */
-function defaultAxisZindex(axisProps, clipped) {
-    if (axisProps.zindex !== undefined) {
-        return axisProps.zindex;
-    } else if (axisProps.placement === "inside") {
-        return 1;
-    } else if (clipped) {
-        return CLIPPED_DECORATION_ZINDEX;
-    } else {
-        return 0;
-    }
-}
-
-/**
- * Default z-index for view strokes. Clipped or scrollable content gets a
- * higher default to keep the stroke above visible edge artifacts.
- *
- * @param {number | undefined} zindex
- * @param {boolean} clipped
- * @returns {number}
- */
-function defaultBackgroundStrokeZindex(zindex, clipped) {
-    return zindex ?? (clipped ? CLIPPED_DECORATION_ZINDEX : 0);
-}
-
-/**
- *
- * @param {import("../layout/rectangle.js").default} coords
- * @param {import("../../spec/axis.js").AxisOrient} orient
- * @param {AxisView} axisView
- */
-export function translateAxisCoords(coords, orient, axisView) {
-    const props = axisView.axisProps;
-    const ps = axisView.getPerpendicularSize();
-    const inside = props.placement === "inside";
-    const offset = props.offset ?? 0;
-
-    if (orient == "bottom") {
-        return inside
-            ? coords.translate(0, coords.height - ps - offset).modify({
-                  height: ps,
-              })
-            : coords.translate(0, coords.height + offset).modify({
-                  height: ps,
-              });
-    } else if (orient == "top") {
-        return inside
-            ? coords.translate(0, offset).modify({ height: ps })
-            : coords.translate(0, -ps - offset).modify({ height: ps });
-    } else if (orient == "left") {
-        return inside
-            ? coords.translate(offset, 0).modify({ width: ps })
-            : coords.translate(-ps - offset, 0).modify({ width: ps });
-    } else if (orient == "right") {
-        return inside
-            ? coords.translate(coords.width - ps - offset, 0).modify({
-                  width: ps,
-              })
-            : coords.translate(coords.width + offset, 0).modify({ width: ps });
-    }
 }
