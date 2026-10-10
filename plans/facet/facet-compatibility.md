@@ -14,6 +14,13 @@ tooltips, selections with shared state, shared pan/zoom, and container viewport
 scrolling are implemented. Complete predictable behavior and simplify existing
 paths before adding capabilities.
 
+The earlier sorting, configurable-header, outer-axis, and independent-domain
+milestones are discarded as requirements for this completion pass. They may be
+useful later, but their absence does not make category repetition incomplete.
+Precomputed category fields suffice; bin/time-unit syntax, encoding macros,
+per-cell parameter runtimes, and advanced layout/configuration are also outside
+scope. Dynamic dataflow branches and optimizer improvements are unnecessary.
+
 ### Final review follow-up
 
 The subagent review at `6b0335b22` found no blocker in basic repetition or the
@@ -26,15 +33,12 @@ preserves supported imported plots.
 
 The obsolete fixed-header fallback and redundant visibility flags are removed;
 layout helpers now require the measured padding already supplied in production.
-All 150 facet tests pass. The unreferenced dynamic-subflow stub and final plan
-audit are tracked in the [main plan](facet-plan.md#follow-up-final-review-fixes).
-
-The earlier sorting, configurable-header, outer-axis, and independent-domain
-milestones are discarded as requirements for this completion pass. They may be
-useful later, but their absence does not make category repetition incomplete.
-Precomputed category fields suffice; bin/time-unit syntax, encoding macros,
-per-cell parameter runtimes, and advanced layout/configuration are also outside
-scope. Dynamic dataflow branches and optimizer improvements are unnecessary.
+All 150 facet tests pass. The unreferenced 17-line dynamic-subflow stub is also
+deleted. The [main plan](facet-plan.md#follow-up-final-review-fixes) records
+verification and reconciles the original historical checklist. No active
+implementation milestone remains.
+Final checks after all three fixes pass: 518 files and 4,875 tests (one skipped,
+two todo), workspace TypeScript, lint, formatting, and release policy/status.
 
 ### Completed small compatibility follow-up
 
@@ -239,10 +243,9 @@ blocks this acceptance.
   facet boundary, including default declarations. Layers retain independent
   non-positional scales whose domains span cells; a real-spec test verifies
   their distinct color domains. Positional independence remains rejected.
-- Field titles: narrowed FacetFieldDef to its field/description contract and
-  reject title declarations at runtime. Category value labels and repeated
-  child titles remain supported. Schema and real-spec tests cover shorthand
-  and mapped facet definitions without growing header configuration.
+- Field titles: the initial type narrowing and runtime rejection were
+  superseded by the completed shared field-title follow-up above. Field names
+  provide automatic titles; strings, title objects, and null customize them.
 - Consolidation: fixed header sizes have one source of truth, point projection
   delegates to cell lookup, visible-cell clipping is computed once, and shared
   arrangement computes both clip flags in one subtree scan. Removed the unused
@@ -297,6 +300,8 @@ The review-completion baseline compared with master `e35d3bee9` adds 1,397/delet
 master contains an inactive old FacetView. The completion pass does not add
 per-cell view/dataflow/controller instances.
 
-The plans remain versioned as requested. Reconcile and retire them before a
-future PR/merge under the repository workflow; no PR or merge is part of this
-completion pass.
+The plans remain versioned as requested. All active implementation work is
+complete, including the final imported-child validation and cleanup review.
+Optional profiling/optimizer work and unsupported grammar/transform extensions
+do not block the agreed basic faceting scope. Reconcile and retire these plans
+before a future PR/merge under the repository workflow.

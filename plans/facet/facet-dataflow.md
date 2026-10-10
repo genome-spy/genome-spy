@@ -10,10 +10,10 @@ one static dataflow graph. Its existing facet batches already express the
 required partition identity. Dynamic per-facet operator branches are not
 necessary for aggregate, stack, window, sampling, or ordinary row transforms.
 
-The missing work is more than moving a collector: establish partitions before
-child transforms, preserve their identity through collectors, and make every
-supported stateful transform honor the partition. Arbitrary per-cell parameter
-scopes, independent scale runtimes, and incremental tuple updates are separate
+The completed implementation establishes partitions before child transforms,
+preserves their identity through collectors, and makes supported stateful
+transforms honor the partition. Arbitrary per-cell parameter scopes,
+independent scale runtimes, and incremental tuple updates are separate
 problems. This proposal does not introduce those capabilities.
 
 Prefer extending this existing execution model over introducing a second
@@ -121,7 +121,8 @@ their count stays constant as facet membership changes.
 1. Establish the partition boundary after transforms declared on the facet
    specification and before transforms declared inside its child. Reuse a
    grouped collector initially. Do not create a view, runtime, or transform
-   chain for each key, or implement the unused `data/facetNode.js` subflow stub.
+   chain for each key. The abandoned dynamic-subflow stub was removed during
+   the final cleanup review.
 2. Carry the facet tuple as batch metadata through the entire child flow.
    Terminal collectors retain that identity instead of regrouping by fields
    that may have been removed or changed. Explicit user `collect.groupby` is
@@ -315,11 +316,12 @@ now tests subdivisions within facets rather than repeating the facet keys.
 Cell interaction routing and shared-scale navigation are completed in
 [facet-interactions.md](facet-interactions.md). The independent review and
 completed correctness/simplification work are tracked in
-[facet-compatibility.md](facet-compatibility.md). Vega-Lite ordering, header,
-outer-axis, independent-scale, and derived-key features are optional under the
-clarified category-repetition goal. The rejected placement transforms need
-retained-state audits before support can be enabled. Explicit collect
-grouping needs a separate local-group identity contract. These are GenomeSpy
+[facet-compatibility.md](facet-compatibility.md). Ordering, configurable headers,
+field titles, and shared outer axes are complete. Independent per-cell scales
+and derived-key grammar features remain outside the clarified repetition scope.
+The rejected placement transforms need retained-state audits before support
+can be enabled. Explicit collect grouping needs a separate local-group identity
+contract. These are GenomeSpy
 transform extensions, not missing Vega-Lite facet syntax. Optimizer TODOs are
 recorded at the partition builder, collector fusion, and file-provenance helper;
 no optimizer rewrite is required for the supported behavior.

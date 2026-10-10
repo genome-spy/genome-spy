@@ -1,6 +1,6 @@
 # Facet View Implementation Plan
 
-The current scope, simplification review, and remaining correctness work are in
+The supported scope, simplification review, and completion record are in
 [facet-compatibility.md](facet-compatibility.md).
 The completed interaction and dataflow implementations are recorded in
 [facet-interactions.md](facet-interactions.md) and [facet-dataflow.md](facet-dataflow.md).
@@ -36,7 +36,7 @@ add nested facet execution or another layout abstraction.
   test-only fixed-band fallbacks and redundant header-visibility flags. Preserve
   matrix/wrapped layout coverage with explicit padding inputs.
   Commit: `refactor(core): require explicit facet header padding`.
-- [ ] Delete the unreferenced dynamic-subflow `FacetNode` stub. Reconcile the
+- [x] Delete the unreferenced dynamic-subflow `FacetNode` stub. Reconcile the
   historical checklist and current status against the completed implementation.
   Commit: `chore(core): remove unused facet dataflow stub`.
 
@@ -51,6 +51,25 @@ focused lint, and release checks. Layout tests now supply their header padding
 explicitly and no longer assert removed visibility flags. FacetLayout shrinks
 281→263 physical lines; FacetView's size is unchanged. This internal refactor
 has an empty changeset and does not change header rendering or release scope.
+
+The unreferenced `FacetNode` stub is deleted (17 physical lines). All active
+implementation milestones are complete. The original procedural checklist is
+reconciled below; its superseded implementation steps are discarded rather
+than left as pending work. The plans remain versioned until PR preparation.
+
+Final review-fix verification: the full suite passes (518 files, 4,875 tests,
+one skipped, two todo), as do workspace TypeScript, lint, formatting, and release
+checks. The three fixes reduce combined runtime file size from 966 to 945
+physical lines (net −21, including the import guard). The two internal cleanups
+carry empty changesets; the existing facet minor release remains 1.2.0 for the
+fixed group. No new renderer or gesture behavior is introduced by these fixes.
+
+Remaining work is optional: profile the recorded collector/partition/file
+provenance and facet-scroll reflow costs before optimizing them. Additional
+Vega-Lite syntax, independent per-cell scales/state, and rejected placement
+transforms are outside the agreed repetition scope. Before a future PR/merge,
+commit the final plan reconciliation and delete the temporary plans in a later
+commit, as required by the repository workflow.
 
 ### Follow-up: facet field titles
 
@@ -242,8 +261,8 @@ contract. The documentation sample also contains only one point per series.
 Baseline: `70533c581`. Implement four small options while retaining one child,
 the static batched dataflow, and existing grid chrome. This supersedes the
 historical decision to defer all ordering and header configuration. Field
-titles, independent domains, and a general header framework remain outside
-scope. Outer axes are covered by the later follow-up above.
+titles, header placement/styles, and outer axes were added in the later
+follow-ups above. Independent per-cell domains remain outside scope.
 
 - [x] **Category ordering** — Add `sort: "ascending" | "descending" | Scalar[]`
   to facet fields. Default to ascending; explicit arrays place present listed
@@ -281,7 +300,8 @@ Compatibility references: local Vega-Lite `src/spec/facet.ts`,
 `src/compile/header/parse.ts`, `src/header.ts`, and `src/spec/base.ts` at the
 revision recorded in [facet-compatibility.md](facet-compatibility.md). Adopt
 the small public contracts, without copying compiler code. Aggregate/field
-sorts, time formatting, arbitrary header styling, and `labelExpr` remain deferred.
+sorts, time formatting, and `labelExpr` remain deferred. Header placement and
+styling are now supported through the title-style follow-up above.
 
 Final inspection found that nested collector grouping visited all combinations
 of the first row category before the next row. This can change the encounter
@@ -858,312 +878,32 @@ npm test
 npm run lint
 ```
 
-## Task 1: Restore Factory Recognition Behind a Failing Test
-
-**Files:**
-
-- Create: `packages/core/src/view/facetView.test.js`
-- Modify: `packages/core/src/view/viewFactory.js`
-- Modify: `packages/core/src/view/facetView.js`
-
-- [ ] Add a test that `isFacetSpec(...)` is considered a valid view spec after registration.
-- [ ] Add a test that a root facet spec is wrapped by the implicit root `GridView`.
-- [ ] Run `npx vitest run packages/core/src/view/facetView.test.js`; expected result is failure because `FacetView` is not registered or not constructible.
-- [ ] Replace stale `facetView.js` with a minimal modern `FacetView extends ContainerView` constructor that accepts `(spec, context, layoutParent, dataParent, name, options)`.
-- [ ] Register `FacetView` in `ViewFactory`.
-- [ ] Add `isFacetSpec(viewSpec)` to the implicit-root wrapping condition.
-- [ ] Run the focused test and confirm the factory/root wrapping tests pass.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): restore facet view factory registration"
-```
-
-## Task 2: Normalize Facet Specs and Expose Grouping Fields
-
-**Files:**
-
-- Modify: `packages/core/src/view/facetView.js`
-- Modify: `packages/core/src/view/viewUtils.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add tests for shorthand column facets, row/column facets, and invalid `row` plus `columns`.
-- [ ] Implement `normalizeFacetSpec(spec)` in `facetView.js` or a private helper module.
-- [ ] Implement `FacetView.getFacetFields()` using the normalized facet field order.
-- [ ] Ensure descendants inherit these fields through the existing `View.getFacetFields(...)` path.
-- [ ] Run the focused test and confirm grouping field tests pass.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): normalize facet fields for grouped dataflow"
-```
-
-## Task 3: Build One Child View and One Chrome Wrapper
-
-**Files:**
-
-- Modify: `packages/core/src/view/facetView.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add a test that a facet spec creates exactly one non-chrome child view for `spec.spec`.
-- [ ] Add a test that descendant unit collectors group by the facet fields after `initializeViewSubtree(...)` and data load.
-- [ ] In `FacetView.initializeChildren()`, create the child with:
-
-```js
-this.child = await this.context.createOrImportView(
-    this.spec.spec,
-    this,
-    this,
-    this.getNextAutoName("facet"),
-    undefined,
-    { inheritEncoding: true }
-);
-```
-
-- [ ] Create one `GridChild` for the child:
-
-```js
-this.#gridChild = new GridChild(this.child, this, 0);
-await this.#gridChild.createAxes();
-```
-
-- [ ] Implement `[Symbol.iterator]()` to yield `this.#gridChild.getChildren()` plus header views once they exist.
-- [ ] Run the focused test and confirm one-child dataflow behavior.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): create single child chrome for facets"
-```
-
-## Task 4: Derive Facet Factors From Collector Batches
-
-**Files:**
-
-- Modify: `packages/core/src/view/facetView.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add tests that loaded data produces the expected facet ids:
-  - Anscombe `Series`: `[["I"], ["II"], ["III"], ["IV"]]`
-  - Cars `Origin` x `Cylinders`: row values from `Origin`, column values from `Cylinders`.
-- [ ] Implement collector discovery over descendant `UnitView`s.
-- [ ] Register collector observers lazily and dispose them through `FacetView.registerDisposer(...)`.
-- [ ] Implement factor sorting with current default ascending comparison. Keep custom sort out of scope.
-- [ ] Implement `#facetSignature` so repeated renders do not rebuild state when keys are unchanged.
-- [ ] Run the focused test and confirm factor extraction.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): derive facet cells from grouped collectors"
-```
-
-## Task 5: Implement Facet Grid Layout Helpers
-
-**Files:**
-
-- Create: `packages/core/src/view/facetLayout.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add pure unit tests for:
-  - Column facet with `columns: 2`.
-  - Row/column matrix facet.
-  - Row-only facet.
-  - Culling rectangles outside a clip.
-- [ ] Implement `createFacetGrid(...)` using `Grid`.
-- [ ] Implement size aggregation using `getLargestSize(...)`, `sumSizeDefs(...)`, and header size constants.
-- [ ] Implement pixel coordinate mapping using `mapToPixelCoords(...)`.
-- [ ] Implement `isRectVisible(rect, clip)`:
-
-```js
-export function isRectVisible(rect, clip) {
-    if (!clip) {
-        return true;
-    }
-
-    const visible = rect.intersect(clip.rect);
-    return visible.isDefined() && visible.width > 0 && visible.height > 0;
-}
-```
-
-- [ ] Run the focused test and confirm pure layout behavior.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): add facet grid layout helpers"
-```
-
-## Task 6: Implement `FacetView.getSize()`
-
-**Files:**
-
-- Modify: `packages/core/src/view/facetView.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add layout snapshot tests showing that `getSize()` grows with facet count.
-- [ ] Add a test for `viewportHeight` where the implicit root grid creates a smaller viewport than full facet content.
-- [ ] Implement `FacetView.getSize()` from facet layout helpers and `this.#gridChild.getOverhangAndPadding()`.
-- [ ] Ensure `getSize()` returns zero dimensions when the view is not configured visible.
-- [ ] Run the focused test and `npx vitest run packages/core/src/view/gridView/gridView.test.js`.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): compute facet grid size"
-```
-
-## Task 7: Add Dynamic Facet Headers
-
-**Files:**
-
-- Create: `packages/core/src/view/facetHeaderView.js`
-- Modify: `packages/core/src/view/facetView.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add tests that column and row header chrome views are present and marked as non-addressable chrome.
-- [ ] Add a layout snapshot test that column headers occupy the top header band and row headers occupy the left header band.
-- [ ] Implement `FacetHeaderView` using the `SeparatorView` dynamic inline-data pattern.
-- [ ] Use one `UnitView` per active orientation, not one view per facet value.
-- [ ] Update header data during render from visible label positions.
-- [ ] Run the focused test.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): render dynamic facet headers"
-```
-
-## Task 8: Render Repeated Facet Cells
-
-**Files:**
-
-- Modify: `packages/core/src/view/facetView.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add a debugging-layout test that the child view appears once per visible facet cell with different coordinates.
-- [ ] Add a test that `firstFacet` is true only for the first rendered visible cell.
-- [ ] Implement `FacetView.render(...)` with:
-  - visible-cell culling,
-  - repeated background rendering,
-  - repeated grid line rendering,
-  - repeated child rendering with `facetId`,
-  - repeated axis rendering,
-  - repeated background stroke rendering,
-  - header rendering.
-- [ ] Keep local legends rendered once for the whole `FacetView`; if tests show misleading placement, reject faceted child legends with a clear error.
-- [ ] Run the focused test.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): render repeated facet cells"
-```
-
-## Task 9: Validate Shared Scale and Axis Limitations
-
-**Files:**
-
-- Modify: `packages/core/src/view/facetView.js`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Add tests that `resolve.scale.x = "independent"` and `resolve.axis.x = "independent"` under a facet throw clear errors.
-- [ ] Add tests that nested immediate `facet` children throw a clear error.
-- [ ] Implement validation after the child is created and before axes are created.
-- [ ] Use the existing resolution APIs; do not inspect raw spec only.
-- [ ] Run the focused test.
-- [ ] Commit with:
-
-```bash
-git commit -m "feat(core): validate initial facet limitations"
-```
-
-## Task 10: Add Integration Specs for Former Private Examples
-
-**Files:**
-
-- Create: `examples/core/facet/anscombe_wrapped.json`
-- Create: `examples/core/facet/cars_matrix.json`
-- Test: `packages/core/src/view/facetView.test.js`
-
-- [ ] Convert `private/facet.json` into a committed core example with relative data URL preserved.
-- [ ] Convert `private/facet2.json` into a committed core example with relative data URL preserved.
-- [ ] Add tests that load both examples and produce stable layout snapshots.
-- [ ] Run the focused test.
-- [ ] Commit with:
-
-```bash
-git commit -m "test(core): cover restored facet examples"
-```
-
-## Task 11: Update Spec Types and User-Facing Docs
-
-**Files:**
-
-- Modify: `packages/core/src/spec/view.d.ts`
-- Create: `docs/grammar/facet.md` if no facet page exists.
-- Modify: the existing docs facet page instead of creating `docs/grammar/facet.md` if the docs tree already has a dedicated facet page.
-- Test: `npm run build`
-- Test: `npm run build:docs`
-
-- [ ] Replace `facet: any` in `FacetSpec`.
-- [ ] Document that initial facets use shared scales and axes.
-- [ ] Document `columns` as valid for one-dimensional column facets only.
-- [ ] Add one docs example only after the implementation is passing.
-- [ ] If schema/docs artifacts fail due missing generated schema, run:
-
-```bash
-npm run build
-npm run build:docs
-```
-
-- [ ] Commit with:
-
-```bash
-git commit -m "docs(core): document initial facet support"
-```
-
-## Task 12: Final Verification
-
-**Files:**
-
-- No planned source edits unless verification finds a defect.
-
-- [ ] Run focused tests:
-
-```bash
-npx vitest run packages/core/src/view/facetView.test.js
-```
-
-- [ ] Run nearby regression tests:
-
-```bash
-npx vitest run packages/core/src/view/gridView/gridView.test.js
-npx vitest run packages/core/src/view/layoutSnapshot.test.js
-```
-
-- [ ] Run workspace type checks:
-
-```bash
-npm --workspaces run test:tsc --if-present
-```
-
-- [ ] Run lint:
-
-```bash
-npm run lint
-```
-
-- [ ] Run the full suite before merging:
-
-```bash
-npm test
-```
-
-- [ ] Inspect the diff:
-
-```bash
-git diff --stat
-git diff
-```
-
-- [ ] Commit any verification fixes with a message matching the changed area, or leave no extra commit if no fixes were needed.
-
-## Known Risks and Decisions
+## Original Restoration Checklist (Reconciled)
+
+The original twelve-step procedure is closed. Its outcomes are covered by the
+completed milestones above and the dataflow/interaction plans. The prescribed
+failing-test runs, obsolete helper/API choices, and exact tentative commit
+commands are discarded; they are not outstanding implementation tasks.
+
+| Original task | Final disposition |
+| --- | --- |
+| 1. Factory recognition/root wrapping | Complete through ViewFactory registration and the generic implicit-root path; obsolete failing-test procedure discarded. |
+| 2. Normalize fields/grouping | Complete, including row/column order and validation. |
+| 3. One child/chrome wrapper | Complete; at most one repeated child and GridChild, with batched headers and shared field titles. |
+| 4. Collector factors/observation | Complete using the facet input collector; descendant-collector discovery and a separate signature cache discarded. |
+| 5. Grid layout/culling | Complete using Grid/flex layout and shared clipping helpers; the proposed separate visibility helper discarded. |
+| 6. Facet size/viewport | Complete; container scrolling is supported and child viewports are rejected. |
+| 7. Dynamic headers | Complete with batched labels, measured reservations, title-style configuration, and unchanged-data retention. |
+| 8. Repeated cells/chrome | Complete through shared grid arrangement; per-cell axes replaced by shared outer axes and one shared legend. |
+| 9. Supported-option validation | Complete, including resolution limits, immediate nested facets, and imported-child validation. |
+| 10. Integration examples | Complete: wrapped Anscombe and cars matrix have layout/SVG coverage; the superseded cars absolute-position snapshot was removed. |
+| 11. Types/documentation | Complete: facet/schema types, grammar reference, examples, and Vega-Lite differences. |
+| 12. Verification | Complete for the implemented milestones; focused/full suites, types, lint, builds, release checks, and browser integration are recorded above. |
+
+## Original Risks and Decisions (Historical)
+
+The restoration proposal recorded these risks. Current outcomes and superseded
+choices are reconciled above; these are not remaining tasks.
 
 - Header rendering needs dynamic data. Use the established `InlineSource.updateDynamicData(...)` pattern rather than restoring `UnitView.updateData()`.
 - `FacetView` size depends on data-loaded facet keys. Lazy collector observers plus `requestLayoutReflow()` are required so the viewport updates after data arrives.
@@ -1172,9 +912,10 @@ git diff
 - Interval selections under repeated facets may need facet-aware selection state. Reject them initially if they are not already correct.
 - `DebuggingViewRenderingContext` currently deduplicates repeated views only when name and coords match. Facet cells have different coords, so layout snapshots can verify repeated rendering.
 
-## Completion Criteria
+## Original Completion Criteria (Historical)
 
-The feature is operational when:
+The restoration proposal used these criteria; outer-axis placement and the
+completed acceptance record above supersede its repeated-axis requirement:
 
 - A root facet spec is accepted and implicitly wrapped by `GridView`.
 - `private/facet.json` and `private/facet2.json`, or committed equivalents, render through tests.
