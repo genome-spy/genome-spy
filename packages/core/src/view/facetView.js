@@ -438,7 +438,7 @@ function createColumnHeaderData(layouts, coords, overhang, facet, spacing) {
         data.push({
             x: (plotCoords.x - coords.x + plotCoords.width / 2) / coords.width,
             y: 1 - headerY / coords.height,
-            text: String(layout.cell.columnValue),
+            text: String(layout.cell.facetId.at(-1)),
         });
     }
 
@@ -470,7 +470,7 @@ function createRowHeaderData(layouts, coords, overhang) {
                 1 -
                 (plotCoords.y - coords.y + plotCoords.height / 2) /
                     coords.height,
-            text: String(layout.cell.rowValue),
+            text: String(layout.cell.facetId[0]),
         });
     }
 

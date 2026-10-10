@@ -1,6 +1,5 @@
 import {
     FlexDimensions,
-    getLargestSize,
     mapToPixelCoords,
     sumSizeDefs,
 } from "./layout/flexLayout.js";
@@ -11,21 +10,13 @@ const COLUMN_HEADER_HEIGHT = 18;
 const ROW_HEADER_WIDTH = 18;
 
 /**
- * @typedef {object} FacetFactors
- * @prop {import("../spec/channel.js").Scalar[]} row
- * @prop {import("../spec/channel.js").Scalar[]} column
- *
- * @typedef {object} NormalizedFacet
- * @prop {import("../spec/channel.js").FieldDefWithoutScale | undefined} row
- * @prop {import("../spec/channel.js").FieldDefWithoutScale | undefined} column
- * @prop {string[]} fields
+ * @typedef {import("./facetView.js").FacetFactors} FacetFactors
+ * @typedef {import("./facetView.js").NormalizedFacet} NormalizedFacet
  *
  * @typedef {object} FacetCell
  * @prop {import("../spec/channel.js").Scalar[]} facetId
  * @prop {number} row
  * @prop {number} column
- * @prop {import("../spec/channel.js").Scalar | undefined} rowValue
- * @prop {import("../spec/channel.js").Scalar | undefined} columnValue
  *
  * @typedef {object} FacetGrid
  * @prop {FacetCell[]} cells
@@ -57,13 +48,33 @@ export const DEFAULT_FACET_HEADER_SIZES = {
  * @returns {FacetGrid}
  */
 export function createFacetGrid(facet, factors, columns) {
-    if (facet.row && facet.column) {
-        return createMatrixFacetGrid(factors);
-    } else if (facet.row) {
-        return createRowFacetGrid(factors);
-    } else {
-        return createColumnFacetGrid(factors, columns);
-    }
+    const n =
+        (facet.row ? factors.row.length : 1) *
+        (facet.column ? factors.column.length : 1);
+    const maxCols = facet.row
+        ? facet.column
+            ? factors.column.length || 1
+            : 1
+        : (columns ?? Infinity);
+    const grid = new Grid(n, maxCols);
+
+    return {
+        cells: Array.from({ length: n }, (_, index) => {
+            const [column, row] = grid.getCellCoords(index);
+            const facetId = [];
+            if (facet.row) {
+                facetId.push(factors.row[row]);
+            }
+            if (facet.column) {
+                facetId.push(factors.column[facet.row ? column : index]);
+            }
+            return { facetId, row, column };
+        }),
+        nRows: grid.nRows,
+        nCols: grid.nCols,
+        hasRowHeaders: Boolean(facet.row),
+        hasColumnHeaders: Boolean(facet.column),
+    };
 }
 
 /**
@@ -81,7 +92,7 @@ export function getFacetGridSize(
     headers = DEFAULT_FACET_HEADER_SIZES,
     spacing = 0
 ) {
-    const cellSize = getCellSize(childSize, childOverhang);
+    const cellSize = childSize.addPadding(childOverhang);
     const width = getAxisSize(
         grid.nCols,
         cellSize.width,
@@ -118,7 +129,7 @@ export function getFacetCellLayouts(
     spacing = 0,
     devicePixelRatio
 ) {
-    const cellSize = getCellSize(childSize, childOverhang);
+    const cellSize = childSize.addPadding(childOverhang);
     const columns = mapToPixelCoords(
         makeSizeItems(
             grid.nCols,
@@ -149,118 +160,22 @@ export function getFacetCellLayouts(
     const columnOffset = grid.hasRowHeaders ? 1 : 0;
     const rowOffset = grid.hasColumnHeaders ? 1 : 0;
 
-    return grid.cells.map((cell) =>
-        getFacetCellLayout(
+    const rowStride = grid.hasColumnHeaders && !grid.hasRowHeaders ? 2 : 1;
+    return grid.cells.map((cell) => {
+        const column = columns[columnOffset + cell.column];
+        const row = rows[rowOffset + cell.row * rowStride];
+        const viewportCoords = Rectangle.create(
+            column.location,
+            row.location,
+            column.size,
+            row.size
+        );
+        return {
             cell,
-            columns,
-            rows,
-            columnOffset,
-            rowOffset,
-            grid.hasColumnHeaders && !grid.hasRowHeaders ? 2 : 1,
-            childOverhang
-        )
-    );
-}
-
-/**
- * @param {FacetFactors} factors
- * @param {number | undefined} columns
- * @returns {FacetGrid}
- */
-function createColumnFacetGrid(factors, columns) {
-    const grid = new Grid(factors.column.length, columns ?? Infinity);
-
-    return {
-        cells: factors.column.map((columnValue, index) => {
-            const [column, row] = grid.getCellCoords(index);
-            /** @type {import("../spec/channel.js").Scalar | undefined} */
-            const rowValue = undefined;
-            return {
-                facetId: [columnValue],
-                row,
-                column,
-                rowValue,
-                columnValue,
-            };
-        }),
-        nRows: grid.nRows,
-        nCols: grid.nCols,
-        hasRowHeaders: false,
-        hasColumnHeaders: true,
-    };
-}
-
-/**
- * @param {FacetFactors} factors
- * @returns {FacetGrid}
- */
-function createRowFacetGrid(factors) {
-    const grid = new Grid(factors.row.length, 1);
-
-    return {
-        cells: factors.row.map((rowValue, index) => {
-            const [column, row] = grid.getCellCoords(index);
-            /** @type {import("../spec/channel.js").Scalar | undefined} */
-            const columnValue = undefined;
-            return {
-                facetId: [rowValue],
-                row,
-                column,
-                rowValue,
-                columnValue,
-            };
-        }),
-        nRows: grid.nRows,
-        nCols: grid.nCols,
-        hasRowHeaders: true,
-        hasColumnHeaders: false,
-    };
-}
-
-/**
- * @param {FacetFactors} factors
- * @returns {FacetGrid}
- */
-function createMatrixFacetGrid(factors) {
-    const grid = new Grid(
-        factors.row.length * factors.column.length,
-        factors.column.length
-    );
-
-    return {
-        cells: Array.from({ length: grid.n }, (_, index) => {
-            const [column, row] = grid.getCellCoords(index);
-            const rowValue = factors.row[row];
-            const columnValue = factors.column[column];
-            return {
-                facetId: [rowValue, columnValue],
-                row,
-                column,
-                rowValue,
-                columnValue,
-            };
-        }),
-        nRows: grid.nRows,
-        nCols: grid.nCols,
-        hasRowHeaders: true,
-        hasColumnHeaders: true,
-    };
-}
-
-/**
- * @param {FlexDimensions} childSize
- * @param {import("./layout/padding.js").default} childOverhang
- * @returns {FlexDimensions}
- */
-function getCellSize(childSize, childOverhang) {
-    return new FlexDimensions(
-        getLargestSize([
-            sumSizeDefs([childSize.width, { px: childOverhang.width }]),
-        ]),
-        getLargestSize([
-            sumSizeDefs([childSize.height, { px: childOverhang.height }]),
-        ])
-    );
+            viewportCoords,
+            childCoords: viewportCoords.shrink(childOverhang),
+        };
+    });
 }
 
 /**
@@ -279,10 +194,9 @@ function getAxisSize(
     repeatHeader = false
 ) {
     const items = makeSizeItems(cellCount, cellSize, headerSize, repeatHeader);
-    const visibleItemCount = items.length;
-    const totalSpacing = Math.max(0, visibleItemCount - 1) * spacing;
-
-    return sumSizeDefs([sumSizeDefs(items), { px: totalSpacing }]);
+    const totalSpacing = Math.max(0, items.length - 1) * spacing;
+    items.push({ px: totalSpacing });
+    return sumSizeDefs(items);
 }
 
 /**
@@ -306,39 +220,4 @@ function makeSizeItems(cellCount, cellSize, headerSize, repeatHeader = false) {
     }
 
     return items;
-}
-
-/**
- * @param {FacetCell} cell
- * @param {import("./layout/flexLayout.js").LocSize[]} columns
- * @param {import("./layout/flexLayout.js").LocSize[]} rows
- * @param {number} columnOffset
- * @param {number} rowOffset
- * @param {number} rowStride
- * @param {import("./layout/padding.js").default} childOverhang
- * @returns {FacetCellLayout}
- */
-function getFacetCellLayout(
-    cell,
-    columns,
-    rows,
-    columnOffset,
-    rowOffset,
-    rowStride,
-    childOverhang
-) {
-    const column = columns[columnOffset + cell.column];
-    const row = rows[rowOffset + cell.row * rowStride];
-    const viewportCoords = Rectangle.create(
-        column.location,
-        row.location,
-        column.size,
-        row.size
-    );
-
-    return {
-        cell,
-        viewportCoords,
-        childCoords: viewportCoords.shrink(childOverhang),
-    };
 }

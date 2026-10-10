@@ -581,6 +581,36 @@ test("facet layout creates row and column matrix cells", () => {
     expect(rectTuple(layouts[5].viewportCoords)).toEqual([230, 106, 100, 80]);
 });
 
+test("facet sizing preserves flex constraints while reserving guides", () => {
+    const grid = createFacetGrid(
+        { row: undefined, column: { field: "Series" }, fields: ["Series"] },
+        { row: [], column: ["A", "B"] },
+        undefined
+    );
+    const childSize = new FlexDimensions(
+        { px: 100, grow: 1, minPx: 120, maxPx: 200 },
+        { px: 80, grow: 0 }
+    );
+    const overhang = new Padding(0, 10, 0, 10);
+    const size = getFacetGridSize(grid, childSize, overhang);
+    const layouts = getFacetCellLayouts(
+        grid,
+        Rectangle.create(0, 0, 1000, 98),
+        childSize,
+        overhang
+    );
+
+    expect(size.width).toMatchObject({
+        px: 240,
+        grow: 2,
+        minPx: 280,
+        maxPx: 440,
+    });
+    expect(layouts.map((layout) => layout.childCoords.width)).toEqual([
+        200, 200,
+    ]);
+});
+
 test("facet layout places child plot inside reserved overhang", () => {
     const grid = createFacetGrid(
         { row: undefined, column: { field: "Series" }, fields: ["Series"] },
