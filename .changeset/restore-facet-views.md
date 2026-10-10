@@ -8,6 +8,7 @@ scrollable viewports. Cell titles, backgrounds, guide layering, clipping, and
 visible-cell culling follow the existing layout rules.
 Facets without fixed cell dimensions fill their container from startup, before
 their categories have loaded.
+The facet grammar example shows the complete Anscombe quartet in four plots.
 
 Facet fields support ascending, descending, and explicit category order with
 `sort`. Explicit arrays order present values without creating absent categories;

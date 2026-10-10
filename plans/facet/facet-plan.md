@@ -36,10 +36,13 @@ contract. The documentation sample also contains only one point per series.
       Verified the unchanged reported sample at 1280×680 and resized Canvas at
       900×560, with four visible cells and no browser errors. Facet/GridView tests
       pass (166 tests); the sizing fix adds five physical runtime lines (222→227).
-- [ ] Replace the documentation sample with the full local `vega-datasets`
+- [x] Replace the documentation sample with the full local `vega-datasets`
       Anscombe quartet and sensible fixed cell dimensions. Record provenance beside
       the example and verify four rendered plots with eleven points each. Commit:
       `docs(core): show the complete Anscombe quartet in the facet example`.
+      Verified the actual documentation spec through URL loading and SVG output
+      (11 points per cell, labels I–IV), schema validation, and visible WebGL/Canvas
+      output at the reported URL. The example uses 200×150-pixel plots.
 
 ### Small compatibility additions (authorized follow-up)
 

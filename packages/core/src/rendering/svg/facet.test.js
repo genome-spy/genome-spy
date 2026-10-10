@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+import anscombeData from "../../../../../node_modules/vega-datasets/data/anscombe.json" with { type: "json" };
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";
 import {
@@ -20,6 +21,43 @@ const contextOptions = {
     }),
     viewFactoryOptions: { wrapRoot: true },
 };
+
+test("documentation example renders the complete Anscombe quartet", async ({
+    onTestFinished,
+}) => {
+    // Serve the installed dataset offline through the example's real URL source.
+    const fetch = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(anscombeData)));
+    onTestFinished(() => fetch.mockRestore());
+    const { view } = await createHeadlessEngine(
+        loadSharedExampleSpec(
+            "examples/docs/grammar/facet/anscombe-wrapped.json"
+        ),
+        { contextOptions }
+    );
+    onTestFinished(() => view.disposeSubtree());
+
+    const { svg, warnings } = createSvg({
+        viewRoot: view,
+        logicalWidth: 600,
+        logicalHeight: 500,
+    });
+    expect(fetch).toHaveBeenCalledWith("vega-datasets/anscombe.json");
+    expect(
+        Array.from(
+            svg.querySelectorAll('[data-mark-type="point"]'),
+            (cell) => cell.querySelectorAll("circle").length
+        )
+    ).toEqual([11, 11, 11, 11]);
+    expect(
+        Array.from(
+            svg.querySelectorAll('[data-name="facetHeaderColumn0"] text'),
+            (text) => text.textContent
+        )
+    ).toEqual(["I", "II", "III", "IV"]);
+    expect(warnings).toEqual([]);
+});
 
 test("hidden row headers preserve matrix columns and empty cells in SVG", async () => {
     const { view } = await createHeadlessEngine(

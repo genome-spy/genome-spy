@@ -6,6 +6,11 @@ matrix.
 
 EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json
 
+!!! disclaimer ""
+
+    Data: Anscombe's quartet, served unchanged from
+    [vega-datasets](https://github.com/vega/vega-datasets).
+
 ## Properties
 
 SCHEMA FacetSpec
