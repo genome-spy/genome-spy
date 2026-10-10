@@ -69,9 +69,12 @@ export default class Interaction {
          * Views reached during ordinary mousemove routing. Unlike `target`,
          * this retains parallel branches in layered compositions.
          *
-         * @type {Set<import("../view/view.js").default>}
+         * @type {Map<import("../view/view.js").default, import("../spec/channel.js").Scalar[] | undefined>}
          */
-        this.pointedViews = new Set();
+        this.pointedViews = new Map();
+
+        /** @type {import("../spec/channel.js").Scalar[] | undefined} */
+        this.facetId = undefined;
 
         /**
          * The target is known only after the interaction has been resolved

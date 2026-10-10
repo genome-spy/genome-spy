@@ -32,10 +32,8 @@ export default class InteractionDispatcher {
     #lastPoint;
     /** @type {import("../view/view.js").default | undefined} */
     #lastTarget;
-    /** @type {import("../view/view.js").default[]} */
-    #previousViews = [];
-    /** @type {Set<import("../view/view.js").default>} */
-    #previousViewSet = new Set();
+    /** @type {Interaction["pointedViews"]} */
+    #previousViews = new Map();
 
     /**
      * @param {object} options
@@ -72,9 +70,8 @@ export default class InteractionDispatcher {
      * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
      */
     handlePointerLeave(uiEvent) {
-        if (!this.#lastPoint || this.#previousViews.length === 0) {
-            this.#previousViews = [];
-            this.#previousViewSet.clear();
+        if (!this.#lastPoint || this.#previousViews.size === 0) {
+            this.#previousViews.clear();
             this.#lastTarget = undefined;
             return;
         }
@@ -86,12 +83,12 @@ export default class InteractionDispatcher {
         );
         this.#dispatchTransitionEvents(
             interaction,
-            this.#previousViews,
+            Array.from(this.#previousViews.keys()),
             "mouseleave",
-            undefined
+            undefined,
+            this.#previousViews
         );
-        this.#previousViews = [];
-        this.#previousViewSet.clear();
+        this.#previousViews.clear();
         this.#lastTarget = undefined;
     }
 
@@ -106,19 +103,23 @@ export default class InteractionDispatcher {
      * @param {Interaction} interaction
      */
     #dispatchPointerTransitions(interaction) {
-        const currentViews =
-            interaction.pointedViews.size > 0
-                ? Array.from(interaction.pointedViews)
-                : this.#toRootPath(interaction.target);
-        const currentViewSet =
-            interaction.pointedViews.size > 0
-                ? interaction.pointedViews
-                : new Set(currentViews);
-        const leavingViews = this.#previousViews.filter(
-            (view) => !currentViewSet.has(view)
+        const currentViewSet = interaction.pointedViews;
+        if (currentViewSet.size === 0) {
+            for (const view of this.#toRootPath(interaction.target)) {
+                currentViewSet.set(view, undefined);
+            }
+        }
+        const currentViews = Array.from(currentViewSet.keys());
+        const previousViews = Array.from(this.#previousViews.keys());
+        const leavingViews = previousViews.filter(
+            (view) =>
+                !currentViewSet.has(view) ||
+                currentViewSet.get(view) !== this.#previousViews.get(view)
         );
         const enteringViews = currentViews.filter(
-            (view) => !this.#previousViewSet.has(view)
+            (view) =>
+                !this.#previousViews.has(view) ||
+                currentViewSet.get(view) !== this.#previousViews.get(view)
         );
 
         if (leavingViews.length > 0) {
@@ -126,7 +127,8 @@ export default class InteractionDispatcher {
                 interaction,
                 leavingViews,
                 "mouseleave",
-                currentViews.at(-1)
+                currentViews.at(-1),
+                this.#previousViews
             );
         }
 
@@ -135,12 +137,12 @@ export default class InteractionDispatcher {
                 interaction,
                 enteringViews,
                 "mouseenter",
-                this.#previousViews.at(-1)
+                previousViews.at(-1),
+                currentViewSet
             );
         }
 
-        this.#previousViews = currentViews;
-        this.#previousViewSet = currentViewSet;
+        this.#previousViews = currentViewSet;
     }
 
     /**
@@ -148,8 +150,15 @@ export default class InteractionDispatcher {
      * @param {import("../view/view.js").default[]} views
      * @param {"mouseenter" | "mouseleave"} type
      * @param {import("../view/view.js").default | undefined} relatedTarget
+     * @param {Interaction["pointedViews"]} facets
      */
-    #dispatchTransitionEvents(baseInteraction, views, type, relatedTarget) {
+    #dispatchTransitionEvents(
+        baseInteraction,
+        views,
+        type,
+        relatedTarget,
+        facets
+    ) {
         // Enter from the root inward; leave from the deepest view outward.
         for (let i = 0; i < views.length; i++) {
             const view =
@@ -162,6 +171,8 @@ export default class InteractionDispatcher {
             interaction.target = view;
             interaction.currentTarget = view;
             interaction.relatedTarget = relatedTarget;
+            interaction.facetId = facets.get(view);
+            interaction.pointedViews = baseInteraction.pointedViews;
             this.#dispatchDirect(view, interaction);
 
             if (interaction.stopped) {

@@ -59,8 +59,8 @@ and pan distance).
 
 ## Acceptance and integration verification
 
-- [ ] Click and point selection reach the correct cell/layer with facet identity.
-- [ ] Enter/leave transitions use the correct old/new cell, including canvas exit.
+- [x] Click and point selection reach the correct cell/layer with facet identity.
+- [x] Enter/leave transitions use the correct old/new cell, including canvas exit.
 - [ ] Picking and tooltips resolve marks in later cells and repeated own datasets.
 - [ ] Shared scales zoom/pan once per gesture using the pointed cell's bounds.
 - [ ] Clipped cells and facet headers/gaps do not acquire a child target.
@@ -76,3 +76,10 @@ Baseline physical lines: FacetView 450, GridView 2027, InteractionController
 1206, InteractionDispatcher 201. Main risks are clipped versus full plot bounds,
 stale asynchronous hits, repeated-data hover identity, and interfering with the
 grid's gesture ownership or scroll fallback.
+
+Routing milestone: the shared cell wrapper also supplies point-aware interval
+brush projection. A document drag retains its initiating cell's full bounds;
+the outer grid wrapper does not install a duplicate facet brush. Dispatcher
+hover paths now use one map of views to facet tuples instead of a redundant
+array/set pair. Focused tests cover layers, stops, tuple transitions, headers,
+gaps, clipping, and a brush started in the second cell.

@@ -15,5 +15,7 @@ cells; a child with its own dataset repeats that data in every cell.
 
 Independent positional scales and axes, unsupported placement transforms, and
 explicit `collect.groupby` on inherited facet data fail with clear errors.
-Wrapping column counts must be positive integers. Interactions inside individual
-facet cells are not yet supported.
+Wrapping column counts must be positive integers. Pointer events and point
+selections route into the pointed facet cell, and shared interval brushes use
+that cell's plot bounds. Picking/tooltips and shared-scale navigation still
+require verification.

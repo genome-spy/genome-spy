@@ -962,7 +962,7 @@ export default class View {
      */
     handleInteraction(event, capturing) {
         if (capturing && event.type === "mousemove") {
-            event.pointedViews.add(this);
+            event.pointedViews.set(this, event.facetId);
         }
 
         const listenersByType = capturing

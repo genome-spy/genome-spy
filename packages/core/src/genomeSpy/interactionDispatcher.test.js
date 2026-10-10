@@ -224,7 +224,10 @@ describe("InteractionDispatcher", () => {
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) {
                     for (const view of pointedViews.shift()) {
-                        event.pointedViews.add(/** @type {any} */ (view));
+                        event.pointedViews.set(
+                            /** @type {any} */ (view),
+                            undefined
+                        );
                     }
                     event.target = /** @type {any} */ (targets.shift());
                 },

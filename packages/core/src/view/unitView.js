@@ -213,7 +213,12 @@ export default class UnitView extends View {
                     // mark. A sibling view receives subsequent mousemove events,
                     // so clear this view when the dispatcher detects that its
                     // pointed subtree has been left.
-                    this.addInteractionListener("mouseleave", clearSelection);
+                    this.addInteractionListener("mouseleave", (event) => {
+                        // Crossing cells keeps the shared view's hover selection.
+                        if (!event.pointedViews.has(this)) {
+                            clearSelection();
+                        }
+                    });
                 }
 
                 const clearHandledByHoverExit =

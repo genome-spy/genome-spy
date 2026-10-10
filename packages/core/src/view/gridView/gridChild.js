@@ -411,6 +411,11 @@ export default class GridChild {
     }
 
     #setupIntervalSelection() {
+        // The facet's repeated child wrapper owns its shared brush.
+        if (isFacetSpec(this.view.spec)) {
+            return;
+        }
+
         for (const { owner, paramName, param } of this.#getInheritedParams()) {
             if (!("select" in param)) {
                 continue;
@@ -455,13 +460,18 @@ export default class GridChild {
         return this.layoutParent.context;
     }
 
-    getInteractionCoords() {
+    /** @param {import("../layout/point.js").default} _point */
+    getInteractionCoords(_point) {
         return this.coords.width > 0 && this.coords.height > 0
             ? this.coords
             : this.view.coords;
     }
 
-    getProjectionCoords() {
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} _channel
+     * @param {import("../layout/point.js").default} _point
+     */
+    getProjectionCoords(_channel, _point) {
         return this.view.coords;
     }
 

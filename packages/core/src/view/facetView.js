@@ -18,6 +18,7 @@ import {
     normalizeClipOptions,
 } from "./renderingContext/clipOptions.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
+import { propagateInteraction } from "./interactionRouting.js";
 
 /**
  * @typedef {"row" | "column"} FacetChannel
@@ -52,6 +53,9 @@ export default class FacetView extends ContainerView {
 
     /** @type {FacetFactors} */
     #facetFactors = { row: [], column: [] };
+
+    /** @type {import("./facetLayout.js").FacetCellLayout[]} */
+    #interactionCells = [];
 
     /** @type {import("../data/collector.js").default | undefined} */
     #observedCollector;
@@ -173,6 +177,7 @@ export default class FacetView extends ContainerView {
      */
     arrange(context, coords, options = {}) {
         super.arrange(context, coords, options);
+        this.#interactionCells = [];
 
         if (!this.isConfiguredVisible()) {
             return;
@@ -197,6 +202,10 @@ export default class FacetView extends ContainerView {
                 visible.isDefined() && visible.width > 0 && visible.height > 0
             );
         });
+        this.#interactionCells = visibleLayouts.map((layout) => ({
+            ...layout,
+            viewportCoords: clipCoords(layout.viewportCoords, parentClip),
+        }));
 
         const arrangement = createGridArrangement();
         for (const [index, layout] of visibleLayouts.entries()) {
@@ -232,6 +241,29 @@ export default class FacetView extends ContainerView {
         }
 
         context.popView(this);
+    }
+
+    /**
+     * Returns visible hit bounds and the full plot bounds used for projection.
+     * Headers and spacing belong to the facet container rather than a cell.
+     *
+     * @param {{ x: number, y: number }} point
+     */
+    getInteractionCell(point) {
+        return this.#interactionCells.find((layout) =>
+            layout.viewportCoords.containsPoint(point.x, point.y)
+        );
+    }
+
+    /** @param {import("../utils/interaction.js").default} event */
+    propagateInteraction(event) {
+        propagateInteraction(this, event, () => {
+            const layout = this.getInteractionCell(event.point);
+            if (layout) {
+                event.facetId = layout.cell.facetId;
+                this.child.propagateInteraction(event);
+            }
+        });
     }
 
     #syncFacetCollector() {
@@ -294,6 +326,24 @@ export default class FacetView extends ContainerView {
 }
 
 class FacetGridChild extends GridChild {
+    /** @param {import("./layout/point.js").default} point */
+    getInteractionCoords(point) {
+        const cell = /** @type {FacetView} */ (
+            this.layoutParent
+        ).getInteractionCell(point);
+        return cell?.childCoords;
+    }
+
+    /**
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {import("./layout/point.js").default} point
+     */
+    getProjectionCoords(channel, point) {
+        return /** @type {FacetView} */ (this.layoutParent).getInteractionCell(
+            point
+        ).childCoords;
+    }
+
     /**
      * @protected
      * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
