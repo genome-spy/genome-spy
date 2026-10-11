@@ -1,0 +1,55 @@
+{
+  "description": [
+    "Scrollable Sine Curves with Phase Offsets",
+    "64 facets span a full turn of phase offsets. Scroll through the 30px-high plots and zoom the shared x scale; y stays fixed at [-1, 1]."
+  ],
+
+  "data": {
+    "sequence": { "start": 0, "stop": 360, "step": 5.625, "as": "offset" }
+  },
+  "transform": [
+    {
+      "type": "cross",
+      "from": {
+        "data": {
+          "sequence": { "start": 0, "stop": 361, "step": 5, "as": "x" }
+        }
+      }
+    },
+    {
+      "type": "formula",
+      "expr": "sin((datum.x + datum.offset) * PI / 180)",
+      "as": "y"
+    }
+  ],
+
+  "viewportHeight": "container",
+  "spacing": 4,
+  "facet": {
+    "row": {
+      "field": "offset",
+      "header": { "angle": 0, "align": "right", "format": ".1f" }
+    }
+  },
+  "spec": {
+    "height": 30,
+    "view": { "stroke": "lightgray" },
+    "mark": { "type": "point", "clip": "x" },
+    "encoding": {
+      "x": {
+        "field": "x",
+        "type": "quantitative",
+        "scale": { "domain": [0, 360], "zoom": true },
+        "axis": { "title": "Angle (degrees)" }
+      },
+      "y": {
+        "field": "y",
+        "type": "quantitative",
+        "scale": { "domain": [-1, 1], "nice": false, "zoom": false },
+        "axis": { "title": null, "values": [-1, 1], "labelFlush": true }
+      },
+      "size": { "value": 12 },
+      "opacity": { "value": 1 }
+    }
+  }
+}

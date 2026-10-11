@@ -168,6 +168,13 @@ export default class View {
     facetCoords = new InternMap([], JSON.stringify);
 
     /**
+     * Full coordinates of an arbitrary occurrence, before viewport clipping.
+     * Used for scale sizing; visible coordinates remain in `facetCoords`.
+     * @type {import("./layout/rectangle.js").default | undefined}
+     */
+    layoutCoords;
+
+    /**
      *
      * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context
@@ -1182,6 +1189,8 @@ export default class View {
      * @type {import("../types/rendering.js").ArrangeMethod}
      */
     arrange(context, coords, options = {}) {
+        this.layoutCoords = coords;
+
         // TODO: When using sample faceting, all facets have the same coords.
         // It would be better to save only single coords with an `undefined` facetId.
         if (options.firstFacet) {

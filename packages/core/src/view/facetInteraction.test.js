@@ -491,7 +491,7 @@ test("zoom in a partly clipped cell uses its full plot height", async () => {
 });
 
 test.each([false, true])(
-    "scrolling refreshes culled cells and routing (enclosing viewport: %s)",
+    "scrolling updates cell routing without layout (enclosing viewport: %s)",
     async (enclosing) => {
         const { root, facet, child, dispatcher } = await createFacet(
             { columns: 1, ...(enclosing ? {} : { viewportHeight: 55 }) },
@@ -503,8 +503,16 @@ test.each([false, true])(
                     .getDescendants()
                     .find((v) => v.name === "scrollbar-vertical")
             );
-        expect(child.facetCoords.has(["B"])).toBe(false);
-        root.context.requestLayoutReflow = () => renderToLayout(root);
+        expect(child.facetCoords.get(["B"]).height).toBeLessThan(0);
+        const reflow = vi.spyOn(root.context, "requestLayoutReflow");
+        const header = root
+            .getDescendants()
+            .find((v) => v.name.startsWith("facetHeader"));
+        const title = root
+            .getDescendants()
+            .find((v) => v.name.startsWith("facetTitle"));
+        const headerY = header.layoutCoords.y;
+        const titleY = title.layoutCoords.y;
         if (!enclosing) {
             const start = pointIn(child.coords);
             dispatcher.dispatch(start, mouse("mousedown", start));
@@ -531,5 +539,8 @@ test.each([false, true])(
         const event = dispatcher.dispatch(point, mouse("click", point));
         expect(event.target).toBe(child);
         expect(event.facetId).toEqual(["B"]);
+        expect(header.layoutCoords.y).toBe(headerY - 100);
+        expect(title.layoutCoords.y).toBe(titleY - 100);
+        expect(reflow).not.toHaveBeenCalled();
     }
 );

@@ -41,7 +41,6 @@ import {
 } from "../viewSpecGuards.js";
 import { isRulerGapChannel } from "../scaleProjection.js";
 import { primaryPositionalChannels } from "../../encoder/encoder.js";
-import { VISIT_STOP } from "../view.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -238,30 +237,13 @@ export default class GridChild {
               )
             : undefined;
 
-        const onViewportOffsetChange = () => {
-            // Facets materialize cell positions and cull invisible cells when
-            // collecting render commands. Scrolling must refresh that layout.
-            // TODO: Cache facet presence with hierarchy changes, and eventually
-            // refresh only facet placements instead of the whole layout.
-            view.visit((descendant) => {
-                if (isFacetSpec(descendant.spec)) {
-                    this.context.requestLayoutReflow();
-                    return VISIT_STOP;
-                }
-            });
-        };
-
         // TODO: More specific getter for this
         if (view.spec.viewportWidth != null) {
-            this.scrollbars.horizontal = new Scrollbar(this, "horizontal", {
-                onViewportOffsetChange,
-            });
+            this.scrollbars.horizontal = new Scrollbar(this, "horizontal");
         }
 
         if (view.spec.viewportHeight != null) {
-            this.scrollbars.vertical = new Scrollbar(this, "vertical", {
-                onViewportOffsetChange,
-            });
+            this.scrollbars.vertical = new Scrollbar(this, "vertical");
         }
 
         if (!hasChromeAncestor(view)) {

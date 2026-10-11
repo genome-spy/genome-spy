@@ -13,6 +13,7 @@ import { createSvg } from "./index.js";
 import { loadSharedExampleSpec } from "../../spec/exampleFiles.js";
 import AxisView from "../../view/axisView.js";
 import LegendView from "../../view/legendView.js";
+import Scrollbar from "../../view/gridView/scrollbar.js";
 
 /** @type {import("../../spec/view.js").UnitSpec} */
 const points = { name: "points", width: 100, height: 60, mark: "point" };
@@ -189,10 +190,11 @@ test.each(
     }
 );
 
-test.each(/** @type {const} */ (["vertical", "horizontal"]))(
+test.each(/** @type {const} */ (["vertical", "horizontal", "both"]))(
     "outer axes, overlay labels, and shared titles follow %s scrolling",
     async (direction) => {
         const { view, render } = await initialize({
+            padding: 100,
             data: { values },
             facet: {
                 field: "g",
@@ -200,9 +202,8 @@ test.each(/** @type {const} */ (["vertical", "horizontal"]))(
                 header: { style: "overlay-title" },
             },
             columns: 3,
-            ...(direction === "vertical"
-                ? { viewportHeight: 90 }
-                : { viewportWidth: 160 }),
+            ...(direction !== "horizontal" ? { viewportHeight: 90 } : {}),
+            ...(direction !== "vertical" ? { viewportWidth: 160 } : {}),
             spec: {
                 ...points,
                 encoding: {
@@ -215,22 +216,26 @@ test.each(/** @type {const} */ (["vertical", "horizontal"]))(
         if (direction === "vertical")
             expect(texts(first, "facetTitleColumn0")).toEqual(["Groups"]);
         expect(texts(first, "facetHeaderColumn0")).toContain("A");
-        const scrollbar =
-            /** @type {import("../../view/gridView/scrollbar.js").default} */ (
-                find(view, "scrollbar-" + direction)
-            );
-        scrollbar.setViewportOffset(Infinity);
+        for (const scrollbar of view
+            .getDescendants()
+            .filter((v) => v instanceof Scrollbar)) {
+            scrollbar.setViewportOffset(Infinity);
+        }
         const last = render();
-        expect(texts(last, "facetHeaderColumn0")).toContain(
-            direction === "vertical" ? "E" : "C"
-        );
+        if (direction !== "both") {
+            expect(texts(last, "facetHeaderColumn0")).toContain(
+                direction === "vertical" ? "E" : "C"
+            );
+        }
         expect(texts(last, "facetHeaderColumn0")).not.toContain("A");
         if (direction === "vertical")
             expect(texts(last, "facetTitleColumn0")).toEqual([]);
         const axis = find(view, "axis_bottom");
-        expect(Array.from(axis.facetCoords.keys())).toEqual(
-            (direction === "vertical" ? ["D", "E"] : ["C", "E"]).map((g) => [g])
-        );
+        expect(
+            nodes(last, "axis_bottom").filter((node) =>
+                node.querySelector("[data-mark-type]")
+            )
+        ).toHaveLength(direction === "both" ? 1 : 2);
         const plot = find(view, "points").facetCoords.get(["E"]);
         expect(axis.facetCoords.get(["E"])).toMatchObject({
             x: plot.x,

@@ -290,7 +290,7 @@ export default class FacetView extends ContainerView {
             return;
         }
 
-        // Outer axes need not occur in the first visible cell.
+        // Outer axes need not occur in the first cell.
         for (const axis of Object.values(this.#gridChild.axes)) {
             axis.visit((view) => view.facetCoords.clear());
         }
@@ -298,8 +298,15 @@ export default class FacetView extends ContainerView {
         this.#syncFacetCollector();
         context.pushView(this, coords);
 
-        // Each dimension has one outer title, independent of the cell count.
-        let gridCoords = coords;
+        // Keep geometry local; live parent coordinates supply scrolling, as in concat.
+        /** @param {Rectangle} rect */
+        const place = (rect) =>
+            rect.translate(
+                () => coords.x,
+                () => coords.y
+            );
+
+        let gridCoords = Rectangle.create(0, 0, coords.width, coords.height);
         const titleFrames = this.#fieldTitles.map((title) => {
             gridCoords = gridCoords.shrink(title.getOverhang());
             return { title, frame: gridCoords };
@@ -317,29 +324,27 @@ export default class FacetView extends ContainerView {
         const plotBounds =
             Rectangle.unionAll(layouts.map((layout) => layout.childCoords)) ??
             Rectangle.ZERO;
-        this.#zoomBounds = clipCoords(plotBounds, parentClip);
+        this.#zoomBounds = clipCoords(place(plotBounds), parentClip);
         const arrangement = createGridArrangement();
         for (const layout of layouts) {
             const viewportCoords = clipCoords(
-                layout.viewportCoords,
+                place(layout.viewportCoords),
                 parentClip
             );
-            if (
-                !viewportCoords.isDefined() ||
-                viewportCoords.width <= 0 ||
-                viewportCoords.height <= 0
-            ) {
-                continue;
-            }
-            this.#interactionCells.push({ ...layout, viewportCoords });
+            const childCoords = place(layout.childCoords);
+            this.#interactionCells.push({
+                ...layout,
+                viewportCoords,
+                childCoords,
+            });
 
             queueGridChild(
                 context,
                 {
                     gridChild: this.#gridChild,
                     containerCoords: coords,
-                    viewportCoords: layout.childCoords,
-                    viewCoords: layout.childCoords,
+                    viewportCoords: childCoords,
+                    viewCoords: childCoords,
                     axes: this.#getCellAxes(layout.cell),
                 },
                 {
@@ -361,7 +366,7 @@ export default class FacetView extends ContainerView {
             arrangement.queueDecoration(
                 header.titleSpec.zindex,
                 DECORATION_ORDER.title,
-                () => header.arrange(context, gridCoords, options)
+                () => header.arrange(context, place(gridCoords), options)
             );
         }
         if (titleFrames.length && layouts.length) {
@@ -372,7 +377,13 @@ export default class FacetView extends ContainerView {
                     () =>
                         title.arrange(
                             context,
-                            getTitleCoords(plotBounds, frame, title.titleSpec),
+                            place(
+                                getTitleCoords(
+                                    plotBounds,
+                                    frame,
+                                    title.titleSpec
+                                )
+                            ),
                             options
                         )
                 );
@@ -406,16 +417,19 @@ export default class FacetView extends ContainerView {
         if (cell) {
             return cell.childCoords;
         }
-        if (
-            !this.#interactionCells.length ||
-            !this.#zoomBounds.containsPoint(point.x, point.y)
-        ) {
+        if (!this.#zoomBounds.containsPoint(point.x, point.y)) {
             return;
         }
 
-        let nearest = this.#interactionCells[0].childCoords;
+        /** @type {Rectangle | undefined} */
+        let nearest;
         let distance = Infinity;
-        for (const { childCoords: coords } of this.#interactionCells) {
+        for (const { childCoords: coords, viewportCoords } of this
+            .#interactionCells) {
+            if (viewportCoords.width <= 0 || viewportCoords.height <= 0) {
+                continue;
+            }
+
             const dx = point.x - clamp(point.x, coords.x, coords.x2);
             const dy = point.y - clamp(point.y, coords.y, coords.y2);
             const d = dx * dx + dy * dy;
@@ -423,6 +437,10 @@ export default class FacetView extends ContainerView {
                 nearest = coords;
                 distance = d;
             }
+        }
+
+        if (!nearest) {
+            return;
         }
 
         return nearest.translate(
@@ -509,6 +527,12 @@ export default class FacetView extends ContainerView {
 }
 
 class FacetGridChild extends GridChild {
+    /** @returns {import("./axisView.js").AxisLabelClipPolicy} */
+    getAxisLabelClipPolicy() {
+        // Both axis directions move with cells and must stay inside the outer viewport.
+        return "pixel";
+    }
+
     /** @param {import("./layout/point.js").default} point */
     getInteractionCoords(point) {
         const cell = /** @type {FacetView} */ (

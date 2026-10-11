@@ -1684,7 +1684,9 @@ export default class ScaleResolution {
         const lengths = Array.from(this.#members)
             .map(
                 (m) =>
-                    m.view.coords?.[this.channel === "x" ? "width" : "height"]
+                    m.view.layoutCoords?.[
+                        this.channel === "x" ? "width" : "height"
+                    ]
             )
             .filter((len) => len > 0);
 

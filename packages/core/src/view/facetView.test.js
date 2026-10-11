@@ -1,5 +1,10 @@
 import { expect, onTestFinished, test, vi } from "vitest";
-import { create, createAndInitialize, renderToLayout } from "./testUtils.js";
+import {
+    create,
+    createAndInitialize,
+    createBroadcastingTestViewContext,
+    renderToLayout,
+} from "./testUtils.js";
 import FacetView from "./facetView.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import ConcatView from "./concatView.js";
@@ -324,14 +329,60 @@ test.each([false, true])(
     }
 );
 
-test("the implicit root uses the facet viewport instead of full content height", async () => {
-    const { view } = await createHeadlessEngine(spec({ viewportHeight: 80 }), {
-        contextOptions: { viewFactoryOptions: { wrapRoot: true } },
-    });
-    onTestFinished(() => view.disposeSubtree());
-    const root = /** @type {ConcatView} */ (view);
-    expect(root.children[0].getSize().height.px).toBe(188);
-    expect(root.getSize().height.px).toBe(80);
+test("scrolling partly clipped cells keeps axis lengths and tick labels stable", async () => {
+    const context = createBroadcastingTestViewContext();
+    const { view: root } = await createHeadlessEngine(
+        spec({
+            columns: undefined,
+            viewportHeight: 20,
+            spacing: 4,
+            facet: { row: { field: "g", header: null, title: null } },
+            spec: {
+                width: 100,
+                height: 30,
+                mark: "point",
+                encoding: {
+                    y: {
+                        datum: 0,
+                        type: "quantitative",
+                        scale: { domain: [-1, 1], nice: false },
+                        axis: {
+                            values: [-1, 1],
+                            title: null,
+                            labelFlush: true,
+                        },
+                    },
+                },
+            },
+        }),
+        { context }
+    );
+    onTestFinished(() => root.disposeSubtree());
+    const facet = /** @type {FacetView} */ (
+        root.getDescendants().find((v) => v instanceof FacetView)
+    );
+    const scrollbar = /** @type {import("./gridView/scrollbar.js").default} */ (
+        root.getDescendants().find((v) => v.name === "scrollbar-vertical")
+    );
+    const labels = /** @type {UnitView} */ (
+        root.getDescendants().find((v) => v.name === "labels_main")
+    );
+    expect(facet.getSize().height.px).toBe(98);
+    expect(root.getSize().height.px).toBe(20);
+    renderToLayout(root);
+    context.emitBroadcast(root, "layoutComputed");
+    await root.paramRuntime.whenPropagated();
+    const reflow = vi.spyOn(context, "requestLayoutReflow");
+
+    // Every visible cell is clipped; the leading cell shrinks to 4px, then scrolls out.
+    for (const offset of [0, 26, 34]) {
+        scrollbar.setViewportOffset(offset);
+        expect(facet.child.getScaleResolution("y").getAxisLength()).toBe(30);
+        expect(
+            Array.from(labels.getCollector().getData(), (d) => d.label)
+        ).toEqual(["−1", "1"]);
+    }
+    expect(reflow).not.toHaveBeenCalled();
 });
 
 test("flex constraints cap plot sizes while preserving guide reservations", () => {
@@ -364,10 +415,9 @@ test.each([
     { clipX: false, clipY: true, visible: ["A", "B"] },
     { clipX: true, clipY: false, visible: ["A", "C"] },
 ])(
-    "culling respects clipping directions $clipX/$clipY",
+    "cell hit bounds respect clipping directions $clipX/$clipY",
     async ({ clipX, clipY, visible }) => {
         const view = await initialize();
-        const arrange = vi.spyOn(view.child, "arrange");
         view.arrange(
             new DebuggingViewRenderingContext({}),
             Rectangle.create(0, 0, 210, 188),
@@ -377,10 +427,9 @@ test.each([
             }
         );
         expect(
-            arrange.mock.calls.map(([, , options]) => options.facetId)
-        ).toEqual(visible.map((g) => [g]));
-        expect(
-            arrange.mock.calls.map(([, , options]) => options.firstFacet)
-        ).toEqual(visible.map((_, i) => i === 0));
+            Array.from(view.child.facetCoords.entries())
+                .filter(([, coords]) => coords.width > 0 && coords.height > 0)
+                .map(([id]) => id[0])
+        ).toEqual(visible);
     }
 );
