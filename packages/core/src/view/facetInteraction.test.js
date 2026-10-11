@@ -79,6 +79,50 @@ const pointIn = (rect, x = 0.5, y = 0.5) =>
 const mouse = (type, point) =>
     new MouseEvent(type, { clientX: point.x, clientY: point.y });
 
+test("explicit domains keep initially empty and replaced windows navigable", async () => {
+    const { root, facet, child, dispatcher } = await createFacet({
+        data: { values: [] },
+        params: [{ name: "samples", value: ["B", "A"] }],
+        facet: { row: { field: "g", domain: { expr: "samples" } } },
+        columns: undefined,
+    });
+    const source =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            facet.flowHandle.dataSource
+        );
+    const size = facet.getSize();
+    const resolution = child.getScaleResolution("x");
+    // A lazy window publication replaces rows; exercise empty, partial, and recovered windows.
+    for (const rows of [[], [{ g: "A", x: 2 }], [], [{ g: "B", x: 8 }]]) {
+        source.updateDynamicData(rows);
+        renderToLayout(root);
+        expect(facet.getSize()).toEqual(size);
+        expect(Array.from(child.facetCoords.keys())).toEqual([["B"], ["A"]]);
+        const a = child.facetCoords.get(["A"]);
+        const b = child.facetCoords.get(["B"]);
+        const gap = new Point(a.x + 25, (b.y2 + a.y) / 2);
+        expect(
+            dispatcher.dispatch(gap, { type: "wheelclaimprobe" }).wheelClaimed
+        ).toBe(true);
+        const beforeZoom = resolution.getDomain().slice();
+        const wheel = new WheelEvent("wheel", {
+            deltaY: -300,
+            cancelable: true,
+        });
+        dispatcher.dispatch(gap, wheel);
+        expect(wheel.defaultPrevented).toBe(true);
+        expect(resolution.getDomain()).not.toEqual(beforeZoom);
+        const beforePan = resolution.getDomain().slice();
+        const point = pointIn(a);
+        dispatcher.dispatch(point, mouse("mousedown", point));
+        document.dispatchEvent(
+            mouse("mousemove", new Point(point.x - 10, point.y))
+        );
+        document.dispatchEvent(new MouseEvent("mouseup"));
+        expect(resolution.getDomain()).not.toEqual(beforePan);
+    }
+});
+
 // The same datum can occur in several cells: picking/hover must retain the occurrence identity.
 test.each([false, true])(
     "picking and tooltips identify the cell (child-owned data: %s)",
@@ -115,9 +159,10 @@ test.each([false, true])(
         vi.spyOn(root.context, "getCurrentHover").mockImplementation(() =>
             controller.getCurrentHover()
         );
-        const now = vi.spyOn(performance, "now").mockReturnValue(0);
+        const startTime = performance.now();
+        const now = vi.spyOn(performance, "now").mockReturnValue(startTime);
         onTestFinished(controller.registerInteractionEvents());
-        now.mockReturnValue(1000);
+        now.mockReturnValue(startTime + 1000);
         vi.spyOn(tooltip, "handleMouseMove").mockImplementation(() => {});
         const hover = vi.fn();
         controller.subscribeHover(facet, hover);

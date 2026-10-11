@@ -70,6 +70,14 @@ export type Channel = ChannelWithScale | ChannelWithoutScale;
 /** A category field whose values are used as facet labels. */
 export interface FacetFieldDef extends FieldDefBase {
     /**
+     * Categories to display, including empty cells. An expression reference
+     * can supply a reactive category array. Values outside the domain have no cells.
+     *
+     * __Default value:__ Categories found in the input data.
+     */
+    domain?: Scalar[] | ExprRef;
+
+    /**
      * A shared title for this facet dimension. A string uses the regular view
      * title style; an object supports view-title placement and styling.
      * Row titles default to the left, and column titles to the top.
@@ -81,9 +89,9 @@ export interface FacetFieldDef extends FieldDefBase {
 
     /**
      * Category order. An array places listed values first, followed by unlisted
-     * values in their input order. Values absent from the data do not add cells.
+     * values in domain or input order. Sorting does not add cells.
      *
-     * __Default value:__ `"ascending"`
+     * __Default value:__ Domain order when `domain` is specified; otherwise `"ascending"`.
      */
     sort?: "ascending" | "descending" | Scalar[];
 

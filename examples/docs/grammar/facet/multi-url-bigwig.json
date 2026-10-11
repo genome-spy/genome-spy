@@ -4,18 +4,25 @@
     "Using the facet operator to create a multi-track view of the same region across multiple samples."
   ],
 
+  "params": [
+    {
+      "name": "samples",
+      "value": [
+        "forebrain-e12-5-rep1",
+        "forebrain-e12-5-rep2",
+        "heart-e12-5-rep1",
+        "heart-e12-5-rep2",
+        "limb-e12-5-rep1"
+      ]
+    }
+  ],
+
   "data": {
     "lazy": {
       "type": "bigwig",
       "url": {
         "template": "https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/bigwigs/{sample}.bigWig",
-        "values": [
-          "forebrain-e12-5-rep1",
-          "forebrain-e12-5-rep2",
-          "heart-e12-5-rep1",
-          "heart-e12-5-rep2",
-          "limb-e12-5-rep1"
-        ],
+        "values": { "expr": "samples" },
         "field": "sample"
       }
     }
@@ -34,6 +41,7 @@
   "facet": {
     "row": {
       "field": "sample",
+      "domain": { "expr": "samples" },
       "header": { "style": "overlay-title", "offset": 0, "dx": 5 }
     }
   },

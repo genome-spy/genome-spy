@@ -71,6 +71,17 @@ test.each(
             { facet: { field: "g", sort } },
             /Facet sort must/,
         ]),
+        ...[
+            null,
+            [null],
+            [Infinity],
+            { field: "x" },
+            { expr: "'oops'" },
+            { expr: "undefined" },
+        ].map((domain) => [
+            { facet: { field: "g", domain } },
+            /Facet domain must/,
+        ]),
         ...[false, { labels: "false" }, { title: "Group" }, { format: 1 }].map(
             (header) => [{ facet: { field: "g", header } }, /Facet header must/]
         ),
@@ -168,24 +179,71 @@ test.each(
 });
 
 test.each(
-    /** @type {Array<[import("../spec/channel.js").FacetFieldDef["sort"], string[]]>} */ ([
-        [undefined, ["A", "B", "C"]],
-        ["descending", ["C", "B", "A"]],
+    /** @type {Array<[Partial<import("../spec/channel.js").FacetFieldDef>, string[]]>} */ ([
+        [{}, ["A", "B", "C"]],
+        [{ sort: "descending" }, ["C", "B", "A"]],
+        [{ sort: ["B", "absent", "B"] }, ["B", "C", "A"]],
+        [{ sort: [] }, ["C", "B", "A"]],
+        [{ domain: ["B", "A", "empty", "B"] }, ["B", "A", "empty"]],
         [
-            ["B", "absent", "B"],
-            ["B", "C", "A"],
+            { domain: ["B", "A", "empty"], sort: "ascending" },
+            ["A", "B", "empty"],
         ],
-        [[], ["C", "B", "A"]],
+        [
+            { domain: ["B", "A", "empty"], sort: ["empty", "C"] },
+            ["empty", "B", "A"],
+        ],
+        [{ domain: [] }, []],
     ])
-)("sort %j orders both cells and category labels", async (sort, expected) => {
-    const view = await initialize({ facet: { field: "g", sort } });
+)(
+    "domain/sort %j determines cells and category labels",
+    async (field, expected) => {
+        const view = await initialize({ facet: { field: "g", ...field } });
+        renderToLayout(view);
+        expect(Array.from(view.child.facetCoords.keys())).toEqual(
+            expected.map((g) => [g])
+        );
+        expect(
+            Array.from(headers(view)[0].getCollector().getData(), (d) => d.text)
+        ).toEqual(expected);
+    }
+);
+
+test("expression domains update matrix membership independently of data", async () => {
+    const view = await initialize({
+        data: { values: [] },
+        params: [{ name: "rows", value: ["B", "A"] }],
+        columns: undefined,
+        facet: {
+            row: { field: "r", domain: { expr: "rows" } },
+            column: { field: "c", domain: [2, 1] },
+        },
+    });
     renderToLayout(view);
-    expect(Array.from(view.child.facetCoords.keys())).toEqual(
-        expected.map((g) => [g])
-    );
+    expect(Array.from(view.child.facetCoords.keys())).toEqual([
+        ["B", 2],
+        ["B", 1],
+        ["A", 2],
+        ["A", 1],
+    ]);
+    const reflow = vi.spyOn(view.context, "requestLayoutReflow");
+    view.paramRuntime.setValue("rows", ["A", "C"]);
+    await view.paramRuntime.whenPropagated();
+    expect(reflow).toHaveBeenCalledOnce();
+    renderToLayout(view);
+    expect(Array.from(view.child.facetCoords.keys())).toEqual([
+        ["A", 2],
+        ["A", 1],
+        ["C", 2],
+        ["C", 1],
+    ]);
     expect(
-        Array.from(headers(view)[0].getCollector().getData(), (d) => d.text)
-    ).toEqual(expected);
+        Array.from(headers(view)[1].getCollector().getData(), (d) => d.text)
+    ).toEqual(["A", "C"]);
+    reflow.mockClear();
+    view.paramRuntime.setValue("rows", ["A", "C"]);
+    await view.paramRuntime.whenPropagated();
+    expect(reflow).not.toHaveBeenCalled();
 });
 
 test("matrix updates retain empty combinations and reflow only for changed factors", async () => {

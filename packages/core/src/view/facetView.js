@@ -28,6 +28,10 @@ import { propagateInteraction } from "./interactionRouting.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 import { isMultiscaleSpec } from "./multiscale.js";
 import ViewError from "./viewError.js";
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../paramRuntime/paramUtils.js";
 
 /**
  * @typedef {"row" | "column"} FacetChannel
@@ -77,6 +81,12 @@ export default class FacetView extends ContainerView {
     /** @type {import("../data/collector.js").default | undefined} */
     #observedCollector;
 
+    #onFacetFactorsChanged = () => {
+        if (this.#updateFacetFactors()) {
+            this.context.requestLayoutReflow();
+        }
+    };
+
     /**
      * @param {import("../spec/view.js").FacetSpec} spec
      * @param {import("../types/viewContext.js").default} context
@@ -90,6 +100,18 @@ export default class FacetView extends ContainerView {
 
         this.#facet = normalizeFacetSpec(spec);
         this.#spacing = normalizeFacetSpacing(spec.spacing);
+
+        for (const channel of /** @type {const} */ (["row", "column"])) {
+            const field = this.#facet[channel];
+            if (field) {
+                this.#facet[channel] = activateExprRefProps(
+                    this.paramRuntime,
+                    field,
+                    this.#onFacetFactorsChanged
+                );
+            }
+        }
+        this.#updateFacetFactors();
     }
 
     /**
@@ -470,22 +492,13 @@ export default class FacetView extends ContainerView {
         }
 
         this.#observedCollector = collector;
-        this.registerDisposer(
-            collector.observe(() => {
-                if (this.#updateFacetFactors()) {
-                    this.context.requestLayoutReflow();
-                }
-            })
-        );
+        this.registerDisposer(collector.observe(this.#onFacetFactorsChanged));
         this.#updateFacetFactors();
         this.invalidateSizeCache();
     }
 
     /** @returns {boolean} Whether the row or column membership changed. */
     #updateFacetFactors() {
-        if (!this.#observedCollector.completed) {
-            return false;
-        }
         const factors = collectFacetFactors(
             this.#facet,
             this.#observedCollector
@@ -557,7 +570,7 @@ class FacetGridChild extends GridChild {
 
 /**
  * @param {NormalizedFacet} facet
- * @param {import("../data/collector.js").default} collector
+ * @param {import("../data/collector.js").default | undefined} collector
  * @returns {FacetFactors}
  */
 function collectFacetFactors(facet, collector) {
@@ -566,7 +579,9 @@ function collectFacetFactors(facet, collector) {
     /** @type {Set<import("../spec/channel.js").Scalar>} */
     const column = new Set();
 
-    for (const key of collector.facetBatches.keys()) {
+    for (const key of collector?.completed
+        ? collector.facetBatches.keys()
+        : []) {
         if (key === undefined) {
             continue;
         }
@@ -580,16 +595,31 @@ function collectFacetFactors(facet, collector) {
     }
 
     return {
-        row: sortFacetFactors(row, facet.row?.sort),
-        column: sortFacetFactors(column, facet.column?.sort),
+        row: sortFacetFactors(row, facet.row),
+        column: sortFacetFactors(column, facet.column),
     };
 }
 
 /**
  * @param {Set<import("../spec/channel.js").Scalar>} values
- * @param {import("../spec/channel.js").FacetFieldDef["sort"]} sort
+ * @param {import("../spec/channel.js").FacetFieldDef | undefined} field
  */
-function sortFacetFactors(values, sort = "ascending") {
+function sortFacetFactors(values, field) {
+    const domain = withoutExprRef(field?.domain);
+    if (field && Object.hasOwn(field, "domain")) {
+        if (!isScalarArray(domain)) {
+            throw new Error(
+                "Facet domain must resolve to an array of scalar values."
+            );
+        }
+        values = new Set(domain);
+    }
+
+    const sort =
+        field?.sort ?? (domain === undefined ? "ascending" : undefined);
+    if (sort === undefined) {
+        return Array.from(values);
+    }
     if (Array.isArray(sort)) {
         const order = new Set(sort);
         return Array.from(order)
@@ -598,6 +628,22 @@ function sortFacetFactors(values, sort = "ascending") {
     }
     return Array.from(values).sort(
         sort === "descending" ? (a, b) => compareScalars(b, a) : compareScalars
+    );
+}
+
+/**
+ * @param {unknown} values
+ * @returns {values is import("../spec/channel.js").Scalar[]}
+ */
+function isScalarArray(values) {
+    return (
+        Array.isArray(values) &&
+        values.every(
+            (value) =>
+                typeof value === "string" ||
+                typeof value === "boolean" ||
+                (typeof value === "number" && Number.isFinite(value))
+        )
     );
 }
 
@@ -680,15 +726,7 @@ function normalizeFacetFieldDef(fieldDef, channel) {
         sort !== undefined &&
         sort !== "ascending" &&
         sort !== "descending" &&
-        !(
-            Array.isArray(sort) &&
-            sort.every(
-                (value) =>
-                    typeof value === "string" ||
-                    typeof value === "boolean" ||
-                    (typeof value === "number" && Number.isFinite(value))
-            )
-        )
+        !isScalarArray(sort)
     ) {
         throw new Error(
             'Facet sort must be "ascending", "descending", or an array of scalar values.'

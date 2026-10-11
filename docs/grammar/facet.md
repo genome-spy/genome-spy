@@ -18,9 +18,10 @@ EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json height=400
 
 A [BigWig URL template](data/multi-url.md#lazy-bigwig-files) adds a `sample`
 field to records from five files. The row facet groups by that field, with
-`overlay-title` labels inside the plots.
+`overlay-title` labels inside the plots. A shared `samples` parameter supplies
+the URLs and facet domain, keeping all five tracks navigable over empty regions.
 
-EXAMPLE examples/docs/grammar/facet/multi-url-bigwig.json height=250
+EXAMPLE examples/docs/grammar/facet/multi-url-bigwig.json height=250 spechidden
 
 !!! disclaimer ""
 
@@ -142,8 +143,8 @@ EXAMPLE examples/docs/grammar/facet/means.json height=120 spechidden
 
 Child transforms can drop facet fields without changing cell membership.
 Include those fields in aggregate or project output if later transforms need
-them. Child filters can leave empty cells; outer filters remove groups before
-cells are created.
+them. Child filters can leave empty cells; without an explicit domain, outer
+filters remove groups before cells are created.
 
 A child or layer with its own `data` repeats its result in every cell. That
 dataset is not partitioned, even if it contains the facet fields.
