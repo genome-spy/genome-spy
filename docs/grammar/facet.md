@@ -138,7 +138,7 @@ Transforms on the facet specification run before grouping. Transforms inside
 `spec` run independently for each group. For example, an aggregate without
 `groupby` computes one mean per facet:
 
-EXAMPLE examples/docs/grammar/facet/means.json
+EXAMPLE examples/docs/grammar/facet/means.json height=120 spechidden
 
 Child transforms can drop facet fields without changing cell membership.
 Include those fields in aggregate or project output if later transforms need
