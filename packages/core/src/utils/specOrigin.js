@@ -1,15 +1,21 @@
-/** @type {WeakMap<object, object>} Explicit identity-preserving normalization copies. */
+/** @type {WeakMap<object, {source: object, path?: readonly (string | number)[]}>} */
 const originals = new WeakMap();
 
 /**
- * Associates a shallow normalization copy with its authored declaration.
+ * Associates a normalized or generated declaration with its authored source.
  * @template {object} T
  * @param {object} source
  * @param {T} copy
+ * @param {readonly (string | number)[]} [path] Authored property represented by
+ * the entire generated declaration.
  * @returns {T}
  */
-export function inheritSpecOrigin(source, copy) {
-    originals.set(copy, originals.get(source) ?? source);
+export function inheritSpecOrigin(source, copy, path) {
+    const original = originals.get(source);
+    originals.set(copy, {
+        source: original?.source ?? source,
+        path: path ?? original?.path,
+    });
     return copy;
 }
 
@@ -41,6 +47,9 @@ export function cloneWithSpecOrigin(source) {
  */
 export function getSpecLocation(fragment, getOrigin, path) {
     if (!fragment || !getOrigin) return;
-    const origin = getOrigin(originals.get(fragment) ?? fragment);
-    return origin === undefined ? undefined : { origin, path };
+    const original = originals.get(fragment);
+    const origin = getOrigin(original?.source ?? fragment);
+    return origin === undefined
+        ? undefined
+        : { origin, path: original?.path ?? path };
 }

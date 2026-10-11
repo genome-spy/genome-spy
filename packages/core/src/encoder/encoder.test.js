@@ -18,6 +18,11 @@ import {
     createSinglePointSelection,
 } from "../selection/selection.js";
 import { scaleLinear } from "d3-scale";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../genomeSpy/headlessBootstrap.js";
+import { getSpecErrorLocation } from "../utils/specError.js";
 
 /** @type {import("../spec/channel.js").Encoding} */
 const encoding = {
@@ -199,6 +204,95 @@ describe("Conditional encoder with interval selection", () => {
         setBrush(createIntervalSelection(["x"]));
         expect(encoder(datum)).toBe(0.1);
     });
+});
+
+test.each(["mark", "inherited encoding", "conditional encoding"])(
+    "locates an invalid literal color in a %s",
+    async (kind) => {
+        const mark = { type: /** @type {const} */ ("point"), color: "reed" };
+        const value = { value: "reed" };
+        const condition = { ...value, param: "selected" };
+        /** @type {import("../spec/root.js").RootSpec} */
+        let spec;
+        if (kind === "mark") {
+            spec = { mark };
+        } else if (kind === "inherited encoding") {
+            spec = { encoding: { color: value }, layer: [{ mark: "point" }] };
+        } else {
+            spec = {
+                mark: "point",
+                params: [{ name: "selected", select: "point" }],
+                encoding: {
+                    color: { condition, value: null },
+                },
+            };
+        }
+        const declaration =
+            kind === "mark"
+                ? mark
+                : kind === "inherited encoding"
+                  ? value
+                  : condition;
+        const context = createHeadlessViewContext();
+        context.getSpecOrigin = (fragment) =>
+            fragment === declaration ? "declaration" : undefined;
+
+        await expect(
+            createHeadlessEngine({ data: { values: [] }, ...spec }, { context })
+        ).rejects.toSatisfy((error) => {
+            expect(error.message).toBe('Invalid color: "reed"');
+            expect(getSpecErrorLocation(error)).toEqual({
+                origin: "declaration",
+                path: [kind === "mark" ? "color" : "value"],
+            });
+            return true;
+        });
+    }
+);
+
+test.each(["mark", "encoding"])(
+    "ignores an overridden %s color after normalization",
+    async (kind) => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [] },
+            mark: {
+                type: "point",
+                fill: "red",
+                stroke: "blue",
+                ...(kind === "mark" ? { color: "reed" } : {}),
+            },
+            ...(kind === "encoding"
+                ? { encoding: { color: { value: "reed" } } }
+                : {}),
+        });
+        try {
+            const unit = /** @type {import("../view/unitView.js").default} */ (
+                view
+            );
+            expect(unit.mark.encoders.fill({})).toBe("red");
+            expect(unit.mark.encoders.stroke({})).toBe("blue");
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
+
+test("defers a domain-dependent color expression until data is loaded", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{ label: "red" }] },
+        mark: { type: "point", color: { expr: "domain('x')[0]" } },
+        encoding: {
+            x: { field: "label", type: "nominal", scale: { type: "point" } },
+        },
+    });
+    try {
+        const unit = /** @type {import("../view/unitView.js").default} */ (
+            view
+        );
+        expect(unit.mark.encoders.fill({})).toBe("red");
+    } finally {
+        view.disposeSubtree();
+    }
 });
 
 test("conditional encoders retain their branch behavior and current scale metadata", () => {

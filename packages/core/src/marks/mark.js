@@ -256,9 +256,18 @@ export default class Mark {
             const propToValueDef = (property) => {
                 const value =
                     this.properties[/** @type {keyof MarkProps} */ (property)];
-                return isScalar(value) || isExprRef(value)
-                    ? { value }
-                    : undefined;
+                const definition =
+                    isScalar(value) || isExprRef(value) ? { value } : undefined;
+                const mark = this.unitView.spec.mark;
+                if (
+                    definition &&
+                    typeof mark === "object" &&
+                    mark[/** @type {keyof MarkProps} */ (property)] !==
+                        undefined
+                ) {
+                    inheritSpecOrigin(mark, definition, [property]);
+                }
+                return definition;
             };
 
             const propertyValues = Object.fromEntries(

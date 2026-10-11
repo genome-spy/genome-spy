@@ -5,7 +5,9 @@ import {
     resolveSelectionPredicateTree,
 } from "../selection/selectionPredicateTree.js";
 import { createAccessor } from "./accessor.js";
-import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
+import { isExprRef, makeConstantExprRef } from "../paramRuntime/paramUtils.js";
+import { color } from "d3-color";
+import { annotateSpecError } from "../utils/specError.js";
 
 /**
  * @typedef {(channel: import("../spec/channel.js").ChannelWithScale,
@@ -104,6 +106,22 @@ export function createConditionalBranches(
             branchChannelDef,
             paramRuntime
         );
+
+        if (isColorChannel(channel) && isValueDef(branchChannelDef)) {
+            const value = branchChannelDef.value;
+            // Validate literals only: expressions can depend on domains that
+            // are not populated until sources finish loading.
+            if (
+                value !== null &&
+                !isExprRef(value) &&
+                (typeof value !== "string" || !color(value))
+            ) {
+                throw annotateSpecError(
+                    new Error("Invalid color: " + JSON.stringify(value)),
+                    paramRuntime.getSpecLocation?.(branchChannelDef, ["value"])
+                );
+            }
+        }
 
         const selectionPredicate = condition
             ? normalizeSelectionPredicate(condition)
