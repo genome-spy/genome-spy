@@ -151,8 +151,8 @@ dataset is not partitioned, even if it contains the facet fields.
 ## Interactions
 
 Picking and tooltips use the pointed cell's data. Pan and zoom update shared
-scales across all cells. Point and interval selections also share their state
-across cells.
+scales across all cells and also work in the gaps between them. Point and interval
+selections also share their state across cells.
 
 ## Differences from Vega-Lite
 

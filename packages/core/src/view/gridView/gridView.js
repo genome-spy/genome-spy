@@ -1909,9 +1909,9 @@ function zoomResolutions(coords, zoomEvent, zoomableResolutions, animator) {
 function getZoomInteractionTarget(view, point, coords) {
     if (isFacetSpec(view.spec)) {
         const facet = /** @type {import("../facetView.js").default} */ (view);
-        const cell = facet.getInteractionCell(point);
-        return cell
-            ? { view: facet.child, coords: cell.childCoords }
+        const facetCoords = facet.getZoomCoords(point);
+        return facetCoords
+            ? { view: facet.child, coords: facetCoords }
             : undefined;
     } else if (view instanceof UnitView || view instanceof LayerView) {
         return { view, coords };

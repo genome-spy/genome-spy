@@ -50,8 +50,9 @@ when they share the same datum. Mark hits and custom tooltip contexts expose a
 `facetId` tuple identifying the pointed cell.
 
 Pan and zoom update shared scales using the pointed cell's plot bounds, also
-inside scrolled facet viewports. Existing viewport drag-scrolling and gesture
-cleanup apply to facet cells.
+inside scrolled facet viewports. Navigation also works in the gaps between cells,
+where wheel zoom prevents page scrolling. Existing viewport drag-scrolling and
+gesture cleanup apply to facet cells.
 
 Removing a facet or disposing its visualization cancels active interval-brush
 gestures and releases their document listeners.

@@ -9,6 +9,8 @@ import {
 import FacetHeaderView, { FACET_HEADER_PROPERTIES } from "./facetHeaderView.js";
 import TitleView, { getTitleCoords, resolveTitleSpec } from "./titleView.js";
 import Padding from "./layout/padding.js";
+import Rectangle from "./layout/rectangle.js";
+import clamp from "../utils/clamp.js";
 import GridChild from "./gridView/gridChild.js";
 import {
     createGridArrangement,
@@ -69,6 +71,8 @@ export default class FacetView extends ContainerView {
 
     /** @type {import("./facetLayout.js").FacetCellLayout[]} */
     #interactionCells = [];
+
+    #zoomBounds = Rectangle.ZERO;
 
     /** @type {import("../data/collector.js").default | undefined} */
     #observedCollector;
@@ -280,6 +284,7 @@ export default class FacetView extends ContainerView {
     arrange(context, coords, options = {}) {
         super.arrange(context, coords, options);
         this.#interactionCells = [];
+        this.#zoomBounds = Rectangle.ZERO;
 
         if (!this.isConfiguredVisible()) {
             return;
@@ -309,6 +314,12 @@ export default class FacetView extends ContainerView {
             context.getDevicePixelRatio()
         );
         const parentClip = normalizeClipOptions(options);
+        const plotBounds = layouts.length
+            ? layouts
+                  .map((layout) => layout.childCoords)
+                  .reduce((a, b) => a.union(b))
+            : Rectangle.ZERO;
+        this.#zoomBounds = clipCoords(plotBounds, parentClip);
         const arrangement = createGridArrangement();
         for (const layout of layouts) {
             const viewportCoords = clipCoords(
@@ -356,9 +367,6 @@ export default class FacetView extends ContainerView {
             );
         }
         if (titleFrames.length && layouts.length) {
-            const plotBounds = layouts
-                .map((layout) => layout.childCoords)
-                .reduce((a, b) => a.union(b));
             for (const { title, frame } of titleFrames) {
                 arrangement.queueDecoration(
                     title.titleSpec.zindex,
@@ -386,6 +394,42 @@ export default class FacetView extends ContainerView {
     getInteractionCell(point) {
         return this.#interactionCells.find((layout) =>
             layout.viewportCoords.containsPoint(point.x, point.y)
+        );
+    }
+
+    /**
+     * Gaps navigate the nearest plot, with the zoom anchor clamped to its edge.
+     * Cell hit testing stays separate so gaps cannot select marks or show tooltips.
+     *
+     * @param {{ x: number, y: number }} point
+     */
+    getZoomCoords(point) {
+        const cell = this.getInteractionCell(point);
+        if (cell) {
+            return cell.childCoords;
+        }
+        if (
+            !this.#interactionCells.length ||
+            !this.#zoomBounds.containsPoint(point.x, point.y)
+        ) {
+            return;
+        }
+
+        let nearest = this.#interactionCells[0].childCoords;
+        let distance = Infinity;
+        for (const { childCoords: coords } of this.#interactionCells) {
+            const dx = point.x - clamp(point.x, coords.x, coords.x2);
+            const dy = point.y - clamp(point.y, coords.y, coords.y2);
+            const d = dx * dx + dy * dy;
+            if (d < distance) {
+                nearest = coords;
+                distance = d;
+            }
+        }
+
+        return nearest.translate(
+            point.x - clamp(point.x, nearest.x, nearest.x2),
+            point.y - clamp(point.y, nearest.y, nearest.y2)
         );
     }
 

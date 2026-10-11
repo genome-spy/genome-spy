@@ -273,6 +273,9 @@ test("headers, gaps and clipped areas do not target the child", async () => {
     expect(dispatcher.dispatch(inside, mouse("click", inside)).target).toBe(
         child
     );
+    expect(
+        facet.getZoomCoords(new Point(second.x + 60, second.y + 2))
+    ).toBeUndefined();
     for (const point of [
         new Point(second.x + 30, second.y + 35),
         new Point(second.x + 60, second.y + 2),
@@ -392,10 +395,6 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
         expect.closeTo(0.75),
         expect.closeTo(5.75),
     ]);
-    expect(
-        dispatcher.dispatch(new Point(105, 30), { type: "wheelclaimprobe" })
-            .wheelClaimed
-    ).toBe(false);
     zoom.mockClear();
     const resume = vi.spyOn(root.context, "resumeHoverTracking");
     dispatcher.dispatch(point, mouse("mousedown", point));
@@ -409,6 +408,69 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
     );
     expect(zoom).toHaveBeenCalledOnce();
     expect(resume).toHaveBeenCalledOnce();
+});
+
+test.each(/** @type {const} */ (["row", "column"]))(
+    "%s facet gaps support shared-scale navigation without targeting a cell",
+    async (dimension) => {
+        const channel = dimension === "row" ? "x" : "y";
+        const { facet, child, dispatcher } = await createFacet({
+            facet: { [dimension]: { field: "g", header: null } },
+            columns: undefined,
+            spacing: 14,
+            spec: { encoding: encoding(channel) },
+        });
+        const a = child.facetCoords.get(["A"]);
+        const b = child.facetCoords.get(["B"]);
+        const gap =
+            dimension === "row"
+                ? new Point(a.x + 25, (a.y2 + b.y) / 2)
+                : new Point((a.x2 + b.x) / 2, a.y + 15);
+        expect(facet.getInteractionCell(gap)).toBeUndefined();
+        expect(
+            dispatcher.dispatch(gap, mouse("click", gap)).target
+        ).toBeUndefined();
+        expect(
+            dispatcher.dispatch(gap, { type: "wheelclaimprobe" }).wheelClaimed
+        ).toBe(true);
+
+        const resolution = child.getScaleResolution(channel);
+        const wheel = new WheelEvent("wheel", {
+            deltaY: -300,
+            cancelable: true,
+        });
+        dispatcher.dispatch(gap, wheel);
+        expect(wheel.defaultPrevented).toBe(true);
+        expect(resolution.getDomain()).toEqual(
+            channel === "x" ? [1.25, 6.25] : [3.75, 8.75]
+        );
+
+        const zoom = vi.spyOn(resolution, "zoom");
+        dispatcher.dispatch(gap, mouse("mousedown", gap));
+        document.dispatchEvent(
+            mouse("mousemove", new Point(gap.x + 10, gap.y + 6))
+        );
+        expect(zoom).toHaveBeenCalledExactlyOnceWith(
+            1,
+            channel === "x" ? 0.25 : 0.75,
+            expect.closeTo(channel === "x" ? 0.1 : -0.1)
+        );
+        document.dispatchEvent(new MouseEvent("mouseup"));
+    }
+);
+
+test("wrapped gaps clamp zoom anchors to the nearest plot edge", async () => {
+    const { child, dispatcher } = await createFacet({
+        facet: { field: "g", header: null },
+        spacing: 14,
+        spec: { encoding: { ...encoding("x"), ...encoding("y") } },
+    });
+    const a = child.facetCoords.get(["A"]);
+    const b = child.facetCoords.get(["B"]);
+    const gap = new Point((a.x2 + b.x) / 2, a.y + 15);
+    dispatcher.dispatch(gap, new WheelEvent("wheel", { deltaY: -300 }));
+    expect(child.getScaleResolution("x").getDomain()).toEqual([5, 10]);
+    expect(child.getScaleResolution("y").getDomain()).toEqual([3.75, 8.75]);
 });
 
 test("zoom in a partly clipped cell uses its full plot height", async () => {
@@ -431,7 +493,7 @@ test("zoom in a partly clipped cell uses its full plot height", async () => {
 test.each([false, true])(
     "scrolling refreshes culled cells and routing (enclosing viewport: %s)",
     async (enclosing) => {
-        const { root, child, dispatcher } = await createFacet(
+        const { root, facet, child, dispatcher } = await createFacet(
             { columns: 1, ...(enclosing ? {} : { viewportHeight: 55 }) },
             enclosing
         );
@@ -443,8 +505,7 @@ test.each([false, true])(
             );
         expect(child.facetCoords.has(["B"])).toBe(false);
         root.context.requestLayoutReflow = () => renderToLayout(root);
-        if (enclosing) scrollbar.setViewportOffset(100);
-        else {
+        if (!enclosing) {
             const start = pointIn(child.coords);
             dispatcher.dispatch(start, mouse("mousedown", start));
             document.dispatchEvent(
@@ -453,8 +514,19 @@ test.each([false, true])(
             document.dispatchEvent(new MouseEvent("mouseup"));
             expect(scrollbar.viewportOffset).toBe(20);
             expect(child.getScaleResolution("x").getDomain()).toEqual([0, 10]);
-            scrollbar.setViewportOffset(100);
         }
+        // Leave a visible gap just below the partly clipped first cell.
+        scrollbar.setViewportOffset(70);
+        const a = child.facetCoords.get(["A"]);
+        const gap = new Point(a.x + a.width / 4, a.y2 + 2);
+        expect(facet.getInteractionCell(gap)).toBeUndefined();
+        expect(
+            dispatcher.dispatch(gap, { type: "wheelclaimprobe" }).wheelClaimed
+        ).toBe(true);
+        dispatcher.dispatch(gap, new WheelEvent("wheel", { deltaY: -300 }));
+        expect(child.getScaleResolution("x").getDomain()).toEqual([1.25, 6.25]);
+
+        scrollbar.setViewportOffset(100);
         const point = pointIn(child.facetCoords.get(["B"]));
         const event = dispatcher.dispatch(point, mouse("click", point));
         expect(event.target).toBe(child);
