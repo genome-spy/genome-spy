@@ -533,8 +533,8 @@ export interface FacetSpec extends ViewSpecBase {
     /**
      * Defines the field or fields used to split data into repeated facet cells.
      *
-     * A single field definition creates column facets. Use `row` and `column`
-     * to create a two-dimensional facet matrix.
+     * A single field definition creates a wrappable series of cells. Use `row`
+     * and `column` to fix the direction or create a two-dimensional facet matrix.
      */
     facet: FacetMapping | FacetFieldDef;
 
@@ -549,11 +549,10 @@ export interface FacetSpec extends ViewSpecBase {
     spec: LayerSpec | UnitSpec | ImportSpec;
 
     /**
-     * Wraps one-dimensional column facets into the specified number of columns.
+     * Wraps a single-field facet into the specified number of columns.
      *
-     * This property is valid only when `facet` is a single field definition or
-     * when only `facet.column` is defined.
-     * The column count must be a positive integer.
+     * Valid only with a direct field definition such as `facet: { field: "group" }`.
+     * Row/column facet mappings do not support wrapping. The count must be a positive integer.
      *
      * @minimum 1
      * @multipleOf 1

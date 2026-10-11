@@ -71,9 +71,9 @@ SCHEMA FacetFieldDef
 
 ### Wrapping
 
-Column facets form a single row unless `columns` specifies a positive integer
-for wrapping. For example, `"columns": 2` creates rows of at most two plots.
-Wrapping cannot be combined with `facet.row`.
+The single-field form, `"facet": {"field": "group"}`, places cells in one row
+by default. Set `"columns": 2` to wrap into rows of at most two plots.
+`columns` cannot be combined with `facet.row` or `facet.column`.
 
 ### Spacing
 

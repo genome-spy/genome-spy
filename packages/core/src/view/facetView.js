@@ -684,9 +684,9 @@ function normalizeFacetSpec(spec) {
         );
     }
 
-    if (spec.columns !== undefined && row) {
+    if (spec.columns !== undefined && !isFacetFieldDef(facet)) {
         throw new Error(
-            'Facet "columns" can be used only with one-dimensional column facets.'
+            'Facet "columns" requires a single field definition, not a row/column mapping.'
         );
     }
 

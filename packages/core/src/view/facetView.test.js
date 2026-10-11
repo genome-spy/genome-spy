@@ -66,7 +66,11 @@ test.each(
             { columns },
             /positive integer/,
         ]),
-        [{ facet: { row: { field: "g" } } }, /one-dimensional column/],
+        ...[
+            { row: { field: "g" } },
+            { column: { field: "g" } },
+            { row: { field: "r" }, column: { field: "g" } },
+        ].map((facet) => [{ facet }, /requires a single field definition/]),
         ...[{ field: "x" }, ["A", null], [Infinity]].map((sort) => [
             { facet: { field: "g", sort } },
             /Facet sort must/,
@@ -118,6 +122,21 @@ test.each(
 )("rejects invalid facet configuration %j", async (overrides, error) => {
     await expect(create(spec(overrides), FacetView)).rejects.toThrow(error);
 });
+
+test.each([
+    { facet: { field: "g" }, columns: undefined, rows: 1, cols: 3 },
+    { facet: { field: "g" }, columns: 2, rows: 2, cols: 2 },
+    { facet: { column: { field: "g" } }, columns: undefined, rows: 1, cols: 3 },
+])(
+    "facet $facet with columns=$columns lays out $rows by $cols",
+    async ({ facet, columns, rows, cols }) => {
+        const view = await initialize({ facet, columns });
+        renderToLayout(view);
+        const coords = Array.from(view.child.facetCoords.values());
+        expect(new Set(coords.map((c) => c.y)).size).toBe(rows);
+        expect(new Set(coords.map((c) => c.x)).size).toBe(cols);
+    }
+);
 
 test.each(
     /** @type {const} */ ([
