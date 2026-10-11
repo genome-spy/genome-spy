@@ -11,11 +11,7 @@ import {
 import Grid from "../layout/grid.js";
 import Padding from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
-import AxisView, {
-    CHANNEL_ORIENTS,
-    ORIENT_CHANNELS,
-    getExternalAxisOverhang,
-} from "../axisView.js";
+import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
 import ContainerView from "../containerView.js";
 import { VISIT_SKIP } from "../view.js";
 import {
@@ -35,12 +31,11 @@ import {
 } from "./gridChildArrangement.js";
 export { translateAxisCoords } from "./gridChildArrangement.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
-import { arrangeLocalLegends } from "./legendLayout.js";
+import { arrangeLocalLegends, getGuideOverhang } from "./legendLayout.js";
 import {
     addLegendView,
     createGridChildLegend,
     disposeLegendViews,
-    getLegendOverhang,
     getOrderedLegendEntries,
     iterateLegendViews,
     prepareLegendLayoutSize,
@@ -1029,23 +1024,9 @@ export default class GridView extends ContainerView {
     }
 
     #getSharedGuideOverhang() {
-        const getSize = (
-            /** @type {import("../../spec/axis.js").AxisOrient} */ orient
-        ) => {
-            const channel = ORIENT_CHANNELS[orient];
-            const axisView = this.#sharedAxes[channel];
-            const axisSize =
-                axisView?.axisProps.orient === orient
-                    ? getExternalAxisOverhang(axisView)
-                    : 0;
-            return axisSize + getLegendOverhang(this.#sharedLegends, orient);
-        };
-
-        return new Padding(
-            getSize("top"),
-            getSize("right"),
-            getSize("bottom"),
-            getSize("left")
+        return getGuideOverhang(
+            this.#getSharedAxesByOrient(),
+            this.#sharedLegends
         );
     }
 

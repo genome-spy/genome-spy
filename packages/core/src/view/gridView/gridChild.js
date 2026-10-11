@@ -4,10 +4,7 @@ import {
     isIntervalSelectionConfig,
 } from "../../selection/selection.js";
 import AxisGridView from "../axisGridView.js";
-import AxisView, {
-    CHANNEL_ORIENTS,
-    getExternalAxisOverhang,
-} from "../axisView.js";
+import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
 import LayerView from "../layerView.js";
 import Padding, { applyOverhangConfig } from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
@@ -25,11 +22,11 @@ import {
     addLegendView,
     createGridChildLegend,
     disposeLegendViews,
-    getLegendOverhang,
     getOrderedLegendEntries,
     iterateLegendViews,
     prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
+import { getGuideOverhang } from "./legendLayout.js";
 import { findLegendCollectionDeclaration } from "./legendCollection.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
@@ -876,7 +873,7 @@ export default class GridChild {
     getOverhang(axes = this.axes) {
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return applyOverhangConfig(
-            this.#getGuideOverhang(axes)
+            getGuideOverhang(axes, this.legends)
                 .add(this.title?.getOverhang() ?? Padding.zero())
                 .add(this.view.getOverhang()),
             this.view.spec.overhang
@@ -905,23 +902,6 @@ export default class GridChild {
         return applyOverhangConfig(
             this.view.getOverhang(),
             this.view.spec.overhang
-        );
-    }
-
-    /** @param {GridChild["axes"]} [axes] */
-    #getGuideOverhang(axes = this.axes) {
-        const calculate = (
-            /** @type {import("../../spec/axis.js").AxisOrient} */ orient
-        ) => getExternalAxisOverhang(axes[orient]);
-        const legend = (
-            /** @type {import("../../spec/legend.js").LegendOrient} */ orient
-        ) => getLegendOverhang(this.legends, orient);
-
-        return new Padding(
-            calculate("top") + legend("top"),
-            calculate("right") + legend("right"),
-            calculate("bottom") + legend("bottom"),
-            calculate("left") + legend("left")
         );
     }
 
@@ -959,7 +939,7 @@ export default class GridChild {
 
         return getTitleCoords(
             viewportCoords,
-            viewportCoords.expand(this.#getGuideOverhang(axes)),
+            viewportCoords.expand(getGuideOverhang(axes, this.legends)),
             titleSpec
         );
     }
