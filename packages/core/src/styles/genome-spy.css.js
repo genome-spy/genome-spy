@@ -251,6 +251,11 @@ font-size: 14px;
 padding: var(--genome-spy-basic-spacing);
 }
 
+/* Body embeds must retain viewport bounds after failed startup cleanup. */
+:scope:is(body) > .message-box {
+position: fixed;
+}
+
 .message-box {
 display: flex;
 align-items: center;
