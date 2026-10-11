@@ -114,7 +114,11 @@ export default class FacetView extends ContainerView {
                     );
                 }
             },
-            { inheritEncoding: true }
+            {
+                inheritEncoding: true,
+                // Both axis directions move with cells inside the outer viewport.
+                axisLabelClipPolicy: { x: "pixel", y: "pixel" },
+            }
         );
 
         if (this.child instanceof FacetView) {
@@ -527,12 +531,6 @@ export default class FacetView extends ContainerView {
 }
 
 class FacetGridChild extends GridChild {
-    /** @returns {import("./axisView.js").AxisLabelClipPolicy} */
-    getAxisLabelClipPolicy() {
-        // Both axis directions move with cells and must stay inside the outer viewport.
-        return "pixel";
-    }
-
     /** @param {import("./layout/point.js").default} point */
     getInteractionCoords(point) {
         const cell = /** @type {FacetView} */ (
