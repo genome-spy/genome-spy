@@ -4,23 +4,15 @@
   "data": { "url": "vega-datasets/anscombe.json" },
 
   "facet": { "field": "Series" },
+
   "columns": 2,
+
   "spec": {
-    "width": 200,
-    "height": 150,
+    "view": { "stroke": "lightgray" },
     "mark": "point",
     "encoding": {
-      "x": {
-        "field": "X",
-        "type": "quantitative",
-        "scale": { "zero": false }
-      },
-      "y": {
-        "field": "Y",
-        "type": "quantitative",
-        "scale": { "zero": false }
-      },
-      "opacity": { "value": 1 }
+      "x": { "field": "X", "type": "quantitative" },
+      "y": { "field": "Y", "type": "quantitative" }
     }
   }
 }

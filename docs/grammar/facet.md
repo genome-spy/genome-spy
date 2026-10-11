@@ -7,7 +7,7 @@ easy to compare groups using the same marks and scales.
 
 ### Wrapped Plots
 
-EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json
+EXAMPLE examples/docs/grammar/facet/anscombe-wrapped.json height=400
 
 !!! disclaimer ""
 
@@ -20,7 +20,7 @@ A [BigWig URL template](data/multi-url.md#lazy-bigwig-files) adds a `sample`
 field to records from five files. The row facet groups by that field, with
 `overlay-title` labels inside the plots.
 
-EXAMPLE examples/docs/grammar/facet/multi-url-bigwig.json height=350
+EXAMPLE examples/docs/grammar/facet/multi-url-bigwig.json height=250
 
 !!! disclaimer ""
 
