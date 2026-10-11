@@ -1231,29 +1231,22 @@ export default class GridView extends ContainerView {
             const hScrollbar = gridChild.scrollbars.horizontal;
             const vScrollbar = gridChild.scrollbars.vertical;
 
-            const getHScrollOffset = hScrollbar
-                ? () => round(hScrollbar.viewportOffset)
-                : () => 0;
-            const getVScrollOffset = vScrollbar
-                ? () => round(vScrollbar.viewportOffset)
-                : () => 0;
-
-            const viewportCoords = new Rectangle(
-                () => coords.x + x,
-                () => coords.y + y,
-                () => viewportWidth,
-                () => viewportHeight
-            );
+            const viewportCoords = Rectangle.create(
+                x,
+                y,
+                viewportWidth,
+                viewportHeight
+            ).translateBy(coords);
 
             const scrollable = view.isScrollable();
 
             const viewCoords = scrollable
-                ? new Rectangle(
-                      () => coords.x + x - getHScrollOffset(),
-                      () => coords.y + y - getVScrollOffset(),
-                      () => viewWidth,
-                      () => viewHeight
-                  )
+                ? viewportCoords
+                      .modify({ width: viewWidth, height: viewHeight })
+                      .translate(
+                          () => -round(hScrollbar?.viewportOffset ?? 0),
+                          () => -round(vScrollbar?.viewportOffset ?? 0)
+                      )
                 : viewportCoords;
 
             gridChild.coords = viewportCoords;

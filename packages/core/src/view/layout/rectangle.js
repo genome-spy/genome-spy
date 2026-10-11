@@ -195,13 +195,15 @@ export default class Rectangle {
     }
 
     /**
-     * Returns a copy of this rectangle translated by the given rectangle.
+     * Returns a copy translated by the given rectangle's live position.
      *
      * @param {Rectangle} rectangle
      */
     translateBy(rectangle) {
-        // TODO: Make dynamic
-        return this.translate(rectangle.x, rectangle.y);
+        return this.translate(
+            () => rectangle.x,
+            () => rectangle.y
+        );
     }
 
     /**

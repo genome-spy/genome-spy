@@ -51,16 +51,15 @@ test("translate", () => {
     expect(r.height).toEqual(4);
 });
 
-test("Dynamic translate", () => {
+test("translations preserve live offsets", () => {
     let tx = 0;
     let ty = 0;
 
-    const r = Rectangle.create(1, 2, 3, 4)
-        .translate(
-            () => tx,
-            () => ty
-        )
-        .translate(2, 3);
+    const parent = Rectangle.ZERO.translate(
+        () => tx,
+        () => ty
+    );
+    const r = Rectangle.create(1, 2, 3, 4).translateBy(parent).translate(2, 3);
 
     expect(r.x).toEqual(3);
     expect(r.y).toEqual(5);

@@ -303,13 +303,6 @@ export default class FacetView extends ContainerView {
         context.pushView(this, coords);
 
         // Keep geometry local; live parent coordinates supply scrolling, as in concat.
-        /** @param {Rectangle} rect */
-        const place = (rect) =>
-            rect.translate(
-                () => coords.x,
-                () => coords.y
-            );
-
         let gridCoords = Rectangle.create(0, 0, coords.width, coords.height);
         const titleFrames = this.#fieldTitles.map((title) => {
             gridCoords = gridCoords.shrink(title.getOverhang());
@@ -328,14 +321,17 @@ export default class FacetView extends ContainerView {
         const plotBounds =
             Rectangle.unionAll(layouts.map((layout) => layout.childCoords)) ??
             Rectangle.ZERO;
-        this.#zoomBounds = clipCoords(place(plotBounds), parentClip);
+        this.#zoomBounds = clipCoords(
+            plotBounds.translateBy(coords),
+            parentClip
+        );
         const arrangement = createGridArrangement();
         for (const layout of layouts) {
             const viewportCoords = clipCoords(
-                place(layout.viewportCoords),
+                layout.viewportCoords.translateBy(coords),
                 parentClip
             );
-            const childCoords = place(layout.childCoords);
+            const childCoords = layout.childCoords.translateBy(coords);
             this.#interactionCells.push({
                 ...layout,
                 viewportCoords,
@@ -370,7 +366,12 @@ export default class FacetView extends ContainerView {
             arrangement.queueDecoration(
                 header.titleSpec.zindex,
                 DECORATION_ORDER.title,
-                () => header.arrange(context, place(gridCoords), options)
+                () =>
+                    header.arrange(
+                        context,
+                        gridCoords.translateBy(coords),
+                        options
+                    )
             );
         }
         if (titleFrames.length && layouts.length) {
@@ -381,13 +382,11 @@ export default class FacetView extends ContainerView {
                     () =>
                         title.arrange(
                             context,
-                            place(
-                                getTitleCoords(
-                                    plotBounds,
-                                    frame,
-                                    title.titleSpec
-                                )
-                            ),
+                            getTitleCoords(
+                                plotBounds,
+                                frame,
+                                title.titleSpec
+                            ).translateBy(coords),
                             options
                         )
                 );
