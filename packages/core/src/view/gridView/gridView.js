@@ -6,6 +6,7 @@ import {
     getSizeDefMinPx,
     mapToPixelCoords,
     parseSizeDef,
+    sumSizeDefs,
 } from "../layout/flexLayout.js";
 import Grid from "../layout/grid.js";
 import Padding from "../layout/padding.js";
@@ -971,12 +972,6 @@ export default class GridView extends ContainerView {
      * @return {import("../layout/flexLayout.js").SizeDef}
      */
     #getFlexSize(direction) {
-        let grow = 0;
-        let px = 0;
-        let minPx = 0;
-        let maxPx = 0;
-        let hasMaxPx = true;
-
         const explicitSize =
             direction == "row" ? this.spec.height : this.spec.width;
         const preferredSize =
@@ -989,54 +984,17 @@ export default class GridView extends ContainerView {
                   )
                 : undefined;
         const usePreferredAsViewSlot =
-            preferredSize &&
-            (direction == "column"
-                ? this.#grid.colIndices.length == 1
-                : this.#grid.rowIndices.length == 1);
-
-        const sizes = this.#getSizes(direction);
-
-        for (const [i, size] of sizes.entries()) {
-            if (i > 0) {
-                // Spacing
-                px += this.#spacing;
-                minPx += this.#spacing;
-                maxPx += this.#spacing;
-            }
-
-            // Axis/padding
-            px += size.axisBefore;
-            minPx += size.axisBefore;
-            maxPx += size.axisBefore;
-
-            // View
-            const viewSize = usePreferredAsViewSlot
-                ? combinePreferredAndContentSize(preferredSize, size.view)
-                : size.view;
-            px += viewSize.px ?? 0;
-            grow += viewSize.grow ?? 0;
-            minPx += getSizeDefMinPx(viewSize);
-
-            const viewMaxPx = getSizeDefMaxPx(viewSize);
-            if (viewMaxPx === undefined) {
-                hasMaxPx = false;
-            } else {
-                maxPx += viewMaxPx;
-            }
-
-            // Axis/padding
-            px += size.axisAfter;
-            minPx += size.axisAfter;
-            maxPx += size.axisAfter;
+            preferredSize && this.#getSizes(direction).length === 1;
+        const items = this.#makeFlexItems(direction);
+        if (usePreferredAsViewSlot) {
+            const slot = this.#getViewSlot(0);
+            items[slot] = combinePreferredAndContentSize(
+                preferredSize,
+                items[slot]
+            );
         }
 
-        const measuredSize = {
-            px,
-            grow,
-            minPx: minPx || undefined,
-            maxPx: sizes.length && hasMaxPx ? maxPx : undefined,
-        };
-
+        const measuredSize = sumSizeDefs(items);
         return preferredSize && !usePreferredAsViewSlot
             ? combinePreferredAndContentSize(preferredSize, measuredSize)
             : measuredSize;
