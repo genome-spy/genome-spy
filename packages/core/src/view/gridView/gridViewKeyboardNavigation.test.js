@@ -1,8 +1,15 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, onTestFinished, test, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
+import FacetView from "../facetView.js";
+import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import { createTestViewContext } from "../testUtils.js";
+import Interaction from "../../utils/interaction.js";
+import {
+    createHeadlessEngine,
+    createTestViewContext,
+    renderToLayout,
+} from "../testUtils.js";
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -92,6 +99,81 @@ function createKeyboardEvent(code, options = {}) {
 }
 
 describe("GridView keyboard navigation", () => {
+    test.each(["cell", "gap"])(
+        "anchors facet keyboard zoom to the pointed %s",
+        async (location) => {
+            /** @type {Map<string, (event: KeyboardEvent) => void>} */
+            const listeners = new Map();
+            /** @type {((timestamp: number) => void)[]} */
+            const transitions = [];
+            const context = createTestViewContext(
+                {},
+                {
+                    addKeyboardListener: (type, listener) =>
+                        listeners.set(type, listener),
+                }
+            );
+            vi.spyOn(context.animator, "requestTransition").mockImplementation(
+                (callback) => transitions.push(callback)
+            );
+            const { view: root } = await createHeadlessEngine(
+                {
+                    resolve: { scale: { x: "shared" } },
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { g: "A", x: 2 },
+                                    { g: "B", x: 8 },
+                                ],
+                            },
+                            facet: { field: "g", title: null, header: null },
+                            columns: 2,
+                            spacing: 20,
+                            spec: {
+                                width: 100,
+                                height: 60,
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                        scale: { domain: [0, 10], zoom: true },
+                                    },
+                                },
+                            },
+                        },
+                    ],
+                },
+                { context }
+            );
+            onTestFinished(() => root.disposeSubtree());
+            renderToLayout(root);
+            const facet = /** @type {FacetView} */ (
+                root.getDescendants().find((view) => view instanceof FacetView)
+            );
+            const cell = facet.child.facetCoords.get(["B"]);
+            const point = new Point(
+                location === "cell" ? cell.x + cell.width / 4 : cell.x - 10,
+                cell.y + cell.height / 2
+            );
+            root.propagateInteraction(
+                new Interaction(
+                    point,
+                    /** @type {MouseEvent} */ ({ type: "mousemove" })
+                )
+            );
+            const zoom = vi.spyOn(root.getScaleResolution("x"), "zoom");
+            listeners.get("keydown")(createKeyboardEvent("KeyW").event);
+            transitions.shift()(performance.now() + 16);
+
+            expect(zoom.mock.calls[0][1]).toBeCloseTo(
+                location === "cell" ? 0.25 : 1
+            );
+        }
+    );
+
     test("starts a transition and applies pan when an eligible target exists", () => {
         const harness = createKeyboardHarness();
         const keydown = createKeyboardEvent("KeyD");

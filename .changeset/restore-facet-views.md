@@ -53,6 +53,7 @@ Pan and zoom update shared scales using the pointed cell's plot bounds, also
 inside scrolled facet viewports. Navigation also works in the gaps between cells,
 where wheel zoom prevents page scrolling. Existing viewport drag-scrolling and
 gesture cleanup apply to facet cells.
+Keyboard zoom uses the same cell bounds and gap anchors as pointer navigation.
 
 Removing a facet or disposing its visualization cancels active interval-brush
 gestures and releases their document listeners.

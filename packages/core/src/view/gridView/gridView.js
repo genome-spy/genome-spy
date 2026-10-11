@@ -21,7 +21,6 @@ import {
     propagateInteraction,
     propagateInteractionSurface,
 } from "../interactionRouting.js";
-import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
@@ -50,13 +49,12 @@ import {
     getLegendResolutionOwners,
 } from "./legendCollection.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
-import { getZoomableResolutions } from "./zoomNavigationUtils.js";
-import { moveArrayItem, shallowArrayEquals } from "../../utils/arrayUtils.js";
 import {
-    isFacetSpec,
-    isHConcatSpec,
-    isVConcatSpec,
-} from "../viewSpecGuards.js";
+    getZoomableResolutions,
+    getZoomInteractionTarget,
+} from "./zoomNavigationUtils.js";
+import { moveArrayItem, shallowArrayEquals } from "../../utils/arrayUtils.js";
+import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
 import {
     combineClipOptions,
     createClipOptions,
@@ -1899,23 +1897,6 @@ function zoomResolutions(coords, zoomEvent, zoomableResolutions, animator) {
     }
 
     return zoomable;
-}
-
-/**
- * @param {View} view
- * @param {import("../layout/point.js").default} point
- * @param {Rectangle} [coords]
- */
-function getZoomInteractionTarget(view, point, coords) {
-    if (isFacetSpec(view.spec)) {
-        const facet = /** @type {import("../facetView.js").default} */ (view);
-        const facetCoords = facet.getZoomCoords(point);
-        return facetCoords
-            ? { view: facet.child, coords: facetCoords }
-            : undefined;
-    } else if (view instanceof UnitView || view instanceof LayerView) {
-        return { view, coords };
-    }
 }
 
 /**
