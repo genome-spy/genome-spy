@@ -314,11 +314,9 @@ export default class FacetView extends ContainerView {
             context.getDevicePixelRatio()
         );
         const parentClip = normalizeClipOptions(options);
-        const plotBounds = layouts.length
-            ? layouts
-                  .map((layout) => layout.childCoords)
-                  .reduce((a, b) => a.union(b))
-            : Rectangle.ZERO;
+        const plotBounds =
+            Rectangle.unionAll(layouts.map((layout) => layout.childCoords)) ??
+            Rectangle.ZERO;
         this.#zoomBounds = clipCoords(plotBounds, parentClip);
         const arrangement = createGridArrangement();
         for (const layout of layouts) {

@@ -71,3 +71,4 @@ separate non-positional scales shared across cells.
 Category values provide the cell labels, independently of shared field titles.
 Unchanged facet labels are retained across layout refreshes without restarting
 their dataflow.
+Large facet grids avoid quadratic bounds calculations during layout.

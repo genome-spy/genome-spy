@@ -10,6 +10,26 @@ test("Rectangle creation", () => {
     expect(r.height).toEqual(4);
 });
 
+test("unionAll materializes bounds with linear coordinate reads", () => {
+    let offset = 0;
+    let reads = 0;
+    // Dynamic inputs expose repeated reads and distinguish a snapshot from a live union.
+    const rectangles = Array.from({ length: 1000 }, (_, i) =>
+        Rectangle.create(i * 2, -i, 3, 2).translate(() => {
+            reads++;
+            return offset;
+        }, 0)
+    );
+    const bounds = Rectangle.unionAll(rectangles);
+    expect(bounds.equals(Rectangle.create(0, -999, 2001, 1001))).toBe(true);
+    expect(reads).toBeLessThan(rectangles.length * 10);
+
+    offset = 100;
+    expect(bounds.x).toBe(0);
+    expect(Rectangle.unionAll([rectangles[0]]).x).toBe(100);
+    expect(Rectangle.unionAll([])).toBeUndefined();
+});
+
 test("equals", () => {
     const r = Rectangle.create(1, 2, 3, 4);
     expect(r.equals(r)).toBeTruthy();

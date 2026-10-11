@@ -3,6 +3,7 @@ import { format as numberFormat } from "d3-format";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { mergeConfigScopes } from "../config/mergeConfig.js";
 import Padding from "./layout/padding.js";
+import Rectangle from "./layout/rectangle.js";
 import { FACET_HEADER_SIZE } from "./facetLayout.js";
 import {
     createTitleTextMark,
@@ -182,12 +183,12 @@ export default class FacetHeaderView extends UnitView {
                 : Padding.zero();
         this.updateData(
             groups.map((indices) => {
-                const plots = indices
-                    .map((index) => layouts[index].childCoords)
-                    .reduce((a, b) => a.union(b));
-                const bounds = indices
-                    .map((index) => layouts[index].viewportCoords)
-                    .reduce((a, b) => a.union(b));
+                const plots = Rectangle.unionAll(
+                    indices.map((index) => layouts[index].childCoords)
+                );
+                const bounds = Rectangle.unionAll(
+                    indices.map((index) => layouts[index].viewportCoords)
+                );
                 const frame = getTitleCoords(
                     plots,
                     bounds.expand(gap),

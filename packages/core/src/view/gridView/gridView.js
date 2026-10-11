@@ -563,7 +563,7 @@ export default class GridView extends ContainerView {
                 }
             }
 
-            const content = getUnionCoords(
+            const content = Rectangle.unionAll(
                 placements.map(({ content }) => content)
             );
             const viewports = placements.map(({ viewport }) => viewport);
@@ -573,7 +573,7 @@ export default class GridView extends ContainerView {
                       this.#sharedAxes,
                       channel
                   )
-                : getUnionCoords(viewports);
+                : Rectangle.unionAll(viewports);
             if (!content || !viewport) {
                 return undefined;
             }
@@ -1289,7 +1289,7 @@ export default class GridView extends ContainerView {
         }
 
         const gridOverhang = this.#getGridOverhang();
-        const gridViewCoords = getUnionCoords(
+        const gridViewCoords = Rectangle.unionAll(
             layoutItems.map((item) => item.viewCoords)
         );
 
@@ -1872,23 +1872,6 @@ function getSeparatorDirections(spec) {
     }
 
     return ["horizontal", "vertical"];
-}
-
-/**
- * @param {Rectangle[]} coords
- * @returns {Rectangle | undefined}
- */
-function getUnionCoords(coords) {
-    if (coords.length === 0) {
-        return undefined;
-    }
-
-    const x = Math.min(...coords.map((coord) => coord.x));
-    const y = Math.min(...coords.map((coord) => coord.y));
-    const x2 = Math.max(...coords.map((coord) => coord.x2));
-    const y2 = Math.max(...coords.map((coord) => coord.y2));
-
-    return Rectangle.create(x, y, x2 - x, y2 - y);
 }
 
 /**
