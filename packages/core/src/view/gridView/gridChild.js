@@ -916,32 +916,17 @@ export default class GridChild {
      * @param {GridChild["axes"]} [axes]
      */
     arrangeTitle(context, viewportCoords, options, axes = this.axes) {
-        this.title?.arrange(
-            context,
-            this.#getTitleCoords(viewportCoords, axes),
-            options
-        );
-    }
-
-    /**
-     * Returns the frame used for rendering a view title. Reserved titles are
-     * placed outside guide overhang orthogonally, while the title frame controls
-     * the parallel anchor range.
-     *
-     * @param {Rectangle} viewportCoords
-     * @param {GridChild["axes"]} axes
-     */
-    #getTitleCoords(viewportCoords, axes) {
-        const titleSpec = this.title?.titleSpec;
-        if (!titleSpec) {
-            return viewportCoords;
+        if (this.title) {
+            this.title.arrange(
+                context,
+                getTitleCoords(
+                    viewportCoords,
+                    viewportCoords.expand(getGuideOverhang(axes, this.legends)),
+                    this.title.titleSpec
+                ),
+                options
+            );
         }
-
-        return getTitleCoords(
-            viewportCoords,
-            viewportCoords.expand(getGuideOverhang(axes, this.legends)),
-            titleSpec
-        );
     }
 
     /** @param {GridChild["axes"]} [axes] */
