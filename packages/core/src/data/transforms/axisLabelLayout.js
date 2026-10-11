@@ -250,7 +250,15 @@ export default class AxisLabelLayoutTransform extends Transform {
                 axisLength
         );
         const chromosomeStart = scale(chromosome.continuousStart) * axisLength;
-        const chromosomeEnd = scale(chromosome.continuousEnd) * axisLength;
+        const mapping =
+            "gapMapping" in scale &&
+            /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+                scale
+            ).gapMapping(axisLength);
+        const chromosomeEnd =
+            (mapping
+                ? mapping.position(chromosome.continuousEnd, 0, true)
+                : scale(chromosome.continuousEnd)) * axisLength;
         const chromosomeBounds = getRangedLabelBounds(
             chromosomeStart,
             chromosomeEnd,

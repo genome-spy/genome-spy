@@ -11,12 +11,19 @@ import createScale, {
 } from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
+import {
+    hasGroupingGaps,
+    normalizeGapPositions,
+} from "../genome/indexGapMapping.js";
 
 /**
  * @typedef {{
  *   scale: import("../types/encoder.js").VegaScale,
  *   props: import("../spec/scale.js").Scale,
  *   domain: readonly any[],
+ *   gapDomain: readonly number[] | undefined,
+ *   gapPositions: readonly number[],
+ *   gapWidth: number | null,
  *   configuredRange: any[] | undefined,
  *   range: any[] | undefined,
  *   prepared: (import("../types/encoder.js").VegaScale & {props: import("../spec/scale.js").Scale}) | undefined
@@ -71,6 +78,12 @@ export default class ScaleInstanceManager {
     /** @type {() => import("../genome/genomeStore.js").default | undefined} */
     #getGenomeStore;
 
+    /** @type {() => number} */
+    #getAxisLength;
+
+    /** @type {import("../paramRuntime/types.js").WritableParamRef<readonly number[] | undefined>} */
+    #gapDomain;
+
     #initializingRange = false;
 
     /** @type {ReturnType<typeof createIndexer> | undefined} */
@@ -86,6 +99,7 @@ export default class ScaleInstanceManager {
      * @param {() => void} options.onRangeChange
      * @param {(domain: any[]) => void} options.onDomainChange
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
+     * @param {() => number} [options.getAxisLength]
      */
     constructor({
         getRuntime,
@@ -93,12 +107,14 @@ export default class ScaleInstanceManager {
         onRangeChange,
         onDomainChange,
         getGenomeStore,
+        getAxisLength = () => 0,
     }) {
         this.#getRuntime = getRuntime;
         this.#createExpression = createExpression;
         this.#onRangeChange = onRangeChange;
         this.#onDomainChange = onDomainChange;
         this.#getGenomeStore = getGenomeStore;
+        this.#getAxisLength = getAxisLength;
     }
 
     get scale() {
@@ -157,6 +173,10 @@ export default class ScaleInstanceManager {
         this.#defaultRange =
             typeof scale.range === "function" ? scale.range() : undefined;
         this.#bindGenomeIfNeeded(props);
+        if ("axisLength" in scale)
+            /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                scale
+            ).axisLength(this.#getAxisLength);
         this.#mirrorDomain = scale.domain;
         if (scale.type !== "null")
             this.#domain = initializeDomain(scale.domain());
@@ -164,6 +184,10 @@ export default class ScaleInstanceManager {
         if (!this.#runtime) {
             this.#runtime = new ViewParamRuntime(() => this.#getRuntime());
             this.#rangeCommand = this.#runtime.signal("range command", null);
+            this.#gapDomain = this.#runtime.signal(
+                "gap viewport edges",
+                undefined
+            );
             this.mapping = this.#runtime.operation(
                 "scale mapping",
                 [],
@@ -259,7 +283,9 @@ export default class ScaleInstanceManager {
     configureMapping(props) {
         const scale = this.#scale;
         const dependencies =
-            scale.type === "null" ? [] : [this.#domain, this.#rangeCommand];
+            scale.type === "null"
+                ? []
+                : [this.#domain, this.#rangeCommand, this.#gapDomain];
         /** @param {any} value */
         const bind = (value) => {
             if (!isExprRef(value)) return () => value;
@@ -270,6 +296,13 @@ export default class ScaleInstanceManager {
         const expressions = Array.isArray(props.range)
             ? props.range.map(bind)
             : undefined;
+        const gaps = hasGroupingGaps(props);
+        if (gaps && !["index", "locus"].includes(scale.type))
+            throw new Error(
+                "Grouping gaps require a positional index or locus scale."
+            );
+        const positions = bind(gaps ? props.gapPositions : null);
+        const width = bind(gaps ? (props.gapWidth ?? 6) : 0);
         // Expressions may bootstrap parameters that reference this scale. Once
         // bound, graph cycle checks guard feedback and observers can read mapping.
         this.#initializingRange = false;
@@ -297,6 +330,9 @@ export default class ScaleInstanceManager {
                 scale,
                 props,
                 domain: scale.type === "null" ? [] : this.#domain.get(),
+                gapDomain: this.#gapDomain.get(),
+                gapPositions: this.#resolveGapPositions(positions(null)),
+                gapWidth: width(null),
                 configuredRange,
                 range,
                 prepared,
@@ -321,7 +357,14 @@ export default class ScaleInstanceManager {
     }
 
     /** @param {MappingConfiguration} configuration */
-    #applyMapping({ props, range, prepared }) {
+    #applyMapping({
+        props,
+        range,
+        prepared,
+        gapPositions,
+        gapWidth,
+        gapDomain,
+    }) {
         // Reset can leave a queued update behind while scale recreation fails.
         if (!this.#scale || this.#scale.type === "null") return;
         if (prepared) {
@@ -343,6 +386,33 @@ export default class ScaleInstanceManager {
         ) {
             this.#setRange(this.#defaultRange);
         }
+        if ("gapPositions" in this.#scale) {
+            const scale =
+                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                    this.#scale
+                );
+            const changed =
+                !shallowArrayEquals(scale.gapPositions(), gapPositions) ||
+                scale.gapWidth() !== (gapWidth ?? 0);
+            if (!shallowArrayEquals(scale.gapPositions(), gapPositions))
+                scale.gapPositions(gapPositions);
+            if (scale.gapWidth() !== (gapWidth ?? 0)) scale.gapWidth(gapWidth);
+            scale.gapDomain(gapDomain);
+            if (changed && gapDomain) this.#onDomainChange(scale.domain());
+        }
+    }
+
+    /** @param {number[] | "chromosomes" | null} value */
+    #resolveGapPositions(value) {
+        if (value !== "chromosomes") return normalizeGapPositions(value);
+        if (!isScaleLocus(this.#scale))
+            throw new Error(
+                'gapPositions: "chromosomes" requires a locus scale.'
+            );
+        return this.#scale
+            .genome()
+            .chromosomes.slice(1)
+            .map((chrom) => chrom.continuousStart);
     }
 
     /**
@@ -358,9 +428,15 @@ export default class ScaleInstanceManager {
 
     /** Exact internal-domain mirror; never publishes an event itself.
      * @param {readonly any[]} domain
+     * @param {readonly number[]} [ranks]
      */
-    mirrorDomain(domain) {
-        this.#mirrorDomain(Array.from(domain));
+    mirrorDomain(domain, ranks) {
+        if (ranks)
+            /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                this.#scale
+            ).domainWithGaps(domain, ranks);
+        else this.#mirrorDomain(Array.from(domain));
+        this.#gapDomain?.set(ranks);
     }
 
     /**
@@ -374,10 +450,14 @@ export default class ScaleInstanceManager {
         const {
             assembly: _assembly,
             domainIndexer: _domainIndexer,
+            gapPositions: _gapPositions,
+            gapWidth: _gapWidth,
             ...rest
         } = propsAny;
         void _assembly;
         void _domainIndexer;
+        void _gapPositions;
+        void _gapWidth;
         return rest;
     }
 
@@ -444,6 +524,9 @@ function equalMapping(a, b) {
             a.scale === b.scale &&
             a.props === b.props &&
             shallowArrayEquals(a.domain, b.domain) &&
+            shallowArrayEquals(a.gapDomain ?? [], b.gapDomain ?? []) &&
+            shallowArrayEquals(a.gapPositions, b.gapPositions) &&
+            a.gapWidth === b.gapWidth &&
             equalRange(a.configuredRange, b.configuredRange) &&
             equalRange(a.range, b.range))
     );

@@ -425,7 +425,7 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
     const wheel = new WheelEvent("wheel", { deltaY: -300, cancelable: true });
     dispatcher.dispatch(point, wheel);
     expect(wheel.defaultPrevented).toBe(true);
-    expect(zoom).toHaveBeenCalledExactlyOnceWith(0.5, 0.25, 0);
+    expect(zoom).toHaveBeenCalledExactlyOnceWith(0.5, 0.25, 0, 100);
     expect(resolution.getDomain()).toEqual([1.25, 6.25]);
     dispatcher.dispatch(point, {
         type: "touchgesture",
@@ -435,7 +435,7 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
         yDelta: 0,
         zDelta: 0,
     });
-    expect(zoom).toHaveBeenLastCalledWith(1, 0.25, expect.closeTo(0.1));
+    expect(zoom).toHaveBeenLastCalledWith(1, 0.25, expect.closeTo(0.1), 100);
     expect(resolution.getDomain()).toEqual([
         expect.closeTo(0.75),
         expect.closeTo(5.75),
@@ -446,7 +446,12 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
     document.dispatchEvent(
         mouse("mousemove", new Point(point.x - 10, point.y))
     );
-    expect(zoom).toHaveBeenCalledExactlyOnceWith(1, 0.25, expect.closeTo(-0.1));
+    expect(zoom).toHaveBeenCalledExactlyOnceWith(
+        1,
+        0.25,
+        expect.closeTo(-0.1),
+        100
+    );
     root.disposeSubtree();
     document.dispatchEvent(
         mouse("mousemove", new Point(point.x - 20, point.y))
@@ -498,7 +503,8 @@ test.each(/** @type {const} */ (["row", "column"]))(
         expect(zoom).toHaveBeenCalledExactlyOnceWith(
             1,
             channel === "x" ? 0.25 : 0.75,
-            expect.closeTo(channel === "x" ? 0.1 : -0.1)
+            expect.closeTo(channel === "x" ? 0.1 : -0.1),
+            channel === "x" ? 100 : 60
         );
         document.dispatchEvent(new MouseEvent("mouseup"));
     }
@@ -532,7 +538,12 @@ test("zoom in a partly clipped cell uses its full plot height", async () => {
         pointIn(cell.childCoords, 0.5, 0.25),
         new WheelEvent("wheel", { deltaY: -300 })
     );
-    expect(zoom).toHaveBeenCalledExactlyOnceWith(0.5, 0.75, expect.closeTo(0));
+    expect(zoom).toHaveBeenCalledExactlyOnceWith(
+        0.5,
+        0.75,
+        expect.closeTo(0),
+        60
+    );
 });
 
 test.each([false, true])(

@@ -1,5 +1,6 @@
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
+import { getGapPeer } from "../../marks/markUtils.js";
 
 /**
  * @param {import("../../view/layout/rectangle.js").default} coords
@@ -99,12 +100,17 @@ export function prepareRangeProjection(coords, encoders, axis, firstDatum) {
     const secondaryAdjustment = secondary
         ? getPositionAdjustment(secondary)
         : 0;
-    const constantPrimary = primary.constant
-        ? encodeNumber(primary, firstDatum) + primaryAdjustment
-        : 0;
-    const constantSecondary = secondary?.constant
-        ? encodeNumber(secondary, firstDatum) + secondaryAdjustment
-        : 0;
+    const gapPrimary = createGapProjection(primary, coordinateSpan, secondary);
+    const gapSecondary =
+        secondary && createGapProjection(secondary, coordinateSpan, primary);
+    const constantPrimary =
+        primary.constant && !gapPrimary
+            ? encodeNumber(primary, firstDatum) + primaryAdjustment
+            : 0;
+    const constantSecondary =
+        secondary?.constant && !gapSecondary
+            ? encodeNumber(secondary, firstDatum) + secondaryAdjustment
+            : 0;
     const constantPrimaryOffset = primaryOffset.constant
         ? encodeNumber(primaryOffset, firstDatum)
         : 0;
@@ -117,16 +123,20 @@ export function prepareRangeProjection(coords, encoders, axis, firstDatum) {
         const offset = primaryOffset.constant
             ? constantPrimaryOffset
             : encodeNumber(primaryOffset, datum);
-        const primaryPosition = primary.constant
-            ? constantPrimary
-            : encodeNumber(primary, datum) + primaryAdjustment;
+        const primaryPosition = gapPrimary
+            ? gapPrimary(datum)
+            : primary.constant
+              ? constantPrimary
+              : encodeNumber(primary, datum) + primaryAdjustment;
         const first =
             coordinateOrigin + primaryPosition * coordinateScale + offset;
         let second = first;
         if (secondary) {
-            const secondaryPosition = secondary.constant
-                ? constantSecondary
-                : encodeNumber(secondary, datum) + secondaryAdjustment;
+            const secondaryPosition = gapSecondary
+                ? gapSecondary(datum)
+                : secondary.constant
+                  ? constantSecondary
+                  : encodeNumber(secondary, datum) + secondaryAdjustment;
             const offset2 = secondaryOffset
                 ? secondaryOffset.constant
                     ? constantSecondaryOffset
@@ -165,11 +175,16 @@ function projectRange(
     result
 ) {
     const offset = encodeNumber(primaryOffset, datum);
-    const first = project(coords, encodePosition(primary, datum), offset);
+    const extent = project === projectX ? coords.width : coords.height;
+    const first = project(
+        coords,
+        encodePosition(primary, datum, extent, secondary),
+        offset
+    );
     const second = secondary
         ? project(
               coords,
-              encodePosition(secondary, datum),
+              encodePosition(secondary, datum, extent, primary),
               secondaryOffset ? encodeNumber(secondaryOffset, datum) : offset
           )
         : first;
@@ -193,9 +208,44 @@ export function encodeNumber(encoder, datum) {
  *
  * @param {import("../../types/encoder.js").Encoder} encoder
  * @param {object} datum
+ * @param {number} [extent]
+ * @param {import("../../types/encoder.js").Encoder} [peer]
  */
-export function encodePosition(encoder, datum) {
+export function encodePosition(encoder, datum, extent, peer) {
+    const project = createGapProjection(encoder, extent, peer);
+    if (project) return project(datum);
     return encodeNumber(encoder, datum) + getPositionAdjustment(encoder);
+}
+
+/** @param {import("../../types/encoder.js").Encoder} encoder
+ * @param {number} [extent]
+ * @param {import("../../types/encoder.js").Encoder} [peer]
+ */
+function createGapProjection(encoder, extent, peer) {
+    const scale = encoder.scale;
+    if (!scale || !("gapMapping" in scale)) return;
+    const indexScale =
+        /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (scale);
+    const mapping = indexScale.gapMapping(extent);
+    if (!mapping) return;
+    return (/** @type {object} */ datum) => {
+        const branch = encoder.branches.find((branch) =>
+            branch.predicate(datum)
+        );
+        if (!branch.accessor.scaleChannel)
+            return Number(branch.accessor(datum));
+        const def = branch.accessor.channelDef;
+        const defaultBand = getGapPeer(encoder.channelDef) ? 0 : 0.5;
+        const band = "band" in def ? (def.band ?? defaultBand) : defaultBand;
+        const value = Number(branch.accessor(datum));
+        const peerBranch =
+            getGapPeer(encoder.channelDef) &&
+            peer?.branches.find((branch) => branch.predicate(datum));
+        const before =
+            !!peerBranch?.accessor.scaleChannel &&
+            value > Number(peerBranch.accessor(datum));
+        return mapping.position(value, band, before);
+    };
 }
 
 /** @param {import("../../types/encoder.js").Encoder} encoder */

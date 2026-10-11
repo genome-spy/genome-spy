@@ -191,7 +191,18 @@ function makeSelectionRectFilterExpression(selectionExpression, channels) {
         selectionExpression + ".type === 'interval'",
         ...channels.map(
             (channel) =>
-                selectionExpression + ".intervals." + channel + " != null"
+                selectionExpression +
+                ".intervals." +
+                channel +
+                " != null && " +
+                selectionExpression +
+                ".intervals." +
+                channel +
+                "[0] < " +
+                selectionExpression +
+                ".intervals." +
+                channel +
+                "[1]"
         ),
     ].join(" && ");
 }

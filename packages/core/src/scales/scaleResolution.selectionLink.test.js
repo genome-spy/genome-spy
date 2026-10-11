@@ -144,6 +144,25 @@ function createSharedSelectionScopeSpec({ ownerParam, childParam }) {
 }
 
 describe("Scale resolution selection-linked domains", () => {
+    test("collapsed brushes preserve the linked display until explicit navigation", async () => {
+        const { view, resolution } = await createLinkedHarness({
+            param: "brush",
+            encoding: "x",
+        });
+        view.paramRuntime.setValue("brush", createIntervalValue([2, 8]));
+        view.paramRuntime.flushNow();
+        expect(resolution.getScale().domain()).toEqual([2, 8]);
+        view.paramRuntime.setValue("brush", createIntervalValue([5, 5]));
+        view.paramRuntime.flushNow();
+        expect(resolution.getScale().domain()).toEqual([2, 8]);
+        expect(view.paramRuntime.findValue("brush").intervals.x).toEqual([
+            5, 5,
+        ]);
+        await resolution.zoomTo([3, 7]);
+        expect(view.paramRuntime.findValue("brush").intervals.x).toEqual([
+            3, 7,
+        ]);
+    });
     test("selection-linked domains fail fast when the linked positional scale is shared", async () => {
         await expect(
             initView(

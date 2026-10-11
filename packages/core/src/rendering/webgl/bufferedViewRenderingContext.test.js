@@ -18,6 +18,7 @@ describe("BufferedViewRenderingContext", () => {
                 markPredicate,
                 markAdapter: /** @type {any} */ ({
                     prepareMarks: vi.fn(),
+                    hasStructuralChanges: vi.fn(() => false),
                     synchronize: vi.fn(),
                 }),
             }
@@ -94,6 +95,7 @@ describe("BufferedViewRenderingContext", () => {
         const entry = { graphics, state: "ready" };
         const markAdapter = {
             prepareMarks: vi.fn(),
+            hasStructuralChanges: vi.fn(() => false),
             getMarkEntry: () => entry,
             isEntryActive: () => true,
             isEntryDrawable: () => true,
@@ -101,6 +103,7 @@ describe("BufferedViewRenderingContext", () => {
         };
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({
+                encoders: {},
                 properties: { clip: true },
                 unitView: { getEffectiveOpacity },
                 isPickingParticipant,
@@ -180,6 +183,7 @@ describe("BufferedViewRenderingContext", () => {
         const entry = { graphics, state: "ready" };
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({
+                encoders: {},
                 properties: { clip: true },
                 unitView: { getEffectiveOpacity: () => 1 },
                 isPickingParticipant: () => true,
@@ -188,6 +192,7 @@ describe("BufferedViewRenderingContext", () => {
         );
         const markAdapter = {
             prepareMarks: vi.fn(),
+            hasStructuralChanges: vi.fn(() => false),
             getMarkEntry: () => entry,
             isEntryActive: () => true,
             isEntryDrawable: () => true,

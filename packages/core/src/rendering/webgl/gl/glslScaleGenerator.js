@@ -17,6 +17,9 @@ import { asArray, peek } from "../../../utils/arrayUtils.js";
 import { InternMap } from "internmap";
 import { isExprRef } from "../../../paramRuntime/paramUtils.js";
 import scaleNull from "../../../utils/scaleNull.js";
+import { hasGroupingGaps } from "../../../genome/indexGapMapping.js";
+import { getGapPeer } from "../../../marks/markUtils.js";
+import { indexGapGlsl } from "./indexGaps.js";
 import { cssColorToArray } from "./colorUtils.js";
 import {
     isIndexLikeDomainType,
@@ -356,18 +359,30 @@ export function generateScaleGlsl(channel, scale, channelDef) {
             break;
 
         case "index":
-        case "locus":
+        case "locus": {
+            const gaps = hasGroupingGaps(scale.props);
+            if (gaps && channel === primary) glsl.push(indexGapGlsl(primary));
             functionCall = makeScaleCall(
-                "scaleBandHp",
+                gaps ? "scaleGaps_" + primary : "scaleBandHp",
                 "domain",
                 rangeUniformName,
                 scale.paddingInner(),
                 scale.paddingOuter(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
-                channelDef.band ?? 0.5
+                channelDef.band ?? (gaps && getGapPeer(channelDef) ? 0 : 0.5),
+                ...(gaps
+                    ? [
+                          getGapPeer(channelDef)
+                              ? attributeType === "uvec2"
+                                  ? `(value.x > gapPeer_${channel}(value).x || (value.x == gapPeer_${channel}(value).x && value.y > gapPeer_${channel}(value).y))`
+                                  : `value > gapPeer_${channel}(value)`
+                              : false,
+                      ]
+                    : [])
             );
             break;
+        }
         case "point":
         case "band":
             functionCall = makeScaleCall(
@@ -584,6 +599,41 @@ ${ifElseGlsl(conditions, statements)}
 }
 
 #define ${channel}_DEFINED`;
+}
+
+/**
+ * Select the peer's raw scaled value, using the current endpoint for viewport
+ * branches. This keeps equal intervals empty and handles reversed intervals.
+ * @param {Channel} channel
+ * @param {Channel} peer
+ * @param {import("../../../types/encoder.js").Encoder} peerEncoder
+ * @param {(leaf: Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>) => string} emitLeaf
+ */
+export function generateGapPeerGlsl(channel, peer, peerEncoder, emitLeaf) {
+    const { attributeType } = getAttributeAndArrayTypes(
+        peerEncoder.scale,
+        peer
+    );
+    const header = `${attributeType} gapPeer_${channel}(${attributeType} fallback)`;
+    const conditions = [];
+    const statements = [];
+    for (const [
+        index,
+        { accessor, predicate },
+    ] of peerEncoder.branches.entries()) {
+        conditions.push(
+            predicate.selection
+                ? emitSelectionPredicateGlsl(predicate.selection, emitLeaf)
+                : null
+        );
+        statements.push(
+            `return ${accessor.scaleChannel ? makeAccessorFunctionName(peer, index) + "()" : "fallback"};`
+        );
+    }
+    return {
+        declaration: header + ";",
+        code: `${header} {\n${ifElseGlsl(conditions, statements)}\n}`,
+    };
 }
 
 /**

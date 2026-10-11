@@ -275,6 +275,12 @@ export default function createDomainInputs({
             }
 
             const configuredDomain = configured.get();
+            const linkedInterval = link
+                ? selection.get().value?.intervals[link.encoding]
+                : undefined;
+            const collapsed =
+                linkedInterval != null &&
+                linkedInterval[0] === linkedInterval[1];
 
             // Authored domains need rows only for linked fallback or loaded extent;
             // genomic fallback comes from the assembly rather than loaded rows.
@@ -299,10 +305,11 @@ export default function createDomainInputs({
             }
 
             const candidate =
-                reason === "viewport" &&
-                !isViewportDataReady(dataMembers, (member) =>
-                    constraints.get(member)
-                )
+                collapsed ||
+                (reason === "viewport" &&
+                    !isViewportDataReady(dataMembers, (member) =>
+                        constraints.get(member)
+                    ))
                     ? undefined
                     : (normalized.domain ?? undefined);
 

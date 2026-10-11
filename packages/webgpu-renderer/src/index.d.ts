@@ -165,6 +165,12 @@ export type ScaleSlotHandle = {
     setRange(
         range: Array<number | number[] | string> | ColorInterpolatorFn
     ): void;
+    /** Update cuts on an index scale created with gapEnabled. */
+    setGapPositions(positions: readonly number[] | null): void;
+    /** Update gap width in logical pixels. */
+    setGapWidth(width: number | null): void;
+    /** Fractional cut ranks at viewport edges; omit for ordinary domain fitting. */
+    setGapDomain(ranks: readonly number[] | undefined): void;
 };
 
 export type ValueSlotHandle = {
@@ -310,6 +316,21 @@ export type ChannelScale = {
 
     /** Band position within the step (0..1). */
     band?: number;
+
+    /** Allocate grouping-gap resources even when initial cuts or width are zero. */
+    gapEnabled?: boolean;
+    /** Sorted integer boundaries before which to insert grouping gaps. */
+    gapPositions?: readonly number[] | null;
+    /** Gap width in logical pixels. Default: 6. Zero/null disables visible gaps. */
+    gapWidth?: number | null;
+    /** Fractional cut ranks at domain edges during navigation. */
+    gapDomain?: readonly number[];
+    /** Placement axis, inferred from x/y channel names when omitted. */
+    gapAxis?: "x" | "y";
+    /** Select the before side at an exclusive interval end. */
+    gapBefore?: boolean;
+    /** Raw endpoint channel used to orient an explicit half-open interval. */
+    gapPeer?: string;
 };
 
 export type DefinedChannelScale = ChannelScale & {
@@ -1249,6 +1270,13 @@ export type MarkProgram<
     replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;
     debugResources(label?: string): void;
+    /** Validate fixed grouping gaps against the actual draw placements. */
+    validateGroupingGaps(
+        rectangles?: Float32Array,
+        index?: number,
+        firstInstance?: number,
+        instanceCount?: number
+    ): void;
     prepareDraw(state: RenderPassState, options: ProgramDrawOptions): void;
     preparePick(state: RenderPassState, options: ProgramDrawOptions): void;
     draw(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;

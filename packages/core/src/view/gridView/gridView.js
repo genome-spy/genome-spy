@@ -1818,7 +1818,8 @@ function zoomResolutions(coords, zoomEvent, zoomableResolutions, animator) {
             const resolutionChanged = resolution.zoom(
                 2 ** zoomEvent.zDelta,
                 channel == "y" ? 1 - p[channel] : p[channel],
-                channel == "x" ? delta.x : -delta.y
+                channel == "x" ? delta.x : -delta.y,
+                channel == "x" ? coords.width : coords.height
             );
             changed = resolutionChanged || changed;
         }

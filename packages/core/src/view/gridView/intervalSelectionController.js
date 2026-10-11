@@ -1,6 +1,7 @@
 import { isContinuous } from "vega-scale";
 import { clampRange } from "vega-util";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
+import { invertScalePosition } from "../../scales/scalePosition.js";
 import {
     createEventPredicate,
     getEventFilterLocation,
@@ -17,7 +18,6 @@ import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import {
     createIntervalSelection,
     isActiveIntervalSelection,
-    selectionContainsPoint,
 } from "../../selection/selection.js";
 import {
     asEventConfig,
@@ -360,9 +360,14 @@ export class IntervalSelectionController {
 
             for (const channel of channels) {
                 const scale = scaleResolutions[channel].getScale();
-                // @ts-ignore
-                inverted[channel] = scale.invert(
-                    channel === "x" ? normalizedPoint.x : normalizedPoint.y
+                const position =
+                    channel === "x" ? normalizedPoint.x : normalizedPoint.y;
+                inverted[channel] = invertScalePosition(
+                    scale,
+                    position,
+                    channel === "x"
+                        ? projectionCoords.width
+                        : projectionCoords.height
                 );
             }
 
@@ -383,9 +388,25 @@ export class IntervalSelectionController {
                     /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ channel
                 ) => {
                     const value = intervals[channel]?.[i];
-                    return value == null
-                        ? i
-                        : scaleResolutions[channel].getScale()(value);
+                    if (value == null) return i;
+                    const scale = scaleResolutions[channel].getScale();
+                    if ("gapMapping" in scale) {
+                        const mapping =
+                            /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+                                scale
+                            ).gapMapping(
+                                channel === "x"
+                                    ? projectionCoords.width
+                                    : projectionCoords.height
+                            );
+                        if (mapping)
+                            return mapping.position(
+                                value,
+                                0,
+                                i === 1 && value > intervals[channel][0]
+                            );
+                    }
+                    return scale(value);
                 };
                 return projectionCoords.denormalizePoint(
                     getCoord("x"),
@@ -397,7 +418,28 @@ export class IntervalSelectionController {
             const a = mapCorner(0);
             const b = mapCorner(1);
 
-            return Rectangle.create(a.x, a.y, b.x - a.x, b.y - a.y);
+            return Rectangle.create(
+                Math.min(a.x, b.x),
+                Math.min(a.y, b.y),
+                Math.abs(b.x - a.x),
+                Math.abs(b.y - a.y)
+            );
+        };
+
+        const selectionRectAt = (/** @type {Point} */ point) => {
+            const selection = selectionExpr();
+            if (!isActiveIntervalSelection(selection)) return null;
+            if (
+                Object.values(selection.intervals).some(
+                    (interval) => interval && interval[0] === interval[1]
+                )
+            )
+                return null;
+            const rectangle = selectionToRect(
+                selection,
+                this.host.getProjectionCoords(channels[0], point)
+            );
+            return rectangle.containsPoint(point.x, point.y) ? rectangle : null;
         };
 
         this.#addViewInteractionListener("mousedown", (event) => {
@@ -417,11 +459,7 @@ export class IntervalSelectionController {
             pendingClearStart = undefined;
             // Keep translation geometry in screen coordinates because scales
             // may be nonlinear.
-            const translatedRectangle =
-                isActiveIntervalSelection(selection) &&
-                selectionContainsPoint(selection, invertPoint(event.point))
-                    ? selectionToRect(selection, projectionCoords)
-                    : null;
+            const translatedRectangle = selectionRectAt(event.point);
 
             if (translatedRectangle) {
                 // Started dragging an existing selection
@@ -560,14 +598,10 @@ export class IntervalSelectionController {
             true
         );
 
-        const isPointInsideSelection = (/** @type {Point} */ point) =>
-            selectionContainsPoint(selectionExpr(), invertPoint(point));
-
         this.#containsPoint = (point) =>
             isInsideHost(point) &&
             ownsInteraction(point) &&
-            isActiveIntervalSelection(selectionExpr()) &&
-            isPointInsideSelection(point);
+            !!selectionRectAt(point);
 
         if (clearEventConfig) {
             this.#addViewInteractionListener(
@@ -577,7 +611,7 @@ export class IntervalSelectionController {
                         clearEventPredicate(event.proxiedMouseEvent) &&
                         isInsideHost(event.point) &&
                         ownsInteraction(event.point) &&
-                        isPointInsideSelection(event.point)
+                        selectionRectAt(event.point)
                     ) {
                         clearSelection();
                         event.stopPropagation();
@@ -603,7 +637,7 @@ export class IntervalSelectionController {
             if (Math.abs(wheelEvent.deltaX) >= Math.abs(wheelEvent.deltaY)) {
                 return;
             }
-            if (!isPointInsideSelection(event.point)) {
+            if (!selectionRectAt(event.point)) {
                 return;
             }
 

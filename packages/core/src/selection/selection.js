@@ -224,7 +224,8 @@ export function makeSelectionTestExpression(params, selection) {
                 // TODO: Implement tests
                 const a = `${paramName}.intervals.${channel}[0] <= ${access(f2)}`;
                 const b = `${access(f)} <= ${paramName}.intervals.${channel}[1]`;
-                return `(${paramName}.intervals.${channel} ? (${a} && ${b}) : ${empty})`;
+                const nonzero = `${paramName}.intervals.${channel}[0] < ${paramName}.intervals.${channel}[1]`;
+                return `(${paramName}.intervals.${channel} ? (${nonzero} && ${a} && ${b}) : ${empty})`;
             })
             .join(" && ");
         return conditions;
@@ -411,6 +412,7 @@ export function selectionContainsPoint(selection, point) {
         ([channel, interval]) =>
             (channel == "x" || channel == "y") &&
             interval &&
+            interval[0] < interval[1] &&
             interval[0] <= point[channel] &&
             interval[1] >= point[channel]
     );

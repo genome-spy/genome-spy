@@ -1,5 +1,10 @@
 import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
+import {
+    createIndexGapMapping,
+    hasGroupingGaps,
+    normalizeGapPositions,
+} from "./indexGapMapping.js";
 
 const minimumDomainSpan = 1;
 
@@ -18,21 +23,63 @@ export default function scaleIndex() {
     let paddingOuter = 0;
     let align = 0.5;
 
+    /** @type {number[]} */
+    let gapPositions = [];
+
+    let gapWidth = 0;
+
+    /** @type {() => number} */
+    let axisLength = () => 1;
+
+    /** @type {readonly number[] | undefined} */
+    let gapDomain;
+
+    /** @type {Map<number, ReturnType<typeof createIndexGapMapping>>} */
+    const gapMappings = new Map();
+
+    /** @param {number} [extent] */
+    const getGapMapping = (extent = axisLength()) => {
+        const enabled = scale.props
+            ? hasGroupingGaps(scale.props)
+            : gapWidth > 0 && gapPositions.length > 0;
+        if (!enabled || extent <= 0) return;
+        let mapping = gapMappings.get(extent);
+        if (!mapping) {
+            mapping = createIndexGapMapping({
+                domain,
+                range,
+                cuts: gapPositions,
+                width: gapWidth / extent,
+                ranks: gapDomain,
+                paddingInner,
+                paddingOuter,
+                align,
+            });
+            gapMappings.set(extent, mapping);
+        }
+        return mapping;
+    };
+
     /** The offset added when formatting tick labels. */
     let numberingOffset = 0;
 
     // Keep this calculation in sync with scaleBandHp in scales.glsl so that
     // CPU-side scaling and inversion match WebGL mark placement.
     const getStep = () =>
+        getGapMapping()?.step ??
         rangeSpan / Math.max(1, domainSpan - paddingInner + paddingOuter * 2);
 
     const getStart = (step = getStep()) => {
+        const mapping = getGapMapping();
+        if (mapping) return mapping.start;
         return (
             range[0] + (rangeSpan - step * (domainSpan - paddingInner)) * align
         );
     };
 
     const scaleFunction = (/** @type {number} */ x) => {
+        const mapping = getGapMapping();
+        if (mapping) return mapping.position(x);
         const step = getStep();
         return getStart(step) + (Math.floor(x) - domain[0]) * step;
     };
@@ -46,11 +93,65 @@ export default function scaleIndex() {
      */
     const scale = /** @type {any} */ (scaleFunction);
 
-    scale.invert = (y) => (y - getStart()) / getStep() + domain[0];
+    scale.invert = (y) =>
+        getGapMapping()?.invertPoint(y).value ??
+        (y - getStart()) / getStep() + domain[0];
+
+    scale.gapMapping = getGapMapping;
+    scale.domainWithGaps = (values, ranks) => {
+        domain = Array.from(values);
+        domainSpan = domain[1] - domain[0];
+        gapDomain = ranks;
+        gapMappings.clear();
+        return scale;
+    };
+    scale.position = (x, band = 0, before = false, extent = axisLength()) => {
+        const mapping = getGapMapping(extent);
+        return mapping
+            ? mapping.position(x, band, before)
+            : scale(x) + getStep() * (1 - paddingInner) * band;
+    };
+
+    // @ts-expect-error Getter/setter overloads.
+    scale.gapPositions = function (_) {
+        if (!arguments.length) return gapPositions;
+        gapPositions = normalizeGapPositions(_);
+        gapMappings.clear();
+        return scale;
+    };
+
+    // @ts-expect-error Getter/setter overloads.
+    scale.gapWidth = function (_) {
+        if (!arguments.length) return gapWidth;
+        if (_ != null && (!Number.isFinite(_) || _ < 0)) {
+            throw new Error("Gap width must be a finite nonnegative number.");
+        }
+        gapWidth = _ ?? 0;
+        gapMappings.clear();
+        return scale;
+    };
+
+    // @ts-expect-error Getter/setter overloads.
+    scale.axisLength = function (_) {
+        if (!arguments.length) return axisLength();
+        axisLength = typeof _ === "function" ? _ : () => _;
+        gapMappings.clear();
+        return scale;
+    };
+
+    // @ts-expect-error Getter/setter overloads.
+    scale.gapDomain = function (_) {
+        if (!arguments.length) return gapDomain;
+        gapDomain = _;
+        gapMappings.clear();
+        return scale;
+    };
 
     // @ts-expect-error
     scale.domain = function (_) {
         if (arguments.length) {
+            gapMappings.clear();
+            gapDomain = undefined;
             domain = extent(_);
             domainSpan = domain[1] - domain[0];
             const uninitializedDomain = domain[0] === 0 && domain[0] === 0;
@@ -71,6 +172,7 @@ export default function scaleIndex() {
     // @ts-expect-error
     scale.range = function (_) {
         if (arguments.length) {
+            gapMappings.clear();
             range = [..._];
             rangeSpan = range[1] - range[0];
             return scale;
@@ -92,6 +194,7 @@ export default function scaleIndex() {
     // @ts-expect-error
     scale.padding = function (_) {
         if (arguments.length) {
+            gapMappings.clear();
             paddingOuter = _;
             paddingInner = Math.min(1, _);
             return scale;
@@ -103,6 +206,7 @@ export default function scaleIndex() {
     // @ts-expect-error
     scale.paddingInner = function (_) {
         if (arguments.length) {
+            gapMappings.clear();
             paddingInner = Math.min(1, _);
             return scale;
         } else {
@@ -113,6 +217,7 @@ export default function scaleIndex() {
     // @ts-expect-error
     scale.paddingOuter = function (_) {
         if (arguments.length) {
+            gapMappings.clear();
             paddingOuter = _;
             return scale;
         } else {
@@ -123,6 +228,7 @@ export default function scaleIndex() {
     // @ts-expect-error
     scale.align = function (_) {
         if (arguments.length) {
+            gapMappings.clear();
             align = Math.max(0, Math.min(1, _));
             return scale;
         } else {
@@ -166,14 +272,22 @@ export default function scaleIndex() {
             numberFormat(x + numberingOffset);
     };
 
-    scale.copy = () =>
-        scaleIndex()
+    scale.copy = () => {
+        const copy = scaleIndex()
             .domain(domain)
             .range(range)
             .paddingInner(paddingInner)
             .paddingOuter(paddingOuter)
             .align(align)
-            .numberingOffset(numberingOffset);
+            .numberingOffset(numberingOffset)
+            .gapPositions(gapPositions)
+            .gapWidth(gapWidth)
+            .axisLength(axisLength)
+            .gapDomain(gapDomain);
+        if (scale.props) Object.assign(copy, { props: scale.props });
+        if (gapDomain) copy.domainWithGaps(domain, gapDomain);
+        return copy;
+    };
 
     return scale;
 }

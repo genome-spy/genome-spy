@@ -1,7 +1,7 @@
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  *
  * @typedef {object} BindGroupBuildParams
  * @prop {GPUDevice} device
@@ -54,6 +54,13 @@ export function buildBindGroup({
             continue;
         }
         const scaleResources = getScaleResources(entry.name);
+        if (entry.role === "gapCuts") {
+            entries.push({
+                binding: bindingIndex++,
+                resource: { buffer: scaleResources.gapCuts.buffer },
+            });
+            continue;
+        }
         if (entry.role === "ordinalRange") {
             const buffer = scaleResources?.ordinalRange?.buffer;
             if (!buffer) {

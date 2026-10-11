@@ -23,6 +23,11 @@ import {
     RANGE_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
+import {
+    hasIndexGaps,
+    normalizeCuts,
+    cutRank,
+} from "../../scales/indexGaps.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -33,6 +38,7 @@ import { gpuLabel } from "../../../utils/gpuLabel.js";
  * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
  * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } } | undefined} ordinalRange
  * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } } | undefined} domainMap
+ * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } }} [gapCuts]
  * @property {{ texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat } | undefined} rangeTexture
  */
 
@@ -70,6 +76,8 @@ export class ScaleResourceManager {
 
         /** @type {Map<string, { updateDomain: (domain: unknown) => boolean, updateRange: (range: unknown) => boolean }>} */
         this._scaleUpdaters = new Map();
+        /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, range: readonly number[], axis: "x" | "y", ranks: readonly number[] | undefined}>} */
+        this._gapScales = new Map();
     }
 
     /**
@@ -120,6 +128,12 @@ export class ScaleResourceManager {
      * @returns {void}
      */
     addScaleUniforms(layout, name, channel) {
+        if (hasIndexGaps(channel.scale)) {
+            layout.push(
+                { name: "gapTable_" + name, type: "u32", components: 2 },
+                { name: "gapGeometry_" + name, type: "f32", components: 4 }
+            );
+        }
         const analysis = this._getAnalysis(name);
         const requirements = getScaleResourceRequirements(
             analysis.scaleDef,
@@ -182,6 +196,23 @@ export class ScaleResourceManager {
      * @returns {void}
      */
     initializeScale(name, channel, scale) {
+        if (hasIndexGaps(scale)) {
+            this._gapScales.set(name, {
+                cuts: normalizeCuts(scale.gapPositions),
+                domain: this._unpackDomain(scale.domain ?? [0, 1]),
+                width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
+                ranks: scale.gapDomain,
+                range: /** @type {number[]} */ (
+                    scale.range ?? this._getDefaultScaleRange(name)
+                ),
+                axis: scale.gapAxis ?? (name.startsWith("y") ? "y" : "x"),
+            });
+            this._updateGapCuts();
+            this.updateGapWidth(
+                name,
+                scale.gapWidth === undefined ? 6 : scale.gapWidth
+            );
+        }
         const analysis = this._getAnalysis(name);
         const requirements = getScaleResourceRequirements(
             analysis.scaleDef,
@@ -552,7 +583,151 @@ export class ScaleResourceManager {
                   }
                 : () => false;
 
-        return { updateDomain, updateRange };
+        return {
+            updateDomain: (domain) => {
+                const result = updateDomain(domain);
+                const gaps = this._gapScales.get(name);
+                if (gaps) {
+                    gaps.domain = this._unpackDomain(
+                        /** @type {number[]} */ (domain)
+                    );
+                    gaps.ranks = undefined;
+                    this._updateGapGeometry(name);
+                }
+                return result;
+            },
+            updateRange: (range) => {
+                const result = updateRange(range);
+                const gaps = this._gapScales.get(name);
+                if (gaps)
+                    gaps.range = /** @type {number[]} */ (
+                        range ?? defaultRange
+                    );
+                return result;
+            },
+        };
+    }
+
+    /** Reject overfull layouts consistently with CPU scale mapping.
+     * @param {number} widthFactor
+     * @param {number} heightFactor
+     */
+    validateGapCapacity(widthFactor, heightFactor) {
+        for (const {
+            cuts,
+            width,
+            domain,
+            range,
+            ranks,
+            axis,
+        } of this._gapScales.values()) {
+            const factor = axis === "x" ? widthFactor : heightFactor;
+            const available = Math.abs(range[1] - range[0]) * factor;
+            const count =
+                (ranks?.[1] ?? cutRank(cuts, domain[1], true)) -
+                (ranks?.[0] ?? cutRank(cuts, domain[0]));
+            if (factor > 0 && available > 0 && count * width >= available) {
+                throw new Error(
+                    "Grouping gaps exhaust the available axis extent."
+                );
+            }
+        }
+    }
+
+    /** @param {readonly number[]} domain */
+    _unpackDomain(domain) {
+        const start = domain.length === 3 ? domain[0] + domain[1] : domain[0];
+        return [start, domain.length === 3 ? start + domain[2] : domain[1]];
+    }
+
+    /** @param {string} name */
+    _getGaps(name) {
+        const state = this._gapScales.get(name);
+        if (!state)
+            throw new Error(
+                `Scale "${name}" was created without grouping gaps.`
+            );
+        return state;
+    }
+
+    /** @param {string} name @param {readonly number[] | null} values */
+    updateGapPositions(name, values) {
+        const gaps = this._getGaps(name);
+        const cuts = normalizeCuts(values);
+        if (
+            cuts.length === gaps.cuts.length &&
+            cuts.every((v, i) => v === gaps.cuts[i])
+        )
+            return false;
+        gaps.cuts = cuts;
+        gaps.ranks = undefined;
+        const rebind = this._updateGapCuts();
+        this._updateGapGeometry(name);
+        return rebind;
+    }
+
+    /** @param {string} name @param {number | null} width */
+    updateGapWidth(name, width) {
+        if (width != null && (!Number.isFinite(width) || width < 0))
+            throw new Error("Gap width must be finite and nonnegative.");
+        this._getGaps(name).width = width ?? 0;
+        this._updateGapGeometry(name);
+    }
+
+    /** @param {string} name @param {readonly number[] | undefined} ranks */
+    updateGapDomain(name, ranks) {
+        this._getGaps(name).ranks = ranks;
+        this._updateGapGeometry(name);
+    }
+
+    /** @param {string} name */
+    _updateGapGeometry(name) {
+        const { cuts, domain, width, ranks } = this._getGaps(name);
+        this._setUniformValue("gapGeometry_" + name, [
+            width,
+            ranks?.[0] ?? cutRank(cuts, domain[0]),
+            ranks?.[1] ?? cutRank(cuts, domain[1], true),
+            ranks ? 1 : 0,
+        ]);
+    }
+
+    _updateGapCuts() {
+        /** @type {number[]} */
+        const packed = [];
+        /** @type {{cuts: readonly number[], offset: number}[]} */
+        const tables = [];
+        for (const [name, { cuts }] of this._gapScales) {
+            const previous = tables.find(
+                (table) =>
+                    table.cuts.length === cuts.length &&
+                    cuts.every((v, i) => table.cuts[i] === v)
+            );
+            const offset = previous?.offset ?? packed.length / 2;
+            if (!previous) {
+                for (const cut of cuts)
+                    packed.push(Math.floor(cut / 4096), cut % 4096);
+                tables.push({ cuts, offset });
+            }
+            this._setUniformValue("gapTable_" + name, [offset, cuts.length]);
+        }
+        const resources = this._ensureChannelResources("__gapCuts");
+        const data = new Uint32Array(packed.length ? packed : [0, 0]);
+        const previous = resources.gapCuts;
+        const rebind = !previous || previous.size.byteLength < data.byteLength;
+        const buffer = rebind
+            ? this._device.createBuffer({
+                  label: gpuLabel(this._label, "index gap cuts"),
+                  size: data.byteLength,
+                  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+              })
+            : previous.buffer;
+        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
+        if (rebind) previous?.buffer.destroy();
+        resources.gapCuts = {
+            buffer,
+            size: { length: data.length / 2, byteLength: buffer.size },
+        };
+        return rebind;
     }
 
     /**
@@ -785,9 +960,11 @@ export class ScaleResourceManager {
         for (const resources of this._channelResources.values()) {
             resources.ordinalRange?.buffer.destroy();
             resources.domainMap?.buffer.destroy();
+            resources.gapCuts?.buffer.destroy();
             resources.rangeTexture?.texture.destroy();
         }
         this._channelResources.clear();
         this._scaleUpdaters.clear();
+        this._gapScales.clear();
     }
 }

@@ -190,3 +190,18 @@ than embedding either runtime.
   processing. Own echoes preserve animation; nested external writes and equal
   external clears remain authoritative. Own echoes cannot subsume data changes.
   Cancellation invalidates retained frame callbacks and completion promises.
+
+## Grouping-gap mapping
+
+Index/locus scales keep cut arrays and CSS gap widths in the resolution-owned
+mapping operation. Navigation publishes the numeric domain together with two
+optional fractional cut ranks through `DomainRuntime`; these ranks preserve
+partially visible gaps at viewport edges. They are camera metadata, never data
+coordinates or stored pixel offsets. Explicit domain/configuration changes
+refit the mapping. Animated navigation interpolates the data slope and origin
+before inverting viewport edges, so cut crossings stay continuous.
+
+Forward/inverse mappings take the actual occurrence extent when views share a
+scale at different sizes. The scale's axis-length provider supplies the
+canonical extent to scale expressions and programmatic navigation. Pointer
+zoom, brushes, coordinate readouts, and immediate rendering pass local extents.

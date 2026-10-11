@@ -8,6 +8,7 @@ import runPathTextScene from "../examples/pathTextScene.js";
 import runTextEffectsScene from "../examples/textEffectsScene.js";
 import runThresholdScene from "../examples/thresholdScene.js";
 import runPiecewiseScene from "../examples/piecewiseScene.js";
+import runIndexGapScene from "../examples/indexGapScene.js";
 import runIndexScene from "../examples/indexScene.js";
 import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
@@ -306,5 +307,15 @@ export const RenderScope = withSource(
             opacity: { control: { type: "range", min: 0, max: 1, step: 0.01 } },
         },
         render: (args) => renderScene(runGroupScene, args),
+    }
+);
+
+export const IndexGroupingGaps = withSource(
+    "runIndexGapScene",
+    { gapWidth: 10 },
+    {
+        args: { gapWidth: 10 },
+        argTypes: { gapWidth: { control: { type: "range", min: 0, max: 30 } } },
+        render: (args) => renderScene(runIndexGapScene, args),
     }
 );

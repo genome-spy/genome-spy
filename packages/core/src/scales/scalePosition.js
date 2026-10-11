@@ -23,3 +23,22 @@ export function getScalePositionAdjustment(scale, band = 0.5) {
         return 0;
     }
 }
+
+/** Invert using the actual occurrence size when a scale is shared by placements.
+ * @param {import("../types/encoder.js").VegaScale} scale
+ * @param {number} value
+ * @param {number} extent
+ */
+export function invertScalePosition(scale, value, extent) {
+    if ("gapMapping" in scale) {
+        const indexScale =
+            /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (scale);
+        return (
+            indexScale.gapMapping(extent)?.invertPoint(value).value ??
+            indexScale.invert(value)
+        );
+    }
+    return /** @type {{invert: (value: number) => number}} */ (scale).invert(
+        value
+    );
+}

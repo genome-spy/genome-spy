@@ -6,6 +6,7 @@ import HASH_TABLE_WGSL, {
 import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
+import { hasIndexGaps, INDEX_GAPS_WGSL } from "../scales/indexGaps.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_MAP_PREFIX,
@@ -72,7 +73,7 @@ import {
 /**
  * Resource list used for debug output and validation.
  *
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  */
 
 /**
@@ -179,6 +180,19 @@ export function buildMarkShader({
     const domainMapChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.needsDomainMap
     );
+    const hasGaps = channelIRs.some((ir) => hasIndexGaps(ir.channel.scale));
+    if (hasGaps) {
+        const binding = bindingIndex++;
+        resourceBindings.push({
+            binding,
+            visibility: vertexComputeVisibility,
+            buffer: { type: "read-only-storage" },
+        });
+        resourceLayout.push({ name: "__gapCuts", role: "gapCuts" });
+        bufferDecls.push(
+            `@group(1) @binding(${binding}) var<storage, read> gapCuts: array<vec2<u32>>;`
+        );
+    }
     const rangeTextureChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.useRangeTexture
     );
@@ -347,7 +361,7 @@ fn ${fnName}_p${projectionIndex}(i: u32) -> bool {
     if (params.${active} == 0u) { return false; }
 ${boundsSetup}
 ${datumSetup}
-    return ${test};
+    return ${lt(lo, hi)} && (${test});
 }
 `;
                     }
@@ -400,6 +414,41 @@ ${clauses.join("\n")}
     return ${SCALED_FUNCTION_PREFIX}${baseFunctionName}(i);
 }
 `;
+    }
+
+    // Only explicit gapped ranges need a conditional raw peer accessor.
+    const gapPeers = new Set(
+        channelIRs
+            .filter((ir) => hasIndexGaps(ir.channel.scale))
+            .map((ir) => ir.channel.scale.gapPeer)
+            .filter((peer) => peer !== undefined)
+    );
+    for (const peer of gapPeers) {
+        const ir = channelIRByName.get(peer);
+        if (!ir)
+            throw new Error(`Unknown grouping-gap peer channel "${peer}".`);
+        const rawKey = (
+            /** @type {import("./channelIR.js").ChannelIR} */ branch
+        ) => {
+            if (branch.channel.scale?.type !== "index") return "fallback";
+            if (branch.inputComponents === 2) return branch.rawValueExpr;
+            const value = `u32(${branch.rawValueExpr})`;
+            return `vec2<u32>(${value} >> 12u, ${value} & 4095u)`;
+        };
+        const clauses = (ir.channel.conditions ?? []).map((condition) => {
+            const predicate = emitPredicateExpression(
+                condition.when,
+                selectionDefsByName
+            );
+            const value = condition.channelName
+                ? rawKey(channelIRByName.get(condition.channelName))
+                : "fallback";
+            return `    if (${predicate}) { return ${value}; }`;
+        });
+        channelFns.push(`fn gapPeer_${peer}(i: u32, fallback: vec2<u32>) -> vec2<u32> {
+${clauses.join("\n")}
+    return ${rawKey(ir)};
+}`);
     }
 
     // Literal formatting is centralized so constants always match the expected
@@ -1041,6 +1090,7 @@ fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {
 }
 
 ${scalesWgsl}
+${hasGaps ? INDEX_GAPS_WGSL : ""}
 ${needsHashTable ? HASH_TABLE_WGSL : ""}
 
 struct Params {

@@ -247,3 +247,21 @@ owned operations depending on mapping so captured scale functions and metadata
 stay current, including conditional branches. Retained marks and WebGL range textures continue
 observing the same resolution-owned mapping ref; replacement needs no renderer
 subscription reconnection.
+
+Grouping gaps use exact split-integer cut keys and binary-search insertion ranks.
+The rank multiplied by a uniform CSS gap width is the offset; navigation never
+rewrites cuts or mark series. WebGL owns one integer texture per resolution;
+WebGPU packs and deduplicates tables in one mark-owned storage binding. Actual
+placement sizes convert gap widths and validate that fitting leaves room for data.
+
+Literal zero/null width or empty/null cuts specialize out every gap helper,
+uniform, and GPU resource. Reactive zero/empty values retain that specialization's
+infrastructure. A two-bit positional enablement key recreates retained graphics
+when configuration crosses the static boundary, and disabled shared resolutions
+release their cut textures independently of ordinary scale references.
+
+Semantic range normalization records peer channels for explicit half-open ranges.
+Only active gap projection compares the selected raw endpoint branches: the upper
+endpoint uses the before side, lower/equal endpoints the after side. Implicit band
+coverage has no peer; marks spanning internal cuts retain ordinary geometry and
+picking. CPU projection, GLSL, and WGSL consume this same intent.

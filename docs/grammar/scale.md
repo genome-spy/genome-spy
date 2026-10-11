@@ -206,6 +206,33 @@ each channel.
 
 EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
 
+### Grouping gaps
+
+Index and locus scales can separate groups with gaps that keep their width
+while zooming and panning. Heatmaps can use independent cuts on both axes:
+
+EXAMPLE examples/docs/grammar/scale/grouping-gaps.json height=300
+
+`gapPositions: [5, 12]` inserts gaps before indices 5 and 12. The width is
+measured in CSS pixels; it does not change with zoom or device pixel ratio.
+Band centers and widths remain independent of the following gap. As with other
+scale properties, gaps can be configured in an encoding's `scale` or a view's
+`scales` declaration, including shared scales.
+
+For chromosome boundaries, set `gapPositions: "chromosomes"` on a locus scale.
+The boundaries come from that scale's assembly, so the same configuration works
+on linear genomic tracks and scales bound to different assemblies.
+
+Half-open ranges ending at a cut stop before the gap, while ranges starting
+there begin after it. A range crossing an internal cut spans the gap normally.
+Inverting a pointer anywhere in a gap returns its boundary coordinate. A brush
+entirely within one gap is an active, zero-span selection that matches no data;
+linked scales keep their last valid domain until the brush has a nonzero span.
+
+`gapWidth` and `gapPositions` accept expressions. Constant zero/null width or
+constant empty/null positions completely disables grouping gaps. The total
+visible gap width must leave room for the data within the axis extent.
+
 ## Nested offset scales
 
 A discrete field, datum, or expression on the `xOffset` or `yOffset`

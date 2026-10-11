@@ -1,6 +1,8 @@
 # Fixed-size grouping gaps for index and locus scales
 
-Status: approved for implementation; implementation has not started.
+Status: implemented and independently reviewed on `codex/scale-grouping-gaps`.
+The revised plan was committed before implementation as `a227d3c79`. Final
+verification and review outcomes are recorded below.
 
 ## Objective
 
@@ -58,10 +60,10 @@ masking, or clipping is needed.
 9. A ranged mark crossing an internal gap receives no special treatment.
    Boundary-side treatment applies only to endpoints touching a cut.
 
-The `gapPositions` name, defaults, chromosome shorthand, and expression support
-below remain proposals. Use `gapWidth` for the width property.
+The grammar below is implemented: `gapPositions`, `gapWidth`, chromosome
+shorthand, and expression references use ordinary resolved scale ownership.
 
-## Proposed grammar
+## Grammar
 
 Add two flat scale properties:
 
@@ -103,11 +105,11 @@ These are partial specifications. The second form requires a locus scale;
 the shorthand does not infer one. It expands to internal contig boundaries
 in assembly order, excluding a leading or trailing outer gap.
 
-Proposed initial units are CSS pixels, with an empty cut list and zero width
-as defaults. Omitted properties and literal null values also disable gaps.
-A future polar layout
-may need angular units; do not introduce a unit grammar before its coordinate
-contract exists.
+Widths use CSS pixels. Omitted `gapPositions` disables gaps. When positions
+are supplied, omitted `gapWidth` defaults to 6; literal null or zero width
+disables gaps. Empty or null positions independently disable gaps. A future
+polar layout may need angular units; no unit grammar is introduced before its
+coordinate contract exists.
 
 Normalize explicit cut lists once per configuration change into sorted,
 unique integers. Validate finite safe integers within the supported index
@@ -226,34 +228,40 @@ of stored interval endpoints, including selection overlays and translated
 brushes, must use the shared start/exclusive-end affinity rather than blindly
 mapping both cut endpoints to the same side.
 
-Navigation may additionally need an internal inverse result identifying the
-cut and the cursor's fractional position inside its gap. Numeric `invert()`
-deliberately collapses that fraction for data selection; it must not force
-pan or anchored zoom to snap to a gap edge. Decide how much additional state
-navigation needs before implementing the GPU paths.
+Navigation uses two fractional cut ranks at the viewport edges, stored with
+the existing domain runtime as `gapDomain`. A placement-local inverse also
+returns the fractional rank within a gap, while numeric `invert()` returns
+only the cut coordinate. Panning translates the current mapping; anchored
+zoom changes its data slope while retaining the pointer's fractional gap
+position. Animated domains interpolate slope and origin, using stable
+`expm1` weighting for nearly equal slopes.
 
-Keep any required navigation state with the existing domain/navigation owner.
-Specify how explicit domain changes, `zoomTo`, transitions, reset, scale copy,
-and exported layouts initialize or preserve it. Avoid an independent camera
-framework. Resolve the smallest sufficient representation in milestone 1.
+Explicit domain changes and reset initialize ranks from the new domain.
+Navigation and animation frames preserve them, physical scale replacement
+mirrors them, and scale copy retains them. Selection-linked domain echoes do
+not erase partially visible edge gaps. This extends the existing domain owner
+without introducing another camera framework.
 
 Core positional scales and CPU encoders currently use normalized output;
 immediate rendering applies placement dimensions afterward. Fixed CSS gaps
 therefore require an explicit mapping dependency on the final axis extent, or
 a placement-aware projection operation. Shared domains can appear in placements
 of different sizes. Do not mutate one shared scale's range while traversing
-placements. Decide which mapping information is resolution-owned and which is
-placement-derived, and use it consistently for rendering and inversion.
+placements. Cuts, width, domains, and edge ranks are resolution-owned. Final
+axis extents are placement-derived: immediate rendering, pointer navigation,
+brushes, and rulers pass their actual extent. Canonical scale inversion uses
+the resolution's axis extent. Both GPU paths derive CSS spacing from the actual
+placement extent.
 
 WebGL facet transforms and WebGPU `applyPlacementPixel` can scale offsets
 after scale evaluation. Convert the uniform gap size with the final placement
 extent or apply its contribution at the appropriate stage. DPR changes affect
 raster resolution, not the gap's CSS size. Export uses its own final layout.
 
-An overfull fit, where fixed gaps exhaust the available extent, needs an
-explicit policy. Do not silently shrink configured gaps, reverse the data
-slope, or clamp cuts away. Choose whether to reject that fit or enforce a
-supported navigation/extent constraint during milestone 1.
+An overfull fit is rejected when fixed gaps exhaust a nonzero placement
+extent. CPU mapping and both renderers validate this condition for actual
+submitted placements. Gaps are never silently shrunk, data slopes are never
+reversed, and cuts are never discarded to accommodate a fit.
 
 ## Current implementation and ownership
 
@@ -322,7 +330,8 @@ disabled = constant(gapWidth) && (gapWidth == 0 || gapWidth == null)
         || constant(gapPositions) && (gapPositions is empty || gapPositions == null)
 ```
 
-Omitted properties use their disabling defaults. Preserve whether inputs are
+Omitted positions disable gaps; omitted width defaults to 6 when positions
+are configured. Preserve whether inputs are
 constant through the Core adapter and generic renderer configuration; an
 expression's current value is not evidence that it is constant. Either static
 condition disables gaps independently of the other property's value or
@@ -376,9 +385,12 @@ facets per group, which change composition and interaction semantics.
 
 ## Implementation milestones
 
-All milestones are pending. Commit messages are tentative.
+All five milestones are complete. The tentative commit messages below
+describe the original decomposition; implementation and review fixes are
+integrated into one coherent feature commit because the renderer and domain
+contracts must change together.
 
-### 1. Establish mapping, endpoint, and navigation semantics
+### 1. Establish mapping, endpoint, and navigation semantics — complete
 
 **Outcome:** a CPU reference contract for fixed gaps, band placement,
 half-open endpoints, fitting, inversion, and smooth navigation.
@@ -410,7 +422,7 @@ Tentative commit: `feat(core): define fixed-gap index scale mapping`
 **Review gate:** mapping, endpoint intent, placement dependence, and navigation
 state are the shared contract. Resolve these before duplicating them in shaders.
 
-### 2. Implement renderer-generic WebGPU gaps
+### 2. Implement renderer-generic WebGPU gaps — complete
 
 **Outcome:** the standalone renderer supports cut tables, uniform gap size,
 endpoint affinity, and retained updates through a public generic scale API.
@@ -437,7 +449,7 @@ with pan/zoom or mapping controls and explicit gap boundaries. Build Storybook.
 
 Tentative commit: `feat(webgpu-renderer): add fixed-gap index scales`
 
-### 3. Expose Core grammar and integrate rendering paths
+### 3. Expose Core grammar and integrate rendering paths — complete
 
 **Outcome:** ordinary scale definitions configure gaps on index/locus scales;
 WebGL, the Core WebGPU adapter, and immediate projection use the same contract.
@@ -461,7 +473,7 @@ user-visible feature. Existing specs need no migration when gaps are absent.
 
 Tentative commit: `feat(core): expose grouping gaps across renderers`
 
-### 4. Complete guides, interactions, and export integration
+### 4. Complete guides, interactions, and export integration — complete
 
 **Outcome:** grouped heatmaps and chromosome tracks behave coherently beyond
 mark placement, including navigation, selection, readouts, guides, and export.
@@ -492,7 +504,7 @@ Tentative commit: `feat(core): complete grouping-gap guides and interactions`
 **Final review gate:** inspect all forward/inverse consumers and renderers
 together, including the no-gap behavior and retained-update costs.
 
-### 5. Review and simplify the complete implementation with a subagent
+### 5. Review and simplify the complete implementation with a subagent — complete
 
 **Outcome:** an independent subagent reviews the completed implementation for
 KISS, simplification opportunities, and code smells across the whole change.
@@ -515,68 +527,90 @@ Tentative commit: `refactor(core): simplify grouping gap implementation`
 
 ## Final integration verification and acceptance
 
-- Adapt `examples/docs/grammar/mark/rect/heatmap.json` into a two-axis grouped
-  heatmap with point/text overlays and partition-aligned ranged marks.
-- Compare adjacent `[0, 10)` / `[10, 20)` rects and rules with a separate
-  `[0, 20)` mark at a cut before 10. The adjacent marks leave a gap; the
-  spanning mark renders and picks normally across it, including in exports.
-- Adapt `examples/docs/grammar/axis/genome-axis.json` and a genome-browser
-  track to show chromosome boundaries, chromosome grids, labels, and selections.
-- Exercise `examples/core/scales/large_genome_test.json` with cuts above the
-  exact `f32` integer range and, where supported, above the single-u32 range.
-- In a real browser, zoom and drag through cut boundaries and gap interiors,
-  including partially visible edge gaps. Confirm smooth motion and constant
-  measured CSS gap size in WebGL and WebGPU.
-- Brush across gaps in both directions, begin/end inside a gap, and translate
-  an existing selection through one. Confirm endpoints plateau at the cut,
-  then resume changing in data, and a brush wholly inside one gap collapses
-  to the cut without selecting extra indices or bases.
-- Confirm a collapsed brush has no visible overlay, drag target, or matching
-  data in CPU/WebGL/WebGPU predicates, and cannot expand through a linked
-  domain. Test null/inactive fallback separately from active zero span.
-- Compare representative Canvas2D and SVG output to the GPU paths. Verify
-  export layout dimensions, repeated placements, range direction, endpoint
-  affinity, and picking. Automated tests should protect these behaviors rather
-  than generated shader strings or incidental resource layouts.
-- Run focused suites during iteration, then the affected Core/renderer suites,
-  workspace type checks, lint, GPU tests, documentation/schema checks, and
-  Storybook build warranted by the completed changes.
-- Check representative dense heatmaps and genomic tracks for lookup overhead.
-  Measure cut/series uploads during navigation and size changes; add complexity
-  only for a demonstrated bottleneck. Preserve the specialized no-gap path.
-- Verify in WebGL and WebGPU that either statically disabling property removes
-  gap shader logic and all associated uniform fields, bindings, buffers, and
-  textures, even when the other property is reactive. Cover mixed axes and
-  transitions caused by configuration replacement.
+Completed verification:
 
-Acceptance requires equal configured gaps, stable within-band placement,
-correct half-open adjacency, smooth navigation, matching renderer/export
-behavior, ordinary scale-definition placement, and unchanged cut tables during
-navigation. No existing no-gap specification should change its mapping.
-Statically disabled gaps must have no shader logic or gap resource footprint.
-Numeric inversion and interval selection must remain defined across every gap,
-with gap interiors mapping to their boundary coordinate.
-Ranged marks crossing internal gaps render normally; only endpoints touching
-cuts receive special boundary-side treatment.
+- Full Vitest suite: 521 files, 4,901 passing tests, one skipped and two todo.
+  Two additional final regressions pass in the focused renderer/resource suite
+  (48 tests): WebGL uploads preserve another axis's sampler binding, and WebGPU
+  text placement capacity uses logical rows before glyph expansion.
+- All workspace TypeScript checks and repository lint pass. The two affected
+  packages and changed files were checked again after the final review fixes.
+- Five real WebGPU tests pass: exact lookup at ordinary and 2^35 coordinates,
+  adjacent versus spanning interval picking, retained cut buffer reuse,
+  unequal placement extents, and initial conditional endpoint edge ranks.
+- Real Chromium rendering passes for the two-axis heatmap and chromosome-track
+  examples in WebGL and WebGPU at DPR 1 and 2. A temporary large-coordinate
+  fixture with a cut above 2^35 also passes in both renderers and was removed.
+  Visual inspection caught and fixed WebGL lazy texture uploads disturbing an
+  already bound axis sampler; both row and column gaps now render correctly.
+- Real browser wheel zoom anchored inside a gap and direct drag were exercised
+  in both renderers. The anchor remains fixed, a 25 CSS pixel drag translates
+  the boundary by 25 pixels, and gap width remains 12 CSS pixels. Raster
+  measurements also check adjacent rectangles and continuous spanning marks.
+- Structured SVG tests verify adjacent half-open intervals, resized exports,
+  reversed and degenerate ranges, and ordinary spanning geometry. Canvas2D
+  uses the same placement projection path and both feature examples render.
+- The real interval controller is exercised with DOM mouse gestures in both
+  drag directions: beginning/ending within gaps, a gap-only collapsed brush,
+  and translation. Visible bounds drive drag hit testing, including a null
+  unselected axis. Selection predicates, hidden overlays, linked-domain
+  retention, and explicit navigation are protected by subsystem tests.
+- Static disabling is covered in Core and generic renderer tests, including
+  a disabled property paired with an unbound reactive expression. Generated
+  shaders, uniforms, and resources omit gap infrastructure. Replacing static
+  configuration recreates compatible retained programs and releases shared
+  WebGL textures independently of ordinary scale references.
+- Retained resource tests verify unchanged cuts are not uploaded during domain
+  or width changes. Exact integer search uses one rank table and binary search;
+  no extra acceleration structure or per-index lookup array was introduced.
+- Schemas, specification reference generation, API docs, and the documentation
+  site build pass. The docs build uses a writable temporary uv cache. The
+  generic renderer Storybook build, release policy check, and release status
+  check pass. A Core minor Changeset records the feature.
 
-## Unresolved choices and risks
+The representative examples are
+`examples/docs/grammar/scale/grouping-gaps.json` and
+`examples/core/scale-grouping-gaps.json`. The latter demonstrates reactive
+width and the chromosome shorthand; the former has cuts on both axes.
 
-1. Confirm `gapPositions`, defaults, and the `"chromosomes"` shorthand;
-   decide whether expression support belongs in the first implementation.
-2. Choose the minimal placement-aware mapping and inverse/camera representation
-   without conflicting with resolution-owned domains or differently sized views.
-3. Decide whether coordinate readouts distinguish gap interiors from their cut
-   coordinate using optional internal gap metadata. The numeric inverse and
-   interval-selection plateau are defined above; navigation must retain any
-   additional gap fraction it needs to avoid snapping.
-4. Choose a policy for fits that cannot accommodate all fixed-size gaps.
-5. Audit explicit band adjustments, degenerate/directed ranges, interval text,
-   nested offsets, and guides so endpoint affinity does not change unrelated
-   positioning semantics.
-6. Verify packed integer precision, shader lookup cost, resource binding limits,
-   and facet placement on actual GPU paths. Small tables make the memory cost
-   modest, but do not eliminate these correctness and budget risks.
+Deliberately discarded verification duplication:
 
-Reconcile completed or deliberately discarded work in this temporary plan,
-commit that record, and delete the plan in a later commit before PR creation
-or merge, following the repository planning workflow.
+- A full Cartesian product of every mark, backend, placement, direction, and
+  gesture was replaced by shared encoding/shader contract tests plus the
+  representative browser, GPU picking, controller, and SVG fixtures above.
+  No additional point/text overlays or duplicate large-genome example are
+  retained solely to repeat those contracts.
+- A standalone dense-scene performance benchmark was not added. Resource
+  retention and the complete no-gap specialization are verified directly;
+  search specialization remains deferred until a measured bottleneck warrants
+  it. No performance improvement claim is made.
+
+## Review outcomes and resolved risks
+
+The requested independent KISS/code-smell review covered the complete runtime,
+shared contracts, downstream consumers, and retained resource lifecycle. All
+obvious findings were fixed without requiring user input:
+
+- Preserve structural specialization when resolved gap enablement changes.
+- Derive endpoint affinity from the actually selected peer branch, preserving
+  equal/reversed intervals and ordinary no-gap rule defaults.
+- Use actual placement extents for pointer navigation and capacity validation.
+- Restore configured edge ranks for initial conditional WebGPU scale channels.
+- Project brush bounds with half-open affinity, exclude collapsed brushes,
+  and handle null unselected axes during drag hit testing.
+- Release statically disabled shared WebGL cut textures even while ordinary
+  scale references remain, and read current physical scales in cached callbacks.
+- Stabilize animated cameras for nearly equal slopes and retain partial edge gaps.
+- Validate only placements used by the logical submitted row range, including
+  text whose GPU glyph instances differ from logical rows.
+- Replace the per-frame array-based structure key with a two-bit axis mask.
+
+The remaining extensions are explicit locus-object cut syntax, clustering and
+ordering production, variable gap widths, and polar layout units. They remain
+outside this feature's scope. Ordinary numeric readouts intentionally show the
+cut coordinate within a gap; fractional rank metadata stays internal to
+navigation.
+
+The reconciled plan remains on this feature branch. Commit its completed and
+discarded record, then delete it in a later commit before PR creation or merge,
+following the repository planning workflow.

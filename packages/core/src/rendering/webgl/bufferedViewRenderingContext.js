@@ -1,3 +1,4 @@
+import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
 import { group } from "d3-array";
 
 import ViewRenderingContext from "../../view/renderingContext/viewRenderingContext.js";
@@ -181,6 +182,13 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     }
 
     finish() {
+        if (
+            this.#batch &&
+            this.#markAdapter.hasStructuralChanges(this.#entries)
+        ) {
+            this.#batch = undefined;
+            this.#entries.clear();
+        }
         if (!this.#batch) {
             const marks = this.#buffer.map((request) => request.mark);
             this.#markAdapter.prepareMarks(marks);
@@ -325,6 +333,30 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                           }
                       }
                     : callback;
+                for (const axis of /** @type {const} */ (["x", "y"])) {
+                    const scale = mark.encoders[axis]?.scale;
+                    if (scale && hasGroupingGaps(scale.props)) {
+                        const resolution =
+                            mark.unitView.getScaleResolution(axis);
+                        this.#batch.push(
+                            ifEnabledAndVisible(() => {
+                                const facet =
+                                    request.options.sampleFacetRenderingOptions;
+                                const extent =
+                                    axis === "x"
+                                        ? coords.width
+                                        : facet
+                                          ? coords.height *
+                                            facet.locSize.size *
+                                            facet.pixelToUnit
+                                          : coords.height;
+                                /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+                                    resolution.getScale()
+                                ).gapMapping(extent);
+                            })
+                        );
+                    }
+                }
                 this.#batch.push(ifEnabledAndVisible(draw));
                 previousCoords = request.coords;
                 previousClip = request.clip;

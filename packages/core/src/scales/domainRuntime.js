@@ -170,7 +170,14 @@ export default class DomainRuntime {
                     operation.resolve();
                     return;
                 }
-                if ("domain" in update) {
+                if (
+                    "domain" in update &&
+                    !(
+                        (update.type === "navigate" ||
+                            update.type === "frame") &&
+                        update.gapDomain
+                    )
+                ) {
                     update = {
                         ...update,
                         domain: this.#manager.normalizeDomain(update.domain),
@@ -193,7 +200,10 @@ export default class DomainRuntime {
                     this.#cancelTransition();
                 }
                 if (plan.domainChanged) {
-                    this.#manager.mirrorDomain(plan.state.visibleDomain);
+                    this.#manager.mirrorDomain(
+                        plan.state.visibleDomain,
+                        plan.state.gapDomain
+                    );
                     this.#renderRequested ||= operation.render;
                 }
                 this.#state.set(plan.state);
@@ -288,6 +298,16 @@ export default class DomainRuntime {
         const tw = to[1] - to[0];
         const fc = from[0] + fw / 2;
         const tc = to[0] + tw / 2;
+        const scale = this.#manager.scale;
+        const indexScale =
+            "gapMapping" in scale
+                ? /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                      scale
+                  )
+                : undefined;
+        const sourceMapping = indexScale?.gapMapping();
+        const targetMapping =
+            sourceMapping && indexScale.copy().domain(to).gapMapping();
         const token = createCancelToken();
         this.#transitionToken = token;
         await this.#animator.transition({
@@ -296,6 +316,16 @@ export default class DomainRuntime {
             cancelToken: token,
             onUpdate: (t) => {
                 if (token.canceled) return;
+                if (sourceMapping && targetMapping) {
+                    const frame = sourceMapping.interpolate(targetMapping, t);
+                    void this.update({
+                        type: "frame",
+                        id: action.id,
+                        domain: frame.domain,
+                        gapDomain: frame.ranks,
+                    });
+                    return;
+                }
                 const w = eerp(fw, tw, t);
                 const wt = fw === tw ? t : (fw - w) / (fw - tw);
                 const c = wt * tc + (1 - wt) * fc;

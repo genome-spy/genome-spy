@@ -11,6 +11,7 @@ import scaleLocus, {
 } from "../genome/scaleLocus.js";
 import scaleIndex from "../genome/scaleIndex.js";
 import scaleNull from "../utils/scaleNull.js";
+import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
@@ -209,18 +210,25 @@ export default class ScaleResolution {
                 void this.#commitDomainUpdate({ type: "set", domain });
             },
             getGenomeStore: () => this.#viewContext.genomeStore,
+            getAxisLength: () => this.getAxisLength(),
         });
 
         this.#interactionController = new ScaleInteractionController({
             // Zoom level does not depend on the range, so an initialized scale
             // is safe to read while its range expression is being configured.
             getScale: () => this.#scaleManager.scale ?? this.getScale(),
-            navigate: (domain, duration, renderImmediately = false) =>
+            navigate: (
+                domain,
+                duration,
+                renderImmediately = false,
+                gapDomain
+            ) =>
                 this.#commitDomainUpdate(
                     {
                         type: "navigate",
                         domain,
                         duration,
+                        gapDomain,
                     },
                     !renderImmediately
                 ),
@@ -1294,6 +1302,10 @@ export default class ScaleResolution {
             // TODO: Check that the channel is compatible
             return { type: "null" };
         }
+        if (hasGroupingGaps(props) && !["x", "y"].includes(this.channel))
+            throw new Error(
+                "Grouping gaps require a positional index or locus scale."
+            );
 
         this.#resolvingScaleProps += 1;
         let domain;
@@ -1434,7 +1446,8 @@ export default class ScaleResolution {
                         this.syncLinkedSelectionFromDomain();
                 } else {
                     this.#scaleManager.mirrorDomain(
-                        this.#domainState.visibleDomain
+                        this.#domainState.visibleDomain,
+                        this.#domainState.gapDomain
                     );
                 }
                 return this.#domainRuntime.domain;
@@ -1601,10 +1614,16 @@ export default class ScaleResolution {
      * @param {number} scaleFactor
      * @param {number} scaleAnchor
      * @param {number} pan
+     * @param {number} [axisLength] Actual occurrence extent in CSS pixels.
      * @returns {boolean} true if the scale was zoomed
      */
-    zoom(scaleFactor, scaleAnchor, pan) {
-        return this.#interactionController.zoom(scaleFactor, scaleAnchor, pan);
+    zoom(scaleFactor, scaleAnchor, pan, axisLength) {
+        return this.#interactionController.zoom(
+            scaleFactor,
+            scaleAnchor,
+            pan,
+            axisLength
+        );
     }
 
     /**

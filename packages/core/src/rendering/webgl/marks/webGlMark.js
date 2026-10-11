@@ -18,6 +18,7 @@ import {
     generateDatumGlslAndUniform,
     generateDynamicValueGlslAndUniform,
     generateScaleGlsl,
+    generateGapPeerGlsl,
     getAttributeAndArrayTypes,
     getDiscretizingDomainForGlsl,
     getRangeForGlsl,
@@ -63,6 +64,9 @@ import {
     getSelectionPredicateTreeParams,
 } from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
+import { gapRank, hasGroupingGaps } from "../../../genome/indexGapMapping.js";
+
+import { getGapPeer } from "../../../marks/markUtils.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -509,7 +513,7 @@ export default class WebGLMark {
                           : projection.hitTest === "encloses"
                             ? `(${leq(lo, datumLo)} && ${leq(datumHi, hi)})`
                             : `(${lt(lo, datumHi)} && ${lt(datumLo, hi)})`;
-                return test;
+                return `(${lt(lo, hi)} && ${test})`;
             });
             const active = `!${SELECTION_EMPTY_PREFIX}${param}()`;
             return `((${active} && ${dimensions.join(" && ")}) || (${empty} && !${active}))`;
@@ -622,6 +626,7 @@ export default class WebGLMark {
             }
         };
 
+        const gapPeerCode = [];
         for (const [channel, encoder] of Object.entries(encoders)) {
             if (!shaderChannels.includes(channel)) {
                 continue;
@@ -633,6 +638,18 @@ export default class WebGLMark {
 
             for (let i = 0; i < branches.length; i++) {
                 addAccessor(channel, branches[i].accessor, i, scale);
+            }
+
+            const peer = getGapPeer(channelDef);
+            if (peer && scale && hasGroupingGaps(scale.props)) {
+                const helper = generateGapPeerGlsl(
+                    channel,
+                    peer,
+                    encoders[peer],
+                    emitSelectionLeaf
+                );
+                attributeCode.add(helper.declaration);
+                gapPeerCode.push(helper.code);
             }
 
             // Generate scale if needed -------------------------------
@@ -725,6 +742,8 @@ export default class WebGLMark {
             );
         }
 
+        scaleCode.push(...gapPeerCode);
+
         // Check membership in any selection referenced by conditional encoders.
         const conditions = appearanceSelections.map((root) =>
             emitSelectionPredicateGlsl(
@@ -778,6 +797,8 @@ export default class WebGLMark {
         fragmentShader = addDynamicMarkUniforms(fragmentShader);
         vertexShader = addOrderGuard(vertexShader);
 
+        const gapY =
+            encoders.y?.scale && hasGroupingGaps(encoders.y.scale.props);
         const vertexParts = [
             vertexPrecision,
             debugHeader,
@@ -785,8 +806,9 @@ export default class WebGLMark {
             GLSL_COMMON,
             GLSL_SCALES,
             [...attributeCode].join("\n"),
+            ...(gapY ? [GLSL_SAMPLE_FACET] : []),
             ...scaleCode,
-            GLSL_SAMPLE_FACET,
+            ...(gapY ? [] : [GLSL_SAMPLE_FACET]),
             GLSL_PICKING_VERTEX,
             vertexShader,
         ];
@@ -1139,6 +1161,33 @@ export default class WebGLMark {
         });
 
         for (const [channel, encoder] of Object.entries(this.encoders)) {
+            if (
+                (channel === "x" || channel === "y") &&
+                encoder.scale &&
+                hasGroupingGaps(/** @type {any} */ (encoder.scale).props)
+            ) {
+                const resolution = this.unitView.getScaleResolution(channel);
+                ops.push(() => {
+                    const scale =
+                        /** @type {import("../../../genome/scaleIndex.js").ScaleIndex} */ (
+                            resolution.getScale()
+                        );
+                    const domain = scale.domain();
+                    const cuts = scale.gapPositions();
+                    const ranks = scale.gapDomain();
+                    setUniforms(this.programInfo, {
+                        ["uGapCuts_" + channel]:
+                            this.rendererResources.getGapTexture(resolution),
+                        ["uGapCount_" + channel]: cuts.length,
+                        ["uGapGeometry_" + channel]: [
+                            scale.gapWidth(),
+                            ranks?.[0] ?? gapRank(cuts, domain[0]),
+                            ranks?.[1] ?? gapRank(cuts, domain[1], true),
+                            ranks ? 1 : 0,
+                        ],
+                    });
+                });
+            }
             const texture = glHelper.rangeTextures.get(encoder.scale);
             if (texture) {
                 ops.push(() =>

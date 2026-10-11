@@ -101,6 +101,12 @@ export default class FilterScoredLabelsTransform extends Transform {
             // The view size is not (yet) available
             return;
         }
+        const gapMapping =
+            "gapMapping" in scale &&
+            /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+                scale
+            ).gapMapping(rangeSpan);
+        const rangedGaps = gapMapping && this.params.pos2 != null;
 
         for (const reservationMap of this.reservationMaps.values()) {
             reservationMap.reset();
@@ -124,10 +130,14 @@ export default class FilterScoredLabelsTransform extends Transform {
         // Try to fit the elements on the available lanes and propagate if there was room
         for (const datum of topElements) {
             let startPos =
-                (scale(this.startPosAccessor(datum)) + positionAdjustment) *
-                rangeSpan;
+                (rangedGaps
+                    ? gapMapping.position(this.startPosAccessor(datum))
+                    : scale(this.startPosAccessor(datum)) +
+                      positionAdjustment) * rangeSpan;
             let endPos =
-                (scale(this.endPosAccessor(datum)) + positionAdjustment) *
+                (rangedGaps
+                    ? gapMapping.position(this.endPosAccessor(datum), 0, true)
+                    : scale(this.endPosAccessor(datum)) + positionAdjustment) *
                 rangeSpan;
 
             const span = endPos - startPos;
@@ -159,7 +169,8 @@ export default class FilterScoredLabelsTransform extends Transform {
                     const clonedDatum = Object.assign({}, datum);
                     // @ts-ignore
                     clonedDatum[this.params.asMidpoint] = scale.invert(
-                        midpoint / rangeSpan - positionAdjustment
+                        midpoint / rangeSpan -
+                            (rangedGaps ? 0 : positionAdjustment)
                     );
                     this._propagate(clonedDatum);
                 } else {

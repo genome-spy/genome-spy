@@ -365,7 +365,7 @@ function resolveSelectionDomain(
     const hasInitial = domainRef.initial !== undefined;
     const interval = binding.selection?.intervals[resolvedChannel];
     const description = paramName + "." + resolvedChannel;
-    if (!interval || interval.length !== 2) {
+    if (!interval || interval.length !== 2 || interval[0] === interval[1]) {
         const initialDomain = includeSelectionInitial
             ? domainRef.initial
                 ? resolveConfiguredIntervalDomain(

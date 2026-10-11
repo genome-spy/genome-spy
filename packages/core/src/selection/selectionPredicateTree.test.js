@@ -51,6 +51,25 @@ const interval = (name) => ({
 });
 
 describe("logical selection predicates", () => {
+    test("active zero-span selections match no ranges even with empty fallback", () => {
+        /** @type {Record<string, any>} */
+        const values = {
+            brush: { type: "interval", intervals: { x: [10, 10] } },
+        };
+        const resolved = resolveSelectionPredicateTree(
+            normalizeSelectionPredicateTree({ param: "brush", empty: true }),
+            encoding,
+            runtime(values),
+            "intersects"
+        );
+        const matches = compileSelectionPredicateTree(
+            resolved,
+            (name) => values[name]
+        );
+        expect(matches({ source: 0, target: 20 })).toBe(false);
+        values.brush.intervals.x = null;
+        expect(matches({ source: 0, target: 20 })).toBe(true);
+    });
     test("public endpoint example combines brushes and restores links on clear", async () => {
         const root = await createAndInitialize(
             /** @type {any} */ (endpointBrushes),

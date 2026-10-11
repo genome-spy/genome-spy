@@ -2,6 +2,8 @@ import { collectAppearanceSelections } from "../../selection/selection.js";
 import { activeMatchResolvedSelectionPredicate } from "../../selection/selectionPredicateTree.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
+import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
+import { GAP_PEER, getGapPeer } from "../../marks/markUtils.js";
 import {
     packHighPrecisionU32Array,
     packHighPrecisionU32ArrayInto,
@@ -358,7 +360,12 @@ function createBranchEncoder(mark, encoder, branch) {
                 constant: accessor.constant ?? encoder.constant,
                 branches: [branch],
                 scale,
-                channelDef: accessor.channelDef ?? encoder.channelDef,
+                channelDef: getGapPeer(encoder.channelDef)
+                    ? {
+                          ...accessor.channelDef,
+                          [GAP_PEER]: getGapPeer(encoder.channelDef),
+                      }
+                    : (accessor.channelDef ?? encoder.channelDef),
             }
         )
     );
@@ -1043,7 +1050,10 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
     const band =
         /** @type {import("../../spec/channel.js").BandMixins} */ (
             encoder.channelDef
-        ).band ?? 0.5;
+        ).band ??
+        (getGapPeer(encoder.channelDef) && scale && hasGroupingGaps(scale.props)
+            ? 0
+            : 0.5);
     if (
         scale?.type == "band" ||
         scale?.type == "point" ||
@@ -1083,7 +1093,13 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
               };
         return Object.assign(input, {
             ...(large ? { inputComponents: /** @type {const} */ (2) } : {}),
-            scale: createIndexPositionScale(scale, range, band),
+            scale: createIndexPositionScale(
+                scale,
+                range,
+                band,
+                channel,
+                getGapPeer(encoder.channelDef)
+            ),
         });
     }
 
@@ -1155,10 +1171,14 @@ function createOrdinalPositionScale(scale, range, readDomain) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
  * @param {number} band
+ * @param {string} channel
+ * @param {string | undefined} peer
  */
-function createIndexPositionScale(scale, range, band) {
+function createIndexPositionScale(scale, range, band, channel, peer) {
     const configurableScale = /** @type {any} */ (scale);
-    return retainScaleLeaves(
+    const gaps = hasGroupingGaps(configurableScale.props);
+
+    const result = retainScaleLeaves(
         indexScale({
             domain: scale.domain().map(Number),
             range,
@@ -1166,9 +1186,32 @@ function createIndexPositionScale(scale, range, band) {
             paddingOuter: configurableScale.paddingOuter(),
             align: configurableScale.align(),
             band,
+            ...(gaps
+                ? {
+                      gapEnabled: true,
+                      gapPositions: configurableScale.gapPositions(),
+                      gapWidth: configurableScale.gapWidth(),
+                      gapDomain: configurableScale.gapDomain(),
+                      gapPeer: peer,
+                      gapAxis: channel[0] === "y" ? "y" : "x",
+                  }
+                : {}),
         }),
         () => scale.domain().map(Number)
     );
+    if (gaps) {
+        for (const property of /** @type {const} */ ([
+            "gapPositions",
+            "gapWidth",
+            "gapDomain",
+        ])) {
+            Object.defineProperty(result, property, {
+                enumerable: true,
+                get: () => configurableScale[property](),
+            });
+        }
+    }
+    return result;
 }
 
 /**

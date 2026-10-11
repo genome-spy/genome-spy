@@ -84,6 +84,31 @@ The API design is partly inspired by
 [Vega](https://vega.github.io/vega/), [D3](https://d3js.org/), and, most
 directly, GenomeSpy's visualization requirements.
 
+## Grouping gaps on index scales
+
+`indexScale({ domain: [0, 20], range: [0, 500], gapPositions: [10],
+gapWidth: 8, band: 0 })` inserts an eight-logical-pixel gap before index 10.
+Gap width stays fixed across domain updates and placement resizing. A band's
+`band` position always uses its own bandwidth. Set `gapBefore: true` on a
+half-open interval's exclusive end; intervals spanning cuts need no splitting.
+The visible gaps must leave positive room for data in the output extent.
+
+Cuts are nonnegative integers below 2^44. The renderer sorts and deduplicates
+them, packs exact integer keys, and shares one cut storage binding per mark.
+Ordinary index scales allocate no gap resources. Null/empty cuts or zero/null
+width also omit gap helpers and bindings unless `gapEnabled: true` explicitly
+reserves them for later retained updates.
+
+The scale handle provides `setGapPositions`, `setGapWidth`, and `setGapDomain`.
+Domain and width updates reuse cut buffers. `setGapDomain([firstRank, lastRank])`
+can retain fractional progress through a gap at a viewport edge; ordinary
+`setDomain` calls restore domain fitting. Hosts implementing gap-aware camera
+navigation own these fractional ranks. `gapAxis` selects the placement axis
+for a custom channel name; x/y names infer it automatically.
+
+The **Index Grouping Gaps** Storybook scene demonstrates half-open endpoints,
+retained domain updates with the wheel, and a configurable fixed gap width.
+
 ## Rendering model
 
 ### What the renderer owns
