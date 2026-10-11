@@ -1,10 +1,10 @@
-import UnitView from "../unitView.js";
 import { ORIENT_CHANNELS } from "../axisView.js";
 import { arrangeLocalLegends } from "./legendLayout.js";
 import {
     clipCoords,
     combineClipOptions,
     createClipOptions,
+    getViewClipFlags,
     normalizeClipOptions,
 } from "../renderingContext/clipOptions.js";
 
@@ -79,6 +79,9 @@ export function createGridArrangement() {
     const overlays = [];
     /** @type {{ zindex: number, arrange: () => void }[]} */
     const contents = [];
+    // Repeated facet cells share mark semantics within this arrangement.
+    /** @type {WeakMap<View, ReturnType<typeof getViewClipFlags>>} */
+    const clipFlags = new WeakMap();
     let sequence = 0;
 
     const queueDecoration = (
@@ -112,6 +115,15 @@ export function createGridArrangement() {
 
     return {
         queueDecoration,
+        /** @param {View} view */
+        getClipFlags(view) {
+            let flags = clipFlags.get(view);
+            if (!flags) {
+                flags = getViewClipFlags(view);
+                clipFlags.set(view, flags);
+            }
+            return flags;
+        },
         /** @param {number} zindex @param {() => void} arrange */
         queueContent(zindex, arrange) {
             contents.push({ zindex, arrange });
@@ -183,7 +195,7 @@ export function queueGridChild(
     const axes = item.axes ?? gridChild.axes;
 
     const { all: clippedChildren, any: anyClippedChildren } =
-        getChildClipFlags(view);
+        queue.getClipFlags(view);
     const clipped = clippedChildren || scrollable;
     const clippedDecorations = anyClippedChildren || scrollable;
 
@@ -336,24 +348,6 @@ export function queueGridChild(
     }
 
     return clippedDecorations;
-}
-
-/**
- * @param {View} view
- */
-function getChildClipFlags(view) {
-    let all = true;
-    let any = false;
-
-    view.visit((v) => {
-        if (v instanceof UnitView) {
-            const clip = v.mark.properties.clip;
-            all &&= clip === true;
-            any ||= clip === true || clip === "x" || clip === "y";
-        }
-    });
-
-    return { all, any };
 }
 
 /**

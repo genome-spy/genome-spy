@@ -188,6 +188,18 @@ function createRecordingContext() {
     return { calls, context };
 }
 
+/** @param {import("../../spec/mark.js").MarkProps["clip"]} [clip] */
+function createOpacityGroup(clip = true) {
+    return {
+        onBeforeRender: vi.fn(),
+        getOpacity: () => 0.5,
+        mark: { properties: { clip } },
+        visit(/** @type {(view: any) => void} */ visitor) {
+            visitor(this);
+        },
+    };
+}
+
 function render(
     /** @type {import("../../view/view.js").default} */ view,
     /** @type {CanvasRenderingContext2D} */ context,
@@ -317,11 +329,7 @@ describe("Canvas2DViewRenderingContext", () => {
                 paint: true,
             }
         );
-        const groupView = {
-            onBeforeRender: vi.fn(),
-            getOpacity: () => 0.5,
-            mark: { properties: { clip: true } },
-        };
+        const groupView = createOpacityGroup();
 
         try {
             context.pushView(
@@ -368,11 +376,7 @@ describe("Canvas2DViewRenderingContext", () => {
                 }
                 return originalCreateElement(tagName, options);
             });
-        const groupView = {
-            onBeforeRender: vi.fn(),
-            getOpacity: () => 0.5,
-            mark: { properties: { clip: true } },
-        };
+        const groupView = createOpacityGroup();
 
         try {
             for (let i = 0; i < 2; i++) {
@@ -436,11 +440,7 @@ describe("Canvas2DViewRenderingContext", () => {
                 }
                 return originalCreateElement(tagName, options);
             });
-        const groupView = {
-            onBeforeRender: vi.fn(),
-            getOpacity: () => 0.5,
-            mark: { properties: { clip: true } },
-        };
+        const groupView = createOpacityGroup();
 
         const paint = () => {
             const context = new Canvas2DViewRenderingContext(
@@ -479,22 +479,24 @@ describe("Canvas2DViewRenderingContext", () => {
         }
     });
 
-    test.each([
-        {
-            name: "xy clipping",
-            clip: true,
-            height: 21,
-            translationY: -10,
-            drawRect: [10, 5, 20.5, 10.5],
-        },
-        {
-            name: "x-only clipping",
-            clip: "x",
-            height: 100,
-            translationY: 0,
-            drawRect: [10, 0, 20.5, 50],
-        },
-    ])(
+    test.each(
+        /** @type {const} */ ([
+            {
+                name: "xy clipping",
+                clip: true,
+                height: 21,
+                translationY: -10,
+                drawRect: [10, 5, 20.5, 10.5],
+            },
+            {
+                name: "x-only clipping",
+                clip: "x",
+                height: 100,
+                translationY: 0,
+                drawRect: [10, 0, 20.5, 50],
+            },
+        ])
+    )(
         "bounds an opacity layer using $name",
         ({ clip, height, translationY, drawRect }) => {
             const main = createRecordingContext();
@@ -522,11 +524,7 @@ describe("Canvas2DViewRenderingContext", () => {
                     paint: true,
                 }
             );
-            const groupView = {
-                onBeforeRender: vi.fn(),
-                getOpacity: () => 0.5,
-                mark: { properties: { clip } },
-            };
+            const groupView = createOpacityGroup(clip);
 
             try {
                 context.pushView(
