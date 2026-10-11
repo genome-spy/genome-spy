@@ -5,6 +5,7 @@ import View from "./view.js";
 import UnitView from "./unitView.js";
 import LayerView from "./layerView.js";
 import ConcatView from "./concatView.js";
+import FacetView from "./facetView.js";
 import { isArray, isObject } from "vega-util";
 import { loadExternalViewSpec } from "./viewUtils.js";
 import ContainerView from "./containerView.js";
@@ -19,6 +20,7 @@ import {
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
 import {
     isConcatSpec,
+    isFacetSpec,
     isHConcatSpec,
     isImportSpec,
     isLayerSpec,
@@ -137,7 +139,7 @@ export class ViewFactory {
         this.addViewType(isVConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isHConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isConcatSpec, makeDefaultFactory(ConcatView));
-        //this.addViewType(isFacetSpec, makeDefaultFactory(FacetView));
+        this.addViewType(isFacetSpec, makeDefaultFactory(FacetView));
     }
 
     /**

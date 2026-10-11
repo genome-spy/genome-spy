@@ -77,16 +77,17 @@ export function getScaleProjectionCoords(
 }
 
 /**
- * Returns the coordinates that a ruler or interval-selection controller uses
- * to map a pointer to a scale value.
+ * Returns the pointed plot's coordinates, including shared concat gaps.
  *
- * @param {import("./view.js").default} view
+ * @param {import("./gridView/gridChild.js").default} gridChild
  * @param {import("../spec/channel.js").PrimaryPositionalChannel[]} channels
- * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ * @param {import("./layout/point.js").default} point
  * @returns {import("./layout/rectangle.js").default}
  */
-export function getRulerProjectionCoords(view, channels, channel) {
+export function getRulerProjectionCoords(gridChild, channels, point) {
+    const { view } = gridChild;
+    const channel = channels[0];
     return isRulerGapChannel(view, channels) && view instanceof GridView
         ? (view.getTrackPlotGeometry(channel)?.content ?? view.coords)
-        : view.coords;
+        : gridChild.getProjectionCoords(channel, point);
 }

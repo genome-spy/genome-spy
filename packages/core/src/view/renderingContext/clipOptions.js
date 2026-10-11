@@ -119,26 +119,17 @@ export function createSelfClipOptions(clip, coords) {
 }
 
 /**
- * Returns the directions in which every mark under a view is semantically
- * clipped. Empty views report no guaranteed clipping.
+ * Summarizes explicit mark clipping: guaranteed directions, whether all marks
+ * clip both directions, and whether any mark clips either direction. Empty
+ * views guarantee no direction, with `all: true` and `any: false`.
  *
  * @param {import("../view.js").default} view
  */
-export function getViewClipDirections(view) {
-    const ownMark =
-        /** @type {{mark?: import("../../marks/mark.js").default}} */ (view)
-            .mark;
-    if (ownMark) {
-        const clip = ownMark.properties.clip;
-        return {
-            clipX: clip === true || clip === "x",
-            clipY: clip === true || clip === "y",
-        };
-    }
-
+export function getViewClipFlags(view) {
     let hasMarks = false;
     let clipX = true;
     let clipY = true;
+    let any = false;
     view.visit((descendant) => {
         const mark =
             /** @type {{mark?: import("../../marks/mark.js").default}} */ (
@@ -149,12 +140,15 @@ export function getViewClipDirections(view) {
             const clip = mark.properties.clip;
             clipX &&= clip === true || clip === "x";
             clipY &&= clip === true || clip === "y";
+            any ||= clip === true || clip === "x" || clip === "y";
         }
     });
 
     return {
         clipX: hasMarks && clipX,
         clipY: hasMarks && clipY,
+        all: clipX && clipY,
+        any,
     };
 }
 

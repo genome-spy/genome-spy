@@ -6,6 +6,7 @@ export interface InternalMarkHit {
     mark: import("../marks/mark.js").default;
     datum: Datum;
     uniqueId: number;
+    facetId?: import("../spec/channel.js").Scalar[];
 }
 
 /** Native canvas input passed through the internal interaction boundary. */

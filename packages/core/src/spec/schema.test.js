@@ -28,6 +28,110 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("facet options accept supported forms and reject unsupported forms", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            facet: { field: "group" },
+            spec: { mark: "point" },
+        };
+
+        expect(validate(spec)).toBe(true);
+        for (const header of /** @type {unknown[]} */ ([
+            null,
+            {},
+            { labels: false },
+            { labels: true },
+            { format: ".1f" },
+        ])) {
+            expect(
+                validate({ ...spec, facet: { field: "group", header } })
+            ).toBe(true);
+        }
+        for (const header of [
+            false,
+            "none",
+            { labels: "false" },
+            { title: "Group" },
+            { format: 1 },
+        ]) {
+            expect(
+                validate({ ...spec, facet: { field: "group", header } })
+            ).toBe(false);
+        }
+        for (const sort of [
+            "ascending",
+            "descending",
+            ["B", "A"],
+            [2, true],
+            [],
+        ]) {
+            expect(validate({ ...spec, facet: { field: "group", sort } })).toBe(
+                true
+            );
+        }
+        for (const sort of /** @type {unknown[]} */ ([
+            null,
+            "invalid",
+            { field: "x" },
+            [null],
+        ])) {
+            expect(validate({ ...spec, facet: { field: "group", sort } })).toBe(
+                false
+            );
+        }
+        expect(
+            validate({ ...spec, facet: { field: "group", title: "Group" } })
+        ).toBe(true);
+        expect(
+            validate({
+                ...spec,
+                facet: { row: { field: "group", title: null } },
+            })
+        ).toBe(true);
+        expect(
+            validate({
+                ...spec,
+                facet: {
+                    field: "group",
+                    title: {
+                        text: "Group",
+                        orient: "bottom",
+                        style: "group-title",
+                    },
+                },
+            })
+        ).toBe(true);
+        expect(
+            validate({ ...spec, facet: { field: "group", title: 42 } })
+        ).toBe(false);
+        expect(validate({ ...spec, columns: 1 })).toBe(true);
+        expect(validate({ ...spec, columns: 2 })).toBe(true);
+        for (const columns of [0, -1, 1.5]) {
+            expect(validate({ ...spec, columns })).toBe(false);
+        }
+        for (const spacing of [
+            0,
+            10,
+            {},
+            { row: 0 },
+            { column: 20 },
+            { row: 3, column: 17 },
+        ]) {
+            expect(validate({ ...spec, spacing })).toBe(true);
+        }
+        for (const spacing of /** @type {unknown[]} */ ([
+            -1,
+            null,
+            [],
+            { row: -1 },
+            { column: null },
+            { row: "3" },
+            { extra: 10 },
+        ])) {
+            expect(validate({ ...spec, spacing })).toBe(false);
+        }
+    });
+
     test("accepts viewport scale domains and rejects unknown sources", () => {
         const validate = createCoreValidator();
         const spec = {

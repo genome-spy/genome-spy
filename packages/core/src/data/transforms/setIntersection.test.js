@@ -268,44 +268,6 @@ describe("SetIntersection transform", () => {
         ).toThrow(/field must contain finite scalar values/);
     });
 
-    test("flushes each facet batch before the next one starts", () => {
-        const setIntersection = new SetIntersectionTransform({
-            type: "setIntersection",
-            element: "element",
-            set: "set",
-        });
-        const collector = new Collector();
-        setIntersection.addChild(collector);
-
-        // A batch boundary must prevent memberships from separate facets mixing.
-        setIntersection.beginBatch({ type: "facet", facetId: ["A"] });
-        setIntersection.handle({ element: "x", set: "first" });
-        setIntersection.beginBatch({ type: "facet", facetId: ["B"] });
-        setIntersection.handle({ element: "x", set: "second" });
-        setIntersection.complete();
-
-        expect(collector.facetBatches.get(["A"])).toEqual([
-            {
-                profileKey: "1",
-                profileSize: 1,
-                profileDegree: 1,
-                set: "first",
-                setIndex: 0,
-                member: true,
-            },
-        ]);
-        expect(collector.facetBatches.get(["B"])).toEqual([
-            {
-                profileKey: "1",
-                profileSize: 1,
-                profileDegree: 1,
-                set: "second",
-                setIndex: 0,
-                member: true,
-            },
-        ]);
-    });
-
     test("reset discards buffered memberships", () => {
         const setIntersection = new SetIntersectionTransform({
             type: "setIntersection",

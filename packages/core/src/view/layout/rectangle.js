@@ -31,6 +31,29 @@ export default class Rectangle {
         );
     }
 
+    /**
+     * Materializes the bounding box in one pass, without nested union accessors.
+     *
+     * @param {Rectangle[]} rectangles
+     * @returns {Rectangle | undefined} Undefined for an empty array.
+     */
+    static unionAll(rectangles) {
+        if (!rectangles.length) {
+            return;
+        }
+
+        let { x, y, x2, y2 } = rectangles[0];
+        for (let i = 1; i < rectangles.length; i++) {
+            const rectangle = rectangles[i];
+            x = Math.min(x, rectangle.x);
+            y = Math.min(y, rectangle.y);
+            x2 = Math.max(x2, rectangle.x2);
+            y2 = Math.max(y2, rectangle.y2);
+        }
+
+        return Rectangle.create(x, y, x2 - x, y2 - y);
+    }
+
     static ZERO = Rectangle.create(0, 0, 0, 0);
 
     /**
@@ -172,13 +195,15 @@ export default class Rectangle {
     }
 
     /**
-     * Returns a copy of this rectangle translated by the given rectangle.
+     * Returns a copy translated by the given rectangle's live position.
      *
      * @param {Rectangle} rectangle
      */
     translateBy(rectangle) {
-        // TODO: Make dynamic
-        return this.translate(rectangle.x, rectangle.y);
+        return this.translate(
+            () => rectangle.x,
+            () => rectangle.y
+        );
     }
 
     /**

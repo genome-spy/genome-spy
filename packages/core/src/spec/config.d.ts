@@ -1,3 +1,4 @@
+import { FacetHeader } from "./channel.js";
 import { Axis, GenomeAxis } from "./axis.js";
 import {
     ArrowProps,
@@ -321,6 +322,15 @@ export interface GenomeSpyConfig {
      * Defaults for view titles.
      */
     title?: TitleConfig;
+
+    /** Defaults for facet category labels, using view-title property names. */
+    header?: FacetHeader;
+
+    /** Defaults for row facet labels, overriding general header defaults. */
+    headerRow?: FacetHeader;
+
+    /** Defaults for column facet labels, overriding general header defaults. */
+    headerColumn?: FacetHeader;
 
     /**
      * Named reusable style buckets that marks, axes, legends, titles, and

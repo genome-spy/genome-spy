@@ -27,6 +27,7 @@ function createMinimalGridChild() {
         }),
         getOverhang: () => Padding.zero(),
         getPadding: () => Padding.zero(),
+        registerDisposer: vi.fn(),
         getDataAncestors() {
             return [this];
         },

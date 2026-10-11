@@ -9,6 +9,51 @@ import WebGLMark, {
     createViewportScope,
 } from "./webGlMark.js";
 
+test.each([false, true])(
+    "cached facet draws follow filtered data becoming visible (faceted data: %s)",
+    (faceted) => {
+        const mark = new WebGLMark(
+            /** @type {any} */ ({
+                unitView: {
+                    getScaleResolution: /** @returns {undefined} */ () =>
+                        undefined,
+                },
+            }),
+            /** @type {any} */ ({})
+        );
+        mark.bufferInfo = /** @type {any} */ ({});
+        const draw = vi.fn();
+        const render = ["A", "B"].map((category) =>
+            mark.createRenderCallback(draw, { facetId: [category] })
+        );
+        const dataKey = faceted ? ["B"] : undefined;
+        const ranges = new Map([
+            [dataKey, { offset: 4, count: 6, xIndex: undefined }],
+        ]);
+
+        // Ruler filters start empty; drawing callbacks survive later data replays.
+        render.forEach((callback) => callback());
+        expect(draw).not.toHaveBeenCalled();
+        for (let replay = 0; replay < 2; replay++) {
+            mark.rangeMap.migrateEntries(ranges);
+            render.forEach((callback) => callback());
+            expect(draw.mock.calls).toEqual(
+                faceted
+                    ? [[4, 6]]
+                    : [
+                          [4, 6],
+                          [4, 6],
+                      ]
+            );
+
+            draw.mockClear();
+            mark.rangeMap.migrateEntries(new Map());
+            render.forEach((callback) => callback());
+            expect(draw).not.toHaveBeenCalled();
+        }
+    }
+);
+
 describe("guarded x indexing", () => {
     test("expands an indexed domain by one viewport", () => {
         const lookup = vi.fn(

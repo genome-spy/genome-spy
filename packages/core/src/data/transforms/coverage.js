@@ -204,7 +204,11 @@ export default class CoverageTransform extends Transform {
          * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
          */
         this.beginBatch = (flowBatch) => {
+            if (flowBatch.type == "file" && this.inFacet) {
+                return;
+            }
             flushQueue();
+            coverage = 0;
             prevChrom = null;
             super.beginBatch(flowBatch);
         };

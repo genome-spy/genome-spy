@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import PileupTransform from "./pileup.js";
 import { processData } from "../flowTestUtils.js";
+import Collector from "../collector.js";
 
 // TODO: Test for lane preferences
 
@@ -33,6 +34,35 @@ const params = {
     start: "start",
     end: "end",
 };
+
+test.each([false, true])(
+    "pileup isolates facets but not physical files (preferences: %s)",
+    (preferences) => {
+        const pileup = new PileupTransform({
+            ...params,
+            ...(preferences
+                ? { preference: "strand", preferredOrder: ["+"] }
+                : {}),
+        });
+        const output = new Collector();
+        pileup.addChild(output);
+        pileup.initializeOnce();
+        pileup.beginBatch({ type: "facet", facetId: ["A"] });
+        pileup.handle({ start: 0, end: 10, strand: "+" });
+        pileup.beginBatch({ type: "file" });
+        pileup.handle({ start: 0, end: 10, strand: "+" });
+        pileup.beginBatch({ type: "facet", facetId: ["B"] });
+        pileup.handle({ start: 0, end: 10, strand: "+" });
+        pileup.complete();
+
+        expect(output.facetBatches.get(["A"]).map((row) => row.lane)).toEqual([
+            0, 1,
+        ]);
+        expect(output.facetBatches.get(["B"]).map((row) => row.lane)).toEqual([
+            0,
+        ]);
+    }
+);
 
 /**
  * @param {PileupParams} params

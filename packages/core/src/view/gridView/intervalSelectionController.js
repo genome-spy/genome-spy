@@ -31,9 +31,9 @@ import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracke
  * @property {import("../containerView.js").default} layoutParent
  * @property {import("../../types/viewContext.js").default} context
  * @property {boolean} [captureInteractions]
- * @property {() => Rectangle | undefined} getInteractionCoords
+ * @property {(point: Point) => Rectangle | undefined} getInteractionCoords
  * @property {(name: string, point: Point) => boolean} [ownsInteraction]
- * @property {(channel: import("../../spec/channel.js").PrimaryPositionalChannel) => Rectangle} getProjectionCoords
+ * @property {(channel: import("../../spec/channel.js").PrimaryPositionalChannel, point: Point) => Rectangle} getProjectionCoords
  * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} [getSelectionRect]
  * @property {(overlay: import("./selectionRect.js").SelectionRectOverlay) => void} [setSelectionRect]
  */
@@ -308,8 +308,9 @@ export class IntervalSelectionController {
         this.#clearSelection = clearSelection;
 
         const isInsideHost = (/** @type {Point} */ point) =>
-            this.host.getInteractionCoords()?.containsPoint(point.x, point.y) ??
-            false;
+            this.host
+                .getInteractionCoords(point)
+                ?.containsPoint(point.x, point.y) ?? false;
         const ownsInteraction = (/** @type {Point} */ point) =>
             this.host.ownsInteraction?.(name, point) ?? true;
 
@@ -347,10 +348,10 @@ export class IntervalSelectionController {
             : () => {};
 
         const invertPoint = (
-            /** @type {import("../layout/point.js").default} */ point
+            /** @type {import("../layout/point.js").default} */ point,
+            projectionCoords = this.host.getProjectionCoords(channels[0], point)
         ) => {
             const inverted = { x: 0, y: 0 };
-            const projectionCoords = this.host.getProjectionCoords(channels[0]);
             const normalizedPoint = projectionCoords.normalizePoint(
                 point.x,
                 point.y,
@@ -372,10 +373,10 @@ export class IntervalSelectionController {
          * Converts the current selection intervals (in scale domain) to a rectangle
          * in screen coordinates.
          * @param {import("../../types/selectionTypes.js").IntervalSelection} selection
+         * @param {Rectangle} projectionCoords
          */
-        const selectionToRect = (selection) => {
+        const selectionToRect = (selection, projectionCoords) => {
             const { intervals } = selection;
-            const projectionCoords = this.host.getProjectionCoords(channels[0]);
 
             const mapCorner = (/** @type {number} */ i) => {
                 const getCoord = (
@@ -409,13 +410,17 @@ export class IntervalSelectionController {
             }
 
             const selection = selectionExpr();
+            const projectionCoords = this.host.getProjectionCoords(
+                channels[0],
+                event.point
+            );
             pendingClearStart = undefined;
             // Keep translation geometry in screen coordinates because scales
             // may be nonlinear.
             const translatedRectangle =
                 isActiveIntervalSelection(selection) &&
                 selectionContainsPoint(selection, invertPoint(event.point))
-                    ? selectionToRect(selection)
+                    ? selectionToRect(selection, projectionCoords)
                     : null;
 
             if (translatedRectangle) {
@@ -480,13 +485,19 @@ export class IntervalSelectionController {
                     );
 
                     intervals = pointsToIntervals(
-                        invertPoint(new Point(newRect.x, newRect.y)),
-                        invertPoint(new Point(newRect.x2, newRect.y2))
+                        invertPoint(
+                            new Point(newRect.x, newRect.y),
+                            projectionCoords
+                        ),
+                        invertPoint(
+                            new Point(newRect.x2, newRect.y2),
+                            projectionCoords
+                        )
                     );
                 } else {
                     intervals = pointsToIntervals(
-                        invertPoint(brush.start),
-                        invertPoint(current)
+                        invertPoint(brush.start, projectionCoords),
+                        invertPoint(current, projectionCoords)
                     );
                 }
 

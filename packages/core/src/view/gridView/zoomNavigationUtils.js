@@ -1,6 +1,27 @@
+import LayerView from "../layerView.js";
+import UnitView from "../unitView.js";
+import { isFacetSpec } from "../viewSpecGuards.js";
+
 /**
  * @typedef {import("../view.js").default} View
  */
+
+/**
+ * @param {View} view
+ * @param {import("../layout/point.js").default} point
+ * @param {import("../layout/rectangle.js").default} [coords]
+ */
+export function getZoomInteractionTarget(view, point, coords) {
+    if (isFacetSpec(view.spec)) {
+        const facet = /** @type {import("../facetView.js").default} */ (view);
+        const facetCoords = facet.getZoomCoords(point);
+        return facetCoords
+            ? { view: facet.child, coords: facetCoords }
+            : undefined;
+    } else if (view instanceof UnitView || view instanceof LayerView) {
+        return { view, coords };
+    }
+}
 
 /**
  * Finds all zoomable positional resolutions in a subtree.

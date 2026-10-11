@@ -1,5 +1,6 @@
 import {
     ConcatSpec as CoreConcatSpec,
+    FacetSpec as CoreFacetSpec,
     HConcatSpec as CoreHConcatSpec,
     ImportSpec,
     LayerSpec as CoreLayerSpec,
@@ -84,10 +85,7 @@ export type AppMultiscaleSpec = Omit<
         templates?: Record<string, AppNestedViewSpec>;
 
         multiscale: (
-            | AppLayerSpec
-            | AppUnitSpec
-            | AppMultiscaleSpec
-            | ImportSpec
+            AppLayerSpec | AppUnitSpec | AppMultiscaleSpec | ImportSpec
         )[];
     };
 
@@ -96,6 +94,13 @@ export type AppVConcatSpec = Omit<CoreVConcatSpec, "templates" | "vconcat"> &
         templates?: Record<string, AppNestedViewSpec>;
 
         vconcat: (AppViewSpec | ImportSpec)[];
+    };
+
+export type AppFacetSpec = Omit<CoreFacetSpec, "templates" | "spec"> &
+    AppConfigurableVisibilitySpec & {
+        templates?: Record<string, AppNestedViewSpec>;
+
+        spec: AppLayerSpec | AppUnitSpec | ImportSpec;
     };
 
 export type AppHConcatSpec = Omit<CoreHConcatSpec, "templates" | "hconcat"> &
@@ -116,6 +121,7 @@ export type AppNestedViewSpec =
     | AppUnitSpec
     | AppLayerSpec
     | AppMultiscaleSpec
+    | AppFacetSpec
     | AppVConcatSpec
     | AppHConcatSpec
     | AppConcatSpec;

@@ -9,8 +9,8 @@ export default class Tooltip {
     #sticky = false;
     #visible = true;
 
-    /** @type {any} */
-    #previousTooltipDatum = undefined;
+    /** @type {unknown} */
+    #previousTooltipIdentity = undefined;
 
     #penaltyUntil = 0;
 
@@ -169,7 +169,7 @@ export default class Tooltip {
                 render("", this.#element);
                 this.visible = false;
             }
-            this.#previousTooltipDatum = undefined;
+            this.#previousTooltipIdentity = undefined;
             return;
         }
 
@@ -184,30 +184,31 @@ export default class Tooltip {
     }
 
     clear() {
-        this.#previousTooltipDatum = undefined;
+        this.#previousTooltipIdentity = undefined;
         this.setContent(undefined);
     }
 
     /**
-     * Updates the tooltip if the provided datum differs from the previous one.
+     * Updates the tooltip if the datum's occurrence identity has changed.
      * Otherwise this is nop.
      *
      * @param {T} datum
      * @param {function(T):Promise<string | HTMLElement | import("lit").TemplateResult>} [converter]
+     * @param {unknown} [identity] Defaults to datum identity for non-mark callers.
      * @template T
      */
-    updateWithDatum(datum, converter) {
-        if (datum !== this.#previousTooltipDatum) {
-            this.#previousTooltipDatum = datum;
+    updateWithDatum(datum, converter, identity = datum) {
+        if (identity !== this.#previousTooltipIdentity) {
+            this.#previousTooltipIdentity = identity;
             if (!converter) {
                 converter = (d) =>
                     Promise.resolve(html` ${JSON.stringify(d)} `);
             }
 
-            const requestedDatum = datum;
+            const requestedIdentity = identity;
             converter(datum)
                 .then((result) => {
-                    if (this.#previousTooltipDatum !== requestedDatum) {
+                    if (this.#previousTooltipIdentity !== requestedIdentity) {
                         return;
                     }
                     this.setContent(result);

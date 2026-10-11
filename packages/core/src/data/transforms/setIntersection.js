@@ -213,6 +213,9 @@ export default class SetIntersectionTransform extends Transform {
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
+        if (flowBatch.type == "file" && this.inFacet) {
+            return;
+        }
         if (this.elements.length > 0) {
             this.#flush();
         }

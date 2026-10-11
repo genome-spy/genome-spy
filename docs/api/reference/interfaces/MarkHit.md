@@ -24,6 +24,14 @@ Picking identifier for the mark in the current rendered scene.
 
 ***
 
+### facetId?
+
+> `readonly` `optional` **facetId?**: readonly `Scalar`[]
+
+Tuple for a `facet` cell in row/column order, or undefined outside one.
+
+***
+
 ### datum
 
 > `readonly` **datum**: `Readonly`<`Record`<`string`, `unknown`\>\>

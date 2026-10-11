@@ -18,6 +18,9 @@ import { asArray } from "../../utils/arrayUtils.js";
  */
 
 export default class Transform extends FlowNode {
+    /** Whether physical input batches belong to a logical facet partition. */
+    inFacet = false;
+
     /** @type {string} */
     #label;
 
@@ -77,11 +80,15 @@ export default class Transform extends FlowNode {
         // A reset starts a new replay boundary, so no datum observes stale
         // parameter values from the preceding propagation.
         this.#refreshExpressionSnapshots();
+        this.inFacet = false;
         super.reset();
     }
 
     /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
     beginBatch(flowBatch) {
+        if (flowBatch.type == "facet") {
+            this.inFacet = true;
+        }
         // Sources can publish a fresh batch without resetting the dataflow.
         this.#refreshExpressionSnapshots();
         super.beginBatch(flowBatch);

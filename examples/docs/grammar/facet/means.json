@@ -1,0 +1,31 @@
+{
+  "description": "Facet-local means",
+
+  "data": {
+    "values": [
+      { "group": "A", "value": 1 },
+      { "group": "B", "value": 10 },
+      { "group": "A", "value": 3 },
+      { "group": "B", "value": 20 }
+    ]
+  },
+
+  "facet": { "field": "group" },
+  "spec": {
+    "name": "means",
+    "transform": [
+      {
+        "type": "aggregate",
+        "fields": ["value"],
+        "ops": ["mean"],
+        "as": ["mean"]
+      }
+    ],
+    "mark": { "type": "text", "size": 32 },
+    "encoding": {
+      "x": { "value": 0.5 },
+      "y": { "value": 0.5 },
+      "text": { "field": "mean" }
+    }
+  }
+}

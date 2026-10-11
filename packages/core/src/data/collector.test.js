@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import Collector from "./collector.js";
 import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 import { toRegularArray } from "../utils/domainArray.js";
+import CloneTransform from "./transforms/clone.js";
 
 const data = [1, 5, 2, 4, 3].map((x) => ({ x }));
 
@@ -161,6 +162,37 @@ test("Collector groups already faceted batches", () => {
         { sample: "B", x: 2 },
         { sample: "B", x: 3 },
     ]);
+});
+
+test("grouping, sorting, and replay preserve physical row shapes", () => {
+    const collector = new Collector({
+        type: "collect",
+        groupby: ["g"],
+        sort: { field: "v" },
+    });
+    const clone = new CloneTransform();
+    const output = new Collector();
+    collector.addChild(clone);
+    clone.addChild(output);
+
+    // Sorting interleaves files whose rows have different fields.
+    collector.beginBatch({ type: "file", url: "first" });
+    collector.handle({ g: "A", v: 3 });
+    collector.handle({ g: "B", v: 5 });
+    collector.beginBatch({ type: "file", url: "second" });
+    collector.handle({ g: "A", v: 1, extra: 9 });
+    collector.handle({ g: "A", v: 4, extra: 8 });
+    collector.complete();
+
+    const expected = [
+        { g: "A", v: 1, extra: 9 },
+        { g: "A", v: 3 },
+        { g: "A", v: 4, extra: 8 },
+    ];
+    expect(output.facetBatches.get(["A"])).toEqual(expected);
+    expect(output.facetBatches.get(["B"])).toEqual([{ g: "B", v: 5 }]);
+    collector.repropagate();
+    expect(output.facetBatches.get(["A"])).toEqual(expected);
 });
 
 test("Collector throws on incomplete flow", () => {

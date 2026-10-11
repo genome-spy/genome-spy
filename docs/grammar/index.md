@@ -52,7 +52,8 @@ resources.
 [Composition views](composition/index.md) arrange child views into a hierarchy.
 For example, [`layer`](composition/layer.md) overlays views to create custom
 glyphs, while the [concatenation](composition/concat.md) operators arrange views
-into tracks or grids. Common properties such as `data`, `transform`, and
+into tracks or grids. The [`facet`](facet.md) operator repeats one child view
+for groups of data. Common properties such as `data`, `transform`, and
 `encoding` can be defined on a composition view and inherited by its
 descendants.
 

@@ -1,7 +1,7 @@
 import { peek } from "../../utils/arrayUtils.js";
 import ViewRenderingContext from "../../view/renderingContext/viewRenderingContext.js";
 import {
-    getViewClipDirections,
+    getViewClipFlags,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
@@ -319,7 +319,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     previousLabel = command.view.getPathString();
                 }
                 command.label = previousLabel;
-                const clip = getViewClipDirections(command.view);
+                const clip = getViewClipFlags(command.view);
                 command.localOpacity = command.view.hasLocalOpacity();
                 command.clipX = clip.clipX;
                 command.clipY = clip.clipY;

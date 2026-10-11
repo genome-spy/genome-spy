@@ -127,7 +127,7 @@ describe("LayerView child zindex", () => {
             /** @type {any} */ ({
                 type: "mousemove",
                 stopped: false,
-                pointedViews: new Set(),
+                pointedViews: new Map(),
             })
         );
 

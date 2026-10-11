@@ -7,10 +7,12 @@ export interface FlowBatchBase {
 /**
  * Indicates that the contents of a new file will be propagated. The fields of
  * the file may or may not differ from the previous file. The data items within
- * a single batch must have homogenous fields.
+ * a single physical batch must have homogeneous fields. A logical facet can
+ * contain several file batches; they do not end or restart the facet.
  *
  * FlowNodes can react to FileBatches and, for example, clear their internal
- * states that expect specific fields in a specific layout.
+ * states that expect specific fields in a specific layout. Buffered transforms
+ * preserve these boundaries when replaying original rows.
  */
 export interface FileBatch {
     type: "file";
@@ -24,6 +26,9 @@ export interface FileBatch {
 /**
  * Indicates that a new group/facet will be propagated. All data items that
  * belong to a specific facet must be propagated within a single batch.
+ * Flush the preceding facet before forwarding this boundary, or retain the
+ * boundary with buffered rows until publication. This is not a whole-flow
+ * reset or completion boundary.
  */
 export interface FacetBatch {
     type: "facet";

@@ -1,7 +1,6 @@
 import { InternMap } from "internmap";
-import { bisector, group } from "d3-array";
+import { bisector } from "d3-array";
 import { compare, splitAccessPath } from "vega-util";
-import iterateNestedMaps from "../utils/iterateNestedMaps.js";
 import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
 import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
@@ -10,6 +9,10 @@ import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 import KeyIndex from "./keyIndex.js";
 import ViewportDomainManager from "./viewportDomain.js";
 import createDomain from "../utils/domainArray.js";
+import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "./fileBatchUtils.js";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -28,6 +31,14 @@ export default class Collector extends FlowNode {
      * @type {Data}
      */
     #buffer = [];
+
+    /** @type {import("./fileBatchUtils.js").FileBatchStart[]} */
+    #fileBatchStarts = [];
+
+    /** @type {import("./fileBatchUtils.js").FileBatchAccessor} */
+    #getFileBatch = () => undefined;
+
+    #rowCount = 0;
 
     #uniqueIdAccessor = field(UNIQUE_ID_KEY);
 
@@ -99,6 +110,9 @@ export default class Collector extends FlowNode {
 
     #init() {
         this.#buffer = [];
+        this.#fileBatchStarts = [];
+        this.#getFileBatch = () => undefined;
+        this.#rowCount = 0;
         this.#uniqueIdIndex = [];
         this.#keyIndex.invalidate();
         this.#viewportDomains.reset();
@@ -117,6 +131,7 @@ export default class Collector extends FlowNode {
      */
     handle(datum) {
         this.#buffer.push(datum);
+        this.#rowCount++;
     }
 
     /**
@@ -128,10 +143,20 @@ export default class Collector extends FlowNode {
         if (isFacetBatch(flowBatch)) {
             this.#buffer = [];
             this.facetBatches.set(asArray(flowBatch.facetId), this.#buffer);
+        } else {
+            this.#fileBatchStarts.push({
+                index: this.#rowCount,
+                batch: flowBatch,
+            });
         }
     }
 
     complete() {
+        this.#getFileBatch = createFileBatchAccessor(
+            iterateFacetBatchData(this.facetBatches.values()),
+            this.#fileBatchStarts
+        );
+
         // Free some memory
         this.#buffer = [];
 
@@ -153,7 +178,7 @@ export default class Collector extends FlowNode {
             const groups = groupData(data, accessors);
 
             this.facetBatches.clear();
-            for (const [key, data] of iterateNestedMaps(groups)) {
+            for (const [key, data] of groups) {
                 this.facetBatches.set(key, data);
             }
         }
@@ -199,8 +224,17 @@ export default class Collector extends FlowNode {
                         child.beginBatch(facetBatch);
                     }
                 }
+                const propagate = createFileBatchPropagator(
+                    this.#getFileBatch,
+                    (batch) => {
+                        for (const child of this.children) {
+                            child.beginBatch(batch);
+                        }
+                    },
+                    (datum) => this._propagate(datum)
+                );
                 for (let i = 0, n = data.length; i < n; i++) {
-                    this._propagate(data[i]);
+                    propagate(data[i]);
                 }
             }
         }
@@ -394,7 +428,7 @@ export default class Collector extends FlowNode {
         this.#facetIndices = [];
 
         /** @type {Datum} */
-        const obj = this.facetBatches.values().next().value?.[0];
+        const obj = this.facetBatches.values().find((data) => data.length)?.[0];
         if (obj == null || !(UNIQUE_ID_KEY in obj)) {
             return; // No unique ids in the data
         }
@@ -568,30 +602,32 @@ function iterateFacetBatchData(batches) {
  * @param {((data: Datum) => import("../spec/channel.js").Scalar)[]} accessors
  */
 function groupData(data, accessors) {
-    return accessors.length > 1
-        ? // There's something strange in d3-array's typings
-          /** @type {Map<any, any>} */ /** @type {any} */ (
-              group(data, ...accessors)
-          )
-        : // D3's group is SLOW!
-          groupBy(data, accessors[0]);
-}
+    // Keep first-occurrence order across compound keys, so facet column order
+    // does not depend on which row category was encountered first.
+    const root = new Map();
+    /** @type {[import("../spec/channel.js").Scalar[], Data][]} */
+    const groups = [];
+    const parentAccessors = accessors.slice(0, -1);
+    const lastAccessor = accessors.at(-1);
 
-/**
- * Like D3's group but without InternMap, which is slow.
- * TODO: Implement multi-level grouping
- *
- * @param {Iterable<Datum>} data
- * @param {(data: Datum) => import("../spec/channel.js").Scalar} accessor
- */
-function groupBy(data, accessor) {
-    const groups = new Map();
     for (const datum of data) {
-        const key = accessor(datum);
-        let group = groups.get(key);
+        let node = root;
+        for (const accessor of parentAccessors) {
+            const key = accessor(datum);
+            let next = node.get(key);
+            if (!next) {
+                next = new Map();
+                node.set(key, next);
+            }
+            node = next;
+        }
+
+        const key = lastAccessor(datum);
+        let group = node.get(key);
         if (!group) {
             group = [];
-            groups.set(key, group);
+            node.set(key, group);
+            groups.push([accessors.map((accessor) => accessor(datum)), group]);
         }
         group.push(datum);
     }

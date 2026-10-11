@@ -1,0 +1,31 @@
+{
+  "padding": 30,
+  "data": { "url": "vega-datasets/cars.json" },
+  "facet": {
+    "row": { "field": "Origin" },
+    "column": { "field": "Cylinders" }
+  },
+  "spec": {
+    "width": 150,
+    "height": 150,
+    "view": { "stroke": "lightgray" },
+    "params": [{ "name": "cursor", "ruler": { "encodings": ["x", "y"] } }],
+    "mark": "point",
+    "encoding": {
+      "x": {
+        "field": "Horsepower",
+        "type": "quantitative",
+        "axis": { "grid": true }
+      },
+      "y": {
+        "field": "Miles_per_Gallon",
+        "type": "quantitative",
+        "title": "MPG",
+        "axis": { "grid": true }
+      },
+      "color": { "field": "Origin", "type": "nominal" },
+      "size": { "value": 50 },
+      "opacity": { "value": 0.7 }
+    }
+  }
+}

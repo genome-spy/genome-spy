@@ -26,6 +26,7 @@ import IdentifierTransform from "../data/transforms/identifier.js";
 import { invalidate } from "../utils/propertyCacher.js";
 import NamedSource, { isNamedData } from "../data/sources/namedSource.js";
 import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
+import { isFacetSpec } from "./viewSpecGuards.js";
 
 /**
  * @param {View} root
@@ -118,6 +119,25 @@ export function buildDataFlow(
      */
     function createTransforms(transforms, view) {
         for (const params of transforms) {
+            if (inheritsFacetData(view)) {
+                if (params.type === "collect" && params.groupby?.length) {
+                    throw new Error(
+                        "collect.groupby cannot repartition inherited facet data."
+                    );
+                }
+                if (
+                    [
+                        "displace1d",
+                        "filterScoredLabels",
+                        "packLegendLabels",
+                        "axisLabelLayout",
+                    ].includes(params.type)
+                ) {
+                    throw new Error(
+                        `Transform "${params.type}" does not support inherited facet data.`
+                    );
+                }
+            }
             /** @type {FlowNode} */
             let transform;
             /**
@@ -266,6 +286,27 @@ export function buildDataFlow(
             createTransforms(view.spec.transform, view);
         }
 
+        if (isFacetSpec(view.spec)) {
+            // TODO: Share/fuse this materialization with adjacent collectors while
+            // preserving input membership, batch identity, and replay ownership.
+            // Hoisting row transforms or grouped reductions also requires proving
+            // equivalent field dependencies, parameter scope, and output fields.
+            const collector = new Collector({
+                type: "collect",
+                groupby: view.getFacetFields(),
+            });
+            appendNode(
+                collector,
+                () =>
+                    new Error(
+                        "A facet requires an inherited or own data source."
+                    )
+            );
+            dataFlow.addCollector(collector);
+            view.flowHandle ??= {};
+            view.flowHandle.collector = collector;
+        }
+
         if (view instanceof UnitView) {
             if (!currentNode) {
                 throw new Error(
@@ -305,7 +346,11 @@ export function buildDataFlow(
             // is always appended to the end of the current branch.
             const collector = new Collector({
                 type: "collect",
-                groupby: view.getFacetFields(),
+                groupby: view
+                    .getLayoutAncestors()
+                    .some((ancestor) => isFacetSpec(ancestor.spec))
+                    ? undefined
+                    : view.getFacetFields(),
                 sort: getCompareParamsForView(
                     view,
                     linearize?.rewrittenEncoding
@@ -356,6 +401,25 @@ export function buildDataFlow(
     postProcessOps.forEach((op) => op());
 
     return dataFlow;
+}
+
+/**
+ * An explicit data source overrides the surrounding facet execution scope.
+ * Layout ancestry alone also includes child-owned and auxiliary data.
+ *
+ * @param {import("./view.js").default} view
+ * @returns {boolean}
+ */
+function inheritsFacetData(view) {
+    for (const ancestor of view.getDataAncestors()) {
+        if (ancestor !== view && isFacetSpec(ancestor.spec)) {
+            return true;
+        }
+        if (ancestor.spec.data) {
+            return false;
+        }
+    }
+    return false;
 }
 
 /**
