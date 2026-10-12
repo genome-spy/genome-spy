@@ -183,13 +183,18 @@ points. Replacing the data or removing the drawing plot clears the selection.
 A lasso containing no points selects none, even with `empty: true`.
 
 WebGPU highlights points while drawing. WebGL and Canvas update highlights on
-release. Filters update after release; large selections may take
+release. Filters and saved state update after release; large selections may take
 time to finish, during which zooming and panning pause.
 
 Both axes must use quantitative fields on linear, log, sqrt, pow, or symlog
 scales. All points must be loaded, and the drawing plot must appear only once
 in the layout.
 Point offsets and rounded or custom scale interpolation are unsupported.
+
+In GenomeSpy App, bookmarks and undo/redo save the lasso and its original axes,
+then select points from the current data when restored. Points right on the
+boundary can differ after restoration because of coordinate rounding.
+Set `persist: false` for a temporary selection.
 
 Linked plots need a shared `identifier` transform before their data branches,
 with the selection declared on their common ancestor. Keep the drawing plot

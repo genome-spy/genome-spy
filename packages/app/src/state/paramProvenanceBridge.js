@@ -10,9 +10,27 @@ import {
     isIntervalSelectionConfig,
     isMultiPointSelection,
     isPointSelectionConfig,
+    isRegionSelectionConfig,
+    isRegionSelection,
     isSinglePointSelection,
     resolvePointSelectionFromKeyTuples,
 } from "@genome-spy/core/selection/selection.js";
+import {
+    createPendingRegionSelection,
+    createRegionSelection,
+    materializeRegionSelectionForView,
+} from "@genome-spy/core/selection/regionSelection.js";
+import {
+    isRegionSelectionFiltered,
+    isRegionProducerReady,
+} from "@genome-spy/core/selection/regionSelectionProducer.js";
+import { getRegionFields } from "@genome-spy/core/selection/regionProjection.js";
+import {
+    isDataReady,
+    iterateDataDependencies,
+} from "@genome-spy/core/data/dataReadiness.js";
+import Collector from "@genome-spy/core/data/collector.js";
+import UnitView from "@genome-spy/core/view/unitView.js";
 import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import {
     getBookmarkableParams,
@@ -25,6 +43,7 @@ import {
     isVariableParameter,
 } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import { field } from "@genome-spy/core/utils/field.js";
+import deepEqual from "@genome-spy/core/utils/deepEqual.js";
 import throttle from "@genome-spy/core/utils/throttle.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { subscribeTo, withMicrotask } from "./subscribeTo.js";
@@ -105,14 +124,16 @@ export default class ParamProvenanceBridge {
 
     #restoreWarningsScheduled = false;
 
-    /** @type {WeakSet<object>} */
-    #pendingCollectors = new WeakSet();
+    /** @type {Map<object, {promise: Promise<void>, cancel: () => void}>} */
+    #pendingCollectors = new Map();
 
     /** @type {Map<string, ((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void }>} */
     #throttledDispatchers = new Map();
 
     /** @type {Promise<void>} */
     #lastApplyPromise = Promise.resolve();
+
+    #disposed = false;
 
     /**
      * @param {object} options
@@ -136,6 +157,8 @@ export default class ParamProvenanceBridge {
     }
 
     dispose() {
+        this.#disposed = true;
+        for (const wait of this.#pendingCollectors.values()) wait.cancel();
         for (const disposer of this.#disposers) {
             disposer();
         }
@@ -235,6 +258,15 @@ export default class ParamProvenanceBridge {
             return;
         }
 
+        const stored = this.#getPresentEntries()[selectorKey]?.value;
+        if (
+            serialized.type === "region" &&
+            stored?.type === "region" &&
+            deepEqual(serialized.intent, stored.intent)
+        ) {
+            return;
+        }
+
         if (this.#shouldUndoOnClear(entry, value, selectorKey)) {
             this.#cancelThrottledDispatch(selectorKey);
             this.#store.dispatch(ActionCreators.undo());
@@ -315,6 +347,7 @@ export default class ParamProvenanceBridge {
             return true;
         }
 
+        if (value.type === "region") return value.intent === null;
         if (value.type === "point") {
             return value.keys.length === 0;
         }
@@ -356,7 +389,8 @@ export default class ParamProvenanceBridge {
      */
     #shouldThrottle(param) {
         if (isSelectionParameter(param)) {
-            return true;
+            // Region gestures publish completed queries rather than pointer updates.
+            return !isRegionSelectionConfig(asSelectionConfig(param.select));
         }
 
         return isVariableParameter(param) && Boolean(param.bind);
@@ -513,6 +547,21 @@ export default class ParamProvenanceBridge {
         if (isSelectionParameter(param)) {
             const select = asSelectionConfig(param.select);
 
+            if (isRegionSelectionConfig(select)) {
+                if (!isRegionSelection(value)) return;
+                try {
+                    if (value.status !== "cleared")
+                        createPendingRegionSelection(value.intent);
+                    return serializeBookmarkableParamValue(entry.view, value);
+                } catch (error) {
+                    this.#warnPersistSelection(
+                        param,
+                        `has invalid lasso intent and will not be saved: ${error}`
+                    );
+                    return;
+                }
+            }
+
             if (isPointSelectionConfig(select)) {
                 const keyFields = this.#getPointSelectionKeyFields(
                     entry,
@@ -584,55 +633,115 @@ export default class ParamProvenanceBridge {
      * @param {Record<string, ParamProvenanceEntry>} entries
      */
     #applyProvenanceEntries(entries) {
+        if (this.#disposed) return;
+        for (const wait of this.#pendingCollectors.values()) wait.cancel();
         this.#suppressCapture = true;
         try {
+            const knownKeys = new Set(this.#entriesByKey.keys());
+            const unusedKeys = new Set(Object.keys(entries));
+
+            const regions = this.#entries.filter(
+                (entry) =>
+                    isSelectionParameter(entry.param) &&
+                    isRegionSelectionConfig(
+                        asSelectionConfig(entry.param.select)
+                    )
+            );
+            /** @param {BookmarkableParamEntry} entry */
+            const apply = (entry) => {
+                const selectorKey = makeParamSelectorKey(entry.selector);
+                unusedKeys.delete(selectorKey);
+                if (this.#unpersistableKeys.has(selectorKey)) return;
+                const storedEntry = entries[selectorKey];
+                const value = storedEntry
+                    ? this.#resolveStoredValue(entry, storedEntry)
+                    : this.#getDefaultValue(entry);
+                if (this.#isLiveVariableTarget(entry, value)) return;
+                entry.view.paramRuntime.setValue(entry.selector.param, value, {
+                    animate: false,
+                });
+            };
+
+            // Settle every producer-driving change before rebuilding its membership.
             this.#root.paramRuntime.runInTransaction(() => {
-                const knownKeys = new Set(this.#entriesByKey.keys());
-                const unusedKeys = new Set(Object.keys(entries));
-
-                for (const entry of this.#entries) {
-                    const selectorKey = makeParamSelectorKey(entry.selector);
-                    unusedKeys.delete(selectorKey);
-                    if (this.#unpersistableKeys.has(selectorKey)) {
-                        continue;
-                    }
-
-                    const storedEntry = entries[selectorKey];
-                    const value = storedEntry
-                        ? this.#resolveStoredValue(entry, storedEntry)
-                        : this.#getDefaultValue(entry);
-
-                    if (this.#isLiveVariableTarget(entry, value)) {
-                        continue;
-                    }
-
-                    entry.view.paramRuntime.setValue(
-                        entry.selector.param,
-                        value,
-                        {
-                            animate: false,
-                        }
+                for (const entry of this.#entries)
+                    if (!regions.includes(entry)) apply(entry);
+            });
+            this.#root.paramRuntime.flushNow();
+            for (const entry of this.#orderRegionReplay(regions, entries)) {
+                this.#root.paramRuntime.runInTransaction(() => {
+                    apply(entry);
+                });
+                this.#root.paramRuntime.flushNow();
+            }
+            for (const key of unusedKeys) {
+                if (!knownKeys.has(key)) {
+                    const { selector } = entries[key];
+                    this.#warnMissingParamInScope(
+                        selector.param,
+                        selector.scope
                     );
                 }
-
-                for (const key of unusedKeys) {
-                    if (!knownKeys.has(key)) {
-                        const missing = entries[key];
-                        const selector = missing.selector;
-                        this.#warnMissingParamInScope(
-                            selector.param,
-                            selector.scope
-                        );
-                    }
-                }
-            });
-
-            // Keep suppression active while deferred propagation is flushed.
-            this.#root.paramRuntime.flushNow();
+            }
             this.#lastApplyPromise = this.#root.paramRuntime.whenPropagated();
+        } catch (error) {
+            for (const wait of this.#pendingCollectors.values()) wait.cancel();
+            this.#lastApplyPromise = Promise.reject(error);
+            void this.#lastApplyPromise.catch(() => {});
         } finally {
             this.#suppressCapture = false;
         }
+    }
+
+    /**
+     * Order saved regions by the scoped filters driving their producer data.
+     * @param {BookmarkableParamEntry[]} regions
+     * @param {Record<string, ParamProvenanceEntry>} entries
+     */
+    #orderRegionReplay(regions, entries) {
+        /** @type {BookmarkableParamEntry[]} */
+        const ordered = [];
+        /** @type {Set<BookmarkableParamEntry>} */
+        const visiting = new Set();
+        /** @param {BookmarkableParamEntry} entry */
+        const visit = (entry) => {
+            if (ordered.includes(entry)) return;
+            if (visiting.has(entry))
+                throw new Error("Cyclic lasso producer dependencies.");
+            visiting.add(entry);
+            const stored = entries[makeParamSelectorKey(entry.selector)]?.value;
+            /** @type {View | undefined} */
+            let producer;
+            try {
+                producer =
+                    stored?.type === "region" && stored.intent
+                        ? resolveViewSelector(
+                              this.#root,
+                              stored.intent.producer
+                          )
+                        : undefined;
+            } catch {
+                // Value resolution reports invalid saved producers with the parameter context.
+            }
+            if (producer instanceof UnitView) {
+                for (const upstream of regions) {
+                    if (
+                        upstream !== entry &&
+                        isRegionSelectionFiltered(
+                            producer,
+                            upstream.view.paramRuntime.getParamRef(
+                                upstream.selector.param
+                            )
+                        )
+                    )
+                        visit(upstream);
+                }
+            }
+            visiting.delete(entry);
+            ordered.push(entry);
+        };
+        for (const entry of regions) visit(entry);
+        return ordered;
     }
 
     /**
@@ -660,22 +769,59 @@ export default class ParamProvenanceBridge {
             return entry.view.paramRuntime.getTargetValue(paramName);
         }
 
-        return entry.view.paramRuntime.getValue(paramName);
+        return entry.view.paramRuntime.findValue(paramName);
     }
 
     /**
-     * Resolves after the latest provenance apply pass has run and param
-     * propagation has settled.
+     * Resolves after the latest provenance replay has loaded required producer
+     * rows, rebuilt membership, and settled downstream param propagation.
      *
      * Sync barrier only: this does not wait for temporal/animation convergence.
      *
      * @param {{ signal?: AbortSignal, timeoutMs?: number }} [options]
      */
     async whenApplied(options) {
-        // #applyProvenanceEntries is scheduled through queueMicrotask.
-        await Promise.resolve();
-        await this.#lastApplyPromise;
-        return this.#root.paramRuntime.whenPropagated(options);
+        const settled = (async () => {
+            // Provenance changes and collector reapply are scheduled separately.
+            await Promise.resolve();
+            let applied;
+            do {
+                applied = this.#lastApplyPromise;
+                await applied;
+                await Promise.all(
+                    this.#pendingCollectors.values().map((wait) => wait.promise)
+                );
+            } while (
+                this.#pendingCollectors.size ||
+                applied !== this.#lastApplyPromise
+            );
+            await this.#root.paramRuntime.whenPropagated(options);
+        })();
+        if (!options?.signal && options?.timeoutMs === undefined)
+            return settled;
+
+        const { promise, reject } = Promise.withResolvers();
+        const abort = () => reject(new Error("whenApplied aborted"));
+        const timer =
+            options.timeoutMs === undefined
+                ? undefined
+                : setTimeout(
+                      () =>
+                          reject(
+                              new Error(
+                                  `whenApplied timeout after ${options.timeoutMs} ms`
+                              )
+                          ),
+                      options.timeoutMs
+                  );
+        options.signal?.addEventListener("abort", abort, { once: true });
+        if (options.signal?.aborted) abort();
+        try {
+            await Promise.race([settled, promise]);
+        } finally {
+            clearTimeout(timer);
+            options.signal?.removeEventListener("abort", abort);
+        }
     }
 
     /**
@@ -691,6 +837,68 @@ export default class ParamProvenanceBridge {
 
         if (isSelectionParameter(param)) {
             const select = asSelectionConfig(param.select);
+
+            if (isRegionSelectionConfig(select)) {
+                if (storedValue.type !== "region")
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
+                        "cannot be restored because the bookmark stored a different selection type."
+                    );
+                if (storedValue.intent === null) return createRegionSelection();
+                try {
+                    const pending = createPendingRegionSelection(
+                        storedValue.intent
+                    );
+                    const producer = resolveViewSelector(
+                        this.#root,
+                        pending.intent.producer
+                    );
+                    const selectionRef = entry.view.paramRuntime.getParamRef(
+                        entry.selector.param
+                    );
+                    if (
+                        !(producer instanceof UnitView) ||
+                        producer.paramRuntime.getParamRef(
+                            entry.selector.param
+                        ) !== selectionRef ||
+                        isRegionSelectionFiltered(producer, selectionRef)
+                    ) {
+                        throw new Error(
+                            "The saved lasso producer is not an eligible producer for this parameter."
+                        );
+                    }
+                    const fields = getRegionFields(producer);
+                    if (
+                        fields.x !== pending.intent.fields.x ||
+                        fields.y !== pending.intent.fields.y
+                    )
+                        throw new Error(
+                            "The saved lasso fields do not match its producer."
+                        );
+                    const collector = producer.getCollector();
+                    if (!isRegionProducerReady(producer)) {
+                        this.#scheduleReapply(collector, () =>
+                            isRegionProducerReady(producer)
+                        );
+                        return pending;
+                    }
+                    const live = entry.view.paramRuntime.findValue(
+                        entry.selector.param
+                    );
+                    if (
+                        isRegionSelection(live) &&
+                        live.status === "ready" &&
+                        deepEqual(live.intent, pending.intent)
+                    )
+                        return live;
+                    return materializeRegionSelectionForView(pending, producer);
+                } catch (error) {
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
+                        `cannot restore its lasso query: ${error}`
+                    );
+                }
+            }
 
             if (isPointSelectionConfig(select)) {
                 if (storedValue.type === "pointExpand") {
@@ -997,19 +1205,43 @@ export default class ParamProvenanceBridge {
      * Re-applies provenance once data collection completes.
      *
      * @param {import("@genome-spy/core/data/collector.js").default} collector
+     * @param {() => boolean} [isReady]
      */
-    #scheduleReapply(collector) {
+    #scheduleReapply(collector, isReady = () => isDataReady(collector)) {
         if (this.#pendingCollectors.has(collector)) {
             return;
         }
 
-        this.#pendingCollectors.add(collector);
-        const unsubscribe = collector.observe(() => {
+        const { promise, resolve, reject } = Promise.withResolvers();
+        // Failure may precede a caller attaching the replay completion barrier.
+        void promise.catch(() => {});
+        const onPublication = () => {
+            void this.#root.paramRuntime.whenPropagated().catch((error) => {
+                if (this.#pendingCollectors.get(collector)?.promise !== promise)
+                    return;
+                unsubscribe();
+                this.#lastApplyPromise = promise;
+                reject(error);
+            });
+            if (!isReady()) return;
+            // Collector fan-out may still publish another producer revision.
+            queueMicrotask(() =>
+                this.#applyProvenanceEntries(this.#getPresentEntries())
+            );
+            cancel();
+        };
+        const unsubscribes = Array.from(iterateDataDependencies(collector))
+            .filter((node) => node instanceof Collector)
+            .map((node) => node.observe(onPublication));
+        const unsubscribe = () => {
+            for (const dispose of unsubscribes) dispose();
             this.#pendingCollectors.delete(collector);
+        };
+        const cancel = () => {
             unsubscribe();
-            this.#applyProvenanceEntries(this.#getPresentEntries());
-        });
-        this.#disposers.push(unsubscribe);
+            resolve();
+        };
+        this.#pendingCollectors.set(collector, { promise, cancel });
     }
 
     /**
@@ -1199,6 +1431,8 @@ export default class ParamProvenanceBridge {
      */
     #isSelectionCleared(param, value) {
         const select = asSelectionConfig(param.select);
+        if (isRegionSelectionConfig(select))
+            return isRegionSelection(value) && value.status === "cleared";
         if (isPointSelectionConfig(select)) {
             if (isSinglePointSelection(value)) {
                 return !value.datum;

@@ -2,6 +2,7 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it, vi } from "vitest";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
+import Collector from "@genome-spy/core/data/collector.js";
 import {
     createIntervalSelection,
     createMultiPointSelection,
@@ -18,7 +19,7 @@ vi.mock("../components/generic/messageDialog.js", () => ({
     showMessageDialog: vi.fn(),
 }));
 
-class FakeCollector {
+class FakeCollector extends Collector {
     /** @type {boolean} */
     completed = true;
 
@@ -32,6 +33,7 @@ class FakeCollector {
     #data;
 
     constructor(resolver, data = []) {
+        super();
         this.#resolver = resolver;
         this.#data = data;
     }
@@ -416,6 +418,30 @@ describe("ParamProvenanceBridge", () => {
                 ["S2", "chr2", 20],
             ],
         });
+    });
+
+    it("warns and skips invalid region intent", async () => {
+        const showMessageDialog = await getShowMessageDialogMock();
+        const view = new FakeView();
+        const setter = view.paramRuntime.registerParam({
+            name: "lasso",
+            select: "region",
+        });
+        const store = createStore();
+        createBridge(view, store, new IntentExecutor(store));
+        setter({
+            type: "region",
+            status: "ready",
+            intent: {},
+            data: new Map(),
+        });
+        await flushMicrotasks();
+        expect(showMessageDialog).toHaveBeenCalled();
+        expect(
+            Object.keys(
+                store.getState().provenance.present.paramProvenance.entries
+            )
+        ).toHaveLength(0);
     });
 
     it("warns and skips point selections when encoding.key is missing", async () => {

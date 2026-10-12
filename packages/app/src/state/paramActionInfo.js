@@ -171,6 +171,11 @@ function formatParamActionTitle(action, view, selector, value, origin, root) {
             ${intervalLabel}${formatOriginSuffix(origin, root)}`;
     }
 
+    if (value.type === "region") {
+        return html`${value.intent ? "Lasso selection" : "Clear selection"}
+            <strong>${paramLabel}</strong>`;
+    }
+
     return html`Update <strong>${paramLabel}</strong>`;
 }
 
@@ -288,6 +293,7 @@ function getParamActionIcon(value) {
         case "pointExpand":
             return faArrowPointer;
         case "interval":
+        case "region":
             return faBrush;
         case "value":
             return faWrench;

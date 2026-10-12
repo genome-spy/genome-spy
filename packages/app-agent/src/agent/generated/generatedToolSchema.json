@@ -1241,6 +1241,9 @@
           "$ref": "#/definitions/ParamValuePoint"
         },
         {
+          "$ref": "#/definitions/ParamValueRegion"
+        },
+        {
           "$ref": "#/definitions/ParamValuePointExpand"
         }
       ],
@@ -1423,6 +1426,29 @@
       ],
       "description": "Expanded point selection value stored in provenance."
     },
+    "ParamValueRegion": {
+      "additionalProperties": false,
+      "description": "Geometric lasso query; runtime IDs and materialized rows are never stored.",
+      "properties": {
+        "intent": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RegionSelectionIntent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null clears the selection; a zero-match polygon remains active."
+        },
+        "type": {
+          "const": "region",
+          "type": "string"
+        }
+      },
+      "required": ["type", "intent"],
+      "type": "object"
+    },
     "PlotAttributeIdentifier": {
       "$ref": "#/definitions/UnfilteredAgentAttributeCandidate"
     },
@@ -1474,6 +1500,91 @@
         }
       },
       "required": ["attribute", "operator", "operand"],
+      "type": "object"
+    },
+    "RegionScaleMapping": {
+      "additionalProperties": false,
+      "description": "Resolved numeric mapping captured when a lasso is drawn.",
+      "properties": {
+        "base": {
+          "type": "number"
+        },
+        "clamp": {
+          "type": "boolean"
+        },
+        "constant": {
+          "type": "number"
+        },
+        "domain": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "exponent": {
+          "type": "number"
+        },
+        "range": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "type": {
+          "enum": ["linear", "log", "sqrt", "pow", "symlog"],
+          "type": "string"
+        }
+      },
+      "required": ["type", "domain", "range", "clamp"],
+      "type": "object"
+    },
+    "RegionSelectionIntent": {
+      "additionalProperties": false,
+      "description": "The geometric query, independent of runtime point IDs and scale navigation.",
+      "properties": {
+        "fields": {
+          "additionalProperties": false,
+          "properties": {
+            "x": {
+              "type": "string"
+            },
+            "y": {
+              "type": "string"
+            }
+          },
+          "required": ["x", "y"],
+          "type": "object"
+        },
+        "polygon": {
+          "description": "Vertices in the normalized coordinate space of the captured mappings.",
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "producer": {
+          "$ref": "#/definitions/ViewSelector"
+        },
+        "scales": {
+          "additionalProperties": false,
+          "properties": {
+            "x": {
+              "$ref": "#/definitions/RegionScaleMapping"
+            },
+            "y": {
+              "$ref": "#/definitions/RegionScaleMapping"
+            }
+          },
+          "required": ["x", "y"],
+          "type": "object"
+        }
+      },
+      "required": ["polygon", "fields", "scales", "producer"],
       "type": "object"
     },
     "RemoveGroup": {
