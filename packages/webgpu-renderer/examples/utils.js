@@ -8,10 +8,10 @@ setDebugResourcesEnabled(true);
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @returns {Promise<import("../src/renderer.js").Renderer>}
+ * @returns {Promise<import("../src/index.d.ts").Renderer>}
  */
 export async function createExampleRenderer(canvas) {
-    /** @type {import("../src/renderer.js").Renderer} */
+    /** @type {import("../src/index.d.ts").Renderer} */
     let renderer;
     renderer = await createRenderer(canvas, {
         onInvalidate: () => renderer.render(),
@@ -21,7 +21,10 @@ export async function createExampleRenderer(canvas) {
     renderer.createMark = (definition, config) => {
         const handle = createMark(definition, config);
         const replaceSeries = handle.series.replace;
-        handle.series.replace = (series, count) => {
+        handle.series.replace = (
+            /** @type {Parameters<typeof replaceSeries>[0]} */ series,
+            /** @type {number | undefined} */ count
+        ) => {
             replaceSeries(series, count);
             renderer.debugResources(
                 handle.markId,
@@ -36,7 +39,7 @@ export async function createExampleRenderer(canvas) {
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {import("../src/renderer.js").Renderer} renderer
+ * @param {import("../src/index.d.ts").Renderer} renderer
  * @param {(size: {width: number, height: number, dpr: number}) => void} [onResize]
  * @param {() => import("../src/index.d.ts").RenderFrame} [getFrame]
  */

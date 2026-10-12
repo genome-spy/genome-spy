@@ -152,6 +152,30 @@ parallel representations.
 
 Tentative commit: `refactor(webgpu-renderer): remove measured scale duplication`
 
+## Implemented: live compute lasso and density display
+
+`LassoSelection` computes membership from immutable projected f32 positions into a
+persistent GPU hash table and selected-ID/input-row-index output. Multi-selection
+slots borrow that table directly with explicit activity and caller ownership; the
+CPU setter remains available. `createPointLassoSelection` captures centers using
+the point renderer's scale/center functions, without uploading another position
+array. The ordinary point bundle excludes optional capture and containment code.
+
+`createPointDensityPreview` adds an explicit image-only display for uniform circles
+on opaque white. It caches neutral appearance and recolors by per-pixel selected
+fractions without geometry redraws during drawing or release. It deliberately changes
+overlap blending and is not a general replacement for conditional point rendering.
+The host owns scene invalidation; geometry, counts and cached image rebuild together.
+The preview keeps only the latest queued polygon while one compute batch is in flight.
+The older density-only no-membership option and unused density activity argument
+were removed; the utilities use one compute/table/readback path.
+
+GPU membership follows rendered f32 centers and containment. Paths support at most
+512 vertices. Population-sized ID/index staging remains an explicit limit.
+Renderer-generic Storybook scenes and GPU fixtures cover capture, conditional colors,
+activity, hash insertion, snapshot ordering, density bins, point picking, queue
+coalescing, resize and borrowed-resource lifetime.
+
 ## Deferred until a concrete consumer or design exists
 
 - Complex shaping, fallback, variable fonts, and persistent cross-session atlas

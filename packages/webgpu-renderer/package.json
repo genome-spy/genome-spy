@@ -103,6 +103,10 @@
     "./scale-authoring": {
       "types": "./src/marks/scales/scale-authoring.d.ts",
       "default": "./src/marks/scales/scale-authoring.js"
+    },
+    "./lasso": {
+      "types": "./src/utils/lassoSelection.d.ts",
+      "default": "./src/utils/lassoSelection.js"
     }
   },
   "files": [

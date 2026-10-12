@@ -54,12 +54,15 @@ test("fixed named and SVG point shapes use the shared path program", async ({
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pointMark }, { linearScale }] =
-            await Promise.all([
-                import("/src/index.js"),
-                import("/src/marks/point.js"),
-                import("/src/scales/linear.js"),
-            ]);
+        const [
+            { createRenderer },
+            { pointMark, createPointLassoSelection },
+            { linearScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/point.js"),
+            import("/src/scales/linear.js"),
+        ]);
         const canvas = document.createElement("canvas");
         canvas.width = 64;
         canvas.height = 64;
@@ -91,12 +94,22 @@ test("fixed named and SVG point shapes use the shared path program", async ({
         renderer.render({ draws: [{ mark: named }] });
         await renderer.device.queue.onSubmittedWorkDone();
         const corner = await renderer.pick(40, 40);
+        const lasso = createPointLassoSelection(renderer, named);
+        lasso.update([
+            [24, 24],
+            [40, 24],
+            [40, 40],
+            [24, 40],
+        ]);
+        const ids = Array.from((await lasso.readIds()).ids);
+        lasso.destroy();
         const result = {
             programs: programs.map((program) => program.constructor.name),
             sharedAtlas:
                 programs[0]._extraTextures.get("pathAtlas").texture ===
                 programs[1]._extraTextures.get("pathAtlas").texture,
             corner,
+            ids,
         };
         renderer.destroy();
         canvas.remove();
@@ -107,6 +120,7 @@ test("fixed named and SVG point shapes use the shared path program", async ({
         programs: ["PathPointProgram", "PathPointProgram"],
         sharedAtlas: true,
         corner: 23,
+        ids: [23],
     });
 });
 
@@ -334,4 +348,107 @@ test("visibility predicates cull point instances from rendering and picking", as
         afterInfinity: [null, null],
     });
     expect(visibleFramebuffer).not.toEqual(hiddenFramebuffer);
+});
+
+test("point quads cover every corner and preserve ranged picking and transparent overlap", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { pointMark }, { identityScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/point.js"),
+                import("/src/scales/identity.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 64;
+        document.body.append(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.context.configure({
+            device: renderer.device,
+            format: renderer.format,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        const mark = renderer.createMark(pointMark, {
+            channels: {
+                x: {
+                    data: new Float32Array([12, 40, 40]),
+                    type: "f32",
+                    scale: identityScale(),
+                },
+                y: { value: 32, scale: identityScale() },
+                uniqueId: { data: new Uint32Array([41, 42, 43]), type: "u32" },
+                shape: { value: 1 },
+                size: { value: 400 },
+                strokeWidth: { value: 0 },
+                fill: {
+                    data: new Float32Array([
+                        1, 0, 0, 0.5, 1, 0, 0, 0.5, 0, 0, 1, 0.5,
+                    ]),
+                    type: "f32",
+                    components: 4,
+                },
+            },
+        });
+        renderer.render({
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+            draws: [
+                {
+                    mark,
+                    firstInstance: 1,
+                    instanceCount: 2,
+                    scissor: { x: 0, y: 0, width: 48, height: 64 },
+                },
+            ],
+        });
+        const readback = renderer.device.createBuffer({
+            size: 64 * 256,
+            usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+        });
+        const encoder = renderer.device.createCommandEncoder();
+        encoder.copyTextureToBuffer(
+            { texture: renderer.context.getCurrentTexture() },
+            { buffer: readback, bytesPerRow: 256 },
+            { width: 64, height: 64 }
+        );
+        renderer.device.queue.submit([encoder.finish()]);
+        await readback.mapAsync(GPUMapMode.READ);
+        const bytes = new Uint8Array(readback.getMappedRange());
+        const pixel = (x, y) => {
+            const offset = y * 256 + x * 4;
+            const rgba = Array.from(bytes.subarray(offset, offset + 4));
+            return renderer.format.startsWith("bgra")
+                ? [rgba[2], rgba[1], rgba[0], rgba[3]]
+                : rgba;
+        };
+        // Interior corners cross both triangles; overlap must retain source-order blending.
+        const corners = [
+            [34, 26],
+            [46, 26],
+            [34, 38],
+            [46, 38],
+        ].map(([x, y]) => pixel(x, y));
+        const omitted = pixel(12, 32);
+        const clipped = pixel(49, 32);
+        readback.destroy();
+        const picks = [
+            await renderer.pick(12, 32),
+            await renderer.pick(40, 32),
+            await renderer.pick(49, 32),
+        ];
+        renderer.destroy();
+        canvas.remove();
+        return { corners, omitted, clipped, picks };
+    });
+    for (const pixel of result.corners) {
+        expect(pixel[0]).toBeCloseTo(64, -1);
+        expect(pixel[1]).toBe(0);
+        expect(pixel[2]).toBeCloseTo(128, -1);
+        expect(pixel[3]).toBeCloseTo(192, -1);
+    }
+    expect(result.omitted).toEqual([0, 0, 0, 0]);
+    expect(result.clipped).toEqual([0, 0, 0, 0]);
+    expect(result.picks).toEqual([null, 43, null]);
 });
