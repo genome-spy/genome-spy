@@ -139,14 +139,21 @@ void main(void) {
     // The bezier's control points
     vec2 p1, p2, p3, p4;
 
-    vec2 a = applyOffset(
+    vec2 a = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    ) * uViewportSize;
-    vec2 b = applyOffset(
+    )) * uViewportSize;
+    vec2 b = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    ) * uViewportSize;
+    )) * uViewportSize;
+
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    if (all(equal(a, b)) || getSampleFacetPos().height == 0.0) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
 
     if (uShape <= SHAPE_DOME) {
         if (uShape == SHAPE_DOME) {

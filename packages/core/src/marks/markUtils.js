@@ -256,3 +256,11 @@ export function fixFill(encoding, filled) {
         }
     }
 }
+
+/**
+ * @param {import("./mark.js").default} mark
+ * @param {"x" | "y"} axis
+ */
+export function isMarkClamped(mark, axis) {
+    return mark.properties.clamp === true || mark.properties.clamp === axis;
+}

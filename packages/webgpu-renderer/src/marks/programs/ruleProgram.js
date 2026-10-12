@@ -1,3 +1,7 @@
+import {
+    POSITION_CLAMP_CHANNEL_SPECS,
+    POSITION_CLAMP_WGSL,
+} from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import DASH_WGSL from "../../wgsl/dash.wgsl.js";
@@ -11,6 +15,7 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const RULE_CHANNEL_SPECS = {
+    ...POSITION_CLAMP_CHANNEL_SPECS,
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { type: "f32", components: 1 },
     x2: { type: "f32", components: 1 },
@@ -37,6 +42,8 @@ const {
 } = buildChannelMaps(RULE_CHANNEL_SPECS);
 
 const RULE_SHADER_BODY = /* wgsl */ `
+${POSITION_CLAMP_WGSL}
+
 ${DASH_WGSL}
 
 // Line caps and dashes are supported.
@@ -112,14 +119,20 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     // Place the endpoints before extruding the stroke so that occurrence
     // scaling does not also scale pixel-sized widths, offsets, or line caps.
-    let a = applyPlacementPixel(
+    var a = applyPlacementPixel(
         vec2<f32>(getScaled_x(i), getScaled_y(i)),
         i
     ) + vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i));
-    let b = applyPlacementPixel(
+    var b = applyPlacementPixel(
         vec2<f32>(getScaled_x2(i), getScaled_y2(i)),
         i
     ) + vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i));
+
+    a = clampPlacedPosition(a, i);
+    b = clampPlacedPosition(b, i);
+#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
+    if (all(a == b)) { return culledRule(); }
+#endif
 
     // Avoid artifacts in degenerate rules by falling back to a unit tangent.
     var tangent = b - a;

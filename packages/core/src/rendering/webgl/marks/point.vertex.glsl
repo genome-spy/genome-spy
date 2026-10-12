@@ -56,11 +56,17 @@ void main(void) {
     }
 
     float size = getScaled_size();
-    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applyOffset(
-        applySampleFacet(pos),
+    vec2 pos = vec2(getScaled_x(), getScaled_y());
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    // Positional aliases retain their pixel size in a clamped sample facet.
+    vec2 placed = applySampleFacet(pos) + getDxDy();
+#else
+    vec2 placed = applySampleFacet(pos + getDxDy());
+#endif
+    vec2 facetedPos = clampPosition(applyOffset(
+        placed,
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
+    ));
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {
@@ -70,6 +76,12 @@ void main(void) {
     }
 #endif
 
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    if (getSampleFacetPos().height == 0.0) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
     gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();

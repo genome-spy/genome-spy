@@ -57,6 +57,20 @@ export interface MarkPropsBase {
     clip?: boolean | "x" | "y" | "never";
 
     /**
+     * Clamps projected anchors or range endpoints to the view before constructing
+     * mark geometry. `true` clamps both axes; `"x"` or `"y"` selects one axis.
+     * Position offsets are included. Strokes, symbols, arrowheads, and text glyphs
+     * can extend beyond the boundary; `clip` controls pixel clipping separately.
+     *
+     * Rectangles and explicit text ranges collapsed on a clamped axis are hidden.
+     * Rules, ticks, links, and arrows with coincident endpoints are hidden.
+     * Shared scales and their inversion are unchanged.
+     *
+     * __Default value:__ `false`
+     */
+    clamp?: boolean | "x" | "y";
+
+    /**
      * Offset of the `x` coordinate in logical pixels.
      *
      * **Default value:** `0`
@@ -264,19 +278,6 @@ export interface RectProps
         FillAndStrokeProps,
         ShadowProps {
     type: "rect";
-
-    /**
-     * Clamps the rectangle's projected bounds to its view before applying
-     * minimum sizes, strokes, rounded corners, and shadows. `true` clamps both
-     * axes; `"x"` or `"y"` clamps only that axis. Rectangles that collapse along
-     * a clamped axis are hidden.
-     *
-     * With `clip: false`, strokes remain fully visible at the view boundary.
-     * Shared scales and other marks are unaffected.
-     *
-     * __Default value:__ `false`
-     */
-    clamp?: boolean | "x" | "y";
 
     /**
      * Clamps the minimum size-dependent opacity. The property does not affect the

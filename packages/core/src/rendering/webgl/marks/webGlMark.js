@@ -210,6 +210,14 @@ export default class WebGLMark {
      * @protected
      */
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
+        for (const axis of ["x", "y"]) {
+            if (
+                this.properties.clamp === true ||
+                this.properties.clamp === axis
+            ) {
+                extraHeaders.push("#define CLAMP_" + axis.toUpperCase());
+            }
+        }
         const shaderChannels = this.getAttributes();
         const encoders = this.encoders;
         const order = this.mark.getOrder();

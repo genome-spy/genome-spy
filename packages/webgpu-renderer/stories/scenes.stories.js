@@ -69,7 +69,7 @@ export const Bars = withSource("runBarScene", null, {
     render: (args) => renderScene(runBarScene, args),
 });
 
-export const RectClamping = withSource(
+export const PositionClamping = withSource(
     "runRectClampingScene",
     { clamp: "both" },
     {

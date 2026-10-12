@@ -1,5 +1,7 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
 import { rectMark } from "../src/marks/rect.js";
+import { ruleMark } from "../src/marks/rule.js";
+import { pointMark } from "../src/marks/point.js";
 import { identityScale } from "../src/scales/identity.js";
 import { linearScale } from "../src/scales/linear.js";
 
@@ -59,6 +61,46 @@ export default async function runRectClampingScene(
             strokeWidth: { value: 4 },
         },
     });
+    const guides = [ruleMark, pointMark].map((definition) =>
+        renderer.createMark(definition, {
+            count: 1,
+            channels: {
+                x: {
+                    value: -0.2,
+                    scale: linearScale({ domain: [0, 1], range: xRange }),
+                },
+                y: {
+                    value: 0.5,
+                    scale: linearScale({ domain: [0, 1], range: yRange }),
+                },
+                ...(definition === ruleMark
+                    ? {
+                          x2: {
+                              value: 1.2,
+                              scale: linearScale({
+                                  domain: [0, 1],
+                                  range: xRange,
+                              }),
+                          },
+                          y2: {
+                              value: 0.5,
+                              scale: linearScale({
+                                  domain: [0, 1],
+                                  range: yRange,
+                              }),
+                          },
+                      }
+                    : {}),
+                ...(clamp === "both" || clamp === "x"
+                    ? { xClampRange: { value: xRange, dynamic: true } }
+                    : {}),
+                ...(clamp === "both" || clamp === "y"
+                    ? { yClampRange: { value: yRange, dynamic: true } }
+                    : {}),
+                size: { value: definition === ruleMark ? 2 : 100 },
+            },
+        })
+    );
     const cleanupResize = setupResize(canvas, renderer, ({ width, height }) => {
         xRange[1] = width - 30;
         yRange[1] = height - 30;
@@ -76,6 +118,16 @@ export default async function runRectClampingScene(
             if (clamp === "both" || clamp === "y")
                 outlines.values.yClampRange.set(yRange);
         });
+        for (const guide of guides) {
+            guide.batchUpdates(() => {
+                guide.scales.x.setRange(xRange);
+                guide.scales.y.setRange(yRange);
+                guide.scales.x2?.setRange(xRange);
+                guide.scales.y2?.setRange(yRange);
+                guide.values.xClampRange?.set(xRange);
+                guide.values.yClampRange?.set(yRange);
+            });
+        }
     });
     let span = 1;
     /** @param {WheelEvent} event */
@@ -89,6 +141,10 @@ export default async function runRectClampingScene(
             outlines.scales.x.setDomain([0.5 - span / 2, 0.5 + span / 2]);
             outlines.scales.x2.setDomain([0.5 - span / 2, 0.5 + span / 2]);
         });
+        for (const guide of guides) {
+            guide.scales.x.setDomain([0.5 - span / 2, 0.5 + span / 2]);
+            guide.scales.x2?.setDomain([0.5 - span / 2, 0.5 + span / 2]);
+        }
     };
     canvas.addEventListener("wheel", zoom, { passive: false });
     return () => {

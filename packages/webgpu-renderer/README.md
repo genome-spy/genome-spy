@@ -278,13 +278,20 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
-### Rectangle clamping
+### Position clamping
 
-Rectangle channels `xClampRange` and `yClampRange` optionally constrain projected
-bounds to an ascending `[min, max]` pair in logical pixels, before minimum-size
-and stroke expansion. They have two components and can be omitted independently.
-Rectangles that collapse along a constrained axis are hidden in drawing and
-picking. The bounds use the mark's coordinate space, before placement transforms.
+All marks accept optional two-component `xClampRange` and `yClampRange` channels
+containing ascending `[min, max]` bounds in logical pixels. Bounds use the mark's
+coordinate space and are transformed with its placement. Projected anchors or
+endpoints are clamped after placement and position offsets, before constructing
+geometry. The channels can be omitted independently.
+
+Points retain their full symbol size. Rectangles that collapse along a constrained
+axis are hidden before minimum-size expansion. Rules, links, and arrows are hidden
+when their endpoints coincide. Text clamps its anchor or fitting range and hides
+collapsed explicit ranges. These policies apply equally to drawing and picking.
+Stroke, glyph, cap, and arrowhead geometry can extend beyond the bounds; draw clips
+control pixel clipping separately.
 
 ### Detached targets
 

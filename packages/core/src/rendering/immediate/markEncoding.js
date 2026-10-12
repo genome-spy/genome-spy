@@ -1,3 +1,4 @@
+import clamp from "../../utils/clamp.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import { getGapPeer } from "../../marks/markUtils.js";
@@ -86,9 +87,16 @@ export function projectYRange(
  * @param {Record<string, import("../../types/encoder.js").Encoder>} encoders
  * @param {"x" | "y"} axis
  * @param {object} firstDatum
+ * @param {boolean} [clampToView]
  * @returns {(datum: object, result: [number, number]) => [number, number]}
  */
-export function prepareRangeProjection(coords, encoders, axis, firstDatum) {
+export function prepareRangeProjection(
+    coords,
+    encoders,
+    axis,
+    firstDatum,
+    clampToView = false
+) {
     const primary = encoders[axis];
     const secondary = encoders[axis + "2"];
     const primaryOffset = encoders[axis + "Offset"];
@@ -96,6 +104,8 @@ export function prepareRangeProjection(coords, encoders, axis, firstDatum) {
     const coordinateSpan = axis == "x" ? coords.width : coords.height;
     const coordinateOrigin = axis == "x" ? coords.x : coords.y + coordinateSpan;
     const coordinateScale = axis == "x" ? coordinateSpan : -coordinateSpan;
+    const min = axis == "x" ? coords.x : coords.y;
+    const max = min + coordinateSpan;
     const primaryAdjustment = getPositionAdjustment(primary);
     const secondaryAdjustment = secondary
         ? getPositionAdjustment(secondary)
@@ -147,8 +157,8 @@ export function prepareRangeProjection(coords, encoders, axis, firstDatum) {
                 secondaryPosition * coordinateScale +
                 offset2;
         }
-        result[0] = first;
-        result[1] = second;
+        result[0] = clampToView ? clamp(first, min, max) : first;
+        result[1] = clampToView ? clamp(second, min, max) : second;
         return result;
     };
 }

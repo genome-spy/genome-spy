@@ -48,6 +48,7 @@ function createFixture(type = "point") {
         zoomExtent: [0, 100],
     };
     const mark = {
+        properties: { clamp: false },
         encoders: {
             x: createEncoder("x", scale),
         },
@@ -75,6 +76,15 @@ describe("createMarkXIndexSpec", () => {
 
         const spec = createMarkXIndexSpec(mark);
         expect(spec.x2Accessor({ x2: 23 })).toBe(23);
+    });
+
+    test("keeps offscreen points available when x anchors are clamped", () => {
+        const { mark } = createFixture();
+        mark.properties.clamp = "x";
+        expect(createMarkXIndexSpec(mark)).toBeUndefined();
+
+        mark.properties.clamp = "y";
+        expect(createMarkXIndexSpec(mark)).toBeDefined();
     });
 
     const ineligibleCases = /** @type {[string, (fixture: any) => void][]} */ ([

@@ -188,14 +188,21 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 void main(void) {
 #pragma orderGuard
 
-    vec2 a = applyOffset(
+    vec2 a = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
-    vec2 b = applyOffset(
+    ));
+    vec2 b = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    );
+    ));
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    if (all(equal(a, b)) || getSampleFacetPos().height == 0.0) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
+
     float direction = getScaled_direction();
     bool bidirectional = direction == DIRECTION_BOTH;
 

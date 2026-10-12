@@ -3,7 +3,7 @@ import { activeMatchResolvedSelectionPredicate } from "../../selection/selection
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
 import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
-import { GAP_PEER, getGapPeer } from "../../marks/markUtils.js";
+import { GAP_PEER, getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
 import {
     packHighPrecisionU32Array,
     packHighPrecisionU32ArrayInto,
@@ -156,16 +156,18 @@ export function createWebGpuMarkConfig(
     if (markType == "point") {
         return createTranslation(
             pointMark,
-            addPlacementIndex(
+            addOccurrenceConfig(
                 createPointConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
+                resolvedPlacementIndex,
+                mark,
+                coords
             ),
             mark
         );
     } else if (markType == "rect") {
         return createTranslation(
             rectMark,
-            addPlacementIndex(
+            addOccurrenceConfig(
                 createRectConfig(
                     mark,
                     data,
@@ -173,43 +175,53 @@ export function createWebGpuMarkConfig(
                     readViewOpacity,
                     typeof viewOpacity != "function"
                 ),
-                resolvedPlacementIndex
+                resolvedPlacementIndex,
+                mark,
+                coords
             ),
             mark
         );
     } else if (markType == "rule" || markType == "tick") {
         return createTranslation(
             ruleMark,
-            addPlacementIndex(
+            addOccurrenceConfig(
                 createRuleConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
+                resolvedPlacementIndex,
+                mark,
+                coords
             ),
             mark
         );
     } else if (markType == "text") {
         return createTranslation(
             textMark,
-            addPlacementIndex(
+            addOccurrenceConfig(
                 createTextConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
+                resolvedPlacementIndex,
+                mark,
+                coords
             ),
             mark
         );
     } else if (markType == "link") {
         return createTranslation(
             linkMark,
-            addPlacementIndex(
+            addOccurrenceConfig(
                 createLinkConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
+                resolvedPlacementIndex,
+                mark,
+                coords
             ),
             mark
         );
     } else if (markType == "arrow") {
         return createTranslation(
             arrowMark,
-            addPlacementIndex(
+            addOccurrenceConfig(
                 createArrowConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
+                resolvedPlacementIndex,
+                mark,
+                coords
             ),
             mark
         );
@@ -266,9 +278,30 @@ function initializeWebGpuMarkRevisions(mark) {
     mark.initializeRenderingRevisions([]);
 }
 
-/** @param {object} config @param {unknown} placementIndex */
-function addPlacementIndex(config, placementIndex) {
-    return placementIndex ? { ...config, placementIndex } : config;
+/**
+ * @param {Record<string, any>} config
+ * @param {unknown} placementIndex
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ */
+function addOccurrenceConfig(config, placementIndex, mark, coords) {
+    if (placementIndex) config.placementIndex = placementIndex;
+    for (const axis of /** @type {const} */ (["x", "y"])) {
+        if (isMarkClamped(mark, axis)) {
+            const origin =
+                mark.getType() === "text"
+                    ? 0
+                    : axis === "x"
+                      ? coords.x
+                      : coords.y;
+            const span = axis === "x" ? coords.width : coords.height;
+            config.channels[axis + "ClampRange"] = {
+                value: [origin, origin + span],
+                dynamic: true,
+            };
+        }
+    }
+    return config;
 }
 
 /** @param {import("../../marks/mark.js").default} mark @param {object[]} data */
@@ -445,7 +478,6 @@ function createSelectionCondition(mark, predicate) {
  * @returns {object}
  */
 function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
-    const clamp = readProperty(mark, "clamp");
     mark.initializeRenderingRevisions([
         "cornerRadius",
         "cornerRadiusTopRight",
@@ -466,22 +498,6 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
         count: data.length,
         channels: {
             ...createUniqueIdChannel(mark, data),
-            ...(clamp === true || clamp === "x"
-                ? {
-                      xClampRange: {
-                          value: [coords.x, coords.x2],
-                          dynamic: true,
-                      },
-                  }
-                : {}),
-            ...(clamp === true || clamp === "y"
-                ? {
-                      yClampRange: {
-                          value: [coords.y, coords.y2],
-                          dynamic: true,
-                      },
-                  }
-                : {}),
             x: createPositionChannel(mark, "x", data, coords),
             x2: createPositionChannel(mark, "x2", data, coords),
             y: createPositionChannel(mark, "y", data, coords),

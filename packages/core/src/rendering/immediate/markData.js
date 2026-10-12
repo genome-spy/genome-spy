@@ -155,13 +155,13 @@ export function visitMarkOccurrences(
 ) {
     const data = getMarkData(mark, options);
     if (options.sampleFacetRenderingOptions) {
-        visitor(
-            sampleFacetCoords.resolveFacet(
-                coords,
-                options.sampleFacetRenderingOptions
-            ),
-            data
+        const occurrenceCoords = sampleFacetCoords.resolveFacet(
+            coords,
+            options.sampleFacetRenderingOptions
         );
+        if (!mark.properties.clamp || occurrenceCoords.height > 0) {
+            visitor(occurrenceCoords, data);
+        }
     } else if (mark.encoders.facetIndex) {
         for (const [facetIndex, facetData] of groupDataByFacetIndex(
             mark.encoders.facetIndex,
@@ -173,7 +173,9 @@ export function visitMarkOccurrences(
                 facetIndex
             );
             if (occurrenceCoords) {
-                visitor(occurrenceCoords, facetData);
+                if (!mark.properties.clamp || occurrenceCoords.height > 0) {
+                    visitor(occurrenceCoords, facetData);
+                }
             } else {
                 onMissingFacet(facetIndex);
             }

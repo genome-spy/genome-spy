@@ -1,3 +1,4 @@
+import { isMarkClamped } from "../../../marks/markUtils.js";
 import { unionPolygons } from "../geometry/polygonUnion.js";
 import { intersectsBounds } from "../bounds.js";
 import {
@@ -165,13 +166,15 @@ export function visitArrowSkeletonInstances(
         coords,
         encoders,
         "x",
-        data[0]
+        data[0],
+        isMarkClamped(mark, "x")
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[0]
+        data[0],
+        isMarkClamped(mark, "y")
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);

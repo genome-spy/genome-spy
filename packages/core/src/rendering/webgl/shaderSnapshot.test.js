@@ -240,8 +240,8 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain(
             "return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;"
         );
-        expect(sources.vertex.indexOf("+ getDxDy()")).toBeLessThan(
-            sources.vertex.indexOf("applySampleFacet(pos)")
+        expect(sources.vertex).toContain(
+            "#else\n    vec2 placed = applySampleFacet(pos + getDxDy());\n#endif"
         );
     });
 

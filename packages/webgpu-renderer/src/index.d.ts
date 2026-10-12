@@ -816,6 +816,8 @@ export type RectChannelName =
 export type RectChannels = Partial<Record<RectChannelName, ChannelConfigInput>>;
 
 export type PointChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "y"
@@ -864,6 +866,8 @@ export type PointMarkConfig = MarkConfig<"point"> & {
 };
 
 export type RuleChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"
@@ -884,6 +888,8 @@ export type RuleChannelName =
 export type RuleChannels = Partial<Record<RuleChannelName, ChannelConfigInput>>;
 
 export type LinkChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"
@@ -900,6 +906,8 @@ export type LinkChannelName =
 export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
 
 export type ArrowChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"
@@ -922,6 +930,8 @@ export type ArrowChannels = Partial<
 >;
 
 export type TextChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"

@@ -1,3 +1,7 @@
+import {
+    POSITION_CLAMP_CHANNEL_SPECS,
+    POSITION_CLAMP_WGSL,
+} from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
@@ -8,6 +12,7 @@ import { linearScale } from "../../scales/linear.js";
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const POINT_CHANNEL_SPECS = {
+    ...POSITION_CLAMP_CHANNEL_SPECS,
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { components: 1, scale: linearScale(), default: 0.5 },
     y: { components: 1, scale: linearScale(), default: 0.5 },
@@ -36,6 +41,8 @@ const {
 } = buildChannelMaps(POINT_CHANNEL_SPECS);
 
 const POINT_SHADER_BODY = /* wgsl */ `
+${POSITION_CLAMP_WGSL}
+
 fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
@@ -121,8 +128,16 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     let total = diameter + padding;
     let local = quad[v];
-    let centerX = getScaled_x(i) + getScaled_xOffset(i) + getScaled_dx(i);
-    let centerY = getScaled_y(i) + getScaled_yOffset(i) + getScaled_dy(i);
+    let center = projectClampedPosition(
+#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
+        vec2<f32>(getScaled_x(i), getScaled_y(i)),
+        vec2<f32>(getScaled_xOffset(i) + getScaled_dx(i), getScaled_yOffset(i) + getScaled_dy(i)), i);
+#else
+        vec2<f32>(getScaled_x(i) + getScaled_dx(i), getScaled_y(i) + getScaled_dy(i)),
+        vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i)), i);
+#endif
+    let centerX = center.x;
+    let centerY = center.y;
     let px = centerX + (local.x - 0.5) * total;
     let py = centerY + (local.y - 0.5) * total;
 
@@ -147,7 +162,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.placementClip = placementClipBounds(i);
 #endif
     out.pos = vec4<f32>(
+#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
+        clip,
+#else
         applyPlacementClipForPoint(clip, centerClip, i),
+#endif
         0.0,
         1.0
     );

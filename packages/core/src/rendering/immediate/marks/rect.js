@@ -1,3 +1,4 @@
+import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
@@ -28,8 +29,6 @@ const RECT_SEAM_PADDING = 0.1;
  * @prop {string} hatch
  * @prop {boolean} hasCornerRadii
  * @prop {boolean} canPadSeams
- * @prop {boolean} clampX
- * @prop {boolean} clampY
  */
 
 /**
@@ -92,8 +91,6 @@ export function resolveRectProperties(mark) {
         hatch,
         hasCornerRadii,
         canPadSeams: hatch == "none" && shadow.opacity == 0 && !hasCornerRadii,
-        clampX: p.clamp === true || p.clamp === "x",
-        clampY: p.clamp === true || p.clamp === "y",
     };
 }
 
@@ -149,17 +146,20 @@ export function visitRectInstances(mark, properties, options, visitor) {
         coords,
         encoders,
         "x",
-        data[start]
+        data[start],
+        isMarkClamped(mark, "x")
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[start]
+        data[start],
+        isMarkClamped(mark, "y")
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
-    const { x: viewX, y: viewY, x2: viewX2, y2: viewY2 } = coords;
+    const clampX = isMarkClamped(mark, "x");
+    const clampY = isMarkClamped(mark, "y");
     /** @type {RectInstance} */
     const instance = {
         datum: {},
@@ -179,17 +179,9 @@ export function visitRectInstances(mark, properties, options, visitor) {
         const datum = data[i];
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
-        if (properties.clampX) {
-            xRange[0] = Math.max(viewX, Math.min(viewX2, xRange[0]));
-            xRange[1] = Math.max(viewX, Math.min(viewX2, xRange[1]));
-        }
-        if (properties.clampY) {
-            yRange[0] = Math.max(viewY, Math.min(viewY2, yRange[0]));
-            yRange[1] = Math.max(viewY, Math.min(viewY2, yRange[1]));
-        }
         if (
-            (properties.clampX && xRange[0] === xRange[1]) ||
-            (properties.clampY && yRange[0] === yRange[1])
+            (clampX && xRange[0] === xRange[1]) ||
+            (clampY && yRange[0] === yRange[1])
         ) {
             continue;
         }

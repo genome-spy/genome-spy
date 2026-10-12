@@ -53,7 +53,22 @@ Mark-specific properties are documented on each mark's page.
 
 ### Shared properties
 
-SCHEMA MarkConfig style cursor x y color opacity clip xOffset yOffset x2Offset y2Offset tooltip
+SCHEMA MarkConfig style cursor x y color opacity clip clamp xOffset yOffset x2Offset y2Offset tooltip
+
+### Clamping positions
+
+Mark-local `clamp` keeps defining positions inside the view while zooming:
+`true` selects both axes, and `"x"` or `"y"` selects one. Shared scales are
+unchanged. Clamping follows positional offsets and uses each sample facet's
+bounds. With `clip: false`, strokes and symbols can extend beyond the boundary.
+
+Points clamp their anchors. Rectangles clamp both endpoints and disappear if
+a selected axis collapses, before minimum-size expansion. Rules, links, and
+arrows clamp their endpoints and disappear only when both endpoints coincide;
+horizontal and vertical rules remain valid. Clamping can change diagonal and
+curved geometry. Text clamps its anchor or explicit fitting range; a collapsed
+range disappears. Glyph-local text offsets, rotation, stroke width, caps, and
+arrowheads are applied after clamping.
 
 ## Encoding
 
@@ -162,8 +177,8 @@ A discrete field, datum, or expression on an offset channel can create a
 
 `size`
 : Depends on the mark. `"point"`: the area of the rectangle that encloses the
-  mark instance. `"rule"` and `"link"`: stroke width. `"arrow"`: stem
-  thickness. `"text"`: font size.
+mark instance. `"rule"` and `"link"`: stroke width. `"arrow"`: stem
+thickness. `"text"`: font size.
 
 `shape`
 : Shape of `"point"` marks.
@@ -179,11 +194,11 @@ A discrete field, datum, or expression on an offset channel can create a
 
 `tooltip`
 : Rows shown by the default tooltip handler. A single definition shows one row.
-  An array shows multiple rows in the specified order. Rows can use field,
-  expression, datum, or value definitions. If omitted, the default handler shows
-  the hovered datum's properties. If `null`, raw datum rows are hidden for the
-  mark. The `mark.tooltip` property is separate and selects or disables the
-  tooltip handler.
+An array shows multiple rows in the specified order. Rows can use field,
+expression, datum, or value definitions. If omitted, the default handler shows
+the hovered datum's properties. If `null`, raw datum rows are hidden for the
+mark. The `mark.tooltip` property is separate and selects or disables the
+tooltip handler.
 
 ```json
 {
@@ -199,16 +214,16 @@ A discrete field, datum, or expression on an offset channel can create a
 
 `order`
 : Keeps selected instances visible above unselected ones. In a dense plot,
-  highlighting a point or arc with a different color is not enough if other
-  instances cover it. Give selected instances a higher order level to draw
-  them last, bringing the highlighted instances to the foreground.
-  The condition's `value` and the fallback `value` define two finite numeric
-  levels; lower levels draw first. Use one selection parameter or a selection
-  union in the condition. Relative order within each level is preserved.
-  Equal levels and constant definitions have no ordering effect. When all
-  referenced selections are empty, instances retain their original order.
-  Ordering applies within one mark occurrence, and picking keeps the original
-  order.
+highlighting a point or arc with a different color is not enough if other
+instances cover it. Give selected instances a higher order level to draw
+them last, bringing the highlighted instances to the foreground.
+The condition's `value` and the fallback `value` define two finite numeric
+levels; lower levels draw first. Use one selection parameter or a selection
+union in the condition. Relative order within each level is preserved.
+Equal levels and constant definitions have no ordering effect. When all
+referenced selections are empty, instances retain their original order.
+Ordering applies within one mark occurrence, and picking keeps the original
+order.
 
 ```json title="Draw selected points above unselected points"
 {
@@ -232,13 +247,13 @@ visual mark properties.
 
 `key`
 : Defines a stable identity for rows. This is used by point-selection
-  persistence in the GenomeSpy App. The key can be a single field definition
-  or an array of field definitions for a composite key. For composite keys, the
-  field order is significant.
+persistence in the GenomeSpy App. The key can be a single field definition
+or an array of field definitions for a composite key. For composite keys, the
+field order is significant.
 
 `search`
 : Exposes one or more fields to the GenomeSpy App's
-  [search behavior](../../sample-collections/app-features.md#search).
+[search behavior](../../sample-collections/app-features.md#search).
 
 #### Channels for sample collections
 

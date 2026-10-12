@@ -74,30 +74,22 @@ void main(void) {
         return;
     }
 
-    vec2 pos1 = applyOffset(
+    vec2 pos1 = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
-    vec2 pos2 = applyOffset(
+    ));
+    vec2 pos2 = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    );
+    ));
 
     sort(pos1.x, pos2.x);
     sort(pos1.y, pos2.y);
 
-    // Preserve overscan for ordinary rectangles to avoid precision artifacts.
-#ifdef CLAMP_X
-    float clampMargin = 0.0;
-#else
-    float clampMargin = 1.0;
-#endif
-    pos1.x = clamp(pos1.x, 0.0 - clampMargin, 1.0 + clampMargin);
-    pos2.x = clamp(pos2.x, 0.0 - clampMargin, 1.0 + clampMargin);
-
-#ifdef CLAMP_Y
-    pos1.y = clamp(pos1.y, 0.0, 1.0);
-    pos2.y = clamp(pos2.y, 0.0, 1.0);
+#ifndef CLAMP_X
+    // Preserve ordinary rect overscan to prevent precision artifacts.
+    pos1.x = clamp(pos1.x, -1.0, 2.0);
+    pos2.x = clamp(pos2.x, -1.0, 2.0);
 #endif
 
     vec2 size = pos2 - pos1;

@@ -59,7 +59,8 @@ Clamp projected defining coordinates to the occurrence's plot bounds on each
 selected axis, after scaling, band/gap endpoint affinity, position-channel
 `xOffset`/`yOffset`/`x2Offset`/`y2Offset`, and facet placement. Point's legacy
 `dx`/`dy` are positional aliases and also precede clamping, retaining their
-existing signs and facet stages. Then derive the mark's geometry. Text's
+existing signs and physical pixel size inside facets. Preserve the existing
+facet stage when clamping is disabled. Then derive the mark's geometry. Text's
 glyph-local `dx`/`dy`, rotation/alignment, symbol size, stroke width, caps, and
 arrowheads retain their geometry role and can extend beyond those bounds.
 `clip` continues to control pixel clipping independently.
@@ -287,21 +288,31 @@ the implementation scope.
 
 ### 1. Make local clamping a shared mark capability
 
-- [ ] Generalize the uncommitted rect property/defaults into the common mark
+- [x] Generalize the uncommitted rect property/defaults into the common mark
       grammar and config. Implement the table above in immediate rendering,
       WebGL marks/shaders, and all relevant WebGPU programs/public channel types
       through Core's public adapter boundary. Include rule-derived ticks,
       native/path points, text/logo variants, culling, and picking consumers.
-- [ ] Verify representative geometry and default-off compatibility with focused
+- [x] Verify representative geometry and default-off compatibility with focused
       subsystem/SVG tests and real GPU picking tests. Include far-off clamped
       points beyond x-index overscan, diagonal rules/links, zero horizontal or
       vertical span, collapsed ranges, offsets, and live occurrence resizing.
       Include one nonzero-height sample facet with offscreen endpoints and
       offsets to establish local-bound parity across renderers.
-- [ ] Move rect-only documentation into shared mark documentation with concise
+- [x] Move rect-only documentation into shared mark documentation with concise
       per-mark semantics; update renderer API docs/schema and the existing
       clamping changeset. Measure the change against the uncommitted rect
       baseline and inspect tests for duplicated implementation assertions.
+
+Verification: 295 focused rendering tests passed; the full suite passed 4,911
+tests before identifying stale shader assertions/snapshots and the temporary
+smoke fixture. Updated assertions and seven reviewed shader snapshots pass.
+Real WebGPU clamping/picking tests, WebGL smoke checks, workspace type checks,
+lint, schema generation, and Storybook build passed. Independent review fixed
+zero-height immediate placements and clamped legacy point offset parity.
+The diff was inspected against the committed rect baseline. Growth supplies
+the shared contract across renderers; the final milestone records exact
+non-comment production-line counts.
 
 Outcome: every mark accepts the same option with consistent anchor/endpoint
 semantics. Review gate: common contract, downstream culling, and renderer parity

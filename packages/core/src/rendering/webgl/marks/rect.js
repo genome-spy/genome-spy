@@ -91,12 +91,6 @@ export default class WebGLRectMark extends WebGLMark {
 
         /** @type {string[]} */
         const defines = [];
-        if (this.properties.clamp === true || this.properties.clamp === "x") {
-            defines.push("CLAMP_X");
-        }
-        if (this.properties.clamp === true || this.properties.clamp === "y") {
-            defines.push("CLAMP_Y");
-        }
         if (this.#isRoundedCorners()) {
             defines.push("ROUNDED_CORNERS");
         }
