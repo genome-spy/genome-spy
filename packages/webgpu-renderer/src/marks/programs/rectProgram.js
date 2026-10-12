@@ -339,7 +339,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #if defined(yClampRange_DEFINED)
     if (y == y2) { return culledRect(); }
 #endif
-#else
+#endif
+#if !defined(xClampRange_DEFINED)
     // Keep far-off endpoints close enough to avoid triangle precision loss.
     x = clamp(x, -1.0, globals.width + 1.0);
     x2 = clamp(x2, -1.0, globals.width + 1.0);

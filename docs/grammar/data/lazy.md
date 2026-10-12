@@ -49,7 +49,8 @@ fields). Two channels produce the Cartesian product of their groups, costing
 one row per pair. Group numbers start at zero in ascending data order and can
 change when cuts change. With gaps disabled, an axis contributes one interval.
 
-Boundaries are numeric half-open coordinates. Locus intervals span the full
+Boundaries are numeric half-open coordinates, restricted to the nonnegative
+index coordinate space. Locus intervals span the full
 assembly, including chromosomes without loaded data. Index intervals use an
 authored domain when present, otherwise the finalized initial data reference.
 That inferred reference stays fixed when later streaming data arrives. A
@@ -73,7 +74,7 @@ Encode both boundaries with `band: 0`, for example:
 }
 ```
 
-### Parameters
+### Parameters {#scale-groups-parameters}
 
 SCHEMA ScaleGroupsData
 

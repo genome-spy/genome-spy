@@ -380,19 +380,53 @@ source and ordinary clamped marks. Tentative commit:
 
 ### 4. Integration verification and independent KISS review
 
-- [ ] Exercise `examples/core/scale-grouping-gaps.json`, the core grouping-gap
+- [x] Exercise `examples/core/scale-grouping-gaps.json`, the core grouping-gap
       heatmap, and a chromosome-gap locus example in WebGL and WebGPU. Pan,
       zoom, resize, edit width/positions without a navigation nudge, and toggle
       zero/null/empty values. Check unclamped data alongside clamped guides,
       hover picking, Canvas/SVG export, and an export with a different size.
-- [ ] Run appropriately scoped tests, schema/example validation, workspace
+- [x] Run appropriately scoped tests, schema/example validation, workspace
       type checks, and lint. Broaden testing only for unresolved risk. Record
       focused added/deleted/net production SLOC and explain necessary growth.
-- [ ] Have a subagent review the integrated implementation for KISS,
+- [x] Have a subagent review the integrated implementation for KISS,
       simplification opportunities, smells, and correctness across downstream
       consumers. Fix all obvious findings that do not need user input, remove
       redundant tests/helpers, and rerun affected checks. Ask for input only on
       substantive unresolved behavior or tradeoffs.
+
+Verification: the full unit suite passed 4,946 tests; the final focused suites
+passed 102 tests after review fixes. All three real WebGPU clamping/picking tests
+passed. Workspace type checks, lint, schemas, release validation, and the
+Storybook build passed. Documentation type generation and eleven targeted
+Markdown-extension tests passed. WebGL, WebGPU, and Canvas browser checks passed
+live width repaint without navigation, zero/null/empty toggles, chromosome
+boundaries, zoom, resize, datum picking, SVG export, and raster export at a
+different size. The two GPU example comparisons differed beyond the pixel
+threshold at fewer than 0.6% of pixels.
+
+Independent review found and resolved y-only rectangle precision handling,
+quantitative/index axis endpoint affinity, early assembly initialization,
+and negative synthetic endpoints from reversed inclusive domains. Group bounds
+are intersected with the supported nonnegative index space without changing the
+scale's domain. Tests now exercise one shared AxisView at unequal widths and an
+actual fractional gap at a viewport edge. No actionable KISS or correctness
+findings remain; no new abstraction or compatibility machinery was added.
+
+Production-line comparison against the committed rectangle-only baseline
+`56b4b5b49` (tests, docs, examples, blank lines, and JS comments excluded):
+
+| Runtime source             | Added | Deleted |  Net |
+| -------------------------- | ----: | ------: | ---: |
+| Core JavaScript            |   394 |      90 | +304 |
+| WebGPU renderer JavaScript |   168 |      51 | +117 |
+| Core GLSL                  |    92 |      34 |  +58 |
+| Total                      |   654 |     175 | +479 |
+
+JavaScript counts use the production-line skill's parser token policy, including
+embedded WGSL as template content. GLSL uses nonblank lines after removing C-style
+comments. Including specification declarations adds 6 and deletes 1 more line
+(net +5). Growth supplies the shared all-mark contract and the reusable source;
+AxisView uses ordinary rules and preserves the constant-disabled fast path.
 
 Outcome: verified integration with the requested independent review/fixing pass.
 Use one coherent commit for any independently meaningful integration fixes,

@@ -82,6 +82,24 @@ test("rect clamping preserves full strokes, clamps axes independently, and hides
             }
             renderer.destroyMark(mark.markId);
         }
+
+        // Y-only clamping must retain the x precision limit: adding a huge
+        // rectangle width to its negative start would otherwise lose x2.
+        const distant = renderer.createMark(rectMark, {
+            count: 1,
+            channels: {
+                uniqueId: { value: 9, type: "u32" },
+                x: { value: -1e20, scale: identityScale() },
+                x2: { value: 60, scale: identityScale() },
+                y: { value: 10, scale: identityScale() },
+                y2: { value: 90, scale: identityScale() },
+                yClampRange: { value: [30, 70] },
+            },
+        });
+        renderer.render({ draws: [{ mark: distant }] });
+        results.push(
+            await Promise.all([renderer.pick(30, 50), renderer.pick(70, 50)])
+        );
         renderer.destroy();
         canvas.remove();
         return results;
@@ -93,5 +111,6 @@ test("rect clamping preserves full strokes, clamps axes independently, and hides
         [null, 1, 2, 3],
         [1, 1, null, null],
         [1, 1, null],
+        [9, null],
     ]);
 });

@@ -155,7 +155,7 @@ test("selection-linked navigation uses the independent initial fallback", async 
     }
 });
 
-test("uses the existing reversed inclusive-domain normalization exactly once", async () => {
+test("intersects reversed domain bounds with nonnegative index coordinates", async () => {
     const { view, rows } = await createGroups({
         scales: {
             x: {
@@ -169,7 +169,7 @@ test("uses the existing reversed inclusive-domain normalization exactly once", a
     try {
         expect(view.getScaleResolution("x").getDomain()).toEqual([-1, 19]);
         expect(rows()).toEqual([
-            { xGroup: 0, xStart: -1, xEnd: 10 },
+            { xGroup: 0, xStart: 0, xEnd: 10 },
             { xGroup: 1, xStart: 10, xEnd: 19 },
         ]);
     } finally {

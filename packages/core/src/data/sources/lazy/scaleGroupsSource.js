@@ -13,10 +13,14 @@ export function splitScaleGroups(extent, cuts) {
     if (extent.length !== 2 || !extent.every(Number.isFinite)) {
         throw new Error("scaleGroups requires a finite full extent.");
     }
-    const [start, end] = extent;
-    if (start === end) return [];
-    if (start > end)
+    if (extent[0] > extent[1])
         throw new Error("scaleGroups requires normalized ascending bounds.");
+
+    // A reversed inclusive domain can extend below zero. Generated endpoints
+    // must stay in the nonnegative coordinate space accepted by GPU indices.
+    const start = Math.max(0, extent[0]);
+    const end = Math.max(0, extent[1]);
+    if (start === end) return [];
 
     const boundaries = [
         start,

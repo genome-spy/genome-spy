@@ -3,6 +3,8 @@ import { expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import AxisView, { orient2channel } from "../../view/axisView.js";
 import { createSvg } from "./index.js";
+import { createWebGpuMarkConfig } from "../webgpu/webGpuMarkAdapter.js";
+import Rectangle from "../../view/layout/rectangle.js";
 
 /**
  * @param {import("../../spec/axis.js").AxisOrient} orient
@@ -136,11 +138,15 @@ test("navigation clamps partial groups, drops offscreen groups, and preserves pa
         ]);
         await axis.getScaleResolution("x").zoomTo([11, 14]);
         expect(intervals(draw(), "x")).toEqual([[0, 100]]);
-        // A fractional domain edge through the cut retains half of its fixed gap.
-        await axis.getScaleResolution("x").zoomTo([9.5, 14]);
+        // Pan the viewport edge into the gap's fractional insertion rank.
+        const resolution = axis.getScaleResolution("x");
+        await resolution.zoomTo([9, 16]);
+        resolution.zoom(1, 50, -0.12, 100);
+        view.paramRuntime.flushNow();
         const pieces = intervals(draw(200), "x");
-        expect(pieces).toHaveLength(2);
-        expect(pieces[1][0] - pieces[0][1]).toBeCloseTo(6);
+        expect(pieces).toHaveLength(1);
+        expect(pieces[0][0]).toBeGreaterThan(0);
+        expect(pieces[0][0]).toBeLessThan(6);
         expect(complete).not.toHaveBeenCalled();
     } finally {
         view.disposeSubtree();
@@ -267,7 +273,7 @@ test("shared scales project each domain occurrence at its own width without rege
                 },
                 color: { value: "black" },
             },
-            resolve: { scale: { x: "shared" }, axis: { x: "independent" } },
+            resolve: { scale: { x: "shared" }, axis: { x: "shared" } },
             hconcat: [
                 { width: 100, height: 30, mark: "point" },
                 { width: 200, height: 30, mark: "point" },
@@ -276,6 +282,9 @@ test("shared scales project each domain occurrence at its own width without rege
         { contextOptions: { viewFactoryOptions: { wrapRoot: true } } }
     );
     try {
+        expect(
+            view.getDescendants().filter((v) => v instanceof AxisView)
+        ).toHaveLength(1);
         const sources = view
             .getDescendants()
             .filter((v) => v.name === "groups")
@@ -321,6 +330,30 @@ test("quantitative encodings with an explicit index scale keep half-open axis en
         "quantitative"
     );
     try {
+        const pieces = intervals(draw(), "x");
+        expect(pieces).toHaveLength(2);
+        expect(pieces[1][0] - pieces[0][1]).toBeCloseTo(6);
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
+test("reversed inclusive domains produce GPU-encodable guide endpoints", async () => {
+    const { view, axis, draw } = await createAxis("bottom", {
+        domain: [19, 0],
+        reverse: true,
+    });
+    try {
+        const groups = /** @type {import("../../view/unitView.js").default} */ (
+            axis.getDescendants().find((v) => v.name === "groups")
+        );
+        expect(() =>
+            createWebGpuMarkConfig(
+                groups.mark,
+                {},
+                Rectangle.create(0, 0, 100, 100)
+            )
+        ).not.toThrow();
         const pieces = intervals(draw(), "x");
         expect(pieces).toHaveLength(2);
         expect(pieces[1][0] - pieces[0][1]).toBeCloseTo(6);
