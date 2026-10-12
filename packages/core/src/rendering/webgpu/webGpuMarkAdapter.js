@@ -401,7 +401,10 @@ function createSelectionCondition(mark, predicate) {
                               components
                           ),
                       }
-                    : { selection: param, type },
+                    : {
+                          selection: param,
+                          type: type === "region" ? "multi" : type,
+                      },
         };
     }
     if (predicate.type === "interval") {
@@ -424,7 +427,7 @@ function createSelectionCondition(mark, predicate) {
     }
     return {
         selection: predicate.param,
-        type: predicate.type,
+        type: predicate.type === "region" ? "multi" : predicate.type,
         empty: predicate.empty,
     };
 }

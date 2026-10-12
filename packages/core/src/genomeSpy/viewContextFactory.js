@@ -21,6 +21,8 @@ export function createViewContext(options) {
     const context = {
         dataFlow: options.dataFlow ?? missing("dataFlow"),
         getMarkRenderingDebugState: options.getMarkRenderingDebugState,
+        createRegionSelectionMaterializer:
+            options.createRegionSelectionMaterializer,
         animator: options.animator ?? missing("animator"),
         genomeStore: options.genomeStore,
         textMetrics: options.textMetrics ?? missing("textMetrics"),
@@ -69,6 +71,7 @@ export function createViewContext(options) {
         "addBroadcastListener",
         "removeBroadcastListener",
         "highlightView",
+        "createRegionSelectionOverlay",
         "isViewConfiguredVisible",
         "isViewSpec",
         "getBaseConfig",

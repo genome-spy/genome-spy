@@ -236,8 +236,29 @@ export interface PointSnapshot {
     data: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 
-/** A detached snapshot of either an interval or point selection. */
-export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
+/** A detached snapshot of an interval, point, or region selection. */
+export type SelectionSnapshot =
+    IntervalSnapshot | PointSnapshot | RegionSnapshot;
+
+/** Detached lasso intent and selected rows. Empty queries remain active. */
+export interface RegionSnapshot {
+    type: "region";
+    active: boolean;
+    status: "cleared" | "pending" | "ready";
+    intent: import("./selectionTypes.js").RegionSelectionIntent | null;
+    data: ReadonlyArray<Readonly<Record<string, unknown>>>;
+}
+
+/** CPU lasso results publish on release; clear removes both intent and rows. */
+export interface RegionSelectionApi {
+    readonly type: "region";
+    getValue: () => RegionSnapshot;
+    subscribe: (
+        listener: (value: RegionSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+    clear: () => void;
+}
 
 /**
  * Capability for reading and clearing a row-backed point selection.
@@ -302,8 +323,9 @@ export interface IntervalSelectionApi {
     contains: (point: { x: number; y: number }) => boolean;
 }
 
-/** A public capability for either a point or interval selection. */
-export type SelectionApi = PointSelectionApi | IntervalSelectionApi;
+/** A public capability for reading and clearing a selection. */
+export type SelectionApi =
+    PointSelectionApi | IntervalSelectionApi | RegionSelectionApi;
 
 /**
  * Parameters and selections resolved from one view's lexical scope.

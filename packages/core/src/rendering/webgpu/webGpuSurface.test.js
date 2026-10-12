@@ -40,10 +40,42 @@ const mocks = vi.hoisted(() => {
         pick: vi.fn(async () => 42),
         createDetachedTarget: vi.fn(),
     };
+    const preview = {
+        update: vi.fn(
+            async (
+                /** @type {ReadonlyArray<readonly [number, number]>} */ _points
+            ) => {}
+        ),
+        renderSelection: vi.fn(async () => {}),
+        render: vi.fn(),
+        stop: vi.fn(),
+        destroy: vi.fn(),
+    };
+    const table = { destroy: vi.fn() };
+    const lasso = {
+        table,
+        update: vi.fn(),
+        clear: vi.fn(),
+        takeTable: vi.fn(() => table),
+        readIds: vi.fn(async () => ({
+            revision: 1,
+            ids: new Uint32Array([7]),
+            indices: new Uint32Array([0]),
+        })),
+        destroy: vi.fn(),
+    };
     return {
         handle,
         placementHandle,
         renderer,
+        preview,
+        table,
+        lasso,
+        createPointLassoSelection: vi.fn(() => lasso),
+        createPointDensityPreview: vi.fn((_renderer, _mark, options) => {
+            options.draw();
+            return preview;
+        }),
         createRenderer: vi.fn(
             async (
                 /** @type {HTMLCanvasElement} */ _canvas,
@@ -55,6 +87,10 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("@genome-spy/webgpu-renderer", () => ({
     createRenderer: mocks.createRenderer,
+}));
+vi.mock("@genome-spy/webgpu-renderer/marks/point", () => ({
+    createPointDensityPreview: mocks.createPointDensityPreview,
+    createPointLassoSelection: mocks.createPointLassoSelection,
 }));
 
 vi.mock("../canvasSizeHelper.js", () => ({
@@ -74,6 +110,7 @@ vi.mock("../canvasSizeHelper.js", () => ({
 }));
 
 import WebGpuSurface from "./webGpuSurface.js";
+import { createPolygonPredicate } from "../../selection/polygon.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -1035,3 +1072,372 @@ function createTextConfig(text) {
         },
     };
 }
+
+test.each(["multi", "region"])(
+    "unchanged %s selections do not enumerate IDs on redraw",
+    async (type) => {
+        const selectionSet = vi.fn();
+        mocks.handle.selections = {
+            chosen: { type: "multi", set: selectionSet },
+        };
+        // Only the ID/activity contract is consumed by the retained slot.
+        let selection = {
+            type,
+            status: "ready",
+            data: new Map([
+                [7, {}],
+                [9, {}],
+            ]),
+        };
+        const keys = vi.spyOn(selection.data, "keys");
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.createElement("div"),
+                sizeSource: {},
+                onCanvasResize: vi.fn(),
+                onRenderInvalidated: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = {
+            unitView: { paramRuntime: { findValue: () => selection } },
+        };
+        const definition = { type: "point" };
+        const config = createConfig(0);
+        useMark(surface, mark, definition, config);
+        expect(selectionSet).toHaveBeenCalledWith(
+            new Uint32Array([7, 9]),
+            true
+        );
+        useMark(surface, mark, definition, config);
+        expect(keys).toHaveBeenCalledOnce();
+        expect(selectionSet).toHaveBeenCalledOnce();
+        // Multi-point updates reuse the Map but publish a new selection value.
+        selection.data.delete(7);
+        selection = { ...selection };
+        useMark(surface, mark, definition, config);
+        expect(selectionSet).toHaveBeenLastCalledWith(
+            new Uint32Array([9]),
+            true
+        );
+        selection = {
+            ...selection,
+            data: new Map(),
+            status: type === "region" ? "ready" : "cleared",
+        };
+        useMark(surface, mark, definition, config);
+        expect(selectionSet).toHaveBeenLastCalledWith(
+            new Uint32Array(),
+            type === "region"
+        );
+        surface.finalize();
+    }
+);
+
+test("density drawing, commit, cancel, and unchanged frames reuse one image until scene invalidation", async () => {
+    const surface = new WebGpuSurface({
+        container: document.createElement("div"),
+        sizeSource: () => ({ width: 100, height: 50 }),
+        renderer: "webgpu",
+        powerPreference: "default",
+        onCanvasResize: vi.fn(),
+        onError: vi.fn(),
+    });
+    await surface.initialize();
+    let selection = { type: "region", status: "cleared", data: new Map() };
+    mocks.handle.selections = { lasso: { type: "multi", set: vi.fn() } };
+    const view = /** @type {any} */ ({
+        coords: { x: 10, y: 10, width: 20, height: 10 },
+        paramRuntime: { findValue: () => selection },
+        registerDisposer: vi.fn(),
+        getPathString: () => "density",
+    });
+    const mark = /** @type {any} */ ({
+        unitView: view,
+        getType: () => "point",
+    });
+    view.mark = mark;
+    const definition = /** @type {any} */ ({ type: "point" });
+    const config = {
+        shape: "circle",
+        count: 1,
+        channels: {
+            x: { data: new Float32Array([0.5]) },
+            y: { data: new Float32Array([0.5]) },
+            uniqueId: { data: new Uint32Array([1]) },
+            fill: {
+                value: [0.4, 0.46, 0.55, 1],
+                conditions: [
+                    {
+                        when: {
+                            selection: "lasso",
+                            type: "multi",
+                            empty: false,
+                        },
+                        channel: { value: [1, 0.35, 0.05, 1] },
+                    },
+                ],
+            },
+            strokeWidth: { value: 0 },
+            gradientStrength: { value: 0 },
+        },
+    };
+    surface.updateMark(mark, definition, config);
+    const cancel = vi.fn();
+    const visible = /** @type {any} */ ([{ mark: mocks.handle }]);
+    expect(() =>
+        surface.createRegionSelectionPreview(view, "lasso", cancel, [], {
+            r: 1,
+            g: 1,
+            b: 1,
+            a: 0,
+        })
+    ).toThrow("opaque white");
+    expect(mocks.createPointDensityPreview).not.toHaveBeenCalled();
+    expect(() =>
+        surface.createRegionSelectionPreview(
+            view,
+            "lasso",
+            cancel,
+            [
+                {
+                    mark: {
+                        markId: /** @type {import("@genome-spy/webgpu-renderer").MarkId} */ (
+                            999
+                        ),
+                    },
+                    viewport: { x: 10, y: 10, width: 20, height: 10 },
+                },
+            ],
+            { r: 1, g: 1, b: 1, a: 1 }
+        )
+    ).toThrow("overlaid");
+    expect(mocks.createPointDensityPreview).not.toHaveBeenCalled();
+    const preview = surface.createRegionSelectionPreview(
+        /** @type {any} */ (view),
+        "lasso",
+        cancel,
+        visible,
+        { r: 1, g: 1, b: 1, a: 1 }
+    );
+    expect(mocks.createPointDensityPreview.mock.calls[0][2]).toMatchObject({
+        view: [10, 20, 30, 10],
+        viewport: [20, 20, 40, 20],
+        bounds: [10.5, 10.5, 30.5, 20.5],
+    });
+    const draws = mocks.renderer.render.mock.calls.length;
+    preview.update([
+        [10, 10],
+        [20, 10],
+        [20, 20],
+    ]);
+    expect(mocks.preview.update).toHaveBeenLastCalledWith([
+        [10.5, 10.5],
+        [20.5, 10.5],
+        [20.5, 20.5],
+    ]);
+    // Quarter-pixel margins distinguish inside/outside near each edge after raster alignment.
+    const contains = createPolygonPredicate(
+        mocks.preview.update.mock.calls.at(-1)[0]
+    );
+    expect(
+        [
+            [19.75, 15],
+            [20.25, 15],
+            [15, 10.25],
+            [15, 9.75],
+            [15.25, 15],
+            [14.75, 15],
+        ].map(([x, y]) => contains(x + 0.5, y + 0.5))
+    ).toEqual([true, false, true, false, true, false]);
+    surface.render(visible);
+    expect(mocks.renderer.render).toHaveBeenCalledTimes(draws);
+    preview.stop();
+    selection = { type: "region", status: "ready", data: new Map([[1, {}]]) };
+    surface.updateMark(mark, definition, config);
+    surface.render(visible);
+    expect(mocks.preview.renderSelection).toHaveBeenLastCalledWith("lasso");
+    const computes = mocks.preview.renderSelection.mock.calls.length;
+    surface.render(visible);
+    expect(mocks.preview.renderSelection).toHaveBeenCalledTimes(computes);
+    expect(mocks.preview.render).toHaveBeenCalledOnce();
+    expect(mocks.renderer.render).toHaveBeenCalledTimes(draws);
+
+    preview.update([
+        [10, 10],
+        [20, 10],
+        [20, 20],
+    ]);
+    preview.stop();
+    surface.render(visible);
+    expect(mocks.preview.renderSelection).toHaveBeenCalledTimes(computes + 1);
+    const next = surface.createRegionSelectionPreview(
+        /** @type {any} */ (view),
+        "lasso",
+        cancel,
+        visible,
+        { r: 1, g: 1, b: 1, a: 1 }
+    );
+    expect(mocks.createPointDensityPreview).toHaveBeenCalledOnce();
+    next.update([[10, 10]]);
+    surface.updateMark(mark, definition, {
+        ...config,
+        channels: {
+            ...config.channels,
+            x: { data: new Float32Array([0.75]) },
+        },
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(mocks.preview.destroy).toHaveBeenCalledOnce();
+    surface.render(visible);
+    expect(mocks.renderer.render).toHaveBeenCalledTimes(draws + 1);
+    surface.createRegionSelectionPreview(view, "lasso", cancel, visible, {
+        r: 1,
+        g: 1,
+        b: 1,
+        a: 1,
+    });
+    surface.render([]);
+    expect(mocks.preview.destroy).toHaveBeenCalledTimes(2);
+
+    // Empty sibling data skips retained updates, but its cached pixels must disappear.
+    const sibling = /** @type {any} */ ({
+        unitView: {
+            registerDisposer: vi.fn(),
+            getPathString: () => "sibling",
+            facetCoords: new Map([
+                [undefined, { x: 40, y: 10, width: 20, height: 10 }],
+            ]),
+        },
+        getType: () => "point",
+    });
+    const siblingHandle = { ...mocks.handle, markId: 8 };
+    mocks.renderer.createMark.mockReturnValueOnce(siblingHandle);
+    surface.updateMark(sibling, definition, { count: 1, channels: {} });
+    surface.createRegionSelectionPreview(
+        view,
+        "lasso",
+        cancel,
+        /** @type {any} */ ([...visible, { mark: siblingHandle }]),
+        { r: 1, g: 1, b: 1, a: 1 }
+    );
+    const captures = mocks.renderer.render.mock.calls.length;
+    surface.render(visible);
+    expect(mocks.preview.destroy).toHaveBeenCalledTimes(3);
+    expect(mocks.renderer.render).toHaveBeenCalledTimes(captures + 1);
+    surface.finalize();
+});
+
+test("native GPU tables drive live encoding and committed redraws without CPU ID uploads", async () => {
+    const surface = new WebGpuSurface({
+        container: document.createElement("div"),
+        sizeSource: () => ({ width: 100, height: 50 }),
+        renderer: "webgpu",
+        powerPreference: "default",
+        onCanvasResize: vi.fn(),
+        onError: vi.fn(),
+    });
+    await surface.initialize();
+    // A restored selection has CPU membership but no native GPU table yet.
+    let selection = {
+        type: "region",
+        status: "ready",
+        data: new Map([[3, {}]]),
+    };
+    const previousKeys = vi.spyOn(selection.data, "keys");
+    const other = { type: "multi", data: new Map([[9, {}]]) };
+    const otherKeys = vi.spyOn(other.data, "keys");
+    const slot = { type: "multi", set: vi.fn(), setGpuTable: vi.fn() };
+    const otherSlot = { type: "multi", set: vi.fn(), setGpuTable: vi.fn() };
+    mocks.handle.selections = { lasso: slot, other: otherSlot };
+    const view = /** @type {any} */ ({
+        paramRuntime: {
+            findValue: (/** @type {string} */ name) =>
+                name === "lasso" ? selection : other,
+        },
+        registerDisposer: vi.fn(),
+        getPathString: () => "points",
+    });
+    const mark = /** @type {any} */ ({
+        unitView: view,
+        getType: () => "point",
+    });
+    view.mark = mark;
+    const definition = /** @type {any} */ ({ type: "point" });
+    const config = createConfig(0);
+    surface.updateMark(mark, definition, config);
+    slot.set.mockClear();
+    otherSlot.set.mockClear();
+    otherKeys.mockClear();
+    previousKeys.mockClear();
+    const session = surface.createRegionSelectionPreview(
+        view,
+        "lasso",
+        vi.fn(),
+        [],
+        { r: 1, g: 1, b: 1, a: 1 },
+        false
+    );
+    session.update([
+        [0, 0],
+        [1, 0],
+        [0, 1],
+    ]);
+    expect(slot.setGpuTable).toHaveBeenCalledWith(mocks.table, true);
+    // Cancellation restores the CPU table once; repeated cleanup is inert.
+    session.stop();
+    session.stop();
+    expect(slot.set).toHaveBeenCalledExactlyOnceWith(
+        new Uint32Array([3]),
+        true
+    );
+    expect(previousKeys).toHaveBeenCalledOnce();
+    slot.set.mockClear();
+    previousKeys.mockClear();
+    session.update([
+        [0, 0],
+        [1, 0],
+        [0, 1],
+    ]);
+    surface.updateMark(mark, definition, config);
+    const committed = {
+        type: "region",
+        status: "ready",
+        data: new Map([[7, {}]]),
+    };
+    const keys = vi.spyOn(committed.data, "keys");
+    session.commit(/** @type {any} */ (committed));
+    selection = committed;
+    session.stop();
+    surface.updateMark(mark, definition, config);
+    surface.invalidateRegionSelectionPreview();
+    surface.render([]);
+    expect(keys).not.toHaveBeenCalled();
+    expect(previousKeys).not.toHaveBeenCalled();
+    expect(slot.set).not.toHaveBeenCalled();
+    expect(otherKeys).not.toHaveBeenCalled();
+    expect(otherSlot.set).not.toHaveBeenCalled();
+    expect(mocks.table.destroy).not.toHaveBeenCalled();
+    const shared = selection;
+    const consumer = /** @type {any} */ ({
+        ...mark,
+        unitView: {
+            ...view,
+            paramRuntime: {
+                findValue: (/** @type {string} */ name) =>
+                    name === "lasso" ? shared : other,
+            },
+        },
+    });
+    mocks.renderer.createMark.mockReturnValueOnce({
+        ...mocks.handle,
+        markId: 8,
+    });
+    surface.updateMark(consumer, definition, config);
+    selection = { type: "region", status: "cleared", data: new Map() };
+    surface.updateMark(mark, definition, config);
+    surface.render([]);
+    expect(mocks.table.destroy).not.toHaveBeenCalled();
+    surface.finalize();
+    expect(mocks.table.destroy).toHaveBeenCalledOnce();
+});

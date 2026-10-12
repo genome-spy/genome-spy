@@ -14,6 +14,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @typedef {object} RenderingCoordinator
  * @property {() => void} computeLayout
  * @property {() => void} renderAll
+ * @property {(view: import("../view/unitView.js").default, name: string, cancel: () => void, density: boolean) => import("../types/viewContext.js").RegionSelectionMaterializer} [createRegionSelectionMaterializer]
  * @property {() => void} [renderPickingFramebuffer]
  * @property {() => HTMLCanvasElement | undefined} [createPickingBufferVisualization]
  */

@@ -37,7 +37,10 @@ export const paramProvenanceSlice = createSlice({
             /** @type {import("@reduxjs/toolkit").PayloadAction<ParamProvenanceEntry>} */ action
         ) => {
             const key = makeParamSelectorKey(action.payload.selector);
-            state.entries[key] = action.payload;
+            state.entries[key] =
+                /** @type {import("@reduxjs/toolkit").Draft<ParamProvenanceEntry>} */ (
+                    action.payload
+                );
         },
 
         /**
@@ -101,7 +104,7 @@ export function getParamChangeGroupKey(action) {
     }
 
     const valueType = payload?.value?.type;
-    if (valueType === "pointExpand") {
+    if (valueType === "pointExpand" || valueType === "region") {
         return null;
     }
 

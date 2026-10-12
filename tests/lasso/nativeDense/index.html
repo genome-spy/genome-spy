@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Native Core dense lasso</title>
+        <link rel="stylesheet" href="../style.css" />
+        <link rel="icon" href="data:," />
+        <style>
+            #plot {
+                height: 650px;
+            }
+            #status {
+                min-height: 1.5em;
+                font-variant-numeric: tabular-nums;
+            }
+        </style>
+    </head>
+    <body>
+        <a href="../">Lasso development tests</a>
+        <h1>Native Core dense lasso</h1>
+        <p id="instructions">
+            Shift-drag to select, scroll to zoom, double-click to clear. This
+            uses Core's region grammar and exact CPU membership on release.
+        </p>
+        <nav>
+            <a href="?points=10000000&density">10M density display</a> ·
+            <a href="?points=10000000">10M synthetic points</a> ·
+            <a href="?umap">1.1M real cells</a>
+            ·
+            <a href="?umap&nonlinear&density">Real cells on log/sqrt scales</a>
+        </nav>
+        <p id="status" role="status">Loading…</p>
+        <div id="plot"></div>
+        <script type="module" src="index.js"></script>
+    </body>
+</html>

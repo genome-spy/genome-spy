@@ -6,7 +6,9 @@ import {
     createSinglePointSelection,
     isIntervalSelectionConfig,
     isPointSelectionConfig,
+    isRegionSelectionConfig,
 } from "../selection/selection.js";
+import { createRegionSelection } from "../selection/regionSelection.js";
 import { createRulerValue } from "../ruler/rulerValue.js";
 
 /**
@@ -134,6 +136,13 @@ export function validateParameterName(name) {
 export function getDefaultParamValue(param, paramRuntime, exprFn) {
     if ("select" in param) {
         const select = asSelectionConfig(param.select);
+        if (isRegionSelectionConfig(select)) {
+            if (param.value !== undefined)
+                throw new Error(
+                    "Region selections do not support an initial value."
+                );
+            return createRegionSelection();
+        }
         if (isPointSelectionConfig(select)) {
             return select.toggle
                 ? createMultiPointSelection()

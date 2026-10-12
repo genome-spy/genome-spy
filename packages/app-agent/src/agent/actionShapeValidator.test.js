@@ -7,6 +7,38 @@ import {
 } from "./actionShapeValidator.js";
 
 describe("actionShapeValidator", () => {
+    it("validates saved lasso geometry and explicit clears without accepting materialized rows", () => {
+        const mapping = {
+            type: "linear",
+            domain: [0, 100],
+            range: [0, 1],
+            clamp: false,
+        };
+        const intent = {
+            polygon: [
+                [0, 0],
+                [1, 0],
+                [0, 1],
+            ],
+            fields: { x: "x", y: "y" },
+            scales: { x: mapping, y: mapping },
+            producer: { scope: [], view: "points" },
+        };
+        /** @param {unknown} value */
+        const validate = (value) =>
+            validateActionPayloadShape("paramProvenance/paramChange", {
+                selector: { scope: [], param: "lasso" },
+                value,
+            });
+        expect(validate({ type: "region", intent }).ok).toBe(true);
+        expect(validate({ type: "region", intent: null }).ok).toBe(true);
+        expect(validate({ type: "region" }).ok).toBe(false);
+        expect(
+            validate({ type: "region", intent: { ...intent, scales: {} } }).ok
+        ).toBe(false);
+        expect(validate({ type: "region", intent, data: [] }).ok).toBe(false);
+    });
+
     it("accepts a valid intent batch shape", () => {
         const result = validateIntentBatchShape({
             schemaVersion: 1,

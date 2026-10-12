@@ -41,7 +41,7 @@ export interface PersistedParameter {
      *
      * This primarily affects GenomeSpy App behavior.
      * Set to `false` for ephemeral params (e.g., hover selections) or when the
-     * selection cannot be persisted due to missing `encoding.key`.
+     * point selection cannot be persisted due to missing `encoding.key`.
      *
      * __Default value:__ `true`
      */
@@ -273,7 +273,7 @@ export type Binding = BindCheckbox | BindRadioSelect | BindRange | BindInput;
 
 type Vector2<T> = [T, T];
 
-export type SelectionType = "point" | "interval";
+export type SelectionType = "point" | "interval" | "region";
 export type SelectionInit = Scalar;
 export type SelectionInitInterval =
     Vector2<boolean> | Vector2<number> | Vector2<string>;
@@ -472,10 +472,17 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
 export interface SelectionParameter<T extends SelectionType = SelectionType>
     extends ParameterBase, PersistedParameter {
     /**
-     * Determines the default event processing and data query for the selection. GenomeSpy supports two selection types, following the Vega-Lite model:
+     * Determines the interaction and data query for the selection:
      *
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
+     * - `"region"` -- to select point centers inside a freehand lasso. Requires named
+     *   point views with quantitative x/y fields on linear, log, sqrt, pow, or symlog
+     *   scales and complete eager data. Shift-drag on zoomable plots, drag otherwise.
+     *   Offsets and rounded/custom scale interpolation are unsupported. Navigation
+     *   preserves membership; replacing producer data clears it. App bookmarks and
+     *   undo/redo store the polygon and captured mappings, rebuilding current rows
+     *   when replayed.
      */
     select:
         | T
@@ -483,7 +490,9 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
               ? PointSelectionConfig
               : T extends "interval"
                 ? IntervalSelectionConfig
-                : never);
+                : T extends "region"
+                  ? RegionSelectionConfig
+                  : never);
 
     /**
      * Initial value for the selection.
@@ -497,7 +506,24 @@ export type SelectionInitIntervalMapping = Partial<
 
 export type SelectionExtent = "auto" | "view" | "container";
 
-export type SelectionConfig = PointSelectionConfig | IntervalSelectionConfig;
+/** Lasso over point centers; WebGPU computes live membership, other backends use CPU release. */
+export interface RegionSelectionConfig extends BaseSelectionConfig<"region"> {
+    /** Starts a lasso on `mousedown`, optionally filtered by modifier keys. */
+    on?: "mousedown" | EventConfig | string;
+    /**
+     * Experimental WebGPU density display for dense point clouds. Shows local
+     * selected fractions rather than exact symbol colors. Membership uses the
+     * GPU's captured point centers; IDs are read back on release for CPU consumers.
+     * Requires uniform unstroked circles,
+     * one constant fill condition with `empty: false`, and a white background.
+     * Overlaid marks, plot grid lines, and view/group opacity are unsupported.
+     * Scene changes invalidate the cached display and repaint normally.
+     */
+    preview?: "density";
+}
+
+export type SelectionConfig =
+    PointSelectionConfig | IntervalSelectionConfig | RegionSelectionConfig;
 export type SelectionTypeOrConfig = SelectionType | SelectionConfig;
 
 export interface RulerParameter extends ParameterBase, PersistedParameter {

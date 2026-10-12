@@ -2,6 +2,7 @@ import GraphRuntime from "./graphRuntime.js";
 import LifecycleRegistry from "./lifecycleRegistry.js";
 import ParamStore from "./paramStore.js";
 import { bindExpression } from "./expressionRef.js";
+export { iterateParamDependencies } from "./graphRuntime.js";
 
 /**
  * Core-facing parameter runtime facade.

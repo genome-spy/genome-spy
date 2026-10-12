@@ -8,6 +8,7 @@ import {
     intervalSelectionActiveName,
     intervalSelectionBoundsName,
     SELECTION_BUFFER_PREFIX,
+    SELECTION_COUNT_PREFIX,
 } from "../../../wgsl/prefixes.js";
 
 class SelectionResourceManager extends DefinedSelectionResourceManager {
@@ -779,4 +780,72 @@ describe("SelectionResourceManager", () => {
         expect(contains(table, 10001)).toBe(false);
         expect(contains(table, 10002)).toBe(true);
     });
+});
+
+describe("borrowed GPU selection tables", () => {
+    it("reuses a borrowed table, preserves activity, and does not overwrite or destroy it on CPU updates", () => {
+        const device = createDevice();
+        Object.defineProperty(device, "limits", {
+            value: { maxStorageBufferBindingSize: 1024 },
+        });
+        const setUniformValue = vi.fn();
+        const manager = new SelectionResourceManager({
+            device,
+            channels: makeMultiChannels(),
+            setUniformValue,
+        });
+        const buffers = new Map();
+        manager.initializeSelections(buffers);
+        const original = buffers.get("selection_chosen");
+        const table = /** @type {GPUBuffer} */ (
+            /** @type {unknown} */ ({
+                size: 64,
+                usage: GPUBufferUsage.STORAGE,
+                destroy: vi.fn(),
+            })
+        );
+        expect(manager.setGpuTable("chosen", table, true, buffers)).toBe(true);
+        expect(original.destroy).toHaveBeenCalledOnce();
+        expect(manager.setGpuTable("chosen", table, true, buffers)).toBe(false);
+        expect(setUniformValue).toHaveBeenLastCalledWith(
+            SELECTION_COUNT_PREFIX + "chosen",
+            1
+        );
+        manager.updateSelection(
+            "chosen",
+            { type: "multi", ids: new Uint32Array([7]) },
+            buffers
+        );
+        expect(buffers.get("selection_chosen")).not.toBe(table);
+        expect(table.destroy).not.toHaveBeenCalled();
+    });
+});
+
+it("keeps an active empty query distinct from a cleared multi-selection", () => {
+    const setUniformValue = vi.fn();
+    const manager = new SelectionResourceManager({
+        device: createDevice(),
+        channels: makeMultiChannels(),
+        setUniformValue,
+    });
+    const buffers = new Map();
+    manager.initializeSelections(buffers);
+    manager.updateSelection(
+        "chosen",
+        { type: "multi", ids: new Uint32Array(), active: true },
+        buffers
+    );
+    expect(setUniformValue).toHaveBeenLastCalledWith(
+        SELECTION_COUNT_PREFIX + "chosen",
+        1
+    );
+    manager.updateSelection(
+        "chosen",
+        { type: "multi", ids: new Uint32Array(), active: false },
+        buffers
+    );
+    expect(setUniformValue).toHaveBeenLastCalledWith(
+        SELECTION_COUNT_PREFIX + "chosen",
+        0
+    );
 });

@@ -7,7 +7,10 @@ import {
     isMultiPointSelection,
     isPointSelectionConfig,
     isSinglePointSelection,
+    isRegionSelection,
+    isRegionSelectionConfig,
 } from "../selection/selection.js";
+import { createRegionSelection } from "../selection/regionSelection.js";
 import { bindDisposer } from "../utils/bindDisposer.js";
 
 /**
@@ -159,6 +162,8 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             ensureParamApiIsLive(lifecycle);
             if (controller) {
                 controller.clear();
+            } else if (isRegionSelectionConfig(select)) {
+                runtime.setValue(name, createRegionSelection());
             } else if (isPointSelectionConfig(select) && select.toggle) {
                 runtime.setValue(name, createMultiPointSelection());
             } else {
@@ -183,6 +188,15 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
  * @returns {import("../types/embedApi.js").SelectionSnapshot}
  */
 function copySelection(selection, intervalController) {
+    if (isRegionSelection(selection)) {
+        return {
+            type: "region",
+            active: selection.status !== "cleared",
+            status: selection.status,
+            intent: structuredClone(selection.intent),
+            data: Array.from(selection.data.values(), copyDatum),
+        };
+    }
     if (isIntervalSelection(selection)) {
         // Capability creation requires a controller for interval selections.
         return {

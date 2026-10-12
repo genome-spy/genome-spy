@@ -130,6 +130,28 @@ function getNode(ref) {
 }
 
 /**
+ * Walks current dependency ancestry by ref identity, preserving lexical scope.
+ * @param {Iterable<import("./types.js").ParamRef<any>>} refs
+ */
+export function* iterateParamDependencies(refs) {
+    const pending = Array.from(refs);
+    const seen = new Set();
+
+    while (pending.length) {
+        const ref = pending.pop();
+        if (seen.has(ref)) continue;
+
+        seen.add(ref);
+        yield ref;
+
+        const node = /** @type {ComputedNode<any> | undefined} */ (
+            /** @type {any} */ (ref)[RUNTIME_NODE]
+        );
+        pending.push(...(node?.dependencies ?? []));
+    }
+}
+
+/**
  * @param {import("./types.js").ParamRef<any>} dep
  * @returns {number}
  */

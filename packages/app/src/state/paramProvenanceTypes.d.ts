@@ -1,5 +1,6 @@
 import type { Scalar } from "@genome-spy/core/spec/channel.js";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
+import type { RegionSelectionIntent } from "@genome-spy/core/types/selectionTypes.js";
 import type {
     ParamSelector,
     ViewSelector,
@@ -59,6 +60,13 @@ export type ParamValuePoint = {
      * Selected key tuples.
      */
     keys: Scalar[][];
+};
+
+/** Geometric lasso query; runtime IDs and materialized rows are never stored. */
+export type ParamValueRegion = {
+    type: "region";
+    /** Null clears the selection; a zero-match polygon remains active. */
+    intent: RegionSelectionIntent | null;
 };
 
 /**
@@ -156,6 +164,7 @@ export type ParamValue =
     | ParamValueLiteral
     | ParamValueInterval
     | ParamValuePoint
+    | ParamValueRegion
     | ParamValuePointExpand;
 
 /**

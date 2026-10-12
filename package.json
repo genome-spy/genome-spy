@@ -45,7 +45,8 @@
     "vega-datasets": "^3.2.1",
     "vite": "^8.1.5",
     "vite-raw-plugin": "^1.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "d3-dsv": "^3.0.1"
   },
   "scripts": {
     "build": "npm run build --if-present -w @genome-spy/webgpu-renderer -w @genome-spy/core -w @genome-spy/inspector -w @genome-spy/app-agent -w @genome-spy/app -w @genome-spy/doc-embed -w @genome-spy/react-component -w @genome-spy/embed-examples -w @genome-spy/playground",
@@ -74,7 +75,8 @@
     "release:publish": "npm run release:verify && changeset publish --no-git-tag",
     "release:plan": "changeset publish-plan",
     "release:verify": "node scripts/release.mjs verify",
-    "release:pack": "npm pack -w @genome-spy/core -w @genome-spy/app -w @genome-spy/inspector -w @genome-spy/react-component"
+    "release:pack": "npm pack -w @genome-spy/core -w @genome-spy/app -w @genome-spy/inspector -w @genome-spy/react-component",
+    "dev:lasso": "vite --config tests/lasso/vite.config.js"
   },
   "workspaces": [
     "./packages/*"
