@@ -1,4 +1,5 @@
 import { createRenderer } from "@genome-spy/webgpu-renderer";
+import WebGpuRegionSelectionPreview from "./webGpuRegionSelectionPreview.js";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
@@ -38,6 +39,9 @@ export default class WebGpuSurface {
 
     /** @type {WeakSet<import("../../marks/mark.js").default>} */
     #registeredMarkOwners = new WeakSet();
+
+    /** @type {WebGpuRegionSelectionPreview | undefined} */
+    #regionSelectionPreview;
 
     /** @type {{logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number} | undefined} */
     #appliedSize;
@@ -81,6 +85,21 @@ export default class WebGpuSurface {
                 }
             },
         });
+        this.#regionSelectionPreview = new WebGpuRegionSelectionPreview({
+            renderer: this.#renderer,
+            marks: this.#marks,
+            getDevicePixelRatio: () => this.getDevicePixelRatio(),
+            onError: (error) => this.options.onError(error),
+            syncSelections: () => {
+                for (const [mark, retained] of this.#marks) {
+                    updateRetainedSelections(
+                        retained,
+                        mark,
+                        this.#regionSelectionPreview
+                    );
+                }
+            },
+        });
         this.#updateRendererGlobals();
     }
 
@@ -112,6 +131,7 @@ export default class WebGpuSurface {
             physicalWidth: physicalSize.width,
             physicalHeight: physicalSize.height,
         };
+        this.#regionSelectionPreview?.invalidate();
         this.#updateRendererGlobals();
         return true;
     }
@@ -294,6 +314,7 @@ export default class WebGpuSurface {
             retained.definition !== definition ||
             !Object.is(retained.programKey, programKey)
         ) {
+            this.#regionSelectionPreview?.invalidate();
             if (retained) {
                 this.#renderer.destroyMark(retained.handle.markId);
             }
@@ -317,6 +338,7 @@ export default class WebGpuSurface {
         retained.handle.batchUpdates(() => {
             const configChanged = retained.config !== config;
             if (configChanged && hasSeriesChanges(retained, config)) {
+                this.#regionSelectionPreview?.invalidate();
                 retained.series = collectSeries(config);
                 retained.count = config.count;
                 retained.handle.series.replace(retained.series, retained.count);
@@ -334,8 +356,15 @@ export default class WebGpuSurface {
                 retained.config = config;
                 retained.properties = properties;
             }
-            writes += updateResourceBindings(retained.bindings);
-            writes += updateRetainedSelections(retained, mark);
+            const resources = updateResourceBindings(retained.bindings);
+            if (resources) this.#regionSelectionPreview?.invalidate();
+            const selections = updateRetainedSelections(
+                retained,
+                mark,
+                this.#regionSelectionPreview
+            );
+            if (selections) this.#regionSelectionPreview.selectionChanged(mark);
+            writes += resources + selections;
         });
         return writes;
     }
@@ -373,10 +402,34 @@ export default class WebGpuSurface {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
+        if (this.#regionSelectionPreview.render(items, clearColor)) return;
         this.#renderer.render({
             items,
             ...(clearColor ? { clearColor } : {}),
         });
+    }
+
+    invalidateRegionSelectionPreview() {
+        this.#regionSelectionPreview?.invalidate();
+    }
+
+    /** @param {import("../../view/unitView.js").default} view @param {string} name @param {() => void} cancel @param {import("@genome-spy/webgpu-renderer").RenderItem[]} items @param {GPUColorDict} background @param {boolean} [density] */
+    createRegionSelectionPreview(
+        view,
+        name,
+        cancel,
+        items,
+        background,
+        density = true
+    ) {
+        return this.#regionSelectionPreview.create(
+            view,
+            name,
+            cancel,
+            items,
+            background,
+            density
+        );
     }
 
     /** @param {import("@genome-spy/webgpu-renderer").DrawCommand[]} draws */
@@ -406,11 +459,14 @@ export default class WebGpuSurface {
             return;
         }
         this.#finalized = true;
+        this.#regionSelectionPreview?.invalidate();
         for (const source of this.#occurrencePlacementSources.values()) {
             source.dispose();
         }
         this.#renderer?.destroy();
+        this.#regionSelectionPreview?.destroy();
         this.#renderer = undefined;
+        this.#regionSelectionPreview = undefined;
         this.#marks.clear();
         this.#placementSets = new WeakMap();
         this.#occurrencePlacementSources.clear();
@@ -430,6 +486,7 @@ export default class WebGpuSurface {
 
     /** @param {import("../../marks/mark.js").default} mark */
     #releaseMark(mark) {
+        this.#regionSelectionPreview?.invalidate();
         const retained = this.#marks.get(mark);
         if (retained) {
             this.#renderer?.destroyMark(retained.handle.markId);
@@ -647,9 +704,10 @@ function valuesEqual(previous, next) {
  *
  * @param {RetainedMark} retained
  * @param {import("../../marks/mark.js").default} mark
+ * @param {WebGpuRegionSelectionPreview} regionSelections
  * @returns {number} Number of retained resource writes.
  */
-function updateRetainedSelections(retained, mark) {
+function updateRetainedSelections(retained, mark, regionSelections) {
     const paramRuntime = mark.unitView?.paramRuntime;
     if (!paramRuntime) {
         return 0;
@@ -672,12 +730,23 @@ function updateRetainedSelections(retained, mark) {
                 retained.selections.set(name, id);
             }
         } else if (slot.type == "multi") {
-            const ids = Uint32Array.from(selection.data.keys());
-            if (!uint32ArraysEqual(retained.selections.get(name), ids)) {
-                slot.set(ids);
-                writes++;
-                retained.selections.set(name, ids);
+            const table = regionSelections.getTable(selection);
+            const snapshot = /** @type {MultiSelectionSnapshot | undefined} */ (
+                retained.selections.get(name)
+            );
+            if (snapshot?.selection === selection && snapshot.table === table)
+                continue;
+            if (table) slot.setGpuTable(table, true);
+            else {
+                const ids = Uint32Array.from(selection.data.keys());
+                const active =
+                    selection.type === "region"
+                        ? selection.status !== "cleared"
+                        : ids.length > 0;
+                slot.set(ids, active);
             }
+            writes++;
+            retained.selections.set(name, { selection, table });
         } else if (slot.type == "interval") {
             let snapshot = /** @type {SelectionSnapshot | undefined} */ (
                 retained.selections.get(name)
@@ -719,17 +788,6 @@ function updateRetainedSelections(retained, mark) {
         }
     }
     return writes;
-}
-
-/**
- * @param {unknown} previous
- * @param {Uint32Array} next
- */
-function uint32ArraysEqual(previous, next) {
-    if (!(previous instanceof Uint32Array) || previous.length != next.length) {
-        return false;
-    }
-    return previous.every((value, index) => value == next[index]);
 }
 
 /**
@@ -833,7 +891,13 @@ function getLogicalChannelSeries(channel) {
  * @prop {ResourceBinding[]} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
- * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections
+ * @prop {Map<string, number | MultiSelectionSnapshot | SelectionSnapshot>} selections
+ */
+
+/**
+ * @typedef {object} MultiSelectionSnapshot
+ * @property {import("../../types/selectionTypes.js").MultiPointSelection | import("../../types/selectionTypes.js").RegionSelection} selection
+ * @property {GPUBuffer | undefined} table Undefined for a CPU-backed selection.
  */
 
 /**

@@ -55,6 +55,7 @@ import {
 import {
     isIntervalSelection,
     isMultiPointSelection,
+    isRegionSelection,
     isSinglePointSelection,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
@@ -333,7 +334,10 @@ export default class WebGLMark {
                         `    return ${PARAM_PREFIX}${param} == 0u;\n` +
                         `}`
                 );
-            } else if (isMultiPointSelection(selection)) {
+            } else if (
+                isMultiPointSelection(selection) ||
+                isRegionSelection(selection)
+            ) {
                 // We need a texture for each multi-selection parameter.
                 // The texture stores an open-addressing hash table of selected uniqueIds.
 
@@ -348,7 +352,7 @@ export default class WebGLMark {
 
                 this.selectionTextureOps.push(() => {
                     // Texture is set in the prepareRender method
-                    const selection = paramRuntime.getValue(param);
+                    const selection = paramRuntime.findValue(param);
                     const texture = selectionTextures.get(selection);
                     if (!texture) {
                         throw new Error(
@@ -362,6 +366,24 @@ export default class WebGLMark {
                 });
 
                 const texName = SELECTION_TEXTURE_PREFIX + param;
+                let emptyTest = `isEmptyHashTexture(${texName})`;
+                if (isRegionSelection(selection)) {
+                    const activeName =
+                        PARAM_PREFIX + validateParameterName(param) + "Active";
+                    dynamicMarkUniforms.push(
+                        `uniform highp uint ${activeName};`
+                    );
+                    this.#callAfterShaderCompilation.push(() => {
+                        this.registerMarkUniformValue(
+                            activeName,
+                            { expr: param },
+                            (
+                                /** @type {import("../../../types/selectionTypes.js").RegionSelection} */ value
+                            ) => (value.status === "cleared" ? 0 : 1)
+                        );
+                    });
+                    emptyTest = `${activeName} == 0u`;
+                }
                 scaleCode.push(
                     `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
                         `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
@@ -369,19 +391,24 @@ export default class WebGLMark {
                 );
                 scaleCode.push(
                     `bool ${SELECTION_EMPTY_PREFIX}${param}() {\n` +
-                        `    return isEmptyHashTexture(${texName});\n` +
+                        `    return ${emptyTest};\n` +
                         `}`
                 );
 
                 // Create the initial texture
                 glHelper.createSelectionTexture(selection);
-
+                let previousSelection = selection;
                 paramRuntime.watchExpression(param, () => {
                     const selection =
-                        /** @type {import("../../../types/selectionTypes.js").MultiPointSelection} */ (
-                            paramRuntime.getValue(param)
+                        /** @type {import("../../../types/selectionTypes.js").MultiPointSelection | import("../../../types/selectionTypes.js").RegionSelection} */ (
+                            paramRuntime.findValue(param)
                         );
-                    glHelper.createSelectionTexture(selection);
+                    glHelper.createSelectionTexture(
+                        selection,
+                        true,
+                        previousSelection
+                    );
+                    previousSelection = selection;
                     this.unitView.context.animator.requestRender();
                 });
             } else if (isIntervalSelection(selection)) {

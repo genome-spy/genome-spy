@@ -1,4 +1,5 @@
 import { Datum } from "../data/flowNode.js";
+import { ViewSelector } from "../view/viewUtilTypes.js";
 import {
     ChannelWithScale,
     PositionalChannel,
@@ -38,8 +39,41 @@ export interface MultiPointSelection extends SelectionBase {
     data: Map<number, Datum>;
 }
 
+/** Resolved numeric mapping captured when a lasso is drawn. */
+export interface RegionScaleMapping {
+    type: "linear" | "log" | "sqrt" | "pow" | "symlog";
+    domain: number[];
+    range: number[];
+    clamp: boolean;
+    base?: number;
+    exponent?: number;
+    constant?: number;
+}
+
+/** The geometric query, independent of runtime point IDs and scale navigation. */
+export interface RegionSelectionIntent {
+    /** Vertices in the normalized coordinate space of the captured mappings. */
+    polygon: ReadonlyArray<readonly [number, number]>;
+
+    fields: { x: string; y: string };
+
+    scales: { x: RegionScaleMapping; y: RegionScaleMapping };
+
+    producer: ViewSelector;
+}
+
+/** Pending and zero-match polygons remain active; only cleared intent is empty. */
+export type RegionSelection = SelectionBase & {
+    type: "region";
+    data: Map<number, Datum>;
+} & (
+        | { status: "cleared"; intent: null }
+        | { status: "pending" | "ready"; intent: RegionSelectionIntent }
+    );
+
 export type Selection =
     | IntervalSelection
     | ProjectedSelection
     | SinglePointSelection
-    | MultiPointSelection;
+    | MultiPointSelection
+    | RegionSelection;

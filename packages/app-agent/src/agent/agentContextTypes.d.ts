@@ -295,13 +295,7 @@ export interface AgentSelectionSummary {
  */
 export interface AgentParameterBindSummary {
     input:
-        | "checkbox"
-        | "radio"
-        | "range"
-        | "select"
-        | "text"
-        | "number"
-        | "color";
+        "checkbox" | "radio" | "range" | "select" | "text" | "number" | "color";
     label: string;
     description?: string;
     debounce?: number;
@@ -329,7 +323,7 @@ export interface AgentParameterDeclarationBase {
  */
 export interface AgentSelectionParameterDeclaration extends AgentParameterDeclarationBase {
     parameterType: "selection";
-    selectionType: "point" | "interval";
+    selectionType: "point" | "interval" | "region";
     encodings?: string[];
     clearable: boolean;
 }
@@ -346,8 +340,7 @@ export interface AgentVariableParameterDeclaration extends AgentParameterDeclara
  * Adjustable parameter declared by the visualization spec.
  */
 export type AgentParameterDeclaration =
-    | AgentSelectionParameterDeclaration
-    | AgentVariableParameterDeclaration;
+    AgentSelectionParameterDeclaration | AgentVariableParameterDeclaration;
 
 /**
  * Field inside a selected view that can be aggregated into a derived workflow.

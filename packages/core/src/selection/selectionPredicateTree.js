@@ -7,7 +7,7 @@ import { field } from "../utils/field.js";
  * @typedef {{selectionActive: string}} SelectionActivity
  * @typedef {SelectionLeaf | SelectionActivity | {all: readonly SelectionPredicateTree[]} | {any: readonly SelectionPredicateTree[]} | {not: SelectionPredicateTree}} SelectionPredicateTree
  * @typedef {{component: string, input: string, field: string, secondaryInput?: string, secondaryField?: string, hitTest?: "intersects" | "encloses" | "endpoints"}} SelectionProjection
- * @typedef {{param: string, type: "single" | "multi" | "interval", empty: boolean, projections?: SelectionProjection[]} | {selectionActive: {param: string, type: "single" | "multi" | "interval", components: string[]}} | {all: readonly ResolvedSelectionPredicate[]} | {any: readonly ResolvedSelectionPredicate[]} | {not: ResolvedSelectionPredicate}} ResolvedSelectionPredicate
+ * @typedef {{param: string, type: "single" | "multi" | "interval" | "region", empty: boolean, projections?: SelectionProjection[]} | {selectionActive: {param: string, type: "single" | "multi" | "interval" | "region", components: string[]}} | {all: readonly ResolvedSelectionPredicate[]} | {any: readonly ResolvedSelectionPredicate[]} | {not: ResolvedSelectionPredicate}} ResolvedSelectionPredicate
  */
 
 /**
@@ -225,7 +225,7 @@ export function selectionPredicateMatchesWhenEmpty(tree) {
  *
  * @param {SelectionPredicateTree} tree
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
+ * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "interval" | "region", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
  * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @returns {ResolvedSelectionPredicate}
@@ -237,18 +237,23 @@ export function resolveSelectionPredicateTree(
     hitTestMode,
     getType
 ) {
-    /** @param {string} name @returns {{type: "single" | "multi" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]}} */
+    /** @param {string} name @returns {{type: "single" | "multi" | "interval" | "region", components: {component: string, type?: import("../spec/channel.js").Type}[]}} */
     const capability = (name) => {
         const registered = runtime.findSelectionCapability?.(name);
         if (registered) {
             return registered;
         }
         const value = runtime.findValue(name);
-        if (!value || !["single", "multi", "interval"].includes(value.type)) {
+        if (
+            !value ||
+            !["single", "multi", "interval", "region"].includes(value.type)
+        ) {
             throw new Error(`Selection parameter "${name}" was not found.`);
         }
         return {
-            type: /** @type {"single" | "multi" | "interval"} */ (value.type),
+            type: /** @type {"single" | "multi" | "interval" | "region"} */ (
+                value.type
+            ),
             components:
                 value.type === "interval"
                     ? Object.keys(/** @type {object} */ (value.intervals)).map(
@@ -432,6 +437,18 @@ export function compileSelectionPredicateTree(tree, getSelection) {
                 : selection.data.has(datum[UNIQUE_ID_KEY]);
         };
     }
+    if (type === "region") {
+        return (datum) => {
+            const selection =
+                /** @type {import("../types/selectionTypes.js").RegionSelection} */ (
+                    getSelection(param)
+                );
+            return selection.status === "cleared"
+                ? empty
+                : selection.status === "ready" &&
+                      selection.data.has(datum[UNIQUE_ID_KEY]);
+        };
+    }
     const inputs = tree.projections.map((projection) => ({
         ...projection,
         read: field(projection.field),
@@ -475,6 +492,7 @@ export function compileSelectionPredicateTree(tree, getSelection) {
 
 /** @param {import("../types/selectionTypes.js").Selection} selection */
 function isActive(selection) {
+    if (selection.type === "region") return selection.status !== "cleared";
     if (selection.type === "single") {
         return selection.uniqueId != null;
     }

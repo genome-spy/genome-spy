@@ -9,6 +9,27 @@ from extension.extension import MyPreprocessor
 
 
 class ExampleGalleryPreprocessorTest(unittest.TestCase):
+    def test_schema_macro_keeps_constant_options(self) -> None:
+        for value in ["density", False, 0, None, ""]:
+            with self.subTest(value=value):
+                schema = {
+                    "definitions": {
+                        "RegionSelectionConfig": {
+                            "type": "object",
+                            "properties": {
+                                "type": {"const": "region"},
+                                "preview": {"const": value, "description": "Display option."},
+                            },
+                        }
+                    }
+                }
+                preprocessor = MyPreprocessor(None, schema, {}, "")
+                rendered = "\n".join(preprocessor.getType("RegionSelectionConfig"))
+
+                self.assertIn("`preview`", rendered)
+                self.assertIn("Type: `" + json.dumps(value) + "`", rendered)
+                self.assertNotIn("`type`", rendered)
+
     def test_schema_macro_dereferences_type_aliases(self):
         schema = {
             "definitions": {

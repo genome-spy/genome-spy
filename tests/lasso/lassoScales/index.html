@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.css" />
+        <link rel="stylesheet" href="./style.css" />
+        <title>Lasso on nonlinear scales</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← Lasso development tests</a>
+        <h1>Lasso on nonlinear scales</h1>
+        <p>
+            The same three points and the same on-screen triangle, with
+            different scales. Orange points are selected. Hold Shift and drag in
+            either plot to draw your own lasso.
+        </p>
+        <button id="triangle" disabled>Draw the test triangle</button>
+        <div class="plots">
+            <section id="linear">
+                <h2>Linear / linear</h2>
+                <div class="surface">
+                    <div class="plot"></div>
+                    <svg aria-hidden="true"><path /></svg>
+                </div>
+                <p class="result" role="status"></p>
+            </section>
+            <section id="nonlinear">
+                <h2>Log / sqrt</h2>
+                <div class="surface">
+                    <div class="plot"></div>
+                    <svg aria-hidden="true"><path /></svg>
+                </div>
+                <p class="result" role="status"></p>
+            </section>
+        </div>
+        <p>
+            A = (10, 16), B = (10, 36), C = (10, 25). On the right, A is inside,
+            B is outside, and C is on the diagonal boundary and included.
+        </p>
+        <p>
+            Inverse-mapping only the triangle’s vertices would incorrectly
+            include B on the right. The corrected selector projects each point
+            through the captured log/sqrt scales before testing membership.
+        </p>
+        <p>
+            This uses the internal CPU selector and a separate highlight layer,
+            as in the million-cell prototype. These are synthetic geometry test
+            points; no download is needed.
+        </p>
+        <p id="error" role="alert"></p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

@@ -27,7 +27,10 @@ import {
     isColorChannel,
     isDiscreteChannel,
 } from "../../../encoder/encoder.js";
-import { isMultiPointSelection } from "../../../selection/selection.js";
+import {
+    isMultiPointSelection,
+    isRegionSelection,
+} from "../../../selection/selection.js";
 import {
     buildHashTableSet,
     computeHashTextureDimensions,
@@ -91,7 +94,7 @@ export default class WebGLHelper {
         this.placementTextures = new WeakMap();
 
         /**
-         * @type {WeakMap<import("../../../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
+         * @type {WeakMap<import("../../../types/selectionTypes.js").MultiPointSelection | import("../../../types/selectionTypes.js").RegionSelection, WebGLTexture>}
          */
         this.selectionTextures = new WeakMap();
 
@@ -485,10 +488,19 @@ export default class WebGLHelper {
     }
 
     /**
-     * @param {import("../../../types/selectionTypes.js").MultiPointSelection} selection
+     * @param {import("../../../types/selectionTypes.js").MultiPointSelection | import("../../../types/selectionTypes.js").RegionSelection} selection
+     * @param {boolean} [update]
+     * @param {import("../../../types/selectionTypes.js").MultiPointSelection | import("../../../types/selectionTypes.js").RegionSelection} [previousSelection]
      */
-    createSelectionTexture(selection, update = true) {
-        if (!isMultiPointSelection(selection)) {
+    createSelectionTexture(
+        selection,
+        update = true,
+        previousSelection = selection
+    ) {
+        if (
+            !isMultiPointSelection(selection) &&
+            !isRegionSelection(selection)
+        ) {
             throw new Error(
                 "Not a multi-point selection, cannot create texture"
             );
@@ -500,7 +512,7 @@ export default class WebGLHelper {
             this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE)
         );
 
-        const existingTexture = this.selectionTextures.get(selection);
+        const existingTexture = this.selectionTextures.get(previousSelection);
 
         const gl = this.gl;
         const texture = createOrUpdateTexture(

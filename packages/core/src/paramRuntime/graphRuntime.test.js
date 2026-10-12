@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import GraphRuntime from "./graphRuntime.js";
+import GraphRuntime, { iterateParamDependencies } from "./graphRuntime.js";
 import LifecycleRegistry from "./lifecycleRegistry.js";
 
 describe("GraphRuntime", () => {
@@ -534,4 +534,32 @@ test("cyclic pending publication prerequisites reject propagation without runnin
     await failed;
     expect(a).not.toHaveBeenCalled();
     expect(b).not.toHaveBeenCalled();
+});
+
+test("dependency ancestry follows current operation bindings by ref identity", () => {
+    const runtime = new GraphRuntime();
+    const root = runtime.createWritable("root", "lasso", "selection", 1);
+    const shadow = runtime.createWritable("child", "lasso", "selection", 2);
+    const alias = runtime.computed("child", "alias", [root], () => root.get());
+    const operation = runtime.operation(
+        "child",
+        "operation",
+        [alias],
+        () => alias.get(),
+        () => {}
+    );
+
+    const dependencies = Array.from(
+        iterateParamDependencies([operation, alias])
+    );
+    expect(dependencies).toHaveLength(3);
+    expect(new Set(dependencies)).toEqual(new Set([alias, root, operation]));
+
+    operation.rebind([shadow], () => shadow.get());
+    expect(new Set(iterateParamDependencies([operation]))).toEqual(
+        new Set([operation, shadow])
+    );
+
+    operation.dispose();
+    alias.dispose();
 });

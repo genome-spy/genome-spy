@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Lasso development tests</title>
+        <link rel="stylesheet" href="./style.css" />
+        <link rel="icon" href="data:," />
+    </head>
+    <body>
+        <h1>Lasso development tests</h1>
+        <p>
+            Local correctness and performance fixtures. See
+            tests/lasso/README.md for setup.
+        </p>
+        <p>
+            Real-cell examples need:
+            <code>python3 tests/lasso/prepareData.py --cells 1100000</code>
+        </p>
+        <ul>
+            <li><a href="native/">Native Core region selection</a></li>
+            <li>
+                <a href="nativeDense/?points=10000000&amp;density"
+                    >Native Core 10M density display</a
+                >
+            </li>
+            <li>
+                <a href="nativeDense/?points=10000000"
+                    >Native Core 10M ordinary point colors</a
+                >
+            </li>
+            <li>
+                <a href="nativeDense/?umap&amp;nonlinear&amp;density"
+                    >Native Core real-cell UMAP on log/sqrt axes</a
+                >
+            </li>
+            <li>
+                <a href="native/?linked&amp;renderer=webgpu"
+                    >Native linked plots</a
+                >
+            </li>
+            <li><a href="lassoUmapGpu/">Real-cell GPU comparison</a></li>
+            <li>
+                <a href="lassoGpu/?points=10000000">10M-point GPU workload</a>
+            </li>
+            <li><a href="lassoUmap/">Real-cell CPU reference</a></li>
+            <li><a href="lassoScales/">Nonlinear-scale reference</a></li>
+        </ul>
+    </body>
+</html>

@@ -11,6 +11,8 @@ Public TypeScript API for `@genome-spy/core`.
 - [ComplexLocusEndpoint](interfaces/ComplexLocusEndpoint.md)
 - [IntervalSnapshot](interfaces/IntervalSnapshot.md)
 - [PointSnapshot](interfaces/PointSnapshot.md)
+- [RegionSnapshot](interfaces/RegionSnapshot.md)
+- [RegionSelectionApi](interfaces/RegionSelectionApi.md)
 - [PointSelectionApi](interfaces/PointSelectionApi.md)
 - [IntervalSelectionApi](interfaces/IntervalSelectionApi.md)
 - [ParamNamespace](interfaces/ParamNamespace.md)

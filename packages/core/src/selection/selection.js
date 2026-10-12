@@ -184,6 +184,8 @@ export function makeSelectionTestExpression(params, selection) {
         return `${paramName}.data.size == 0 ? ${empty} : mapHasKey(${paramName}.data, datum[${JSON.stringify(
             UNIQUE_ID_KEY
         )}])`;
+    } else if (isRegionSelection(selection)) {
+        return `${paramName}.status === 'cleared' ? ${empty} : ${paramName}.status === 'ready' && mapHasKey(${paramName}.data, datum[${JSON.stringify(UNIQUE_ID_KEY)}])`;
     } else if (isIntervalSelection(selection)) {
         const channelsInSelection =
             /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ (
@@ -311,6 +313,14 @@ export function isMultiPointSelection(selection) {
 
 /**
  * @param {import("../types/selectionTypes.js").Selection} selection
+ * @returns {selection is import("../types/selectionTypes.js").RegionSelection}
+ */
+export function isRegionSelection(selection) {
+    return selection.type === "region";
+}
+
+/**
+ * @param {import("../types/selectionTypes.js").Selection} selection
  * @returns {selection is import("../types/selectionTypes.js").ProjectedSelection}
  */
 export function isProjectedSelection(selection) {
@@ -327,6 +337,13 @@ export function asSelectionConfig(typeOrConfig) {
         typeof typeOrConfig === "string"
             ? { type: typeOrConfig }
             : { ...typeOrConfig };
+
+    if (
+        isRegionSelectionConfig(config) &&
+        config.preview !== undefined &&
+        config.preview !== "density"
+    )
+        throw new Error("Unsupported region preview: " + config.preview);
 
     config.on = config.on
         ? asEventConfig(config.on)
@@ -379,6 +396,7 @@ export function isIntervalSelectionConfig(config) {
  * @returns {boolean}
  */
 export function isSelectionActive(selection) {
+    if (isRegionSelection(selection)) return selection.status !== "cleared";
     if (isSinglePointSelection(selection)) {
         return selection.uniqueId != null;
     }
@@ -414,4 +432,10 @@ export function selectionContainsPoint(selection, point) {
             interval[0] <= point[channel] &&
             interval[1] >= point[channel]
     );
+}
+
+/** @param {import("../spec/parameter.js").SelectionConfig} config
+ * @returns {config is import("../spec/parameter.js").RegionSelectionConfig} */
+export function isRegionSelectionConfig(config) {
+    return config && config.type === "region";
 }

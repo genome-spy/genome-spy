@@ -1,11 +1,11 @@
 import { color as parseColor } from "d3-color";
 
-/** @type {GPUColor} */
+/** @type {GPUColorDict} */
 export const TRANSPARENT_GPU_COLOR = { r: 0, g: 0, b: 0, a: 0 };
 
 /**
  * @param {string | null | undefined} background
- * @returns {GPUColor}
+ * @returns {GPUColorDict}
  */
 export function toGpuColor(background) {
     if (background == null) {

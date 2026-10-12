@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.css" />
+        <link rel="stylesheet" href="./style.css" />
+        <title>Million-cell UMAP lasso test</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← Lasso development tests</a>
+        <h1>Million-cell UMAP lasso test</h1>
+        <p>
+            Hold Shift and drag to draw a lasso. Drag normally to pan, scroll to
+            zoom, and press Escape to cancel drawing. Selected cells appear in
+            orange.
+        </p>
+        <p>
+            This prototype uses Core’s lasso gesture controller and CPU polygon
+            selector, highlighting the result using a separate point layer. It
+            does not yet test native region selections, selection hash uploads,
+            or GPU computation.
+        </p>
+        <div class="actions">
+            <button id="center" disabled>Select center</button>
+            <button id="all" disabled>Select all loaded cells</button>
+            <button id="clear" disabled>Clear selection</button>
+            <button id="reset" disabled>Reset zoom</button>
+        </div>
+        <p id="status" role="status" aria-live="polite">
+            Loading real cell coordinates…
+        </p>
+        <div id="surface">
+            <div id="plot"></div>
+            <svg id="outline" aria-hidden="true"><path /></svg>
+        </div>
+        <dl class="metrics">
+            <div>
+                <dt>Cells loaded</dt>
+                <dd id="cells">—</dd>
+            </div>
+            <div>
+                <dt>Cells selected</dt>
+                <dd id="selected">—</dd>
+            </div>
+            <div>
+                <dt>Polygon vertices</dt>
+                <dd id="vertices">—</dd>
+            </div>
+            <div>
+                <dt>CPU scan</dt>
+                <dd id="scan">—</dd>
+            </div>
+            <div>
+                <dt>Highlight update</dt>
+                <dd id="update">—</dd>
+            </div>
+        </dl>
+        <p>
+            CPU scans are synchronous and may pause the page. Highlight time
+            includes dataset publication and two animation frames; it is not a
+            GPU timestamp. Hover picking is disabled for this test.
+        </p>
+        <p>
+            Data: Allen Brain Cell Atlas, WMB-10X release 20230830;
+            <a href="https://doi.org/10.1038/s41586-023-06812-z"
+                >Yao et al. (2023)</a
+            >. The downloader keeps an ordered subset of finite, uniquely
+            labeled cells using the published UMAP; the loaded count is shown
+            above. No cells are replicated and no expression matrix is loaded.
+            This subset is for performance testing, not representative
+            biological analysis.
+            <a
+                href="https://alleninstitute.github.io/abc_atlas_access/notebooks/10x_snRNASeq_tutorial_part_1.html"
+                >Source documentation</a
+            >
+            ·
+            <a href="https://alleninstitute.org/legal/terms-of-use"
+                >Data terms</a
+            >.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "lasso*/**/*.js",
+    "native/**/*.js",
+    "../../external-typings/**/*"
+  ],
+  "exclude": ["**/*.test.js"],
+  "compilerOptions": { "types": ["node"], "skipLibCheck": true }
+}
