@@ -311,6 +311,7 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
      *
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
+     * - `"region"` -- to select point centers inside a freehand lasso.
      */
     type: T;
 
@@ -320,8 +321,8 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
      * __Default value:__
      *
      * - point selections: `"click"`
-     * - interval selections:
-     *   - `"mousedown[event.shiftKey]"` when any brushed channel is zoomable
+     * - interval and region selections:
+     *   - `"mousedown[event.shiftKey]"` when any selected axis is zoomable
      *   - `"mousedown"` otherwise
      */
     on?: DomEventType | EventConfig | string;
@@ -476,13 +477,7 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
      *
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
-     * - `"region"` -- to select point centers inside a freehand lasso. Requires named
-     *   point views with quantitative x/y fields on linear, log, sqrt, pow, or symlog
-     *   scales and complete eager data. Shift-drag on zoomable plots, drag otherwise.
-     *   Offsets and rounded/custom scale interpolation are unsupported. Navigation
-     *   preserves membership; replacing producer data clears it. App bookmarks and
-     *   undo/redo store the polygon and captured mappings, rebuilding current rows
-     *   when replayed.
+     * - `"region"` -- to select point centers inside a freehand lasso.
      */
     select:
         | T
@@ -506,18 +501,24 @@ export type SelectionInitIntervalMapping = Partial<
 
 export type SelectionExtent = "auto" | "view" | "container";
 
-/** Lasso over point centers; WebGPU computes live membership, other backends use CPU release. */
+/** Freehand selection of point centers in a scatterplot. */
 export interface RegionSelectionConfig extends BaseSelectionConfig<"region"> {
-    /** Starts a lasso on `mousedown`, optionally filtered by modifier keys. */
-    on?: "mousedown" | EventConfig | string;
     /**
-     * Experimental WebGPU density display for dense point clouds. Shows local
-     * selected fractions rather than exact symbol colors. Membership uses the
-     * GPU's captured point centers; IDs are read back on release for CPU consumers.
-     * Requires uniform unstroked circles,
-     * one constant fill condition with `empty: false`, and a white background.
-     * Overlaid marks, plot grid lines, and view/group opacity are unsupported.
-     * Scene changes invalidate the cached display and repaint normally.
+     * Event that starts drawing. Only `mousedown` is supported;
+     * an event filter can require modifier keys.
+     *
+     * __Default value:__ drag; Shift-drag when either axis is zoomable.
+     */
+    on?: "mousedown" | EventConfig | string;
+
+    /**
+     * Experimental display for very dense WebGPU plots. Colors show the selected
+     * fraction of nearby points rather than exact overlapping point colors.
+     * Requires circles with uniform appearance and no outlines, a white background,
+     * one color for unselected points, and one constant selection color condition
+     * with `empty: false`. Overlaid marks, grid lines, and transparent views or groups
+     * are unsupported. Changing data, scales, layout, or styling while drawing
+     * cancels the unfinished selection.
      */
     preview?: "density";
 }

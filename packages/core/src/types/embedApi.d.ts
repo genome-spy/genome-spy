@@ -240,16 +240,25 @@ export interface PointSnapshot {
 export type SelectionSnapshot =
     IntervalSnapshot | PointSnapshot | RegionSnapshot;
 
-/** Detached lasso intent and selected rows. Empty queries remain active. */
+/** Snapshot of a lasso and its selected rows. A lasso with no matches remains active. */
 export interface RegionSnapshot {
+    /** Selection kind. */
     type: "region";
+
+    /** Whether a lasso exists, even if it selects no rows. */
     active: boolean;
+
+    /** Cleared, waiting for a saved lasso's rows, or finished selecting rows. */
     status: "cleared" | "pending" | "ready";
+
+    /** Saved lasso shape and original axes, or null after clearing. */
     intent: import("./selectionTypes.js").RegionSelectionIntent | null;
+
+    /** Copies of selected rows. Empty while waiting, after clearing, or with no matches. */
     data: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 
-/** CPU lasso results publish on release; clear removes both intent and rows. */
+/** Access selected rows after drawing finishes; clearing removes the lasso and its rows. */
 export interface RegionSelectionApi {
     readonly type: "region";
     getValue: () => RegionSnapshot;

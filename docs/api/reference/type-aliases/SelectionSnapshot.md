@@ -2,6 +2,6 @@
 
 # Type Alias: SelectionSnapshot
 
-> **SelectionSnapshot** = [`IntervalSnapshot`](../interfaces/IntervalSnapshot.md) \| [`PointSnapshot`](../interfaces/PointSnapshot.md)
+> **SelectionSnapshot** = [`IntervalSnapshot`](../interfaces/IntervalSnapshot.md) \| [`PointSnapshot`](../interfaces/PointSnapshot.md) \| [`RegionSnapshot`](../interfaces/RegionSnapshot.md)
 
-A detached snapshot of either an interval or point selection.
+A detached snapshot of an interval, point, or region selection.

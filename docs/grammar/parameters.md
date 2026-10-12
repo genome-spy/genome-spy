@@ -150,64 +150,61 @@ EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 
 ### Region Selection
 
-`select: "region"` draws a lasso over point centers. WebGPU computes membership
-while drawing and uses its hash table directly for conditional encodings. On
-release, selected IDs are read back for CPU consumers, including filters and App
-state. WebGL and Canvas use the separate CPU implementation on release.
-Declare it on a named point view, or on an ancestor of
-named point views.
-Drag to draw; hold Shift when either positional scale is zoomable. Double-click
-clears, and Escape cancels drawing or confirmation while retaining the previous
-selection. Large selections are confirmed in short batches; linked views update
-once CPU membership is complete. Wheel zoom and panning wait during confirmation.
-Starting another lasso cancels unfinished confirmation.
+A region selection lets you draw a lasso around point centers. Add
+`select: "region"` to a named point plot and use the parameter to highlight
+selected points:
 
-The producer must have a single plot placement. Both axes require unconditional quantitative fields on linear, log, sqrt, pow,
-or symlog scales. Point offsets, rounded/custom interpolation, and lazy data
-populations are unsupported. Membership uses the captured forward scale mappings,
-so nonlinear scales follow the drawn outline and navigation preserves the selected
-rows. Producer data updates clear the selection. A valid lasso with no matches
-remains active, so `empty: true` does not turn it into a match-all query.
+```json
+{
+  "name": "scatterplot",
+  "data": {
+    "values": [
+      { "x": 1, "y": 1 },
+      { "x": 2, "y": 3 },
+      { "x": 3, "y": 2 }
+    ]
+  },
+  "params": [{ "name": "lasso", "select": "region" }],
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" },
+    "color": {
+      "condition": { "param": "lasso", "empty": false, "value": "orange" },
+      "value": "gray"
+    }
+  }
+}
+```
 
-GenomeSpy App bookmarks and undo/redo store the polygon, producer, and captured
-scale mappings. Replay rebuilds membership from the producer's current rows
-without storing runtime point IDs. It waits for complete producer data and
-downstream selection updates. Missing producers or incompatible fields produce
-restore warnings. Set `persist: false` for temporary selections.
+Drag to draw; use Shift-drag when zooming is enabled. Escape cancels the new
+selection, and double-click clears it. Zooming and panning preserve the selected
+points. Replacing the data or removing the drawing plot clears the selection.
+A lasso containing no points selects none, even with `empty: true`.
 
-For dense WebGPU point clouds, `select: {"type": "region", "preview": "density"}`
-opts into an experimental density display. It shows local selected fractions
-instead of exact overlapping symbol colors. Drawing uses approximate GPU geometry;
-the same GPU pass produces the selection hash table and density counts. No selected-ID
-download/upload round trip is needed for highlighting. The final GPU display stays
-visible while CPU consumers receive the selected rows.
+WebGPU highlights points while drawing. WebGL and Canvas update highlights on
+release. Filters and saved state update after release; large selections may take
+time to finish, during which zooming and panning pause.
 
-GPU membership follows captured f32 rendered centers and a path sampled to at most
-512 vertices. The sampled path is saved for replay. The CPU reference and bookmark
-replay use the captured forward mappings at CPU precision, so points very close
-to an edge can differ. Membership is a set; row iteration order can differ between
-backends.
+Both axes must use quantitative fields on linear, log, sqrt, pow, or symlog
+scales. All points must be loaded, and the drawing plot must appear only once
+in the layout.
+Point offsets and rounded or custom scale interpolation are unsupported.
 
-Density mode requires an opaque white background, uniform unstroked circles, and
-one constant fill/color condition for this lasso with `empty: false`. Overlaid
-marks, plot grid lines, and view/group opacity are unsupported. Data, scales,
-layout, styling, or linked-consumer changes invalidate the cache and repaint
-normally; invalidating an active preview also cancels unfinished confirmation.
-Large selections still take time to confirm, and publishing their membership
-to dependent views can briefly pause a very large plot. Bookmark replay
-uses the synchronous CPU reference.
+In GenomeSpy App, bookmarks and undo/redo save the lasso and its original axes,
+then select points from the current data when restored. Points right on the
+boundary can differ after restoration because of coordinate rounding.
+Set `persist: false` for a temporary selection.
 
-Conditional encodings and selection filters use the usual parameter syntax.
-Linked views need an explicit shared ancestor `identifier` transform so the same
-rows retain the same IDs. Keep the producer population separate from a
-selection-filtered consumer. CPU consumers update on release. Without density
-display, linked WebGPU conditional encodings share the live GPU table while
-drawing. Density mode caches the scene, so linked views refresh on release.
+Linked plots need a shared `identifier` transform before their data branches,
+with the selection declared on their common ancestor. Keep the drawing plot
+separate from a consumer filtered by that selection.
 
-Selection-filtered point views consume an inherited lasso but do not start that
-same lasso. Declaring a region directly on a view filtered by it is rejected.
-Clearing through the selection API cancels drawing and confirmation; removing
-the producer clears its shared selection.
+For very dense WebGPU plots, `select: {"type": "region", "preview": "density"}`
+shows the selected fraction of nearby points using a density display. Colors
+summarize that fraction rather than exact overlapping point colors. Linked plots
+refresh on release in this mode. See the [region selection options](types.md#regionselectionconfig)
+for supported styling and event configuration.
 
 ### Interval Selection
 
