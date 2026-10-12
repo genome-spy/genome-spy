@@ -42,6 +42,13 @@ export function hasGroupingGaps(props = {}) {
     );
 }
 
+/** Resolved enablement, independent of shader specialization.
+ * @param {{gapWidth: number | null, gapPositions: readonly number[]}} mapping
+ */
+export function hasEffectiveGroupingGaps(mapping) {
+    return mapping.gapWidth > 0 && mapping.gapPositions.length > 0;
+}
+
 /** Shader structure changes only when static gap enablement changes.
  * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
  */

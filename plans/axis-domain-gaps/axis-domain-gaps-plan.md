@@ -321,20 +321,26 @@ before relying on it for guides. Tentative commit:
 
 ### 2. Publish reusable group intervals from resolved scales
 
-- [ ] Add the pure interval helper and `scaleGroups` lazy source, descriptor,
+- [x] Add the pure interval helper and `scaleGroups` lazy source, descriptor,
       registry loading, full-extent dependency, and lifecycle wiring in Core's
       genome/scales/data subsystems. Keep the implementation confined to the
       chosen producer/source contract.
-- [ ] Verify the real spec-to-collector path: one/two axes, index/locus, inferred
+- [x] Verify the real spec-to-collector path: one/two axes, index/locus, inferred
       readiness, authored/reactive extents, cut edits, assembly replacement,
       empty input, scale replacement, disposal, and no domain feedback. Verify
       no row publication on navigation, positive-to-positive width changes, or
       layout/export; verify effective enablement transitions republish correctly.
       Include a pending contributor outside the generated subtree to verify
       provisional-empty readiness, initialization, and the lazy-only wait boundary.
-- [ ] Document descriptor, fields, half-open encoding, inferred-reference
+- [x] Document descriptor, fields, half-open encoding, inferred-reference
       stability, view-level domain inertness, and product size. Add schema
       coverage and a user-facing changeset.
+
+Verification: 449 tests across scale, source, readiness, and schema suites passed,
+along with Core type checks, schema generation, and release validation.
+Independent review corrected the resolved-scale-type guard and found no remaining
+readiness or lifecycle issues. Layout/export publication checks continue with
+the integrated guides in milestones 3 and 4.
 
 Outcome: one source supplies domain-space intervals for both rules and rects.
 Review gate: prove finite-reference/readiness and cycle behavior using the real

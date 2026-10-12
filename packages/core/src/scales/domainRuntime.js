@@ -118,6 +118,13 @@ export default class DomainRuntime {
         return this.#state.get();
     }
 
+    /** Internal dependency for projections of reference/readiness state.
+     * @returns {import("../paramRuntime/types.js").ParamRef<import("./domainLifecycle.js").DomainState>}
+     */
+    get stateRef() {
+        return this.#state;
+    }
+
     /**
      * Commands join the active propagation boundary. Their promises resolve
      * after publication (or after the requested animation completes).

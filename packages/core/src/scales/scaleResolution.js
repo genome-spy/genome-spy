@@ -126,6 +126,9 @@ export default class ScaleResolution {
     /** @type {DomainRuntime | undefined} */
     #domainRuntime;
 
+    /** @type {import("../paramRuntime/types.js").ComputedParamRef<{extent: readonly number[], ready: boolean}> | undefined} */
+    #fullExtentRef;
+
     /** @type {ReturnType<typeof createDomainInputs> | undefined} */
     #domainInputs;
 
@@ -1495,6 +1498,41 @@ export default class ScaleResolution {
     getDomainRef() {
         this.getDomain();
         return this.#domainRuntime.domain;
+    }
+
+    /** Full group bounds, independent of navigation and output range. */
+    getFullExtentRef() {
+        this.getScale();
+        return (this.#fullExtentRef ??= this.#runtime.computed(
+            "scale full extent",
+            [this.#domainRuntime.stateRef, this.getConfigurationRef()],
+            () => {
+                const state = this.#domainRuntime.state;
+                if (this.type === LOCUS) {
+                    return { extent: this.#getLocusExtent(), ready: true };
+                }
+                if (
+                    this.#hasConfiguredDomain() &&
+                    !this.#getLinkedSelectionInfo()
+                ) {
+                    return {
+                        extent: /** @type {readonly number[]} */ (
+                            state.resetDomain
+                        ),
+                        ready: true,
+                    };
+                }
+                // An inferred reference assumes full data; a viewport-derived
+                // index domain would cover only its initial viewport.
+                return {
+                    extent: /** @type {readonly number[]} */ (
+                        state.initialReference ?? []
+                    ),
+                    ready: state.phase === "ready",
+                };
+            },
+            { equals: (a, b) => deepEqual(a, b) }
+        ));
     }
 
     /** @returns {any[]} A fresh snapshot of the committed display. */

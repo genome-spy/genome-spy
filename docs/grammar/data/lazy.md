@@ -8,7 +8,7 @@ infeasible to load in their entirety.
 
 !!! note "How it works"
 
-    Lazy data sources observe the scale domains of the view where the data
+    Most lazy data sources observe the scale domains of the view where the data
     source is specified. When the domain changes as a result of an user interaction,
     the data source invokes a request to fetch a new subset of the data. Lazy
     sources need the visual `channel` to be specified, which is used to determine the
@@ -32,6 +32,50 @@ Unlike in eager data, the `type` of the data source must be specified explicitly
 Some lazy sources also support advanced
 [URL templates and multiple files](multi-url.md), which are useful in complex
 cohort visualizations that load per-sample signal or partitioned variant files.
+
+## Scale groups
+
+The `"scaleGroups"` source generates intervals for outlines and guides around
+[index or locus scale groups](../scale.md#grouping-gaps). It uses the same
+`lazy` grammar as on-demand sources, but generates its rows synchronously and
+keeps them unchanged during pan, zoom, and resize.
+
+```json
+{ "data": { "lazy": { "type": "scaleGroups", "channels": ["x", "y"] } } }
+```
+
+One channel produces `xGroup`, `xStart`, and `xEnd` (or the corresponding `y`
+fields). Two channels produce the Cartesian product of their groups, costing
+one row per pair. Group numbers start at zero in ascending data order and can
+change when cuts change. With gaps disabled, an axis contributes one interval.
+
+Boundaries are numeric half-open coordinates. Locus intervals span the full
+assembly, including chromosomes without loaded data. Index intervals use an
+authored domain when present, otherwise the finalized initial data reference.
+That inferred reference stays fixed when later streaming data arrives. A
+reactive authored domain can provide changing full bounds. Selection-linked
+domains use their independent full reference rather than the selection.
+
+An outline layer shares the data-bearing view's scales and sets view-level
+`domainInert: true` so its generated endpoints do not enlarge those domains.
+Encode both boundaries with `band: 0`, for example:
+
+```json
+{
+  "domainInert": true,
+  "data": { "lazy": { "type": "scaleGroups", "channels": ["x"] } },
+  "mark": { "type": "rule", "clamp": "x", "clip": false },
+  "encoding": {
+    "x": { "field": "xStart", "type": "index", "band": 0 },
+    "x2": { "field": "xEnd", "band": 0 },
+    "y": { "value": 0 }
+  }
+}
+```
+
+### Parameters
+
+SCHEMA ScaleGroupsData
 
 ## Indexed FASTA
 

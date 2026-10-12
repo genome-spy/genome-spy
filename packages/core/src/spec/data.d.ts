@@ -340,6 +340,7 @@ export interface LazyData {
 
 export type LazyDataParams =
     | AxisTicksData
+    | ScaleGroupsData
     | LegendEntriesData
     | LegendGradientData
     | LegendGradientTicksData
@@ -351,6 +352,19 @@ export type LazyDataParams =
     | TabixTsvData
     | Gff3Data
     | VcfData;
+
+/** Generates finite half-open group intervals from resolved index/locus scales. */
+export interface ScaleGroupsData {
+    type: "scaleGroups";
+
+    /**
+     * One or both positional channels, without duplicates. Each contributes
+     * `xGroup`, `xStart`, `xEnd` or the corresponding `y` fields. Two channels
+     * produce their Cartesian product. Encode boundaries with `band: 0` in a
+     * view with `domainInert: true` that shares the data-bearing view's scales.
+     */
+    channels: ("x" | "y")[];
+}
 
 export interface DebouncedData {
     /**
