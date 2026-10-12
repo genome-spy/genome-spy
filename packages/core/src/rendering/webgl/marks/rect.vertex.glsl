@@ -86,13 +86,34 @@ void main(void) {
     sort(pos1.x, pos2.x);
     sort(pos1.y, pos2.y);
 
-    // Clamp x to prevent precision artifacts when the scale is zoomed very close.
-	// TODO: clamp y as well
-	float clampMargin = 1.0;
+    // Preserve overscan for ordinary rectangles to avoid precision artifacts.
+#ifdef CLAMP_X
+    float clampMargin = 0.0;
+#else
+    float clampMargin = 1.0;
+#endif
     pos1.x = clamp(pos1.x, 0.0 - clampMargin, 1.0 + clampMargin);
     pos2.x = clamp(pos2.x, 0.0 - clampMargin, 1.0 + clampMargin);
 
+#ifdef CLAMP_Y
+    pos1.y = clamp(pos1.y, 0.0, 1.0);
+    pos2.y = clamp(pos2.y, 0.0, 1.0);
+#endif
+
     vec2 size = pos2 - pos1;
+
+#ifdef CLAMP_X
+    if (size.x == 0.0) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
+#ifdef CLAMP_Y
+    if (size.y == 0.0) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
 
     if (size.x < 0.0 || size.y < 0.0) {
         // Keep zero-sized rects alive so min-size clamping can stabilize them.

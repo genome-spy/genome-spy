@@ -266,6 +266,19 @@ export interface RectProps
     type: "rect";
 
     /**
+     * Clamps the rectangle's projected bounds to its view before applying
+     * minimum sizes, strokes, rounded corners, and shadows. `true` clamps both
+     * axes; `"x"` or `"y"` clamps only that axis. Rectangles that collapse along
+     * a clamped axis are hidden.
+     *
+     * With `clip: false`, strokes remain fully visible at the view boundary.
+     * Shared scales and other marks are unaffected.
+     *
+     * __Default value:__ `false`
+     */
+    clamp?: boolean | "x" | "y";
+
+    /**
      * Clamps the minimum size-dependent opacity. The property does not affect the
      * `opacity` channel. Valid values are between `0` and `1`.
      *

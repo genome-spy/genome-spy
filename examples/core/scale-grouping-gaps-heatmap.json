@@ -1,0 +1,102 @@
+{
+  "description": [
+    "Outlined heatmap groups",
+    "Grouping gaps retain their pixel widths during zooming. Gray outlines enclose each two-dimensional group above the heatmap cells."
+  ],
+
+  "width": 450,
+  "height": 220,
+  "data": { "sequence": { "start": 0, "stop": 200, "as": "cell" } },
+  "transform": [
+    { "type": "formula", "expr": "datum.cell % 20", "as": "column" },
+    { "type": "formula", "expr": "floor(datum.cell / 20)", "as": "row" },
+    {
+      "type": "formula",
+      "expr": "sin(datum.column * 0.7 + datum.row)",
+      "as": "value"
+    }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "column",
+      "type": "index",
+      "scale": {
+        "domain": [0, 19],
+        "gapPositions": [5, 12],
+        "gapWidth": 8,
+        "zoom": true
+      },
+      "axis": { "domain": false, "title": "column" }
+    },
+    "y": {
+      "field": "row",
+      "type": "index",
+      "scale": {
+        "domain": [0, 9],
+        "gapPositions": [4, 7],
+        "gapWidth": 8,
+        "zoom": true
+      },
+      "axis": { "domain": false, "title": "row" }
+    }
+  },
+
+  "layer": [
+    {
+      "name": "cells",
+      "mark": "rect",
+      "encoding": {
+        "color": { "field": "value", "type": "quantitative" }
+      }
+    },
+
+    {
+      "name": "groupOutlines",
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.column < 5 ? 0 : datum.column < 12 ? 5 : 12",
+          "as": "columnStart"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.row < 4 ? 0 : datum.row < 7 ? 4 : 7",
+          "as": "rowStart"
+        },
+        {
+          "type": "aggregate",
+          "groupby": ["columnStart", "rowStart"],
+          "fields": ["column", "row"],
+          "ops": ["max", "max"],
+          "as": ["columnLast", "rowLast"]
+        },
+        {
+          "type": "formula",
+          "expr": "datum.columnLast + 1",
+          "as": "columnEnd"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.rowLast + 1",
+          "as": "rowEnd"
+        }
+      ],
+      "mark": {
+        "type": "rect",
+        "clamp": true,
+        "clip": false,
+        "filled": false,
+        "stroke": "gray",
+        "strokeWidth": 1,
+        "tooltip": null
+      },
+      "encoding": {
+        "x": { "field": "columnStart", "type": "index" },
+        "x2": { "field": "columnEnd" },
+        "y": { "field": "rowStart", "type": "index" },
+        "y2": { "field": "rowEnd" }
+      }
+    }
+  ]
+}

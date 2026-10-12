@@ -792,6 +792,8 @@ export type RectChannelName =
     | "x2Offset"
     | "yOffset"
     | "y2Offset"
+    | "xClampRange"
+    | "yClampRange"
     | "fill"
     | "stroke"
     | "fillOpacity"

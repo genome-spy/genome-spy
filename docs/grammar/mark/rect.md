@@ -14,6 +14,13 @@ channels and the `color`, `stroke`, `fill`, `opacity`, `strokeOpacity`,
 
 SCHEMA RectProps
 
+### Clamping outlines
+
+Clamping keeps rectangle outlines around the visible part of a group during
+zooming. It changes the rectangle's bounds before drawing its stroke. With
+`clip: false`, the full stroke remains visible at the view boundary. Clamping
+applies only to that rect mark and leaves shared scales unchanged.
+
 ## Examples
 
 ### Heatmap

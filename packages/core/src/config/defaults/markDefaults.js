@@ -27,6 +27,7 @@ export const POINT_MARK_DEFAULTS = {
 export const RECT_MARK_DEFAULTS = {
     x2: undefined,
     y2: undefined,
+    clamp: false,
     filled: true,
     strokeWidth: 3,
     cornerRadius: 0.0,

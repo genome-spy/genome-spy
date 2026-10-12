@@ -5,6 +5,113 @@ import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
 import { createSvg } from "../index.js";
 
 describe("SVG rectangle renderer", () => {
+    test.each(
+        /** @type {const} */ ([
+            [false, [-20, -30, 140, 160]],
+            ["x", [0, -30, 100, 160]],
+            ["y", [-20, 0, 140, 100]],
+            [true, [0, 0, 100, 100]],
+        ])
+    )("clamps only the selected rect axes: %s", async (clamp, bounds) => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: 1.2, x2: -0.2, y: 1.3, y2: -0.3 }] },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { field: "y", type: "quantitative", scale: null },
+                y2: { field: "y2" },
+                fill: { value: "black" },
+                stroke: { value: "gray" },
+            },
+            layer: [
+                // Reversed endpoints exercise sorting; the second layer shares
+                // the scales but must keep its original bounds.
+                {
+                    mark: {
+                        type: "rect",
+                        clamp,
+                        clip: false,
+                        filled: false,
+                        stroke: "gray",
+                    },
+                },
+                {
+                    mark: {
+                        type: "rect",
+                        clip: false,
+                        filled: false,
+                        stroke: "gray",
+                    },
+                },
+            ],
+        });
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rects = Array.from(
+            svg.querySelectorAll('[data-mark-type="rect"] rect')
+        );
+        const geometry = rects.map((rect) =>
+            ["x", "y", "width", "height"].map((name) =>
+                Number(rect.getAttribute(name))
+            )
+        );
+
+        expect(geometry).toEqual([bounds, [-20, -30, 140, 160]]);
+        expect(
+            rects[0].closest('[data-mark-type="rect"]').getAttribute("stroke")
+        ).toBe("gray");
+    });
+
+    test("hides clamped rectangles outside or touching the view before minimum-size expansion", async () => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { x: -0.4, x2: -0.2, y: 0.2, y2: 0.8 },
+                    { x: 1.2, x2: 1.4, y: 0.2, y2: 0.8 },
+                    { x: 0.2, x2: 0.8, y: -0.4, y2: -0.2 },
+                    { x: 0.2, x2: 0.8, y: 1.2, y2: 1.4 },
+                    { x: -0.2, x2: 0, y: 0.2, y2: 0.8 },
+                    { x: 0.2, x2: 0.8, y: 0.2, y2: 0.8 },
+                ],
+            },
+            mark: {
+                type: "rect",
+                clamp: true,
+                clip: false,
+                filled: false,
+                stroke: "gray",
+                minWidth: 20,
+                minHeight: 20,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { field: "y", type: "quantitative", scale: null },
+                y2: { field: "y2" },
+                fill: { value: "black" },
+                stroke: { value: "gray" },
+            },
+        });
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rects = svg.querySelectorAll('[data-mark-type="rect"] rect');
+
+        expect(rects).toHaveLength(1);
+        expect(
+            ["x", "y", "width", "height"].map((name) =>
+                rects[0].getAttribute(name)
+            )
+        ).toEqual(["20", "20", "60", "60"]);
+    });
+
     test("uses padded index bandwidth for vertical and horizontal bars", async () => {
         const { view } = await createHeadlessEngine({
             data: {

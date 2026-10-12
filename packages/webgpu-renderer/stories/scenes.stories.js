@@ -9,6 +9,7 @@ import runTextEffectsScene from "../examples/textEffectsScene.js";
 import runThresholdScene from "../examples/thresholdScene.js";
 import runPiecewiseScene from "../examples/piecewiseScene.js";
 import runIndexGapScene from "../examples/indexGapScene.js";
+import runRectClampingScene from "../examples/rectClampingScene.js";
 import runIndexScene from "../examples/indexScene.js";
 import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
@@ -67,6 +68,18 @@ export const Hatch = withSource("runHatchScene", null, {
 export const Bars = withSource("runBarScene", null, {
     render: (args) => renderScene(runBarScene, args),
 });
+
+export const RectClamping = withSource(
+    "runRectClampingScene",
+    { clamp: "both" },
+    {
+        args: { clamp: "both" },
+        argTypes: {
+            clamp: { control: "select", options: ["none", "x", "y", "both"] },
+        },
+        render: (args) => renderScene(runRectClampingScene, args),
+    }
+);
 
 export const Points = withSource("runPointScene", null, {
     render: (args) => renderScene(runPointScene, args),

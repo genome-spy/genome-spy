@@ -278,6 +278,14 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
+### Rectangle clamping
+
+Rectangle channels `xClampRange` and `yClampRange` optionally constrain projected
+bounds to an ascending `[min, max]` pair in logical pixels, before minimum-size
+and stroke expansion. They have two components and can be omitted independently.
+Rectangles that collapse along a constrained axis are hidden in drawing and
+picking. The bounds use the mark's coordinate space, before placement transforms.
+
 ### Detached targets
 
 `renderer.createDetachedTarget(canvas, { width, height, dpr })` configures a
@@ -372,6 +380,7 @@ updates GPU resources directly.
 
 - `domain` and `range` have the usual mapping intent.
 - Continuous-scale clamping and rounding follow d3 behavior.
+
 - Sequential scales use a continuous scale with an interpolator range; the
   renderer creates a color-ramp texture and samples it in WGSL.
 - Built-in families include `linear`, `log`, `pow`, `sqrt`, `symlog`,

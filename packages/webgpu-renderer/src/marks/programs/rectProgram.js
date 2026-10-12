@@ -18,6 +18,8 @@ export const RECT_CHANNEL_SPECS = {
     x2Offset: { type: "f32", components: 1, default: 0 },
     yOffset: { type: "f32", components: 1, default: 0 },
     y2Offset: { type: "f32", components: 1, default: 0 },
+    xClampRange: { type: "f32", components: 2, optional: true },
+    yClampRange: { type: "f32", components: 2, optional: true },
     fill: { type: "f32", components: 4, default: [0.27, 0.49, 0.8, 1.0] },
     stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     fillOpacity: { type: "f32", components: 1, default: 1.0 },
@@ -317,12 +319,30 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     sort(&x, &x2);
     sort(&y, &y2);
 
+#if defined(xClampRange_DEFINED)
+    let xClampRange = getScaled_xClampRange(i);
+    x = clamp(x, xClampRange.x, xClampRange.y);
+    x2 = clamp(x2, xClampRange.x, xClampRange.y);
+    if (x == x2) {
+        return culledRect();
+    }
+#else
     // Keep far-off genomic endpoints close to the viewport. Without this,
     // rasterizing a rectangle whose other endpoint is visible can lose
     // precision when the GPU clips the very large triangle.
     let clampMargin = 1.0;
     x = clamp(x, 0.0 - clampMargin, globals.width + clampMargin);
     x2 = clamp(x2, 0.0 - clampMargin, globals.width + clampMargin);
+#endif
+
+#if defined(yClampRange_DEFINED)
+    let yClampRange = getScaled_yClampRange(i);
+    y = clamp(y, yClampRange.x, yClampRange.y);
+    y2 = clamp(y2, yClampRange.x, yClampRange.y);
+    if (y == y2) {
+        return culledRect();
+    }
+#endif
 
     var w = x2 - x;
     var h = y2 - y;

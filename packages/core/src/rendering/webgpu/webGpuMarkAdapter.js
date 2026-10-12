@@ -445,6 +445,7 @@ function createSelectionCondition(mark, predicate) {
  * @returns {object}
  */
 function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
+    const clamp = readProperty(mark, "clamp");
     mark.initializeRenderingRevisions([
         "cornerRadius",
         "cornerRadiusTopRight",
@@ -465,6 +466,22 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
         count: data.length,
         channels: {
             ...createUniqueIdChannel(mark, data),
+            ...(clamp === true || clamp === "x"
+                ? {
+                      xClampRange: {
+                          value: [coords.x, coords.x2],
+                          dynamic: true,
+                      },
+                  }
+                : {}),
+            ...(clamp === true || clamp === "y"
+                ? {
+                      yClampRange: {
+                          value: [coords.y, coords.y2],
+                          dynamic: true,
+                      },
+                  }
+                : {}),
             x: createPositionChannel(mark, "x", data, coords),
             x2: createPositionChannel(mark, "x2", data, coords),
             y: createPositionChannel(mark, "y", data, coords),
