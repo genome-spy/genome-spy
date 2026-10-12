@@ -233,6 +233,15 @@ linked scales keep their last valid domain until the brush has a nonzero span.
 constant empty/null positions completely disables grouping gaps. The total
 visible gap width must leave room for the data within the axis extent.
 
+Axis domain lines follow grouping gaps automatically. Their pieces stop at the
+viewport edges during navigation; outer scale padding remains uncovered.
+`axis: { "domain": false }` hides the line as usual.
+
+The [scaleGroups data source](data/lazy.md#scale-groups) generates the same
+half-open intervals for custom guides and group outlines, including the
+Cartesian product of groups on two axes. Combine it with mark-local
+[`clamp`](mark/index.md#clamping-positions) to keep outlines at the viewport edges.
+
 ## Nested offset scales
 
 A discrete field, datum, or expression on the `xOffset` or `yOffset`

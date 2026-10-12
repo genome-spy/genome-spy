@@ -27,7 +27,7 @@
         "gapWidth": 8,
         "zoom": true
       },
-      "axis": { "domain": false, "title": "column" }
+      "axis": { "title": "column" }
     },
     "y": {
       "field": "row",
@@ -38,7 +38,7 @@
         "gapWidth": 8,
         "zoom": true
       },
-      "axis": { "domain": false, "title": "row" }
+      "axis": { "title": "row" }
     }
   },
 
@@ -53,35 +53,8 @@
 
     {
       "name": "groupOutlines",
-      "transform": [
-        {
-          "type": "formula",
-          "expr": "datum.column < 5 ? 0 : datum.column < 12 ? 5 : 12",
-          "as": "columnStart"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.row < 4 ? 0 : datum.row < 7 ? 4 : 7",
-          "as": "rowStart"
-        },
-        {
-          "type": "aggregate",
-          "groupby": ["columnStart", "rowStart"],
-          "fields": ["column", "row"],
-          "ops": ["max", "max"],
-          "as": ["columnLast", "rowLast"]
-        },
-        {
-          "type": "formula",
-          "expr": "datum.columnLast + 1",
-          "as": "columnEnd"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.rowLast + 1",
-          "as": "rowEnd"
-        }
-      ],
+      "domainInert": true,
+      "data": { "lazy": { "type": "scaleGroups", "channels": ["x", "y"] } },
       "mark": {
         "type": "rect",
         "clamp": true,
@@ -92,10 +65,10 @@
         "tooltip": null
       },
       "encoding": {
-        "x": { "field": "columnStart", "type": "index" },
-        "x2": { "field": "columnEnd" },
-        "y": { "field": "rowStart", "type": "index" },
-        "y2": { "field": "rowEnd" }
+        "x": { "field": "xStart", "type": "index", "band": 0 },
+        "x2": { "field": "xEnd", "band": 0 },
+        "y": { "field": "yStart", "type": "index", "band": 0 },
+        "y2": { "field": "yEnd", "band": 0 }
       }
     }
   ]

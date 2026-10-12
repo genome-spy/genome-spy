@@ -1295,6 +1295,12 @@ export default class ScaleResolution {
         return props.type;
     }
 
+    /** Static gap classification without initializing the scale or assembly. */
+    hasGroupingGaps() {
+        const props = this.#getMergedScaleProps();
+        return props !== null && hasGroupingGaps(props);
+    }
+
     /**
      * Returns the merged scale properties supplemented with inferred properties
      * and domain.

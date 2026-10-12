@@ -350,21 +350,29 @@ implementation choice; the policy above is the contract. Tentative commit:
 
 ### 3. Use group intervals for axes and the heatmap example
 
-- [ ] Integrate the two domain children, private enablement dependency, and
+- [x] Integrate the two domain children, private enablement dependency, and
       statically disabled fast path in `axisView.js`, including genome axes.
       Preserve ticks, labels, continuous fallback, and guide styling.
-- [ ] Replace the recent core heatmap outline formulas/aggregation with the
+- [x] Replace the recent core heatmap outline formulas/aggregation with the
       two-axis source and top-layer gray unfilled rects using `clamp: true`,
       `clip: false`. Enable domain lines to demonstrate their new gap behavior.
       Follow `examples/README.md` for shared specs.
-- [ ] Verify generated views and rendered SVG behavior through the view-testing
+- [x] Verify generated views and rendered SVG behavior through the view-testing
       workflow, plus GPU interaction: all axis orientations, reversed output,
       padding, cuts outside/at bounds, partially visible gaps, wholly offscreen
       groups, shared axes at different widths, and reactive on/off transitions.
       Assert default-disabled gaps add no gap shader resources or helpers.
-- [ ] Update grouping-gap/mark docs and examples, regenerate schemas as needed,
+- [x] Update grouping-gap/mark docs and examples, regenerate schemas as needed,
       and record the automatic axis behavior in release notes. No spec migration
       is required; `axis.domain: false` remains available.
+
+Verification: 68 SVG/example/axis tests passed, including all orientations,
+reactive fallback, shared occurrences at different widths, and quantitative
+encodings with explicit index scales. Core type checks and lint passed.
+Both core examples passed real WebGL/WebGPU captures with pixel comparison.
+Browser verification caught and fixed eager assembly initialization during axis
+construction; mapping subscription now uses the existing post-scale hook.
+The subagent's endpoint-affinity finding was fixed using existing metadata.
 
 Outcome: automatic gapped domain lines and public group outlines share the same
 source and ordinary clamped marks. Tentative commit:
