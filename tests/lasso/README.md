@@ -1,8 +1,43 @@
 # Lasso development tests
 
-These local test pages are outside the embedding examples and docs deployment.
-Run `npm run dev:lasso` and open the printed development URL. Datasets live in
-repo-root `private/lasso/` and are served only by the development server.
+These local test pages are committed with the PR, outside the embedding examples
+and docs deployment. From a checkout of the PR branch, use the Node/npm versions
+specified in the root `package.json`, then run:
+
+```sh
+npm ci
+npm run dev:lasso
+```
+
+Open the printed development URL (by default `http://127.0.0.1:5174/`) in a
+WebGPU-enabled browser. If that port is occupied, use
+`npm run dev:lasso -- --port 5175` and substitute the printed port below.
+
+| Native example                                      | URL path                                  | Data preparation                                           |
+| --------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------- |
+| 10M synthetic points, fast density display          | `/nativeDense/?points=10000000&density`   | None; seeded points are generated locally                  |
+| 10M synthetic points, ordinary point colors         | `/nativeDense/?points=10000000`           | None; compare the cost of point redraws                    |
+| Real 1.1M-cell UMAP, log/sqrt axes, density display | `/nativeDense/?umap&nonlinear&density`    | Run the command below once                                 |
+| Linked plots and bookmark/undo/redo                 | `/native/?linked&history&renderer=webgpu` | None; use `renderer=webgl` or `renderer=canvas` to compare |
+
+For the same real-cell example, use Python 3.9 or newer; no Python packages or
+credentials are required:
+
+```sh
+python3 tests/lasso/prepareData.py --cells 1100000
+```
+
+The script downloads a pinned public Allen metadata release and writes the CSV
+and provenance JSON to ignored `private/lasso/`. Keep the default output path:
+the example pages load those files through the local server. No expression matrix
+or large dataset is included in the PR. Preparation may take time; progress is
+printed every 100,000 cells. After it finishes, refresh the UMAP example.
+
+Shift-drag draws/replaces a lasso, Escape cancels, double-click clears, scrolling
+zooms, and ordinary dragging pans. Navigation waits while release confirmation
+finishes. To start with a smaller synthetic workload, use `points=1000000`.
+The 10M workload deliberately stresses browser and GPU memory; qualification
+results are specific to the tested hardware.
 
 `/native/` tests Core's `select: "region"` grammar and conditional color on three
 points with log/sqrt axes. Use `?renderer=webgpu` or `?renderer=canvas` to compare
