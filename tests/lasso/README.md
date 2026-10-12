@@ -156,3 +156,8 @@ membership follows captured rendered f32 centers and the saved sampled path;
 the CPU reference and bookmark replay can differ near polygon boundaries.
 Use `/native/?linked&renderer=webgpu` to check linked encodings without density,
 or add `&history` for App bookmark and undo/redo checks.
+
+The recording shows live selection, replacement, and clearing in the native 10M
+synthetic density display. GIF capture is capped at 15 frames per second.
+
+![Native WebGPU lasso on 10 million synthetic points](media/lasso-10m-density.gif)
