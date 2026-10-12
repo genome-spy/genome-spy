@@ -17,7 +17,14 @@
         <p>
             <a href="?linked">Linked plots and filtered consumer</a> ·
             <a href="?linked&renderer=webgpu">WebGPU linked test</a>
+            · <a href="?linked&history">App history and bookmark replay</a>
         </p>
+        <nav id="history" aria-label="Lasso history" hidden>
+            <button id="undo" type="button">Undo</button>
+            <button id="redo" type="button">Redo</button>
+            <button id="save" type="button">Save lasso</button>
+            <button id="restore" type="button">Restore lasso</button>
+        </nav>
         <div id="plot" style="height: 400px"></div>
         <p id="status" role="status">Loading…</p>
         <script type="module" src="./index.js"></script>

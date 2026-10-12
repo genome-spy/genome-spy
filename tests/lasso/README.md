@@ -18,7 +18,7 @@ WebGPU-enabled browser. If that port is occupied, use
 | 10M synthetic points, fast density display          | `/nativeDense/?points=10000000&density`   | None; seeded points are generated locally                  |
 | 10M synthetic points, ordinary point colors         | `/nativeDense/?points=10000000`           | None; compare the cost of point redraws                    |
 | Real 1.1M-cell UMAP, log/sqrt axes, density display | `/nativeDense/?umap&nonlinear&density`    | Run the command below once                                 |
-| Linked plots and filtered consumer                 | `/native/?linked&renderer=webgpu` | None; use `renderer=webgl` or `renderer=canvas` to compare |
+| Linked plots and bookmark/undo/redo                 | `/native/?linked&history&renderer=webgpu` | None; use `renderer=webgl` or `renderer=canvas` to compare |
 
 For the same real-cell example, use Python 3.9 or newer; no Python packages or
 credentials are required:
@@ -153,8 +153,9 @@ Shift-drag draws or replaces a lasso; Escape cancels, double-click clears, and
 scrolling zooms. Zoom and pan pause until readback and CPU membership publication
 finish. Density avoids point redraws and shows local selected fractions. GPU
 membership follows captured rendered f32 centers and the saved sampled path;
-the CPU reference can differ near polygon boundaries.
-Use `/native/?linked&renderer=webgpu` to check linked encodings without density.
+the CPU reference and bookmark replay can differ near polygon boundaries.
+Use `/native/?linked&renderer=webgpu` to check linked encodings without density,
+or add `&history` for App bookmark and undo/redo checks.
 
 The recording shows live selection, replacement, and clearing in the native 10M
 synthetic density display. GIF capture is capped at 15 frames per second.

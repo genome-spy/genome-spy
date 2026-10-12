@@ -19,7 +19,7 @@ const spec = {
             select: query.has("density")
                 ? { type: "region", preview: "density" }
                 : "region",
-            persist: false,
+            persist: query.has("history"),
         },
     ],
     data: {
@@ -113,7 +113,7 @@ void embed(
     query.has("linked") ? linkedSpec : spec,
     { renderer }
 )
-    .then((api) => {
+    .then(async (api) => {
         /** @type {any} */ (globalThis).__lassoNative = api;
         const selection = api.params.getSelection("lasso");
         selection.subscribe((value) => {
@@ -124,9 +124,13 @@ void embed(
             status.textContent = `${region.status}: ${region.data.map((row) => row.name).join(",")}`;
         });
         status.textContent = "Ready";
+        const cleanupHistory = query.has("history")
+            ? (await import("./history.js")).setupHistory(api)
+            : () => {};
         window.addEventListener(
             "pagehide",
             () => {
+                cleanupHistory();
                 api.finalize();
             },
             {

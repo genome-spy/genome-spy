@@ -10,6 +10,10 @@ export function serializeBookmarkableParamValue(view, value) {
         return value;
     }
 
+    if (value.type === "region") {
+        return { type: "region", intent: structuredClone(value.intent) };
+    }
+
     if (value.type !== "interval") {
         return value;
     }
