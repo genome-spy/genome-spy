@@ -27,6 +27,9 @@ import { invalidate } from "../utils/propertyCacher.js";
 import NamedSource, { isNamedData } from "../data/sources/namedSource.js";
 import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
 import { isFacetSpec } from "./viewSpecGuards.js";
+import { annotateSpecError } from "../utils/specError.js";
+import { analyzeExpression } from "../utils/expression.js";
+import { iterateParamDependencies } from "../paramRuntime/paramRuntime.js";
 
 /**
  * @param {View} root
@@ -165,6 +168,58 @@ export function buildDataFlow(
                 );
             }
 
+            let globals;
+            try {
+                globals =
+                    params.type === "filter"
+                        ? "param" in params
+                            ? [params.param]
+                            : analyzeExpression(params.expr).globals
+                        : params.type === "formula"
+                          ? analyzeExpression(params.expr).globals
+                          : [];
+            } catch (error) {
+                throw annotateSpecError(
+                    error,
+                    view.paramRuntime.getSpecLocation(params, ["expr"])
+                );
+            }
+            const dependencies = globals
+                .map((name) => view.paramRuntime.getParamRef(name))
+                .filter((ref) => ref !== undefined);
+            if (
+                params.type === "filter" &&
+                view instanceof UnitView &&
+                iterateParamDependencies(dependencies).some((ref) =>
+                    Array.from(view.paramRuntime.paramConfigs).some(
+                        ([name, param]) =>
+                            "select" in param &&
+                            (typeof param.select === "string"
+                                ? param.select
+                                : param.select.type) === "region" &&
+                            view.paramRuntime.getParamRef(name) === ref
+                    )
+                )
+            ) {
+                throw new Error(
+                    "A region producer cannot be filtered by its own selection."
+                );
+            }
+            if (
+                iterateParamDependencies(dependencies).some(
+                    (ref) =>
+                        ref.kind !== "derived" && ref.get()?.type === "region"
+                )
+            ) {
+                // Replay this consumer without republishing the selection's producer branches.
+                const input = new Collector();
+                appendTransform(input);
+                dataFlow.addCollector(input);
+                view.registerDisposer(() => {
+                    dataFlow.pruneCollectorBranch(input);
+                    dataFlow.removeCollector(input);
+                });
+            }
             appendTransformWithClone(transform, appendTransform);
 
             if (auxiliaryInput) {
@@ -326,10 +381,7 @@ export function buildDataFlow(
                 }
             }
 
-            if (
-                view.mark.isPickingParticipant() &&
-                !isInBranchWithIdentifier()
-            ) {
+            if (view.mark.needsUniqueId() && !isInBranchWithIdentifier()) {
                 // TODO: If two branches receive the same data, they should have
                 // a shared identifier transform. However, unique ids cannot be
                 // assigned right after the data source, because some transforms,

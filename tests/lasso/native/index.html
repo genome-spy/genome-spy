@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Native Core lasso</title>
+        <link rel="stylesheet" href="../style.css" />
+        <link rel="icon" href="data:," />
+    </head>
+    <body>
+        <a href="../">Lasso development tests</a>
+        <h1>Native Core lasso</h1>
+        <p>
+            Drag to select point centers; double-click clears. The log/sqrt
+            triangle selects A and C. This uses Core's region parameter and
+            conditional color, with no extra highlight layer.
+        </p>
+        <p>
+            <a href="?linked">Linked plots and filtered consumer</a> ·
+            <a href="?linked&renderer=webgpu">WebGPU linked test</a>
+        </p>
+        <div id="plot" style="height: 400px"></div>
+        <p id="status" role="status">Loading…</p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

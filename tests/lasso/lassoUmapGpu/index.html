@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.css" />
+        <link rel="icon" href="data:," />
+        <title>Real-cell GPU lasso comparison</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← Lasso development tests</a>
+        <h1>Real-cell GPU lasso comparison</h1>
+        <p>
+            Scroll or pinch to zoom around the pointer; right-click resets zoom.
+            Drag to select; Escape clears. The cached image shows the local
+            selected-cell fraction. Every loaded cell is tested on the GPU.
+        </p>
+        <p>
+            <label
+                >X scale
+                <select id="xScale" disabled>
+                    <option>linear</option>
+                    <option>log</option>
+                    <option>sqrt</option>
+                </select></label
+            >
+            <label
+                >Y scale
+                <select id="yScale" disabled>
+                    <option>linear</option>
+                    <option>log</option>
+                    <option>sqrt</option>
+                </select></label
+            >
+            <button id="compare" disabled>Compare selected IDs with CPU</button>
+        </p>
+        <div style="height: 580px">
+            <canvas style="width: 100%; height: 100%; display: block"></canvas>
+        </div>
+        <p id="status" role="status">Loading cell coordinates…</p>
+        <p id="comparison" role="status">
+            Draw a selection to enable comparison.
+        </p>
+        <p>
+            Both UMAP axes are translated so their minimum is 1, allowing log
+            and sqrt views. Linear geometry is unchanged. Forward scale mappings
+            are captured and applied before f32 GPU upload; comparison uses the
+            original f64 translated coordinates and Core’s CPU selector. Any
+            differing IDs are reported without a tolerance filter. CPU
+            comparison is synchronous and can briefly pause the page.
+        </p>
+        <p>
+            Data: Allen Brain Cell Atlas, WMB-10X release 20230830;
+            <a href="https://doi.org/10.1038/s41586-023-06812-z"
+                >Yao et al. (2023)</a
+            >. Uses every cell in the prepared ordered subset, without
+            replication or recomputing UMAP. This is a performance fixture, not
+            a representative biological sample. No expression matrix is loaded.
+            <a href="../lassoUmap/">Separate CPU UMAP example</a>.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

@@ -399,15 +399,11 @@ class MyPreprocessor(Preprocessor):
         return ref
 
     def propTypeToString(self, prop_type, schema):
-        const = prop_type.get('const')
         type = prop_type.get('type')
         ref = prop_type.get('$ref')
 
-        if const:
-            if type == 'string':
-                return '`"{}"`'.format(const)
-            else:
-                return '`{}`'.format(const)
+        if 'const' in prop_type:
+            return '`{}`'.format(json.dumps(prop_type['const']))
 
         if type:
             if type == 'array':
@@ -495,8 +491,8 @@ class MyPreprocessor(Preprocessor):
                 selected_properties.append((property, value))
 
         for (property, value) in selected_properties:
-            if value.get('const', "") != "":
-                # Skip contants such as types of transforms
+            # The type discriminator is already identified by the reference heading.
+            if property == 'type' and 'const' in value:
                 continue
 
             dt = '`{}`'.format(property)
@@ -511,7 +507,9 @@ class MyPreprocessor(Preprocessor):
                 paragraphs.insert(0, 'Type: ' + self.refToString(ref, schema))
 
             propType = value.get('type')
-            if propType:
+            if 'const' in value:
+                paragraphs.insert(0, 'Type: ' + self.propTypeToString(value, schema))
+            elif propType:
                 if isinstance(propType, list):
                     propType = ' | '.join(propType)
                 paragraphs.insert(0, 'Type: ' + propType)

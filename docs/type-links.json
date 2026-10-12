@@ -221,6 +221,7 @@
   "PositionValueDef": "/grammar/types/#positionvaluedef",
   "PositionalChannel": "/grammar/types/#positionalchannel",
   "PrimaryPositionalChannel": "/grammar/types/#primarypositionalchannel",
+  "RegionSelectionConfig": "/grammar/types/#regionselectionconfig",
   "ResolutionBehavior": "/grammar/types/#resolutionbehavior",
   "RulerChannelValue": "/grammar/types/#rulerchannelvalue",
   "RulerClear": "/grammar/types/#rulerclear",

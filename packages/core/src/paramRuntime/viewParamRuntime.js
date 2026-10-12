@@ -102,7 +102,7 @@ export default class ViewParamRuntime {
     /** @type {import("../view/view.js").default | undefined} */
     #selectionSource;
 
-    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval", components: string[], source: import("../view/view.js").default | undefined}>>} */
+    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval" | "region", components: string[], source: import("../view/view.js").default | undefined}>>} */
     #selectionDeclarations = new Map();
 
     /** @type {Map<string, TransitionState>} */
@@ -213,13 +213,15 @@ export default class ViewParamRuntime {
             return;
         }
         const select = asSelectionConfig(param.select);
-        /** @type {"single" | "multi" | "interval"} */
+        /** @type {"single" | "multi" | "interval" | "region"} */
         const kind =
-            select.type === "interval"
-                ? "interval"
-                : select.toggle
-                  ? "multi"
-                  : "single";
+            select.type === "region"
+                ? "region"
+                : select.type === "interval"
+                  ? "interval"
+                  : select.toggle
+                    ? "multi"
+                    : "single";
         const components =
             select.type === "interval"
                 ? Array.from(new Set(select.encodings)).sort()
@@ -1177,6 +1179,19 @@ export default class ViewParamRuntime {
         }
 
         return false;
+    }
+
+    /** Region producers need IDs even when picking is disabled. @returns {boolean} */
+    hasRegionSelections() {
+        for (const param of this.#paramConfigs.values()) {
+            if (
+                isSelectionParameter(param) &&
+                (isString(param.select) ? param.select : param.select.type) ===
+                    "region"
+            )
+                return true;
+        }
+        return this.#parentFinder()?.hasRegionSelections() ?? false;
     }
 }
 

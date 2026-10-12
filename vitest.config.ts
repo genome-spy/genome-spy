@@ -17,6 +17,7 @@ export default defineConfig({
     test: {
         projects: [
             "packages/*",
+            "tests/lasso",
             {
                 extends: true,
                 test: {

@@ -130,6 +130,17 @@ export default interface ViewContext {
      */
     highlightView?: (view: View | null) => void;
 
+    /** Creates a transient DOM path without repainting the visualization. */
+    createRegionSelectionOverlay: () => ReturnType<
+        typeof import("../genomeSpy/regionSelectionOverlay.js").createRegionSelectionOverlay
+    >;
+    createRegionSelectionMaterializer?: (
+        view: import("../view/unitView.js").default,
+        name: string,
+        cancel: () => void,
+        density: boolean
+    ) => RegionSelectionMaterializer | undefined;
+
     /**
      * Returns true if the view is configured to be visible.
      * N.B. This does NOT consider ancestors' visibility.
@@ -164,4 +175,11 @@ export default interface ViewContext {
         validator?: (spec: ViewSpec) => void,
         options?: CreateViewOptions
     ) => Promise<View>;
+}
+
+export interface RegionSelectionMaterializer {
+    update(points: ReadonlyArray<readonly [number, number]>): void;
+    stop(): void;
+    readIds(): Promise<{ ids: Uint32Array; indices: Uint32Array }>;
+    commit(selection: import("./selectionTypes.js").RegionSelection): void;
 }

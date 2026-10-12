@@ -5,6 +5,7 @@ import globals from "globals";
 import tseslint from "@typescript-eslint/eslint-plugin";
 
 export default defineConfig(
+    { ignores: ["packages/webgpu-renderer/storybook-static/**"] },
     {
         name: "genomespy/linter-options",
         linterOptions: {
@@ -14,7 +15,10 @@ export default defineConfig(
 
     {
         name: "genomespy/files",
-        files: ["packages/*/src/**/*.{js,mjs,cjs,jsx,ts,tsx,d.ts}"],
+        files: [
+            "packages/*/src/**/*.{js,mjs,cjs,jsx,ts,tsx,d.ts}",
+            "tests/lasso/**/*.js",
+        ],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "module",

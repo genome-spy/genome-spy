@@ -33,6 +33,7 @@ export default class WebGpuRenderCoordinator {
     }
 
     computeLayout() {
+        this.surface.invalidateRegionSelectionPreview();
         this.broadcast("layout");
         this.surface.invalidateSize();
         let remainingPasses = 5;
@@ -75,6 +76,18 @@ export default class WebGpuRenderCoordinator {
         );
         this.#dirtyPickingBuffer = true;
         profiler?.endFrame();
+    }
+
+    /** @param {import("../../view/unitView.js").default} view @param {string} name @param {() => void} cancel @param {boolean} density */
+    createRegionSelectionMaterializer(view, name, cancel, density) {
+        return this.surface.createRegionSelectionPreview(
+            view,
+            name,
+            cancel,
+            this.#framePlan.render(),
+            toGpuColor(this.getBackground()),
+            density
+        );
     }
 
     renderPickingFramebuffer() {

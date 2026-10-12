@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.css" />
+        <title>Live WebGPU lasso</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← Lasso development tests</a>
+        <h1>Live WebGPU lasso</h1>
+        <p>
+            Drag to draw. Image colors show the local fraction of selected
+            cells. GPU compute tests every point; the cached plot is recolored
+            without redrawing points. Selected IDs return to the CPU on release.
+        </p>
+        <p>
+            <a href="?points=1000000">1 million points</a> ·
+            <a href="?points=10000000">10 million points</a>
+        </p>
+        <div style="height: 580px">
+            <canvas style="width: 100%; height: 100%; display: block"></canvas>
+        </div>
+        <p id="status" role="status">Initializing WebGPU…</p>
+        <p>
+            This is a separate renderer prototype using seeded synthetic points,
+            not single-cell data. Positions and polygon use the same projected
+            coordinates. The density preview preserves the gray plot’s coverage,
+            rather than reproducing point-by-point transparent orange blending.
+            It uses f32 precision, a 512-vertex budget, and a population-sized
+            readback snapshot after release. Large workloads may exceed device
+            limits or available memory. The CPU lasso examples are unchanged.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

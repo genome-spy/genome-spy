@@ -1,0 +1,27 @@
+.plots {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+.surface {
+    position: relative;
+    height: 340px;
+}
+.plot,
+.surface svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+.surface svg {
+    pointer-events: none;
+}
+.surface path {
+    fill: rgb(249 115 22 / 10%);
+    stroke: #ea580c;
+    stroke-width: 2;
+}
+.result {
+    font-weight: bold;
+}
