@@ -205,7 +205,10 @@ export default class ScaleResolution {
         this.#scaleManager = new ScaleInstanceManager({
             getRuntime: () => this.#runtime,
             createExpression: (expr) => this.#createExpression(expr),
-            onRangeChange: () => this.#notifyListeners("range"),
+            onRangeChange: () => {
+                this.#notifyListeners("range");
+                this.#viewContext.animator.requestRender();
+            },
             onDomainChange: (domain) => {
                 void this.#commitDomainUpdate({ type: "set", domain });
             },

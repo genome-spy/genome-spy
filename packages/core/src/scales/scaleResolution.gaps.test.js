@@ -1,5 +1,56 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+
+test("gap parameter changes request rendering without navigation", async () => {
+    const { view } = await createHeadlessEngine({
+        params: [
+            { name: "cuts", value: [10] },
+            { name: "width", value: 6 },
+        ],
+        data: { values: [{ x: 0 }, { x: 19 }] },
+        mark: "point",
+        encoding: {
+            x: {
+                field: "x",
+                type: "index",
+                axis: null,
+                scale: {
+                    gapPositions: { expr: "cuts" },
+                    gapWidth: { expr: "width" },
+                },
+            },
+        },
+    });
+    const requestRender = vi.spyOn(view.context.animator, "requestRender");
+    try {
+        const resolution = view.getScaleResolution("x");
+        const domain = resolution.getDomain();
+        /** @type {[string, number | number[]][]} */
+        const changes = [
+            ["width", 12],
+            ["width", 0],
+            ["cuts", []],
+            ["cuts", [5, 10]],
+            ["width", 6],
+        ];
+        for (const [param, value] of changes) {
+            requestRender.mockClear();
+            view.paramRuntime.setValue(param, value);
+            view.paramRuntime.flushNow();
+
+            expect(requestRender).toHaveBeenCalledOnce();
+            expect(resolution.getDomain()).toEqual(domain);
+        }
+
+        requestRender.mockClear();
+        view.paramRuntime.setValue("width", 6);
+        view.paramRuntime.flushNow();
+        expect(requestRender).not.toHaveBeenCalled();
+    } finally {
+        requestRender.mockRestore();
+        view.disposeSubtree();
+    }
+});
 
 test("reactive gap configuration and navigation use the scale resolution publication path", async () => {
     const { view } = await createHeadlessEngine({
