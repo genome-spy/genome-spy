@@ -15,6 +15,7 @@ import {
     createMultiPointSelection,
     createSinglePointSelection,
     isPointSelectionConfig,
+    isRegionSelectionConfig,
     updateMultiPointSelection,
 } from "../selection/selection.js";
 import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
@@ -25,6 +26,8 @@ import {
 } from "../utils/interactionConfig.js";
 import { field } from "../utils/field.js";
 import { resolveViewResolutions } from "./resolutionPlanner.js";
+import { RegionSelectionController } from "./gridView/regionSelectionController.js";
+import { hasChromeAncestor } from "./viewSelectors.js";
 
 /**
  *
@@ -104,6 +107,40 @@ export default class UnitView extends View {
         this.needsAxes = { x: true, y: true };
 
         this.#setupPointSelection();
+        this.#setupRegionSelection();
+    }
+
+    #setupRegionSelection() {
+        if (hasChromeAncestor(this)) return;
+        const seen = new Set();
+        let bound = false;
+        for (const owner of this.getDataAncestors()) {
+            for (const [name, param] of owner.paramRuntime.paramConfigs) {
+                if (seen.has(name)) continue;
+                seen.add(name);
+                if (!("select" in param)) continue;
+                const select = asSelectionConfig(param.select);
+                if (!isRegionSelectionConfig(select)) continue;
+                if (this.getMarkType() !== "point") {
+                    if (owner === this)
+                        throw new Error(
+                            "Region selection requires a point mark."
+                        );
+                    continue;
+                }
+                if (bound)
+                    throw new Error(
+                        "Only one region selection may control a point view."
+                    );
+                bound = true;
+                RegionSelectionController.bindSelection(
+                    this,
+                    name,
+                    select,
+                    owner.paramRuntime
+                );
+            }
+        }
     }
 
     #setupPointSelection() {

@@ -41,7 +41,7 @@ export interface PersistedParameter {
      *
      * This primarily affects GenomeSpy App behavior.
      * Set to `false` for ephemeral params (e.g., hover selections) or when the
-     * selection cannot be persisted due to missing `encoding.key`.
+     * point selection cannot be persisted due to missing `encoding.key`.
      *
      * __Default value:__ `true`
      */
@@ -273,7 +273,7 @@ export type Binding = BindCheckbox | BindRadioSelect | BindRange | BindInput;
 
 type Vector2<T> = [T, T];
 
-export type SelectionType = "point" | "interval";
+export type SelectionType = "point" | "interval" | "region";
 export type SelectionInit = Scalar;
 export type SelectionInitInterval =
     Vector2<boolean> | Vector2<number> | Vector2<string>;
@@ -311,6 +311,7 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
      *
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
+     * - `"region"` -- to select point centers inside a freehand lasso.
      */
     type: T;
 
@@ -320,8 +321,8 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
      * __Default value:__
      *
      * - point selections: `"click"`
-     * - interval selections:
-     *   - `"mousedown[event.shiftKey]"` when any brushed channel is zoomable
+     * - interval and region selections:
+     *   - `"mousedown[event.shiftKey]"` when any selected axis is zoomable
      *   - `"mousedown"` otherwise
      */
     on?: DomEventType | EventConfig | string;
@@ -472,10 +473,11 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
 export interface SelectionParameter<T extends SelectionType = SelectionType>
     extends ParameterBase, PersistedParameter {
     /**
-     * Determines the default event processing and data query for the selection. GenomeSpy supports two selection types, following the Vega-Lite model:
+     * Determines the interaction and data query for the selection:
      *
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
+     * - `"region"` -- to select point centers inside a freehand lasso.
      */
     select:
         | T
@@ -483,7 +485,9 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
               ? PointSelectionConfig
               : T extends "interval"
                 ? IntervalSelectionConfig
-                : never);
+                : T extends "region"
+                  ? RegionSelectionConfig
+                  : never);
 
     /**
      * Initial value for the selection.
@@ -497,7 +501,30 @@ export type SelectionInitIntervalMapping = Partial<
 
 export type SelectionExtent = "auto" | "view" | "container";
 
-export type SelectionConfig = PointSelectionConfig | IntervalSelectionConfig;
+/** Freehand selection of point centers in a scatterplot. */
+export interface RegionSelectionConfig extends BaseSelectionConfig<"region"> {
+    /**
+     * Event that starts drawing. Only `mousedown` is supported;
+     * an event filter can require modifier keys.
+     *
+     * __Default value:__ drag; Shift-drag when either axis is zoomable.
+     */
+    on?: "mousedown" | EventConfig | string;
+
+    /**
+     * Experimental display for very dense WebGPU plots. Colors show the selected
+     * fraction of nearby points rather than exact overlapping point colors.
+     * Requires circles with uniform appearance and no outlines, a white background,
+     * one color for unselected points, and one constant selection color condition
+     * with `empty: false`. Overlaid marks, grid lines, and transparent views or groups
+     * are unsupported. Changing data, scales, layout, or styling while drawing
+     * cancels the unfinished selection.
+     */
+    preview?: "density";
+}
+
+export type SelectionConfig =
+    PointSelectionConfig | IntervalSelectionConfig | RegionSelectionConfig;
 export type SelectionTypeOrConfig = SelectionType | SelectionConfig;
 
 export interface RulerParameter extends ParameterBase, PersistedParameter {

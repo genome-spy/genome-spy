@@ -13,6 +13,7 @@ import {
 } from "../../shaders/visibilityPredicate.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
+import { SELECTION_BUFFER_PREFIX } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 let debugResourcesEnabled = false;
@@ -345,6 +346,8 @@ export default class BaseProgram {
             getPickPipeline,
             diagnostics,
             resourceLayout,
+            shaderCode,
+            computeStorageBufferCount,
         } = buildPipelines({
             device: this.device,
             cache: renderer._programTemplateCache,
@@ -367,6 +370,8 @@ export default class BaseProgram {
             label: this.label,
         });
         this._resourceLayout = resourceLayout;
+        this._shaderCode = shaderCode;
+        this._computeStorageBufferCount = computeStorageBufferCount;
         this._programTemplateDiagnostics = diagnostics;
         this._uniformBuffer = this.device.createBuffer({
             label: gpuLabel(this.label, "uniforms"),
@@ -1004,7 +1009,7 @@ export default class BaseProgram {
      */
     _createSelectionSlot(def) {
         /**
-         * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} next
+         * @param {import("./selectionResources.js").SelectionUpdate} next
          */
         const update = (next) => {
             this._assertAlive();
@@ -1013,6 +1018,10 @@ export default class BaseProgram {
                 next,
                 this._extraBuffers
             );
+            if (next.type === "multi")
+                this._borrowedExtraBuffers.delete(
+                    SELECTION_BUFFER_PREFIX + def.name
+                );
             this._queueSlotUpdate(needsRebind);
         };
 
@@ -1025,7 +1034,21 @@ export default class BaseProgram {
         if (def.type === "multi") {
             return {
                 type: "multi",
-                set: (ids) => update({ type: "multi", ids }),
+                set: (ids, active = ids.length > 0) =>
+                    update({ type: "multi", ids, active }),
+                setGpuTable: (buffer, active) => {
+                    this._assertAlive();
+                    const rebind = this._selectionResources.setGpuTable(
+                        def.name,
+                        buffer,
+                        active,
+                        this._extraBuffers
+                    );
+                    this._borrowedExtraBuffers.add(
+                        SELECTION_BUFFER_PREFIX + def.name
+                    );
+                    this._queueSlotUpdate(rebind);
+                },
             };
         }
         return {

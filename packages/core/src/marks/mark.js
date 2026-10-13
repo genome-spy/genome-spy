@@ -14,9 +14,15 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
-import { getSelectionPredicateParams } from "../selection/selection.js";
+import {
+    getSelectionPredicateParams,
+    normalizeSelectionPredicate,
+} from "../selection/selection.js";
 import { normalizeOrderDefinition } from "../selection/order.js";
-import { expandNamedPredicateCondition } from "../selection/selectionPredicateTree.js";
+import {
+    expandNamedPredicateCondition,
+    getSelectionPredicateTreeParams,
+} from "../selection/selectionPredicateTree.js";
 import { asArray } from "../utils/arrayUtils.js";
 
 /**
@@ -283,7 +289,7 @@ export default class Mark {
             );
 
             const encoding = this.fixEncoding({
-                ...(this.isPickingParticipant()
+                ...(this.needsUniqueId()
                     ? { uniqueId: { field: UNIQUE_ID_KEY } }
                     : {}),
                 ...propertyValues,
@@ -584,6 +590,40 @@ export default class Mark {
      */
     getEncodedDataRevision() {
         return this.#encodedDataRevision;
+    }
+
+    /** IDs are needed for picking, lasso producers, and row-selection consumers. */
+    needsUniqueId() {
+        if (
+            this.isPickingParticipant() ||
+            (this.getType() === "point" &&
+                this.unitView.paramRuntime.hasRegionSelections())
+        )
+            return true;
+
+        return Object.values(this.unitView.getEncoding()).some((def) => {
+            if (!def || !("condition" in def)) return false;
+            const conditions = Array.isArray(def.condition)
+                ? def.condition
+                : [def.condition];
+
+            return conditions.some((condition) => {
+                const predicate = normalizeSelectionPredicate(
+                    expandNamedPredicateCondition(
+                        condition,
+                        this.unitView.spec.predicates ?? {}
+                    )
+                );
+                return (
+                    predicate &&
+                    getSelectionPredicateTreeParams(predicate).some((param) =>
+                        ["single", "multi", "region"].includes(
+                            this.unitView.paramRuntime.findValue(param)?.type
+                        )
+                    )
+                );
+            });
+        });
     }
 
     /**

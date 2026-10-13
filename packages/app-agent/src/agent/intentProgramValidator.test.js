@@ -394,4 +394,29 @@ describe("validateIntentBatch", () => {
             '$.steps[0].payload.value.type must be "interval"'
         );
     });
+
+    it("accepts region values only for region parameters", () => {
+        const batch = {
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "paramProvenance/paramChange",
+                    payload: {
+                        selector: { scope: [], param: "lasso" },
+                        value: { type: "region", intent: null },
+                    },
+                },
+            ],
+        };
+        resolveParamSelectorMock.mockReturnValue({
+            param: { name: "lasso", select: { type: "region" } },
+            view: {},
+        });
+        expect(validateIntentBatch(createAgentApiStub(), batch).ok).toBe(true);
+        batch.steps[0].payload.value = { type: "value", value: null };
+        expect(validateIntentBatch(createAgentApiStub(), batch).ok).toBe(false);
+        mockParamScale("linear");
+        batch.steps[0].payload.value = { type: "region", intent: null };
+        expect(validateIntentBatch(createAgentApiStub(), batch).ok).toBe(false);
+    });
 });

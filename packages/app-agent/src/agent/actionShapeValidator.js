@@ -100,6 +100,11 @@ const paramOriginValidator = ajv.compile(
 const paramValuePointValidator = ajv.compile(
     createActionSchemaWrapper(generatedActionSchema.definitions.ParamValuePoint)
 );
+const paramValueRegionValidator = ajv.compile(
+    createActionSchemaWrapper(
+        generatedActionSchema.definitions.ParamValueRegion
+    )
+);
 const paramValuePointExpandValidator = ajv.compile(
     createActionSchemaWrapper(
         generatedActionSchema.definitions.ParamValuePointExpand
@@ -511,6 +516,7 @@ function validateParamValueShape(value, prefix) {
         "origin",
         "rule",
         "predicate",
+        "intent",
     ]);
 
     if (typeof candidate.type !== "string") {
@@ -540,6 +546,14 @@ function validateParamValueShape(value, prefix) {
         );
     }
 
+    if (candidate.type === "region") {
+        return validateObjectWithSchema(
+            paramValueRegionValidator,
+            candidate,
+            prefix
+        );
+    }
+
     if (candidate.type === "pointExpand") {
         return validateObjectWithSchema(
             paramValuePointExpandValidator,
@@ -550,7 +564,7 @@ function validateParamValueShape(value, prefix) {
 
     errors.push(
         prefix +
-            '.type must be one of "value", "interval", "point", "pointExpand".'
+            '.type must be one of "value", "interval", "point", "pointExpand", "region".'
     );
     return errors;
 }

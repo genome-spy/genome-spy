@@ -32,6 +32,7 @@ describe("WebGpuRenderCoordinator", () => {
         const viewRoot = { arrange };
         let background = /** @type {string | undefined} */ ("#336699");
         const surface = {
+            invalidateRegionSelectionPreview: vi.fn(),
             invalidateSize: vi.fn(() => false),
             getLogicalCanvasSize: () => ({ width: 100, height: 50 }),
             getDevicePixelRatio: () => 2,
@@ -79,6 +80,7 @@ describe("WebGpuRenderCoordinator", () => {
     test("reuses the picking frame until visible output changes", () => {
         const viewRoot = { arrange: vi.fn() };
         const surface = {
+            invalidateRegionSelectionPreview: vi.fn(),
             invalidateSize: vi.fn(() => false),
             getLogicalCanvasSize: () => ({ width: 100, height: 50 }),
             getDevicePixelRatio: () => 1,

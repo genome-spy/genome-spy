@@ -152,6 +152,51 @@ parallel representations.
 
 Tentative commit: `refactor(webgpu-renderer): remove measured scale duplication`
 
+## Implemented: live compute lasso and density display
+
+`LassoSelection` computes membership from immutable projected f32 positions into a
+persistent GPU hash table and selected-ID/input-row-index output. Multi-selection
+slots borrow that table directly with explicit activity and caller ownership; the
+CPU setter remains available. `createPointLassoSelection` captures centers using
+the point renderer's scale/center functions, without uploading another position
+array. The ordinary point bundle excludes optional capture and containment code.
+
+Core now uses this path for native region selection. Hash membership updates while
+drawing; commit transfers buffer ownership to the backend's semantic-value registry.
+CPU consumers receive selected rows on release without rescanning containment or
+reuploading IDs. Current consumers retain committed tables across capture/cache
+invalidation; clear, replacement and disposal release unused tables. Unchanged slots
+compare both semantic selection and table identity rather than rebuilding hashes.
+
+`createPointDensityPreview` adds an explicit image-only display for uniform circles
+on opaque white. It caches neutral appearance and recolors by per-pixel selected
+fractions without geometry redraws during drawing or release. It deliberately changes
+overlap blending and is not a general replacement for conditional point rendering.
+The host owns scene invalidation; geometry, counts and cached image rebuild together.
+The preview keeps only the latest queued polygon while one compute batch is in flight.
+The older density-only no-membership option and unused density activity argument
+were removed; native selection uses one compute/table/readback path.
+
+GPU membership follows rendered f32 centers and containment. The separate CPU reference
+and geometric bookmark replay use captured mappings at CPU precision; near-edge results
+can differ. Paths are sampled to at most 512 vertices. Population-sized ID/index staging
+and large CPU Maps remain explicit limits; GPU bookmark replay and compact staging are
+outside this iteration. Errors reject unsupported projections and insufficient device
+storage limits before producing membership.
+
+Private synthetic and real 1.1M-cell workloads live in tests/lasso, outside embedding
+examples and docs deployment; downloaded metadata stays under ignored private/lasso.
+Renderer-generic Storybook scenes and GPU fixtures cover capture, conditional colors,
+activity, hash insertion/deduplication, snapshot ordering, density bins, no point redraws,
+point picking/appearance, queue coalescing, resize and borrowed-resource lifetime.
+
+Fresh M5/Chrome/Metal checks (1200×1000, DPR 1) measured sparse 10M release at about
+128 ms and near-full release at about 2.32 s; warm compute/image queue completion was
+4.8–5.4 ms and 21.7–23.0 ms respectively. Real-cell log/sqrt release took 17 ms.
+Three 10M replace/clear cycles kept tracked buffers at 459,565,620 bytes and disposal
+reached zero. These are one-machine wall-clock results, exclude texture/JS memory,
+and do not promise portable frame rates or isolated per-pass GPU timings.
+
 ## Deferred until a concrete consumer or design exists
 
 - Complex shaping, fallback, variable fonts, and persistent cross-session atlas

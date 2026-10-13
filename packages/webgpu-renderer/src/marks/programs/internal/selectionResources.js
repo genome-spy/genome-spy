@@ -19,7 +19,7 @@ import { packHighPrecisionU32 } from "../../../utils/highPrecision.js";
  * @typedef {import("../../../index.d.ts").VisibilityPredicate} VisibilityPredicate
  * @typedef {import("../../../types.js").ScalarType} ScalarType
  *
- * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} SelectionUpdate
+ * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array, active?: boolean } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} SelectionUpdate
  *
  */
 
@@ -382,7 +382,7 @@ export class SelectionResourceManager {
                 .map((def) => [def.name, false])
         );
         this.orderActive = false;
-        /** @type {Map<string, { buffer: GPUBuffer, byteLength: number }>} */
+        /** @type {Map<string, { buffer: GPUBuffer, byteLength: number, borrowed?: boolean }>} */
         this._selectionBuffers = new Map();
     }
 
@@ -584,21 +584,32 @@ export class SelectionResourceManager {
             }
             this._setOrderSelectionActive(name, allActive);
         } else if (update.type === "multi") {
+            const active = update.active ?? update.ids.length > 0;
+            if (typeof active !== "boolean")
+                throw new Error("Selection activity must be boolean.");
             const bufferName = SELECTION_BUFFER_PREFIX + name;
             const existing = this._selectionBuffers.get(name);
             // The shader derives its hash mask from the bound buffer length.
             const existingCapacity =
                 existing?.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2);
             const reuseExisting =
+                !existing?.borrowed &&
                 existingCapacity !== undefined &&
                 update.ids.length / existingCapacity <= DEFAULT_MAX_LOAD_FACTOR;
             const { table, size } = buildHashTableSet(
                 update.ids,
                 reuseExisting ? { capacity: existingCapacity } : undefined
             );
-            this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
-            this._setOrderSelectionActive(name, size > 0);
-            if (!existing || existing.byteLength < table.byteLength) {
+            this._setUniformValue(
+                SELECTION_COUNT_PREFIX + name,
+                active ? Math.max(1, size) : 0
+            );
+            this._setOrderSelectionActive(name, active);
+            if (
+                !existing ||
+                existing.borrowed ||
+                existing.byteLength < table.byteLength
+            ) {
                 const buffer = this._device.createBuffer({
                     label: gpuLabel(this._label, `selection ${name}`),
                     size: table.byteLength,
@@ -609,7 +620,7 @@ export class SelectionResourceManager {
                     buffer,
                     byteLength: table.byteLength,
                 });
-                existing?.buffer.destroy();
+                if (existing && !existing.borrowed) existing.buffer.destroy();
                 this._device.queue.writeBuffer(
                     buffer,
                     0,
@@ -627,5 +638,39 @@ export class SelectionResourceManager {
         }
 
         return false;
+    }
+    /**
+     * @param {string} name @param {GPUBuffer} buffer @param {boolean} active
+     * @param {Map<string, GPUBuffer>} extraBuffers
+     */
+    setGpuTable(name, buffer, active, extraBuffers) {
+        if (this._selectionDefs.get(name)?.type !== "multi")
+            throw new Error("GPU tables require a multi selection.");
+        if (typeof active !== "boolean")
+            throw new Error("GPU selection activity must be boolean.");
+        const capacity = buffer.size / 8;
+        if (
+            !(buffer.usage & GPUBufferUsage.STORAGE) ||
+            !Number.isSafeInteger(capacity) ||
+            capacity < 1 ||
+            (capacity & (capacity - 1)) !== 0 ||
+            buffer.size > this._device.limits.maxStorageBufferBindingSize
+        ) {
+            throw new Error(
+                "GPU selection table requires a power-of-two array of 8-byte storage entries."
+            );
+        }
+        const previous = this._selectionBuffers.get(name);
+        if (previous && !previous.borrowed) previous.buffer.destroy();
+        this._selectionBuffers.set(name, {
+            buffer,
+            byteLength: buffer.size,
+            borrowed: true,
+        });
+        extraBuffers.set(SELECTION_BUFFER_PREFIX + name, buffer);
+        // The count uniform is only an activity test; no GPU count readback is needed.
+        this._setUniformValue(SELECTION_COUNT_PREFIX + name, active ? 1 : 0);
+        this._setOrderSelectionActive(name, active);
+        return previous?.buffer !== buffer;
     }
 }

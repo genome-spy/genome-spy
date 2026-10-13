@@ -8,6 +8,8 @@ class WebgpuSceneElement extends HTMLElement {
         this._args = {};
         this._cleanup = null;
         this._update = null;
+        this._generation = 0;
+        this._pending = Promise.resolve();
     }
 
     connectedCallback() {
@@ -52,17 +54,29 @@ class WebgpuSceneElement extends HTMLElement {
             return;
         }
         this._teardownScene();
-        const result = await this._runScene(this._canvas, this._args);
-        if (typeof result === "function") {
-            this._cleanup = result;
-            this._update = null;
+        const generation = this._generation;
+        // A replacement must wait until the previous scene releases this canvas.
+        await this._pending;
+        if (generation !== this._generation) return;
+
+        const pending = this._runScene(this._canvas, this._args);
+        this._pending = pending.then(
+            () => {},
+            () => {}
+        );
+        const result = await pending;
+        const cleanup = typeof result === "function" ? result : result?.cleanup;
+        if (generation !== this._generation) {
+            cleanup?.();
             return;
         }
-        this._cleanup = result?.cleanup ?? null;
-        this._update = result?.update ?? null;
+        this._cleanup = cleanup ?? null;
+        this._update =
+            typeof result === "function" ? null : (result?.update ?? null);
     }
 
     _teardownScene() {
+        this._generation++;
         if (this._cleanup) {
             this._cleanup();
         }

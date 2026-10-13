@@ -55,3 +55,6 @@ export const pointMark = Object.freeze({
         );
     },
 });
+
+export { createPointLassoSelection } from "../utils/pointLassoSelection.js";
+export { createPointDensityPreview } from "../utils/pointDensityPreview.js";

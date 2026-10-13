@@ -138,13 +138,14 @@ Available mark subpaths are `marks/point`, `marks/rect`, `marks/rule`,
 
 Advanced helpers have their own typed subpaths:
 
-| Subpath           | Purpose                                            |
-| ----------------- | -------------------------------------------------- |
-| `high-precision`  | Pack large integer series and index-scale domains. |
-| `scale-authoring` | Experimental WGSL scale-emission helpers.          |
-| `debug`           | Enable renderer resource logging.                  |
-| `fonts/default`   | Load the compact built-in TrueType font on demand. |
-| `fonts/truetype`  | Parse and load static TrueType fonts.              |
+| Subpath           | Purpose                                                  |
+| ----------------- | -------------------------------------------------------- |
+| `high-precision`  | Pack large integer series and index-scale domains.       |
+| `scale-authoring` | Experimental WGSL scale-emission helpers.                |
+| `debug`           | Enable renderer resource logging.                        |
+| `fonts/default`   | Load the compact built-in TrueType font on demand.       |
+| `fonts/truetype`  | Parse and load static TrueType fonts.                    |
+| `lasso`           | Experimental GPU compute lasso and selected-ID readback. |
 
 Importing one mark or scale does not include unrelated marks, scales, or font
 assets.
@@ -585,6 +586,117 @@ generation. When a logical channel has exactly one series-backed branch,
 replace it through the original channel name. Marks with several series-backed
 branches render correctly, but independent public replacement of those branches
 is not yet supported.
+
+### Experimental compute lasso
+
+`LassoSelection` is a separate utility over immutable positions already projected
+into the polygon's coordinate space, supplied as typed arrays or GPU buffers.
+It owns a stable GPU hash table and a compact GPU list of selected IDs. Compute
+updates feed conditional encoding directly; ID readback is optional and never
+needed to build the table.
+
+```js
+import { LassoSelection } from "@genome-spy/webgpu-renderer/lasso";
+
+const lasso = new LassoSelection(renderer.device, { x, y, ids });
+lasso.update(polygon);
+mark.selections.lasso.setGpuTable(lasso.table, true);
+renderer.render();
+
+const snapshot = await lasso.readIds(); // { revision, ids: Uint32Array }
+// Ignore an obsolete snapshot when snapshot.revision !== lasso.revision.
+```
+
+For an existing point mark, `createPointLassoSelection` captures its scaled
+centers and IDs directly on the GPU, using the same center and scale functions
+as rendering. Polygon coordinates are mark-local logical pixels:
+
+```js
+import { createPointLassoSelection } from "@genome-spy/webgpu-renderer/marks/point";
+
+const lasso = createPointLassoSelection(renderer, mark);
+lasso.update(pixelPolygon);
+mark.selections.lasso.setGpuTable(lasso.table, true);
+renderer.render();
+```
+
+The snapshot contains the complete point population. Later mark updates or
+removal do not change it. Conditional positions and `placementIndex` are
+unsupported; IDs must be an unscaled u32 series excluding `0xffffffff`.
+The `PointBackedLasso` Storybook scene demonstrates a slanted polygon with
+log/sqrt axes and snapshot replacement after resize. Supplying GPU buffers
+directly requires `{ x, y, ids, count }` on the same device; successful
+construction transfers those input buffers to the utility, which destroys them
+along with its other resources.
+
+`createPointDensityPreview` from `marks/point` captures uniform point appearance
+on opaque white, then updates an image using local selected fractions. Its source
+requires a dynamic constant conditional fill slot. `update(pixelPolygon)` uses
+f32 geometry and materializes a hash table exposed as `table`;
+`renderSelection(name)` consumes the source mark's existing
+multi-selection hash table, including CPU-uploaded IDs. Neither operation draws
+point geometry or reads IDs back. `stop()` discards queued previews, `render()`
+repaints the image without recomputing membership, and `destroy()` releases the
+snapshot. The host must recreate it after scene changes. `PointDensityPreview`
+in Storybook demonstrates ID readback and binding the computed table directly.
+
+The mark must declare a `multi` predicate named `lasso`. `setGpuTable` borrows a
+same-device, power-of-two `[u32 key, u32 value]` table with the renderer's hash
+layout. The caller owns it. Its activity argument distinguishes a zero-match
+active polygon from a cleared selection without reading a GPU count. CPU
+`set(ids)` remains available and switches back to a renderer-owned table.
+
+Coordinates and containment use f32 precision; boundary results can differ from
+an f64 reference. Polygons support 3–512 finite vertices. IDs must exclude
+`0xffffffff`; repeated IDs are deduplicated. Input coordinates must already use
+the same projection as the polygon. There is no scale, view, or input handling in
+the utility. The live scene supplies those host concerns. Its outline updates independently
+of GPU work; at most one compute/image batch runs at a time, and only the latest
+pending polygon is retained. Releasing the pointer waits for the final batch
+before reading IDs.
+
+The hash capacity covers the full population at a maximum load factor of 0.6,
+so selecting every row cannot overflow it. Device buffer limits are checked before
+allocation. A 10-million-row table takes 128 MiB, excluding positions, output IDs,
+and mark resources. `readIds()` copies population-sized output to staging and
+returns an immutable queue-ordered `{ revision, ids, indices }` snapshot. Each
+index identifies the corresponding input row; append order is unspecified. It is
+intended for explicit CPU consumption, not each drawing frame.
+
+`takeTable()` transfers table ownership to the caller, rejecting further polygon
+updates. The snapshot can then be destroyed while borrowing marks keep using the
+table. Destroy those marks before destroying the transferred table.
+
+Destroy borrowing marks before destroying the utility. The renderer owns its
+GPUDevice, so destroying the renderer also ends all utility work on that device.
+The `ComputeLasso` Storybook scene demonstrates live drawing with 100K, 1M, or
+10M seeded synthetic points. It now caches the neutral point image once and
+recolors it using local selected-row fractions, without drawing points again on
+polygon updates or release. This density preview retains the cached coverage;
+it does not reproduce per-point selected opacity or paint order. It is restricted
+to the example's uniform small gray points on white, and is not Core conditional
+encoding. Resize rebuilds the neutral image and its counts together.
+
+`setDensityGrid(width, height)` enables physical-pixel histograms for positions
+normalized to `[0,1]` (x rightwards, y upwards). It returns borrowed `total` and
+`selected` GPU buffers, counting geometric rows rather than deduplicated IDs.
+Finite rows outside that viewport contribute no bin. Call it after earlier GPU
+work completes; buffers remain valid until the next grid resize or utility
+destruction. `update()` fills selected counts from the polygon, and `clear()`
+zeros them. Recompute the polygon after resizing. This adds no position upload or
+CPU readback. CPU ID snapshots keep their existing deduplicated semantics.
+
+The scene runner also accepts `data: { x, y, ids }` with projected typed arrays
+instead of its synthetic generator. Its `onSelection({ polygon, ids })` callback
+receives a copied polygon and ID snapshot after release; it does not trigger CPU
+work while drawing. The real-cell embedding example uses this to compare against
+Core's f64 CPU materializer without adding a Core dependency to the renderer.
+
+The demo's two u32 grids and RGBA8 image add approximately 12 bytes per physical
+pixel (24.9 MB at 1920×1080; four times that at DPR 2). Initial Chrome 154/Metal
+measurements on an Apple M5 at 10M rows and four-edge polygons gave roughly
+3–21 ms for updates and 0.1 ms for the isolated image pass. These are local
+measurements; complex polygons and other hardware can be slower.
 
 ## Text and fonts
 

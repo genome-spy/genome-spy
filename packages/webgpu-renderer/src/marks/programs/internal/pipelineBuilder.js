@@ -29,7 +29,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @property {() => GPURenderPipeline} getPickPipeline
  * @property {{ id: number, firstBorrowerLabel: string, borrowerLabels: Set<string> }} diagnostics
  *
- * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
+ * @typedef {ProgramTemplate & { shaderCode: string, computeStorageBufferCount: number, resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
  */
 
 /**
@@ -120,7 +120,10 @@ export function buildPipelines({
             entries: [
                 {
                     binding: 0,
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    visibility:
+                        GPUShaderStage.VERTEX |
+                        GPUShaderStage.FRAGMENT |
+                        GPUShaderStage.COMPUTE,
                     buffer: { type: "uniform" },
                 },
                 ...resourceBindings,
@@ -226,5 +229,15 @@ export function buildPipelines({
     );
     Object.freeze(immutableResourceLayout);
 
-    return { ...template, resourceLayout: immutableResourceLayout };
+    const computeStorageBufferCount = resourceBindings.filter(
+        ({ visibility, buffer }) =>
+            visibility & GPUShaderStage.COMPUTE &&
+            (buffer?.type === "storage" || buffer?.type === "read-only-storage")
+    ).length;
+    return {
+        ...template,
+        shaderCode,
+        computeStorageBufferCount,
+        resourceLayout: immutableResourceLayout,
+    };
 }

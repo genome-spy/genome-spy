@@ -236,8 +236,38 @@ export interface PointSnapshot {
     data: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 
-/** A detached snapshot of either an interval or point selection. */
-export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
+/** A detached snapshot of an interval, point, or region selection. */
+export type SelectionSnapshot =
+    IntervalSnapshot | PointSnapshot | RegionSnapshot;
+
+/** Snapshot of a lasso and its selected rows. A lasso with no matches remains active. */
+export interface RegionSnapshot {
+    /** Selection kind. */
+    type: "region";
+
+    /** Whether a lasso exists, even if it selects no rows. */
+    active: boolean;
+
+    /** Cleared, waiting for a saved lasso's rows, or finished selecting rows. */
+    status: "cleared" | "pending" | "ready";
+
+    /** Saved lasso shape and original axes, or null after clearing. */
+    intent: import("./selectionTypes.js").RegionSelectionIntent | null;
+
+    /** Copies of selected rows. Empty while waiting, after clearing, or with no matches. */
+    data: ReadonlyArray<Readonly<Record<string, unknown>>>;
+}
+
+/** Access selected rows after drawing finishes; clearing removes the lasso and its rows. */
+export interface RegionSelectionApi {
+    readonly type: "region";
+    getValue: () => RegionSnapshot;
+    subscribe: (
+        listener: (value: RegionSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+    clear: () => void;
+}
 
 /**
  * Capability for reading and clearing a row-backed point selection.
@@ -302,8 +332,9 @@ export interface IntervalSelectionApi {
     contains: (point: { x: number; y: number }) => boolean;
 }
 
-/** A public capability for either a point or interval selection. */
-export type SelectionApi = PointSelectionApi | IntervalSelectionApi;
+/** A public capability for reading and clearing a selection. */
+export type SelectionApi =
+    PointSelectionApi | IntervalSelectionApi | RegionSelectionApi;
 
 /**
  * Parameters and selections resolved from one view's lexical scope.

@@ -6,6 +6,7 @@ import {
 import LoadingIndicatorManager from "./genomeSpy/loadingIndicatorManager.js";
 import LoadingStatusRegistry from "./genomeSpy/loadingStatusRegistry.js";
 import { createViewHighlighter } from "./genomeSpy/viewHighlight.js";
+import { createRegionSelectionOverlay } from "./genomeSpy/regionSelectionOverlay.js";
 import KeyboardListenerManager from "./genomeSpy/keyboardListenerManager.js";
 import EventListenerRegistry from "./genomeSpy/eventListenerRegistry.js";
 import InputBindingManager from "./genomeSpy/inputBindingManager.js";
@@ -493,6 +494,15 @@ export default class GenomeSpy {
                     options
                 ),
             highlightView: createViewHighlighter(this.container),
+            createRegionSelectionOverlay: () =>
+                createRegionSelectionOverlay(this.container),
+            createRegionSelectionMaterializer: (view, name, cancel, density) =>
+                this.#renderCoordinator.createRegionSelectionMaterializer?.(
+                    view,
+                    name,
+                    cancel,
+                    density
+                ),
         });
     }
 

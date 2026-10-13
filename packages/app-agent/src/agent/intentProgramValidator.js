@@ -3,6 +3,7 @@ import {
     asSelectionConfig,
     isIntervalSelectionConfig,
     isPointSelectionConfig,
+    isRegionSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
 import { validateIntentBatchShape } from "./actionShapeValidator.js";
@@ -186,6 +187,9 @@ function getParamValueTypes(param) {
         }
         if (isPointSelectionConfig(select)) {
             return ["point", "pointExpand"];
+        }
+        if (isRegionSelectionConfig(select)) {
+            return ["region"];
         }
     }
 

@@ -713,6 +713,10 @@ See the [RegexExtractParams documentation](transform/regex-extract.md#parameters
 
 See the [RegexFoldParams documentation](transform/regex-fold.md#parameters).
 
+## RegionSelectionConfig
+
+SCHEMA RegionSelectionConfig
+
 ## ResolutionBehavior
 
 SCHEMA ResolutionBehavior

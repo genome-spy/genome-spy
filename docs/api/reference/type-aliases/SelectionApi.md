@@ -2,6 +2,6 @@
 
 # Type Alias: SelectionApi
 
-> **SelectionApi** = [`PointSelectionApi`](../interfaces/PointSelectionApi.md) \| [`IntervalSelectionApi`](../interfaces/IntervalSelectionApi.md)
+> **SelectionApi** = [`PointSelectionApi`](../interfaces/PointSelectionApi.md) \| [`IntervalSelectionApi`](../interfaces/IntervalSelectionApi.md) \| [`RegionSelectionApi`](../interfaces/RegionSelectionApi.md)
 
-A public capability for either a point or interval selection.
+A public capability for reading and clearing a selection.

@@ -1,4 +1,4 @@
-import PointProgram from "./pointProgram.js";
+import PointProgram, { POINT_CENTER_WGSL } from "./pointProgram.js";
 import { getMsdfAtlasGenerator } from "../../symbols/sparseGpuPathAtlas.js";
 import { asGpuBufferSource } from "../../utils/webgpuTextureUtils.js";
 import { gpuLabel } from "../../utils/gpuLabel.js";
@@ -64,6 +64,8 @@ fn culledPoint() -> VSOut {
     return out;
 }
 
+${POINT_CENTER_WGSL}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
     if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
@@ -75,12 +77,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         return culledPoint();
     }
 
-    var quad = array<vec2<f32>, 6>(
+    var quad = array<vec2<f32>, 4>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),
         vec2<f32>(0.0, 1.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0),
         vec2<f32>(1.0, 1.0)
     );
 
@@ -132,8 +132,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
     let screenOffset = rot * localScreen;
-    let centerX = getScaled_x(i) + getScaled_xOffset(i) + getScaled_dx(i);
-    let centerY = getScaled_y(i) + getScaled_yOffset(i) + getScaled_dy(i);
+    let center = getPointCenter(i);
+    let centerX = center.x;
+    let centerY = center.y;
 
     if (isOutsideVisibleRange(vec2<f32>(centerX, centerY))) {
         return culledPoint();

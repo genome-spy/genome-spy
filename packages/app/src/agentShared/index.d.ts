@@ -68,6 +68,7 @@ export type {
     ParamValueLiteral,
     ParamValuePoint,
     ParamValuePointExpand,
+    ParamValueRegion,
     PointExpandMatcher,
     PointExpandOrigin,
 } from "../state/paramProvenanceTypes.d.ts";

@@ -148,6 +148,64 @@ bars by holding down the `Shift` key.
 
 EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 
+### Region Selection
+
+A region selection lets you draw a lasso around point centers. Add
+`select: "region"` to a named point plot and use the parameter to highlight
+selected points:
+
+```json
+{
+  "name": "scatterplot",
+  "data": {
+    "values": [
+      { "x": 1, "y": 1 },
+      { "x": 2, "y": 3 },
+      { "x": 3, "y": 2 }
+    ]
+  },
+  "params": [{ "name": "lasso", "select": "region" }],
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" },
+    "color": {
+      "condition": { "param": "lasso", "empty": false, "value": "orange" },
+      "value": "gray"
+    }
+  }
+}
+```
+
+Drag to draw; use Shift-drag when zooming is enabled. Escape cancels the new
+selection, and double-click clears it. Zooming and panning preserve the selected
+points. Replacing the data or removing the drawing plot clears the selection.
+A lasso containing no points selects none, even with `empty: true`.
+
+WebGPU highlights points while drawing. WebGL and Canvas update highlights on
+release. Filters and saved state update after release; large selections may take
+time to finish, during which zooming and panning pause.
+
+Both axes must use quantitative fields on linear, log, sqrt, pow, or symlog
+scales. All points must be loaded, and the drawing plot must appear only once
+in the layout.
+Point offsets and rounded or custom scale interpolation are unsupported.
+
+In GenomeSpy App, bookmarks and undo/redo save the lasso and its original axes,
+then select points from the current data when restored. Points right on the
+boundary can differ after restoration because of coordinate rounding.
+Set `persist: false` for a temporary selection.
+
+Linked plots need a shared `identifier` transform before their data branches,
+with the selection declared on their common ancestor. Keep the drawing plot
+separate from a consumer filtered by that selection.
+
+For very dense WebGPU plots, `select: {"type": "region", "preview": "density"}`
+shows the selected fraction of nearby points using a density display. Colors
+summarize that fraction rather than exact overlapping point colors. Linked plots
+refresh on release in this mode. See the [region selection options](types.md#regionselectionconfig)
+for supported styling and event configuration.
+
 ### Interval Selection
 
 Interval selections allow for selecting a range of rows along one or two axes.
