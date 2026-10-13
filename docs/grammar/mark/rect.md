@@ -14,12 +14,6 @@ channels and the `color`, `stroke`, `fill`, `opacity`, `strokeOpacity`,
 
 SCHEMA RectProps
 
-### Clamping outlines
-
-[`clamp`](./index.md#clamping-positions) keeps rectangle outlines around the
-visible part of a group during zooming. With `clip: false`, the full stroke
-remains visible at the view boundary.
-
 ## Examples
 
 ### Heatmap

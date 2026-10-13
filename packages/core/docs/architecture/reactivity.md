@@ -108,8 +108,8 @@ that ref instead of a synthetic event dependency. Source/selection/zoom inputs
 settle before terminal domain notifications and rendering. Viewport debounce and
 coverage remain explicit input policy, with immediate initial calibration.
 
-`ScaleInstanceManager` binds existing range expressions into one mapping operation
-that depends on the displayed domain and the complete range configuration. Binding
+`ScaleInstanceManager` binds range and grouping-gap expressions into one mapping
+operation that depends on the displayed domain and mapping configuration. Binding
 uses the effective resolution scope, preserving shared-scale ownership and the
 single-member compatibility lookup. It validates static configuration on a copy,
 applies the live configuration, and publishes a stable mapping ref. Range-array
@@ -125,7 +125,9 @@ persists through navigation until the bound range values or configuration change
 The mapping operation and its owner live for the resolution lifetime, including
 identity scales. Replacing the physical scale retains this ref, clears old range
 commands, and uses physical identity in equality so retained consumers are notified
-even when numeric values are unchanged. The domain owner retains navigation state.
+even when numeric values are unchanged. The domain owner retains navigation state,
+including fractional boundary ranks that keep partially visible gaps moving
+continuously with the domain.
 CPU encoders use owned operations depending on mapping to refresh their captured
 physical scale and metadata before observer effects. Equality skips in-place scale
 updates; per-datum evaluation still calls the captured scale directly. Conditional
@@ -190,18 +192,3 @@ than embedding either runtime.
   processing. Own echoes preserve animation; nested external writes and equal
   external clears remain authoritative. Own echoes cannot subsume data changes.
   Cancellation invalidates retained frame callbacks and completion promises.
-
-## Grouping-gap mapping
-
-Index/locus scales keep cut arrays and CSS gap widths in the resolution-owned
-mapping operation. Navigation publishes the numeric domain together with two
-optional fractional cut ranks through `DomainRuntime`; these ranks preserve
-partially visible gaps at viewport edges. They are camera metadata, never data
-coordinates or stored pixel offsets. Explicit domain/configuration changes
-refit the mapping. Animated navigation interpolates the data slope and origin
-before inverting viewport edges, so cut crossings stay continuous.
-
-Forward/inverse mappings take the actual occurrence extent when views share a
-scale at different sizes. The scale's axis-length provider supplies the
-canonical extent to scale expressions and programmatic navigation. Pointer
-zoom, brushes, coordinate readouts, and immediate rendering pass local extents.

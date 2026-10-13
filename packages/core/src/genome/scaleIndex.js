@@ -28,7 +28,11 @@ export default function scaleIndex() {
 
     let gapWidth = 0;
 
-    /** @type {() => number} */
+    /**
+     * Pixel extent for converting gap widths to GenomeSpy's unit ranges.
+     * TODO: This should become unnecessary once GenomeSpy uses pixel ranges.
+     * @type {() => number}
+     */
     let axisLength = () => 1;
 
     /** @type {readonly number[] | undefined} */
