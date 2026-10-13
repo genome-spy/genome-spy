@@ -1,3 +1,4 @@
+import { POSITION_CLAMP_CHANNEL_SPECS } from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import DASH_WGSL from "../../wgsl/dash.wgsl.js";
@@ -11,6 +12,7 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const RULE_CHANNEL_SPECS = {
+    ...POSITION_CLAMP_CHANNEL_SPECS,
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { type: "f32", components: 1 },
     x2: { type: "f32", components: 1 },
@@ -81,6 +83,33 @@ fn culledRule() -> VSOut {
     return out;
 }
 
+// Preserve the line direction and interpolate around its center to avoid
+// cancellation between large offscreen positions during close zooms.
+fn clipRuleAxis(a: ptr<function, vec2<f32>>, b: ptr<function, vec2<f32>>,
+    axis: u32, bounds: vec2<f32>) -> bool {
+    let delta = (*b)[axis] - (*a)[axis];
+    if (delta == 0.0) {
+        return (*a)[axis] >= bounds.x && (*a)[axis] <= bounds.y;
+    }
+    if (max((*a)[axis], (*b)[axis]) < bounds.x ||
+        min((*a)[axis], (*b)[axis]) > bounds.y) {
+        return false;
+    }
+    let center = (*a + *b) * 0.5;
+    let direction = (*b - *a) / delta;
+    if ((*a)[axis] < bounds.x || (*a)[axis] > bounds.y) {
+        let edge = clamp((*a)[axis], bounds.x, bounds.y);
+        *a = center + direction * (edge - center[axis]);
+        (*a)[axis] = edge;
+    }
+    if ((*b)[axis] < bounds.x || (*b)[axis] > bounds.y) {
+        let edge = clamp((*b)[axis], bounds.x, bounds.y);
+        *b = center + direction * (edge - center[axis]);
+        (*b)[axis] = edge;
+    }
+    return true;
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
     if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
@@ -112,21 +141,35 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     // Place the endpoints before extruding the stroke so that occurrence
     // scaling does not also scale pixel-sized widths, offsets, or line caps.
-    let a = applyPlacementPixel(
+    var a = applyPlacementPixel(
         vec2<f32>(getScaled_x(i), getScaled_y(i)),
         i
     ) + vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i));
-    let b = applyPlacementPixel(
+    var b = applyPlacementPixel(
         vec2<f32>(getScaled_x2(i), getScaled_y2(i)),
         i
     ) + vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i));
 
-    // Avoid artifacts in degenerate rules by falling back to a unit tangent.
-    var tangent = b - a;
+    let upper = vec2<f32>(globals.width, globals.height);
+    // The overscan keeps artificial caps and thick strokes outside the image.
+    let margin = max(upper, vec2<f32>(width + getScaled_minLength(i) + pixelSize));
+    var xBounds = vec2<f32>(-margin.x, upper.x + margin.x);
+    var yBounds = vec2<f32>(-margin.y, upper.y + margin.y);
+#if defined(xClampRange_DEFINED)
+    let xRange = getScaled_xClampRange(i);
+    xBounds = vec2<f32>(applyPlacementPixel(vec2<f32>(xRange.x, 0.0), i).x,
+        applyPlacementPixel(vec2<f32>(xRange.y, 0.0), i).x);
+#endif
+#if defined(yClampRange_DEFINED)
+    let yRange = getScaled_yClampRange(i);
+    yBounds = vec2<f32>(applyPlacementPixel(vec2<f32>(0.0, yRange.x), i).y,
+        applyPlacementPixel(vec2<f32>(0.0, yRange.y), i).y);
+#endif
+    if (!clipRuleAxis(&a, &b, 0u, xBounds) ||
+        !clipRuleAxis(&a, &b, 1u, yBounds) || all(a == b)) { return culledRule(); }
+
+    let tangent = b - a;
     let len = length(tangent);
-    if (len == 0.0) {
-        tangent = vec2<f32>(1.0, 0.0);
-    }
     let normal = normalize(vec2<f32>(-tangent.y, tangent.x));
 
     let strokeCap = u32(getScaled_strokeCap(i));
@@ -139,10 +182,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         if (strokeCap != BUTT) {
             diff = diff + width;
         }
-        if (len > 0.0) {
-            relativeDiff = diff / len;
-            offset = relativeDiff * (local.x - 0.5);
-        }
+        relativeDiff = diff / len;
+        offset = relativeDiff * (local.x - 0.5);
     }
 
     // Add an extra pixel to stroke width to accommodate edge antialiasing.
@@ -173,7 +214,6 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // Distances from the line endings (pixels). Used for round caps.
     out.posInPixels = vec2<f32>(local.x, 1.0 - local.x) * (1.0 + relativeDiff) * len -
         vec2<f32>(select(0.0, width * 0.5, strokeCap != BUTT));
-    // TODO: Precision issues can appear at extreme zoom levels.
     out.strokeCap = strokeCap;
     out.dashIndex = u32(getScaled_strokeDash(i));
     out.dashOffset = f32(getScaled_strokeDashOffset(i));

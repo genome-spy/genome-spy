@@ -207,12 +207,11 @@ describe("mark rendering revisions", () => {
             },
             UnitView
         );
-        const requestRender = vi.spyOn(view.context.animator, "requestRender");
-
         view.mark.initializeEncoders();
         view.mark.initializeRenderingRevisions([]);
         expect(view.mark.getRenderingRevision("resources")).toBe(0);
 
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
         const selection = view.paramRuntime.getValue("selected");
         view.paramRuntime.setValue("selected", { ...selection });
 
@@ -237,11 +236,11 @@ describe("mark rendering revisions", () => {
             },
             UnitView
         );
-        const requestRender = vi.spyOn(view.context.animator, "requestRender");
-
         view.mark.initializeEncoders();
         view.mark.initializeRenderingRevisions([], { trackResources: false });
         view.mark.initializeRenderingRevisions([]);
+
+        const requestRender = vi.spyOn(view.context.animator, "requestRender");
         const selection = view.paramRuntime.getValue("picked");
         view.paramRuntime.setValue("picked", { ...selection });
 

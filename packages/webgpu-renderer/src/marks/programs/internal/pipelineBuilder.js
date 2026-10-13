@@ -29,7 +29,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @property {() => GPURenderPipeline} getPickPipeline
  * @property {{ id: number, firstBorrowerLabel: string, borrowerLabels: Set<string> }} diagnostics
  *
- * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
+ * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
  */
 
 /**

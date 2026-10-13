@@ -124,6 +124,7 @@ function useMark(surface, mark, definition, config, options, properties) {
 
 /** @param {any} mark @param {any} definition */
 function configureMockMark(mark, definition) {
+    mark.encoders ??= {};
     mark.unitView ??= {};
     mark.unitView.getPathString ??= () => "root/test-view";
     mark.getType ??= () => definition.type;
@@ -1035,3 +1036,25 @@ function createTextConfig(text) {
         },
     };
 }
+
+test("recreates retained infrastructure across static gap enablement", async () => {
+    const surface = new WebGpuSurface(
+        /** @type {any} */ ({
+            container: document.body,
+            onCanvasResize: vi.fn(),
+        })
+    );
+    await surface.initialize();
+    const scale = { props: { gapPositions: [10], gapWidth: 0 } };
+    const mark = /** @type {any} */ ({ encoders: { x: { scale } } });
+    const definition = /** @type {any} */ ({ type: "point" });
+    configureMockMark(mark, definition);
+    const config = createConfig(0);
+    for (const width of [0, 6, 0]) {
+        scale.props.gapWidth = width;
+        surface.updateMark(mark, definition, config);
+    }
+    expect(mocks.renderer.createMark).toHaveBeenCalledTimes(3);
+    expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(2);
+    surface.finalize();
+});

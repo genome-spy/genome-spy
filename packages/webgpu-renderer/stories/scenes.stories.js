@@ -8,6 +8,8 @@ import runPathTextScene from "../examples/pathTextScene.js";
 import runTextEffectsScene from "../examples/textEffectsScene.js";
 import runThresholdScene from "../examples/thresholdScene.js";
 import runPiecewiseScene from "../examples/piecewiseScene.js";
+import runIndexGapScene from "../examples/indexGapScene.js";
+import runRectClampingScene from "../examples/rectClampingScene.js";
 import runIndexScene from "../examples/indexScene.js";
 import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
@@ -66,6 +68,18 @@ export const Hatch = withSource("runHatchScene", null, {
 export const Bars = withSource("runBarScene", null, {
     render: (args) => renderScene(runBarScene, args),
 });
+
+export const PositionClamping = withSource(
+    "runRectClampingScene",
+    { clamp: "both" },
+    {
+        args: { clamp: "both" },
+        argTypes: {
+            clamp: { control: "select", options: ["none", "x", "y", "both"] },
+        },
+        render: (args) => renderScene(runRectClampingScene, args),
+    }
+);
 
 export const Points = withSource("runPointScene", null, {
     render: (args) => renderScene(runPointScene, args),
@@ -306,5 +320,15 @@ export const RenderScope = withSource(
             opacity: { control: { type: "range", min: 0, max: 1, step: 0.01 } },
         },
         render: (args) => renderScene(runGroupScene, args),
+    }
+);
+
+export const IndexGroupingGaps = withSource(
+    "runIndexGapScene",
+    { gapWidth: 10 },
+    {
+        args: { gapWidth: 10 },
+        argTypes: { gapWidth: { control: { type: "range", min: 0, max: 30 } } },
+        render: (args) => renderScene(runIndexGapScene, args),
     }
 );

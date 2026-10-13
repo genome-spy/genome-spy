@@ -1,3 +1,7 @@
+import {
+    POSITION_CLAMP_CHANNEL_SPECS,
+    POSITION_CLAMP_WGSL,
+} from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { initializePropertySlots } from "./internal/propertySlots.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
@@ -51,6 +55,7 @@ import {
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const TEXT_CHANNEL_SPECS = {
+    ...POSITION_CLAMP_CHANNEL_SPECS,
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { components: 1, scale: linearScale(), default: 0.5 },
     x2: { components: 1, scale: linearScale(), optional: true },
@@ -93,6 +98,7 @@ const {
 function createTextShaderBody(effects) {
     const glyphLookup = effects.enabled
         ? /* wgsl */ `
+
     let renderItem = renderItems[i];
     let layer = renderItem.layer;
     let glyph = glyphs[renderItem.glyphIndex];`
@@ -206,6 +212,7 @@ ${
         return color * edgeFadeOpacity;`;
 
     return /* wgsl */ `
+${POSITION_CLAMP_WGSL}
 struct GlyphInstance {
     stringIndex: u32,
     glyphId: u32,
@@ -479,15 +486,15 @@ ${effectSetup}
         getScaled_xOffset(i),
         getScaled_yOffset(i)
     );
-    var anchor = applyPlacementPixel(anchorPosition, i) + positionOffset;
+    var anchor = clampPlacedPosition(applyPlacementPixel(anchorPosition, i) + positionOffset, i);
     var rangeScale = 1.0;
     var logoSize = vec2<f32>(size);
 
 #if defined(x2_DEFINED)
-    let x2 = applyPlacementPixel(
-        vec2<f32>(getScaled_x2(i), anchorPosition.y),
-        i
-    ).x + getScaled_x2Offset(i);
+    let x2 = clampPlacedPosition(applyPlacementPixel(vec2<f32>(getScaled_x2(i), anchorPosition.y), i) + vec2<f32>(getScaled_x2Offset(i), 0.0), i).x;
+#if defined(xClampRange_DEFINED)
+    if (anchor.x == x2) { return culledText(); }
+#endif
     if (params.uLogoLetters != 0u) {
         logoSize.x = abs(x2 - anchor.x);
         anchor.x = (anchor.x + x2) * 0.5;
@@ -507,10 +514,10 @@ ${effectSetup}
 #endif
 
 #if defined(y2_DEFINED)
-    let y2 = applyPlacementPixel(
-        vec2<f32>(anchorPosition.x, getScaled_y2(i)),
-        i
-    ).y + getScaled_y2Offset(i);
+    let y2 = clampPlacedPosition(applyPlacementPixel(vec2<f32>(anchorPosition.x, getScaled_y2(i)), i) + vec2<f32>(0.0, getScaled_y2Offset(i)), i).y;
+#if defined(yClampRange_DEFINED)
+    if (anchor.y == y2) { return culledText(); }
+#endif
     if (params.uLogoLetters != 0u) {
         logoSize.y = abs(y2 - anchor.y);
         anchor.y = (anchor.y + y2) * 0.5;

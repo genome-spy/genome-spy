@@ -3,6 +3,7 @@ export const MARK_DEFAULTS = {
     xOffset: 0,
     yOffset: 0,
     opacity: 1.0,
+    clamp: false,
 };
 
 /** @type {import("../../spec/config.js").PointConfig} */

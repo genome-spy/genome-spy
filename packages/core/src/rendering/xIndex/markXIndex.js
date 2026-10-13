@@ -1,3 +1,4 @@
+import { isMarkClamped } from "../../marks/markUtils.js";
 import { isContinuous } from "vega-scale";
 import { getEncoderDataAccessor } from "../../encoder/encoder.js";
 import { createBinningRangeIndexer } from "../../utils/binnedIndex.js";
@@ -49,6 +50,9 @@ export function createMarkXIndexSpec(mark) {
         return undefined;
     }
     const markType = mark.getType();
+    if (markType === "point" && isMarkClamped(mark, "x")) {
+        return undefined;
+    }
     if (markType !== "point" && markType !== "rect") {
         return undefined;
     }

@@ -1,4 +1,6 @@
+import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds } from "../bounds.js";
+import clipSegment from "../../../utils/clipSegment.js";
 import {
     encodeNumber,
     prepareRangeProjection,
@@ -22,7 +24,7 @@ export function resolveRuleProperties(mark) {
 
 /**
  * @param {import("../../../marks/rule.js").default} mark
- * @param {{minLength: number}} properties
+ * @param {ReturnType<typeof resolveRuleProperties>} properties
  * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds}} options
  * @param {(instance: RuleInstance) => void} visitor
  */
@@ -58,6 +60,10 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         y2: 0,
         strokeWidth: 0,
     };
+    const clampX = isMarkClamped(mark, "x");
+    const clampY = isMarkClamped(mark, "y");
+    /** @type {[number, number, number, number]} */
+    const segment = [0, 0, 0, 0];
     let instanceCount = 0;
 
     for (const datum of data) {
@@ -65,6 +71,28 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         projectYRange(datum, yRange);
         let [x1, x2] = xRange;
         let [y1, y2] = yRange;
+        const strokeWidth = encodeNumber(encoders.size, datum);
+        const padding = strokeWidth + properties.minLength + 1;
+        const marginX = Math.max(visibleBounds.x2 - visibleBounds.x1, padding);
+        const marginY = Math.max(visibleBounds.y2 - visibleBounds.y1, padding);
+        if (
+            !clipSegment(
+                x1,
+                y1,
+                x2,
+                y2,
+                clampX ? coords.x : visibleBounds.x1 - marginX,
+                clampY ? coords.y : visibleBounds.y1 - marginY,
+                clampX ? coords.x2 : visibleBounds.x2 + marginX,
+                clampY ? coords.y2 : visibleBounds.y2 + marginY,
+                segment
+            )
+        ) {
+            continue;
+        }
+        [x1, y1, x2, y2] = segment;
+        if (x1 === x2 && y1 === y2) continue;
+
         const dx = x2 - x1;
         const dy = y2 - y1;
         const length = Math.hypot(dx, dy);
@@ -77,7 +105,6 @@ export function visitRuleInstances(mark, properties, options, visitor) {
             x2 += ux * expansion;
             y2 += uy * expansion;
         }
-        const strokeWidth = encodeNumber(encoders.size, datum);
         if (!intersectsBounds(visibleBounds, x1, y1, x2, y2, strokeWidth / 2)) {
             continue;
         }

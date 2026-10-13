@@ -1,3 +1,7 @@
+import {
+    groupingGapKey,
+    hasGroupingGaps,
+} from "../../genome/indexGapMapping.js";
 import { createTexture } from "twgl.js";
 import {
     findChannelDefWithScale,
@@ -44,6 +48,7 @@ export function createWebGLMark(mark, glHelper, rendererResources) {
  * @prop {import("../../data/collector.js").default | undefined} collector
  * @prop {number} dataRevision
  * @prop {number} configurationRevision
+ * @prop {number} gapKey
  * @prop {number} encodedDataRevision
  * @prop {Set<import("../../scales/scaleResolution.js").default>} scaleResolutions
  */
@@ -59,6 +64,54 @@ export default class WebGLRendererResources {
 
     /** @type {Map<string, {texture: WebGLTexture, ready: Promise<void>}>} */
     #fontTextures = new Map();
+
+    /** @type {Map<import("../../scales/scaleResolution.js").default, {cuts: readonly number[], texture: WebGLTexture}>} */
+    #gapTextures = new Map();
+
+    /** @param {import("../../scales/scaleResolution.js").default} resolution */
+    getGapTexture(resolution) {
+        const cuts =
+            /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+                resolution.getScale()
+            ).gapPositions();
+        const previous = this.#gapTextures.get(resolution);
+        if (previous?.cuts === cuts) return previous.texture;
+        const gl = this.glHelper.gl;
+        const width = Math.min(
+            Math.max(1, cuts.length),
+            gl.getParameter(gl.MAX_TEXTURE_SIZE)
+        );
+        const height = Math.max(1, Math.ceil(cuts.length / width));
+        if (height > gl.getParameter(gl.MAX_TEXTURE_SIZE))
+            throw new Error("Too many grouping gaps for a WebGL cut texture.");
+        const data = new Uint32Array(width * height * 2);
+        for (let i = 0; i < cuts.length; i++) {
+            data[2 * i] = Math.floor(cuts[i] / 4096);
+            data[2 * i + 1] = cuts[i] % 4096;
+        }
+        const texture = previous?.texture ?? gl.createTexture();
+        // Lazy uploads must preserve samplers already bound for another axis.
+        const boundTexture = gl.getParameter(gl.TEXTURE_BINDING_2D);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_BASE_LEVEL, 0);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, 0);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RG32UI,
+            width,
+            height,
+            0,
+            gl.RG_INTEGER,
+            gl.UNSIGNED_INT,
+            data
+        );
+        gl.bindTexture(gl.TEXTURE_2D, boundTexture);
+        this.#gapTextures.set(resolution, { cuts, texture });
+        return texture;
+    }
 
     /** @param {import("./gl/webGLHelper.js").default} glHelper */
     constructor(glHelper) {
@@ -79,6 +132,7 @@ export default class WebGLRendererResources {
             dataRevision: -1,
             configurationRevision: -1,
             encodedDataRevision: -1,
+            gapKey: groupingGapKey(mark.encoders),
             scaleResolutions: new Set(),
         };
         this.#markEntries.set(mark, entry);
@@ -122,6 +176,13 @@ export default class WebGLRendererResources {
         let firstError;
         for (const mark of new Set(marks)) {
             try {
+                const previous = this.#markEntries.get(mark);
+                if (
+                    previous &&
+                    previous.gapKey !== groupingGapKey(mark.encoders)
+                ) {
+                    this.releaseMark(mark);
+                }
                 const fontReady =
                     mark.getType() != "text" || getWebGlTextFont(mark).metrics;
                 if (
@@ -136,6 +197,15 @@ export default class WebGLRendererResources {
             }
         }
         return { entries, firstError };
+    }
+
+    /** @param {Iterable<WebGLMarkEntry>} entries */
+    hasStructuralChanges(entries) {
+        return Array.from(entries).some(
+            (entry) =>
+                this.#markEntries.get(entry.mark) !== entry ||
+                entry.gapKey !== groupingGapKey(entry.mark.encoders)
+        );
     }
 
     /** @param {Iterable<WebGLMarkEntry>} entries */
@@ -297,6 +367,9 @@ export default class WebGLRendererResources {
             gl.deleteTexture(texture);
         }
         this.#fontTextures.clear();
+        for (const { texture } of this.#gapTextures.values())
+            gl.deleteTexture(texture);
+        this.#gapTextures.clear();
     }
 
     #assertActive() {
@@ -334,6 +407,7 @@ export default class WebGLRendererResources {
                 continue;
             }
             entry.scaleResolutions.add(resolution);
+            this.#releaseDisabledGapTexture(resolution);
 
             const retained = this.#scaleResolutionRefs.get(resolution);
             if (retained) {
@@ -344,10 +418,22 @@ export default class WebGLRendererResources {
             this.glHelper.createRangeTexture(resolution);
             this.#scaleResolutionRefs.set(resolution, {
                 count: 1,
-                dispose: resolution.observeMapping(() =>
-                    this.glHelper.createRangeTexture(resolution, true)
-                ),
+                dispose: resolution.observeMapping(() => {
+                    this.#releaseDisabledGapTexture(resolution);
+                    this.glHelper.createRangeTexture(resolution, true);
+                }),
             });
+        }
+    }
+
+    /** Gap ownership is independent of ordinary shared-scale references.
+     * @param {import("../../scales/scaleResolution.js").default} resolution
+     */
+    #releaseDisabledGapTexture(resolution) {
+        const gaps = this.#gapTextures.get(resolution);
+        if (gaps && !hasGroupingGaps(resolution.getScale().props)) {
+            this.glHelper.gl.deleteTexture(gaps.texture);
+            this.#gapTextures.delete(resolution);
         }
     }
 
@@ -362,6 +448,9 @@ export default class WebGLRendererResources {
             if (retained.count == 0) {
                 retained.dispose();
                 this.#scaleResolutionRefs.delete(resolution);
+                const gaps = this.#gapTextures.get(resolution);
+                if (gaps) this.glHelper.gl.deleteTexture(gaps.texture);
+                this.#gapTextures.delete(resolution);
             }
         }
         entry.scaleResolutions.clear();

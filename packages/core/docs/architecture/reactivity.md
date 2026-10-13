@@ -108,8 +108,8 @@ that ref instead of a synthetic event dependency. Source/selection/zoom inputs
 settle before terminal domain notifications and rendering. Viewport debounce and
 coverage remain explicit input policy, with immediate initial calibration.
 
-`ScaleInstanceManager` binds existing range expressions into one mapping operation
-that depends on the displayed domain and the complete range configuration. Binding
+`ScaleInstanceManager` binds range and grouping-gap expressions into one mapping
+operation that depends on the displayed domain and mapping configuration. Binding
 uses the effective resolution scope, preserving shared-scale ownership and the
 single-member compatibility lookup. It validates static configuration on a copy,
 applies the live configuration, and publishes a stable mapping ref. Range-array
@@ -125,7 +125,9 @@ persists through navigation until the bound range values or configuration change
 The mapping operation and its owner live for the resolution lifetime, including
 identity scales. Replacing the physical scale retains this ref, clears old range
 commands, and uses physical identity in equality so retained consumers are notified
-even when numeric values are unchanged. The domain owner retains navigation state.
+even when numeric values are unchanged. The domain owner retains navigation state,
+including fractional boundary ranks that keep partially visible gaps moving
+continuously with the domain.
 CPU encoders use owned operations depending on mapping to refresh their captured
 physical scale and metadata before observer effects. Equality skips in-place scale
 updates; per-datum evaluation still calls the captured scale directly. Conditional

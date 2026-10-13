@@ -76,6 +76,7 @@
   "SampleSpec": "/sample-collections/visualizing/",
   "SampleYAxisDef": "/sample-collections/visualizing/#showing-sample-y-axes",
   "ScaleConfig": "/grammar/config/#scale-defaults",
+  "ScaleGroupsData": "/grammar/data/lazy/#scale-groups-parameters",
   "SelectionDomainRef": "/grammar/scale/#properties",
   "SelectionFilterParams": "/grammar/transform/filter/#selection-predicate",
   "SelectionParameter": "/grammar/parameters/#selection-parameters",

@@ -2,6 +2,8 @@ import { collectAppearanceSelections } from "../../selection/selection.js";
 import { activeMatchResolvedSelectionPredicate } from "../../selection/selectionPredicateTree.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
+import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
+import { getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
 import {
     packHighPrecisionU32Array,
     packHighPrecisionU32ArrayInto,
@@ -151,69 +153,45 @@ export function createWebGpuMarkConfig(
         : placementIndex;
 
     const markType = mark.getType();
+    /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */
+    let definition;
+
+    /** @type {Record<string, any>} */
+    let config;
+
     if (markType == "point") {
-        return createTranslation(
-            pointMark,
-            addPlacementIndex(
-                createPointConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = pointMark;
+        config = createPointConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "rect") {
-        return createTranslation(
-            rectMark,
-            addPlacementIndex(
-                createRectConfig(
-                    mark,
-                    data,
-                    coords,
-                    readViewOpacity,
-                    typeof viewOpacity != "function"
-                ),
-                resolvedPlacementIndex
-            ),
-            mark
+        definition = rectMark;
+        config = createRectConfig(
+            mark,
+            data,
+            coords,
+            readViewOpacity,
+            typeof viewOpacity != "function"
         );
     } else if (markType == "rule" || markType == "tick") {
-        return createTranslation(
-            ruleMark,
-            addPlacementIndex(
-                createRuleConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = ruleMark;
+        config = createRuleConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "text") {
-        return createTranslation(
-            textMark,
-            addPlacementIndex(
-                createTextConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = textMark;
+        config = createTextConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "link") {
-        return createTranslation(
-            linkMark,
-            addPlacementIndex(
-                createLinkConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = linkMark;
+        config = createLinkConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "arrow") {
-        return createTranslation(
-            arrowMark,
-            addPlacementIndex(
-                createArrowConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = arrowMark;
+        config = createArrowConfig(mark, data, coords, readViewOpacity);
+    } else {
+        throw unsupported(mark, `Mark type "${markType}" is not supported.`);
     }
 
-    throw unsupported(mark, `Mark type "${markType}" is not supported.`);
+    return createTranslation(
+        definition,
+        addOccurrenceConfig(config, resolvedPlacementIndex, mark, coords),
+        mark
+    );
 }
 
 /**
@@ -264,9 +242,30 @@ function initializeWebGpuMarkRevisions(mark) {
     mark.initializeRenderingRevisions([]);
 }
 
-/** @param {object} config @param {unknown} placementIndex */
-function addPlacementIndex(config, placementIndex) {
-    return placementIndex ? { ...config, placementIndex } : config;
+/**
+ * @param {Record<string, any>} config
+ * @param {unknown} placementIndex
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ */
+function addOccurrenceConfig(config, placementIndex, mark, coords) {
+    if (placementIndex) config.placementIndex = placementIndex;
+    for (const axis of /** @type {const} */ (["x", "y"])) {
+        if (isMarkClamped(mark, axis)) {
+            const origin =
+                mark.getType() === "text"
+                    ? 0
+                    : axis === "x"
+                      ? coords.x
+                      : coords.y;
+            const span = axis === "x" ? coords.width : coords.height;
+            config.channels[axis + "ClampRange"] = {
+                value: [origin, origin + span],
+                dynamic: true,
+            };
+        }
+    }
+    return config;
 }
 
 /** @param {import("../../marks/mark.js").default} mark @param {object[]} data */
@@ -1043,7 +1042,10 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
     const band =
         /** @type {import("../../spec/channel.js").BandMixins} */ (
             encoder.channelDef
-        ).band ?? 0.5;
+        ).band ??
+        (getGapPeer(encoder.channelDef) && scale && hasGroupingGaps(scale.props)
+            ? 0
+            : 0.5);
     if (
         scale?.type == "band" ||
         scale?.type == "point" ||
@@ -1083,7 +1085,13 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
               };
         return Object.assign(input, {
             ...(large ? { inputComponents: /** @type {const} */ (2) } : {}),
-            scale: createIndexPositionScale(scale, range, band),
+            scale: createIndexPositionScale(
+                scale,
+                range,
+                band,
+                channel,
+                getGapPeer(encoder.channelDef)
+            ),
         });
     }
 
@@ -1155,10 +1163,14 @@ function createOrdinalPositionScale(scale, range, readDomain) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
  * @param {number} band
+ * @param {string} channel
+ * @param {string | undefined} peer
  */
-function createIndexPositionScale(scale, range, band) {
+function createIndexPositionScale(scale, range, band, channel, peer) {
     const configurableScale = /** @type {any} */ (scale);
-    return retainScaleLeaves(
+    const gaps = hasGroupingGaps(configurableScale.props);
+
+    const result = retainScaleLeaves(
         indexScale({
             domain: scale.domain().map(Number),
             range,
@@ -1166,9 +1178,32 @@ function createIndexPositionScale(scale, range, band) {
             paddingOuter: configurableScale.paddingOuter(),
             align: configurableScale.align(),
             band,
+            ...(gaps
+                ? {
+                      gapEnabled: true,
+                      gapPositions: configurableScale.gapPositions(),
+                      gapWidth: configurableScale.gapWidth(),
+                      gapDomain: configurableScale.gapDomain(),
+                      gapPeer: peer,
+                      gapAxis: channel[0] === "y" ? "y" : "x",
+                  }
+                : {}),
         }),
         () => scale.domain().map(Number)
     );
+    if (gaps) {
+        for (const property of /** @type {const} */ ([
+            "gapPositions",
+            "gapWidth",
+            "gapDomain",
+        ])) {
+            Object.defineProperty(result, property, {
+                enumerable: true,
+                get: () => configurableScale[property](),
+            });
+        }
+    }
+    return result;
 }
 
 /**

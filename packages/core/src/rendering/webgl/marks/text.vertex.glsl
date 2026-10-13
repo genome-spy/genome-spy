@@ -116,6 +116,9 @@ void main(void) {
     float opacity = getScaled_opacity() * uViewOpacity;
     vec2 size = vec2(getScaled_size());
     float x = getScaled_x() + getScaled_xOffset() / uViewportSize.x;
+#ifdef CLAMP_X
+    x = clamp(x, 0.0, 1.0);
+#endif
     float y = getScaled_y();
 
     float scale = 1.0;
@@ -137,6 +140,13 @@ void main(void) {
 
 #ifdef x2_DEFINED
     float x2 = getScaled_x2() + getScaled_x2Offset() / uViewportSize.x;
+#ifdef CLAMP_X
+    x2 = clamp(x2, 0.0, 1.0);
+    if (x == x2) {
+        gl_Position = vec4(0.0);
+        return;
+    }
+#endif
 
     if (uLogoLetter) {
         size.x = (x2 - x) * uViewportSize.x;
@@ -154,17 +164,24 @@ void main(void) {
 #endif
 
     // Position of the text origo 
-    vec2 pos = applyOffset(
+    vec2 pos = clampPosition(applyOffset(
         applySampleFacet(vec2(x, y)),
         vec2(0.0, getScaled_yOffset())
-    );
+    ));
 
 #ifdef y2_DEFINED
     float y2 = getScaled_y2();
-    vec2 pos2 = applyOffset(
+    vec2 pos2 = clampPosition(applyOffset(
         applySampleFacet(vec2(x, y2)),
         vec2(0.0, getScaled_y2Offset())
-    );
+    ));
+
+#ifdef CLAMP_Y
+    if (pos.y == pos2.y) {
+        gl_Position = vec4(0.0);
+        return;
+    }
+#endif
 
     if (uLogoLetter) {
         size.y = (pos2.y - pos.y) * uViewportSize.y;

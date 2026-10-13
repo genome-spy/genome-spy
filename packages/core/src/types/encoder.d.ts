@@ -146,6 +146,8 @@ export interface Encoder {
 export interface ScaleMetadata {
     /** Scale type */
     type: string;
+    /** Resolved configuration when owned by a scale resolution. */
+    props?: import("../spec/scale.js").Scale;
 }
 
 export type D3Scale =

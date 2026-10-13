@@ -1,3 +1,7 @@
+import {
+    POSITION_CLAMP_CHANNEL_SPECS,
+    POSITION_CLAMP_WGSL,
+} from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { initializePropertySlots } from "./internal/propertySlots.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
@@ -33,6 +37,7 @@ function encodeHeadPlacement(value) {
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const ARROW_CHANNEL_SPECS = {
+    ...POSITION_CLAMP_CHANNEL_SPECS,
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { type: "f32", components: 1 },
     x2: { type: "f32", components: 1 },
@@ -59,6 +64,8 @@ const {
 } = buildChannelMaps(ARROW_CHANNEL_SPECS);
 
 const ARROW_SHADER_BODY = /* wgsl */ `
+${POSITION_CLAMP_WGSL}
+
 const DIRECTION_FORWARD: u32 = 0u;
 const DIRECTION_REVERSE: u32 = 1u;
 const DIRECTION_BOTH: u32 = 2u;
@@ -423,8 +430,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(0, 1), vec2<f32>(1, 0), vec2<f32>(1, 1)
     );
     let local = quad[v];
-    let a = vec2<f32>(getScaled_x(i) + getScaled_xOffset(i), getScaled_y(i) + getScaled_yOffset(i));
-    let b = vec2<f32>(getScaled_x2(i) + getScaled_x2Offset(i), getScaled_y2(i) + getScaled_y2Offset(i));
+    let a = projectClampedPosition(vec2<f32>(getScaled_x(i), getScaled_y(i)),
+        vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i)), i);
+    let b = projectClampedPosition(vec2<f32>(getScaled_x2(i), getScaled_y2(i)),
+        vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i)), i);
     var tangent = b - a;
     let lengthInPixels = length(tangent);
     if (lengthInPixels == 0.0) {
@@ -488,7 +497,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
 #endif
-    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);
+    out.pos = vec4<f32>(placeClampedGeometry(clip, i), 0.0, 1.0);
     out.local = vec2<f32>(axisPosition - geometryCenter, normalPosition);
     out.halfLength = geometryHalfLength;
     out.headHalfWidth = headHalfWidth;

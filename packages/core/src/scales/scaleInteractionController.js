@@ -32,7 +32,7 @@ export default class ScaleInteractionController {
     /** @type {() => ScaleWithProps} */
     #getScale;
 
-    /** @type {(domain: number[], duration: number, renderImmediately?: boolean) => Promise<void>} */
+    /** @type {(domain: number[], duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} */
     #navigate;
 
     /** @type {() => void} */
@@ -56,7 +56,7 @@ export default class ScaleInteractionController {
     /**
      * @param {object} options
      * @param {() => ScaleWithProps} options.getScale
-     * @param {(domain: number[], duration: number, renderImmediately?: boolean) => Promise<void>} options.navigate
+     * @param {(domain: number[], duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} options.navigate
      * @param {() => void} options.renderImmediately
      * @param {() => number[]} options.getInitialDomainSnapshot
      * @param {() => number[] | undefined} options.getDataZoomExtent
@@ -127,15 +127,39 @@ export default class ScaleInteractionController {
      * @param {number} scaleFactor
      * @param {number} scaleAnchor
      * @param {number} pan
+     * @param {number} [axisLength] Actual occurrence extent in CSS pixels.
      * @returns {boolean} true if the scale was zoomed
      */
-    zoom(scaleFactor, scaleAnchor, pan) {
+    zoom(scaleFactor, scaleAnchor, pan, axisLength) {
         if (!this.isZoomingSupported()) {
             return false;
         }
 
         const scale = this.#getScale();
         const oldDomain = scale.domain();
+        const mapping =
+            "gapMapping" in scale &&
+            /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                scale
+            ).gapMapping(axisLength);
+        if (mapping) {
+            const transformed = mapping.navigate(
+                scaleFactor,
+                scaleAnchor,
+                scale.props.reverse ? -pan : pan
+            );
+            const extent = this.getZoomExtent();
+            const clamped = clampRange(
+                transformed.domain,
+                extent[0],
+                extent[1]
+            );
+            const ranks = shallowArrayEquals(clamped, transformed.domain)
+                ? transformed.ranks
+                : undefined;
+            void this.#navigate(clamped, 0, false, ranks);
+            return true;
+        }
         let newDomain = applyZoomTransform(
             scale,
             oldDomain,

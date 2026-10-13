@@ -793,6 +793,10 @@ SCHEMA Scale
 
 See the [ScaleConfig documentation](config.md#scale-defaults).
 
+## ScaleGroupsData
+
+See the [ScaleGroupsData documentation](data/lazy.md#scale-groups-parameters).
+
 ## ScaleInterpolate
 
 SCHEMA ScaleInterpolate

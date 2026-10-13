@@ -132,7 +132,7 @@ describe("TextProgram series replacement", () => {
             shaderBody.indexOf("anchor = params.uViewport.xy + anchor")
         );
         expect(shaderBody).toContain(
-            "var anchor = applyPlacementPixel(anchorPosition, i) + positionOffset"
+            "var anchor = clampPlacedPosition(applyPlacementPixel(anchorPosition, i) + positionOffset, i)"
         );
         expect(shaderBody).toContain(
             "getScaled_xOffset(i),\n        getScaled_yOffset(i)"

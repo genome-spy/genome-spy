@@ -6,6 +6,38 @@ import {
     findChannelDefWithScale,
 } from "../encoder/encoder.js";
 
+// Enumerable symbol survives normalization copies without entering the grammar.
+export const GAP_PEER = Symbol("half-open interval peer");
+
+/** @param {import("../spec/channel.js").ChannelDef} def */
+export function getGapPeer(def) {
+    return /** @type {{[GAP_PEER]?: Channel}} */ (def)?.[GAP_PEER];
+}
+
+/** Annotate only explicit scaled intervals; implicit band coverage has no peer.
+ * @param {Encoding} encoding
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ */
+export function annotateGapPeers(encoding, channel) {
+    const secondary = getSecondaryChannel(channel);
+    const primaryDef = findChannelDefWithScale(encoding[channel]);
+    const secondaryDef = findChannelDefWithScale(encoding[secondary]);
+    if (
+        primaryDef &&
+        secondaryDef &&
+        ["index", "locus"].includes(primaryDef.type)
+    ) {
+        encoding[channel] = inheritSpecOrigin(encoding[channel], {
+            ...encoding[channel],
+            [GAP_PEER]: secondary,
+        });
+        encoding[secondary] = inheritSpecOrigin(encoding[secondary], {
+            ...encoding[secondary],
+            [GAP_PEER]: channel,
+        });
+    }
+}
+
 /**
  *
  * @typedef {import("../spec/channel.js").Encoding} Encoding
@@ -58,6 +90,7 @@ export function fixCoveragePositional(
     offsetDefinesCoverage = false
 ) {
     const secondaryChannel = getSecondaryChannel(channel);
+    annotateGapPeers(encoding, channel);
 
     // Must make copies because the definition may be shared with other views/marks
     let primary =
@@ -123,6 +156,7 @@ export function fixCoveragePositional(
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
  */
 export function fixHalfOpenRangedText(encoding, channel) {
+    annotateGapPeers(encoding, channel);
     const secondaryChannel = getSecondaryChannel(channel);
 
     const primary = encoding[channel];
@@ -221,4 +255,12 @@ export function fixFill(encoding, filled) {
             encoding.fillOpacity = { value: 0 };
         }
     }
+}
+
+/**
+ * @param {import("./mark.js").default} mark
+ * @param {"x" | "y"} axis
+ */
+export function isMarkClamped(mark, axis) {
+    return mark.properties.clamp === true || mark.properties.clamp === axis;
 }

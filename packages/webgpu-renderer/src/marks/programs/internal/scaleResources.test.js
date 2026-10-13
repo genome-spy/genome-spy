@@ -63,7 +63,7 @@ function createManager(channels) {
                 ),
             createSampler: () => /** @type {unknown} */ ({}),
             queue: {
-                writeBuffer: () => {},
+                writeBuffer: vi.fn(),
                 writeTexture: () => {},
             },
         })
@@ -222,5 +222,93 @@ describe("ScaleResourceManager", () => {
         expect(buffers[1].destroy).toHaveBeenCalledOnce();
         expect(buffers[3].destroy).toHaveBeenCalledOnce();
         expect(textures[1].destroy).toHaveBeenCalledOnce();
+    });
+});
+
+describe("grouping gap resources", () => {
+    it.each([
+        { gapPositions: [10], gapWidth: 0 },
+        { gapPositions: [10], gapWidth: null },
+        { gapPositions: [], gapWidth: 6 },
+        { gapPositions: null, gapWidth: 6 },
+    ])("allocates nothing for static disablement: %j", (gaps) => {
+        const channel = {
+            type: /** @type {const} */ ("u32"),
+            data: new Uint32Array([0]),
+            components: /** @type {const} */ (1),
+            inputComponents: /** @type {const} */ (1),
+            scale: { type: "index", domain: [0, 20], range: [0, 100], ...gaps },
+        };
+        const { manager, buffers, textures, uniforms } = createManager({
+            x: channel,
+        });
+        manager.initializeScale("x", channel, channel.scale);
+        expect(buffers).toHaveLength(0);
+        expect(textures).toHaveLength(0);
+        expect(
+            Array.from(uniforms.keys()).some((name) => name.startsWith("gap"))
+        ).toBe(false);
+        manager.destroy();
+    });
+
+    it("shares cut tables, retains them during navigation, and destroys owned buffers", () => {
+        const channel = {
+            type: /** @type {const} */ ("u32"),
+            data: new Uint32Array([0]),
+            components: /** @type {const} */ (1),
+            inputComponents: /** @type {const} */ (1),
+            scale: {
+                type: "index",
+                domain: [0, 20],
+                range: [0, 100],
+                gapPositions: [10],
+                gapWidth: 6,
+            },
+        };
+        const { manager, buffers, uniforms } = createManager({
+            x: channel,
+            x2: channel,
+        });
+        manager.initializeScale("x", channel, channel.scale);
+        manager.initializeScale("x2", channel, channel.scale);
+        expect(buffers).toHaveLength(1);
+        expect(uniforms.get("gapTable_x")).toEqual(uniforms.get("gapTable_x2"));
+        manager.getScaleUpdater("x").updateDomain([5, 15]);
+        manager.updateGapWidth("x", 12);
+        expect(buffers).toHaveLength(1);
+        manager.updateGapPositions("x", [10, 12]);
+        expect(buffers[0].destroy).toHaveBeenCalledOnce();
+        expect(buffers).toHaveLength(2);
+        manager.destroy();
+        expect(buffers[1].destroy).toHaveBeenCalledOnce();
+    });
+
+    it("updates domains and fractional ranks together without replacing cuts", () => {
+        const channel = {
+            type: /** @type {const} */ ("u32"),
+            data: new Uint32Array([0]),
+            components: /** @type {const} */ (1),
+            inputComponents: /** @type {const} */ (1),
+            scale: {
+                type: "index",
+                domain: [0, 20],
+                range: [0, 100],
+                gapPositions: [10],
+                gapWidth: 6,
+            },
+        };
+        const { manager, uniforms, buffers } = createManager({ x: channel });
+        manager.initializeScale("x", channel, channel.scale);
+        const updater = manager.getScaleUpdater("x");
+        updater.updateDomain([10, 20], [0.5, 1]);
+        expect(uniforms.get("gapGeometry_x")).toEqual([6, 0.5, 1, 1]);
+
+        // Cut updates retain explicit ranks, matching Core's scale setters.
+        manager.updateGapPositions("x", [5, 10]);
+        expect(uniforms.get("gapGeometry_x")).toEqual([6, 0.5, 1, 1]);
+        updater.updateDomain([10, 20]);
+        expect(uniforms.get("gapGeometry_x")).toEqual([6, 2, 2, 0]);
+        expect(buffers).toHaveLength(2);
+        manager.destroy();
     });
 });

@@ -1,3 +1,5 @@
+import clamp from "../../../utils/clamp.js";
+import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds, isOutsideBounds } from "../bounds.js";
 import {
     encodeNumber,
@@ -83,6 +85,8 @@ export function visitPointInstances(mark, properties, options, visitor) {
         strokeWidth: 0,
         lineShape: false,
     };
+    const clampX = isMarkClamped(mark, "x");
+    const clampY = isMarkClamped(mark, "y");
     let instanceCount = 0;
 
     for (let i = start; i < end; i++) {
@@ -93,8 +97,10 @@ export function visitPointInstances(mark, properties, options, visitor) {
 
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
-        const x = xRange[0] + encodeNumber(encoders.dx, datum);
-        const y = yRange[0] - encodeNumber(encoders.dy, datum);
+        let x = xRange[0] + encodeNumber(encoders.dx, datum);
+        let y = yRange[0] - encodeNumber(encoders.dy, datum);
+        if (clampX) x = clamp(x, coords.x, coords.x2);
+        if (clampY) y = clamp(y, coords.y, coords.y2);
         if (isOutsideBounds(anchorCullBounds, x, y)) {
             continue;
         }

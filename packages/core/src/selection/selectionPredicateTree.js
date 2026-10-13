@@ -454,6 +454,8 @@ export function compileSelectionPredicateTree(tree, getSelection) {
             const first = input.read(datum);
             const second = input.readSecondary?.(datum);
             const [lo, hi] = interval;
+            if (lo === hi) return false;
+
             const matches =
                 second === undefined
                     ? lo <= first && first < hi

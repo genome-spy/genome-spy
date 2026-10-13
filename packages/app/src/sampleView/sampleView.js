@@ -1,5 +1,6 @@
 import ContainerView from "@genome-spy/core/view/containerView.js";
 import { html } from "lit";
+import { invertScalePosition } from "@genome-spy/core/scales/scalePosition.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
@@ -1437,8 +1438,13 @@ export default class SampleView extends ContainerView {
 
             const normalizedValue =
                 channel === "x" ? normalized.x : normalized.y;
-            // @ts-ignore
-            const value = scale.invert(normalizedValue);
+            const value = invertScalePosition(
+                scale,
+                normalizedValue,
+                channel === "x"
+                    ? this.childCoords.width
+                    : this.childCoords.height
+            );
             point[channel] = /** @type {number} */ (value);
         }
 
@@ -1805,7 +1811,12 @@ export default class SampleView extends ContainerView {
             zoomEvent.y + zoomEvent.yDelta
         );
 
-        const changed = resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
+        const changed = resolution.zoom(
+            2 ** zoomEvent.zDelta,
+            p.x,
+            tp.x - p.x,
+            coords.width
+        );
 
         if (changed) {
             this.context.animator.requestRender();

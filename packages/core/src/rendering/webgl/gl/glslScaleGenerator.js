@@ -17,6 +17,9 @@ import { asArray, peek } from "../../../utils/arrayUtils.js";
 import { InternMap } from "internmap";
 import { isExprRef } from "../../../paramRuntime/paramUtils.js";
 import scaleNull from "../../../utils/scaleNull.js";
+import { hasGroupingGaps } from "../../../genome/indexGapMapping.js";
+import { getGapPeer } from "../../../marks/markUtils.js";
+import { indexGapGlsl } from "./indexGaps.js";
 import { cssColorToArray } from "./colorUtils.js";
 import {
     isIndexLikeDomainType,
@@ -356,18 +359,33 @@ export function generateScaleGlsl(channel, scale, channelDef) {
             break;
 
         case "index":
-        case "locus":
+        case "locus": {
+            const gaps = hasGroupingGaps(scale.props);
+            const peer = getGapPeer(channelDef);
+            const peerAccessor = makeAccessorFunctionName(peer, 0);
+            if (gaps && channel === primary) glsl.push(indexGapGlsl(primary));
+            if (gaps && peer) glsl.push(`${attributeType} ${peerAccessor}();`);
             functionCall = makeScaleCall(
-                "scaleBandHp",
+                gaps ? "scaleGaps_" + primary : "scaleBandHp",
                 "domain",
                 rangeUniformName,
                 scale.paddingInner(),
                 scale.paddingOuter(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
-                channelDef.band ?? 0.5
+                channelDef.band ?? (gaps && peer ? 0 : 0.5),
+                ...(gaps
+                    ? [
+                          peer
+                              ? attributeType === "uvec2"
+                                  ? `(value.x > ${peerAccessor}().x || (value.x == ${peerAccessor}().x && value.y > ${peerAccessor}().y))`
+                                  : `value > ${peerAccessor}()`
+                              : false,
+                      ]
+                    : [])
             );
             break;
+        }
         case "point":
         case "band":
             functionCall = makeScaleCall(

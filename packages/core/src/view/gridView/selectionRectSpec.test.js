@@ -4,6 +4,24 @@ import { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { createSelectionRectSpec } from "./selectionRectSpec.js";
 
 describe("createSelectionRectSpec", () => {
+    test("collapsed selections hide the rectangle and measurement labels", () => {
+        const brush = { type: "interval", intervals: { x: [10, 10] } };
+        const spec = createSelectionRectSpec({
+            scaleResolutionSource: /** @type {any} */ ({
+                getScaleResolution: () => ({ type: "index" }),
+            }),
+            selectionExpression: "brush",
+            selection: /** @type {any} */ (brush),
+            brushConfig: { measure: "inside" },
+        });
+        const visible = createFunction(
+            /** @type {any} */ (spec.transform[0]).expr,
+            { brush }
+        );
+        expect(visible()).toBe(false);
+        brush.intervals.x = [10, 11];
+        expect(visible()).toBe(true);
+    });
     test("builds the expression-backed selection rectangle spec", () => {
         const spec = createSelectionRectSpec({
             scaleResolutionSource: /** @type {any} */ ({
@@ -21,7 +39,7 @@ describe("createSelectionRectSpec", () => {
         expect(spec.transform).toEqual([
             {
                 type: "filter",
-                expr: "brush.type === 'interval' && brush.intervals.x != null && brush.intervals.y != null",
+                expr: "brush.type === 'interval' && brush.intervals.x != null && brush.intervals.x[0] < brush.intervals.x[1] && brush.intervals.y != null && brush.intervals.y[0] < brush.intervals.y[1]",
             },
         ]);
         expect(spec.encoding).toMatchObject({

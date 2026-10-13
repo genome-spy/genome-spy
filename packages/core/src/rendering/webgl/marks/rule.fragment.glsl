@@ -9,7 +9,7 @@ flat in vec4 vColor;
 flat in float vSize;
 
 /** Position on the rule along its length in pixels */
-in vec2 vPosInPixels;
+in highp vec2 vPosInPixels;
 in float vNormalLengthInPixels;
 
 out lowp vec4 fragColor;
@@ -30,8 +30,8 @@ void main(void) {
     float opacity = clamp(((vSize / 2.0 - distance) * dpr), -0.5, 0.5) + 0.5;
 
     if (uDashTextureSize > 0.0) {
-        float pos = (vPosInPixels[0] + uStrokeDashOffset) * dpr;
-        float floored = floor(pos);
+        highp float pos = (vPosInPixels[0] + uStrokeDashOffset) * dpr;
+        highp float floored = floor(pos);
         vec2 texelPositions = (floored + vec2(0.5, 1.5)) / dpr / uDashTextureSize;
       
         // Do antialiasing

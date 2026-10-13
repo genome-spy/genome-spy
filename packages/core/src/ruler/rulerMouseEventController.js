@@ -1,4 +1,5 @@
 import { bindRulerDisabled } from "./rulerDisabled.js";
+import { invertScalePosition } from "../scales/scalePosition.js";
 import {
     asEventConfig,
     createEventPredicate,
@@ -214,11 +215,12 @@ export class RulerMouseEventController {
 
         for (const channel of this.channels) {
             const scaleResolution = this.scaleResolutions[channel];
-            const scale = /** @type {{ invert: (value: number) => number }} */ (
-                scaleResolution.getScale()
-            );
-            const coordinate = scale.invert(
-                channel === "x" ? normalizedPoint.x : normalizedPoint.y
+            const coordinate = invertScalePosition(
+                scaleResolution.getScale(),
+                channel === "x" ? normalizedPoint.x : normalizedPoint.y,
+                channel === "x"
+                    ? projectionCoords.width
+                    : projectionCoords.height
             );
             value.values[channel] = normalizeRulerCoordinate(
                 coordinate,

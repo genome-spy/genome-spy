@@ -1,3 +1,4 @@
+import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
@@ -45,13 +46,15 @@ export function visitLinkInstances(mark, properties, options, visitor) {
         coords,
         encoders,
         "x",
-        data[0]
+        data[0],
+        isMarkClamped(mark, "x")
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[0]
+        data[0],
+        isMarkClamped(mark, "y")
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
@@ -59,11 +62,15 @@ export function visitLinkInstances(mark, properties, options, visitor) {
     const coordsY = coords.y;
     const viewport = { width: coords.width, height: coords.height };
     const coordsY2 = coordsY + viewport.height;
+    const clamped = isMarkClamped(mark, "x") || isMarkClamped(mark, "y");
     let instanceCount = 0;
 
     for (const datum of data) {
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
+        if (clamped && xRange[0] === xRange[1] && yRange[0] === yRange[1]) {
+            continue;
+        }
         const [x, x2] = xRange;
         const [y, y2] = yRange;
         const points = getBezierPoints(

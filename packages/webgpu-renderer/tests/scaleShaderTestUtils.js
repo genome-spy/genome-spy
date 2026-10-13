@@ -362,7 +362,8 @@ export async function runScaleCompute(
             }
             const device = await adapter.requestDevice();
 
-            const globalsData = new Float32Array([1, 1, 1, 0]);
+            const globalsData = new Float32Array(20);
+            globalsData.set([1, 1, 1, 0]);
             const paramsData = new Float32Array(uniformData);
 
             const shaderModule = device.createShaderModule({

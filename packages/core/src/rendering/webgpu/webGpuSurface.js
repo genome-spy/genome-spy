@@ -1,3 +1,4 @@
+import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
@@ -289,10 +290,12 @@ export default class WebGpuSurface {
         this.#registerMarkOwner(mark);
         let retained = this.#marks.get(mark);
         const programKey = definition.getProgramKey?.(config);
+        const gapKey = groupingGapKey(mark.encoders);
         if (
             !retained ||
             retained.definition !== definition ||
-            !Object.is(retained.programKey, programKey)
+            !Object.is(retained.programKey, programKey) ||
+            retained.gapKey !== gapKey
         ) {
             if (retained) {
                 this.#renderer.destroyMark(retained.handle.markId);
@@ -303,6 +306,7 @@ export default class WebGpuSurface {
             retained = {
                 definition,
                 programKey,
+                gapKey,
                 handle,
                 config,
                 properties,
@@ -565,7 +569,13 @@ function compileResourceBindings(
  */
 function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
     if (scaleSlot && channel.scale) {
-        if ("domain" in channel.scale) {
+        if (channel.scale.gapEnabled) {
+            add(
+                key + ":domain",
+                () => [channel.scale.domain, channel.scale.gapDomain],
+                ([domain, ranks]) => scaleSlot.setDomain(domain, ranks)
+            );
+        } else if ("domain" in channel.scale) {
             add(
                 key + ":domain",
                 () => channel.scale.domain,
@@ -579,6 +589,18 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 () => channel.scale.range,
                 (value) => scaleSlot.setRange(value),
                 true
+            );
+        }
+        if (channel.scale.gapEnabled) {
+            add(
+                key + ":gapPositions",
+                () => channel.scale.gapPositions,
+                (value) => scaleSlot.setGapPositions(value)
+            );
+            add(
+                key + ":gapWidth",
+                () => channel.scale.gapWidth,
+                (value) => scaleSlot.setGapWidth(value)
             );
         }
     }
@@ -827,6 +849,7 @@ function getLogicalChannelSeries(channel) {
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {unknown} programKey
+ * @prop {number} gapKey
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
  * @prop {Record<string, {value: any}>} properties

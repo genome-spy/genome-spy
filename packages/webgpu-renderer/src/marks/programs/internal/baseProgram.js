@@ -282,7 +282,7 @@ export default class BaseProgram {
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
-        /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
+        /** @type {{ name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
@@ -818,6 +818,8 @@ export default class BaseProgram {
             group.default = slot;
             group.setDomain = slot.setDomain;
             group.setRange = slot.setRange;
+            group.setGapPositions = slot.setGapPositions;
+            group.setGapWidth = slot.setGapWidth;
         };
 
         /**
@@ -845,7 +847,6 @@ export default class BaseProgram {
                     this._createValueSlot(name)
                 );
             }
-
             const conditions = channel.conditions ?? [];
             if (!conditions.length) {
                 continue;
@@ -913,9 +914,20 @@ export default class BaseProgram {
     _createScaleSlot(name) {
         const updater = this._scaleResources.getScaleUpdater(name);
         return {
-            setDomain: (domain) => {
+            setGapPositions: (values) => {
                 this._assertAlive();
-                const needsRebind = updater.updateDomain(domain);
+                this._queueSlotUpdate(
+                    this._scaleResources.updateGapPositions(name, values)
+                );
+            },
+            setGapWidth: (width) => {
+                this._assertAlive();
+                this._scaleResources.updateGapWidth(name, width);
+                this._queueSlotUpdate(false);
+            },
+            setDomain: (domain, ranks) => {
+                this._assertAlive();
+                const needsRebind = updater.updateDomain(domain, ranks);
                 this._queueSlotUpdate(needsRebind);
             },
             setRange: (range) => {
@@ -1157,28 +1169,21 @@ export default class BaseProgram {
      */
     _initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (isSeriesChannelConfig(channel) && channel.scale) {
+            if (
+                (isSeriesChannelConfig(channel) ||
+                    isValueChannelConfig(channel)) &&
+                channel.scale
+            ) {
                 this._scaleResources.initializeScale(
                     name,
                     channel,
                     channel.scale
                 );
                 const updater = this._scaleResources.getScaleUpdater(name);
-                updater.updateDomain(channel.scale.domain);
-                const rangeValue =
-                    channel.scale.range ?? this.getDefaultScaleRange(name);
-                if (rangeValue !== undefined) {
-                    updater.updateRange(rangeValue);
-                }
-            }
-            if (isValueChannelConfig(channel) && channel.scale) {
-                this._scaleResources.initializeScale(
-                    name,
-                    channel,
-                    channel.scale
+                updater.updateDomain(
+                    channel.scale.domain,
+                    channel.scale.gapDomain
                 );
-                const updater = this._scaleResources.getScaleUpdater(name);
-                updater.updateDomain(channel.scale.domain);
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
                 if (rangeValue !== undefined) {
