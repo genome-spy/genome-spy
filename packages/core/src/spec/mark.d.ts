@@ -65,7 +65,10 @@ export interface MarkPropsBase {
      * text glyphs can extend beyond it.
      *
      * Rectangles and explicit text ranges collapsed on a clamped axis are hidden.
-     * Rules, ticks, links, and arrows with coincident endpoints are hidden.
+     * Rules and ticks intersect the selected bounds without changing direction;
+     * excluded or collapsed segments are hidden. Zero-length rules are hidden
+     * even when `clamp` is false. Links and arrows with
+     * coincident endpoints are hidden.
      * Shared scales and their inversion are unchanged.
      *
      * __Default value:__ `false`

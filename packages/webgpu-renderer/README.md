@@ -288,9 +288,11 @@ endpoints are clamped after placement and position offsets, before constructing
 geometry. The channels can be omitted independently.
 
 Points retain their full symbol size. Rectangles that collapse along a constrained
-axis are hidden before minimum-size expansion. Rules, links, and arrows are hidden
-when their endpoints coincide. Text clamps its anchor or fitting range and hides
-collapsed explicit ranges. These policies apply equally to drawing and picking.
+axis are hidden before minimum-size expansion. Rules intersect the bounds without
+changing direction; excluded or collapsed segments are hidden. Links and arrows
+are hidden when their endpoints coincide. Text clamps its anchor or fitting range
+and hides collapsed explicit ranges. These policies apply equally to drawing and
+picking.
 Stroke, glyph, cap, and arrowhead geometry can extend beyond the bounds; draw clips
 control pixel clipping separately.
 

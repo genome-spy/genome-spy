@@ -2,6 +2,108 @@
 import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
+test("clips diagonal rules without changing slope and stabilizes long offscreen rules", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { ruleMark }] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/rule.js"),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 100;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 100, height: 100, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
+        const results = [];
+        for (const clamp of [true, "x", "y", false]) {
+            const mark = renderer.createMark(ruleMark, {
+                count: 1,
+                channels: {
+                    uniqueId: { value: 1, type: "u32" },
+                    x: { value: -100 },
+                    x2: { value: 200 },
+                    y: { value: 0 },
+                    y2: { value: 100 },
+                    size: { value: 4 },
+                    strokeCap: { value: 2, type: "u32" },
+                    ...(clamp === true || clamp === "x"
+                        ? { xClampRange: { value: [20, 80] } }
+                        : {}),
+                    ...(clamp === true || clamp === "y"
+                        ? { yClampRange: { value: [20, 80] } }
+                        : {}),
+                },
+            });
+            renderer.render({ draws: [{ mark }] });
+            results.push(
+                await renderer.pick(30, 43),
+                await renderer.pick(70, 57),
+                await renderer.pick(30, 30),
+                await renderer.pick(70, 70)
+            );
+            renderer.destroyMark(mark.markId);
+        }
+        // At this extent, the unbounded stroke quad loses its width in float32.
+        const long = renderer.createMark(ruleMark, {
+            count: 1,
+            channels: {
+                uniqueId: { value: 2, type: "u32" },
+                x: { value: -1e8 },
+                x2: { value: 1e8 + 100 },
+                y: { value: -5e7 },
+                y2: { value: 5e7 + 100 },
+                size: { value: 4 },
+                strokeCap: { value: 2, type: "u32" },
+            },
+        });
+        renderer.render({ draws: [{ mark: long }] });
+        results.push(await renderer.pick(25, 38), await renderer.pick(75, 63));
+        const zero = renderer.createMark(ruleMark, {
+            count: 1,
+            channels: {
+                x: { value: 50 },
+                x2: { value: 50 },
+                y: { value: 50 },
+                y2: { value: 50 },
+                size: { value: 10 },
+                minLength: { value: 20 },
+                strokeCap: { value: 2, type: "u32" },
+            },
+        });
+        renderer.render({ draws: [{ mark: zero }] });
+        results.push(await renderer.pick(50, 50));
+        const error = await renderer.device.popErrorScope();
+        renderer.destroy();
+        canvas.remove();
+        return { results, error: error?.message ?? null };
+    });
+    expect(result.error).toBeNull();
+    expect(result.results).toEqual([
+        1,
+        1,
+        null,
+        null,
+        1,
+        1,
+        null,
+        null,
+        1,
+        1,
+        null,
+        null,
+        1,
+        1,
+        null,
+        null,
+        2,
+        2,
+        null,
+    ]);
+});
+
 test("clamps placed anchors and endpoints before geometry and picking", async ({
     page,
 }) => {

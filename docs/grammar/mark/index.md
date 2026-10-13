@@ -63,12 +63,13 @@ unchanged. Clamping follows positional offsets and uses each sample facet's
 bounds. With `clip: false`, strokes and symbols can extend beyond the boundary.
 
 Points clamp their anchors. Rectangles clamp both endpoints and disappear if
-a selected axis collapses, before minimum-size expansion. Rules, links, and
-arrows clamp their endpoints and disappear only when both endpoints coincide;
-horizontal and vertical rules remain valid. Clamping can change diagonal and
-curved geometry. Text clamps its anchor or explicit fitting range; a collapsed
-range disappears. Glyph-local text offsets, rotation, stroke width, caps, and
-arrowheads are applied after clamping.
+a selected axis collapses, before minimum-size expansion. Rules and ticks
+intersect the selected bounds without changing direction; excluded or collapsed
+segments disappear, while horizontal and vertical rules remain valid. Links and
+arrows clamp their endpoints and disappear when both endpoints coincide;
+clamping can change their geometry. Text clamps its anchor or explicit fitting
+range; a collapsed range disappears. Glyph-local text offsets, rotation, stroke
+width, caps, and arrowheads are applied after clamping.
 
 ## Encoding
 

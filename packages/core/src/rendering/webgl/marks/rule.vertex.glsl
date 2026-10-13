@@ -20,6 +20,30 @@ out float vNormalLengthInPixels;
 /** Distances from the line endings. Used for rendering the round caps and dashes */
 out highp vec2 vPosInPixels;
 
+// Intersect the segment with a slab, preserving its direction. Centering the
+// interpolation avoids subtracting two large positions at high zoom.
+bool clipRuleAxis(inout vec2 a, inout vec2 b, int axis, vec2 bounds) {
+    float delta = b[axis] - a[axis];
+    if (delta == 0.0) {
+        return a[axis] >= bounds.x && a[axis] <= bounds.y;
+    }
+    if (max(a[axis], b[axis]) < bounds.x || min(a[axis], b[axis]) > bounds.y) {
+        return false;
+    }
+    vec2 center = (a + b) * 0.5;
+    vec2 direction = (b - a) / delta;
+    if (a[axis] < bounds.x || a[axis] > bounds.y) {
+        float edge = clamp(a[axis], bounds.x, bounds.y);
+        a = center + direction * (edge - center[axis]);
+        a[axis] = edge;
+    }
+    if (b[axis] < bounds.x || b[axis] > bounds.y) {
+        float edge = clamp(b[axis], bounds.x, bounds.y);
+        b = center + direction * (edge - center[axis]);
+        b[axis] = edge;
+    }
+    return true;
+}
 
 void main(void) {
 #pragma orderGuard
@@ -36,21 +60,36 @@ void main(void) {
         size = pixelSize;
     }
 
-    vec2 a = clampPosition(applyOffset(
+    vec2 a = applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    ));
-    vec2 b = clampPosition(applyOffset(
+    );
+    vec2 b = applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    ));
+    );
 
-#if defined(CLAMP_X) || defined(CLAMP_Y)
-    if (all(equal(a, b)) || getSampleFacetPos().height == 0.0) {
+    SampleFacetPosition facet = getSampleFacetPos();
+    // Use the output viewport so clip:false can draw beyond the child view.
+    vec2 lower = -uViewOffset / uViewScale;
+    vec2 upper = (vec2(1.0) - uViewOffset) / uViewScale;
+    // Keep artificial caps outside the viewport, including thick strokes.
+    vec2 margin = max(upper - lower,
+        vec2(size + uMinLength + pixelSize) / uViewportSize);
+    vec2 xBounds = vec2(lower.x - margin.x, upper.x + margin.x);
+    vec2 yBounds = vec2(lower.y - margin.y, upper.y + margin.y);
+#ifdef CLAMP_X
+    xBounds = vec2(0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    yBounds = vec2(facet.pos, facet.pos + facet.height);
+#endif
+    if (facet.height == 0.0 ||
+        !clipRuleAxis(a, b, 0, xBounds) || !clipRuleAxis(a, b, 1, yBounds) ||
+        all(equal(a, b))) {
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
-#endif
 
     vec2 tangent = b - a;
 
@@ -90,7 +129,6 @@ void main(void) {
     vSize = size;
     vNormalLengthInPixels = side * (size + aaPadding);
 
-    // TODO: Here's a precision problem that breaks round caps when zoomed in enough
     vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
         vec2(uStrokeCap != BUTT ? size / 2.0 : 0.0);
     

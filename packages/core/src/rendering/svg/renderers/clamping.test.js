@@ -57,6 +57,58 @@ test("clamps rule endpoints before minimum length without suppressing horizontal
     ]);
 });
 
+test.each([
+    [true, [0, 250 / 3, 100, 50 / 3]],
+    ["x", [0, 250 / 3, 100, 50 / 3]],
+    ["y", [-25, 100, 125, 0]],
+])(
+    "preserves diagonal rule direction when clamping %s",
+    async (clamp, expected) => {
+        const svg = await render({
+            // The line crosses opposite edges away from the viewport corners.
+            data: { values: [{ x: -1, x2: 2, y: -0.5, y2: 1.5 }] },
+            mark: {
+                type: "rule",
+                clamp: /** @type {true | "x" | "y"} */ (clamp),
+                clip: false,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                x2: { field: "x2" },
+                y: { field: "y", type: "quantitative", scale: null },
+                y2: { field: "y2" },
+            },
+        });
+        const line = svg.querySelector('[data-mark-type="rule"] line');
+        for (const [i, name] of ["x1", "y1", "x2", "y2"].entries()) {
+            expect(Number(line.getAttribute(name))).toBeCloseTo(expected[i], 1);
+        }
+    }
+);
+
+test.each([4, 250])(
+    "bounds distant rule endpoints with overscan for a %s px stroke",
+    async (size) => {
+        const svg = await render({
+            data: { values: [{}] },
+            mark: {
+                type: "rule",
+                size,
+                strokeCap: "round",
+            },
+            encoding: {
+                x: { value: -1000 },
+                x2: { value: 1000 },
+                y: { value: 0.5 },
+            },
+        });
+        const line = svg.querySelector('[data-mark-type="rule"] line');
+        const margin = Math.max(100, size + 1);
+        expect(Number(line.getAttribute("x1"))).toBe(-margin);
+        expect(Number(line.getAttribute("x2"))).toBe(100 + margin);
+    }
+);
+
 test.each(["link", "arrow"])(
     "hides a %s when both clamped endpoints coincide",
     async (type) => {
@@ -75,6 +127,78 @@ test.each(["link", "arrow"])(
             },
         });
         expect(svg.querySelector(`[data-mark-type="${type}"]`)).toBeNull();
+    }
+);
+
+test("implicit rule clipping preserves visible overflow beyond a small child view", async () => {
+    const { view } = await createHeadlessEngine({
+        data: {
+            values: [
+                { y: 1, y2: -3 },
+                { y: -2, y2: -3 },
+            ],
+        },
+        mark: { type: "rule", clip: false, size: 4 },
+        encoding: {
+            x: { value: 0.5 },
+            y: { field: "y", type: "quantitative", scale: null },
+            y2: { field: "y2" },
+            color: { value: "black" },
+        },
+    });
+    // A 100 px child can paint throughout the taller output with clip:false.
+    const coords = Rectangle.create(0, 0, 100, 100);
+    const context = new SvgViewRenderingContext(
+        { picking: false },
+        { width: 100, height: 400 }
+    );
+    view.arrange(context, coords, {});
+    expect(
+        Array.from(context.getSvg().querySelectorAll("line"), (line) => [
+            Number(line.getAttribute("y1")),
+            Number(line.getAttribute("y2")),
+        ])
+    ).toEqual([
+        [0, 400],
+        [300, 400],
+    ]);
+
+    const buffer = new SoftwarePickingBuffer(100, 400);
+    const rasterizer = new SoftwarePickingRasterizer(buffer);
+    view.arrange(
+        new SoftwarePickingViewRenderingContext({
+            width: 100,
+            height: 400,
+            devicePixelRatio: 1,
+            getRasterizer: () => rasterizer,
+        }),
+        coords,
+        {}
+    );
+    expect(buffer.read(50, 350)).toBeGreaterThan(0);
+    view.dispose();
+});
+
+test.each([false, true])(
+    "hides zero-length rules with clamp:%s before minimum-length expansion",
+    async (clamp) => {
+        const svg = await render({
+            data: { values: [{}] },
+            mark: {
+                type: "rule",
+                clamp,
+                minLength: 20,
+                strokeCap: "round",
+                size: 10,
+            },
+            encoding: {
+                x: { value: 0.5 },
+                x2: { value: 0.5 },
+                y: { value: 0.5 },
+                y2: { value: 0.5 },
+            },
+        });
+        expect(svg.querySelector('[data-mark-type="rule"] line')).toBeNull();
     }
 );
 
