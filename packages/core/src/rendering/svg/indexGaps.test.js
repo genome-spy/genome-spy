@@ -9,6 +9,8 @@ test("half-open rectangles keep pixel gaps on resize, hide when exhausted, and r
             values: [
                 { start: 0, end: 10 },
                 { start: 10, end: 20 },
+                { start: 10, end: 0 },
+                { start: 10, end: 10 },
             ],
         },
         scales: {
@@ -38,8 +40,14 @@ test("half-open rectangles keep pixel gaps on resize, hide when exhausted, and r
         const rects = Array.from(
             svg.querySelectorAll('[data-mark-type="rect"] rect')
         );
-        expect(rects).toHaveLength(width > 6 ? 2 : 0);
+        expect(rects).toHaveLength(width > 6 ? 3 : 0);
         if (rects.length) {
+            // Reversing endpoints preserves geometry; an empty interval stays hidden.
+            for (const attr of ["x", "width"]) {
+                expect(rects[2].getAttribute(attr)).toBe(
+                    rects[0].getAttribute(attr)
+                );
+            }
             const end =
                 Number(rects[0].getAttribute("x")) +
                 Number(rects[0].getAttribute("width"));

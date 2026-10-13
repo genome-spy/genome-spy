@@ -3,7 +3,7 @@ import { activeMatchResolvedSelectionPredicate } from "../../selection/selection
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
 import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
-import { GAP_PEER, getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
+import { getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
 import {
     packHighPrecisionU32Array,
     packHighPrecisionU32ArrayInto,
@@ -393,12 +393,7 @@ function createBranchEncoder(mark, encoder, branch) {
                 constant: accessor.constant ?? encoder.constant,
                 branches: [branch],
                 scale,
-                channelDef: getGapPeer(encoder.channelDef)
-                    ? {
-                          ...accessor.channelDef,
-                          [GAP_PEER]: getGapPeer(encoder.channelDef),
-                      }
-                    : (accessor.channelDef ?? encoder.channelDef),
+                channelDef: accessor.channelDef ?? encoder.channelDef,
             }
         )
     );

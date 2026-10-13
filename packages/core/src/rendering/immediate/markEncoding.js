@@ -108,22 +108,17 @@ function createGapProjection(encoder, extent, peer) {
         /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (scale);
     const mapping = indexScale.gapMapping(extent);
     if (!mapping) return;
+
+    const accessor = encoder.branches[0].accessor;
+    const def = accessor.channelDef;
+    const peerAccessor =
+        peer && getGapPeer(encoder.channelDef) && peer.branches[0].accessor;
+    const defaultBand = peerAccessor ? 0 : 0.5;
+    const band = "band" in def ? (def.band ?? defaultBand) : defaultBand;
+
     return (/** @type {object} */ datum) => {
-        const branch = encoder.branches.find((branch) =>
-            branch.predicate(datum)
-        );
-        if (!branch.accessor.scaleChannel)
-            return Number(branch.accessor(datum));
-        const def = branch.accessor.channelDef;
-        const defaultBand = getGapPeer(encoder.channelDef) ? 0 : 0.5;
-        const band = "band" in def ? (def.band ?? defaultBand) : defaultBand;
-        const value = Number(branch.accessor(datum));
-        const peerBranch =
-            getGapPeer(encoder.channelDef) &&
-            peer?.branches.find((branch) => branch.predicate(datum));
-        const before =
-            !!peerBranch?.accessor.scaleChannel &&
-            value > Number(peerBranch.accessor(datum));
+        const value = Number(accessor(datum));
+        const before = !!peerAccessor && value > Number(peerAccessor(datum));
         return mapping.position(value, band, before);
     };
 }

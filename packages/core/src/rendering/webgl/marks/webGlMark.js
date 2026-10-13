@@ -18,7 +18,6 @@ import {
     generateDatumGlslAndUniform,
     generateDynamicValueGlslAndUniform,
     generateScaleGlsl,
-    generateGapPeerGlsl,
     getAttributeAndArrayTypes,
     getDiscretizingDomainForGlsl,
     getRangeForGlsl,
@@ -66,8 +65,6 @@ import {
 } from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
 import { gapRank, hasGroupingGaps } from "../../../genome/indexGapMapping.js";
-
-import { getGapPeer } from "../../../marks/markUtils.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -635,7 +632,6 @@ export default class WebGLMark {
             }
         };
 
-        const gapPeerCode = [];
         for (const [channel, encoder] of Object.entries(encoders)) {
             if (!shaderChannels.includes(channel)) {
                 continue;
@@ -647,18 +643,6 @@ export default class WebGLMark {
 
             for (let i = 0; i < branches.length; i++) {
                 addAccessor(channel, branches[i].accessor, i, scale);
-            }
-
-            const peer = getGapPeer(channelDef);
-            if (peer && scale && hasGroupingGaps(scale.props)) {
-                const helper = generateGapPeerGlsl(
-                    channel,
-                    peer,
-                    encoders[peer],
-                    emitSelectionLeaf
-                );
-                attributeCode.add(helper.declaration);
-                gapPeerCode.push(helper.code);
             }
 
             // Generate scale if needed -------------------------------
@@ -750,8 +734,6 @@ export default class WebGLMark {
                 )
             );
         }
-
-        scaleCode.push(...gapPeerCode);
 
         // Check membership in any selection referenced by conditional encoders.
         const conditions = appearanceSelections.map((root) =>
