@@ -27,17 +27,6 @@ contains only current work that still has a concrete renderer or Core consumer.
 - Adding registries, a renderer scene graph, per-facet marks, or speculative
   backend abstractions.
 
-## Active integration: fixed-size index grouping gaps
-
-The generic index scale accepts cuts, a logical-pixel gap width, and endpoint
-side. One packed cut buffer per mark is shared by paired channels and updated
-independently of domain/range uniforms. Statically disabled scales omit helpers,
-uniforms, and bindings. The Core adapter supplies resolved cuts and fractional
-viewport-edge ranks; layout and navigation remain Core responsibilities.
-
-GPU precision, picking, retained updates, placement, and final Core example
-checks are tracked in `plans/scale-grouping-gaps/scale-grouping-gaps-plan.md`.
-
 ## Active integration: selection predicate composition
 
 The renderer uses one recursive predicate tree for channel conditions,
