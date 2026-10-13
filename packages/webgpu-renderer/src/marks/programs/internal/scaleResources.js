@@ -74,9 +74,10 @@ export class ScaleResourceManager {
         /** @type {Map<string, ChannelResources>} */
         this._channelResources = new Map();
 
-        /** @type {Map<string, { updateDomain: (domain: unknown) => boolean, updateRange: (range: unknown) => boolean }>} */
+        /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }>} */
         this._scaleUpdaters = new Map();
-        /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, range: readonly number[], axis: "x" | "y", ranks: readonly number[] | undefined}>} */
+
+        /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, ranks: readonly number[] | undefined}>} */
         this._gapScales = new Map();
     }
 
@@ -202,10 +203,6 @@ export class ScaleResourceManager {
                 domain: this._unpackDomain(scale.domain ?? [0, 1]),
                 width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
                 ranks: scale.gapDomain,
-                range: /** @type {number[]} */ (
-                    scale.range ?? this._getDefaultScaleRange(name)
-                ),
-                axis: scale.gapAxis ?? (name.startsWith("y") ? "y" : "x"),
             });
             this._updateGapCuts();
             this.updateGapWidth(
@@ -257,7 +254,7 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @returns {{ updateDomain: (domain: unknown) => boolean, updateRange: (range: unknown) => boolean }}
+     * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }}
      */
     getScaleUpdater(name) {
         const updater = this._scaleUpdaters.get(name);
@@ -298,7 +295,7 @@ export class ScaleResourceManager {
      * @param {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} params.analysis
      * @param {ReturnType<typeof getScaleResourceRequirements>} params.requirements
      * @param {"continuous"|"threshold"|"piecewise"|null} params.kind
-     * @returns {{ updateDomain: (domain: unknown) => boolean, updateRange: (range: unknown) => boolean }}
+     * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }}
      */
     _buildScaleUpdater({ name, channel, scale, analysis, requirements, kind }) {
         const useRangeTexture = analysis.useRangeTexture;
@@ -584,54 +581,20 @@ export class ScaleResourceManager {
                 : () => false;
 
         return {
-            updateDomain: (domain) => {
+            updateDomain: (domain, ranks) => {
                 const result = updateDomain(domain);
                 const gaps = this._gapScales.get(name);
                 if (gaps) {
                     gaps.domain = this._unpackDomain(
                         /** @type {number[]} */ (domain)
                     );
-                    gaps.ranks = undefined;
+                    gaps.ranks = ranks;
                     this._updateGapGeometry(name);
                 }
                 return result;
             },
-            updateRange: (range) => {
-                const result = updateRange(range);
-                const gaps = this._gapScales.get(name);
-                if (gaps)
-                    gaps.range = /** @type {number[]} */ (
-                        range ?? defaultRange
-                    );
-                return result;
-            },
+            updateRange,
         };
-    }
-
-    /** Reject overfull layouts consistently with CPU scale mapping.
-     * @param {number} widthFactor
-     * @param {number} heightFactor
-     */
-    validateGapCapacity(widthFactor, heightFactor) {
-        for (const {
-            cuts,
-            width,
-            domain,
-            range,
-            ranks,
-            axis,
-        } of this._gapScales.values()) {
-            const factor = axis === "x" ? widthFactor : heightFactor;
-            const available = Math.abs(range[1] - range[0]) * factor;
-            const count =
-                (ranks?.[1] ?? cutRank(cuts, domain[1], true)) -
-                (ranks?.[0] ?? cutRank(cuts, domain[0]));
-            if (factor > 0 && available > 0 && count * width >= available) {
-                throw new Error(
-                    "Grouping gaps exhaust the available axis extent."
-                );
-            }
-        }
     }
 
     /** @param {readonly number[]} domain */
@@ -660,7 +623,6 @@ export class ScaleResourceManager {
         )
             return false;
         gaps.cuts = cuts;
-        gaps.ranks = undefined;
         const rebind = this._updateGapCuts();
         this._updateGapGeometry(name);
         return rebind;
@@ -671,12 +633,6 @@ export class ScaleResourceManager {
         if (width != null && (!Number.isFinite(width) || width < 0))
             throw new Error("Gap width must be finite and nonnegative.");
         this._getGaps(name).width = width ?? 0;
-        this._updateGapGeometry(name);
-    }
-
-    /** @param {string} name @param {readonly number[] | undefined} ranks */
-    updateGapDomain(name, ranks) {
-        this._getGaps(name).ranks = ranks;
         this._updateGapGeometry(name);
     }
 
@@ -730,12 +686,6 @@ export class ScaleResourceManager {
         return rebind;
     }
 
-    /**
-     * @param {string} name
-     * @param {ChannelConfigResolved} channel
-     * @param {ChannelScale} scale
-     * @returns {void}
-     */
     /**
      * @param {string} name
      * @param {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} value

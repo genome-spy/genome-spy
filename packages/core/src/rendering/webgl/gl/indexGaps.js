@@ -11,6 +11,11 @@ uniform highp usampler2D uGapCuts_${name};
 uniform highp int uGapCount_${name};
 uniform highp vec4 uGapGeometry_${name};
 
+bool gapFits_${name}(vec2 range) {
+    return abs(range.y - range.x) * ${axis} >
+        uGapGeometry_${name}.x * (uGapGeometry_${name}.z - uGapGeometry_${name}.y);
+}
+
 int gapRank_${name}(uvec2 value, bool before) {
     int lo = 0;
     int hi = uGapCount_${name};

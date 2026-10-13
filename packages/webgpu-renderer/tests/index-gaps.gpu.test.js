@@ -289,7 +289,83 @@ test("unequal placements keep the same logical-pixel gaps", async ({
     expect(result.error).toBeUndefined();
 });
 
-test("conditional endpoints retain initial partial edge gaps", async ({
+test("exhausted per-instance placements hide clamped marks and recover", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { rectMark },
+            { indexScale },
+            { identityScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/rect.js"),
+            import("/src/scales/index.js"),
+            import("/src/scales/identity.js"),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 100;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 100, height: 100, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
+        const placements = renderer.createPlacementSet({
+            rectangles: new Float32Array([0, 0, 1, 0.45, 0, 0.5, 1, 0.45]),
+        });
+        const scale = indexScale({
+            domain: [0, 20],
+            range: [0, 100],
+            gapPositions: [10],
+            gapWidth: 6,
+            band: 0,
+        });
+        const handle = renderer.createMark(rectMark, {
+            count: 2,
+            placementIndex: { data: new Uint32Array([0, 1]), type: "u32" },
+            channels: {
+                uniqueId: { data: new Uint32Array([1, 2]), type: "u32" },
+                x: { value: 0, type: "u32", scale },
+                x2: { value: 20, type: "u32", scale },
+                xClampRange: { value: [0, 100] },
+                y: { value: 0, scale: identityScale() },
+                y2: { value: 100, scale: identityScale() },
+                fill: { value: [0, 0, 1, 1] },
+                strokeOpacity: { value: 0 },
+            },
+        });
+        const picks = [];
+        for (const width of [1, 0.06, 0.04, 1]) {
+            placements.replace({
+                rectangles: new Float32Array([
+                    0,
+                    0,
+                    width,
+                    0.45,
+                    0,
+                    0.5,
+                    1,
+                    0.45,
+                ]),
+            });
+            renderer.render({
+                draws: [{ mark: handle, placement: { set: placements } }],
+            });
+            await renderer.device.queue.onSubmittedWorkDone();
+            picks.push(await renderer.pick(2, 20), await renderer.pick(50, 75));
+        }
+        const error = await renderer.device.popErrorScope();
+        placements.destroy();
+        renderer.destroy();
+        canvas.remove();
+        return { picks, error: error?.message };
+    });
+    expect(result.picks).toEqual([1, 2, null, 2, null, 2, 1, 2]);
+    expect(result.error).toBeUndefined();
+});
+
+test("conditional endpoints retain partial edge gaps across domain updates", async ({
     page,
 }) => {
     await ensureWebGPU(page);
@@ -351,17 +427,24 @@ test("conditional endpoints retain initial partial edge gaps", async ({
                 strokeOpacity: { value: 0 },
             },
         });
-        renderer.render({ draws: [{ mark: handle }] });
-        await renderer.device.queue.onSubmittedWorkDone();
-        const picks = await Promise.all([
-            renderer.pick(1, 25),
-            renderer.pick(4, 25),
-        ]);
+        const picks = [];
+        for (const domain of [
+            [10, 30],
+            [10, 20],
+        ]) {
+            handle.batchUpdates(() => {
+                handle.scales.x.conditions[0].setDomain(domain, [0.5, 1]);
+                handle.scales.x2.setDomain(domain, [0.5, 1]);
+            });
+            renderer.render({ draws: [{ mark: handle }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+            picks.push(await renderer.pick(1, 25), await renderer.pick(4, 25));
+        }
         const error = await renderer.device.popErrorScope();
         renderer.destroy();
         canvas.remove();
         return { picks, error: error?.message };
     });
-    expect(result.picks).toEqual([null, 1]);
+    expect(result.picks).toEqual([null, 1, null, 1]);
     expect(result.error).toBeUndefined();
 });

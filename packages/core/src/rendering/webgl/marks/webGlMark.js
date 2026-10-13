@@ -24,6 +24,7 @@ import {
     getRangeForGlsl,
     makeAttributeName,
     PARAM_PREFIX,
+    RANGE_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SELECTION_EMPTY_PREFIX,
     SELECTION_MEMBERSHIP_PREFIX,
@@ -78,7 +79,7 @@ const ORDER_PASS_VALUES = {
 };
 
 /**
- * Replaces the conditional-order insertion point without relying on the
+ * Replaces the vertex visibility insertion point without relying on the
  * whitespace retained by the GLSL build plugin.
  *
  * @param {string} shaderCode
@@ -87,7 +88,7 @@ const ORDER_PASS_VALUES = {
 export function replaceOrderGuard(shaderCode, guardCode) {
     return shaderCode.replace(
         /#pragma orderGuard(?:[ \t]*\r?\n){0,2}/,
-        guardCode
+        guardCode ? guardCode + "\n" : ""
     );
 }
 
@@ -788,22 +789,31 @@ export default class WebGLMark {
                 "#pragma markUniforms",
                 dynamicMarkUniforms.join("\n")
             );
-        const addOrderGuard = (/** @type {string} */ shaderCode) =>
-            replaceOrderGuard(
-                shaderCode,
-                order
-                    ? "    if (uOrderMode != 0 &&\n" +
-                          "        (((uOrderMode & 3) == 1) != isOrderMatch())) {\n" +
-                          "        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);\n" +
-                          "        return;\n" +
-                          "    }"
-                    : ""
+        const hidden = [];
+        if (order) {
+            hidden.push(
+                "(uOrderMode != 0 && (((uOrderMode & 3) == 1) != isOrderMatch()))"
             );
+        }
+        for (const axis of /** @type {const} */ (["x", "y"])) {
+            const scale = encoders[axis]?.scale;
+            if (scale && hasGroupingGaps(scale.props)) {
+                hidden.push(`!gapFits_${axis}(${RANGE_PREFIX}${axis})`);
+            }
+        }
 
         extraHeaders = extraHeaders.map(addDynamicMarkUniforms);
         vertexShader = addDynamicMarkUniforms(vertexShader);
         fragmentShader = addDynamicMarkUniforms(fragmentShader);
-        vertexShader = addOrderGuard(vertexShader);
+        vertexShader = replaceOrderGuard(
+            vertexShader,
+            hidden.length
+                ? `    if (${hidden.join(" || ")}) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }`
+                : ""
+        );
 
         const gapY =
             encoders.y?.scale && hasGroupingGaps(encoders.y.scale.props);

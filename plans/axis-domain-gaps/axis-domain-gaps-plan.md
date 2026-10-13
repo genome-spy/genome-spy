@@ -435,6 +435,26 @@ create a review-fix commit when fixes belong in an earlier milestone's commit.
 
 ## Acceptance and plan disposition
 
+### Follow-up simplification
+
+- [x] Hide exhausted gap placements instead of rejecting container resizes.
+      GPU visibility guards replace CPU capacity validation and instance scans;
+      CPU occurrence traversal hides the same geometry. Inversion/navigation
+      use ordinary domain mapping while space is exhausted.
+- [x] Update WebGPU domains and optional fractional ranks atomically through
+      `setDomain(domain, ranks)`, removing the separate rank setter and reset/
+      restore ordering. Combine identical value/series scale initialization.
+- [x] Verify resize recovery and picking on both axes in WebGL, WebGPU, Canvas,
+      and SVG, including the heatmap with axes/outlines. All 4,950 unit tests,
+      nine focused GPU tests, workspace type checks, lint, and release checks
+      passed. Final browser review caught and fixed guard/preprocessor newline
+      separation, with a focused regression assertion.
+
+This follow-up removes 68 runtime production lines net against `012444633`
+(107 added and 175 deleted under the same parser-token counting policy; tests,
+docs, examples, and declarations excluded). The rectangle-baseline net growth
+therefore becomes +411. Existing user example edits remain outside this commit.
+
 Clamping is available on all seven mark types and defaults off. Enabled index
 and locus axes have finite continuous pieces separated by actual gaps;
 disabled axes retain the existing viewport line. The heatmap's group rectangles

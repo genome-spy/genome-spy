@@ -7,6 +7,7 @@ import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
 import { hasIndexGaps, INDEX_GAPS_WGSL } from "../scales/indexGaps.js";
+import { rangeVec2 } from "../scales/scaleEmitUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_MAP_PREFIX,
@@ -180,7 +181,10 @@ export function buildMarkShader({
     const domainMapChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.needsDomainMap
     );
-    const hasGaps = channelIRs.some((ir) => hasIndexGaps(ir.channel.scale));
+    const gapChannels = channelIRs.filter((ir) =>
+        hasIndexGaps(ir.channel.scale)
+    );
+    const hasGaps = gapChannels.length > 0;
     if (hasGaps) {
         const binding = bindingIndex++;
         resourceBindings.push({
@@ -205,7 +209,8 @@ export function buildMarkShader({
     );
     const visibilityPredicate = buildVisibilityPredicate({
         predicate: visibleWhen,
-        functionName: order ? "isInstanceVisibleBase" : "isInstanceVisible",
+        functionName:
+            order || hasGaps ? "isInstanceVisibleBase" : "isInstanceVisible",
         channelIRs,
         channelNames,
         inputNames,
@@ -223,17 +228,30 @@ export function buildMarkShader({
               selectionDefs,
           })
         : "";
-    const orderVisibility = order
-        ? /* wgsl */ `
+    const gapChecks = gapChannels.map(({ name, channel }) => {
+        const axis =
+            channel.scale.gapAxis ?? (name.startsWith("y") ? "y" : "x");
+        return `indexGapsFit(${rangeVec2(name)}, params.gapGeometry_${name}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
+    });
+    const instanceVisibility =
+        order || hasGaps
+            ? /* wgsl */ `
 fn isInstanceVisible(i: u32) -> bool {
     if (!isInstanceVisibleBase(i)) { return false; }
+    ${hasGaps ? `if (!(${gapChecks.join(" && ")})) { return false; }` : ""}
+    ${
+        order
+            ? /* wgsl */ `
     if (globals.orderPass == 0u) { return true; }
     let matches = isInstanceOrderMatch(i);
     return ((globals.orderPass & 3u) == 1u && matches) ||
         ((globals.orderPass & 3u) == 2u && !matches);
+    `
+            : "return true;"
+    }
 }
 `
-        : "";
+            : "";
 
     /**
      * @param {string} name
@@ -1115,7 +1133,7 @@ ${visibilityPredicate}
 
 ${orderPredicate}
 
-${orderVisibility}
+${instanceVisibility}
 
 fn premultiplyAlpha(color: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(color.rgb * color.a, color.a);

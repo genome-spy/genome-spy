@@ -3,6 +3,55 @@ import { expect, test } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createSvg } from "./index.js";
 
+test.each(["point", "rect"])(
+    "%s marks disappear when gaps exhaust the view and recover on resize",
+    async (type) => {
+        const { view } = await createHeadlessEngine({
+            data: {
+                values: [
+                    { start: 0, end: 10 },
+                    { start: 10, end: 20 },
+                ],
+            },
+            scales: {
+                x: {
+                    type: "index",
+                    domain: [0, 19],
+                    gapPositions: [10],
+                    gapWidth: 6,
+                },
+            },
+            mark: { type: /** @type {"point" | "rect"} */ (type), clamp: true },
+            encoding: {
+                x: { field: "start", type: "index", axis: null },
+                ...(type === "rect" ? { x2: { field: "end" } } : {}),
+                y: { value: 0.5 },
+                ...(type === "rect" ? { y2: { value: 1 } } : {}),
+                fill: { value: "steelblue" },
+            },
+        });
+        try {
+            for (const width of [100, 6, 4, 100]) {
+                const { svg, warnings } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: width,
+                    logicalHeight: 50,
+                    background: null,
+                });
+                const selector = type === "rect" ? "rect" : "circle";
+                expect(
+                    svg.querySelectorAll(
+                        `[data-mark-type="${type}"] ${selector}`
+                    )
+                ).toHaveLength(width > 6 ? 2 : 0);
+                expect(warnings).toEqual([]);
+            }
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
+
 test("half-open rectangles separate at cuts and keep CSS gap widths on resize", async () => {
     const { view } = await createHeadlessEngine({
         data: {

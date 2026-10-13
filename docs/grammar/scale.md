@@ -230,8 +230,10 @@ entirely within one gap is an active, zero-span selection that matches no data;
 linked scales keep their last valid domain until the brush has a nonzero span.
 
 `gapWidth` and `gapPositions` accept expressions. Constant zero/null width or
-constant empty/null positions completely disables grouping gaps. The total
-visible gap width must leave room for the data within the axis extent.
+constant empty/null positions completely disables grouping gaps. If visible
+gaps consume the whole axis extent, affected marks are hidden until space is
+available again. Pointer inversion and navigation use the ordinary domain
+mapping while the marks are hidden.
 
 Axis domain lines follow grouping gaps automatically. Their pieces stop at the
 viewport edges during navigation; outer scale padding remains uncovered.

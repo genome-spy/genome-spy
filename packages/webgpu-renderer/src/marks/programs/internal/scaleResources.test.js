@@ -283,7 +283,7 @@ describe("grouping gap resources", () => {
         expect(buffers[1].destroy).toHaveBeenCalledOnce();
     });
 
-    it("rejects overfull actual placements before drawing", () => {
+    it("updates domains and fractional ranks together without replacing cuts", () => {
         const channel = {
             type: /** @type {const} */ ("u32"),
             data: new Uint32Array([0]),
@@ -292,15 +292,23 @@ describe("grouping gap resources", () => {
             scale: {
                 type: "index",
                 domain: [0, 20],
-                range: [0, 10],
+                range: [0, 100],
                 gapPositions: [10],
                 gapWidth: 6,
             },
         };
-        const { manager } = createManager({ x: channel });
+        const { manager, uniforms, buffers } = createManager({ x: channel });
         manager.initializeScale("x", channel, channel.scale);
-        expect(() => manager.validateGapCapacity(1, 1)).not.toThrow();
-        expect(() => manager.validateGapCapacity(0.5, 1)).toThrow("exhaust");
+        const updater = manager.getScaleUpdater("x");
+        updater.updateDomain([10, 20], [0.5, 1]);
+        expect(uniforms.get("gapGeometry_x")).toEqual([6, 0.5, 1, 1]);
+
+        // Cut updates retain explicit ranks, matching Core's scale setters.
+        manager.updateGapPositions("x", [5, 10]);
+        expect(uniforms.get("gapGeometry_x")).toEqual([6, 0.5, 1, 1]);
+        updater.updateDomain([10, 20]);
+        expect(uniforms.get("gapGeometry_x")).toEqual([6, 2, 2, 0]);
+        expect(buffers).toHaveLength(2);
         manager.destroy();
     });
 });

@@ -64,6 +64,36 @@ test("zero/null/empty gap configurations use ordinary mapping", () => {
     expect(scale(10)).toBe(50);
 });
 
+test.each([
+    [0, 1],
+    [1, 0],
+])(
+    "exhausted range %j recovers on resize and keeps navigation defined",
+    (start, end) => {
+        let width = 100;
+        const scale = scaleIndex()
+            .domain([0, 20])
+            .range([start, end])
+            .gapPositions([10])
+            .gapWidth(6)
+            .axisLength(() => width);
+
+        for (width of [6, 4]) {
+            expect(scale.gapMapping().fits).toBe(false);
+            expect(scale(5)).toBeNaN();
+            expect(scale.invert(0.25)).toBeCloseTo(start === 0 ? 5 : 15);
+            expect(scale.gapMapping().navigate(2, 0.5, 0).domain).toEqual([
+                -10, 30,
+            ]);
+        }
+        width = 100;
+        expect(scale.gapMapping().fits).toBe(true);
+        expect(
+            Math.abs(scale.position(10) - scale.position(10, 0, true)) * width
+        ).toBeCloseTo(6);
+    }
+);
+
 test("returns band starts with defaults", () => {
     const scale = scaleIndex();
 

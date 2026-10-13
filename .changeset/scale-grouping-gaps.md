@@ -7,3 +7,5 @@ Add fixed-size grouping gaps to positional index and locus scales with flat
 reactive configuration that redraws immediately. Gaps retain their CSS pixel
 widths during navigation; half-open interval endpoints and interval selection
 use the same boundaries across WebGL, WebGPU, Canvas, and SVG rendering.
+When resizing leaves insufficient room for the gaps and data, affected marks
+temporarily hide and recover as space becomes available, without a rendering error.

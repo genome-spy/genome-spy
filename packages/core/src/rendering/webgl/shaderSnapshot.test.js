@@ -174,10 +174,11 @@ async function captureShaderSources(spec, unitName) {
 
 describe("generated shader snapshots", () => {
     test("order guard survives production GLSL minification", () => {
-        const shader = "void main(void) {\n#pragma orderGuard\nfloat x = 0.0;}";
+        const shader =
+            "void main(void) {\n#pragma orderGuard\n#if defined(CLAMP_X)\nfloat x = 0.0;\n#endif\n}";
         const result = replaceOrderGuard(shader, "if (hidden) return;");
 
-        expect(result).toContain("if (hidden) return;");
+        expect(result).toContain("if (hidden) return;\n#if defined(CLAMP_X)");
         expect(result).not.toContain("#pragma orderGuard");
     });
 

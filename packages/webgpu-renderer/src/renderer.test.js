@@ -439,48 +439,6 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
-    test("validates placement capacity using logical rows before glyph expansion", () => {
-        const program = Object.assign(createProgram(), {
-            _placementIndex: {
-                data: new Uint32Array([0, 1, 0]),
-                type: /** @type {const} */ ("u32"),
-            },
-            resolveDrawRange: () => ({ firstInstance: 12, instanceCount: 5 }),
-        });
-        const { renderer } = createRendererHarness();
-        renderer._placementBindGroupLayout =
-            /** @type {GPUBindGroupLayout} */ ({});
-        const placements = renderer.createPlacementSet({
-            rectangles: new Float32Array([0, 0, 1, 0.5, 0, 0.5, 1, 0.5]),
-        });
-        const mark = renderer.createMark(
-            Object.freeze({ type: "custom", createProgram: () => program }),
-            { channels: {} }
-        );
-
-        renderer.render({
-            draws: [
-                {
-                    mark,
-                    firstInstance: 1,
-                    instanceCount: 1,
-                    placement: { set: placements },
-                },
-            ],
-        });
-
-        expect(program.validateGroupingGaps).toHaveBeenCalledWith(
-            expect.any(Float32Array),
-            undefined,
-            1,
-            1
-        );
-        expect(program.draw).toHaveBeenCalledWith(
-            expect.anything(),
-            expect.objectContaining({ firstInstance: 12, instanceCount: 5 })
-        );
-    });
-
     test("retains effective state across consecutive placement draws", () => {
         const pipeline = /** @type {GPURenderPipeline} */ ({});
         const markBindGroup = /** @type {GPUBindGroup} */ ({});
@@ -1279,7 +1237,6 @@ function createProgram(antialiasing = "shader") {
         replaceSeries: series.replace,
         updateValues: vi.fn(),
         debugResources: vi.fn(),
-        validateGroupingGaps: vi.fn(),
         prepareDraw: vi.fn(),
         preparePick: vi.fn(),
         draw: vi.fn(),

@@ -569,7 +569,13 @@ function compileResourceBindings(
  */
 function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
     if (scaleSlot && channel.scale) {
-        if ("domain" in channel.scale) {
+        if (channel.scale.gapEnabled) {
+            add(
+                key + ":domain",
+                () => [channel.scale.domain, channel.scale.gapDomain],
+                ([domain, ranks]) => scaleSlot.setDomain(domain, ranks)
+            );
+        } else if ("domain" in channel.scale) {
             add(
                 key + ":domain",
                 () => channel.scale.domain,
@@ -595,13 +601,6 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 key + ":gapWidth",
                 () => channel.scale.gapWidth,
                 (value) => scaleSlot.setGapWidth(value)
-            );
-            // Domain updates reset edge ranks even when the ranks themselves
-            // compare equal. Publish them together with the numeric domain.
-            add(
-                key + ":gapDomain",
-                () => [channel.scale.domain, channel.scale.gapDomain],
-                (value) => scaleSlot.setGapDomain(value[1])
             );
         }
     }

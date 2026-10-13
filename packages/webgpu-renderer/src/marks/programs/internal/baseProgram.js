@@ -14,7 +14,6 @@ import {
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
-import { hasIndexGaps } from "../../scales/indexGaps.js";
 
 let debugResourcesEnabled = false;
 
@@ -821,7 +820,6 @@ export default class BaseProgram {
             group.setRange = slot.setRange;
             group.setGapPositions = slot.setGapPositions;
             group.setGapWidth = slot.setGapWidth;
-            group.setGapDomain = slot.setGapDomain;
         };
 
         /**
@@ -927,14 +925,9 @@ export default class BaseProgram {
                 this._scaleResources.updateGapWidth(name, width);
                 this._queueSlotUpdate(false);
             },
-            setGapDomain: (ranks) => {
+            setDomain: (domain, ranks) => {
                 this._assertAlive();
-                this._scaleResources.updateGapDomain(name, ranks);
-                this._queueSlotUpdate(false);
-            },
-            setDomain: (domain) => {
-                this._assertAlive();
-                const needsRebind = updater.updateDomain(domain);
+                const needsRebind = updater.updateDomain(domain, ranks);
                 this._queueSlotUpdate(needsRebind);
             },
             setRange: (range) => {
@@ -1176,40 +1169,21 @@ export default class BaseProgram {
      */
     _initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (isSeriesChannelConfig(channel) && channel.scale) {
+            if (
+                (isSeriesChannelConfig(channel) ||
+                    isValueChannelConfig(channel)) &&
+                channel.scale
+            ) {
                 this._scaleResources.initializeScale(
                     name,
                     channel,
                     channel.scale
                 );
                 const updater = this._scaleResources.getScaleUpdater(name);
-                updater.updateDomain(channel.scale.domain);
-                if (hasIndexGaps(channel.scale)) {
-                    this._scaleResources.updateGapDomain(
-                        name,
-                        channel.scale.gapDomain
-                    );
-                }
-                const rangeValue =
-                    channel.scale.range ?? this.getDefaultScaleRange(name);
-                if (rangeValue !== undefined) {
-                    updater.updateRange(rangeValue);
-                }
-            }
-            if (isValueChannelConfig(channel) && channel.scale) {
-                this._scaleResources.initializeScale(
-                    name,
-                    channel,
-                    channel.scale
+                updater.updateDomain(
+                    channel.scale.domain,
+                    channel.scale.gapDomain
                 );
-                const updater = this._scaleResources.getScaleUpdater(name);
-                updater.updateDomain(channel.scale.domain);
-                if (hasIndexGaps(channel.scale)) {
-                    this._scaleResources.updateGapDomain(
-                        name,
-                        channel.scale.gapDomain
-                    );
-                }
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
                 if (rangeValue !== undefined) {
@@ -1257,39 +1231,6 @@ export default class BaseProgram {
         );
     }
     // Uniform packing lives in utils/uniformBuffer.js.
-
-    /** @param {Float32Array} [rectangles] @param {number} [index]
-     * @param {number} [firstInstance] @param {number} [instanceCount]
-     */
-    validateGroupingGaps(
-        rectangles,
-        index,
-        firstInstance = 0,
-        instanceCount = this.drawCount
-    ) {
-        if (!this._scaleResources._gapScales.size) return;
-        if (!rectangles) {
-            this._scaleResources.validateGapCapacity(1, 1);
-        } else if (index !== undefined) {
-            this._scaleResources.validateGapCapacity(
-                rectangles[index * 4 + 2],
-                rectangles[index * 4 + 3]
-            );
-        } else {
-            const indices = /** @type {{data: Uint32Array}} */ (
-                this._placementIndex
-            ).data;
-            const used = new Set(
-                indices.subarray(firstInstance, firstInstance + instanceCount)
-            );
-            for (const placement of used) {
-                this._scaleResources.validateGapCapacity(
-                    rectangles[placement * 4 + 2],
-                    rectangles[placement * 4 + 3]
-                );
-            }
-        }
-    }
 
     /**
      * @param {import("../../../index.d.ts").RenderPassState} state

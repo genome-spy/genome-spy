@@ -159,8 +159,8 @@ export type ChannelCondition =
       };
 
 export type ScaleSlotHandle = {
-    /** Update the scale domain; shape changes require mark recreation. */
-    setDomain(domain: number[]): void;
+    /** Update the domain and optional fractional gap ranks together; omit ranks for ordinary fitting. */
+    setDomain(domain: number[], gapRanks?: readonly number[]): void;
     /** Update the scale range or interpolator; shape changes require mark recreation. */
     setRange(
         range: Array<number | number[] | string> | ColorInterpolatorFn
@@ -169,8 +169,6 @@ export type ScaleSlotHandle = {
     setGapPositions(positions: readonly number[] | null): void;
     /** Update gap width in logical pixels. */
     setGapWidth(width: number | null): void;
-    /** Fractional cut ranks at viewport edges; omit for ordinary domain fitting. */
-    setGapDomain(ranks: readonly number[] | undefined): void;
 };
 
 export type ValueSlotHandle = {
@@ -1282,13 +1280,6 @@ export type MarkProgram<
     replaceSeries(channels: TSeries, count?: number): void;
     updateValues(values: Record<string, number | number[]>): void;
     debugResources(label?: string): void;
-    /** Validate fixed grouping gaps against the actual draw placements. */
-    validateGroupingGaps(
-        rectangles?: Float32Array,
-        index?: number,
-        firstInstance?: number,
-        instanceCount?: number
-    ): void;
     prepareDraw(state: RenderPassState, options: ProgramDrawOptions): void;
     preparePick(state: RenderPassState, options: ProgramDrawOptions): void;
     draw(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;

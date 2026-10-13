@@ -57,6 +57,10 @@ fn gapPlacementFactor(i: u32, axis: u32) -> f32 {
 #endif
 }
 
+fn indexGapsFit(range: vec2<f32>, geometry: vec4<f32>, placement: f32) -> bool {
+    return abs(range.y - range.x) * placement > geometry.x * (geometry.z - geometry.y);
+}
+
 fn scaleIndexGaps(value: vec2<u32>, domain: vec3<f32>, range: vec2<f32>,
     table: vec2<u32>, geometry: vec4<f32>, paddingInner: f32,
     paddingOuter: f32, align: f32, band: f32, before: bool, placement: f32) -> f32 {

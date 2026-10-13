@@ -258,10 +258,11 @@ after scale evaluation. Convert the uniform gap size with the final placement
 extent or apply its contribution at the appropriate stage. DPR changes affect
 raster resolution, not the gap's CSS size. Export uses its own final layout.
 
-An overfull fit is rejected when fixed gaps exhaust a nonzero placement
-extent. CPU mapping and both renderers validate this condition for actual
-submitted placements. Gaps are never silently shrunk, data slopes are never
-reversed, and cuts are never discarded to accommodate a fit.
+When fixed gaps exhaust a placement extent, affected geometry is hidden until
+space becomes available again. GPU visibility guards handle each placement
+without CPU scans of instance indices; CPU occurrence traversal applies the
+same visibility rule. Inversion and navigation temporarily use ordinary domain
+mapping. Gaps are never shrunk and cuts are never discarded to accommodate a fit.
 
 ## Current implementation and ownership
 

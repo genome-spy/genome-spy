@@ -89,11 +89,11 @@ export function createIndexGapMapping({
     const direction = Math.sign(rangeSpan);
     const firstRank = ranks?.[0] ?? gapRank(cuts, domain[0]);
     const lastRank = ranks?.[1] ?? gapRank(cuts, domain[1], true);
-    const gap = width * direction;
+    const fits = Math.abs(rangeSpan) > width * (lastRank - firstRank);
+    // Keep inversion and navigation usable while exhausted placements are hidden.
+    const gapWidth = fits ? width : 0;
+    const gap = gapWidth * direction;
     const dataRange = rangeSpan - gap * (lastRank - firstRank);
-    if (Math.abs(rangeSpan) > 0 && dataRange * direction <= 0) {
-        throw new Error("Grouping gaps exhaust the available axis extent.");
-    }
     const step =
         dataRange /
         Math.max(
@@ -104,6 +104,7 @@ export function createIndexGapMapping({
 
     /** @param {number} value @param {number} [band] @param {boolean} [before] */
     function position(value, band = 0, before = false) {
+        if (!fits) return NaN;
         const index = Math.floor(value);
         return (
             start +
@@ -121,28 +122,30 @@ export function createIndexGapMapping({
     function invertPoint(pixel, slope = step, origin = start) {
         const distance = (pixel - origin) * direction;
         const dataStep = slope * direction;
+        if (dataStep === 0) return { value: domain[0], rank: firstRank };
         let lo = 0;
         let hi = cuts.length;
         while (lo < hi) {
             const mid = (lo + hi) >>> 1;
             const after =
                 (cuts[mid] - domain[0]) * dataStep +
-                width * (mid + 1 - firstRank);
+                gapWidth * (mid + 1 - firstRank);
             if (after < distance) lo = mid + 1;
             else hi = mid;
         }
-        if (lo < cuts.length && width > 0) {
+        if (lo < cuts.length && gapWidth > 0) {
             const before =
-                (cuts[lo] - domain[0]) * dataStep + width * (lo - firstRank);
+                (cuts[lo] - domain[0]) * dataStep + gapWidth * (lo - firstRank);
             if (distance >= before) {
                 return {
                     value: cuts[lo],
-                    rank: lo + (distance - before) / width,
+                    rank: lo + (distance - before) / gapWidth,
                 };
             }
         }
         return {
-            value: domain[0] + (distance - width * (lo - firstRank)) / dataStep,
+            value:
+                domain[0] + (distance - gapWidth * (lo - firstRank)) / dataStep,
             rank: lo,
         };
     }
@@ -205,6 +208,7 @@ export function createIndexGapMapping({
     }
 
     return {
+        fits,
         position,
         invertPoint,
         navigate,

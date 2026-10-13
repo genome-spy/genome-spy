@@ -1053,12 +1053,6 @@ export class Renderer {
                     "Per-instance placement marks forbid a draw-level index."
                 );
             }
-            mark.validateGroupingGaps(
-                set._rectangles,
-                index,
-                firstInstance,
-                instanceCount
-            );
             placement = {
                 bindGroup: set.bindGroup,
                 count: set.count,
@@ -1091,8 +1085,6 @@ export class Renderer {
             throw new RendererError(
                 "Placement bindings require a placement-enabled mark."
             );
-        } else {
-            mark.validateGroupingGaps();
         }
 
         if (scissor.width <= 0 || scissor.height <= 0) {

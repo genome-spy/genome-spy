@@ -252,7 +252,10 @@ Grouping gaps use exact split-integer cut keys and binary-search insertion ranks
 The rank multiplied by a uniform CSS gap width is the offset; navigation never
 rewrites cuts or mark series. WebGL owns one integer texture per resolution;
 WebGPU packs and deduplicates tables in one mark-owned storage binding. Actual
-placement sizes convert gap widths and validate that fitting leaves room for data.
+placement sizes convert gap widths. GPU visibility guards hide marks when gaps
+leave no room for data; CPU occurrence traversal applies the same rule. Inversion
+and navigation use ordinary domain mapping until space becomes available again.
+WebGPU domain updates carry optional fractional gap ranks atomically.
 
 Literal zero/null width or empty/null cuts specialize out every gap helper,
 uniform, and GPU resource. Reactive zero/empty values retain that specialization's

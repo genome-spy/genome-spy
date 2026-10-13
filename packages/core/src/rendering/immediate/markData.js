@@ -2,6 +2,7 @@ import Rectangle from "../../view/layout/rectangle.js";
 
 /** @type {object[]} */
 const EMPTY_DATA = [];
+const AXES = /** @type {const} */ (["x", "y"]);
 
 /**
  * Reuses one materialized rectangle while visiting mark occurrences. Rendering
@@ -159,7 +160,7 @@ export function visitMarkOccurrences(
             coords,
             options.sampleFacetRenderingOptions
         );
-        if (!mark.properties.clamp || occurrenceCoords.height > 0) {
+        if (isOccurrenceVisible(mark, occurrenceCoords)) {
             visitor(occurrenceCoords, data);
         }
     } else if (mark.encoders.facetIndex) {
@@ -173,16 +174,36 @@ export function visitMarkOccurrences(
                 facetIndex
             );
             if (occurrenceCoords) {
-                if (!mark.properties.clamp || occurrenceCoords.height > 0) {
+                if (isOccurrenceVisible(mark, occurrenceCoords)) {
                     visitor(occurrenceCoords, facetData);
                 }
             } else {
                 onMissingFacet(facetIndex);
             }
         }
-    } else {
+    } else if (isOccurrenceVisible(mark, coords)) {
         visitor(coords, data);
     }
+}
+
+/** @param {import("../../marks/mark.js").default} mark
+ * @param {Rectangle} coords
+ */
+function isOccurrenceVisible(mark, coords) {
+    if (mark.properties.clamp && coords.height <= 0) return false;
+    for (const axis of AXES) {
+        const scale = mark.encoders[axis]?.scale;
+        if (scale && "gapMapping" in scale) {
+            const extent = axis === "x" ? coords.width : coords.height;
+            if (
+                /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+                    scale
+                ).gapMapping(extent)?.fits === false
+            )
+                return false;
+        }
+    }
+    return true;
 }
 
 /**
