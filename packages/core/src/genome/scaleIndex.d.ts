@@ -16,7 +16,6 @@ export interface ScaleIndex {
         | undefined;
 
     gapPositions(): readonly number[];
-    domainWithGaps(domain: readonly number[], ranks: readonly number[]): this;
     gapPositions(positions: readonly number[] | null): this;
 
     gapWidth(): number;
@@ -26,10 +25,9 @@ export interface ScaleIndex {
     axisLength(extent: number | (() => number)): this;
 
     gapDomain(): readonly number[] | undefined;
-    gapDomain(ranks: readonly number[] | undefined): this;
 
     domain(): number[];
-    domain(_: Iterable<number>): this;
+    domain(_: Iterable<number>, ranks?: readonly number[]): this;
 
     range(): number[];
     range(_: Iterable<number>): this;

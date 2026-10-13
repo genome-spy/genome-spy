@@ -81,6 +81,14 @@ test("domain() clamps the minimum domain span to one", () => {
 
     scale.domain([1.75, 2.25]);
     expect(scale.domain()).toEqual([1.5, 2.5]);
+
+    // Navigation can leave a gap at the viewport edge with less than one data band.
+    scale.domain([10, 10.5], [0.5, 1]);
+    expect(scale.copy().domain()).toEqual([10, 10.5]);
+    expect(scale.copy().gapDomain()).toEqual([0.5, 1]);
+    scale.domain(scale.domain());
+    expect(scale.domain()).toEqual([9.75, 10.75]);
+    expect(scale.gapDomain()).toBeUndefined();
 });
 
 test("bandwidth() is positive and respects inner padding", () => {
@@ -160,7 +168,7 @@ test("navigation retains partial gaps and the data slope while panning", () => {
     expect(next.domain[0]).toBe(10);
     expect(next.ranks[0]).toBeGreaterThan(0);
     expect(next.ranks[0]).toBeLessThan(1);
-    scale.domainWithGaps(next.domain, next.ranks);
+    scale.domain(next.domain, next.ranks);
     expect(scale.gapMapping().step).toBeCloseTo(previous.step);
     expect(scale(10)).toBeCloseTo(previous.position(10) - 6);
     expect(scale.invert(2)).toBe(10);

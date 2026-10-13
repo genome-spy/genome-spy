@@ -48,8 +48,8 @@ export default class ScaleInstanceManager {
     /** @type {() => ViewParamRuntime} */
     #getRuntime;
 
-    /** @type {import("../paramRuntime/types.js").ParamRef<readonly any[]>} */
-    #domain;
+    /** @type {import("../paramRuntime/types.js").ParamRef<Pick<import("./domainLifecycle.js").DomainState, "visibleDomain" | "gapDomain">>} */
+    #domainState;
 
     /** @type {import("../paramRuntime/types.js").OperationRef<MappingConfiguration | null>} */
     mapping;
@@ -72,7 +72,7 @@ export default class ScaleInstanceManager {
     /** @type {(domain: any[]) => void} */
     #onDomainChange;
 
-    /** @type {(domain: any[]) => void} */
+    /** @type {(domain: any[], ranks?: readonly number[]) => void} */
     #mirrorDomain;
 
     /** @type {() => import("../genome/genomeStore.js").default | undefined} */
@@ -80,9 +80,6 @@ export default class ScaleInstanceManager {
 
     /** @type {() => number} */
     #getAxisLength;
-
-    /** @type {import("../paramRuntime/types.js").WritableParamRef<readonly number[] | undefined>} */
-    #gapDomain;
 
     #initializingRange = false;
 
@@ -154,7 +151,7 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {import("../spec/scale.js").Scale} props
-     * @param {(domain: any[]) => import("../paramRuntime/types.js").ParamRef<readonly any[]>} initializeDomain Before range expressions bind.
+     * @param {(domain: any[]) => import("../paramRuntime/types.js").ParamRef<Pick<import("./domainLifecycle.js").DomainState, "visibleDomain" | "gapDomain">>} initializeDomain Before range expressions bind.
      * @returns {ScaleWithProps}
      */
     createScale(props, initializeDomain) {
@@ -179,15 +176,11 @@ export default class ScaleInstanceManager {
             ).axisLength(this.#getAxisLength);
         this.#mirrorDomain = scale.domain;
         if (scale.type !== "null")
-            this.#domain = initializeDomain(scale.domain());
+            this.#domainState = initializeDomain(scale.domain());
         this.#setRange = scale.range;
         if (!this.#runtime) {
             this.#runtime = new ViewParamRuntime(() => this.#getRuntime());
             this.#rangeCommand = this.#runtime.signal("range command", null);
-            this.#gapDomain = this.#runtime.signal(
-                "gap viewport edges",
-                undefined
-            );
             this.mapping = this.#runtime.operation(
                 "scale mapping",
                 [],
@@ -197,9 +190,22 @@ export default class ScaleInstanceManager {
                 },
                 { equals: equalMapping }
             );
-            // If profiling shows range() expressions are hot during domain animation,
-            // expose a range-only dependency instead of making them follow mapping.
-            this.#runtime.effect([this.mapping], this.#onRangeChange);
+            let previous = this.mapping.get();
+            this.#runtime.effect([this.mapping], () => {
+                const mapping = this.mapping.get();
+                const settingsChanged =
+                    previous &&
+                    (mapping.gapWidth !== previous.gapWidth ||
+                        !shallowArrayEquals(
+                            mapping.gapPositions,
+                            previous.gapPositions
+                        ));
+                previous = mapping;
+                // Domain commands belong to terminal propagation, not operation application.
+                if (mapping.gapDomain && settingsChanged)
+                    this.#onDomainChange(Array.from(mapping.domain));
+                else this.#onRangeChange();
+            });
         }
         this.#initializingRange = true;
         try {
@@ -285,7 +291,7 @@ export default class ScaleInstanceManager {
         const dependencies =
             scale.type === "null"
                 ? []
-                : [this.#domain, this.#rangeCommand, this.#gapDomain];
+                : [this.#domainState, this.#rangeCommand];
         /** @param {any} value */
         const bind = (value) => {
             if (!isExprRef(value)) return () => value;
@@ -334,11 +340,13 @@ export default class ScaleInstanceManager {
                 (previous?.scale === scale && previous?.props === props)
                     ? undefined
                     : this.#prepareMapping(props);
+            const state =
+                scale.type === "null" ? null : this.#domainState.get();
             return {
                 scale,
                 props,
-                domain: scale.type === "null" ? [] : this.#domain.get(),
-                gapDomain: this.#gapDomain.get(),
+                domain: state ? state.visibleDomain : [],
+                gapDomain: state?.gapDomain,
                 gapPositions,
                 gapWidth: width(null),
                 configuredRange,
@@ -365,14 +373,7 @@ export default class ScaleInstanceManager {
     }
 
     /** @param {MappingConfiguration} configuration */
-    #applyMapping({
-        props,
-        range,
-        prepared,
-        gapPositions,
-        gapWidth,
-        gapDomain,
-    }) {
+    #applyMapping({ props, range, prepared, gapPositions, gapWidth }) {
         // Reset can leave a queued update behind while scale recreation fails.
         if (!this.#scale || this.#scale.type === "null") return;
         if (prepared) {
@@ -399,16 +400,9 @@ export default class ScaleInstanceManager {
                 /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
                     this.#scale
                 );
-            const positionsChanged = !shallowArrayEquals(
-                scale.gapPositions(),
-                gapPositions
-            );
-            const widthChanged = scale.gapWidth() !== (gapWidth ?? 0);
-            if (positionsChanged) scale.gapPositions(gapPositions);
-            if (widthChanged) scale.gapWidth(gapWidth);
-            scale.gapDomain(gapDomain);
-            if ((positionsChanged || widthChanged) && gapDomain)
-                this.#onDomainChange(scale.domain());
+            if (!shallowArrayEquals(scale.gapPositions(), gapPositions))
+                scale.gapPositions(gapPositions);
+            if (scale.gapWidth() !== (gapWidth ?? 0)) scale.gapWidth(gapWidth);
         }
     }
 
@@ -443,12 +437,7 @@ export default class ScaleInstanceManager {
      * @param {readonly number[]} [ranks]
      */
     mirrorDomain(domain, ranks) {
-        if (ranks)
-            /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
-                this.#scale
-            ).domainWithGaps(domain, ranks);
-        else this.#mirrorDomain(Array.from(domain));
-        this.#gapDomain?.set(ranks);
+        this.#mirrorDomain(Array.from(domain), ranks);
     }
 
     /**

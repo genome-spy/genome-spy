@@ -1462,7 +1462,7 @@ export default class ScaleResolution {
                         this.#domainState.gapDomain
                     );
                 }
-                return this.#domainRuntime.domain;
+                return this.#domainRuntime.stateRef;
             });
             this.bindDomainInputs();
             return scale;

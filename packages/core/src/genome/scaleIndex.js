@@ -102,13 +102,7 @@ export default function scaleIndex() {
         (y - getStart()) / getStep() + domain[0];
 
     scale.gapMapping = getGapMapping;
-    scale.domainWithGaps = (values, ranks) => {
-        domain = Array.from(values);
-        domainSpan = domain[1] - domain[0];
-        gapDomain = ranks;
-        gapMappings.clear();
-        return scale;
-    };
+
     // @ts-expect-error Getter/setter overloads.
     scale.gapPositions = function (_) {
         if (!arguments.length) return gapPositions;
@@ -136,24 +130,23 @@ export default function scaleIndex() {
         return scale;
     };
 
-    // @ts-expect-error Getter/setter overloads.
-    scale.gapDomain = function (_) {
-        if (!arguments.length) return gapDomain;
-        gapDomain = _;
-        gapMappings.clear();
-        return scale;
-    };
+    scale.gapDomain = () => gapDomain;
 
     // @ts-expect-error
-    scale.domain = function (_) {
+    scale.domain = function (_, ranks) {
         if (arguments.length) {
             gapMappings.clear();
-            gapDomain = undefined;
+            gapDomain = ranks;
             domain = extent(_);
             domainSpan = domain[1] - domain[0];
             const uninitializedDomain = domain[0] === 0 && domain[0] === 0;
 
-            if (domainSpan < minimumDomainSpan && !uninitializedDomain) {
+            // Fractional edge ranks preserve exact navigation through a gap.
+            if (
+                !ranks &&
+                domainSpan < minimumDomainSpan &&
+                !uninitializedDomain
+            ) {
                 domainSpan = minimumDomainSpan;
                 const centroid = (domain[0] + domain[1]) / 2;
                 domain[0] = centroid - domainSpan / 2;
@@ -271,7 +264,7 @@ export default function scaleIndex() {
 
     scale.copy = () => {
         const copy = scaleIndex()
-            .domain(domain)
+            .domain(domain, gapDomain)
             .range(range)
             .paddingInner(paddingInner)
             .paddingOuter(paddingOuter)
@@ -279,10 +272,8 @@ export default function scaleIndex() {
             .numberingOffset(numberingOffset)
             .gapPositions(gapPositions)
             .gapWidth(gapWidth)
-            .axisLength(axisLength)
-            .gapDomain(gapDomain);
+            .axisLength(axisLength);
         if (scale.props) Object.assign(copy, { props: scale.props });
-        if (gapDomain) copy.domainWithGaps(domain, gapDomain);
         return copy;
     };
 
