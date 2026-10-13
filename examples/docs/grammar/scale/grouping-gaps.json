@@ -1,9 +1,11 @@
 {
-  "description": "Grouping gaps separate clustered heatmap rows and columns while keeping their pixel widths during zooming.",
+  "description": [
+    "Grouped heatmap",
+    "Grouping gaps separate clustered heatmap rows and columns while keeping their pixel widths during zooming."
+  ],
 
-  "width": 450,
-  "height": 220,
   "data": { "sequence": { "start": 0, "stop": 200, "as": "cell" } },
+
   "transform": [
     { "type": "formula", "expr": "datum.cell % 20", "as": "column" },
     { "type": "formula", "expr": "floor(datum.cell / 20)", "as": "row" },
@@ -15,17 +17,22 @@
   ],
 
   "mark": "rect",
+
   "encoding": {
     "x": {
       "field": "column",
       "type": "index",
-      "scale": { "gapPositions": [5, 12], "gapWidth": 8, "zoom": true }
+      "scale": { "domain": [0, 19], "gapPositions": [5, 12], "gapWidth": 8 }
     },
     "y": {
       "field": "row",
       "type": "index",
-      "scale": { "gapPositions": [4, 7], "gapWidth": 8, "zoom": true }
+      "scale": { "domain": [0, 9], "gapPositions": [4, 7], "gapWidth": 8 }
     },
-    "color": { "field": "value", "type": "quantitative" }
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "legend": { "style": null }
+    }
   }
 }

@@ -1,10 +1,8 @@
 # Scale groups, mark clamping, and gapped axis domain lines
 
-Status: implementation authorized. The earlier unsupported-feature decision is
-superseded by the reusable group-data and mark-clamping design below.
-Commit the current baseline first, then commit each verified milestone.
-The uncommitted rect-clamping implementation is a starting point to review and
-generalize, not a completed milestone.
+Status: implemented, verified, and independently reviewed. All four milestones
+and the follow-up simplification are complete. The earlier unsupported-feature
+decision was superseded by reusable group data and shared mark clamping.
 
 ## Goals and boundaries
 
@@ -462,8 +460,13 @@ come from the same source and keep visible outline strokes during navigation.
 All render/picking/export paths agree, and navigation does not regenerate group
 data. Constant-disabled gaps retain their zero-resource specialization.
 
-No user decision is currently required. The reference/readiness and text/culling
-review gates must expose any implementation mismatch before broadening the
-architecture. Reconcile completed or discarded tasks before retirement and
-preserve that record in Git history
-before deleting this temporary plan for a PR.
+The final documentation uses
+`examples/docs/grammar/data/lazy/scale-groups.json` for the outlined heatmap,
+alongside the minimal heatmap and hg38 chromosome examples in the scale docs.
+The redundant core examples were removed. All three documentation examples
+have freshly captured, visually inspected screenshots. Schema validation,
+formatting, the nine example-macro tests, and release-policy checks pass.
+
+All implementation, integration, and review tasks are complete. No unresolved
+findings or user decisions remain. Commit this final record, then retire this
+temporary plan before creating the PR.

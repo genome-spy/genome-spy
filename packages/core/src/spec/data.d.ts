@@ -360,8 +360,9 @@ export interface ScaleGroupsData {
     /**
      * One or both positional channels, without duplicates. Each contributes
      * `xGroup`, `xStart`, `xEnd` or the corresponding `y` fields. Two channels
-     * produce their Cartesian product. Encode boundaries with `band: 0` in a
-     * view with `domainInert: true` that shares the data-bearing view's scales.
+     * produce their Cartesian product. Boundaries are half-open interval
+     * endpoints. Guide views should share the data-bearing view's scales and
+     * set `domainInert: true`.
      */
     channels: ("x" | "y")[];
 }

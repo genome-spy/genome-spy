@@ -569,10 +569,16 @@ Completed verification:
   generic renderer Storybook build, release policy check, and release status
   check pass. A Core minor Changeset records the feature.
 
-The representative examples are
-`examples/docs/grammar/scale/grouping-gaps.json` and
-`examples/core/scale-grouping-gaps.json`. The latter demonstrates reactive
-width and the chromosome shorthand; the former has cuts on both axes.
+The final representative examples are
+`examples/docs/grammar/scale/grouping-gaps.json`,
+`examples/docs/grammar/scale/chromosome-gaps.json`, and
+`examples/docs/grammar/data/lazy/scale-groups.json`. They cover gaps on both
+axes, hg38 chromosome boundaries with fixed 5 px gaps, and generated group
+outlines. The redundant core examples were removed. All three documentation
+examples have freshly captured, visually inspected screenshots. Schema
+validation, formatting, the nine example-macro tests, and release-policy
+checks pass. Reactive-width behavior remains covered by the integration
+verification above.
 
 Deliberately discarded verification duplication:
 
@@ -612,6 +618,7 @@ outside this feature's scope. Ordinary numeric readouts intentionally show the
 cut coordinate within a gap; fractional rank metadata stays internal to
 navigation.
 
-The reconciled plan remains on this feature branch. Commit its completed and
-discarded record, then delete it in a later commit before PR creation or merge,
-following the repository planning workflow.
+All five milestones and the requested independent review are complete. The
+discarded verification duplication and out-of-scope extensions are recorded
+above; no unresolved findings or decisions remain. Commit this final record,
+then retire the temporary plan before PR creation.

@@ -33,51 +33,6 @@ Some lazy sources also support advanced
 [URL templates and multiple files](multi-url.md), which are useful in complex
 cohort visualizations that load per-sample signal or partitioned variant files.
 
-## Scale groups
-
-The `"scaleGroups"` source generates intervals for outlines and guides around
-[index or locus scale groups](../scale.md#grouping-gaps). It uses the same
-`lazy` grammar as on-demand sources, but generates its rows synchronously and
-keeps them unchanged during pan, zoom, and resize.
-
-```json
-{ "data": { "lazy": { "type": "scaleGroups", "channels": ["x", "y"] } } }
-```
-
-One channel produces `xGroup`, `xStart`, and `xEnd` (or the corresponding `y`
-fields). Two channels produce the Cartesian product of their groups, costing
-one row per pair. Group numbers start at zero in ascending data order and can
-change when cuts change. With gaps disabled, an axis contributes one interval.
-
-Boundaries are numeric half-open coordinates, restricted to the nonnegative
-index coordinate space. Locus intervals span the full
-assembly, including chromosomes without loaded data. Index intervals use an
-authored domain when present, otherwise the finalized initial data reference.
-That inferred reference stays fixed when later streaming data arrives. A
-reactive authored domain can provide changing full bounds. Selection-linked
-domains use their independent full reference rather than the selection.
-
-An outline layer shares the data-bearing view's scales and sets view-level
-`domainInert: true` so its generated endpoints do not enlarge those domains.
-Encode both boundaries with `band: 0`, for example:
-
-```json
-{
-  "domainInert": true,
-  "data": { "lazy": { "type": "scaleGroups", "channels": ["x"] } },
-  "mark": { "type": "rule", "clamp": "x", "clip": false },
-  "encoding": {
-    "x": { "field": "xStart", "type": "index", "band": 0 },
-    "x2": { "field": "xEnd", "band": 0 },
-    "y": { "value": 0 }
-  }
-}
-```
-
-### Parameters {#scale-groups-parameters}
-
-SCHEMA ScaleGroupsData
-
 ## Indexed FASTA
 
 The `"indexedFasta"` source enable fast random access to a reference sequence.
@@ -387,3 +342,47 @@ SCHEMA AxisGenomeData
 ### Example
 
 EXAMPLE examples/docs/grammar/data/lazy/axis-genome.json height=150 spechidden
+
+## Scale groups
+
+The `"scaleGroups"` source generates intervals for outlines and guides around
+[index or locus scale groups](../scale.md#grouping-gaps). It uses the same
+`lazy` grammar as on-demand sources, but generates its rows synchronously and
+keeps them unchanged during pan, zoom, and resize.
+
+```json
+{ "data": { "lazy": { "type": "scaleGroups", "channels": ["x", "y"] } } }
+```
+
+One channel produces `xGroup`, `xStart`, and `xEnd` (or the corresponding `y`
+fields). Two channels produce the Cartesian product of their groups, costing
+one row per pair. Group numbers start at zero in ascending data order and can
+change when cuts change. With gaps disabled, an axis contributes one interval.
+
+Boundaries are numeric half-open coordinates, restricted to the nonnegative
+index coordinate space. Locus intervals span the full
+assembly, including chromosomes without loaded data. Index intervals use an
+authored domain when present, otherwise the finalized initial data reference.
+That inferred reference stays fixed when later streaming data arrives. A
+reactive authored domain can provide changing full bounds. Selection-linked
+domains use their independent full reference rather than the selection.
+
+An outline layer shares the data-bearing view's scales and sets view-level
+`domainInert: true` so its generated endpoints do not enlarge those domains.
+
+### Parameters {#scale-groups-parameters}
+
+SCHEMA ScaleGroupsData
+
+### Example
+
+This heatmap has three column groups and three row groups. The `scaleGroups`
+source generates their nine combinations, and the final layer draws a gray
+rectangle around each group above the cells. The generated `xStart`/`xEnd` and
+`yStart`/`yEnd` fields provide the rectangle's half-open interval endpoints.
+
+EXAMPLE examples/docs/grammar/data/lazy/scale-groups.json height=320
+
+Mark-local [`clamp: true`](../mark/index.md#clamping-positions) keeps outline
+endpoints within the viewport, while `clip: false` keeps the full strokes
+visible at its edges.

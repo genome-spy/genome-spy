@@ -209,12 +209,14 @@ EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
 ### Grouping gaps
 
 Index and locus scales can separate groups with gaps that keep their width
-while zooming and panning. Heatmaps can use independent cuts on both axes:
+while zooming and panning. `gapPositions: [5, 12]` inserts gaps before indices
+5 and 12, and `gapWidth: 8` sets their width to 8 CSS pixels, independent of
+device pixel ratio.
 
-EXAMPLE examples/docs/grammar/scale/grouping-gaps.json height=300
+Heatmaps can use independent gaps on both axes:
 
-`gapPositions: [5, 12]` inserts gaps before indices 5 and 12. The width is
-measured in CSS pixels; it does not change with zoom or device pixel ratio.
+EXAMPLE examples/docs/grammar/scale/grouping-gaps.json height=280
+
 Band centers and widths remain independent of the following gap. As with other
 scale properties, gaps can be configured in an encoding's `scale` or a view's
 `scales` declaration, including shared scales.
@@ -222,6 +224,11 @@ scale properties, gaps can be configured in an encoding's `scale` or a view's
 For chromosome boundaries, set `gapPositions: "chromosomes"` on a locus scale.
 The boundaries come from that scale's assembly, so the same configuration works
 on linear genomic tracks and scales bound to different assemblies.
+
+This example uses hg38 chromosome intervals from the
+[`axisGenome` source](data/lazy.md#axis-genome), with a 5 px gap between chromosomes:
+
+EXAMPLE examples/docs/grammar/scale/chromosome-gaps.json height=150
 
 Half-open ranges ending at a cut stop before the gap, while ranges starting
 there begin after it. A range crossing an internal cut spans the gap normally.
@@ -235,14 +242,10 @@ gaps consume the whole axis extent, affected marks are hidden until space is
 available again. Pointer inversion and navigation use the ordinary domain
 mapping while the marks are hidden.
 
-Axis domain lines follow grouping gaps automatically. Their pieces stop at the
-viewport edges during navigation; outer scale padding remains uncovered.
-`axis: { "domain": false }` hides the line as usual.
-
-The [scaleGroups data source](data/lazy.md#scale-groups) generates the same
-half-open intervals for custom guides and group outlines, including the
-Cartesian product of groups on two axes. Combine it with mark-local
-[`clamp`](mark/index.md#clamping-positions) to keep outlines at the viewport edges.
+Axis domain lines follow grouping gaps automatically. The [scaleGroups data
+source](data/lazy.md#scale-groups) generates the same half-open intervals for
+custom guides and group outlines, including the Cartesian product of groups on
+two axes.
 
 ## Nested offset scales
 
