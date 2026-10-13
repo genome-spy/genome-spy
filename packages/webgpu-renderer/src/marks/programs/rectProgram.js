@@ -98,14 +98,6 @@ fn clampMinSize(pos: ptr<function, f32>, frac: f32, size: f32, minSize: f32) -> 
     return 1.0;
 }
 
-fn sort(a: ptr<function, f32>, b: ptr<function, f32>) {
-    if (*a > *b) {
-        let tmp = *b;
-        *b = *a;
-        *a = tmp;
-    }
-}
-
 fn sdRoundedBox(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
     let pair = select(r.zw, r.xy, p.x > 0.0);
     let radius = select(pair.y, pair.x, p.y > 0.0);
@@ -317,28 +309,19 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
-    var x = getScaled_x(i) + getScaled_xOffset(i);
-    var x2 = getScaled_x2(i) + getScaled_x2Offset(i);
-    var y = getScaled_y(i) + getScaled_yOffset(i);
-    var y2 = getScaled_y2(i) + getScaled_y2Offset(i);
-    sort(&x, &x2);
-    sort(&y, &y2);
-
-#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
     let a = projectClampedPosition(vec2<f32>(getScaled_x(i), getScaled_y(i)),
         vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i)), i);
     let b = projectClampedPosition(vec2<f32>(getScaled_x2(i), getScaled_y2(i)),
         vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i)), i);
-    x = min(a.x, b.x);
-    x2 = max(a.x, b.x);
-    y = min(a.y, b.y);
-    y2 = max(a.y, b.y);
+    var x = min(a.x, b.x);
+    var x2 = max(a.x, b.x);
+    let y = min(a.y, b.y);
+    let y2 = max(a.y, b.y);
 #if defined(xClampRange_DEFINED)
     if (x == x2) { return culledRect(); }
 #endif
 #if defined(yClampRange_DEFINED)
     if (y == y2) { return culledRect(); }
-#endif
 #endif
 #if !defined(xClampRange_DEFINED)
     // Keep far-off endpoints close enough to avoid triangle precision loss.

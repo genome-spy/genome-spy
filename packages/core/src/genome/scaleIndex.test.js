@@ -8,14 +8,15 @@ test("grouping gaps separate half-open endpoints without stretching bands", () =
         .gapPositions([10])
         .gapWidth(6);
 
-    const before = scale.position(10, 0, true);
-    const after = scale.position(10);
+    const mapping = scale.gapMapping();
+    const before = mapping.position(10, 0, true);
+    const after = scale(10);
     expect(after - before).toBeCloseTo(6);
-    expect(scale.position(9, 1)).toBeCloseTo(before);
-    expect(scale.position(9, 0.5) - scale(9)).toBeCloseTo(
+    expect(mapping.position(9, 1)).toBeCloseTo(before);
+    expect(mapping.position(9, 0.5) - scale(9)).toBeCloseTo(
         scale.bandwidth() / 2
     );
-    expect(scale.position(20, 0, true) - scale(0)).toBeCloseTo(100);
+    expect(mapping.position(20, 0, true) - scale(0)).toBeCloseTo(100);
     for (const pixel of [before, before + 1, after - 1, after]) {
         expect(scale.invert(pixel)).toBeCloseTo(10);
     }
@@ -30,14 +31,13 @@ test("gap width uses the final placement extent and preserves reversed output", 
         .axisLength(100);
 
     for (const extent of [100, 200]) {
-        const before = scale.position(10, 0, true, extent);
-        const after = scale.position(10, 0, false, extent);
+        const mapping = scale.gapMapping(extent);
+        const before = mapping.position(10, 0, true);
+        const after = mapping.position(10);
         expect((before - after) * extent).toBeCloseTo(6);
-        expect(
-            scale.gapMapping(extent).invertPoint((before + after) / 2).value
-        ).toBe(10);
+        expect(mapping.invertPoint((before + after) / 2).value).toBe(10);
     }
-    expect(scale.copy().position(10)).toBe(scale.position(10));
+    expect(scale.copy()(10)).toBe(scale(10));
 });
 
 test("returns band starts with defaults", () => {
@@ -162,7 +162,7 @@ test("navigation retains partial gaps and the data slope while panning", () => {
     expect(next.ranks[0]).toBeLessThan(1);
     scale.domainWithGaps(next.domain, next.ranks);
     expect(scale.gapMapping().step).toBeCloseTo(previous.step);
-    expect(scale.position(10)).toBeCloseTo(previous.position(10) - 6);
+    expect(scale(10)).toBeCloseTo(previous.position(10) - 6);
     expect(scale.invert(2)).toBe(10);
-    expect(scale.copy().position(10)).toBeCloseTo(scale.position(10));
+    expect(scale.copy()(10)).toBeCloseTo(scale(10));
 });

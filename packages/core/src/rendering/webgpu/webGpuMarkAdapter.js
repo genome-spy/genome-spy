@@ -153,81 +153,45 @@ export function createWebGpuMarkConfig(
         : placementIndex;
 
     const markType = mark.getType();
+    /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */
+    let definition;
+
+    /** @type {Record<string, any>} */
+    let config;
+
     if (markType == "point") {
-        return createTranslation(
-            pointMark,
-            addOccurrenceConfig(
-                createPointConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex,
-                mark,
-                coords
-            ),
-            mark
-        );
+        definition = pointMark;
+        config = createPointConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "rect") {
-        return createTranslation(
-            rectMark,
-            addOccurrenceConfig(
-                createRectConfig(
-                    mark,
-                    data,
-                    coords,
-                    readViewOpacity,
-                    typeof viewOpacity != "function"
-                ),
-                resolvedPlacementIndex,
-                mark,
-                coords
-            ),
-            mark
+        definition = rectMark;
+        config = createRectConfig(
+            mark,
+            data,
+            coords,
+            readViewOpacity,
+            typeof viewOpacity != "function"
         );
     } else if (markType == "rule" || markType == "tick") {
-        return createTranslation(
-            ruleMark,
-            addOccurrenceConfig(
-                createRuleConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex,
-                mark,
-                coords
-            ),
-            mark
-        );
+        definition = ruleMark;
+        config = createRuleConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "text") {
-        return createTranslation(
-            textMark,
-            addOccurrenceConfig(
-                createTextConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex,
-                mark,
-                coords
-            ),
-            mark
-        );
+        definition = textMark;
+        config = createTextConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "link") {
-        return createTranslation(
-            linkMark,
-            addOccurrenceConfig(
-                createLinkConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex,
-                mark,
-                coords
-            ),
-            mark
-        );
+        definition = linkMark;
+        config = createLinkConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "arrow") {
-        return createTranslation(
-            arrowMark,
-            addOccurrenceConfig(
-                createArrowConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex,
-                mark,
-                coords
-            ),
-            mark
-        );
+        definition = arrowMark;
+        config = createArrowConfig(mark, data, coords, readViewOpacity);
+    } else {
+        throw unsupported(mark, `Mark type "${markType}" is not supported.`);
     }
 
-    throw unsupported(mark, `Mark type "${markType}" is not supported.`);
+    return createTranslation(
+        definition,
+        addOccurrenceConfig(config, resolvedPlacementIndex, mark, coords),
+        mark
+    );
 }
 
 /**

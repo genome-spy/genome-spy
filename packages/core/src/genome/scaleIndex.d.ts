@@ -7,14 +7,6 @@ export interface ScaleIndex {
 
     invert(x: number): number;
 
-    /** Place within a band using the final logical axis extent. */
-    position(
-        value: number,
-        band?: number,
-        before?: boolean,
-        extent?: number
-    ): number;
-
     gapMapping(
         extent?: number
     ):

@@ -189,21 +189,10 @@ export function createSelectionRectSpec({
 function makeSelectionRectFilterExpression(selectionExpression, channels) {
     return [
         selectionExpression + ".type === 'interval'",
-        ...channels.map(
-            (channel) =>
-                selectionExpression +
-                ".intervals." +
-                channel +
-                " != null && " +
-                selectionExpression +
-                ".intervals." +
-                channel +
-                "[0] < " +
-                selectionExpression +
-                ".intervals." +
-                channel +
-                "[1]"
-        ),
+        ...channels.map((channel) => {
+            const interval = `${selectionExpression}.intervals.${channel}`;
+            return `${interval} != null && ${interval}[0] < ${interval}[1]`;
+        }),
     ].join(" && ");
 }
 

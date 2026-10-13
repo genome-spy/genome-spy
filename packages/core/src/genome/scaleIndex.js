@@ -109,13 +109,6 @@ export default function scaleIndex() {
         gapMappings.clear();
         return scale;
     };
-    scale.position = (x, band = 0, before = false, extent = axisLength()) => {
-        const mapping = getGapMapping(extent);
-        return mapping
-            ? mapping.position(x, band, before)
-            : scale(x) + getStep() * (1 - paddingInner) * band;
-    };
-
     // @ts-expect-error Getter/setter overloads.
     scale.gapPositions = function (_) {
         if (!arguments.length) return gapPositions;

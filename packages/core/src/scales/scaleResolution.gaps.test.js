@@ -44,7 +44,9 @@ test("reactive gaps request redraw without changing domains, and navigation uses
         expect(requestRender).toHaveBeenCalled();
         expect(resolution.getDomain()).toEqual(domain);
     }
-    expect(scale.position(10) - scale.position(10, 0, true)).toBeCloseTo(0.06);
+    expect(scale(10) - scale.gapMapping().position(10, 0, true)).toBeCloseTo(
+        0.06
+    );
     // The input is read once; scale publication and navigation reuse its cuts.
     const cuts = [10, 5, 10];
     const iterate = vi.spyOn(cuts, Symbol.iterator);
