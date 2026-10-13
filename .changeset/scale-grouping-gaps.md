@@ -2,10 +2,7 @@
 "@genome-spy/core": minor
 ---
 
-Add fixed-size grouping gaps to positional index and locus scales with flat
-`gapPositions` and `gapWidth` properties, including chromosome boundaries and
-reactive configuration that redraws immediately. Gaps retain their CSS pixel
-widths during navigation; half-open interval endpoints and interval selection
-use the same boundaries across WebGL, WebGPU, Canvas, and SVG rendering.
-When resizing leaves insufficient room for the gaps and data, affected marks
-temporarily hide and recover as space becomes available, without a rendering error.
+Add fixed-size grouping gaps to index and locus scales with `gapPositions` and
+`gapWidth`, including chromosome gaps and matching axis domain lines. Add the
+`scaleGroups` data source for group guides and outlines, plus mark-local `clamp`
+for either or both axes.
