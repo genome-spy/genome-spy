@@ -772,6 +772,14 @@ export default class WebGLMark {
                 dynamicMarkUniforms.join("\n")
             );
         const hidden = [];
+        // Preserve legacy rect/rule culling and cull every explicitly clamped mark.
+        if (
+            sampleFacetMode &&
+            (this.properties.clamp ||
+                ["rect", "rule", "tick"].includes(this.mark.getType()))
+        ) {
+            hidden.push("getSampleFacetPos().height == 0.0");
+        }
         if (order) {
             hidden.push(
                 "(uOrderMode != 0 && (((uOrderMode & 3) == 1) != isOrderMatch()))"

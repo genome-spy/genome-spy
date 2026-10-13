@@ -196,12 +196,6 @@ void main(void) {
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
     ));
-#if defined(CLAMP_X) || defined(CLAMP_Y)
-    if (all(equal(a, b)) || getSampleFacetPos().height == 0.0) {
-        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
-        return;
-    }
-#endif
 
     float direction = getScaled_direction();
     bool bidirectional = direction == DIRECTION_BOTH;

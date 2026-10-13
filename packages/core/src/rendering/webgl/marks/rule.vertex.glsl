@@ -84,8 +84,7 @@ void main(void) {
 #ifdef CLAMP_Y
     yBounds = vec2(facet.pos, facet.pos + facet.height);
 #endif
-    if (facet.height == 0.0 ||
-        !clipRuleAxis(a, b, 0, xBounds) || !clipRuleAxis(a, b, 1, yBounds) ||
+    if (!clipRuleAxis(a, b, 0, xBounds) || !clipRuleAxis(a, b, 1, yBounds) ||
         all(equal(a, b))) {
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;

@@ -113,12 +113,6 @@ ivec2 fixAlignForAngle(ivec2 align, float angleInDegrees) {
 void main(void) {
 #pragma orderGuard
 
-#if defined(CLAMP_X) || defined(CLAMP_Y)
-    if (getSampleFacetPos().height == 0.0) {
-        gl_Position = vec4(0.0);
-        return;
-    }
-#endif
     float opacity = getScaled_opacity() * uViewOpacity;
     vec2 size = vec2(getScaled_size());
     float x = getScaled_x() + getScaled_xOffset() / uViewportSize.x;

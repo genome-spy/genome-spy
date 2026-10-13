@@ -76,12 +76,6 @@ void main(void) {
     }
 #endif
 
-#if defined(CLAMP_X) || defined(CLAMP_Y)
-    if (getSampleFacetPos().height == 0.0) {
-        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
-        return;
-    }
-#endif
     gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();

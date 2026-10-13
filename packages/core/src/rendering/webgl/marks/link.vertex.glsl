@@ -149,7 +149,7 @@ void main(void) {
     )) * uViewportSize;
 
 #if defined(CLAMP_X) || defined(CLAMP_Y)
-    if (all(equal(a, b)) || getSampleFacetPos().height == 0.0) {
+    if (all(equal(a, b))) {
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
