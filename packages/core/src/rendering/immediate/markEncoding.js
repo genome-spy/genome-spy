@@ -4,80 +4,6 @@ import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import { getGapPeer } from "../../marks/markUtils.js";
 
 /**
- * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} value
- * @param {number} offset
- */
-export function projectX(coords, value, offset) {
-    return coords.x + value * coords.width + offset;
-}
-
-/**
- * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number} value
- * @param {number} offset
- */
-export function projectY(coords, value, offset) {
-    return coords.y + (1 - value) * coords.height + offset;
-}
-
-/**
- * Projects the primary and optional secondary x positions of a mark. The
- * secondary offset inherits the primary offset when it has no encoder.
- *
- * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {Record<string, import("../../types/encoder.js").Encoder>} encoders
- * @param {object} datum
- * @param {[number, number]} [result]
- * @returns {[number, number]}
- */
-export function projectXRange(
-    coords,
-    encoders,
-    datum,
-    result = /** @type {[number, number]} */ ([0, 0])
-) {
-    return projectRange(
-        coords,
-        encoders.x,
-        encoders.x2,
-        encoders.xOffset,
-        encoders.x2Offset,
-        datum,
-        projectX,
-        result
-    );
-}
-
-/**
- * Projects the primary and optional secondary y positions of a mark. The
- * secondary offset inherits the primary offset when it has no encoder.
- *
- * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {Record<string, import("../../types/encoder.js").Encoder>} encoders
- * @param {object} datum
- * @param {[number, number]} [result]
- * @returns {[number, number]}
- */
-export function projectYRange(
-    coords,
-    encoders,
-    datum,
-    result = /** @type {[number, number]} */ ([0, 0])
-) {
-    return projectRange(
-        coords,
-        encoders.y,
-        encoders.y2,
-        encoders.yOffset,
-        encoders.y2Offset,
-        datum,
-        projectY,
-        result
-    );
-}
-
-/**
  * Prepares one axis for repeated projection during a synchronous mark
  * traversal. Constant encoders and scale band adjustments are evaluated when
  * the projection is prepared; data-dependent encoders remain in the returned
@@ -164,67 +90,11 @@ export function prepareRangeProjection(
 }
 
 /**
- * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {import("../../types/encoder.js").Encoder} primary
- * @param {import("../../types/encoder.js").Encoder | undefined} secondary
- * @param {import("../../types/encoder.js").Encoder} primaryOffset
- * @param {import("../../types/encoder.js").Encoder | undefined} secondaryOffset
- * @param {object} datum
- * @param {(coords: import("../../view/layout/rectangle.js").default, value: number, offset: number) => number} project
- * @param {[number, number]} result
- * @returns {[number, number]}
- */
-function projectRange(
-    coords,
-    primary,
-    secondary,
-    primaryOffset,
-    secondaryOffset,
-    datum,
-    project,
-    result
-) {
-    const offset = encodeNumber(primaryOffset, datum);
-    const extent = project === projectX ? coords.width : coords.height;
-    const first = project(
-        coords,
-        encodePosition(primary, datum, extent, secondary),
-        offset
-    );
-    const second = secondary
-        ? project(
-              coords,
-              encodePosition(secondary, datum, extent, primary),
-              secondaryOffset ? encodeNumber(secondaryOffset, datum) : offset
-          )
-        : first;
-    result[0] = first;
-    result[1] = second;
-    return result;
-}
-
-/**
  * @param {import("../../types/encoder.js").Encoder} encoder
  * @param {object} datum
  */
 export function encodeNumber(encoder, datum) {
     return /** @type {number} */ (encoder(datum));
-}
-
-/**
- * Encodes a positional channel in unit coordinates, including placement within
- * a discrete scale band. D3 band scales return the start of a band, whereas
- * the WebGL scale functions also apply the channel definition's `band` value.
- *
- * @param {import("../../types/encoder.js").Encoder} encoder
- * @param {object} datum
- * @param {number} [extent]
- * @param {import("../../types/encoder.js").Encoder} [peer]
- */
-export function encodePosition(encoder, datum, extent, peer) {
-    const project = createGapProjection(encoder, extent, peer);
-    if (project) return project(datum);
-    return encodeNumber(encoder, datum) + getPositionAdjustment(encoder);
 }
 
 /** @param {import("../../types/encoder.js").Encoder} encoder

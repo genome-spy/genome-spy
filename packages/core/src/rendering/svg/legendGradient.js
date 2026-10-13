@@ -2,8 +2,7 @@ import { isContinuous } from "vega-scale";
 import { createSvgElement } from "./svgElement.js";
 import { intersectsBounds } from "../immediate/bounds.js";
 import {
-    projectXRange,
-    projectYRange,
+    prepareRangeProjection,
     toPaintString,
 } from "../immediate/markEncoding.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
@@ -48,10 +47,15 @@ export function renderLegendGradientSvg(mark, options) {
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
+    const projectX = prepareRangeProjection(coords, encoders, "x", data[0]);
+    const projectY = prepareRangeProjection(coords, encoders, "y", data[0]);
+    const xRange = /** @type {[number, number]} */ ([0, 0]);
+    const yRange = /** @type {[number, number]} */ ([0, 0]);
+
     const stops = data
         .map((datum) => {
-            const [x1, x2] = projectXRange(coords, encoders, datum);
-            const [y1, y2] = projectYRange(coords, encoders, datum);
+            const [x1, x2] = projectX(datum, xRange);
+            const [y1, y2] = projectY(datum, yRange);
             minX = Math.min(minX, x1, x2);
             minY = Math.min(minY, y1, y2);
             maxX = Math.max(maxX, x1, x2);
