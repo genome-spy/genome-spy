@@ -1643,56 +1643,24 @@ describe("WebGPU mark adapter", () => {
         expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
     });
 
-    test("keeps rect clamping local to its view bounds", () => {
-        const encoders = Object.fromEntries(
-            [
-                "x",
-                "x2",
-                "y",
-                "y2",
-                "xOffset",
-                "x2Offset",
-                "yOffset",
-                "y2Offset",
-                "strokeWidth",
-                "fillOpacity",
-                "strokeOpacity",
-            ].map((channel) => [channel, createConstantEncoder(0)])
-        );
-        encoders.fill = createConstantEncoder("black");
-        encoders.stroke = createConstantEncoder(null);
-        let width = 100;
-        const coords = new Rectangle(
-            () => 10,
-            () => 20,
-            () => width,
-            () => 200
-        );
-
+    test("keeps clamping local to the selected axes after resizing", () => {
         for (const clamp of [false, "x", "y", true]) {
-            const mark = createMark("rect", [{}], encoders, { clamp });
-            const { channels } = /** @type {any} */ (
-                createWebGpuMarkConfig(mark, {}, coords)
-            ).config;
-            expect(channels.xClampRange?.value).toEqual(
-                clamp === true || clamp === "x" ? [10, 110] : undefined
-            );
-            expect(channels.yClampRange?.value).toEqual(
-                clamp === true || clamp === "y" ? [20, 220] : undefined
-            );
+            const mark = createMark("point", [{}], {}, { clamp });
+            for (const width of [100, 240]) {
+                const coords = Rectangle.create(10, 20, width, 200);
+                const { channels } = /** @type {any} */ (
+                    createWebGpuMarkConfig(mark, {}, coords)
+                ).config;
+                expect(channels.xClampRange?.value).toEqual(
+                    clamp === true || clamp === "x"
+                        ? [10, 10 + width]
+                        : undefined
+                );
+                expect(channels.yClampRange?.value).toEqual(
+                    clamp === true || clamp === "y" ? [20, 220] : undefined
+                );
+            }
         }
-
-        const mark = createMark("rect", [{}], encoders, { clamp: "x" });
-        const original = /** @type {any} */ (
-            createWebGpuMarkConfig(mark, {}, coords)
-        ).config.channels;
-        width = 240;
-        // Layout geometry changes rebuild configs, just as for scale ranges.
-        const resized = /** @type {any} */ (
-            createWebGpuMarkConfig(mark, {}, coords)
-        ).config.channels;
-        expect(original.xClampRange.value).toEqual([10, 110]);
-        expect(resized.xClampRange.value).toEqual([10, 250]);
     });
 
     test("preserves nested rect endpoint bands", () => {

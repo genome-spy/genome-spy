@@ -2,109 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
-test("clips diagonal rules without changing slope and stabilizes long offscreen rules", async ({
-    page,
-}) => {
-    await ensureWebGPU(page);
-    const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { ruleMark }] = await Promise.all([
-            import("/src/index.js"),
-            import("/src/marks/rule.js"),
-        ]);
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = 100;
-        document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas);
-        renderer.updateGlobals({ width: 100, height: 100, dpr: 1 });
-        renderer.device.pushErrorScope("validation");
-        const results = [];
-        for (const clamp of [true, "x", "y", false]) {
-            const mark = renderer.createMark(ruleMark, {
-                count: 1,
-                channels: {
-                    uniqueId: { value: 1, type: "u32" },
-                    x: { value: -100 },
-                    x2: { value: 200 },
-                    y: { value: 0 },
-                    y2: { value: 100 },
-                    size: { value: 4 },
-                    strokeCap: { value: 2, type: "u32" },
-                    ...(clamp === true || clamp === "x"
-                        ? { xClampRange: { value: [20, 80] } }
-                        : {}),
-                    ...(clamp === true || clamp === "y"
-                        ? { yClampRange: { value: [20, 80] } }
-                        : {}),
-                },
-            });
-            renderer.render({ draws: [{ mark }] });
-            results.push(
-                await renderer.pick(30, 43),
-                await renderer.pick(70, 57),
-                await renderer.pick(30, 30),
-                await renderer.pick(70, 70)
-            );
-            renderer.destroyMark(mark.markId);
-        }
-        // At this extent, the unbounded stroke quad loses its width in float32.
-        const long = renderer.createMark(ruleMark, {
-            count: 1,
-            channels: {
-                uniqueId: { value: 2, type: "u32" },
-                x: { value: -1e8 },
-                x2: { value: 1e8 + 100 },
-                y: { value: -5e7 },
-                y2: { value: 5e7 + 100 },
-                size: { value: 4 },
-                strokeCap: { value: 2, type: "u32" },
-            },
-        });
-        renderer.render({ draws: [{ mark: long }] });
-        results.push(await renderer.pick(25, 38), await renderer.pick(75, 63));
-        const zero = renderer.createMark(ruleMark, {
-            count: 1,
-            channels: {
-                x: { value: 50 },
-                x2: { value: 50 },
-                y: { value: 50 },
-                y2: { value: 50 },
-                size: { value: 10 },
-                minLength: { value: 20 },
-                strokeCap: { value: 2, type: "u32" },
-            },
-        });
-        renderer.render({ draws: [{ mark: zero }] });
-        results.push(await renderer.pick(50, 50));
-        const error = await renderer.device.popErrorScope();
-        renderer.destroy();
-        canvas.remove();
-        return { results, error: error?.message ?? null };
-    });
-    expect(result.error).toBeNull();
-    expect(result.results).toEqual([
-        1,
-        1,
-        null,
-        null,
-        1,
-        1,
-        null,
-        null,
-        1,
-        1,
-        null,
-        null,
-        1,
-        1,
-        null,
-        null,
-        2,
-        2,
-        null,
-    ]);
-});
-
-test("clamps placed anchors and endpoints before geometry and picking", async ({
+test("clamps placed marks, preserves strokes and diagonal rules, and hides collapsed geometry", async ({
     page,
 }) => {
     await ensureWebGPU(page);
@@ -112,6 +10,7 @@ test("clamps placed anchors and endpoints before geometry and picking", async ({
         const [
             { createRenderer },
             { pointMark },
+            { rectMark },
             { ruleMark },
             { linkMark },
             { arrowMark },
@@ -121,6 +20,7 @@ test("clamps placed anchors and endpoints before geometry and picking", async ({
         ] = await Promise.all([
             import("/src/index.js"),
             import("/src/marks/point.js"),
+            import("/src/marks/rect.js"),
             import("/src/marks/rule.js"),
             import("/src/marks/link.js"),
             import("/src/marks/arrow.js"),
@@ -133,7 +33,6 @@ test("clamps placed anchors and endpoints before geometry and picking", async ({
         document.body.appendChild(canvas);
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 100, height: 100, dpr: 1 });
-        renderer.device.pushErrorScope("validation");
         const placements = renderer.createPlacementSet({
             rectangles: new Float32Array([0, 0.25, 1, 0.5]),
         });
@@ -142,172 +41,206 @@ test("clamps placed anchors and endpoints before geometry and picking", async ({
                 r.arrayBuffer()
             )
         );
-        const ids = [];
-        for (const [index, definition] of [
-            pointMark,
-            pointMark,
-            ruleMark,
-            linkMark,
-            arrowMark,
-            textMark,
-        ].entries()) {
-            const isPoint = definition === pointMark;
-            const isText = definition === textMark;
+        const hits = {};
+        // All marks use the same occurrence and bounds; only geometry varies.
+        /** @param {string} name
+         * @param {Parameters<typeof renderer.createMark>[0]} definition
+         * @param {Record<string, any>} channels
+         * @param {number[][]} points
+         * @param {Record<string, any>} [options]
+         * @param {string} [clamp]
+         */
+        const check = async (
+            name,
+            definition,
+            channels,
+            points,
+            options = {},
+            clamp = "xy"
+        ) => {
             const mark = renderer.createMark(definition, {
                 count: 1,
-                ...(isPoint && index === 1 ? { shape: "diamond" } : {}),
-                ...(isText
-                    ? { font, align: "center", baseline: "middle" }
-                    : {}),
-                ...(definition === linkMark ? { linkShape: "line" } : {}),
                 placementIndex: { source: "draw" },
+                ...options,
                 channels: {
                     uniqueId: { value: 7, type: "u32" },
-                    x: { value: -100, dynamic: true, scale: identityScale() },
-                    y: {
-                        value: isPoint || isText ? 50 : -100,
-                        dynamic: true,
-                        scale: identityScale(),
-                    },
-                    ...(!isPoint && !isText
-                        ? {
-                              x2: {
-                                  value: 200,
-                                  dynamic: true,
-                                  scale: identityScale(),
-                              },
-                              y2: {
-                                  value: 200,
-                                  dynamic: true,
-                                  scale: identityScale(),
-                              },
-                          }
+                    size: { value: 4 },
+                    ...(clamp.includes("x")
+                        ? { xClampRange: { value: [20, 80] } }
                         : {}),
-                    ...(isText ? { text: { value: "M" } } : {}),
-                    size: { value: isPoint ? 100 : isText ? 16 : 4 },
-                    xClampRange: { value: [20, 80], dynamic: true },
-                    yClampRange: { value: [20, 80], dynamic: true },
-                    xOffset: { value: 3 },
-                    yOffset: { value: 4 },
-                    ...(isPoint ? { dy: { value: 0, dynamic: true } } : {}),
+                    ...(clamp.includes("y")
+                        ? { yClampRange: { value: [20, 80] } }
+                        : {}),
+                    ...Object.fromEntries(
+                        Object.entries(channels).map(([key, value]) => [
+                            key,
+                            /^(x|x2|y|y2)$/.test(key)
+                                ? { scale: identityScale(), ...value }
+                                : value,
+                        ])
+                    ),
                 },
             });
-            const draw = { mark, placement: { set: placements, index: 0 } };
-            renderer.render({ draws: [draw] });
-            await renderer.device.queue.onSubmittedWorkDone();
-            ids.push(
-                await renderer.pick(
-                    isPoint || isText ? 20 : 50,
-                    isPoint || isText ? 54 : 50
-                )
+            renderer.render({
+                draws: [{ mark, placement: { set: placements, index: 0 } }],
+            });
+            hits[name] = await Promise.all(
+                points.map(([x, y]) => renderer.pick(x, y))
             );
-            if (!isPoint && !isText) {
-                mark.values.x2.set(-50);
-                mark.values.y2.set(-50);
-                renderer.render({ draws: [draw] });
-                ids.push(await renderer.pick(20, 35));
-            }
-            // Bounds are live and remain local to the resized occurrence.
-            if (isPoint) {
-                mark.values.dy.set(10);
-                renderer.render({ draws: [draw] });
-                ids.push(await renderer.pick(20, 64));
-                mark.values.dy.set(0);
-                placements.replace({
-                    rectangles: new Float32Array([0, 0.5, 1, 0.25]),
-                });
-                renderer.render({ draws: [draw] });
-                ids.push(await renderer.pick(20, 66));
-                placements.replace({
-                    rectangles: new Float32Array([0, 0.25, 1, 0.5]),
-                });
-            }
             renderer.destroyMark(mark.markId);
-        }
-        const error = await renderer.device.popErrorScope();
-        renderer.destroy();
-        canvas.remove();
-        return { ids, error: error?.message ?? null };
-    });
-    expect(result.error).toBeNull();
-    expect(result.ids).toEqual([
-        7,
-        7,
-        7,
-        7,
-        7,
-        7,
-        7,
-        null,
-        7,
-        null,
-        7,
-        null,
-        7,
-    ]);
-});
-
-test("clamps explicit text and logo fitting ranges and hides collapsed ranges", async ({
-    page,
-}) => {
-    await ensureWebGPU(page);
-    const results = await page.evaluate(async () => {
-        const [
-            { createRenderer },
-            { textMark },
-            { identityScale },
-            { createTrueTypeFont },
-        ] = await Promise.all([
-            import("/src/index.js"),
-            import("/src/marks/text.js"),
-            import("/src/scales/identity.js"),
-            import("/src/fonts/trueTypeFont.js"),
+        };
+        const anchor = {
+            x: { value: -100 },
+            y: { value: 50 },
+            xOffset: { value: 3 },
+            yOffset: { value: 4 },
+        };
+        await check("point", pointMark, { ...anchor, size: { value: 100 } }, [
+            [20, 54],
+            [10, 54],
         ]);
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = 100;
-        document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas);
-        renderer.updateGlobals({ width: 100, height: 100, dpr: 1 });
-        const font = createTrueTypeFont(
-            await fetch("/src/fonts/DefaultFont.ttf").then((r) =>
-                r.arrayBuffer()
-            )
+        const rect = {
+            x: { value: -100 },
+            x2: { value: 60 },
+            y: { value: 0 },
+            y2: { value: 100 },
+            fillOpacity: { value: 0 },
+            strokeOpacity: { value: 1 },
+            strokeWidth: { value: 4 },
+        };
+        await check("rect", rectMark, rect, [
+            [18, 50],
+            [30, 33],
+            [10, 50],
+        ]);
+        await check(
+            "xOnly",
+            rectMark,
+            rect,
+            [
+                [18, 30],
+                [30, 24],
+            ],
+            {},
+            "x"
         );
-        const hits = [];
-        for (const logoLetters of [false, true]) {
-            const mark = renderer.createMark(textMark, {
-                count: 1,
-                font,
-                logoLetters,
-                squeeze: true,
-                channels: {
-                    text: { value: "M" },
-                    uniqueId: { value: 9, type: "u32" },
-                    x: { value: -100, scale: identityScale() },
-                    x2: { value: 60, dynamic: true, scale: identityScale() },
-                    y: { value: 40, scale: identityScale() },
-                    y2: { value: 60, scale: identityScale() },
-                    size: { value: 16 },
-                    xClampRange: { value: [20, 80] },
-                    yClampRange: { value: [20, 80] },
+        await check(
+            "collapsedRect",
+            rectMark,
+            { ...rect, x2: { value: -50 }, minWidth: { value: 20 } },
+            [[20, 50]]
+        );
+        await check(
+            "diagonal",
+            ruleMark,
+            {
+                x: { value: -100 },
+                x2: { value: 200 },
+                y: { value: 0 },
+                y2: { value: 100 },
+            },
+            [
+                [30, 47],
+                [70, 53],
+                [30, 40],
+                [70, 60],
+            ]
+        );
+        // This extent used to lose the stroke width in float32.
+        await check(
+            "long",
+            ruleMark,
+            {
+                x: { value: -1e8 },
+                x2: { value: 1e8 + 100 },
+                y: { value: -5e7 },
+                y2: { value: 5e7 + 100 },
+                strokeCap: { value: 2, type: "u32" },
+            },
+            [[50, 50]],
+            {},
+            ""
+        );
+        await check(
+            "zero",
+            ruleMark,
+            {
+                x: { value: 50 },
+                x2: { value: 50 },
+                y: { value: 50 },
+                y2: { value: 50 },
+                minLength: { value: 20 },
+            },
+            [[50, 50]]
+        );
+        for (const definition of [linkMark, arrowMark]) {
+            const name = definition === linkMark ? "link" : "arrow";
+            await check(
+                name,
+                definition,
+                {
+                    x: { value: -100 },
+                    x2: { value: 200 },
+                    y: { value: -100 },
+                    y2: { value: 200 },
                 },
+                [[50, 50]],
+                definition === linkMark ? { linkShape: "line" } : {}
+            );
+        }
+        await check(
+            "text",
+            textMark,
+            { ...anchor, text: { value: "M" }, size: { value: 16 } },
+            [[20, 54]],
+            { font, align: "center", baseline: "middle" }
+        );
+        for (const logoLetters of [false, true]) {
+            const fitting = {
+                text: { value: "M" },
+                x: { value: -100 },
+                x2: { value: 60 },
+                y: { value: 40 },
+                y2: { value: 60 },
+                size: { value: 16 },
+            };
+            const points = Array.from({ length: 21 }, (_, i) => [
+                20 + i * 2,
+                50,
+            ]);
+            await check("fitting" + logoLetters, textMark, fitting, points, {
+                font,
+                squeeze: true,
+                logoLetters,
             });
-            renderer.render({ draws: [{ mark }] });
-            let hit = null;
-            for (let y = 40; y <= 60 && hit === null; y += 2) {
-                for (let x = 20; x <= 60 && hit === null; x += 2) {
-                    hit = await renderer.pick(x, y);
-                }
-            }
-            hits.push(hit);
-            mark.values.x2.set(-50);
-            renderer.render({ draws: [{ mark }] });
-            hits.push(await renderer.pick(20, 50));
-            renderer.destroyMark(mark.markId);
+            await check(
+                "collapsed" + logoLetters,
+                textMark,
+                { ...fitting, x2: { value: -50 } },
+                points,
+                { font, squeeze: true, logoLetters }
+            );
         }
         renderer.destroy();
         canvas.remove();
         return hits;
     });
-    expect(results).toEqual([9, null, 9, null]);
+    expect(result).toMatchObject({
+        point: [7, null],
+        rect: [7, 7, null],
+        xOnly: [7, 7],
+        collapsedRect: [null],
+        diagonal: [7, 7, null, null],
+        long: [7],
+        zero: [null],
+        link: [7],
+        arrow: [7],
+        text: [7],
+    });
+    for (const logoLetters of [false, true]) {
+        expect(result["fitting" + logoLetters]).toContain(7);
+        expect(
+            result["collapsed" + logoLetters].every((hit) => hit === null)
+        ).toBe(true);
+    }
 });

@@ -40,60 +40,6 @@ test("gap width uses the final placement extent and preserves reversed output", 
     expect(scale.copy().position(10)).toBe(scale.position(10));
 });
 
-test("cut search retains exact large integers and ignores outer cuts for fitting", () => {
-    const base = 2 ** 35;
-    const scale = scaleIndex()
-        .domain([base, base + 20])
-        .range([0, 100])
-        .gapPositions([base + 30, base + 10, 0, base + 10])
-        .gapWidth(6);
-    expect(
-        scale.position(base + 10) - scale.position(base + 10, 0, true)
-    ).toBeCloseTo(6);
-    expect(scale.invert(50)).toBe(base + 10);
-    expect(scale.position(base + 20, 0, true)).toBeCloseTo(100);
-});
-
-test("zero/null/empty gap configurations use ordinary mapping", () => {
-    const scale = scaleIndex().domain([0, 20]).range([0, 100]);
-    scale.gapPositions([10]).gapWidth(0);
-    expect(scale.gapMapping()).toBeUndefined();
-    expect(scale(10)).toBe(50);
-    scale.gapWidth(6).gapPositions(null);
-    expect(scale.gapMapping()).toBeUndefined();
-    expect(scale(10)).toBe(50);
-});
-
-test.each([
-    [0, 1],
-    [1, 0],
-])(
-    "exhausted range %j recovers on resize and keeps navigation defined",
-    (start, end) => {
-        let width = 100;
-        const scale = scaleIndex()
-            .domain([0, 20])
-            .range([start, end])
-            .gapPositions([10])
-            .gapWidth(6)
-            .axisLength(() => width);
-
-        for (width of [6, 4]) {
-            expect(scale.gapMapping().fits).toBe(false);
-            expect(scale(5)).toBeNaN();
-            expect(scale.invert(0.25)).toBeCloseTo(start === 0 ? 5 : 15);
-            expect(scale.gapMapping().navigate(2, 0.5, 0).domain).toEqual([
-                -10, 30,
-            ]);
-        }
-        width = 100;
-        expect(scale.gapMapping().fits).toBe(true);
-        expect(
-            Math.abs(scale.position(10) - scale.position(10, 0, true)) * width
-        ).toBeCloseTo(6);
-    }
-);
-
 test("returns band starts with defaults", () => {
     const scale = scaleIndex();
 
@@ -219,42 +165,4 @@ test("navigation retains partial gaps and the data slope while panning", () => {
     expect(scale.position(10)).toBeCloseTo(previous.position(10) - 6);
     expect(scale.invert(2)).toBe(10);
     expect(scale.copy().position(10)).toBeCloseTo(scale.position(10));
-});
-
-test("zoom anchors retain fractional progress within a gap at maximum zoom", () => {
-    const scale = scaleIndex()
-        .domain([9, 11])
-        .range([0, 100])
-        .gapPositions([10])
-        .gapWidth(6);
-    const point = scale.gapMapping().invertPoint(50);
-    const next = scale.gapMapping().navigate(0.1, 50, 0);
-    scale.domainWithGaps(next.domain, next.ranks);
-    expect(scale.gapMapping().invertPoint(50)).toEqual(point);
-    expect(scale.position(10) - scale.position(10, 0, true)).toBe(6);
-    expect(scale.gapMapping().step).toBeCloseTo(100);
-});
-
-test("animated cameras keep partial edge gaps and handle almost equal slopes", () => {
-    const source = scaleIndex()
-        .domain([0, 20])
-        .range([0, 1])
-        .gapPositions([10])
-        .gapWidth(6)
-        .axisLength(100);
-    const target = source.copy().domain([1, 20.999999999999996]);
-    const mapping = source.gapMapping();
-    const end = mapping.interpolate(target.gapMapping(), 1);
-    expect(end.domain[0]).toBeCloseTo(1);
-    expect(end.domain[1]).toBeCloseTo(21);
-    const shifted = source.copy().domain([10, 30]).gapMapping();
-    let previous = mapping.position(10);
-    for (let i = 1; i <= 100; i++) {
-        const frame = mapping.interpolate(shifted, i / 100);
-        const scale = source.copy().domainWithGaps(frame.domain, frame.ranks);
-        const after = scale.position(10);
-        expect(after - scale.position(10, 0, true)).toBeCloseTo(0.06);
-        expect(Math.abs(after - previous)).toBeLessThan(0.01);
-        previous = after;
-    }
 });

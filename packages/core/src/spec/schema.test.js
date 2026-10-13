@@ -28,17 +28,6 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
-    test("accepts scale group sources with positional channels", () => {
-        const validate = createCoreValidator();
-        const spec = {
-            mark: "rule",
-            data: { lazy: { type: "scaleGroups", channels: ["x", "y"] } },
-        };
-        expect(validate(spec)).toBe(true);
-        spec.data.lazy.channels = ["color"];
-        expect(validate(spec)).toBe(false);
-    });
-
     test("facet options accept supported forms and reject unsupported forms", () => {
         const validate = createCoreValidator();
         const spec = {

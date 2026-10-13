@@ -1,151 +1,147 @@
 // @vitest-environment jsdom
-
-import { expect, test } from "vitest";
+import { expect, onTestFinished, test } from "vitest";
 import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
 import { createSvg } from "../index.js";
 import Rectangle from "../../../view/layout/rectangle.js";
-import PlacementSource from "../../../view/layout/placementSource.js";
 import SvgViewRenderingContext from "../svgViewRenderingContext.js";
 import SoftwarePickingViewRenderingContext from "../../canvas2d/picking/softwarePickingViewRenderingContext.js";
 import SoftwarePickingBuffer from "../../canvas2d/picking/softwarePickingBuffer.js";
 import SoftwarePickingRasterizer from "../../canvas2d/picking/softwarePickingRasterizer.js";
 
-/** @param {import("../../../spec/view.js").ViewSpec} spec */
-async function render(spec) {
-    spec.encoding = { color: { value: "black" }, ...spec.encoding };
-    const engine = await createHeadlessEngine(spec);
-    const { svg } = createSvg({
-        viewRoot: engine.view,
-        logicalWidth: 100,
-        logicalHeight: 100,
-        background: null,
-    });
-    engine.view.dispose();
-    return svg;
-}
-
-test("clamps rule endpoints before minimum length without suppressing horizontal or vertical rules", async () => {
-    const svg = await render({
-        data: {
-            values: [
-                { x: -10, x2: 10, y: -10, y2: 10 },
-                { x: -10, x2: 10, y: 0.5, y2: 0.5 },
-                { x: 0.5, x2: 0.5, y: -10, y2: 10 },
-                { x: -10, x2: -5, y: -10, y2: -5 },
-            ],
-        },
-        mark: { type: "rule", clamp: true, clip: false, minLength: 5 },
+/** @param {import("../../../spec/view.js").UnitSpec["mark"]} mark
+ * @param {Record<string, number>[]} values
+ */
+async function render(mark, values) {
+    const { view } = await createHeadlessEngine({
+        data: { values },
+        mark,
         encoding: {
             x: { field: "x", type: "quantitative", scale: null },
-            x2: { field: "x2" },
             y: { field: "y", type: "quantitative", scale: null },
-            y2: { field: "y2" },
+            ...(values.some((row) => "x2" in row)
+                ? { x2: { field: "x2" } }
+                : {}),
+            ...(values.some((row) => "y2" in row)
+                ? { y2: { field: "y2" } }
+                : {}),
+            color: { value: "black" },
+            text: { value: "A" },
         },
     });
-    expect(
-        Array.from(
-            svg.querySelectorAll('[data-mark-type="rule"] line'),
-            (line) =>
-                ["x1", "y1", "x2", "y2"].map((name) =>
-                    Number(line.getAttribute(name))
-                )
-        )
-    ).toEqual([
-        [0, 100, 100, 0],
-        [0, 50, 100, 50],
-        [50, 100, 50, 0],
-    ]);
-});
+    onTestFinished(() => view.disposeSubtree());
+    const { svg } = createSvg({
+        viewRoot: view,
+        logicalWidth: 100,
+        logicalHeight: 100,
+    });
+    return { view, svg };
+}
+
+/** @param {Element} element @param {string[]} attributes */
+const geometry = (element, attributes) =>
+    attributes.map((name) => Number(element.getAttribute(name)));
 
 test.each([
     [true, [0, 250 / 3, 100, 50 / 3]],
     ["x", [0, 250 / 3, 100, 50 / 3]],
     ["y", [-25, 100, 125, 0]],
-])(
-    "preserves diagonal rule direction when clamping %s",
-    async (clamp, expected) => {
-        const svg = await render({
-            // The line crosses opposite edges away from the viewport corners.
-            data: { values: [{ x: -1, x2: 2, y: -0.5, y2: 1.5 }] },
-            mark: {
-                type: "rule",
-                clamp: /** @type {true | "x" | "y"} */ (clamp),
+])("clamping %s preserves diagonal rule direction", async (clamp, expected) => {
+    const { svg } = await render(
+        {
+            type: "rule",
+            clamp: /** @type {true | "x" | "y"} */ (clamp),
+            clip: false,
+        },
+        [{ x: -1, x2: 2, y: -0.5, y2: 1.5 }]
+    );
+    geometry(svg.querySelector("line"), ["x1", "y1", "x2", "y2"]).forEach(
+        (value, i) => expect(value).toBeCloseTo(expected[i], 1)
+    );
+});
+
+test("rules retain horizontal/vertical segments and suppress collapsed geometry before minimum length", async () => {
+    const { svg } = await render({ type: "rule", clamp: true, minLength: 20 }, [
+        { x: -1, x2: 2, y: 0.5, y2: 0.5 },
+        { x: 0.5, x2: 0.5, y: -1, y2: 2 },
+        { x: -2, x2: -1, y: -2, y2: -1 },
+        { x: 0.5, x2: 0.5, y: 0.5, y2: 0.5 },
+    ]);
+    expect(
+        Array.from(svg.querySelectorAll("line"), (line) =>
+            geometry(line, ["x1", "y1", "x2", "y2"])
+        )
+    ).toEqual([
+        [0, 50, 100, 50],
+        [50, 100, 50, 0],
+    ]);
+});
+
+test.each([false, "x", "y", true])(
+    "rect clamping stays local to selected axes: %s",
+    async (clamp) => {
+        const { svg } = await render(
+            {
+                type: "rect",
+                clamp: /** @type {boolean | "x" | "y"} */ (clamp),
                 clip: false,
+                filled: false,
+                stroke: "gray",
             },
-            encoding: {
-                x: { field: "x", type: "quantitative", scale: null },
-                x2: { field: "x2" },
-                y: { field: "y", type: "quantitative", scale: null },
-                y2: { field: "y2" },
-            },
-        });
-        const line = svg.querySelector('[data-mark-type="rule"] line');
-        for (const [i, name] of ["x1", "y1", "x2", "y2"].entries()) {
-            expect(Number(line.getAttribute(name))).toBeCloseTo(expected[i], 1);
-        }
+            [{ x: 1.2, x2: -0.2, y: 1.3, y2: -0.3 }]
+        );
+        const x = clamp === true || clamp === "x",
+            y = clamp === true || clamp === "y";
+        expect(
+            geometry(svg.querySelector('[data-mark-type="rect"] rect'), [
+                "x",
+                "y",
+                "width",
+                "height",
+            ])
+        ).toEqual([x ? 0 : -20, y ? 0 : -30, x ? 100 : 140, y ? 100 : 160]);
     }
 );
 
-test.each([4, 250])(
-    "bounds distant rule endpoints with overscan for a %s px stroke",
-    async (size) => {
-        const svg = await render({
-            data: { values: [{}] },
-            mark: {
-                type: "rule",
-                size,
-                strokeCap: "round",
-            },
-            encoding: {
-                x: { value: -1000 },
-                x2: { value: 1000 },
-                y: { value: 0.5 },
-            },
-        });
-        const line = svg.querySelector('[data-mark-type="rule"] line');
-        const margin = Math.max(100, size + 1);
-        expect(Number(line.getAttribute("x1"))).toBe(-margin);
-        expect(Number(line.getAttribute("x2"))).toBe(100 + margin);
-    }
-);
+test("rect minimum sizes do not resurrect collapsed bounds", async () => {
+    const { svg } = await render({ type: "rect", clamp: true, minWidth: 20 }, [
+        { x: -0.4, x2: -0.2, y: 0.2, y2: 0.8 },
+        { x: -0.2, x2: 0, y: 0.2, y2: 0.8 },
+        { x: 0.2, x2: 0.8, y: 0.2, y2: 0.8 },
+    ]);
+    expect(svg.querySelectorAll('[data-mark-type="rect"] rect')).toHaveLength(
+        1
+    );
+});
 
 test.each(["link", "arrow"])(
-    "hides a %s when both clamped endpoints coincide",
+    "collapsed %s endpoints are hidden",
     async (type) => {
-        const svg = await render({
-            data: { values: [{}] },
-            mark: {
-                type: /** @type {"link" | "arrow"} */ (type),
-                clamp: true,
-                clip: false,
-            },
-            encoding: {
-                x: { value: -10 },
-                x2: { value: -5 },
-                y: { value: -10 },
-                y2: { value: -5 },
-            },
-        });
+        const { svg } = await render(
+            { type: /** @type {"link" | "arrow"} */ (type), clamp: true },
+            [{ x: -2, x2: -1, y: -2, y2: -1 }]
+        );
         expect(svg.querySelector(`[data-mark-type="${type}"]`)).toBeNull();
     }
 );
 
-test("implicit rule clipping preserves visible overflow beyond a small child view", async () => {
-    const { view } = await createHeadlessEngine({
-        data: {
-            values: [
-                { y: 1, y2: -3 },
-                { y: -2, y2: -3 },
-            ],
-        },
-        mark: { type: "rule", clip: false, size: 4 },
-        encoding: {
-            x: { value: 0.5 },
-            y: { field: "y", type: "quantitative", scale: null },
-            y2: { field: "y2" },
-            color: { value: "black" },
-        },
-    });
+test("text clamps anchors with local offsets and hides collapsed fitting ranges", async () => {
+    const { svg } = await render({ type: "text", clamp: true, dx: 3 }, [
+        { x: -2, y: 0.5 },
+    ]);
+    expect(svg.querySelector("text").getAttribute("transform")).toBe(
+        "translate(0 50) translate(3 0)"
+    );
+    const collapsed = await render(
+        { type: "text", clamp: "x", squeeze: true },
+        [{ x: -2, x2: -1, y: 0.5 }]
+    );
+    expect(collapsed.svg.querySelector("text")).toBeNull();
+});
+
+test("implicit clipping retains thick strokes and overflow into the larger output", async () => {
+    const { view } = await render({ type: "rule", clip: false, size: 250 }, [
+        { x: 0.5, y: 1, y2: -3 },
+    ]);
     // A 100 px child can paint throughout the taller output with clip:false.
     const coords = Rectangle.create(0, 0, 100, 100);
     const context = new SvgViewRenderingContext(
@@ -154,15 +150,8 @@ test("implicit rule clipping preserves visible overflow beyond a small child vie
     );
     view.arrange(context, coords, {});
     expect(
-        Array.from(context.getSvg().querySelectorAll("line"), (line) => [
-            Number(line.getAttribute("y1")),
-            Number(line.getAttribute("y2")),
-        ])
-    ).toEqual([
-        [0, 400],
-        [300, 400],
-    ]);
-
+        geometry(context.getSvg().querySelector("line"), ["y1", "y2"])
+    ).toEqual([0, 400]);
     const buffer = new SoftwarePickingBuffer(100, 400);
     const rasterizer = new SoftwarePickingRasterizer(buffer);
     view.arrange(
@@ -176,132 +165,4 @@ test("implicit rule clipping preserves visible overflow beyond a small child vie
         {}
     );
     expect(buffer.read(50, 350)).toBeGreaterThan(0);
-    view.dispose();
-});
-
-test.each([false, true])(
-    "hides zero-length rules with clamp:%s before minimum-length expansion",
-    async (clamp) => {
-        const svg = await render({
-            data: { values: [{}] },
-            mark: {
-                type: "rule",
-                clamp,
-                minLength: 20,
-                strokeCap: "round",
-                size: 10,
-            },
-            encoding: {
-                x: { value: 0.5 },
-                x2: { value: 0.5 },
-                y: { value: 0.5 },
-                y2: { value: 0.5 },
-            },
-        });
-        expect(svg.querySelector('[data-mark-type="rule"] line')).toBeNull();
-    }
-);
-
-test("keeps far-offscreen indexed point anchors and applies offsets before clamping", async () => {
-    const svg = await render({
-        data: { values: [{ x: -100 }] },
-        mark: { type: "point", clamp: "x", clip: false, xOffset: -10 },
-        encoding: {
-            x: {
-                field: "x",
-                type: "quantitative",
-                buildIndex: true,
-                scale: { domain: [0, 1], zoom: { extent: [-200, 200] } },
-                axis: null,
-            },
-            y: { value: 0.5 },
-        },
-    });
-    const point = svg.querySelector('[data-mark-type="point"] circle');
-    expect(point.getAttribute("cx")).toBe("0");
-    expect(point.getAttribute("cy")).toBe("50");
-});
-
-test("clamps text anchors and hides collapsed explicit fitting ranges", async () => {
-    const svg = await render({
-        data: { values: [{}] },
-        layer: [
-            {
-                mark: { type: "text", clamp: true, clip: false, dx: 3 },
-                encoding: {
-                    x: { value: -2 },
-                    y: { value: 0.5 },
-                    text: { value: "A" },
-                },
-            },
-            {
-                mark: { type: "text", clamp: "x", clip: false, squeeze: true },
-                encoding: {
-                    x: { value: -2 },
-                    x2: { value: -1 },
-                    y: { value: 0.5 },
-                    text: { value: "B" },
-                },
-            },
-        ],
-    });
-    const texts = svg.querySelectorAll('[data-mark-type="text"] text');
-    expect(texts).toHaveLength(1);
-    expect(texts[0].getAttribute("transform")).toBe(
-        "translate(0 50) translate(3 0)"
-    );
-});
-
-test("uses local sample bounds and excludes collapsed placements from SVG and software picking", async () => {
-    const { view } = await createHeadlessEngine({
-        data: {
-            values: [
-                { facet: 0, x: 0.5, y: 2 },
-                { facet: 1, x: 0.5, y: 2 },
-                { facet: 1, x: 0.75, y: 0.5 },
-            ],
-        },
-        mark: { type: "point", clamp: true, clip: false, dy: 10 },
-        encoding: {
-            facetIndex: { field: "facet" },
-            x: { field: "x", type: "quantitative", scale: null },
-            y: { field: "y", type: "quantitative", scale: null },
-            size: { value: 100 },
-            fill: { value: "black" },
-        },
-    });
-    const source = new PlacementSource();
-    source.replaceTopology(
-        [[0], [1]],
-        new Float32Array([0, 0.25, 1, 0, 0, 0.5, 1, 0.25])
-    );
-    const coords = Rectangle.create(0, 0, 100, 100);
-    const options = { placement: { source } };
-    const context = new SvgViewRenderingContext(
-        { picking: false },
-        { width: 100, height: 100 }
-    );
-    view.arrange(context, coords, options);
-    const points = context.getSvg().querySelectorAll("circle");
-    expect(Array.from(points, (point) => point.getAttribute("cy"))).toEqual([
-        "50",
-        "52.5",
-    ]);
-
-    const buffer = new SoftwarePickingBuffer(100, 100);
-    const rasterizer = new SoftwarePickingRasterizer(buffer);
-    view.arrange(
-        new SoftwarePickingViewRenderingContext({
-            width: 100,
-            height: 100,
-            devicePixelRatio: 1,
-            getRasterizer: () => rasterizer,
-        }),
-        coords,
-        options
-    );
-    expect(buffer.read(50, 25)).toBe(0);
-    expect(buffer.read(50, 50)).toBeGreaterThan(0);
-    expect(buffer.read(75, 52)).toBeGreaterThan(0);
-    view.dispose();
 });

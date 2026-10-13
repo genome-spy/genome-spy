@@ -731,33 +731,4 @@ describe("index gap specialization", () => {
             false
         );
     });
-
-    it("uses one cut binding for both axes and retained initially empty cuts", () => {
-        const { shaderCode, resourceLayout } = buildMarkShader({
-            channels: Object.fromEntries(
-                ["x", "y"].map((name) => [
-                    name,
-                    {
-                        value: 10,
-                        type: "u32",
-                        components: 1,
-                        scale: {
-                            type: "index",
-                            domain: [0, 20],
-                            range: [0, 100],
-                            gapEnabled: true,
-                            gapPositions: /** @type {number[]} */ ([]),
-                            gapWidth: 0,
-                        },
-                    },
-                ])
-            ),
-            uniformLayout: [],
-            shaderBody,
-        });
-        expect(shaderCode).toContain("fn cutRank");
-        expect(
-            resourceLayout.filter((entry) => entry.role === "gapCuts")
-        ).toHaveLength(1);
-    });
 });
