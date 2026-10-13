@@ -16,8 +16,12 @@ export function gapRank(cuts, value, before = false) {
     return lo;
 }
 
+// Scale copies and mapping publication can reuse canonical cuts safely.
+const normalizedGapPositions = new WeakSet();
+
 /** @param {readonly number[] | null} positions */
 export function normalizeGapPositions(positions) {
+    if (positions && normalizedGapPositions.has(positions)) return positions;
     const cuts = Array.from(new Set(positions ?? [])).sort((a, b) => a - b);
     if (
         cuts.some(
@@ -27,7 +31,8 @@ export function normalizeGapPositions(positions) {
     ) {
         throw new Error("Gap positions must be integers in [0, 2^44).");
     }
-    return cuts;
+    normalizedGapPositions.add(cuts);
+    return Object.freeze(cuts);
 }
 
 /** Static classification; a reactive zero does not remove shader resources.

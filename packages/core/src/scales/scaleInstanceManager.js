@@ -303,10 +303,18 @@ export default class ScaleInstanceManager {
             );
         const positions = bind(gaps ? props.gapPositions : null);
         const width = bind(gaps ? (props.gapWidth ?? 6) : 0);
+        /** @type {number[] | "chromosomes" | null | undefined} */
+        let previousPositions;
+        let gapPositions = normalizeGapPositions(null);
         // Expressions may bootstrap parameters that reference this scale. Once
         // bound, graph cycle checks guard feedback and observers can read mapping.
         this.#initializingRange = false;
         this.mapping.rebind(dependencies, () => {
+            const rawPositions = positions(null);
+            if (rawPositions !== previousPositions) {
+                gapPositions = this.#resolveGapPositions(rawPositions);
+                previousPositions = rawPositions;
+            }
             const configuredRange = expressions?.map((expression) =>
                 expression(null)
             );
@@ -331,7 +339,7 @@ export default class ScaleInstanceManager {
                 props,
                 domain: scale.type === "null" ? [] : this.#domain.get(),
                 gapDomain: this.#gapDomain.get(),
-                gapPositions: this.#resolveGapPositions(positions(null)),
+                gapPositions,
                 gapWidth: width(null),
                 configuredRange,
                 range,
@@ -391,14 +399,16 @@ export default class ScaleInstanceManager {
                 /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
                     this.#scale
                 );
-            const changed =
-                !shallowArrayEquals(scale.gapPositions(), gapPositions) ||
-                scale.gapWidth() !== (gapWidth ?? 0);
-            if (!shallowArrayEquals(scale.gapPositions(), gapPositions))
-                scale.gapPositions(gapPositions);
-            if (scale.gapWidth() !== (gapWidth ?? 0)) scale.gapWidth(gapWidth);
+            const positionsChanged = !shallowArrayEquals(
+                scale.gapPositions(),
+                gapPositions
+            );
+            const widthChanged = scale.gapWidth() !== (gapWidth ?? 0);
+            if (positionsChanged) scale.gapPositions(gapPositions);
+            if (widthChanged) scale.gapWidth(gapWidth);
             scale.gapDomain(gapDomain);
-            if (changed && gapDomain) this.#onDomainChange(scale.domain());
+            if ((positionsChanged || widthChanged) && gapDomain)
+                this.#onDomainChange(scale.domain());
         }
     }
 
@@ -409,10 +419,12 @@ export default class ScaleInstanceManager {
             throw new Error(
                 'gapPositions: "chromosomes" requires a locus scale.'
             );
-        return this.#scale
-            .genome()
-            .chromosomes.slice(1)
-            .map((chrom) => chrom.continuousStart);
+        return normalizeGapPositions(
+            this.#scale
+                .genome()
+                .chromosomes.slice(1)
+                .map((chrom) => chrom.continuousStart)
+        );
     }
 
     /**

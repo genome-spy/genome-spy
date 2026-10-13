@@ -45,11 +45,19 @@ test("reactive gaps request redraw without changing domains, and navigation uses
         expect(resolution.getDomain()).toEqual(domain);
     }
     expect(scale.position(10) - scale.position(10, 0, true)).toBeCloseTo(0.06);
+    // The input is read once; scale publication and navigation reuse its cuts.
+    const cuts = [10, 5, 10];
+    const iterate = vi.spyOn(cuts, Symbol.iterator);
+    onTestFinished(() => iterate.mockRestore());
+    view.paramRuntime.setValue("cuts", cuts);
+    view.paramRuntime.flushNow();
+    expect(scale.gapPositions()).toEqual([5, 10]);
     const coordinate = scale.gapMapping(200).invertPoint(0.25).value;
     resolution.zoom(0.5, 0.25, 0, 200);
     expect(scale.gapMapping(200).invertPoint(0.25).value).toBeCloseTo(
         coordinate
     );
+    expect(iterate).toHaveBeenCalledOnce();
 });
 
 test.each([

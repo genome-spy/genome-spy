@@ -23,7 +23,7 @@ export default function scaleIndex() {
     let paddingOuter = 0;
     let align = 0.5;
 
-    /** @type {number[]} */
+    /** @type {readonly number[]} */
     let gapPositions = [];
 
     let gapWidth = 0;
