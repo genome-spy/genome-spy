@@ -35,6 +35,15 @@ const {
     optionalChannels: OPTIONAL_CHANNELS,
 } = buildChannelMaps(POINT_CHANNEL_SPECS);
 
+export const POINT_CENTER_WGSL = /* wgsl */ `
+fn getPointCenter(i: u32) -> vec2<f32> {
+    return vec2<f32>(
+        getScaled_x(i) + getScaled_xOffset(i) + getScaled_dx(i),
+        getScaled_y(i) + getScaled_yOffset(i) + getScaled_dy(i)
+    );
+}
+`;
+
 const POINT_SHADER_BODY = /* wgsl */ `
 fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
@@ -86,18 +95,18 @@ fn culledPoint() -> VSOut {
     return out;
 }
 
+${POINT_CENTER_WGSL}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
     if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledPoint();
     }
 
-    var quad = array<vec2<f32>, 6>(
+    var quad = array<vec2<f32>, 4>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),
         vec2<f32>(0.0, 1.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0),
         vec2<f32>(1.0, 1.0)
     );
 
@@ -121,8 +130,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     let total = diameter + padding;
     let local = quad[v];
-    let centerX = getScaled_x(i) + getScaled_xOffset(i) + getScaled_dx(i);
-    let centerY = getScaled_y(i) + getScaled_yOffset(i) + getScaled_dy(i);
+    let center = getPointCenter(i);
+    let centerX = center.x;
+    let centerY = center.y;
     let px = centerX + (local.x - 0.5) * total;
     let py = centerY + (local.y - 0.5) * total;
 
@@ -216,6 +226,27 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class PointProgram extends BaseProgram {
+    /** @returns {GPUPrimitiveTopology} */
+    get primitiveTopology() {
+        return "triangle-strip";
+    }
+
+    /**
+     * @param {GPURenderPassEncoder} pass
+     * @param {import("../../index.d.ts").ProgramDrawOptions} options
+     */
+    draw(pass, options) {
+        pass.draw(4, options.instanceCount, 0, options.firstInstance);
+    }
+
+    /**
+     * @param {GPURenderPassEncoder} pass
+     * @param {import("../../index.d.ts").ProgramDrawOptions} options
+     */
+    drawPick(pass, options) {
+        this.draw(pass, options);
+    }
+
     /**
      * @returns {string[]}
      */

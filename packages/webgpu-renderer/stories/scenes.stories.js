@@ -1,3 +1,6 @@
+import runLassoScene from "../examples/lassoScene.js";
+import runPointLassoScene from "../examples/pointLassoScene.js";
+import runPointDensityScene from "../examples/pointDensityScene.js";
 import { renderScene } from "./sceneRunner.js";
 import runBasicScene from "../examples/basicScene.js";
 import runHatchScene from "../examples/hatchScene.js";
@@ -308,3 +311,26 @@ export const RenderScope = withSource(
         render: (args) => renderScene(runGroupScene, args),
     }
 );
+
+export const ComputeLasso = withSource(
+    "runLassoScene",
+    { count: 1000000 },
+    {
+        args: { count: 1000000 },
+        argTypes: {
+            count: {
+                control: { type: "select" },
+                options: [100000, 1000000, 10000000],
+            },
+        },
+        render: (args) => renderScene(runLassoScene, args),
+    }
+);
+
+export const PointBackedLasso = withSource("runPointLassoScene", null, {
+    render: (args) => renderScene(runPointLassoScene, args),
+});
+
+export const PointDensityPreview = withSource("runPointDensityScene", null, {
+    render: (args) => renderScene(runPointDensityScene, args),
+});

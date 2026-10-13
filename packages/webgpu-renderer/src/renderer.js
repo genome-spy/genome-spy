@@ -338,7 +338,10 @@ export class Renderer {
             entries: [
                 {
                     binding: 0,
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    visibility:
+                        GPUShaderStage.VERTEX |
+                        GPUShaderStage.FRAGMENT |
+                        GPUShaderStage.COMPUTE,
                     buffer: {
                         type: "uniform",
                         hasDynamicOffset: true,

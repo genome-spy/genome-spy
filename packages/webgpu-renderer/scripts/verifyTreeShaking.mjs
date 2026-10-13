@@ -44,6 +44,8 @@ const publicEntries = new Map([
 const fixtures = [
     "rendererOnly",
     "pointLinear",
+    "pointLasso",
+    "pointDensity",
     "pointOrdinal",
     "customIdentityMark",
     "fontTrueType",
@@ -151,6 +153,30 @@ async function bundleFixture(name) {
 }
 
 function assertTreeShaking(result) {
+    for (const id of [
+        "src/utils/pointLassoSelection.js",
+        "src/utils/lassoSelection.js",
+        "src/wgsl/lasso.wgsl.js",
+    ]) {
+        if (
+            result.modules.has(id) !==
+            ["pointLasso", "pointDensity"].includes(result.name)
+        ) {
+            throw new Error(
+                `${result.name} bundle has unexpected lasso inclusion: ${id}`
+            );
+        }
+    }
+    for (const id of [
+        "src/utils/pointDensityPreview.js",
+        "src/utils/lassoImage.js",
+    ]) {
+        if (result.modules.has(id) !== (result.name === "pointDensity"))
+            throw new Error(
+                `${result.name} bundle has unexpected density inclusion: ${id}`
+            );
+    }
+
     if (result.name === "fontTrueType") {
         for (const id of [
             "src/fonts/trueTypeFont.js",

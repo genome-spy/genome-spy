@@ -198,7 +198,11 @@ export type SelectionSlotHandle =
       }
     | {
           type: "multi";
-          set(ids: Uint32Array): void;
+          /** Explicit activity keeps an empty query distinct from a cleared selection. */
+          set(ids: Uint32Array, active?: boolean): void;
+          /** Borrow a same-device [key,value] hash buffer. Caller owns its lifetime.
+           * active=true preserves zero-match region activity without reading its count. */
+          setGpuTable(buffer: GPUBuffer, active: boolean): void;
       }
     | {
           type: "interval";
@@ -1273,6 +1277,7 @@ export type MarkDefinition<
 }>;
 
 export class Renderer {
+    readonly device: GPUDevice;
     /** Update global viewport-related uniforms (pixel size + device pixel ratio). */
     updateGlobals(globals: GlobalUniforms): void;
 
