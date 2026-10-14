@@ -34,6 +34,7 @@ export type SecondaryOffsetChannel = "x2Offset" | "y2Offset";
 export type ChannelWithScale =
     | PositionalChannel
     | OffsetChannel
+    | SecondaryOffsetChannel
     | "color"
     | "fill"
     | "stroke"
@@ -585,6 +586,13 @@ export type NumericMarkPropDef = MarkPropDef<number>;
  */
 export type OffsetDef = NumericMarkPropDef | MarkPropExprDef;
 
+/** An offset using the primary offset channel's scale, or an unscaled pixel value. */
+export type SecondaryOffsetDef =
+    | (SecondaryFieldDef & BandMixins)
+    | (Omit<DatumDef, "scale" | "resolutionChannel" | "type"> & BandMixins)
+    | (ExprDef & BandMixins & DomainContributionMixins)
+    | NumericValueDef;
+
 export type ShapeDef = MarkPropDef<string | null, TypeForShape>;
 
 export type ArrowDirection = "forward" | "reverse" | "both";
@@ -666,6 +674,12 @@ export interface Encoding {
      * Vertical offset from the encoded y position, in logical pixels.
      */
     yOffset?: OffsetDef | null;
+
+    /** Horizontal displacement of x2, using the xOffset scale for data values. */
+    x2Offset?: SecondaryOffsetDef | null;
+
+    /** Vertical displacement of y2, using the yOffset scale for data values. */
+    y2Offset?: SecondaryOffsetDef | null;
 
     /**
      * Legacy horizontal pixel offset for point marks.

@@ -311,8 +311,9 @@ export default class Mark {
 
             for (const primary of /** @type {const} */ (["x", "y"])) {
                 const secondary = primary == "x" ? "x2" : "y2";
-                const primaryOffset = primary + "Offset";
-                const secondaryOffset = secondary + "Offset";
+                const primaryOffset = primary == "x" ? "xOffset" : "yOffset";
+                const secondaryOffset =
+                    primary == "x" ? "x2Offset" : "y2Offset";
                 const primaryOffsetDef = internalEncoding[primaryOffset];
                 if (isNestedDiscreteOffsetDef(primaryOffsetDef)) {
                     const primaryDef = internalEncoding[primary];
@@ -350,18 +351,36 @@ export default class Mark {
 
                 const resolved = resolveSecondaryOffset(
                     internalEncoding[primaryOffset],
-                    propToValueDef(secondaryOffset),
+                    configured[secondaryOffset] ??
+                        propToValueDef(secondaryOffset),
                     configured[secondary] != null
                 );
 
                 if (typeof resolved == "number") {
                     internalEncoding[secondaryOffset] = { value: resolved };
                 } else if (resolved && findChannelDefWithScale(resolved)) {
+                    if (
+                        !findChannelDefWithScale(
+                            internalEncoding[primaryOffset]
+                        )
+                    ) {
+                        throw new Error(
+                            secondaryOffset +
+                                " requires a scaled " +
+                                primaryOffset +
+                                " definition."
+                        );
+                    }
                     /** @type {Record<string, any>} */
                     const scaleProperties = {
                         resolutionChannel: primaryOffset,
                     };
-                    if (isNestedDiscreteOffsetDef(resolved)) {
+                    if (
+                        isNestedDiscreteOffsetDef(resolved) &&
+                        (configured[secondaryOffset] == null ||
+                            !("band" in resolved) ||
+                            resolved.band == null)
+                    ) {
                         scaleProperties.band =
                             this.getOffsetBand(secondaryOffset);
                     }

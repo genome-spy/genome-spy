@@ -216,6 +216,18 @@ Returns the current bandwidth of a band-like scale for the given channel. The
 value uses the same units as the scale range. For positional scales, multiply
 the result by `width` or `height` to convert it to pixels.
 
+<a name="step" href="#step">#</a>
+<b>step</b>(<i>channel</i>, <i>extent?</i>)<br/>
+Returns the signed step between adjacent bands on a band, point, index, or locus
+scale, in scale-range units. The step includes padding and excludes inserted
+grouping gaps. For positional scales, multiply by `width` or `height` to convert
+to pixels. Pixel y offsets increase downward, so a relative row offset uses
+`-height * step('y', height)`.
+
+Pass the actual pixel extent when the scale has grouping gaps: `step('x', width)`
+or `step('y', height)`. This keeps fixed gap widths consistent during resize.
+A zero extent returns zero while the view is being arranged.
+
 <a name="zoomLevel" href="#zoomLevel">#</a>
 <b>zoomLevel</b>()<br/>
 Returns the geometric zoom level of the zoomable x and y scales that are

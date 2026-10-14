@@ -1,7 +1,7 @@
 # Dendrogram implementation plan
 
-Status: proposed and independently reviewed on 2026-10-14; implementation has
-not started.
+Status: implementation in progress on `codex/dendrogram`; M1 complete.
+Independently reviewed on 2026-10-14.
 
 ## Goal and scope
 
@@ -301,11 +301,11 @@ positions. Add no dendrogram-specific GPU resources or general path engine.
 
 ### M1 — Scaled endpoint offsets and row-step ranges
 
-- [ ] Expose secondary offset definitions and wire their primary scale family.
-- [ ] Preserve existing property precedence, implicit endpoint fallback,
+- [x] Expose secondary offset definitions and wire their primary scale family.
+- [x] Preserve existing property precedence, implicit endpoint fallback,
       grouped bars, and ordinary pixel-offset behavior across the renderers.
-- [ ] Apply discrete offset band adjustments consistently in immediate projection.
-- [ ] Add `step()` with reactive padding, reversal, resize, and gap semantics.
+- [x] Apply discrete offset band adjustments consistently in immediate projection.
+- [x] Add `step()` with reactive padding, reversal, resize, and gap semantics.
 
 Affected areas: Core channel/spec types, `marks/mark.js`, mark channel support,
 encoder helpers/accessors, resolution planning/domain inputs, scale rules,
@@ -329,6 +329,13 @@ preserving discrete row identities and existing offset defaults.
 
 Review gate: scale-family wiring, public precedence, and occurrence-sensitive
 step ranges are the main shared-contract risks.
+
+M1 verification: six focused endpoint-offset SVG/scale tests cover resizing,
+zoom, reversal, grouping gaps, shared domain contribution, unsupported inputs,
+and grouped-bar centers. Existing encoder, mark, expression, nested-offset, and
+WebGPU adapter suites passed. Core TypeScript, schema generation, and focused
+lint passed. Rule endpoints retain their existing half-open interval semantics;
+link endpoints use point placement at grouping cuts.
 
 ### M2 — Precomputed-tree layout to flat edges
 

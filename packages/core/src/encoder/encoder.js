@@ -539,7 +539,7 @@ export function isOffsetChannel(channel) {
 
 /**
  * Returns the public primary offset channel for a positional endpoint.
- * Secondary endpoints use mark properties rather than encoding channels.
+ * Secondary endpoints share this channel's offset scale.
  *
  * @param {import("../spec/channel.js").PositionalChannel} channel
  * @returns {import("../spec/channel.js").OffsetChannel}
@@ -603,7 +603,11 @@ export const secondaryChannels = {
  * @type {Partial<Record<import("../spec/channel.js").Channel, import("../spec/channel.js").Channel>>}
  */
 export const primaryChannels = Object.fromEntries(
-    Object.entries(secondaryChannels).map((entry) => [entry[1], entry[0]])
+    [
+        ...Object.entries(secondaryChannels),
+        ["xOffset", "x2Offset"],
+        ["yOffset", "y2Offset"],
+    ].map((entry) => [entry[1], entry[0]])
 );
 
 /**
@@ -677,6 +681,8 @@ export function isChannelWithScale(channel) {
         "y2",
         "xOffset",
         "yOffset",
+        "x2Offset",
+        "y2Offset",
         "color",
         "fill",
         "stroke",

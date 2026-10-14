@@ -147,8 +147,10 @@ definitions.
 For ranged marks, an implicit `x2` or `y2` endpoint inherits the corresponding
 primary offset. An explicitly encoded secondary endpoint is independent and
 has no offset by default. Set the `x2Offset` or `y2Offset` mark property to
-displace an explicit secondary endpoint. These secondary offsets are mark
-properties, not encoding channels.
+displace an explicit secondary endpoint, or encode `x2Offset`/`y2Offset` to vary
+it per datum. Data values on secondary offset channels use the corresponding
+primary offset scale; an encoded `value` is an unscaled pixel displacement.
+An explicit offset encoding takes precedence over the same-named mark property.
 
 A discrete field, datum, or expression on an offset channel can create a
 [nested offset scale](../scale.md#nested-offset-scales) for grouped marks.
