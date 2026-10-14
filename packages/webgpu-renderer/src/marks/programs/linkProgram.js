@@ -9,7 +9,7 @@ import { initializePropertySlots } from "./internal/propertySlots.js";
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
  */
 
-const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
+const LINK_SHAPES = ["arc", "dome", "diagonal", "line", "orthogonal"];
 const ORIENTS = ["vertical", "horizontal"];
 
 /** @param {string} value */
@@ -54,6 +54,7 @@ const SHAPE_ARC: u32 = 0u;
 const SHAPE_DOME: u32 = 1u;
 const SHAPE_DIAGONAL: u32 = 2u;
 const SHAPE_LINE: u32 = 3u;
+const SHAPE_ORTHOGONAL: u32 = 4u;
 const ORIENT_VERTICAL: u32 = 0u;
 const ORIENT_HORIZONTAL: u32 = 1u;
 
@@ -213,6 +214,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(getScaled_x2(i), getScaled_y2(i)),
         vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i)), i);
 
+    if (params.uShape == SHAPE_ORTHOGONAL && all(a == b)) { return culledLink(); }
+
 #if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
     if (all(a == b)) { return culledLink(); }
 #endif
@@ -306,15 +309,32 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         }
     }
 
-    // Match Core's de Casteljau evaluation for stable long links.
-    let q1 = mix(p1, p2, t);
-    let q2 = mix(p2, p3, t);
-    let q3 = mix(p3, p4, t);
-    let r1 = mix(q1, q2, t);
-    let r2 = mix(q2, q3, t);
-    var p = mix(r1, r2, t);
-    let tangent = normalize(3.0 * (r2 - r1));
-    let normal = vec2<f32>(-tangent.y, tangent.x);
+    var p: vec2<f32>;
+    var normal: vec2<f32>;
+    if (params.uShape == SHAPE_ORTHOGONAL) {
+        let elbow = select(vec2<f32>(b.x, a.y), vec2<f32>(a.x, b.y),
+            params.uOrient == ORIENT_VERTICAL);
+        let first = elbow - a;
+        let second = b - elbow;
+        let firstTangent = normalize(select(first, second, all(first == vec2<f32>(0.0))));
+        let secondTangent = normalize(select(second, first, all(second == vec2<f32>(0.0))));
+        let n1 = vec2<f32>(-firstTangent.y, firstTangent.x);
+        let n2 = vec2<f32>(-secondTangent.y, secondTangent.x);
+        p = select(select(b, elbow, segment == 1u), a, segment == 0u);
+        // One six-vertex strip shares the right-angle miter without overdraw.
+        normal = select(select(n1 + n2, n1, all(n1 == n2)), n1, segment == 0u);
+        if (segment == 2u) { normal = n2; }
+    } else {
+        // Match Core's de Casteljau evaluation for stable long links.
+        let q1 = mix(p1, p2, t);
+        let q2 = mix(p2, p3, t);
+        let q3 = mix(p3, p4, t);
+        let r1 = mix(q1, q2, t);
+        let r2 = mix(q2, q3, t);
+        p = mix(r1, r2, t);
+        let tangent = normalize(3.0 * (r2 - r1));
+        normal = vec2<f32>(-tangent.y, tangent.x);
+    }
 
     var size = getScaled_size(i);
     // Avoid artifacts in very thin lines by clamping the size and adjusting
@@ -325,7 +345,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
 
     // Add AA padding to the stroke width.
-    let paddedSize = size + pixelSize;
+    let paddedSize = select(size + pixelSize, max(size, params.uMinPickingSize), pickingEnabled);
     var normalDistance = side * paddedSize;
 
     var fadeDistance = -1.0;
@@ -388,6 +408,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 export default class LinkProgram extends BaseProgram {
     get propertySlotDefinitions() {
         return {
+            minPickingSize: { uniform: "uMinPickingSize", default: 3 },
             arcFadingDistance: {
                 uniform: "uArcFadingDistance",
                 default: [0, 0],
@@ -402,7 +423,11 @@ export default class LinkProgram extends BaseProgram {
             linkShape: {
                 uniform: "uShape",
                 default: "arc",
-                encode: encodeLinkShape,
+                encode: (/** @type {string} */ value) => {
+                    /** @internal Populated during super(), before subclass branding. */
+                    this._shape = encodeLinkShape(value);
+                    return this._shape;
+                },
             },
             orient: {
                 uniform: "uOrient",
@@ -440,6 +465,9 @@ export default class LinkProgram extends BaseProgram {
      */
     _setExtraUniformValue(name, value) {
         super._setExtraUniformValue(name, value);
+        if (name == "uShape") {
+            this._shape = Number(value);
+        }
         if (name == "uSegmentBreaks") {
             this._segmentCount = Math.round(Number(value));
         }
@@ -463,6 +491,7 @@ export default class LinkProgram extends BaseProgram {
     getExtraUniformLayout() {
         /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4 }[]} */
         const layout = [
+            { name: "uMinPickingSize", type: "f32", components: 1 },
             { name: "uArcFadingDistance", type: "f32", components: 2 },
             { name: "uNoFadingOnSecondPass", type: "u32", components: 1 },
             { name: "uArcHeightFactor", type: "f32", components: 1 },
@@ -482,7 +511,10 @@ export default class LinkProgram extends BaseProgram {
      */
     draw(pass, options) {
         const segmentCount = Math.max(1, this._segmentCount ?? 1);
-        const vertexCount = (segmentCount + 1) * 2;
+        const vertexCount =
+            this._shape == LINK_SHAPES.indexOf("orthogonal")
+                ? 6
+                : (segmentCount + 1) * 2;
         pass.draw(vertexCount, options.instanceCount, 0, options.firstInstance);
     }
 }

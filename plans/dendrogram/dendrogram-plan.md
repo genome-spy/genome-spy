@@ -1,6 +1,6 @@
 # Dendrogram implementation plan
 
-Status: implementation in progress on `codex/dendrogram`; M1 and M2 complete.
+Status: implementation in progress on `codex/dendrogram`; M1–M3 complete.
 Independently reviewed on 2026-10-14.
 
 ## Goal and scope
@@ -379,10 +379,10 @@ replacement. Core TypeScript, schema generation, and focused lint passed.
 
 ### M3 — Exact orthogonal links across backends
 
-- [ ] Extend Core/renderer shape enums and local link geometry representation.
-- [ ] Implement Canvas/SVG/software picking and both retained GPU paths.
-- [ ] Add renderer-generic WebGPU link minimum picking width and Core forwarding.
-- [ ] Add a renderer-generic Storybook example for orthogonal links and updates.
+- [x] Extend Core/renderer shape enums and local link geometry representation.
+- [x] Implement Canvas/SVG/software picking and both retained GPU paths.
+- [x] Add renderer-generic WebGPU link minimum picking width and Core forwarding.
+- [x] Add a renderer-generic Storybook example for orthogonal links and updates.
 
 Affected areas: Core `spec/mark.d.ts`, immediate link geometry/visitation,
 Canvas/SVG renderers, software picking, WebGL link shader/delegate, Core WebGPU
@@ -405,6 +405,14 @@ picking across live renderers and exports.
 
 Review gate: inspect routing, joins, culling, picking, export, retained updates,
 and all existing shape consumers together rather than reviewing only a shader.
+
+M3 verification: 274 focused CPU/program/shader tests and ten real WebGPU
+link tests passed. WebGL picking passed at DPR 1 and 2. Checks cover exact
+Canvas/SVG paths, both orientations and directions, collapsed legs, coincident
+endpoints, elbow hit coverage, retained shape/width updates, translucent joins,
+and existing arc/dome fading. Both package type checks, schema generation,
+focused lint, Storybook build, and release checks passed. WebGPU picking uses
+pipeline specialization so hit width does not enlarge visible geometry.
 
 ### M4 — Heatmap composition, documentation, and delivery
 

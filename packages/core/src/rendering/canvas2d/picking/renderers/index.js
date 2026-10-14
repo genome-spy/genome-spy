@@ -225,7 +225,43 @@ function renderLink(baseMark, options) {
     const properties = resolveLinkProperties(mark);
     const distances = resolveLinkFade(mark, properties.shape);
     return visitLinkInstances(mark, properties, options, (instance) => {
-        const [p1, p2, p3, p4] = instance.points;
+        const { geometry } = instance;
+        if (geometry.type == "orthogonal") {
+            const [a, elbow, b] = geometry.points;
+            const id = getPickingId(mark, instance.datum);
+            const half = Math.max(instance.strokeWidth, minPickingSize) / 2;
+            // Axis-aligned rectangles give butt caps and a square miter.
+            for (let leg = 0; leg < 2; leg++) {
+                const start = geometry.points[leg];
+                const end = geometry.points[leg + 1];
+                const dx = Math.abs(end[0] - start[0]);
+                const dy = Math.abs(end[1] - start[1]);
+                if (dx == 0 && dy == 0) {
+                    continue;
+                }
+                options.rasterizer.fillRect(
+                    id,
+                    Math.min(start[0], end[0]) - (dx == 0 ? half : 0),
+                    Math.min(start[1], end[1]) - (dy == 0 ? half : 0),
+                    dx + (dx == 0 ? 2 * half : 0),
+                    dy + (dy == 0 ? 2 * half : 0)
+                );
+            }
+            if (
+                (a[0] != elbow[0] || a[1] != elbow[1]) &&
+                (b[0] != elbow[0] || b[1] != elbow[1])
+            ) {
+                options.rasterizer.fillRect(
+                    id,
+                    elbow[0] - half,
+                    elbow[1] - half,
+                    2 * half,
+                    2 * half
+                );
+            }
+            return;
+        }
+        const [p1, p2, p3, p4] = geometry.points;
         const fade = distances && normalizeLinkArcFade(p1, p4, distances);
         options.rasterizer.strokeCubic(
             getPickingId(mark, instance.datum),

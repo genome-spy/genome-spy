@@ -151,6 +151,7 @@ function renderLinkOutputs(view, devicePixelRatio = 1) {
         beginPath: vi.fn(),
         moveTo: vi.fn(),
         bezierCurveTo: vi.fn(),
+        lineTo: vi.fn(),
         stroke: vi.fn(() => {
             strokes.push({
                 width: context.lineWidth,
@@ -275,5 +276,100 @@ test.each([0, 1, null])(
         check(level === 0);
         view.paramRuntime.setValue("picked", createSinglePointSelection(null));
         check(false);
+    }
+);
+
+test.each([
+    ["vertical", false],
+    ["vertical", true],
+    ["horizontal", false],
+    ["horizontal", true],
+])(
+    "draws and picks exact %s orthogonal links, reversed=%s",
+    async (orient, reversed) => {
+        const a = reversed ? 0.8 : 0.2;
+        const b = reversed ? 0.2 : 0.8;
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            params: [
+                { name: "shape", value: "orthogonal" },
+                { name: "selected", select: { type: "point" } },
+            ],
+            mark: {
+                type: "link",
+                linkShape: { expr: "shape" },
+                orient: /** @type {"vertical" | "horizontal"} */ (orient),
+                minPickingSize: 8,
+            },
+            encoding: {
+                x: { value: a },
+                y: { value: a },
+                x2: { value: b },
+                y2: { value: b },
+                size: { value: 1 },
+                color: { value: "black" },
+                opacity: { value: 0.5 },
+            },
+        });
+        const result = renderLinkOutputs(view);
+        const source = [a * 100, (1 - a) * 100].map(Math.round);
+        const target = [b * 100, (1 - b) * 100].map(Math.round);
+        const elbow =
+            orient == "vertical"
+                ? [source[0], target[1]]
+                : [target[0], source[1]];
+        expect(result.context.moveTo).toHaveBeenCalledWith(...source);
+        expect(result.context.lineTo.mock.calls).toEqual([elbow, target]);
+        expect(result.context.bezierCurveTo).not.toHaveBeenCalled();
+        expect(result.strokes).toEqual([{ width: 1, opacity: 0.5 }]);
+        expect(result.svg.querySelector("path").getAttribute("d")).toBe(
+            `M ${source.join(" ")} L ${elbow.join(" ")} L ${target.join(" ")}`
+        );
+        expect(
+            result.svg
+                .querySelector('[data-mark-type="link"]')
+                .getAttribute("stroke-linejoin")
+        ).toBe("miter");
+        for (const [x, y] of [
+            elbow,
+            [(source[0] + elbow[0]) / 2, (source[1] + elbow[1]) / 2],
+            [(target[0] + elbow[0]) / 2, (target[1] + elbow[1]) / 2],
+        ]) {
+            expect(result.buffer.read(x, y)).toBeGreaterThan(0);
+        }
+        expect(result.buffer.read(elbow[0] + 3, elbow[1] + 3)).toBeGreaterThan(
+            0
+        );
+        expect(result.buffer.read(50, 50)).toBe(0);
+        view.paramRuntime.setValue("shape", "diagonal");
+        expect(
+            renderLinkOutputs(view).context.bezierCurveTo
+        ).toHaveBeenCalledOnce();
+    }
+);
+
+test.each([
+    [0.2, 0.8],
+    [0.8, 0.2],
+    [0.2, 0.2],
+])(
+    "collapses orthogonal zero-length legs and culls coincident endpoints (%s, %s)",
+    async (x2, y2) => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: { type: "link", linkShape: "orthogonal" },
+            encoding: {
+                x: { value: 0.2 },
+                y: { value: 0.2 },
+                x2: { value: x2 },
+                y2: { value: y2 },
+                color: { value: "black" },
+            },
+        });
+        const result = renderLinkOutputs(view);
+        expect(result.strokes).toHaveLength(x2 == y2 ? 0 : 1);
+        expect(result.svg.querySelectorAll("path")).toHaveLength(
+            x2 == y2 ? 0 : 1
+        );
     }
 );

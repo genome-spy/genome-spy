@@ -1,6 +1,6 @@
 # Link
 
-The `"link"` mark displays each row as a curve that connects two points.
+The `"link"` mark displays each row as a path that connects two points.
 The mark can be used to display structural variation and interactions, for
 example. The mark has several different [`linkShape`s](#showing-selected-arcs-in-full) that control
 how the curve is drawn.
@@ -16,6 +16,20 @@ channels: `size`.
 ## Properties
 
 SCHEMA LinkProps
+
+## Orthogonal links
+
+The `"orthogonal"` shape draws two straight legs with a right-angle miter join
+and butt caps. With `orient: "vertical"`, the elbow is `(x, y2)`; with
+`orient: "horizontal"`, it is `(x2, y)`. The source-to-target direction matters.
+A zero-length leg becomes a straight link; coincident endpoints draw nothing.
+`segments` and arc-specific properties do not affect this shape.
+
+Use the [dendrogram transform](../transform/dendrogram.md) to generate parent-to-child
+edges. Both orthogonal and diagonal links can render its output in one layer.
+`minPickingSize` widens the hit area on both legs and the elbow without changing
+the visible stroke. Separate edges may overlap, following ordinary opacity and
+paint-order picking rules.
 
 ## Showing selected arcs in full
 

@@ -808,6 +808,9 @@ fn fs_pick(in: VSOut) -> @location(0) vec4<f32> {
 }
 `;
     const shaderCode = /* wgsl */ `
+// Pipeline specialization keeps picking geometry separate from visible geometry.
+override pickingEnabled: bool = false;
+
 struct Globals {
     width: f32,
     height: f32,

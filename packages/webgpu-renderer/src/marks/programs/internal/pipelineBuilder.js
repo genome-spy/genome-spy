@@ -227,8 +227,10 @@ export function buildPipelines({
             pickPipeline ??= device.createRenderPipeline({
                 label: gpuLabel(labelOwner, "picking pipeline"),
                 ...common,
+                vertex: { ...common.vertex, constants: { pickingEnabled: 1 } },
                 fragment: {
                     module,
+                    constants: { pickingEnabled: 1 },
                     entryPoint: "fs_pick",
                     targets: [
                         {

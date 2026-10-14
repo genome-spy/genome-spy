@@ -997,18 +997,21 @@ export type ArrowMarkOptions = {
 
 export type ArrowMarkProperties = Required<ArrowMarkOptions>;
 
-export type LinkShape = "arc" | "dome" | "diagonal" | "line";
+export type LinkShape = "arc" | "dome" | "diagonal" | "line" | "orthogonal";
 
 export type LinkOrient = "vertical" | "horizontal";
 
 export type LinkMarkOptions = {
+    /** Minimum picking width in logical pixels; does not affect visible width. Default: 3. */
+    minPickingSize?: number;
+
     /** Number of curve segments used for tessellation. */
     segments?: number;
 
-    /** Curve shape: arc, dome, diagonal, or straight line. */
+    /** Path shape. Orthogonal uses two straight legs with butt caps and a miter join. */
     linkShape?: LinkShape;
 
-    /** Orientation for dome/diagonal shapes. */
+    /** Orientation for dome, diagonal, and orthogonal shapes. Orthogonal first travels along this axis. */
     orient?: LinkOrient;
 
     /** Height multiplier for arc shape. */

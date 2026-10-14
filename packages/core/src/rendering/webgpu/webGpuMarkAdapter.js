@@ -901,6 +901,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             color: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
+        minPickingSize: readOptionalNumericProperty(mark, "minPickingSize", 3),
         linkShape: readProperty(mark, "linkShape") ?? "arc",
         orient: readProperty(mark, "orient") ?? "vertical",
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
@@ -928,6 +929,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             clampApex: (value) => !!value,
             maxChordLength: (value) => value,
             segments: (value) => value,
+            minPickingSize: (value) => value,
         }),
     };
 }

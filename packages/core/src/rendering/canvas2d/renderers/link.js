@@ -31,6 +31,8 @@ export function renderLinkCanvas(baseMark, options) {
         options.secondOrderPass
     );
     context.lineCap = "butt";
+    context.lineJoin = "miter";
+    context.miterLimit = 2;
     /** @type {string | undefined} */
     let strokeStyle;
 
@@ -44,9 +46,10 @@ export function renderLinkCanvas(baseMark, options) {
         }
         const fade =
             distances &&
+            instance.geometry.type == "cubic" &&
             normalizeLinkArcFade(
-                instance.points[0],
-                instance.points[3],
+                instance.geometry.points[0],
+                instance.geometry.points[3],
                 distances
             );
         if (fade) {
@@ -73,10 +76,18 @@ export function renderLinkCanvas(baseMark, options) {
         context.globalAlpha =
             opacity * Math.min(instance.strokeWidth / pixelSize, 1);
         context.lineWidth = Math.max(instance.strokeWidth, pixelSize);
-        const [p1, p2, p3, p4] = instance.points;
+        const { geometry } = instance;
+        const p1 = geometry.points[0];
         context.beginPath();
         context.moveTo(p1[0], p1[1]);
-        context.bezierCurveTo(p2[0], p2[1], p3[0], p3[1], p4[0], p4[1]);
+        if (geometry.type == "orthogonal") {
+            for (const point of geometry.points.slice(1)) {
+                context.lineTo(point[0], point[1]);
+            }
+        } else {
+            const [, p2, p3, p4] = geometry.points;
+            context.bezierCurveTo(p2[0], p2[1], p3[0], p3[1], p4[0], p4[1]);
+        }
         context.stroke();
     });
 }
