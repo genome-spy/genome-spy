@@ -1,9 +1,42 @@
+import { inheritSpecOrigin, cloneWithSpecOrigin } from "../utils/specOrigin.js";
 import {
     isValueDef,
     getSecondaryChannel,
     isChannelDefWithScale,
     findChannelDefWithScale,
 } from "../encoder/encoder.js";
+
+// Enumerable symbol survives normalization copies without entering the grammar.
+export const GAP_PEER = Symbol("half-open interval peer");
+
+/** @param {import("../spec/channel.js").ChannelDef} def */
+export function getGapPeer(def) {
+    return /** @type {{[GAP_PEER]?: Channel}} */ (def)?.[GAP_PEER];
+}
+
+/** Annotate only explicit scaled intervals; implicit band coverage has no peer.
+ * @param {Encoding} encoding
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ */
+export function annotateGapPeers(encoding, channel) {
+    const secondary = getSecondaryChannel(channel);
+    const primaryDef = findChannelDefWithScale(encoding[channel]);
+    const secondaryDef = findChannelDefWithScale(encoding[secondary]);
+    if (
+        primaryDef &&
+        secondaryDef &&
+        ["index", "locus"].includes(primaryDef.type)
+    ) {
+        encoding[channel] = inheritSpecOrigin(encoding[channel], {
+            ...encoding[channel],
+            [GAP_PEER]: secondary,
+        });
+        encoding[secondary] = inheritSpecOrigin(encoding[secondary], {
+            ...encoding[secondary],
+            [GAP_PEER]: channel,
+        });
+    }
+}
 
 /**
  *
@@ -57,12 +90,17 @@ export function fixCoveragePositional(
     offsetDefinesCoverage = false
 ) {
     const secondaryChannel = getSecondaryChannel(channel);
+    annotateGapPeers(encoding, channel);
 
     // Must make copies because the definition may be shared with other views/marks
-    let primary = encoding[channel] && { ...encoding[channel] };
-    let secondary = encoding[secondaryChannel] && {
-        ...encoding[secondaryChannel],
-    };
+    let primary =
+        encoding[channel] &&
+        inheritSpecOrigin(encoding[channel], { ...encoding[channel] });
+    let secondary =
+        encoding[secondaryChannel] &&
+        inheritSpecOrigin(encoding[secondaryChannel], {
+            ...encoding[secondaryChannel],
+        });
 
     if (isValueDef(primary) || isValueDef(secondary)) {
         return;
@@ -80,7 +118,7 @@ export function fixCoveragePositional(
                 // Bar plot, anchor the other end to zero
                 secondary = { datum: 0, domainInert: true };
             } else {
-                secondary = { ...primary };
+                secondary = inheritSpecOrigin(primary, { ...primary });
 
                 // Fill the bands (bar plot / heatmap)
                 // We are following the Vega-Lite convention:
@@ -118,6 +156,7 @@ export function fixCoveragePositional(
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
  */
 export function fixHalfOpenRangedText(encoding, channel) {
+    annotateGapPeers(encoding, channel);
     const secondaryChannel = getSecondaryChannel(channel);
 
     const primary = encoding[channel];
@@ -148,8 +187,11 @@ export function fixHalfOpenRangedText(encoding, channel) {
 
     const band = primaryBand ?? secondaryBand ?? 0;
 
-    encoding[channel] = { ...primary, band };
-    encoding[secondaryChannel] = { ...secondary, band: secondaryBand ?? band };
+    encoding[channel] = inheritSpecOrigin(primary, { ...primary, band });
+    encoding[secondaryChannel] = inheritSpecOrigin(secondary, {
+        ...secondary,
+        band: secondaryBand ?? band,
+    });
 }
 
 /**
@@ -173,7 +215,7 @@ export function fixStroke(encoding, filled) {
         if (filled) {
             encoding.stroke = { value: null };
         } else {
-            encoding.stroke = structuredClone(encoding.color);
+            encoding.stroke = cloneWithSpecOrigin(encoding.color);
             setResolutionChannel(encoding.stroke, "color");
             // TODO: Whattabout default strokeWidth?
         }
@@ -184,7 +226,7 @@ export function fixStroke(encoding, filled) {
     }
 
     if (!encoding.strokeOpacity) {
-        encoding.strokeOpacity = structuredClone(encoding.opacity);
+        encoding.strokeOpacity = cloneWithSpecOrigin(encoding.opacity);
         setResolutionChannel(encoding.strokeOpacity, "opacity");
     }
 }
@@ -197,7 +239,7 @@ export function fixFill(encoding, filled) {
     if (isValueDef(encoding.fill) && encoding.fill.value === null) {
         encoding.fillOpacity = { value: 0 };
     } else if (!encoding.fill) {
-        encoding.fill = structuredClone(encoding.color);
+        encoding.fill = cloneWithSpecOrigin(encoding.color);
         setResolutionChannel(encoding.fill, "color");
 
         if (!filled && !encoding.fillOpacity) {
@@ -207,10 +249,18 @@ export function fixFill(encoding, filled) {
 
     if (!encoding.fillOpacity) {
         if (filled) {
-            encoding.fillOpacity = structuredClone(encoding.opacity);
+            encoding.fillOpacity = cloneWithSpecOrigin(encoding.opacity);
             setResolutionChannel(encoding.fillOpacity, "opacity");
         } else {
             encoding.fillOpacity = { value: 0 };
         }
     }
+}
+
+/**
+ * @param {import("./mark.js").default} mark
+ * @param {"x" | "y"} axis
+ */
+export function isMarkClamped(mark, axis) {
+    return mark.properties.clamp === true || mark.properties.clamp === axis;
 }

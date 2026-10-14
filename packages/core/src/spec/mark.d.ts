@@ -57,6 +57,25 @@ export interface MarkPropsBase {
     clip?: boolean | "x" | "y" | "never";
 
     /**
+     * Clamps projected anchors or range endpoints to the view before constructing
+     * mark geometry. `true` clamps both axes; `"x"` or `"y"` selects one axis.
+     * Position offsets are included. For rectangles, clamping keeps outlines
+     * around the visible part of a group during zooming. With `clip: false`,
+     * full strokes remain visible at the boundary; symbols, arrowheads, and
+     * text glyphs can extend beyond it.
+     *
+     * Rectangles and explicit text ranges collapsed on a clamped axis are hidden.
+     * Rules and ticks intersect the selected bounds without changing direction;
+     * excluded or collapsed segments are hidden. Zero-length rules are hidden
+     * even when `clamp` is false. Links and arrows with
+     * coincident endpoints are hidden.
+     * Shared scales and their inversion are unchanged.
+     *
+     * __Default value:__ `false`
+     */
+    clamp?: boolean | "x" | "y";
+
+    /**
      * Offset of the `x` coordinate in logical pixels.
      *
      * **Default value:** `0`

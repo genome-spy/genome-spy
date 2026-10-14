@@ -351,6 +351,7 @@ export interface LazyData extends DataInspection {
 
 export type LazyDataParams =
     | AxisTicksData
+    | ScaleGroupsData
     | LegendEntriesData
     | LegendGradientData
     | LegendGradientTicksData
@@ -362,6 +363,20 @@ export type LazyDataParams =
     | TabixTsvData
     | Gff3Data
     | VcfData;
+
+/** Generates finite half-open group intervals from resolved index/locus scales. */
+export interface ScaleGroupsData {
+    type: "scaleGroups";
+
+    /**
+     * One or both positional channels, without duplicates. Each contributes
+     * `xGroup`, `xStart`, `xEnd` or the corresponding `y` fields. Two channels
+     * produce their Cartesian product. Boundaries are half-open interval
+     * endpoints. Guide views should share the data-bearing view's scales and
+     * set `domainInert: true`.
+     */
+    channels: ("x" | "y")[];
+}
 
 export interface DebouncedData {
     /**
@@ -597,6 +612,14 @@ export interface BamData extends DebouncedData {
      * __Default value:__ `10000`
      */
     windowSize?: number | ExprRef;
+
+    /**
+     * SAM auxiliary tags to expose on each read, for example `["HP", "CB"]`.
+     * Each tag is available as a field named `tag_` followed by the tag name,
+     * for example `tag_HP`. The field is `undefined` when a read lacks the tag.
+     * Tags that are not listed are not decoded.
+     */
+    tags?: string[];
 }
 
 export interface TabixData extends DebouncedData {

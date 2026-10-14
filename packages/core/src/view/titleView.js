@@ -72,7 +72,7 @@ function pickDefined(config) {
 /**
  * @param {import("../spec/title.js").Title} spec
  */
-function getTitleOrientMetadata(spec) {
+export function getTitleOrientMetadata(spec) {
     /** @type {Partial<import("../spec/title.js").Title>} */
     let orientConfig = {};
     let xy = { x: 0, y: 0 };
@@ -105,9 +105,10 @@ function getTitleOrientMetadata(spec) {
 /**
  * @param {string | import("../spec/title.js").Title} title
  * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
+ * @param {Partial<import("../spec/title.js").Title>} [defaults]
  * @returns {import("../spec/title.js").Title}
  */
-function resolveTitleSpec(title, configScopes = []) {
+export function resolveTitleSpec(title, configScopes = [], defaults = {}) {
     if (!title) {
         return;
     }
@@ -133,6 +134,7 @@ function resolveTitleSpec(title, configScopes = []) {
     /** @type {import("../spec/title.js").Title} */
     const preliminarySpec = {
         ...titleConfig,
+        ...defaults,
         ...styleConfig,
         ...subtitleStyleConfig,
         ...pickSubtitleTitleConfig(titleConfig),
@@ -148,6 +150,7 @@ function resolveTitleSpec(title, configScopes = []) {
     return {
         ...titleConfig,
         ...orientConfig,
+        ...defaults,
         ...styleConfig,
         ...subtitleStyleConfig,
         ...pickSubtitleTitleConfig(titleConfig),
@@ -160,7 +163,7 @@ function resolveTitleSpec(title, configScopes = []) {
  * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
  * @returns {{ xOffset: number, yOffset: number }}
  */
-function getTitleOffsets(spec, context) {
+export function getTitleOffsets(spec, context) {
     const subtitleSpacing = spec.subtitle
         ? getSubtitleTextPerpendicularExtent(spec, context) +
           (spec.subtitlePadding ?? 0)
@@ -261,9 +264,10 @@ function requestTitleFonts(spec, context) {
 /**
  * @param {import("../spec/title.js").Title} spec
  * @param {{ textMetrics: import("../fonts/textMetrics.js").TextMetricsProvider }} context
+ * @param {number} [extentFraction] Use half the extent for text centered on both local axes.
  * @returns {Padding}
  */
-function getTitleOverhang(spec, context) {
+export function getTitleOverhang(spec, context, extentFraction = 1) {
     if (
         !spec ||
         spec.reserve === false ||
@@ -274,7 +278,9 @@ function getTitleOverhang(spec, context) {
     }
 
     const extent = getTitlePerpendicularExtent(spec, context);
-    const reserved = Math.ceil(extent + Math.max(spec.offset ?? 0, 0));
+    const reserved = Math.ceil(
+        extent * extentFraction + Math.max(spec.offset ?? 0, 0)
+    );
 
     switch (spec.orient) {
         case "top":
@@ -389,7 +395,7 @@ function measureTextValue(text, measurement, fontSize) {
  * @param {boolean} subtitle
  * @returns {import("../spec/mark.js").TextProps}
  */
-function createTitleTextMark(spec, xy, offsets, subtitle) {
+export function createTitleTextMark(spec, xy, offsets, subtitle) {
     return {
         type: "text",
         tooltip: null,
@@ -447,6 +453,40 @@ function createTitleUnitSpecs(titleSpec, context) {
     }
 
     return specs;
+}
+
+/**
+ * Resolves a title frame from plot and guide bounds, preserving the plot's
+ * parallel anchor range when a reserved title uses the group frame.
+ *
+ * @param {import("./layout/rectangle.js").default} viewportCoords
+ * @param {import("./layout/rectangle.js").default} guideCoords
+ * @param {import("../spec/title.js").Title} titleSpec
+ */
+export function getTitleCoords(viewportCoords, guideCoords, titleSpec) {
+    const frame = titleSpec.frame ?? "group";
+    if (titleSpec.reserve === false) {
+        return frame == "bounds" ? guideCoords : viewportCoords;
+    } else if (frame == "bounds") {
+        return guideCoords;
+    }
+
+    switch (titleSpec.orient) {
+        case "top":
+        case "bottom":
+            return guideCoords.modify({
+                x: () => viewportCoords.x,
+                width: () => viewportCoords.width,
+            });
+        case "left":
+        case "right":
+            return guideCoords.modify({
+                y: () => viewportCoords.y,
+                height: () => viewportCoords.height,
+            });
+        default:
+            return viewportCoords;
+    }
 }
 
 /**

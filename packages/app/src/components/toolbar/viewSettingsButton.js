@@ -1,6 +1,6 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFileUpload, faSlidersH } from "@fortawesome/free-solid-svg-icons";
-import { LitElement, html } from "lit";
+import { LitElement, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
 import { visitAddressableViews } from "@genome-spy/core/view/viewSelectors.js";
@@ -15,7 +15,11 @@ import {
     getViewVisibilityOverride,
     resolveRadioVisibilityConflicts,
 } from "../../viewSettingsUtils.js";
-import { dropdownMenu } from "../../utils/ui/contextMenu.js";
+import {
+    dismissDropdownMenu,
+    dropdownMenu,
+    isDropdownOpenFor,
+} from "../../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import SubscriptionController from "../generic/subscriptionController.js";
@@ -321,8 +325,10 @@ class ViewSettingsButton extends LitElement {
                         this.#handleViewHover(event, view)}
                 >
                     <input
+                        data-control-key=${`${selectorKey ?? title}:visibility`}
                         style=${`margin-left: ${depth * 1.5}em;`}
                         type=${isRadioGroup ? "radio" : "checkbox"}
+                        name=${isRadioGroup ? radioGroup.groupKey : nothing}
                         ?disabled=${
                             !selectorKey ||
                             !uniqueSelectorKeys.has(selectorKey) ||
@@ -343,9 +349,9 @@ class ViewSettingsButton extends LitElement {
                 </label>`;
 
                 items.push({
-                    customContent: submenuOpener
-                        ? template
-                        : html`<li>${template}</li>`,
+                    label: title,
+                    key: selectorKey ?? title,
+                    customContent: template,
                     submenu: submenuOpener,
                 });
             }
@@ -408,16 +414,18 @@ class ViewSettingsButton extends LitElement {
         }
 
         dropdownMenu(
-            {
-                items,
-            },
+            { items, mode: "controls", label: "View settings" },
             this.#buttonRef.value,
             "bottom-start"
         );
     }
 
     #handleDropdownClick() {
-        this.#showDropdown();
+        if (isDropdownOpenFor(this.#buttonRef.value)) {
+            dismissDropdownMenu();
+        } else {
+            this.#showDropdown();
+        }
     }
 
     render() {
@@ -428,6 +436,8 @@ class ViewSettingsButton extends LitElement {
                     ${ref(this.#buttonRef)}
                     class="tool-btn"
                     title="View settings"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
                     @click=${this.#handleDropdownClick.bind(this)}
                 >
                     ${icon(faSlidersH).node[0]}

@@ -167,6 +167,15 @@ export default class Scrollbar extends UnitView {
     }
 
     /**
+     * Whether the content overflows the viewport, i.e. there is something to
+     * scroll. Scrollbars exist whenever a viewport size is given, even if the
+     * content fits.
+     */
+    canScroll() {
+        return this.#getMaxViewportOffset() > 0;
+    }
+
+    /**
      * @param {number} value
      * @param {{ notify?: boolean, syncSmoother?: boolean }} [options]
      */

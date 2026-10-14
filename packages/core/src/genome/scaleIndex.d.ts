@@ -1,12 +1,33 @@
 export default function scaleIndex(): ScaleIndex;
 
 export interface ScaleIndex {
+    /** Optional resolution-owned configuration; raw standalone scales omit it. */
+    props?: import("../spec/scale.js").Scale;
     (value: number): number;
 
     invert(x: number): number;
 
+    gapMapping(
+        extent?: number
+    ):
+        | ReturnType<
+              typeof import("./indexGapMapping.js").createIndexGapMapping
+          >
+        | undefined;
+
+    gapPositions(): readonly number[];
+    gapPositions(positions: readonly number[] | null): this;
+
+    gapWidth(): number;
+    gapWidth(width: number | null): this;
+
+    axisLength(): number;
+    axisLength(extent: number | (() => number)): this;
+
+    gapDomain(): readonly number[] | undefined;
+
     domain(): number[];
-    domain(_: Iterable<number>): this;
+    domain(_: Iterable<number>, ranks?: readonly number[]): this;
 
     range(): number[];
     range(_: Iterable<number>): this;

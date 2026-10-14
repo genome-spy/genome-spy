@@ -84,6 +84,52 @@ The API design is partly inspired by
 [Vega](https://vega.github.io/vega/), [D3](https://d3js.org/), and, most
 directly, GenomeSpy's visualization requirements.
 
+## Device capacity
+
+Startup requests the adapter's supported `maxStorageBufferBindingSize` and
+`maxBufferSize`, since dataset sizes are not known yet. Binding counts and all
+other limits remain at WebGPU defaults, including eight storage buffers per
+shader stage and four bind groups. No fixed desktop-sized byte minimum is
+required, so baseline full-WebGPU devices can render simple plots.
+
+All f32/u32/i32 series channels share one packed storage binding per mark,
+with integer IDs and floating-point bits preserved. Large datasets can exceed
+a device's binding byte capacity even if their separate source arrays fit.
+The renderer checks sizes before packing/allocation and on later updates and
+reports the mark/resource, required bytes, and available capacity. It does not
+truncate data or recreate the device to retry. Negotiated limits do not reserve
+memory or guarantee allocation under memory pressure.
+
+## Grouping gaps on index scales
+
+`indexScale({ domain: [0, 20], range: [0, 500], gapPositions: [10],
+gapWidth: 8, band: 0 })` inserts an eight-logical-pixel gap before index 10.
+Gap width stays fixed across domain updates and placement resizing. A band's
+`band` position always uses its own bandwidth. Set `gapBefore: true` on a
+half-open interval's exclusive end; intervals spanning cuts need no splitting.
+If the visible gaps leave no room for data, affected marks are hidden until
+the output extent grows or the scale configuration changes.
+
+Cuts are nonnegative integers below 2^44. The renderer sorts and deduplicates
+them and packs exact integer keys into the mark-owned scale/gap table buffer.
+Ordinal ranges, sparse domain maps, and gap cuts share this one storage binding;
+selection tables remain independently bound. Changed scale slices are uploaded
+without replacing series data. Table growth relocates slices and updates their
+uniform offsets without recompiling the shader.
+Ordinary index scales allocate no gap resources. Null/empty cuts or zero/null
+width also omit gap helpers and bindings unless `gapEnabled: true` explicitly
+reserves them for later retained updates.
+
+The scale handle provides `setGapPositions` and `setGapWidth`.
+Domain and width updates reuse cut buffers. `setDomain(domain, [firstRank, lastRank])`
+retains fractional progress through a gap at a viewport edge; ordinary
+`setDomain` calls restore domain fitting. Hosts implementing gap-aware camera
+navigation own these fractional ranks. `gapAxis` selects the placement axis
+for a custom channel name; x/y names infer it automatically.
+
+The **Index Grouping Gaps** Storybook scene demonstrates half-open endpoints,
+retained domain updates with the wheel, and a configurable fixed gap width.
+
 ## Rendering model
 
 ### What the renderer owns
@@ -253,6 +299,23 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
+### Position clamping
+
+All marks accept optional two-component `xClampRange` and `yClampRange` channels
+containing ascending `[min, max]` bounds in logical pixels. Bounds use the mark's
+coordinate space and are transformed with its placement. Projected anchors or
+endpoints are clamped after placement and position offsets, before constructing
+geometry. The channels can be omitted independently.
+
+Points retain their full symbol size. Rectangles that collapse along a constrained
+axis are hidden before minimum-size expansion. Rules intersect the bounds without
+changing direction; excluded or collapsed segments are hidden. Links and arrows
+are hidden when their endpoints coincide. Text clamps its anchor or fitting range
+and hides collapsed explicit ranges. These policies apply equally to drawing and
+picking.
+Stroke, glyph, cap, and arrowhead geometry can extend beyond the bounds; draw clips
+control pixel clipping separately.
+
 ### Detached targets
 
 `renderer.createDetachedTarget(canvas, { width, height, dpr })` configures a
@@ -347,6 +410,7 @@ updates GPU resources directly.
 
 - `domain` and `range` have the usual mapping intent.
 - Continuous-scale clamping and rounding follow d3 behavior.
+
 - Sequential scales use a continuous scale with an interpolator range; the
   renderer creates a color-ramp texture and samples it in WGSL.
 - Built-in families include `linear`, `log`, `pow`, `sqrt`, `symlog`,

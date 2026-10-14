@@ -2,7 +2,6 @@ import {
     bindUniformBlock,
     createBufferInfoFromArrays,
     createProgramInfoFromProgram,
-    createUniformBlockInfo,
     createVertexArrayInfo,
     setAttribInfoBufferFromArray,
     setBlockUniforms,
@@ -24,6 +23,7 @@ import {
     getRangeForGlsl,
     makeAttributeName,
     PARAM_PREFIX,
+    RANGE_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SELECTION_EMPTY_PREFIX,
     SELECTION_MEMBERSHIP_PREFIX,
@@ -45,6 +45,7 @@ import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
 import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { createProgram } from "../gl/webGLHelper.js";
+import { createUniformBlockInfo } from "../gl/uniformBlocks.js";
 import { RASTER_COORDINATE_OFFSET } from "../../renderingConstants.js";
 import { InternMap } from "internmap";
 import ViewError from "../../../view/viewError.js";
@@ -63,6 +64,7 @@ import {
     getSelectionPredicateTreeParams,
 } from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
+import { gapRank, hasGroupingGaps } from "../../../genome/indexGapMapping.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -74,7 +76,7 @@ const ORDER_PASS_VALUES = {
 };
 
 /**
- * Replaces the conditional-order insertion point without relying on the
+ * Replaces the vertex visibility insertion point without relying on the
  * whitespace retained by the GLSL build plugin.
  *
  * @param {string} shaderCode
@@ -83,7 +85,7 @@ const ORDER_PASS_VALUES = {
 export function replaceOrderGuard(shaderCode, guardCode) {
     return shaderCode.replace(
         /#pragma orderGuard(?:[ \t]*\r?\n){0,2}/,
-        guardCode
+        guardCode ? guardCode + "\n" : ""
     );
 }
 
@@ -206,6 +208,14 @@ export default class WebGLMark {
      * @protected
      */
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
+        for (const axis of ["x", "y"]) {
+            if (
+                this.properties.clamp === true ||
+                this.properties.clamp === axis
+            ) {
+                extraHeaders.push("#define CLAMP_" + axis.toUpperCase());
+            }
+        }
         const shaderChannels = this.getAttributes();
         const encoders = this.encoders;
         const order = this.mark.getOrder();
@@ -509,7 +519,7 @@ export default class WebGLMark {
                           : projection.hitTest === "encloses"
                             ? `(${leq(lo, datumLo)} && ${leq(datumHi, hi)})`
                             : `(${lt(lo, datumHi)} && ${lt(datumLo, hi)})`;
-                return test;
+                return `(${lt(lo, hi)} && ${test})`;
             });
             const active = `!${SELECTION_EMPTY_PREFIX}${param}()`;
             return `((${active} && ${dimensions.join(" && ")}) || (${empty} && !${active}))`;
@@ -761,23 +771,42 @@ export default class WebGLMark {
                 "#pragma markUniforms",
                 dynamicMarkUniforms.join("\n")
             );
-        const addOrderGuard = (/** @type {string} */ shaderCode) =>
-            replaceOrderGuard(
-                shaderCode,
-                order
-                    ? "    if (uOrderMode != 0 &&\n" +
-                          "        (((uOrderMode & 3) == 1) != isOrderMatch())) {\n" +
-                          "        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);\n" +
-                          "        return;\n" +
-                          "    }"
-                    : ""
+        const hidden = [];
+        // Preserve legacy rect/rule culling and cull every explicitly clamped mark.
+        if (
+            sampleFacetMode &&
+            (this.properties.clamp ||
+                ["rect", "rule", "tick"].includes(this.mark.getType()))
+        ) {
+            hidden.push("getSampleFacetPos().height == 0.0");
+        }
+        if (order) {
+            hidden.push(
+                "(uOrderMode != 0 && (((uOrderMode & 3) == 1) != isOrderMatch()))"
             );
+        }
+        for (const axis of /** @type {const} */ (["x", "y"])) {
+            const scale = encoders[axis]?.scale;
+            if (scale && hasGroupingGaps(scale.props)) {
+                hidden.push(`!gapFits_${axis}(${RANGE_PREFIX}${axis})`);
+            }
+        }
 
         extraHeaders = extraHeaders.map(addDynamicMarkUniforms);
         vertexShader = addDynamicMarkUniforms(vertexShader);
         fragmentShader = addDynamicMarkUniforms(fragmentShader);
-        vertexShader = addOrderGuard(vertexShader);
+        vertexShader = replaceOrderGuard(
+            vertexShader,
+            hidden.length
+                ? `    if (${hidden.join(" || ")}) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }`
+                : ""
+        );
 
+        const gapY =
+            encoders.y?.scale && hasGroupingGaps(encoders.y.scale.props);
         const vertexParts = [
             vertexPrecision,
             debugHeader,
@@ -785,8 +814,9 @@ export default class WebGLMark {
             GLSL_COMMON,
             GLSL_SCALES,
             [...attributeCode].join("\n"),
+            ...(gapY ? [GLSL_SAMPLE_FACET] : []),
             ...scaleCode,
-            GLSL_SAMPLE_FACET,
+            ...(gapY ? [] : [GLSL_SAMPLE_FACET]),
             GLSL_PICKING_VERTEX,
             vertexShader,
         ];
@@ -926,10 +956,7 @@ export default class WebGLMark {
             /** @type {import("../../../paramRuntime/types.js").ExprRefFunction} */
             let fn;
             const set = () => setter(adjuster(fn(null)));
-            fn = this.unitView.paramRuntime.watchExpression(
-                propValue.expr,
-                set
-            );
+            fn = this.unitView.paramRuntime.watchExpression(propValue, set);
 
             // ... and set the initial value
             set();
@@ -1142,6 +1169,33 @@ export default class WebGLMark {
         });
 
         for (const [channel, encoder] of Object.entries(this.encoders)) {
+            if (
+                (channel === "x" || channel === "y") &&
+                encoder.scale &&
+                hasGroupingGaps(/** @type {any} */ (encoder.scale).props)
+            ) {
+                const resolution = this.unitView.getScaleResolution(channel);
+                ops.push(() => {
+                    const scale =
+                        /** @type {import("../../../genome/scaleIndex.js").ScaleIndex} */ (
+                            resolution.getScale()
+                        );
+                    const domain = scale.domain();
+                    const cuts = scale.gapPositions();
+                    const ranks = scale.gapDomain();
+                    setUniforms(this.programInfo, {
+                        ["uGapCuts_" + channel]:
+                            this.rendererResources.getGapTexture(resolution),
+                        ["uGapCount_" + channel]: cuts.length,
+                        ["uGapGeometry_" + channel]: [
+                            scale.gapWidth(),
+                            ranks?.[0] ?? gapRank(cuts, domain[0]),
+                            ranks?.[1] ?? gapRank(cuts, domain[1], true),
+                            ranks ? 1 : 0,
+                        ],
+                    });
+                });
+            }
             const texture = glHelper.rangeTextures.get(encoder.scale);
             if (texture) {
                 ops.push(() =>
@@ -1296,28 +1350,23 @@ export default class WebGLMark {
             }
         };
 
-        // If is either faceted or non-faceted, not both.
-        // An undefined key with vertices means that the mark is non-faceted.
-        // In such case, the same non-faceted data is repeated for each facet.
-        const facetId =
-            this.rangeMap.get(undefined).count == 0
-                ? options.facetId
-                : undefined;
-        const rangeEntry = this.rangeMap.get(facetId);
+        const unfacetedRange = this.rangeMap.get(undefined);
+        const facetRange = this.rangeMap.get(options.facetId);
 
-        return options.sampleFacetRenderingOptions
-            ? function renderSampleFacetRange() {
-                  if (rangeEntry.count) {
-                      if (self.prepareSampleFacetRendering(options)) {
-                          drawWithRangeEntry(rangeEntry);
-                      }
-                  }
-              }
-            : function renderRange() {
-                  if (rangeEntry.count) {
-                      drawWithRangeEntry(rangeEntry);
-                  }
-              };
+        return function renderRange() {
+            // Filtered own data can become nonempty after callbacks are cached.
+            // Repeat it in every facet, choosing the live range on each draw.
+            const rangeEntry = unfacetedRange.count
+                ? unfacetedRange
+                : facetRange;
+            if (
+                rangeEntry.count &&
+                (!options.sampleFacetRenderingOptions ||
+                    self.prepareSampleFacetRendering(options))
+            ) {
+                drawWithRangeEntry(rangeEntry);
+            }
+        };
     }
 
     /**

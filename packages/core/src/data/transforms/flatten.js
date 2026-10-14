@@ -1,5 +1,4 @@
 import { asArray } from "../../utils/arrayUtils.js";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -10,16 +9,17 @@ export default class FlattenTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").FlattenParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
         const indexField = params.index;
 
         if (params.fields) {
-            const accessors = asArray(params.fields).map((f) => field(f));
+            const accessors = this.createFieldAccessors(params, "fields");
             const as = asArray(params.as || params.fields);
 
             if (accessors.length !== as.length) {

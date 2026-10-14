@@ -1,5 +1,4 @@
 import { asArray } from "../../utils/arrayUtils.js";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -14,15 +13,10 @@ export default class LinearizeGenomicCoordinate extends Transform {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        params = {
-            channel: "x",
-            ...params,
-        };
-
-        super(params);
+        super(params, view);
         this.params = params;
 
-        const channel = params.channel;
+        const channel = params.channel ?? "x";
 
         if (!["x", "y"].includes(channel)) {
             throw new Error("Invalid channel: " + channel);
@@ -36,8 +30,8 @@ export default class LinearizeGenomicCoordinate extends Transform {
             );
         }
 
-        const chromAccessor = field(params.chrom);
-        const posAccessors = asArray(params.pos).map((pos) => field(pos));
+        const chromAccessor = this.createFieldAccessor(params, "chrom");
+        const posAccessors = this.createFieldAccessors(params, "pos");
         const as = asArray(params.as);
 
         if (posAccessors.length != as.length) {

@@ -1,4 +1,5 @@
 import { isChannelDefWithScale } from "../encoder/encoder.js";
+import { annotateGapPeers } from "./markUtils.js";
 
 /**
  * Completes rule-like positional endpoints from partially specified x/y/x2/y2
@@ -9,6 +10,8 @@ import { isChannelDefWithScale } from "../encoder/encoder.js";
  * @returns {import("../spec/channel.js").Encoding}
  */
 export function fixRuleLikeEncoding(encoding, markName) {
+    annotateGapPeers(encoding, "x");
+    annotateGapPeers(encoding, "y");
     if (encoding.x && encoding.y && encoding.x2 && encoding.y2) {
         // Everything is defined.
     } else if (encoding.x && encoding.x2 && !encoding.y) {

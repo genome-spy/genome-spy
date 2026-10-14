@@ -382,7 +382,7 @@ describe("Axes resolve properly", () => {
         /** @type {any} */
         const spec = {
             params: [{ name: "p" }, { name: "q" }],
-            data: { values: [{ a: 1 }, { b: 2 }] },
+            data: { values: [{ a: 1 }, { a: 2 }] },
             mark: "point",
             encoding: {
                 x: {

@@ -12,11 +12,6 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
             import("/src/index.js"),
             import("/src/marks/rule.js"),
         ]);
-        const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) {
-            throw new Error("WebGPU adapter not available.");
-        }
-
         const canvas = document.createElement("canvas");
         canvas.width = 128;
         canvas.height = 128;
@@ -54,19 +49,15 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
         canvas.remove();
         return {
             ids,
-            adapterMaxStorageBuffersPerShaderStage:
-                adapter.limits.maxStorageBuffersPerShaderStage,
             maxStorageBuffersPerShaderStage:
                 renderer.device.limits.maxStorageBuffersPerShaderStage,
+            maxBindGroups: renderer.device.limits.maxBindGroups,
         };
     });
 
     expect(result).toEqual({
         ids: [17, null],
-        adapterMaxStorageBuffersPerShaderStage: expect.any(Number),
-        maxStorageBuffersPerShaderStage: expect.any(Number),
+        maxStorageBuffersPerShaderStage: 8,
+        maxBindGroups: 4,
     });
-    expect(result.maxStorageBuffersPerShaderStage).toBe(
-        Math.min(10, result.adapterMaxStorageBuffersPerShaderStage)
-    );
 });

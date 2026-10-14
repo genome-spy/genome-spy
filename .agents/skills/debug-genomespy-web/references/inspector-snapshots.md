@@ -5,6 +5,9 @@ runtime objects in the browser context and return compact projections to the
 browser tool.
 
 - `window.__genomeSpy.api` is the `EmbedResult` returned by App's `embed()`.
+- On the Playground development server,
+  `(await import("/index.js")).getCurrentEmbedResult()` returns the active API.
+  Obtain it again after editing the specification, because Playground re-embeds.
 - `api.debug.getViewRoot()` returns the live root; App also exposes it as
   `window.__genomeSpy.viewRoot`. Treat runtime objects as read-only unless the
   debugging task specifically requires mutation.

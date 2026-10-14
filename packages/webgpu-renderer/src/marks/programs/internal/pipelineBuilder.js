@@ -1,3 +1,8 @@
+import {
+    globalBindings,
+    placementBindings,
+    validateBindingCounts,
+} from "../../../utils/bindingLimits.js";
 import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
 import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
 
@@ -29,7 +34,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @property {() => GPURenderPipeline} getPickPipeline
  * @property {{ id: number, firstBorrowerLabel: string, borrowerLabels: Set<string> }} diagnostics
  *
- * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
+ * @typedef {ProgramTemplate & { resourceLayout: { name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[] }} PipelineBuildResult
  */
 
 /**
@@ -98,6 +103,37 @@ export function buildPipelines({
     const usesPlacementLayout = Boolean(
         placementIndex && placementBindGroupLayout
     );
+    const markBindings = [
+        {
+            entry: {
+                binding: 0,
+                visibility: 3,
+                buffer: { type: /** @type {const} */ ("uniform") },
+            },
+            name: "mark uniforms",
+        },
+        ...resourceBindings.map((entry, index) => ({
+            entry,
+            name: resourceLayout[index].role + " " + resourceLayout[index].name,
+        })),
+    ];
+    validateBindingCounts(
+        device,
+        [
+            globalBindings.map((entry) => ({ entry, name: "global uniforms" })),
+            markBindings,
+            ...(usesPlacementLayout
+                ? [
+                      placementBindings.map((entry) => ({
+                          entry,
+                          name: "placement rectangles",
+                      })),
+                  ]
+                : []),
+        ],
+        label
+    );
+
     const descriptorKey = createDescriptorKey(
         resourceBindings,
         format,
@@ -117,14 +153,7 @@ export function buildPipelines({
             `(first used by ${label})`;
         const bindGroupLayout = device.createBindGroupLayout({
             label: gpuLabel(labelOwner, "bind group layout"),
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                    buffer: { type: "uniform" },
-                },
-                ...resourceBindings,
-            ],
+            entries: markBindings.map(({ entry }) => entry),
         });
 
         const module = device.createShaderModule({

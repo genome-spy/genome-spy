@@ -1,7 +1,9 @@
 import { bindRulerDisabled } from "./rulerDisabled.js";
+import { invertScalePosition } from "../scales/scalePosition.js";
 import {
     asEventConfig,
     createEventPredicate,
+    getEventFilterLocation,
     validateEventType,
 } from "../utils/interactionConfig.js";
 import Point from "../view/layout/point.js";
@@ -51,7 +53,10 @@ export class RulerMouseEventController {
             `Ruler param "${paramName}" currently supports only "mousemove" and "mousedown" in "on".`
         );
 
-        this.eventPredicate = createEventPredicate(this.eventConfig);
+        this.eventPredicate = createEventPredicate(
+            this.eventConfig,
+            getEventFilterLocation(paramRuntime, config, "on")
+        );
         this.clear =
             config.clear ??
             (this.eventConfig.type === "mousemove" ? "mouseleave" : false);
@@ -116,8 +121,10 @@ export class RulerMouseEventController {
         });
 
         if (this.clear === "mouseleave") {
-            this.#addViewInteractionListener("mouseleave", () => {
-                this.#setValue(createRulerValue(this.channels));
+            this.#addViewInteractionListener("mouseleave", (event) => {
+                if (!event.pointedViews.has(this.gridChild.view)) {
+                    this.#setValue(createRulerValue(this.channels));
+                }
             });
         } else if (this.clear !== false) {
             throw new Error(
@@ -137,7 +144,15 @@ export class RulerMouseEventController {
 
             event.stopPropagation();
             this.dragging = true;
-            this.#setValue(this.#pointToRulerValue(event.point));
+            // Keep a document drag anchored to its initiating facet cell.
+            const projectionCoords = getRulerProjectionCoords(
+                this.gridChild,
+                this.channels,
+                event.point
+            );
+            this.#setValue(
+                this.#pointToRulerValue(event.point, projectionCoords)
+            );
 
             const viewOffset = Point.fromMouseEvent(event.mouseEvent).subtract(
                 new Point(event.point.x, event.point.y)
@@ -145,7 +160,9 @@ export class RulerMouseEventController {
 
             const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
                 const point = Point.fromMouseEvent(event).subtract(viewOffset);
-                this.#setValue(this.#pointToRulerValue(point));
+                this.#setValue(
+                    this.#pointToRulerValue(point, projectionCoords)
+                );
             };
 
             this.#cancelActiveDrag = startDocumentDrag({
@@ -162,8 +179,11 @@ export class RulerMouseEventController {
         });
 
         if (this.clear === "mouseleave") {
-            this.#addViewInteractionListener("mouseleave", () => {
-                if (!this.dragging) {
+            this.#addViewInteractionListener("mouseleave", (event) => {
+                if (
+                    !this.dragging &&
+                    !event.pointedViews.has(this.gridChild.view)
+                ) {
                     this.#setValue(createRulerValue(this.channels));
                 }
             });
@@ -175,15 +195,18 @@ export class RulerMouseEventController {
     }
 
     /**
-     * @param {{ x: number, y: number }} point
+     * @param {Point} point
+     * @param {import("../view/layout/rectangle.js").default} [projectionCoords]
      */
-    #pointToRulerValue(point) {
-        const value = createRulerValue(this.channels);
-        const projectionCoords = getRulerProjectionCoords(
-            this.gridChild.view,
+    #pointToRulerValue(
+        point,
+        projectionCoords = getRulerProjectionCoords(
+            this.gridChild,
             this.channels,
-            this.channels[0]
-        );
+            point
+        )
+    ) {
+        const value = createRulerValue(this.channels);
         const normalizedPoint = projectionCoords.normalizePoint(
             point.x,
             point.y,
@@ -192,11 +215,12 @@ export class RulerMouseEventController {
 
         for (const channel of this.channels) {
             const scaleResolution = this.scaleResolutions[channel];
-            const scale = /** @type {{ invert: (value: number) => number }} */ (
-                scaleResolution.getScale()
-            );
-            const coordinate = scale.invert(
-                channel === "x" ? normalizedPoint.x : normalizedPoint.y
+            const coordinate = invertScalePosition(
+                scaleResolution.getScale(),
+                channel === "x" ? normalizedPoint.x : normalizedPoint.y,
+                channel === "x"
+                    ? projectionCoords.width
+                    : projectionCoords.height
             );
             value.values[channel] = normalizeRulerCoordinate(
                 coordinate,

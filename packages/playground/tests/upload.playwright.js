@@ -41,12 +41,16 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
         "uploaded-points.csv"
     );
 
+    const filesToggle = page
+        .locator("gs-playground-workspace")
+        .getByRole("button", { name: /^Add data files/ });
+    await expect(filesToggle).toHaveAttribute("aria-expanded", "true");
     await page.locator("#fileInput").setInputFiles(fixturePath);
 
-    const uploadedFileTab = page.locator(
-        'file-pane li[data-name="uploaded-points.csv"]'
-    );
-    await expect(uploadedFileTab).toHaveClass(/selected/);
+    const uploadedFileTab = page.getByRole("tab", {
+        name: "uploaded-points.csv",
+    });
+    await expect(uploadedFileTab).toHaveAttribute("aria-selected", "true");
     await expect(page.locator("file-pane table")).toContainText(
         "Uploaded point"
     );
@@ -84,6 +88,28 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
             })
         )
         .toBe(true);
+
+    // The component's tabs support keyboard selection across its shadow root.
+    await uploadedFileTab.focus();
+    await uploadedFileTab.press("End");
+    const addFiles = page.getByRole("tab", { name: "Add new files" });
+    await expect(addFiles).toBeFocused();
+    await expect(
+        page.getByRole("button", { name: "Choose files" })
+    ).toBeVisible();
+    await addFiles.press("ArrowRight");
+    await expect(uploadedFileTab).toBeFocused();
+    await expect(uploadedFileTab).toHaveAttribute("aria-selected", "true");
+
+    await filesToggle.click();
+    await expect(uploadedFileTab).toBeHidden();
+    await filesToggle.click();
+    await expect(uploadedFileTab).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("button", { name: "Inspector", exact: true }).click();
+    await page
+        .getByRole("button", { name: "Close inspector", exact: true })
+        .click();
+    await expect(uploadedFileTab).toHaveAttribute("aria-selected", "true");
 
     // Inspect the composited frame after dataflow publication and rendering.
     await expect
@@ -124,4 +150,75 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
             );
         })
         .toBe(true);
+
+    // Newly missing data reveals the upload tab; further edits respect a manual collapse.
+    await filesToggle.click();
+    await page.locator("code-editor").evaluate((element) => {
+        const spec = JSON.parse(element.value);
+        spec.data.name = "next-file.csv";
+        element.value = JSON.stringify(spec);
+    });
+    await expect(page.locator(".missing-files")).toContainText("next-file.csv");
+    await expect(filesToggle).toHaveAttribute("aria-expanded", "true");
+    await filesToggle.click();
+    await page.locator("code-editor").evaluate((element) => {
+        const spec = JSON.parse(element.value);
+        spec.description = "Still waiting for the same file";
+        element.value = JSON.stringify(spec);
+    });
+    await expect(
+        page.getByText("Still waiting for the same file", { exact: true })
+    ).toBeVisible();
+    await expect(filesToggle).toHaveAttribute("aria-expanded", "false");
+
+    // Ordinary edits preserve the preview, but loading another spec reveals its missing data.
+    await filesToggle.click();
+    await uploadedFileTab.click();
+    await page.locator("code-editor").evaluate((element) => {
+        const spec = JSON.parse(element.value);
+        spec.description = "Editing while previewing an uploaded dataset";
+        element.value = JSON.stringify(spec);
+    });
+    await expect(
+        page.getByText("Editing while previewing an uploaded dataset", {
+            exact: true,
+        })
+    ).toBeVisible();
+    await expect(uploadedFileTab).toHaveAttribute("aria-selected", "true");
+    await filesToggle.click();
+
+    const entry = {
+        id: "core/same-missing-file",
+        title: "Another example requiring the same missing file",
+        description: "Another example requiring the same missing file",
+        sourceGroup: "core",
+        sourceLabel: "Core",
+        category: "Tests",
+        specPath: "examples/core/same-missing-file.json",
+        specUrl: "examples/core/same-missing-file.json",
+        screenshotPath: null,
+        screenshotUrl: null,
+        sourceMode: "shared-example",
+    };
+    await page.route("**/example-catalog.json", (route) =>
+        route.fulfill({ json: [entry] })
+    );
+    await page.route("**/examples/core/same-missing-file.json", (route) =>
+        route.fulfill({
+            json: {
+                ...JSON.parse(uploadedFileSpec),
+                description: entry.title,
+                data: { name: "next-file.csv" },
+            },
+        })
+    );
+    await page.getByRole("button", { name: "Examples", exact: true }).click();
+    await page.getByRole("button", { name: entry.title }).click();
+
+    await expect(filesToggle).toHaveAttribute("aria-expanded", "true");
+    await expect(addFiles).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(".missing-files")).toContainText("next-file.csv");
+    await expect(
+        page.getByRole("button", { name: "Choose files" })
+    ).toBeVisible();
 });

@@ -4,14 +4,11 @@ import {
     isIntervalSelectionConfig,
 } from "../../selection/selection.js";
 import AxisGridView from "../axisGridView.js";
-import AxisView, {
-    CHANNEL_ORIENTS,
-    getExternalAxisOverhang,
-} from "../axisView.js";
+import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
 import LayerView from "../layerView.js";
 import Padding, { applyOverhangConfig } from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
-import TitleView from "../titleView.js";
+import TitleView, { getTitleCoords } from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
     hasChromeAncestor,
@@ -25,11 +22,11 @@ import {
     addLegendView,
     createGridChildLegend,
     disposeLegendViews,
-    getLegendOverhang,
     getOrderedLegendEntries,
     iterateLegendViews,
     prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
+import { getGuideOverhang } from "./legendLayout.js";
 import { findLegendCollectionDeclaration } from "./legendCollection.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
@@ -38,6 +35,7 @@ import { IntervalSelectionController } from "./intervalSelectionController.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
 import {
     isConcatSpec,
+    isFacetSpec,
     isHConcatSpec,
     isVConcatSpec,
 } from "../viewSpecGuards.js";
@@ -62,7 +60,7 @@ export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js
 function getLegendOwners(view) {
     if (hasChromeAncestor(view)) {
         return [];
-    } else if (view instanceof UnitView) {
+    } else if (view instanceof UnitView || isFacetSpec(view.spec)) {
         return Object.keys(view.resolutions.legend).length > 0 ? [view] : [];
     } else if (view instanceof LayerView) {
         return [
@@ -252,9 +250,17 @@ export default class GridChild {
             this.#setupIntervalSelection();
             this.#setupRulers();
         }
+
+        // Cancel document drags before this view's parameter runtime is disposed.
+        view.registerDisposer(() => this.#disposeControllers());
     }
 
     #setupRulers() {
+        // The repeated child owns rulers and projects through the pointed cell.
+        if (isFacetSpec(this.view.spec)) {
+            return;
+        }
+
         for (const { owner, paramName, param } of this.#getInheritedParams()) {
             if (!isRulerParameter(param)) {
                 continue;
@@ -410,6 +416,11 @@ export default class GridChild {
     }
 
     #setupIntervalSelection() {
+        // The facet's repeated child wrapper owns its shared brush.
+        if (isFacetSpec(this.view.spec)) {
+            return;
+        }
+
         for (const { owner, paramName, param } of this.#getInheritedParams()) {
             if (!("select" in param)) {
                 continue;
@@ -454,13 +465,18 @@ export default class GridChild {
         return this.layoutParent.context;
     }
 
-    getInteractionCoords() {
+    /** @param {import("../layout/point.js").default} _point */
+    getInteractionCoords(_point) {
         return this.coords.width > 0 && this.coords.height > 0
             ? this.coords
             : this.view.coords;
     }
 
-    getProjectionCoords() {
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} _channel
+     * @param {import("../layout/point.js").default} _point
+     */
+    getProjectionCoords(_channel, _point) {
         return this.view.coords;
     }
 
@@ -640,7 +656,7 @@ export default class GridChild {
             // Handle children that have caught axis resolutions. Create axes for them.
             for (const channel of primaryPositionalChannels) {
                 if (view.needsAxes[channel]) {
-                    const r = view.resolutions.axis[channel];
+                    const r = this.getAxisResolutionForAxis(channel);
                     if (!r) {
                         continue;
                     }
@@ -745,6 +761,18 @@ export default class GridChild {
     }
 
     /**
+     * Returns the axis resolution used for creating a rendered axis.
+     * Subclasses may override this when the rendered child uses a resolution
+     * caught by an ancestor.
+     *
+     * @protected
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     */
+    getAxisResolutionForAxis(channel) {
+        return this.view.resolutions.axis[channel];
+    }
+
+    /**
      * @param {import("../../spec/axis.js").AxisOrient} orient
      * @returns {AxisCandidate | undefined}
      */
@@ -763,6 +791,11 @@ export default class GridChild {
      * Disposes GridChild-owned controllers and generated guide views.
      */
     dispose() {
+        this.#disposeControllers();
+        this.#disposeAxisViews();
+    }
+
+    #disposeControllers() {
         for (const controllers of [
             this.#intervalSelectionControllers,
             this.#rulerViewportControllers,
@@ -775,8 +808,6 @@ export default class GridChild {
         this.#intervalSelectionControllers = [];
         this.#rulerViewportControllers = [];
         this.#rulerMouseEventControllers = [];
-
-        this.#disposeAxisViews();
     }
 
     /**
@@ -820,10 +851,11 @@ export default class GridChild {
             : "pixel";
     }
 
-    getOverhang() {
+    /** @param {GridChild["axes"]} [axes] */
+    getOverhang(axes = this.axes) {
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return applyOverhangConfig(
-            this.#getGuideOverhang()
+            getGuideOverhang(axes, this.legends)
                 .add(this.title?.getOverhang() ?? Padding.zero())
                 .add(this.view.getOverhang()),
             this.view.spec.overhang
@@ -855,22 +887,6 @@ export default class GridChild {
         );
     }
 
-    #getGuideOverhang() {
-        const calculate = (
-            /** @type {import("../../spec/axis.js").AxisOrient} */ orient
-        ) => getExternalAxisOverhang(this.axes[orient]);
-        const legend = (
-            /** @type {import("../../spec/legend.js").LegendOrient} */ orient
-        ) => getLegendOverhang(this.legends, orient);
-
-        return new Padding(
-            calculate("top") + legend("top"),
-            calculate("right") + legend("right"),
-            calculate("bottom") + legend("bottom"),
-            calculate("left") + legend("left")
-        );
-    }
-
     getTitleZindex() {
         return this.title?.titleSpec.zindex ?? 1;
     }
@@ -879,56 +895,25 @@ export default class GridChild {
      * @param {import("../renderingContext/viewRenderingContext.js").default} context
      * @param {Rectangle} viewportCoords
      * @param {import("../../types/rendering.js").RenderingOptions} options
+     * @param {GridChild["axes"]} [axes]
      */
-    arrangeTitle(context, viewportCoords, options) {
-        this.title?.arrange(
-            context,
-            this.#getTitleCoords(viewportCoords),
-            options
-        );
-    }
-
-    /**
-     * Returns the frame used for rendering a view title. Reserved titles are
-     * placed outside guide overhang orthogonally, while the title frame controls
-     * the parallel anchor range.
-     *
-     * @param {Rectangle} viewportCoords
-     */
-    #getTitleCoords(viewportCoords) {
-        const titleSpec = this.title?.titleSpec;
-        if (!titleSpec) {
-            return viewportCoords;
-        }
-
-        const guideCoords = viewportCoords.expand(this.#getGuideOverhang());
-        const frame = titleSpec.frame ?? "group";
-        if (titleSpec.reserve === false) {
-            return frame == "bounds" ? guideCoords : viewportCoords;
-        } else if (frame == "bounds") {
-            return guideCoords;
-        }
-
-        switch (titleSpec.orient) {
-            case "top":
-            case "bottom":
-                return guideCoords.modify({
-                    x: () => viewportCoords.x,
-                    width: () => viewportCoords.width,
-                });
-            case "left":
-            case "right":
-                return guideCoords.modify({
-                    y: () => viewportCoords.y,
-                    height: () => viewportCoords.height,
-                });
-            default:
-                return viewportCoords;
+    arrangeTitle(context, viewportCoords, options, axes = this.axes) {
+        if (this.title) {
+            this.title.arrange(
+                context,
+                getTitleCoords(
+                    viewportCoords,
+                    viewportCoords.expand(getGuideOverhang(axes, this.legends)),
+                    this.title.titleSpec
+                ),
+                options
+            );
         }
     }
 
-    getOverhangAndPadding() {
-        return this.getOverhang().add(this.view.getPadding());
+    /** @param {GridChild["axes"]} [axes] */
+    getOverhangAndPadding(axes = this.axes) {
+        return this.getOverhang(axes).add(this.view.getPadding());
     }
 }
 

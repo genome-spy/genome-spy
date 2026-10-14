@@ -20,7 +20,10 @@ import {
 } from "../selection/selection.js";
 import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import { createEventPredicate } from "../utils/interactionConfig.js";
+import {
+    createEventPredicate,
+    getEventFilterLocation,
+} from "../utils/interactionConfig.js";
 import { field } from "../utils/field.js";
 import { resolveViewResolutions } from "./resolutionPlanner.js";
 
@@ -110,6 +113,8 @@ export default class UnitView extends View {
                 continue;
             }
 
+            const source =
+                typeof param.select === "object" ? param.select : undefined;
             const select = asSelectionConfig(param.select);
             // Normalized config has eventConfig in "on"
             const eventConfig =
@@ -140,7 +145,10 @@ export default class UnitView extends View {
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
-                const eventPredicate = createEventPredicate(eventConfig);
+                const eventPredicate = createEventPredicate(
+                    eventConfig,
+                    getEventFilterLocation(this.paramRuntime, source, "on")
+                );
 
                 const clearSelection = () => {
                     lastId = none;
@@ -206,14 +214,25 @@ export default class UnitView extends View {
                     // mark. A sibling view receives subsequent mousemove events,
                     // so clear this view when the dispatcher detects that its
                     // pointed subtree has been left.
-                    this.addInteractionListener("mouseleave", clearSelection);
+                    this.addInteractionListener("mouseleave", (event) => {
+                        // Crossing cells keeps the shared view's hover selection.
+                        if (!event.pointedViews.has(this)) {
+                            clearSelection();
+                        }
+                    });
                 }
 
                 const clearHandledByHoverExit =
                     hoverSelection && clearEventConfig?.type === "mouseleave";
                 if (clearEventConfig && !clearHandledByHoverExit) {
-                    const clearPredicate =
-                        createEventPredicate(clearEventConfig);
+                    const clearPredicate = createEventPredicate(
+                        clearEventConfig,
+                        getEventFilterLocation(
+                            this.paramRuntime,
+                            source,
+                            "clear"
+                        )
+                    );
 
                     const clearListener = (
                         /** @type {import("../utils/interaction.js").default} */ event

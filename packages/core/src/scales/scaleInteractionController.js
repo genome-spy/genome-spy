@@ -32,7 +32,7 @@ export default class ScaleInteractionController {
     /** @type {() => ScaleWithProps} */
     #getScale;
 
-    /** @type {(domain: number[], duration: number, renderImmediately?: boolean) => Promise<void>} */
+    /** @type {(domain: number[], duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} */
     #navigate;
 
     /** @type {() => void} */
@@ -56,7 +56,7 @@ export default class ScaleInteractionController {
     /**
      * @param {object} options
      * @param {() => ScaleWithProps} options.getScale
-     * @param {(domain: number[], duration: number, renderImmediately?: boolean) => Promise<void>} options.navigate
+     * @param {(domain: number[], duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} options.navigate
      * @param {() => void} options.renderImmediately
      * @param {() => number[]} options.getInitialDomainSnapshot
      * @param {() => number[] | undefined} options.getDataZoomExtent
@@ -127,15 +127,39 @@ export default class ScaleInteractionController {
      * @param {number} scaleFactor
      * @param {number} scaleAnchor
      * @param {number} pan
+     * @param {number} [axisLength] Actual occurrence extent in CSS pixels.
      * @returns {boolean} true if the scale was zoomed
      */
-    zoom(scaleFactor, scaleAnchor, pan) {
+    zoom(scaleFactor, scaleAnchor, pan, axisLength) {
         if (!this.isZoomingSupported()) {
             return false;
         }
 
         const scale = this.#getScale();
         const oldDomain = scale.domain();
+        const mapping =
+            "gapMapping" in scale &&
+            /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                scale
+            ).gapMapping(axisLength);
+        if (mapping) {
+            const transformed = mapping.navigate(
+                scaleFactor,
+                scaleAnchor,
+                scale.props.reverse ? -pan : pan
+            );
+            const extent = this.getZoomExtent();
+            const clamped = clampRange(
+                transformed.domain,
+                extent[0],
+                extent[1]
+            );
+            const ranks = shallowArrayEquals(clamped, transformed.domain)
+                ? transformed.ranks
+                : undefined;
+            void this.#navigate(clamped, 0, false, ranks);
+            return true;
+        }
         let newDomain = applyZoomTransform(
             scale,
             oldDomain,
@@ -318,26 +342,42 @@ function resolveZoomExtent(
  * @returns {number[]}
  */
 function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
-    let newDomain = [...domain];
-
-    /** @type {number} */
-    // @ts-ignore
-    let anchor = scale.invert(scaleAnchor);
+    let newDomain = domain;
 
     if (scale.props.reverse) {
         pan = -pan;
     }
 
-    if ("align" in scale) {
-        anchor += scale.align();
-    }
-
     switch (scale.type) {
         case "linear":
-        case "index":
-        case "locus":
             newDomain = panLinear(newDomain, pan || 0);
             break;
+        case "index":
+        case "locus": {
+            const indexScale =
+                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                    scale
+                );
+            const [rangeStart, rangeEnd] = indexScale.range();
+            const fraction =
+                (scaleAnchor - rangeStart) / (rangeEnd - rangeStart);
+            const domainSpan = span(domain);
+            const newSpan = Math.max(1, domainSpan * scaleFactor);
+            const padding =
+                2 * indexScale.paddingOuter() - indexScale.paddingInner();
+            const stepSpan = Math.max(1, domainSpan + padding);
+            const newStepSpan = Math.max(1, newSpan + padding);
+            const align = indexScale.align();
+
+            // Padding stays fixed in domain units. Account for the minimum
+            // step span too, so zooming preserves the pointer coordinate.
+            const start =
+                domain[0] +
+                (fraction - align) * (stepSpan - newStepSpan) +
+                align * (domainSpan - newSpan) -
+                (pan || 0) * newSpan;
+            return [start, start + newSpan];
+        }
         case "log":
             newDomain = panLog(newDomain, pan || 0);
             break;
@@ -361,6 +401,10 @@ function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
         default:
             throw new Error("Zooming is not implemented for: " + scale.type);
     }
+
+    /** @type {number} */
+    // @ts-ignore
+    const anchor = scale.invert(scaleAnchor);
 
     return zoomDomainByScaleType(
         scale,

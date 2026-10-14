@@ -1,9 +1,35 @@
 # Change Log
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies [[`b578ad5`](https://github.com/genome-spy/genome-spy/commit/b578ad523d094544747cb7becbb851d0e29f1309), [`8bc6275`](https://github.com/genome-spy/genome-spy/commit/8bc6275066d3bdf84f21b5a08ccc8bdf280932be), [`b7dcc90`](https://github.com/genome-spy/genome-spy/commit/b7dcc906ed495c67bc5073eeb05244f9f68837a8), [`c9803b8`](https://github.com/genome-spy/genome-spy/commit/c9803b8ff9351d7bb20243276f063c08e539e9f6), [`5ef07e4`](https://github.com/genome-spy/genome-spy/commit/5ef07e41c68077e3bcfcf28e70991319f21bdc29)]:
+  - @genome-spy/core@1.1.1
+  - @genome-spy/react-component@1.1.1
+  - @genome-spy/inspector@1.1.1
+
+## 1.1.0
+
+### Patch Changes
+
+- Updated dependencies [[`207a33d`](https://github.com/genome-spy/genome-spy/commit/207a33dcec890b5d50fea539e6e09772e22a470c), [`25a371b`](https://github.com/genome-spy/genome-spy/commit/25a371bde98ed97d57450f2a08ae07c6612ae502), [`9e8a8d9`](https://github.com/genome-spy/genome-spy/commit/9e8a8d905bb0f21c6bf2f8a721c96e432e95b8b6)]:
+  - @genome-spy/core@1.1.0
+  - @genome-spy/inspector@1.1.0
+  - @genome-spy/react-component@1.1.0
+
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
+## [1.0.0](https://github.com/genome-spy/genome-spy/compare/v0.90.0...v1.0.0) (2026-10-01)
+
+**Note:** Version bump only for package @genome-spy/embed-examples
+
+## [0.90.0](https://github.com/genome-spy/genome-spy/compare/v0.89.0...v0.90.0) (2026-10-01)
+
+**Note:** Version bump only for package @genome-spy/embed-examples
+
+## [0.89.0](https://github.com/genome-spy/genome-spy/compare/v0.88.1...v0.89.0) (2026-09-25)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -11,31 +37,31 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
+## [0.88.0](https://github.com/genome-spy/genome-spy/compare/v0.87.0...v0.88.0) (2026-09-15)
 
 ### Features
 
-* **embed-examples:** reorganize examples and publish live docs ([b14c2b3](https://github.com/genome-spy/genome-spy/commit/b14c2b347303f95721b7488b0c76953786b80011)) by @tuner
-* **embed:** add scoped interaction and selection integrations ([#525](https://github.com/genome-spy/genome-spy/issues/525)) ([e4bfd0e](https://github.com/genome-spy/genome-spy/commit/e4bfd0eb158c043010c2b6271fb9248babd886f5)) by @tuner
+- **embed-examples:** reorganize examples and publish live docs ([b14c2b3](https://github.com/genome-spy/genome-spy/commit/b14c2b347303f95721b7488b0c76953786b80011)) by @tuner
+- **embed:** add scoped interaction and selection integrations ([#525](https://github.com/genome-spy/genome-spy/issues/525)) ([e4bfd0e](https://github.com/genome-spy/genome-spy/commit/e4bfd0eb158c043010c2b6271fb9248babd886f5)) by @tuner
 
-# [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
-
-### Features
-
-* **core:** add GenomeSpy favicon link control ([fe8e235](https://github.com/genome-spy/genome-spy/commit/fe8e2356c1d9518ab2bdf466d86366a1205752d0)) by @tuner
-
-# [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+## [0.87.0](https://github.com/genome-spy/genome-spy/compare/v0.86.0...v0.87.0) (2026-09-08)
 
 ### Features
 
-* add optional controls for embedded visualizations ([654de1b](https://github.com/genome-spy/genome-spy/commit/654de1b0561e179b623cd8a513b021d9e6f90525)) by @tuner
-* **core:** make minimal renderers opt-in ([#485](https://github.com/genome-spy/genome-spy/issues/485)) ([ab890e2](https://github.com/genome-spy/genome-spy/commit/ab890e232c4db398fa6316a6fc3f3c54db30ee52)) by @tuner
+- **core:** add GenomeSpy favicon link control ([fe8e235](https://github.com/genome-spy/genome-spy/commit/fe8e2356c1d9518ab2bdf466d86366a1205752d0)) by @tuner
 
-# [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
+## [0.86.0](https://github.com/genome-spy/genome-spy/compare/v0.85.0...v0.86.0) (2026-09-03)
+
+### Features
+
+- add optional controls for embedded visualizations ([654de1b](https://github.com/genome-spy/genome-spy/commit/654de1b0561e179b623cd8a513b021d9e6f90525)) by @tuner
+- **core:** make minimal renderers opt-in ([#485](https://github.com/genome-spy/genome-spy/issues/485)) ([ab890e2](https://github.com/genome-spy/genome-spy/commit/ab890e232c4db398fa6316a6fc3f3c54db30ee52)) by @tuner
+
+## [0.85.0](https://github.com/genome-spy/genome-spy/compare/v0.84.0...v0.85.0) (2026-08-19)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
+## [0.84.0](https://github.com/genome-spy/genome-spy/compare/v0.83.1...v0.84.0) (2026-08-11)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -43,80 +69,80 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
+## [0.83.0](https://github.com/genome-spy/genome-spy/compare/v0.82.0...v0.83.0) (2026-08-06)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
+## [0.82.0](https://github.com/genome-spy/genome-spy/compare/v0.81.0...v0.82.0) (2026-08-03)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
+## [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
 
 ### Features
 
-* **core:** add lexically scoped named datasets ([#442](https://github.com/genome-spy/genome-spy/issues/442)) ([b0b1c51](https://github.com/genome-spy/genome-spy/commit/b0b1c516d72f0d6bbd48137020d43d55f6103e15)) by @tuner
+- **core:** add lexically scoped named datasets ([#442](https://github.com/genome-spy/genome-spy/issues/442)) ([b0b1c51](https://github.com/genome-spy/genome-spy/commit/b0b1c516d72f0d6bbd48137020d43d55f6103e15)) by @tuner
 
-# [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
+## [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
 ### Bug Fixes
 
-* **inspector:** use embed debug host ([9c12121](https://github.com/genome-spy/genome-spy/commit/9c12121a6882b7e047e2bc6f9a57a9ceed7223a3)) by @tuner
+- **inspector:** use embed debug host ([9c12121](https://github.com/genome-spy/genome-spy/commit/9c12121a6882b7e047e2bc6f9a57a9ceed7223a3)) by @tuner
 
 ## [0.79.1](https://github.com/genome-spy/genome-spy/compare/v0.79.0...v0.79.1) (2026-06-26)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
+## [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
 
 ### Features
 
-* **core:** add public view mutation API ([#422](https://github.com/genome-spy/genome-spy/issues/422)) ([4e60399](https://github.com/genome-spy/genome-spy/commit/4e60399c319a0e12bce861ad01cca426bd3e44af)) by @tuner
-* **inspector:** add GenomeSpy runtime inspector ([#425](https://github.com/genome-spy/genome-spy/issues/425)) ([0151c5d](https://github.com/genome-spy/genome-spy/commit/0151c5db16b825af760a9fbedb3a4f4df838c7a1)) by @tuner
+- **core:** add public view mutation API ([#422](https://github.com/genome-spy/genome-spy/issues/422)) ([4e60399](https://github.com/genome-spy/genome-spy/commit/4e60399c319a0e12bce861ad01cca426bd3e44af)) by @tuner
+- **inspector:** add GenomeSpy runtime inspector ([#425](https://github.com/genome-spy/genome-spy/issues/425)) ([0151c5d](https://github.com/genome-spy/genome-spy/commit/0151c5db16b825af760a9fbedb3a4f4df838c7a1)) by @tuner
 
-# [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
+## [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+## [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
 
 ### Features
 
-* **core:** expose params in embed api ([0b45810](https://github.com/genome-spy/genome-spy/commit/0b45810a69a36bb1dc627233c0800442c2dd75c3)) by @tuner
-* **core:** support immediate zoom rendering ([542e1ea](https://github.com/genome-spy/genome-spy/commit/542e1eaf91a7592577b81215921c29aa28473421)) by @tuner
-* **embed-examples:** add scale linking between embeds ([8963c84](https://github.com/genome-spy/genome-spy/commit/8963c84e591827f506ec29dc8669d03ebbd9cb22)) by @tuner
+- **core:** expose params in embed api ([0b45810](https://github.com/genome-spy/genome-spy/commit/0b45810a69a36bb1dc627233c0800442c2dd75c3)) by @tuner
+- **core:** support immediate zoom rendering ([542e1ea](https://github.com/genome-spy/genome-spy/commit/542e1eaf91a7592577b81215921c29aa28473421)) by @tuner
+- **embed-examples:** add scale linking between embeds ([8963c84](https://github.com/genome-spy/genome-spy/commit/8963c84e591827f506ec29dc8669d03ebbd9cb22)) by @tuner
 
-# [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
-
-**Note:** Version bump only for package @genome-spy/embed-examples
-
-# [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
+## [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
+## [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
+
+**Note:** Version bump only for package @genome-spy/embed-examples
+
+## [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
 
 ### Bug Fixes
 
-* add react component regression coverage ([44c6602](https://github.com/genome-spy/genome-spy/commit/44c6602aed8b78c558803e2a51b1b65d8753abc2)) by @tuner
+- add react component regression coverage ([44c6602](https://github.com/genome-spy/genome-spy/commit/44c6602aed8b78c558803e2a51b1b65d8753abc2)) by @tuner
 
 ### Features
 
-* **core:** add lean minimal entrypoint and trim optional loaders ([#365](https://github.com/genome-spy/genome-spy/issues/365)) ([90e5ccf](https://github.com/genome-spy/genome-spy/commit/90e5ccffebdded158eb976da25b654151d503d10)) by @tuner
+- **core:** add lean minimal entrypoint and trim optional loaders ([#365](https://github.com/genome-spy/genome-spy/issues/365)) ([90e5ccf](https://github.com/genome-spy/genome-spy/commit/90e5ccffebdded158eb976da25b654151d503d10)) by @tuner
 
-# [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
-
-**Note:** Version bump only for package @genome-spy/embed-examples
-
-# [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
+## [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
+## [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
+## [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
+
+**Note:** Version bump only for package @genome-spy/embed-examples
+
+## [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -124,15 +150,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
+## [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
+## [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
+## [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -140,19 +166,19 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.66.0](https://github.com/genome-spy/genome-spy/compare/v0.65.0...v0.66.0) (2026-01-19)
+## [0.66.0](https://github.com/genome-spy/genome-spy/compare/v0.65.0...v0.66.0) (2026-01-19)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
+## [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
+## [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
+## [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -164,7 +190,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
+## [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -172,7 +198,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
+## [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -180,11 +206,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
+## [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
+## [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -192,11 +218,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
+## [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
+## [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -204,15 +230,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.56.0](https://github.com/genome-spy/genome-spy/compare/v0.55.0...v0.56.0) (2024-08-20)
+## [0.56.0](https://github.com/genome-spy/genome-spy/compare/v0.55.0...v0.56.0) (2024-08-20)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
+## [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
+## [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -220,21 +246,21 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.53.0](https://github.com/genome-spy/genome-spy/compare/v0.52.0...v0.53.0) (2024-05-16)
+## [0.53.0](https://github.com/genome-spy/genome-spy/compare/v0.52.0...v0.53.0) (2024-05-16)
 
 ### Bug Fixes
 
-* **react-component:** fix typing issues, building, dependencies, etc ([3389e5c](https://github.com/genome-spy/genome-spy/commit/3389e5c7e44bcb09fe267787e4dd99e942c90f79)) by @tuner
+- **react-component:** fix typing issues, building, dependencies, etc ([3389e5c](https://github.com/genome-spy/genome-spy/commit/3389e5c7e44bcb09fe267787e4dd99e942c90f79)) by @tuner
 
 ### Features
 
-* **react-component:** add initial component ([#255](https://github.com/genome-spy/genome-spy/issues/255)) ([f676ff6](https://github.com/genome-spy/genome-spy/commit/f676ff634922971f728040e2952a45bd57cd2fce)) by @trentfridey
+- **react-component:** add initial component ([#255](https://github.com/genome-spy/genome-spy/issues/255)) ([f676ff6](https://github.com/genome-spy/genome-spy/commit/f676ff634922971f728040e2952a45bd57cd2fce)) by @trentfridey
 
-# [0.52.0](https://github.com/genome-spy/genome-spy/compare/v0.51.0...v0.52.0) (2024-04-26)
+## [0.52.0](https://github.com/genome-spy/genome-spy/compare/v0.51.0...v0.52.0) (2024-04-26)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.51.0](https://github.com/genome-spy/genome-spy/compare/v0.50.2...v0.51.0) (2024-03-26)
+## [0.51.0](https://github.com/genome-spy/genome-spy/compare/v0.50.2...v0.51.0) (2024-03-26)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -246,11 +272,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.50.0](https://github.com/genome-spy/genome-spy/compare/v0.49.0...v0.50.0) (2024-03-08)
+## [0.50.0](https://github.com/genome-spy/genome-spy/compare/v0.49.0...v0.50.0) (2024-03-08)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.49.0](https://github.com/genome-spy/genome-spy/compare/v0.48.2...v0.49.0) (2024-03-06)
+## [0.49.0](https://github.com/genome-spy/genome-spy/compare/v0.48.2...v0.49.0) (2024-03-06)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -262,11 +288,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.48.0](https://github.com/genome-spy/genome-spy/compare/v0.47.0...v0.48.0) (2024-02-20)
+## [0.48.0](https://github.com/genome-spy/genome-spy/compare/v0.47.0...v0.48.0) (2024-02-20)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.47.0](https://github.com/genome-spy/genome-spy/compare/v0.46.1...v0.47.0) (2024-02-16)
+## [0.47.0](https://github.com/genome-spy/genome-spy/compare/v0.46.1...v0.47.0) (2024-02-16)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -274,15 +300,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
+## [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.45.0](https://github.com/genome-spy/genome-spy/compare/v0.44.0...v0.45.0) (2024-02-08)
+## [0.45.0](https://github.com/genome-spy/genome-spy/compare/v0.44.0...v0.45.0) (2024-02-08)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.44.0](https://github.com/genome-spy/genome-spy/compare/v0.43.3...v0.44.0) (2024-01-30)
+## [0.44.0](https://github.com/genome-spy/genome-spy/compare/v0.43.3...v0.44.0) (2024-01-30)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -298,7 +324,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.43.0](https://github.com/genome-spy/genome-spy/compare/v0.42.2...v0.43.0) (2024-01-16)
+## [0.43.0](https://github.com/genome-spy/genome-spy/compare/v0.42.2...v0.43.0) (2024-01-16)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -310,23 +336,23 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.42.0](https://github.com/genome-spy/genome-spy/compare/v0.41.0...v0.42.0) (2024-01-11)
+## [0.42.0](https://github.com/genome-spy/genome-spy/compare/v0.41.0...v0.42.0) (2024-01-11)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.41.0](https://github.com/genome-spy/genome-spy/compare/v0.40.0...v0.41.0) (2023-12-20)
+## [0.41.0](https://github.com/genome-spy/genome-spy/compare/v0.40.0...v0.41.0) (2023-12-20)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.40.0](https://github.com/genome-spy/genome-spy/compare/v0.39.0...v0.40.0) (2023-12-18)
+## [0.40.0](https://github.com/genome-spy/genome-spy/compare/v0.39.0...v0.40.0) (2023-12-18)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.39.0](https://github.com/genome-spy/genome-spy/compare/v0.38.0...v0.39.0) (2023-12-12)
+## [0.39.0](https://github.com/genome-spy/genome-spy/compare/v0.38.0...v0.39.0) (2023-12-12)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.38.0](https://github.com/genome-spy/genome-spy/compare/v0.37.4...v0.38.0) (2023-11-24)
+## [0.38.0](https://github.com/genome-spy/genome-spy/compare/v0.37.4...v0.38.0) (2023-11-24)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -346,7 +372,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.37.0](https://github.com/genome-spy/genome-spy/compare/v0.36.1...v0.37.0) (2023-09-28)
+## [0.37.0](https://github.com/genome-spy/genome-spy/compare/v0.36.1...v0.37.0) (2023-09-28)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -354,21 +380,21 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **core:** update scale domains when container view has shared scale but independent (dynamic) data ([6b551a3](https://github.com/genome-spy/genome-spy/commit/6b551a3166c7e77c24de7c666c928343aa1e32e6)), closes [#183](https://github.com/genome-spy/genome-spy/issues/183)
+- **core:** update scale domains when container view has shared scale but independent (dynamic) data ([6b551a3](https://github.com/genome-spy/genome-spy/commit/6b551a3166c7e77c24de7c666c928343aa1e32e6)), closes [#183](https://github.com/genome-spy/genome-spy/issues/183)
 
-# [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
-
-**Note:** Version bump only for package @genome-spy/embed-examples
-
-# [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
+## [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.34.0](https://github.com/genome-spy/genome-spy/compare/v0.33.0...v0.34.0) (2023-06-16)
+## [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.33.0](https://github.com/genome-spy/genome-spy/compare/v0.32.2...v0.33.0) (2023-06-07)
+## [0.34.0](https://github.com/genome-spy/genome-spy/compare/v0.33.0...v0.34.0) (2023-06-16)
+
+**Note:** Version bump only for package @genome-spy/embed-examples
+
+## [0.33.0](https://github.com/genome-spy/genome-spy/compare/v0.32.2...v0.33.0) (2023-06-07)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -380,7 +406,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.32.0](https://github.com/genome-spy/genome-spy/compare/v0.31.2...v0.32.0) (2023-05-22)
+## [0.32.0](https://github.com/genome-spy/genome-spy/compare/v0.31.2...v0.32.0) (2023-05-22)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -392,7 +418,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.31.0](https://github.com/genome-spy/genome-spy/compare/v0.30.3...v0.31.0) (2023-05-09)
+## [0.31.0](https://github.com/genome-spy/genome-spy/compare/v0.30.3...v0.31.0) (2023-05-09)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -408,11 +434,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.30.0](https://github.com/tuner/genome-spy/compare/v0.29.0...v0.30.0) (2023-04-21)
+## [0.30.0](https://github.com/tuner/genome-spy/compare/v0.29.0...v0.30.0) (2023-04-21)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.29.0](https://github.com/tuner/genome-spy/compare/v0.28.5...v0.29.0) (2023-03-24)
+## [0.29.0](https://github.com/tuner/genome-spy/compare/v0.28.5...v0.29.0) (2023-03-24)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -428,15 +454,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.28.0](https://github.com/tuner/genome-spy/compare/v0.27.1...v0.28.0) (2023-03-07)
+## [0.28.0](https://github.com/tuner/genome-spy/compare/v0.27.1...v0.28.0) (2023-03-07)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.27.0](https://github.com/tuner/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
+## [0.27.0](https://github.com/tuner/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.26.0](https://github.com/tuner/genome-spy/compare/v0.25.1...v0.26.0) (2022-10-24)
+## [0.26.0](https://github.com/tuner/genome-spy/compare/v0.25.1...v0.26.0) (2022-10-24)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -444,21 +470,21 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.25.0](https://github.com/tuner/genome-spy/compare/v0.24.2...v0.25.0) (2022-10-12)
+## [0.25.0](https://github.com/tuner/genome-spy/compare/v0.24.2...v0.25.0) (2022-10-12)
 
 ### Features
 
-* dynamic named data ([#132](https://github.com/tuner/genome-spy/issues/132)) ([b60f7f0](https://github.com/tuner/genome-spy/commit/b60f7f002944103e65f33844bdf66e3c6f2bf059))
+- dynamic named data ([#132](https://github.com/tuner/genome-spy/issues/132)) ([b60f7f0](https://github.com/tuner/genome-spy/commit/b60f7f002944103e65f33844bdf66e3c6f2bf059))
 
 ## [0.24.2](https://github.com/tuner/genome-spy/compare/v0.24.1...v0.24.2) (2022-10-04)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.24.0](https://github.com/tuner/genome-spy/compare/v0.23.0...v0.24.0) (2022-09-07)
+## [0.24.0](https://github.com/tuner/genome-spy/compare/v0.23.0...v0.24.0) (2022-09-07)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.23.0](https://github.com/tuner/genome-spy/compare/v0.22.1...v0.23.0) (2022-08-09)
+## [0.23.0](https://github.com/tuner/genome-spy/compare/v0.22.1...v0.23.0) (2022-08-09)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -466,15 +492,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.22.0](https://github.com/tuner/genome-spy/compare/v0.21.0...v0.22.0) (2022-05-31)
+## [0.22.0](https://github.com/tuner/genome-spy/compare/v0.21.0...v0.22.0) (2022-05-31)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.21.0](https://github.com/tuner/genome-spy/compare/v0.20.0...v0.21.0) (2022-05-24)
+## [0.21.0](https://github.com/tuner/genome-spy/compare/v0.20.0...v0.21.0) (2022-05-24)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.20.0](https://github.com/tuner/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
+## [0.20.0](https://github.com/tuner/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -482,7 +508,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.19.0](https://github.com/tuner/genome-spy/compare/v0.18.1...v0.19.0) (2022-03-28)
+## [0.19.0](https://github.com/tuner/genome-spy/compare/v0.18.1...v0.19.0) (2022-03-28)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -490,19 +516,19 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.18.0](https://github.com/tuner/genome-spy/compare/v0.17.1...v0.18.0) (2022-02-10)
+## [0.18.0](https://github.com/tuner/genome-spy/compare/v0.17.1...v0.18.0) (2022-02-10)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.17.0](https://github.com/tuner/genome-spy/compare/v0.16.0...v0.17.0) (2022-01-21)
+## [0.17.0](https://github.com/tuner/genome-spy/compare/v0.16.0...v0.17.0) (2022-01-21)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.16.0](https://github.com/tuner/genome-spy/compare/v0.15.0...v0.16.0) (2021-12-20)
+## [0.16.0](https://github.com/tuner/genome-spy/compare/v0.15.0...v0.16.0) (2021-12-20)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.15.0](https://github.com/tuner/genome-spy/compare/v0.14.2...v0.15.0) (2021-11-25)
+## [0.15.0](https://github.com/tuner/genome-spy/compare/v0.14.2...v0.15.0) (2021-11-25)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
@@ -514,13 +540,13 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @genome-spy/embed-examples
 
-# [0.14.0](https://github.com/tuner/genome-spy/compare/v0.13.0...v0.14.0) (2021-11-23)
+## [0.14.0](https://github.com/tuner/genome-spy/compare/v0.13.0...v0.14.0) (2021-11-23)
 
 ### Features
 
-* split GenomeSpy "core" and "app" into separate, scoped npm packages ([#62](https://github.com/tuner/genome-spy/issues/62)) ([f3efe78](https://github.com/tuner/genome-spy/commit/f3efe783961a416d8b12b96d563a963b87829dfa))
+- split GenomeSpy "core" and "app" into separate, scoped npm packages ([#62](https://github.com/tuner/genome-spy/issues/62)) ([f3efe78](https://github.com/tuner/genome-spy/commit/f3efe783961a416d8b12b96d563a963b87829dfa))
 
-# [0.13.0](https://github.com/tuner/genome-spy/compare/v0.12.1...v0.13.0) (2021-11-22)
+## [0.13.0](https://github.com/tuner/genome-spy/compare/v0.12.1...v0.13.0) (2021-11-22)
 
 **Note:** Version bump only for package genome-spy-embed-examples
 
@@ -528,28 +554,28 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package genome-spy-embed-examples
 
-# [0.12.0](https://github.com/tuner/genome-spy/compare/v0.11.0...v0.12.0) (2021-11-16)
+## [0.12.0](https://github.com/tuner/genome-spy/compare/v0.11.0...v0.12.0) (2021-11-16)
 
 **Note:** Version bump only for package genome-spy-embed-examples
 
-# [0.11.0](https://github.com/tuner/genome-spy/compare/v0.10.0...v0.11.0) (2021-11-08)
+## [0.11.0](https://github.com/tuner/genome-spy/compare/v0.10.0...v0.11.0) (2021-11-08)
 
 **Note:** Version bump only for package genome-spy-embed-examples
 
-# [0.10.0](https://github.com/tuner/genome-spy/compare/v0.9.0...v0.10.0) (2021-11-02)
+## [0.10.0](https://github.com/tuner/genome-spy/compare/v0.9.0...v0.10.0) (2021-11-02)
 
 **Note:** Version bump only for package genome-spy-embed-examples
 
-# [0.9.0](https://github.com/tuner/genome-spy/compare/v0.8.0...v0.9.0) (2021-10-21)
+## [0.9.0](https://github.com/tuner/genome-spy/compare/v0.8.0...v0.9.0) (2021-10-21)
 
 **Note:** Version bump only for package genome-spy-embed-examples
 
-# [0.8.0](https://github.com/tuner/genome-spy/compare/v0.7.0...v0.8.0) (2021-10-20)
+## [0.8.0](https://github.com/tuner/genome-spy/compare/v0.7.0...v0.8.0) (2021-10-20)
 
 **Note:** Version bump only for package genome-spy-embed-examples
 
-# [0.7.0](https://github.com/tuner/genome-spy/compare/v0.6.0...v0.7.0) (2021-10-14)
+## [0.7.0](https://github.com/tuner/genome-spy/compare/v0.6.0...v0.7.0) (2021-10-14)
 
 ### Features
 
-* named and observable scales ([#45](https://github.com/tuner/genome-spy/issues/45)) ([4011548](https://github.com/tuner/genome-spy/commit/4011548ff43c9562d434328172cdb335909e43a2))
+- named and observable scales ([#45](https://github.com/tuner/genome-spy/issues/45)) ([4011548](https://github.com/tuner/genome-spy/commit/4011548ff43c9562d434328172cdb335909e43a2))

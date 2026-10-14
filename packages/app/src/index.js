@@ -3,6 +3,7 @@ import { isObject, isString } from "vega-util";
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import { loadSpec } from "@genome-spy/core/index.js";
 import { createEmbedResult } from "@genome-spy/core/embedApi.js";
+import { createEmbedErrorHandler } from "@genome-spy/core/embedError.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
@@ -41,6 +42,7 @@ export async function embed(el, spec, options = {}) {
     let app;
     /** @type {(() => void)[]} */
     let pluginDisposers = [];
+    const errorHandler = createEmbedErrorHandler(element, options);
 
     try {
         const specObject = isObject(spec) ? spec : await loadSpec(spec);
@@ -52,6 +54,7 @@ export async function embed(el, spec, options = {}) {
             /** @type {import("./embedTypes.js").AppEmbedOptions} */ ({
                 powerPreference: "high-performance",
                 ...options,
+                onError: errorHandler.onError,
             });
 
         const { plugins = [], ...appEmbedOptions } =
@@ -61,12 +64,21 @@ export async function embed(el, spec, options = {}) {
 
         app = new App(element, specObject, appEmbedOptions);
         genomeSpy = app.genomeSpy;
-        pluginDisposers = await installAppPlugins(app, plugins);
+        for (const plugin of plugins) {
+            const disposer = await plugin.install(app);
+            if (typeof disposer === "function") {
+                pluginDisposers.push(disposer);
+            }
+        }
         applyOptions(genomeSpy, appEmbedOptions);
-        await app.launch();
-    } catch (e) {
-        element.innerText = e.toString();
-        console.error(e);
+        errorHandler.complete(await app.launch());
+    } catch (error) {
+        errorHandler.fail(error, element, [
+            ...pluginDisposers.toReversed(),
+            () => app?.finalize(),
+            () => genomeSpy?.destroy(),
+            () => element.replaceChildren(),
+        ]);
     }
 
     return createEmbedResult({
@@ -98,30 +110,4 @@ function applyOptions(genomeSpy, opt) {
     if (opt.namedDataProvider) {
         genomeSpy.registerNamedDataProvider(opt.namedDataProvider);
     }
-}
-
-/**
- * @param {import("./app.js").default} app
- * @param {import("./appTypes.js").AppPlugin[]} plugins
- * @returns {Promise<(() => void)[]>}
- */
-async function installAppPlugins(app, plugins) {
-    /** @type {(() => void)[]} */
-    const disposers = [];
-
-    try {
-        for (const plugin of plugins) {
-            const disposer = await plugin.install(app);
-            if (typeof disposer === "function") {
-                disposers.push(disposer);
-            }
-        }
-    } catch (error) {
-        for (let index = disposers.length - 1; index >= 0; index -= 1) {
-            disposers[index]();
-        }
-        throw error;
-    }
-
-    return disposers;
 }

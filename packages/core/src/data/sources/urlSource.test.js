@@ -51,7 +51,11 @@ function createViewStub() {
                          * @param {string} status
                          * @param {string} [detail]
                          */
-                        set: (/** @type {any} */ _view, status, detail) => {
+                        setSource: (
+                            /** @type {any} */ _view,
+                            status,
+                            detail
+                        ) => {
                             loadingStatus.status = status;
                             loadingStatus.detail = detail;
                         },
@@ -515,7 +519,9 @@ test("UrlSource reports conflicting template fields", async () => {
         )
     );
     // The conflict is expected; keep its diagnostic out of the test runner output.
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
 
     const view = createViewStub();
     const source = new UrlSource(
@@ -532,9 +538,12 @@ test("UrlSource reports conflicting template fields", async () => {
 
     await source.load();
 
-    expect(warn).toHaveBeenCalledWith(
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
-            message: 'Descriptor field "sample" conflicts with loaded datum.',
+            cause: expect.objectContaining({
+                message:
+                    'Descriptor field "sample" conflicts with loaded datum.',
+            }),
         })
     );
     expect(/** @type {any} */ (view).loadingStatus).toEqual({

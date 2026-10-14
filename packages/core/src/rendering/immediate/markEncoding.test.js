@@ -94,18 +94,17 @@ describe("prepareRangeProjection", () => {
     });
 
     test.each([
-        ["band", 0.25, 0.2, 1, 0.5, 0.05],
-        ["point", undefined, 0.1, 1, 0.5, 0.05],
-        ["index", 1, 0.08, -0.1, 0.5, -0.04],
-        ["locus", 0, 0.08, 0.1, 0.25, -0.02],
+        ["band", 0.25, 0.2, 1, 0.05],
+        ["point", undefined, 0.1, 1, 0.05],
+        ["index", 1, 0.08, -0.1, -0.08],
+        ["locus", 0, 0.08, 0.1, 0],
     ])(
         "prepares %s scale band placement once",
-        (type, band, bandwidth, step, align, adjustment) => {
+        (type, band, bandwidth, step, adjustment) => {
             const scale = {
                 type,
                 bandwidth: vi.fn(() => bandwidth),
                 step: vi.fn(() => step),
-                align: vi.fn(() => align),
             };
             const x = createEncoder(() => 0.2, {
                 constant: true,
@@ -127,7 +126,6 @@ describe("prepareRangeProjection", () => {
             expect(scale.bandwidth).toHaveBeenCalledOnce();
             if (type == "index" || type == "locus") {
                 expect(scale.step).toHaveBeenCalledOnce();
-                expect(scale.align).toHaveBeenCalledOnce();
             }
         }
     );

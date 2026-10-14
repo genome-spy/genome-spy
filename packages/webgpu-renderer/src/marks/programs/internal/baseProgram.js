@@ -282,7 +282,7 @@ export default class BaseProgram {
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
-        /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
+        /** @type {{ name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
@@ -520,6 +520,11 @@ export default class BaseProgram {
         return "triangle-list";
     }
 
+    /** @returns {number} */
+    get verticesPerInstance() {
+        return 6;
+    }
+
     /**
      * Override to provide default scale ranges for specific channels.
      *
@@ -635,7 +640,8 @@ export default class BaseProgram {
             layout: this._bindGroupLayout,
             uniformBuffer: this._uniformBuffer,
             resourceLayout: this._resourceLayout,
-            getSeriesBuffer: (name) => this._seriesBuffers.getBuffer(name),
+            getScaleTableBuffer: () => this._scaleResources.tableBuffer,
+            getSeriesBuffer: () => this._seriesBuffers.getBuffer(),
             getScaleResources: (name) =>
                 this._scaleResources.getChannelResources(name),
             extraTextures: this._extraTextures,
@@ -682,7 +688,7 @@ export default class BaseProgram {
 
         for (const entry of this._resourceLayout) {
             if (entry.role === "series") {
-                const buffer = this._seriesBuffers.getBuffer(entry.name);
+                const buffer = this._seriesBuffers.getBuffer();
                 storage.push({
                     name: entry.name,
                     role: entry.role,
@@ -697,21 +703,11 @@ export default class BaseProgram {
             const scaleResources = this._scaleResources.getChannelResources(
                 entry.name
             );
-            if (entry.role === "ordinalRange") {
-                const buffer = scaleResources?.ordinalRange?.buffer;
+            if (entry.role === "scaleTables") {
                 storage.push({
                     name: entry.name,
                     role: entry.role,
-                    bytes: buffer?.size ?? 0,
-                });
-                continue;
-            }
-            if (entry.role === "domainMap") {
-                const buffer = scaleResources?.domainMap?.buffer;
-                storage.push({
-                    name: entry.name,
-                    role: entry.role,
-                    bytes: buffer?.size ?? 0,
+                    bytes: this._scaleResources.tableBuffer.size,
                 });
                 continue;
             }
@@ -818,6 +814,8 @@ export default class BaseProgram {
             group.default = slot;
             group.setDomain = slot.setDomain;
             group.setRange = slot.setRange;
+            group.setGapPositions = slot.setGapPositions;
+            group.setGapWidth = slot.setGapWidth;
         };
 
         /**
@@ -845,7 +843,6 @@ export default class BaseProgram {
                     this._createValueSlot(name)
                 );
             }
-
             const conditions = channel.conditions ?? [];
             if (!conditions.length) {
                 continue;
@@ -913,9 +910,20 @@ export default class BaseProgram {
     _createScaleSlot(name) {
         const updater = this._scaleResources.getScaleUpdater(name);
         return {
-            setDomain: (domain) => {
+            setGapPositions: (values) => {
                 this._assertAlive();
-                const needsRebind = updater.updateDomain(domain);
+                this._queueSlotUpdate(
+                    this._scaleResources.updateGapPositions(name, values)
+                );
+            },
+            setGapWidth: (width) => {
+                this._assertAlive();
+                this._scaleResources.updateGapWidth(name, width);
+                this._queueSlotUpdate(false);
+            },
+            setDomain: (domain, ranks) => {
+                this._assertAlive();
+                const needsRebind = updater.updateDomain(domain, ranks);
                 this._queueSlotUpdate(needsRebind);
             },
             setRange: (range) => {
@@ -1081,15 +1089,18 @@ export default class BaseProgram {
     }
 
     /**
-     * Reject a mark whose uniform block exceeds the device's binding limit
+     * Reject a mark whose uniform block exceeds a binding or allocation limit
      * before allocating any mark GPU resources.
      *
      * @returns {void}
      */
     _validateUniformBufferCapacity() {
-        const limit = this.device.limits?.maxUniformBufferBindingSize;
-        const byteLength = this._uniformBufferState?.byteLength ?? 0;
-        if (limit === undefined || byteLength <= limit) {
+        const limit = Math.min(
+            this.device.limits.maxUniformBufferBindingSize,
+            this.device.limits.maxBufferSize
+        );
+        const byteLength = this._uniformBufferState.byteLength;
+        if (byteLength <= limit) {
             return;
         }
 
@@ -1157,28 +1168,21 @@ export default class BaseProgram {
      */
     _initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (isSeriesChannelConfig(channel) && channel.scale) {
+            if (
+                (isSeriesChannelConfig(channel) ||
+                    isValueChannelConfig(channel)) &&
+                channel.scale
+            ) {
                 this._scaleResources.initializeScale(
                     name,
                     channel,
                     channel.scale
                 );
                 const updater = this._scaleResources.getScaleUpdater(name);
-                updater.updateDomain(channel.scale.domain);
-                const rangeValue =
-                    channel.scale.range ?? this.getDefaultScaleRange(name);
-                if (rangeValue !== undefined) {
-                    updater.updateRange(rangeValue);
-                }
-            }
-            if (isValueChannelConfig(channel) && channel.scale) {
-                this._scaleResources.initializeScale(
-                    name,
-                    channel,
-                    channel.scale
+                updater.updateDomain(
+                    channel.scale.domain,
+                    channel.scale.gapDomain
                 );
-                const updater = this._scaleResources.getScaleUpdater(name);
-                updater.updateDomain(channel.scale.domain);
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
                 if (rangeValue !== undefined) {
@@ -1249,7 +1253,12 @@ export default class BaseProgram {
      * @param {import("../../../index.d.ts").ProgramDrawOptions} options
      */
     draw(pass, options) {
-        pass.draw(6, options.instanceCount, 0, options.firstInstance);
+        pass.draw(
+            this.verticesPerInstance,
+            options.instanceCount,
+            0,
+            options.firstInstance
+        );
     }
 
     /**
@@ -1258,7 +1267,12 @@ export default class BaseProgram {
      * @returns {void}
      */
     drawPick(pass, options) {
-        pass.draw(6, options.instanceCount, 0, options.firstInstance);
+        pass.draw(
+            this.verticesPerInstance,
+            options.instanceCount,
+            0,
+            options.firstInstance
+        );
     }
 
     destroy() {

@@ -36,6 +36,16 @@ or "<code> </code>" (a space) the bracket notation must be used:
 datum['A very *special* name!'] > 100
 ```
 
+Static top-level field references, such as `datum.foo` and `datum["foo"]`, are
+checked against every row reaching an expression evaluator. An absent
+field raises an error listing the available fields. A field whose value is
+`undefined` or `null` is present and passes this check. This also applies to
+fields inside guards such as `isDefined(datum.foo)` and conditional branches.
+Nested properties and computed keys such as `datum[fieldName]` are not checked.
+
+For optional values, include the field in the input rows. Use `isDefined` to test
+for `undefined`, or `isValid` to also reject `null` and `NaN`.
+
 ## Conditional operators
 
 [Ternary](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Conditional_Operator) operator:
@@ -175,10 +185,20 @@ Maps a value through the scale for the given channel, such as `"x"`, `"y"`,
 `"color"`, or `"size"`. The channel is resolved against the current view's
 scale resolution.
 
+For band, index, and locus scales, this returns the start of the band. To match
+the default placement of point marks on an unreversed x scale, add
+`bandwidth('x') / 2`. The encoding's `band` property controls placement within
+the band independently of the scale's `align` property.
+
 <a name="invert" href="#invert">#</a>
 <b>invert</b>(<i>channel</i>, <i>range</i>)<br/>
 Maps a range value back through the scale for the given channel. The channel
 is resolved against the current view's scale resolution.
+
+For index and locus scales, inversion returns a continuous coordinate measured
+from band starts. Without padding, `[invert('x', 0), invert('x', 1)]` equals
+`domain('x')` for an unreversed x scale. Apply `floor` to identify the band at a
+range position.
 
 <a name="domain" href="#domain">#</a>
 <b>domain</b>(<i>channel</i>)<br/>

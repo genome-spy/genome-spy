@@ -13,7 +13,7 @@ export default class DataFlow {
     #collectors;
 
     /**
-     * Registry for per-view loading status. The host may replace this.
+     * Registry for source outcomes and root initialization status. The host may replace this.
      *
      * @type {import("../genomeSpy/loadingStatusRegistry.js").default}
      */

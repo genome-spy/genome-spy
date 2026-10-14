@@ -2,15 +2,15 @@ import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faArrowUpRightFromSquare,
     faBug,
     faColumns,
     faDownload,
-    faFolderOpen,
     faQuestionCircle,
     faIndent,
 } from "@fortawesome/free-solid-svg-icons";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
-import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
+import { embed } from "@genome-spy/core";
 import "@genome-spy/core/rendering/webgpu/register.js";
 import { createInspectorPanel } from "@genome-spy/inspector";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
@@ -21,15 +21,18 @@ import defaultSpec from "./defaultspec.json?raw";
 
 import packageJson from "../package.json";
 import "./splitPanel.js";
-import "./baseUrlNotice.js";
 import "./editor/codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
 import "./imageExportDialog.js";
-import "./playground.scss";
+import "./playground.css";
+import "./toolbar.js";
+import "./workspace.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
-import { getRendererFromUrl, rendererMenu } from "./rendererMenu.js";
+import { indexSpecOrigins } from "./editor/loadingDiagnostics.js";
+import { getRendererFromUrl } from "./rendererMenu.js";
+import { clearErrorDisplay, showError } from "./errorDisplay.js";
 import {
     addUploadedDatasets,
     findMissingNamedData,
@@ -41,8 +44,16 @@ const genomeSpyContainerRef = createRef();
 const inspectorPaneRef = createRef();
 const inputBindingsHostRef = createRef();
 const inputBindingsPaneRef = createRef();
-const inputAndFilesRef = createRef();
-const editorAndOthersRef = createRef();
+/** @type {import("./workspace.js").WorkspaceState} */
+const workspaceState = {
+    filesOpen: false,
+    auxiliaryWidth: 400,
+    filesHeight: 300,
+};
+let revealMissingFilesOnNextUpdate = false;
+
+/** @type {import("lit/directives/ref.js").Ref<import("./filePane.js").default>} */
+const filePaneRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./imageExportDialog.js").default>} */
 const imageExportDialogRef = createRef();
@@ -88,10 +99,11 @@ let inspectorHandle;
 /** @type {string | undefined} */
 let inheritedBaseUrl;
 
+/** @type {string | undefined} */
+let sourceExampleId;
+
 let visTitle = "";
 let hasInputBindings = false;
-/** @type {{ summary: string, detail: string, canClear: boolean } | null} */
-let effectiveBaseUrlInfo = null;
 let isExamplePickerOpen = false;
 let isExampleCatalogLoading = false;
 let exampleCatalogError = "";
@@ -99,21 +111,7 @@ let exampleCatalogError = "";
 /** @type {Promise<void> | undefined} */
 let exampleCatalogPromise;
 
-/**
- * @typedef {{
- *   id: string;
- *   title: string;
- *   description: string;
- *   sourceGroup: string;
- *   sourceLabel: string;
- *   category: string;
- *   specPath: string;
- *   specUrl: string;
- *   screenshotPath: string | null;
- *   screenshotUrl: string | null;
- *   sourceMode: string;
- * }} ExampleCatalogEntry
- */
+/** @typedef {import("./examplePicker.js").ExampleCatalogEntry} ExampleCatalogEntry */
 
 /** @type {ExampleCatalogEntry[]} */
 let exampleCatalog = [];
@@ -145,6 +143,7 @@ async function loadSpec() {
 
     const storedState = loadStoredState();
     inheritedBaseUrl = storedState?.inheritedBaseUrl;
+    sourceExampleId = storedState?.sourceExampleId;
 
     return storedState?.specText?.length > 0
         ? storedState.specText
@@ -256,12 +255,16 @@ function closeExamplePicker() {
  * @param {string} specText
  */
 function setEditorSpec(specText) {
+    revealMissingFilesOnNextUpdate = true;
     editorState.set(specText);
     if (editorRef.value) {
         suppressNextEditorChange = true;
         editorRef.value.value = specText;
     }
     void update(true);
+    if (sourceExampleId) {
+        void ensureExampleCatalogLoaded();
+    }
 }
 
 /**
@@ -325,7 +328,7 @@ async function openCatalogEntry(entry) {
 }
 
 /**
- * @typedef {{ specText: string, inheritedBaseUrl?: string }} StoredState
+ * @typedef {{ specText: string, inheritedBaseUrl?: string, sourceExampleId?: string }} StoredState
  */
 
 /**
@@ -364,6 +367,7 @@ function storeState(specText) {
         JSON.stringify({
             specText,
             inheritedBaseUrl,
+            sourceExampleId,
         })
     );
 }
@@ -374,8 +378,20 @@ function storeState(specText) {
 async function loadSpecFromUrl(specParam) {
     const specUrl = new URL(specParam, window.location.href);
     const response = await fetch(specUrl);
+    if (!response.ok) {
+        throw new Error(
+            `Could not load specification: ${response.status} ${response.statusText}`
+        );
+    }
     const specText = await response.text();
     const sourceBaseUrl = inferSpecBaseUrl(specUrl.href);
+    // Keep the original example identity after editing removes the spec query.
+    sourceExampleId =
+        specUrl.origin === window.location.origin
+            ? specUrl.pathname.match(
+                  /^\/(?:examples|docs\/example-specs)\/((?:docs|core|app)\/.+)\.json$/
+              )?.[1]
+            : undefined;
 
     if (shouldInjectBaseUrl(specUrl)) {
         inheritedBaseUrl = undefined;
@@ -408,42 +424,6 @@ function injectBaseUrl(specText, baseUrl) {
     return JSON.stringify(parsedSpec, null, 2) + "\n";
 }
 
-/**
- * @param {string} url
- */
-function formatUrlForDisplay(url) {
-    if (/^(?:[a-z]+:)?\/\//i.test(url)) {
-        const sameOriginPrefix = window.location.origin;
-        if (url.startsWith(sameOriginPrefix)) {
-            return url.slice(sameOriginPrefix.length);
-        }
-    }
-
-    return url;
-}
-
-/**
- * @param {string | undefined} explicitBaseUrl
- * @param {string | undefined} sourceBaseUrl
- */
-function getEffectiveBaseUrlInfo(explicitBaseUrl, sourceBaseUrl) {
-    if (explicitBaseUrl) {
-        return {
-            summary: `Explicit baseUrl: ${formatUrlForDisplay(explicitBaseUrl)}`,
-            detail: "Relative data and import URLs resolve against this base URL.",
-            canClear: true,
-        };
-    } else if (sourceBaseUrl) {
-        return {
-            summary: `Inherited baseUrl: ${formatUrlForDisplay(sourceBaseUrl)}`,
-            detail: "Relative data and import URLs resolve against this base URL until you clear or replace it.",
-            canClear: true,
-        };
-    } else {
-        return null;
-    }
-}
-
 async function formatWithPrettier() {
     const [prettier, prettierPluginBabel, prettierPluginEstree] =
         await Promise.all([
@@ -464,26 +444,6 @@ async function formatWithPrettier() {
     if (editorRef.value) {
         editorRef.value.value = formatted;
     }
-}
-
-function clearBaseUrl() {
-    const value = editorState.getCurrent(editorRef.value);
-    if (!value) {
-        return;
-    }
-
-    const parsedSpec = JSON.parse(value);
-    if (parsedSpec.baseUrl) {
-        delete parsedSpec.baseUrl;
-        editorState.set(JSON.stringify(parsedSpec, null, 2) + "\n");
-        if (editorRef.value) {
-            editorRef.value.value = editorState.get();
-        }
-    } else {
-        inheritedBaseUrl = undefined;
-    }
-
-    update(true);
 }
 
 /** @param {import("./rendererMenu.js").Renderer} value */
@@ -527,7 +487,7 @@ async function update(force = false) {
 /** @param {boolean} force */
 async function updateVisualization(force) {
     const selectedRenderer = renderer;
-    missingFiles = new Set();
+    const previousMissingFiles = missingFiles;
 
     const value = editorState.getCurrent(editorRef.value);
     if (value) {
@@ -537,6 +497,7 @@ async function updateVisualization(force) {
 
     try {
         const parsedSpec = JSON.parse(value);
+        const origins = indexSpecOrigins(parsedSpec);
         const explicitBaseUrl =
             typeof parsedSpec.baseUrl === "string"
                 ? parsedSpec.baseUrl
@@ -554,8 +515,25 @@ async function updateVisualization(force) {
         }
 
         previousStringifiedSpec = stringifiedSpec;
+        const editor = editorRef.value;
+        const runtimeAttempt = editor.beginRuntimeDiagnostics(value);
+        const container = /** @type {HTMLElement} */ (
+            genomeSpyContainerRef.value
+        );
+        clearErrorDisplay(container);
 
         missingFiles = findMissingNamedData(parsedSpec, files);
+        if (
+            missingFiles.size > 0 &&
+            (revealMissingFilesOnNextUpdate ||
+                Array.from(missingFiles).some(
+                    (name) => !previousMissingFiles.has(name)
+                ))
+        ) {
+            workspaceState.filesOpen = true;
+            filePaneRef.value.showUpload();
+        }
+        revealMissingFilesOnNextUpdate = false;
         addUploadedDatasets(parsedSpec, files);
 
         if (embedResult) {
@@ -563,11 +541,11 @@ async function updateVisualization(force) {
             embedResult = undefined;
         }
 
+        if (missingFiles.size > 0) {
+            hasInputBindings = false;
+        }
+
         visTitle = asArray(parsedSpec.description)?.[0];
-        effectiveBaseUrlInfo = getEffectiveBaseUrlInfo(
-            explicitBaseUrl,
-            inheritedBaseUrl
-        );
         renderLayout();
 
         // Wait for uploaded datasets before starting the visualization.
@@ -579,17 +557,37 @@ async function updateVisualization(force) {
         // update reach the browser before GenomeSpy measures its container.
         await new Promise((resolve) => requestAnimationFrame(resolve));
 
-        embedResult = await embed(
-            /** @type {HTMLElement} */ (genomeSpyContainerRef.value),
-            parsedSpec,
-            {
+        try {
+            embedResult = await embed(container, parsedSpec, {
                 inputBindingContainer: /** @type {HTMLElement} */ (
                     inputBindingsHostRef.value
                 ),
                 powerPreference: "high-performance",
                 renderer: selectedRenderer,
-            }
-        );
+                getSpecOrigin: (fragment) => origins.get(fragment),
+                onError: (error, element) => {
+                    if (
+                        editor.reportRuntimeError(error, runtimeAttempt) !==
+                        true
+                    ) {
+                        showError(
+                            element,
+                            error,
+                            () =>
+                                void editor.revealRuntimeError(
+                                    error,
+                                    runtimeAttempt
+                                )
+                        );
+                    }
+                    return true;
+                },
+            });
+        } catch {
+            // Embed already reported the error to the UI and console.
+            return;
+        }
+        editor.observeDataLoading(embedResult, runtimeAttempt);
         hasInputBindings = Boolean(
             document.querySelector(".gs-input-bindings")
         );
@@ -604,69 +602,47 @@ async function updateVisualization(force) {
     }
 }
 
-const toolbarTemplate = () => html`
-    <div class="toolbar">
-        <a
-            href="https://genomespy.app/"
-            target="_blank"
-            class="genome-spy-icon"
-        >
-            <img title="GenomeSpy" alt="GenomeSpy" src="${genomeSpyIcon}" />
-        </a>
-        <h1 class="title">GenomeSpy Playground</h1>
-        <button @click=${toggleLayout} class="tool-button hide-mobile">
-            ${icon(faColumns).node[0]}
-            <span>Toggle layout</span>
-        </button>
-        <button
-            @click=${() => formatWithPrettier()}
-            class="tool-button hide-mobile"
-        >
-            ${icon(faIndent).node[0]}
-            <span>Format code</span>
-        </button>
-        <button
-            @click=${() => {
-                void imageExportDialogRef.value?.show();
-            }}
-            class="tool-button"
-            ?disabled=${!embedResult}
-        >
-            ${icon(faDownload).node[0]}
-            <span>Export image</span>
-        </button>
-        ${rendererMenu(renderer, selectRenderer)}
-        <button
-            @click=${toggleInspector}
-            class=${
-                sidePane === "inspector"
-                    ? "tool-button selected"
-                    : "tool-button"
-            }
-        >
-            ${icon(faBug).node[0]}
-            <span>Inspector</span>
-        </button>
-        <a
-            href="https://genomespy.app/docs/"
-            target="_blank"
-            class="tool-button hide-mobile"
-            >${icon(faQuestionCircle).node[0]} <span>Docs</span></a
-        >
-        <span class="vis-title">
-            <span class="hide-mobile">${visTitle}</span>
-        </span>
-        <a
-            class="version tool-button"
-            href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
-            >v${packageJson.version}</a
-        >
-        <button @click=${openExamplePicker} class="tool-button">
-            ${icon(faFolderOpen).node[0]}
-            <span>Examples</span>
-        </button>
-    </div>
-`;
+const toolbarTemplate = () => {
+    /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
+    const actions = [
+        { label: "Toggle layout", icon: faColumns, onClick: toggleLayout },
+        {
+            label: "Format code",
+            icon: faIndent,
+            onClick: () => void formatWithPrettier(),
+        },
+        {
+            label: "Export image",
+            icon: faDownload,
+            onClick: () => void imageExportDialogRef.value.show(),
+            disabled: !embedResult,
+        },
+        {
+            label: "Inspector",
+            icon: faBug,
+            onClick: toggleInspector,
+            checked: sidePane === "inspector",
+        },
+        {
+            label: "Docs",
+            icon: faQuestionCircle,
+            href: "https://genomespy.app/docs/",
+        },
+    ];
+    const releaseUrl =
+        "https://github.com/genome-spy/genome-spy/releases/tag/v" +
+        packageJson.version;
+
+    return html`<gs-playground-toolbar
+        .actions=${actions}
+        .renderer=${renderer}
+        .visTitle=${visTitle}
+        .version=${packageJson.version}
+        .releaseUrl=${releaseUrl}
+        @open-examples=${openExamplePicker}
+        @select-renderer=${(/** @type {CustomEvent<{renderer: import("./rendererMenu.js").Renderer}>} */ event) => selectRenderer(event.detail.renderer)}
+    ></gs-playground-toolbar>`;
+};
 
 const debouncedUpdate = debounce(() => update(), 500, false);
 
@@ -682,17 +658,8 @@ function handleEditorChange() {
 }
 
 const editorPaneTemplate = () => html`
-    <section id="editor-pane" slot="1">
-        ${
-            effectiveBaseUrlInfo
-                ? html`
-                      <base-url-notice
-                          .info=${effectiveBaseUrlInfo}
-                          @clear=${clearBaseUrl}
-                      ></base-url-notice>
-                  `
-                : null
-        }
+    <section id="editor-pane" slot="editor">
+        ${documentationTemplate()}
         <code-editor
             ${ref(editorRef)}
             .value=${editorState.get()}
@@ -701,65 +668,46 @@ const editorPaneTemplate = () => html`
     </section>
 `;
 
-/** @param {string} slot */
-const inputBindingsPaneTemplate = (slot) =>
-    hasInputBindings
-        ? html`
-              <section
-                  id="input-bindings-pane"
-                  ${ref(inputBindingsPaneRef)}
-                  slot=${slot}
-              ></section>
-          `
+function documentationTemplate() {
+    const links = exampleCatalog.find(
+        (entry) => entry.id === sourceExampleId
+    )?.documentation;
+    return links?.length
+        ? html`<nav
+              class="example-documentation"
+              aria-label="Example documentation"
+          >
+              <span>Described in documentation:</span>
+              ${links.map(({ title, url }) => html`<a href=${url} target="_blank" rel="noreferrer">${title}${icon(faArrowUpRightFromSquare).node[0]}</a>`)}
+          </nav>`
         : null;
+}
 
-/** @param {string} slot */
-const filePaneTemplate = (slot) => html`
-    <section id="file-pane" slot=${slot}>
-        <file-pane
-            @upload=${() => update(true)}
-            .files=${files}
-            .missingFiles=${missingFiles}
-        ></file-pane>
-    </section>
+const workspaceTemplate = () => html`
+    <gs-playground-workspace
+        ?hidden=${sidePane === "inspector"}
+        .layout=${layout}
+        .hasInputBindings=${hasInputBindings}
+        .viewState=${workspaceState}
+        .fileCount=${Object.keys(files).length}
+        .missingFiles=${missingFiles}
+    >
+        ${editorPaneTemplate()}
+        <section
+            id="input-bindings-pane"
+            ${ref(inputBindingsPaneRef)}
+            slot="bindings"
+        ></section>
+        <section id="file-pane" slot="files">
+            <file-pane
+                ${ref(filePaneRef)}
+                @upload=${() => update(true)}
+                .files=${files}
+                .missingFiles=${missingFiles}
+            ></file-pane>
+        </section>
+    </gs-playground-workspace>
 `;
-
-const editorAndOthersTemplate = () => {
-    if (layout === "vertical" && hasInputBindings) {
-        return html`
-            <split-panel
-                .orientation=${"horizontal"}
-                ${ref(editorAndOthersRef)}
-                slot="2"
-                id="editor-and-others"
-            >
-                ${editorPaneTemplate()}
-                <split-panel
-                    .orientation=${"vertical"}
-                    .fitIndex=${0}
-                    ${ref(inputAndFilesRef)}
-                    slot="2"
-                    id="input-and-files"
-                >
-                    ${inputBindingsPaneTemplate("1")} ${filePaneTemplate("2")}
-                </split-panel>
-            </split-panel>
-        `;
-    }
-
-    return html`
-        <split-panel
-            .orientation=${layout == "vertical" ? "horizontal" : "vertical"}
-            .fitIndex=${layout == "horizontal" && hasInputBindings ? 1 : -1}
-            ${ref(editorAndOthersRef)}
-            slot="2"
-            id="editor-and-others"
-        >
-            ${editorPaneTemplate()} ${inputBindingsPaneTemplate("2")}
-            ${filePaneTemplate(hasInputBindings ? "3" : "2")}
-        </split-panel>
-    `;
-};
 
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
@@ -789,17 +737,14 @@ const layoutTemplate = () => html`
                 ${ref(genomeSpyContainerRef)}
                 slot="1"
             ></div>
-            ${
-                sidePane === "inspector"
-                    ? html`
-                          <section
-                              id="inspector-pane"
-                              ${ref(inspectorPaneRef)}
-                              slot="2"
-                          ></section>
-                      `
-                    : editorAndOthersTemplate()
-            }
+            <section id="workspace-pane" slot="2">
+                ${workspaceTemplate()}
+                <section
+                    id="inspector-pane"
+                    ${ref(inspectorPaneRef)}
+                    ?hidden=${sidePane !== "inspector"}
+                ></section>
+            </section>
         </split-panel>
     </section>
 `;
@@ -828,16 +773,6 @@ function placeInputBindings() {
 
     if (inputBindings && destination) {
         destination.append(inputBindings);
-        const inputAndFiles =
-            /** @type {import("lit").LitElement | undefined} */ (
-                inputAndFilesRef.value
-            );
-        inputAndFiles?.requestUpdate();
-        const editorAndOthers =
-            /** @type {import("lit").LitElement | undefined} */ (
-                editorAndOthersRef.value
-            );
-        editorAndOthers?.requestUpdate();
     }
 }
 

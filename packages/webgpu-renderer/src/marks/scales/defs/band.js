@@ -1,5 +1,6 @@
 import {
     DOMAIN_MAP_COUNT_PREFIX,
+    DOMAIN_MAP_TABLE_PREFIX,
     SCALE_ALIGN_PREFIX,
     SCALE_BAND_PREFIX,
     SCALE_PADDING_INNER_PREFIX,
@@ -115,7 +116,7 @@ function emitBandScale({
             params.${SCALE_BAND_PREFIX}${name}
         );
     }
-    let mapped = ${hashLookupFunctionName(domainMapName)}(raw, arrayLength(&${domainMapName}));
+    let mapped = ${hashLookupFunctionName(domainMapName)}(raw, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
     if (mapped == HASH_NOT_FOUND) { return ${rangeVec2(name)}.x; }
     return scaleBand(
         mapped,

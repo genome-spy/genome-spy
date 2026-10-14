@@ -148,7 +148,7 @@ describe("RulerViewportController", () => {
         expect(setValue).toHaveBeenCalledWith("center", {
             type: "ruler",
             values: {
-                x: 6,
+                x: 5,
             },
         });
     });

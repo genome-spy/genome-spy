@@ -27,14 +27,15 @@ describe("ruler coordinate normalization", () => {
         expect(normalizeRulerCoordinate(12.6, resolution, "integer")).toBe(13);
     });
 
-    test("rounds index coordinates with auto snapping", () => {
+    test("snaps index coordinates to the containing band", () => {
         const resolution = createScaleResolution("index");
 
         expect(normalizeRulerCoordinate(4.49, resolution, "auto")).toBe(4);
-        expect(normalizeRulerCoordinate(4.5, resolution, "auto")).toBe(5);
+        expect(normalizeRulerCoordinate(4.9, resolution, "auto")).toBe(4);
+        expect(normalizeRulerCoordinate(5, resolution, "auto")).toBe(5);
     });
 
-    test("rounds locus coordinates and exposes complex values", () => {
+    test("snaps locus coordinates to the containing band and exposes complex values", () => {
         const resolution = createScaleResolution("locus", (value) => ({
             chrom: "chr1",
             pos: value,
@@ -42,7 +43,7 @@ describe("ruler coordinate normalization", () => {
 
         expect(normalizeRulerCoordinate(20.6, resolution, "auto")).toEqual({
             chrom: "chr1",
-            pos: 21,
+            pos: 20,
         });
     });
 

@@ -530,10 +530,63 @@ export interface MultiscaleSpec extends ViewSpecBase, DynamicOpacitySpec {
 }
 
 export interface FacetSpec extends ViewSpecBase {
-    facet: any; //FacetMapping | FacetFieldDef
-    spec: LayerSpec | UnitSpec;
+    /**
+     * Defines the field or fields used to split data into repeated facet cells.
+     *
+     * A single field definition creates a wrappable series of cells. Use `row`
+     * and `column` to fix the direction or create a two-dimensional facet matrix.
+     */
+    facet: FacetMapping | FacetFieldDef;
+
+    /**
+     * The view specification repeated for each facet cell.
+     *
+     * Facets currently use shared scales and axes. Independent per-facet scale
+     * domains are not supported.
+     * Set `viewportWidth` or `viewportHeight` on the facet container to scroll
+     * the grid. Viewports inside the repeated child are not supported.
+     */
+    spec: LayerSpec | UnitSpec | ImportSpec;
+
+    /**
+     * Wraps a single-field facet into the specified number of columns.
+     *
+     * Valid only with a direct field definition such as `facet: { field: "group" }`.
+     * Row/column facet mappings do not support wrapping. The count must be a positive integer.
+     *
+     * @minimum 1
+     * @multipleOf 1
+     */
     columns?: number;
-    spacing?: number;
+
+    /**
+     * Space in pixels between facet rows and columns, including header bands.
+     * A number sets both directions. An object sets each direction separately;
+     * omitted directions use the default. Zero removes the gap.
+     *
+     * __Default value:__ `10`
+     *
+     * @minimum 0
+     */
+    spacing?: number | FacetSpacing;
+}
+
+export interface FacetSpacing {
+    /**
+     * Vertical gap in pixels.
+     * __Default value:__ `10`
+     *
+     * @minimum 0
+     */
+    row?: number;
+
+    /**
+     * Horizontal gap in pixels.
+     * __Default value:__ `10`
+     *
+     * @minimum 0
+     */
+    column?: number;
 }
 
 export type ResolutionTarget = "scale" | "axis" | "legend";
@@ -581,7 +634,7 @@ export type CoreViewSpec =
     | UnitSpec
     | LayerSpec
     | MultiscaleSpec
-    //    | FacetSpec
+    | FacetSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec;

@@ -23,7 +23,7 @@ export default class FormulaTransform extends Transform {
     }
 
     initialize() {
-        this.fn = this.watchSnapshottedExpression(this.params.expr);
+        this.fn = this.watchSnapshottedExpression(this.params);
     }
 
     /**

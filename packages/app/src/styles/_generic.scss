@@ -73,8 +73,7 @@ $menu-line-height: 22px;
 }
 
 .gs-menu,
-.gs-context-menu,
-.gs-dropdown-menu {
+.gs-context-menu {
     margin: 0;
     padding: 7px 0;
     background: #f6f6f6;
@@ -105,8 +104,32 @@ $menu-line-height: 22px;
         &.active > :is(a:first-child, .submenu-item) {
             background-color: $menu-active-bg-color;
         }
-        > :is(a:first-child, label, .submenu-item):hover {
+        > :is(a:first-child, label, .submenu-item):hover,
+        > :is(button.choice-item, button.submenu-item):hover {
             background-color: $menu-hover-bg-color;
+        }
+
+        > button[role="menuitem"] {
+            width: 100%;
+            border: 0;
+            padding-block: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            line-height: inherit;
+            text-align: left;
+            cursor: default;
+
+            &:focus-visible {
+                outline: 2px solid #2459a6;
+                outline-offset: -2px;
+                background-color: $menu-active-bg-color;
+            }
+        }
+
+        .menu-item-icon svg {
+            width: 1em;
+            margin-right: 0.2em;
         }
 
         > span.disabled-item,
@@ -143,7 +166,8 @@ $menu-line-height: 22px;
     }
 
     .menu-header,
-    li > :is(span.disabled-item, a:first-child, .submenu-item, label) {
+    li > :is(span.disabled-item, a:first-child, .submenu-item, label),
+    li > button[role="menuitem"] {
         padding-left: $menu-item-h-padding;
         padding-right: $menu-item-h-padding;
     }
@@ -154,7 +178,7 @@ $menu-line-height: 22px;
     }
 
     li {
-        > :is(div.submenu-item, .choice-item) {
+        > :is(div.submenu-item, .choice-item, button.submenu-item) {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -196,7 +220,7 @@ $menu-line-height: 22px;
         }
     }
 
-    a.menu-ellipsis {
+    li > button.menu-ellipsis {
         padding: 0;
         display: flex;
         align-items: center;
@@ -204,6 +228,7 @@ $menu-line-height: 22px;
         position: absolute;
         top: 0px;
         right: $menu-item-h-padding * 0.5;
+        width: $menu-line-height;
         height: $menu-line-height;
 
         background-color: $menu-hover-bg-color;
@@ -224,8 +249,15 @@ $menu-line-height: 22px;
         }
     }
 
-    li:not(:hover) a.menu-ellipsis {
-        display: none;
+    li:not(:hover, :focus-within) button.menu-ellipsis {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    li > button[role="menuitem"][aria-current="step"] {
+        background-color: #e0e0e0;
+        border-left: 5px solid #c0c0c0;
+        padding-left: $menu-item-h-padding - 5px;
     }
 
     .gs-input-binding {
@@ -238,14 +270,22 @@ $menu-line-height: 22px;
     }
 }
 
-.gs-dropdown-menu-right {
-    right: 0;
-}
-
 .gs-context-menu-backdrop {
     position: fixed;
     z-index: 100;
     inset: 0;
+}
+
+.gs-context-menu-popup-layer {
+    position: fixed;
+    // Above the provenance controls (101), with the backdrop below them (100).
+    z-index: 102;
+    inset: 0;
+    pointer-events: none;
+
+    > .gs-context-menu {
+        pointer-events: auto;
+    }
 }
 
 .gs-context-menu {
@@ -253,23 +293,80 @@ $menu-line-height: 22px;
     z-index: 100;
 }
 
-.gs-dropdown-menu {
-    overflow: auto;
-    position: absolute;
+.gs-controls-popup {
+    min-width: 14em;
 
-    display: none;
-    z-index: 1;
-    width: max-content;
-
-    // Checkbox stuff --------------------
-
-    ul {
-        padding-left: 1.5em;
-        list-style: none;
+    > ul {
+        margin: 0;
+        padding: 0;
     }
 
-    > li > ul {
-        padding-left: 0;
+    button {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        line-height: inherit;
+        cursor: pointer;
+
+        &:focus-visible {
+            outline: 2px solid #2459a6;
+            outline-offset: -2px;
+            background: $menu-active-bg-color;
+        }
+    }
+
+    .control-submenu-row {
+        display: flex;
+        align-items: center;
+
+        &:hover {
+            background: $menu-hover-bg-color;
+        }
+
+        &.active {
+            background: $menu-active-bg-color;
+        }
+
+        > label {
+            flex: 1;
+
+            &:hover {
+                background: transparent;
+            }
+        }
+
+        > .settings-submenu-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.2em;
+            min-height: $menu-line-height;
+            padding: 0 0.5em;
+
+            &::after {
+                content: "";
+                border-top: 0.4em solid transparent;
+                border-bottom: 0.4em solid transparent;
+                border-left: 0.4em solid currentColor;
+            }
+
+            &:hover {
+                background: transparent;
+            }
+        }
+    }
+
+    .choice-item,
+    .submenu-item {
+        width: 100%;
+        min-height: $menu-line-height;
+        padding: 0 $menu-item-h-padding;
+        text-align: left;
+    }
+
+    li > button.choice-item {
+        display: block;
     }
 }
 

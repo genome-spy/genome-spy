@@ -8,6 +8,7 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  * @typedef {{ id: number, target: Domain }} DomainTransition
  * @typedef {{
  *   visibleDomain: Domain,
+ *   gapDomain?: readonly number[],
  *   resetDomain: Domain,
  *   initialReference: Domain | undefined,
  *   dataExtent: Domain | undefined,
@@ -50,10 +51,12 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  *   type: "navigate",
  *   domain: Domain,
  *   duration: number,
+ *   gapDomain?: readonly number[],
  * } | {
  *   type: "frame",
  *   id: number,
  *   domain: Domain,
+ *   gapDomain?: readonly number[],
  * } | {
  *   type: "finish",
  *   id: number,
@@ -122,7 +125,8 @@ export function planDomainUpdate(state, update, policy) {
                     ? { ...state, transition: undefined }
                     : state,
                 domain,
-                policy
+                policy,
+                update.type === "frame" ? update.gapDomain : undefined
             );
         }
         case "navigate": {
@@ -135,7 +139,13 @@ export function planDomainUpdate(state, update, policy) {
                 state.phase === "collecting"
                     ? { ...state, phase: /** @type {const} */ ("interacted") }
                     : state;
-            return applyDomain(next, update.domain, update.duration, policy);
+            return applyDomain(
+                next,
+                update.domain,
+                update.duration,
+                policy,
+                update.gapDomain
+            );
         }
         case "data":
         case "configuration":
@@ -182,6 +192,11 @@ function planSourceUpdate(state, update, policy) {
     // must not grant that authority to an ordinary late data or member update.
     const fromSelection =
         update.type === "selection" || update.type === "selection-sync";
+    if (
+        update.type === "selection-sync" &&
+        shallowArrayEquals(update.candidate, state.visibleDomain)
+    )
+        return unchanged(next);
     const authoritative =
         policy.selectionLinked ||
         fromSelection ||
@@ -231,9 +246,10 @@ function planSourceUpdate(state, update, policy) {
  * @param {Domain} domain
  * @param {number} duration
  * @param {DomainPolicy} policy
+ * @param {readonly number[]} [gapDomain]
  * @returns {DomainUpdatePlan}
  */
-function applyDomain(state, domain, duration, policy) {
+function applyDomain(state, domain, duration, policy, gapDomain) {
     if (
         duration > 0 &&
         policy.scaleKind !== "discrete" &&
@@ -268,7 +284,12 @@ function applyDomain(state, domain, duration, policy) {
     }
 
     return {
-        ...commitDomain({ ...state, transition: undefined }, domain, policy),
+        ...commitDomain(
+            { ...state, transition: undefined },
+            domain,
+            policy,
+            gapDomain
+        ),
         transition: state.transition ? { type: "cancel" } : { type: "none" },
     };
 }
@@ -277,12 +298,17 @@ function applyDomain(state, domain, duration, policy) {
  * @param {DomainState} state
  * @param {Domain} domain
  * @param {DomainPolicy} policy
+ * @param {readonly number[]} [gapDomain]
  * @returns {DomainUpdatePlan}
  */
-function commitDomain(state, domain, policy) {
-    const domainChanged = !shallowArrayEquals(domain, state.visibleDomain);
+function commitDomain(state, domain, policy, gapDomain) {
+    const domainChanged =
+        !shallowArrayEquals(domain, state.visibleDomain) ||
+        !shallowArrayEquals(gapDomain ?? [], state.gapDomain ?? []);
     return {
-        state: domainChanged ? { ...state, visibleDomain: domain } : state,
+        state: domainChanged
+            ? { ...state, visibleDomain: domain, gapDomain }
+            : state,
         domainChanged,
         // A configured initial domain may already match the startup display
         // while its linked selection still needs seeding. The adapter compares

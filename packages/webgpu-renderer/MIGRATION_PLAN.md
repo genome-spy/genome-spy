@@ -62,6 +62,40 @@ Remaining path/font follow-up includes a compact wide-range tier for tiny
 stroked points, portable Core/Canvas/SVG text effects, and public contract
 documentation.
 
+## Pending integration: lasso review stack
+
+Scale/gap and mixed-series packing, startup byte negotiation, and the forced-
+default audit are implemented. The full Core/docs sweep passes 237/238 specs,
+with no binding-limit failures; the remaining failure is the pre-existing
+zero-height arrow playground canvas. Example pressure peaks at 5/8 storage
+bindings and 3/4 groups.
+
+An isolated #563/#564 rebase qualified both native 10M modes, shared linked-view
+GPU tables, and lifecycle/navigation checks at defaults. Detailed records are
+retained in Git history. Carry the tested rebase adjustments onto those PRs
+after the packing changes are integrated: preserve compute-visible uniform
+descriptors, current shared point-center clamping, independent borrowed tables,
+and explicit activity/ownership semantics.
+
+## Follow-up: shared series and extraction performance
+
+Packed series remain mark-owned. Scatterplot-matrix cells using the same data
+with different x/y encodings therefore repeat column materialization and uploads.
+Evaluate renderer-owned shared series with logical column handles, keeping physical
+packing and offsets inside the renderer. Core sharing must account for row order,
+data revision, accessor semantics, and the encoded representation.
+
+The extraction follow-up in
+[#567](https://github.com/genome-spy/genome-spy/issues/567) is implemented.
+Preallocated columns and independent large-batch callback call sites remove
+temporary arrays and speed up extraction and x-index construction. Scalar
+packing has a direct copy loop. A separate measured change renders analytic
+and SVG point quads as four-vertex strips. The public 1.5M-row benchmark now
+prepares data faster than WebGL and reaches a completed first frame at parity
+or better; ordinary navigation performs no full-series rebuild/upload. See the
+[performance record](../core/scripts/webgpu-data-performance.md) for measurements
+and qualification. Shared series remain a future integration task.
+
 ## Milestone 1: Close current Core parity gaps
 
 ### Outcome

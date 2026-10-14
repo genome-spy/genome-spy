@@ -2,6 +2,8 @@ import { collectAppearanceSelections } from "../../selection/selection.js";
 import { activeMatchResolvedSelectionPredicate } from "../../selection/selectionPredicateTree.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
+import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
+import { getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
 import {
     packHighPrecisionU32Array,
     packHighPrecisionU32ArrayInto,
@@ -32,6 +34,8 @@ import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { isDatumDef, isValueDef } from "../../encoder/encoder.js";
+import { measurePerformance } from "../../debug/performanceProfiler.js";
+import forEachInBatch from "../../utils/forEachInBatch.js";
 
 const SHAPE_NAMES = [
     "circle",
@@ -151,69 +155,45 @@ export function createWebGpuMarkConfig(
         : placementIndex;
 
     const markType = mark.getType();
+    /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */
+    let definition;
+
+    /** @type {Record<string, any>} */
+    let config;
+
     if (markType == "point") {
-        return createTranslation(
-            pointMark,
-            addPlacementIndex(
-                createPointConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = pointMark;
+        config = createPointConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "rect") {
-        return createTranslation(
-            rectMark,
-            addPlacementIndex(
-                createRectConfig(
-                    mark,
-                    data,
-                    coords,
-                    readViewOpacity,
-                    typeof viewOpacity != "function"
-                ),
-                resolvedPlacementIndex
-            ),
-            mark
+        definition = rectMark;
+        config = createRectConfig(
+            mark,
+            data,
+            coords,
+            readViewOpacity,
+            typeof viewOpacity != "function"
         );
     } else if (markType == "rule" || markType == "tick") {
-        return createTranslation(
-            ruleMark,
-            addPlacementIndex(
-                createRuleConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = ruleMark;
+        config = createRuleConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "text") {
-        return createTranslation(
-            textMark,
-            addPlacementIndex(
-                createTextConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = textMark;
+        config = createTextConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "link") {
-        return createTranslation(
-            linkMark,
-            addPlacementIndex(
-                createLinkConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = linkMark;
+        config = createLinkConfig(mark, data, coords, readViewOpacity);
     } else if (markType == "arrow") {
-        return createTranslation(
-            arrowMark,
-            addPlacementIndex(
-                createArrowConfig(mark, data, coords, readViewOpacity),
-                resolvedPlacementIndex
-            ),
-            mark
-        );
+        definition = arrowMark;
+        config = createArrowConfig(mark, data, coords, readViewOpacity);
+    } else {
+        throw unsupported(mark, `Mark type "${markType}" is not supported.`);
     }
 
-    throw unsupported(mark, `Mark type "${markType}" is not supported.`);
+    return createTranslation(
+        definition,
+        addOccurrenceConfig(config, resolvedPlacementIndex, mark, coords),
+        mark
+    );
 }
 
 /**
@@ -264,9 +244,30 @@ function initializeWebGpuMarkRevisions(mark) {
     mark.initializeRenderingRevisions([]);
 }
 
-/** @param {object} config @param {unknown} placementIndex */
-function addPlacementIndex(config, placementIndex) {
-    return placementIndex ? { ...config, placementIndex } : config;
+/**
+ * @param {Record<string, any>} config
+ * @param {unknown} placementIndex
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ */
+function addOccurrenceConfig(config, placementIndex, mark, coords) {
+    if (placementIndex) config.placementIndex = placementIndex;
+    for (const axis of /** @type {const} */ (["x", "y"])) {
+        if (isMarkClamped(mark, axis)) {
+            const origin =
+                mark.getType() === "text"
+                    ? 0
+                    : axis === "x"
+                      ? coords.x
+                      : coords.y;
+            const span = axis === "x" ? coords.width : coords.height;
+            config.channels[axis + "ClampRange"] = {
+                value: [origin, origin + span],
+                dynamic: true,
+            };
+        }
+    }
+    return config;
 }
 
 /** @param {import("../../marks/mark.js").default} mark @param {object[]} data */
@@ -1043,7 +1044,10 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
     const band =
         /** @type {import("../../spec/channel.js").BandMixins} */ (
             encoder.channelDef
-        ).band ?? 0.5;
+        ).band ??
+        (getGapPeer(encoder.channelDef) && scale && hasGroupingGaps(scale.props)
+            ? 0
+            : 0.5);
     if (
         scale?.type == "band" ||
         scale?.type == "point" ||
@@ -1058,7 +1062,7 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
             ? liveValue(() => intern(accessor(data[0])), "u32")
             : {
                   data: getCachedSeries(mark, channel, data, accessor, () =>
-                      Uint32Array.from(data, (datum) => intern(accessor(datum)))
+                      toUint32Array(data, (datum) => intern(accessor(datum)))
                   ),
                   type: /** @type {const} */ ("u32"),
               };
@@ -1083,7 +1087,13 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
               };
         return Object.assign(input, {
             ...(large ? { inputComponents: /** @type {const} */ (2) } : {}),
-            scale: createIndexPositionScale(scale, range, band),
+            scale: createIndexPositionScale(
+                scale,
+                range,
+                band,
+                channel,
+                getGapPeer(encoder.channelDef)
+            ),
         });
     }
 
@@ -1155,10 +1165,14 @@ function createOrdinalPositionScale(scale, range, readDomain) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
  * @param {number} band
+ * @param {string} channel
+ * @param {string | undefined} peer
  */
-function createIndexPositionScale(scale, range, band) {
+function createIndexPositionScale(scale, range, band, channel, peer) {
     const configurableScale = /** @type {any} */ (scale);
-    return retainScaleLeaves(
+    const gaps = hasGroupingGaps(configurableScale.props);
+
+    const result = retainScaleLeaves(
         indexScale({
             domain: scale.domain().map(Number),
             range,
@@ -1166,9 +1180,32 @@ function createIndexPositionScale(scale, range, band) {
             paddingOuter: configurableScale.paddingOuter(),
             align: configurableScale.align(),
             band,
+            ...(gaps
+                ? {
+                      gapEnabled: true,
+                      gapPositions: configurableScale.gapPositions(),
+                      gapWidth: configurableScale.gapWidth(),
+                      gapDomain: configurableScale.gapDomain(),
+                      gapPeer: peer,
+                      gapAxis: channel[0] === "y" ? "y" : "x",
+                  }
+                : {}),
         }),
         () => scale.domain().map(Number)
     );
+    if (gaps) {
+        for (const property of /** @type {const} */ ([
+            "gapPositions",
+            "gapWidth",
+            "gapDomain",
+        ])) {
+            Object.defineProperty(result, property, {
+                enumerable: true,
+                get: () => configurableScale[property](),
+            });
+        }
+    }
+    return result;
 }
 
 /**
@@ -1421,7 +1458,7 @@ function createEnumBranch(mark, channel, data, values, encoder) {
 
     return {
         data: getCachedSeries(mark, channel, data, accessor, () =>
-            Uint32Array.from(data, (datum) =>
+            toUint32Array(data, (datum) =>
                 getEnumValue(mark, channel, values, accessor(datum))
             )
         ),
@@ -1459,7 +1496,7 @@ function createColorBranch(mark, channel, data, encoder) {
         return {
             data: getCachedSeries(mark, channel, data, accessor, () => {
                 const colors = new Float32Array(data.length * 4);
-                data.forEach((datum, index) => {
+                forEachInBatch(data, (datum, index) => {
                     colors.set(toRgba(mark, accessor(datum)), index * 4);
                 });
                 return colors;
@@ -1652,10 +1689,11 @@ function createGlyphOffsetChannel(mark, axis, data) {
     if (branchEncoder.constant) {
         return liveValue(() => read(data[0]));
     }
-    return {
-        data: Float32Array.from(data, read),
-        type: "f32",
-    };
+    const values = new Float32Array(data.length);
+    forEachInBatch(data, (datum, index) => {
+        values[index] = read(datum);
+    });
+    return { data: values, type: "f32" };
 }
 
 /**
@@ -1934,7 +1972,7 @@ function createUniqueIdChannel(mark, data) {
     return {
         uniqueId: {
             data: getCachedSeries(mark, "uniqueId", data, accessor, () =>
-                Uint32Array.from(data, (datum) =>
+                toUint32Array(data, (datum) =>
                     readUnsignedInteger(mark, "uniqueId", accessor(datum))
                 )
             ),
@@ -1996,8 +2034,9 @@ function assertUnconditional(mark, channel, encoder) {
  * @param {import("../../types/encoder.js").Accessor} accessor
  */
 function toFloat32Array(mark, channel, data, accessor) {
-    return getCachedSeries(mark, channel, data, accessor, () =>
-        Float32Array.from(data, (datum) => {
+    return getCachedSeries(mark, channel, data, accessor, () => {
+        const values = new Float32Array(data.length);
+        forEachInBatch(data, (datum, index) => {
             const value = Number(accessor(datum));
             if (!Number.isFinite(value) && !Number.isNaN(value)) {
                 throw unsupported(
@@ -2005,9 +2044,25 @@ function toFloat32Array(mark, channel, data, accessor) {
                     `Channel "${channel}" contains an infinite value.`
                 );
             }
-            return value;
-        })
-    );
+            values[index] = value;
+        });
+        return values;
+    });
+}
+
+/**
+ * TypedArray.from with a mapping callback first materializes a temporary JS
+ * array. Indexed filling avoids that allocation and lets the JIT inline reads.
+ *
+ * @param {object[]} data
+ * @param {(datum: object) => number} read
+ */
+function toUint32Array(data, read) {
+    const values = new Uint32Array(data.length);
+    forEachInBatch(data, (datum, index) => {
+        values[index] = read(datum);
+    });
+    return values;
 }
 
 /**
@@ -2024,12 +2079,16 @@ function toFloat32Array(mark, channel, data, accessor) {
 function toIndexArray(mark, channel, data, accessor, large) {
     const cacheChannel = `${channel}:${large ? "large" : "regular"}`;
     return getCachedSeries(mark, cacheChannel, data, accessor, () => {
-        const values = Array.from(data, (datum) =>
-            readIndexValue(mark, channel, accessor(datum))
-        );
-        return large
-            ? packHighPrecisionU32Array(values)
-            : Uint32Array.from(values);
+        if (!large) {
+            return toUint32Array(data, (datum) =>
+                readIndexValue(mark, channel, accessor(datum))
+            );
+        }
+        const values = new Float64Array(data.length);
+        forEachInBatch(data, (datum, index) => {
+            values[index] = readIndexValue(mark, channel, accessor(datum));
+        });
+        return packHighPrecisionU32Array(values);
     });
 }
 
@@ -2083,7 +2142,7 @@ function createIndexValue(mark, channel, read, large) {
 function toCategoricalArray(mark, channel, data, accessor, scale) {
     const { intern, readDomain } = getCategoricalMapping(mark, channel, scale);
     const values = getCachedSeries(mark, channel, data, accessor, () =>
-        Uint32Array.from(data, (datum) => intern(accessor(datum)))
+        toUint32Array(data, (datum) => intern(accessor(datum)))
     );
     return { values, readDomain };
 }
@@ -2114,7 +2173,7 @@ function getCategoricalMapping(mark, channel, scale) {
  */
 function getCachedSeries(mark, channel, data, accessor, create) {
     if (!("field" in accessor.channelDef)) {
-        return create();
+        return measurePerformance("seriesExtraction." + channel, create);
     }
 
     let cache = SERIES_CACHE.get(mark);
@@ -2128,7 +2187,7 @@ function getCachedSeries(mark, channel, data, accessor, create) {
         return /** @type {T} */ (cached.series);
     }
 
-    const series = create();
+    const series = measurePerformance("seriesExtraction." + channel, create);
     cache.channels.set(channel, { accessor, series });
     return series;
 }

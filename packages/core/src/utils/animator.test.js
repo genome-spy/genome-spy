@@ -8,6 +8,25 @@ afterEach(() => {
 });
 
 describe("Animator", () => {
+    test("rethrows frame errors when no error handler is configured", () => {
+        /** @type {FrameRequestCallback} */
+        let pendingCallback;
+        vi.spyOn(window, "requestAnimationFrame").mockImplementation(
+            (callback) => {
+                pendingCallback = callback;
+                return 1;
+            }
+        );
+        const error = new Error("Frame failed");
+        const animator = new Animator(() => {
+            throw error;
+        });
+
+        animator.requestRender();
+
+        expect(() => pendingCallback(1)).toThrow(error);
+    });
+
     test("cancels a pending render when finalized", () => {
         /** @type {FrameRequestCallback | undefined} */
         let pendingCallback;

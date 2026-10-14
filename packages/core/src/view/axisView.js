@@ -7,11 +7,14 @@ import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { getProjectedTextExtent } from "../fonts/textMetrics.js";
+import { hasEffectiveGroupingGaps } from "../genome/indexGapMapping.js";
+import { GAP_PEER } from "../marks/markUtils.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 const LABELS_LAYER_NAME = "labels_main";
 const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
 const AXIS_EXTENT_PARAM = "axisExtent";
+const DOMAIN_GAPS_PARAM = "domainGapsEnabled";
 const LABEL_WIDTH_FIELD = "labelWidth";
 const LABEL_VISIBLE_FIELD = "labelVisible";
 const LABEL_OFFSET_FIELD = "labelOffset";
@@ -126,6 +129,9 @@ export default class AxisView extends LayerView {
 
     #axisExtentSetter;
 
+    /** @type {(() => void) | undefined} Pending post-scale setup. */
+    #configureDomainGaps;
+
     /** @type {UnitView | undefined} */
     #labelsView;
 
@@ -199,23 +205,75 @@ export default class AxisView extends LayerView {
                 : {}),
         };
 
+        const axisSpec = genomeAxis
+            ? createGenomeAxis(
+                  fullAxisProps,
+                  type,
+                  textDefaults,
+                  zoomable,
+                  hasConfiguredZoomExtent
+              )
+            : createAxis(
+                  fullAxisProps,
+                  type,
+                  zoomable,
+                  hasConfiguredZoomExtent,
+                  options?.labelClipPolicy ?? "pixel",
+                  textDefaults
+              );
+        const gappedDomain =
+            fullAxisProps.domain && scaleResolution.hasGroupingGaps();
+        if (gappedDomain) {
+            const domain = /** @type {import("../spec/view.js").UnitSpec} */ (
+                axisSpec.layer[0]
+            );
+            axisSpec.layer[0] = {
+                name: "domain",
+                layer: [
+                    {
+                        ...domain,
+                        name: "continuous",
+                        transform: [
+                            { type: "filter", expr: "!" + DOMAIN_GAPS_PARAM },
+                        ],
+                    },
+                    {
+                        ...domain,
+                        name: "groups",
+                        data: {
+                            lazy: { type: "scaleGroups", channels: [channel] },
+                        },
+                        transform: [
+                            { type: "filter", expr: DOMAIN_GAPS_PARAM },
+                        ],
+                        mark: {
+                            .../** @type {import("../spec/mark.js").RuleProps} */ (
+                                domain.mark
+                            ),
+                            clamp: channel,
+                        },
+                        // Preserve the parent's data type while marking these
+                        // known index/locus intervals as half-open.
+                        encoding: {
+                            [channel]: {
+                                field: channel + "Start",
+                                type,
+                                band: 0,
+                                [GAP_PEER]: channel + "2",
+                            },
+                            [channel + "2"]: {
+                                field: channel + "End",
+                                band: 0,
+                                [GAP_PEER]: channel,
+                            },
+                        },
+                    },
+                ],
+            };
+        }
+
         super(
-            genomeAxis
-                ? createGenomeAxis(
-                      fullAxisProps,
-                      type,
-                      textDefaults,
-                      zoomable,
-                      hasConfiguredZoomExtent
-                  )
-                : createAxis(
-                      fullAxisProps,
-                      type,
-                      zoomable,
-                      hasConfiguredZoomExtent,
-                      options?.labelClipPolicy ?? "pixel",
-                      textDefaults
-                  ),
+            axisSpec,
             context,
             layoutParent,
             dataParent,
@@ -233,8 +291,30 @@ export default class AxisView extends LayerView {
             this.#effectiveExtent
         );
 
+        if (gappedDomain) {
+            const setEnabled = this.paramRuntime.allocateSetter(
+                DOMAIN_GAPS_PARAM,
+                false
+            );
+            this.#configureDomainGaps = () => {
+                const mapping = scaleResolution.getMappingRef();
+                setEnabled(hasEffectiveGroupingGaps(mapping.get()));
+                this.registerDisposer(
+                    this.paramRuntime.effect([mapping], () =>
+                        setEnabled(hasEffectiveGroupingGaps(mapping.get()))
+                    )
+                );
+            };
+        }
+
         markViewAsNonAddressable(this, { skipSubtree: true });
         markViewAsChrome(this, { skipSubtree: true });
+    }
+
+    configurePostScaleParams() {
+        super.configurePostScaleParams();
+        this.#configureDomainGaps?.();
+        this.#configureDomainGaps = undefined;
     }
 
     async initializeChildren() {

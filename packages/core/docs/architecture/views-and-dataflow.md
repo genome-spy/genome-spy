@@ -50,6 +50,16 @@ arrangement.
   data: `BEHAVIOR_CLONES`, `BEHAVIOR_MODIFIES`, and `BEHAVIOR_COLLECTS`.
 - `Collector` materializes data, supports grouping and sorting, and provides
   indexed lookups such as unique-ID lookup for picking.
+- Explicit facet views insert a grouped input collector after outer transforms.
+  Child transforms receive contiguous facet batches through one static graph;
+  terminal collectors preserve the batch identity even when fields are dropped.
+  The input collector owns cell membership, including cells emptied by child
+  filters. Child-owned sources and auxiliary relations keep their own scope.
+- Facet batches delimit logical reductions and partition-local state. File
+  batches delimit homogeneous physical row shapes inside a facet and do not
+  restart its reduction. Collectors and buffered row-preserving transforms retain
+  file provenance across grouping, sorting, and replay. Whole-flow reset and
+  completion retain their publication meaning; identifiers span all facets.
 - Parameter-driven Filter/Formula replay uses the shared reactive runtime's
   streaming update queue. Replay roots are the actual optimized upstream
   collectors/sources; synchronous ancestors subsume pending descendant replays.

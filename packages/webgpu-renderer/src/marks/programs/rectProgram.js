@@ -1,3 +1,7 @@
+import {
+    POSITION_CLAMP_CHANNEL_SPECS,
+    POSITION_CLAMP_WGSL,
+} from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
@@ -9,6 +13,7 @@ import { isValueChannelConfig } from "../../types.js";
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const RECT_CHANNEL_SPECS = {
+    ...POSITION_CLAMP_CHANNEL_SPECS,
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { type: "f32", components: 1, scale: linearScale(), default: 0 },
     x2: { type: "f32", components: 1, scale: linearScale(), default: 10 },
@@ -83,20 +88,14 @@ export function determineRectAntialiasing(channels) {
 }
 
 const RECT_SHADER_BODY = /* wgsl */ `
+${POSITION_CLAMP_WGSL}
+
 fn clampMinSize(pos: ptr<function, f32>, frac: f32, size: f32, minSize: f32) -> f32 {
     if (minSize > 0.0 && size < minSize) {
         (*pos) = (*pos) + (frac - 0.5) * (minSize - size);
         return size / minSize;
     }
     return 1.0;
-}
-
-fn sort(a: ptr<function, f32>, b: ptr<function, f32>) {
-    if (*a > *b) {
-        let tmp = *b;
-        *b = *a;
-        *a = tmp;
-    }
 }
 
 fn sdRoundedBox(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
@@ -310,19 +309,25 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
-    var x = getScaled_x(i) + getScaled_xOffset(i);
-    var x2 = getScaled_x2(i) + getScaled_x2Offset(i);
-    var y = getScaled_y(i) + getScaled_yOffset(i);
-    var y2 = getScaled_y2(i) + getScaled_y2Offset(i);
-    sort(&x, &x2);
-    sort(&y, &y2);
-
-    // Keep far-off genomic endpoints close to the viewport. Without this,
-    // rasterizing a rectangle whose other endpoint is visible can lose
-    // precision when the GPU clips the very large triangle.
-    let clampMargin = 1.0;
-    x = clamp(x, 0.0 - clampMargin, globals.width + clampMargin);
-    x2 = clamp(x2, 0.0 - clampMargin, globals.width + clampMargin);
+    let a = projectClampedPosition(vec2<f32>(getScaled_x(i), getScaled_y(i)),
+        vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i)), i);
+    let b = projectClampedPosition(vec2<f32>(getScaled_x2(i), getScaled_y2(i)),
+        vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i)), i);
+    var x = min(a.x, b.x);
+    var x2 = max(a.x, b.x);
+    let y = min(a.y, b.y);
+    let y2 = max(a.y, b.y);
+#if defined(xClampRange_DEFINED)
+    if (x == x2) { return culledRect(); }
+#endif
+#if defined(yClampRange_DEFINED)
+    if (y == y2) { return culledRect(); }
+#endif
+#if !defined(xClampRange_DEFINED)
+    // Keep far-off endpoints close enough to avoid triangle precision loss.
+    x = clamp(x, -1.0, globals.width + 1.0);
+    x2 = clamp(x2, -1.0, globals.width + 1.0);
+#endif
 
     var w = x2 - x;
     var h = y2 - y;
@@ -383,7 +388,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
 #endif
-    out.pos = vec4<f32>(applyPlacementClip(clip, i), 0.0, 1.0);
+    out.pos = vec4<f32>(placeClampedGeometry(clip, i), 0.0, 1.0);
     out.local = centeredFrac * vec2<f32>(w, h) + expansion;
     out.size = vec2<f32>(w, h);
     out.fill = getScaled_fill(i);

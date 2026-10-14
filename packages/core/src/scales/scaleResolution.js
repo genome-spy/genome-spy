@@ -11,6 +11,7 @@ import scaleLocus, {
 } from "../genome/scaleLocus.js";
 import scaleIndex from "../genome/scaleIndex.js";
 import scaleNull from "../utils/scaleNull.js";
+import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
@@ -125,6 +126,9 @@ export default class ScaleResolution {
     /** @type {DomainRuntime | undefined} */
     #domainRuntime;
 
+    /** @type {import("../paramRuntime/types.js").ComputedParamRef<{extent: readonly number[], ready: boolean}> | undefined} */
+    #fullExtentRef;
+
     /** @type {ReturnType<typeof createDomainInputs> | undefined} */
     #domainInputs;
 
@@ -204,23 +208,33 @@ export default class ScaleResolution {
         this.#scaleManager = new ScaleInstanceManager({
             getRuntime: () => this.#runtime,
             createExpression: (expr) => this.#createExpression(expr),
-            onRangeChange: () => this.#notifyListeners("range"),
+            onRangeChange: () => {
+                this.#notifyListeners("range");
+                this.#viewContext.animator.requestRender();
+            },
             onDomainChange: (domain) => {
                 void this.#commitDomainUpdate({ type: "set", domain });
             },
             getGenomeStore: () => this.#viewContext.genomeStore,
+            getAxisLength: () => this.getAxisLength(),
         });
 
         this.#interactionController = new ScaleInteractionController({
             // Zoom level does not depend on the range, so an initialized scale
             // is safe to read while its range expression is being configured.
             getScale: () => this.#scaleManager.scale ?? this.getScale(),
-            navigate: (domain, duration, renderImmediately = false) =>
+            navigate: (
+                domain,
+                duration,
+                renderImmediately = false,
+                gapDomain
+            ) =>
                 this.#commitDomainUpdate(
                     {
                         type: "navigate",
                         domain,
                         duration,
+                        gapDomain,
                     },
                     !renderImmediately
                 ),
@@ -293,7 +307,7 @@ export default class ScaleResolution {
      * Binds an ordinary scale expression through its effective parameter
      * scope.
      *
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} expr
      * @returns {import("../paramRuntime/types.js").ExprRefFunction}
      */
     #createExpression(expr) {
@@ -675,7 +689,7 @@ export default class ScaleResolution {
         if (Array.isArray(range)) {
             for (const value of range) {
                 if (isExprRef(value)) {
-                    this.#createExpression(value.expr);
+                    this.#createExpression(value);
                 }
             }
         }
@@ -958,6 +972,7 @@ export default class ScaleResolution {
     }
 
     dispose() {
+        if (this.#disposed) return;
         this.#disposed = true;
         for (const disposer of this.#disposers) disposer();
         this.#disposers.clear();
@@ -1280,6 +1295,12 @@ export default class ScaleResolution {
         return props.type;
     }
 
+    /** Static gap classification without initializing the scale or assembly. */
+    hasGroupingGaps() {
+        const props = this.#getMergedScaleProps();
+        return props !== null && hasGroupingGaps(props);
+    }
+
     /**
      * Returns the merged scale properties supplemented with inferred properties
      * and domain.
@@ -1293,6 +1314,10 @@ export default class ScaleResolution {
             // TODO: Check that the channel is compatible
             return { type: "null" };
         }
+        if (hasGroupingGaps(props) && !["x", "y"].includes(this.channel))
+            throw new Error(
+                "Grouping gaps require a positional index or locus scale."
+            );
 
         this.#resolvingScaleProps += 1;
         let domain;
@@ -1433,10 +1458,11 @@ export default class ScaleResolution {
                         this.syncLinkedSelectionFromDomain();
                 } else {
                     this.#scaleManager.mirrorDomain(
-                        this.#domainState.visibleDomain
+                        this.#domainState.visibleDomain,
+                        this.#domainState.gapDomain
                     );
                 }
-                return this.#domainRuntime.domain;
+                return this.#domainRuntime.stateRef;
             });
             this.bindDomainInputs();
             return scale;
@@ -1478,6 +1504,41 @@ export default class ScaleResolution {
     getDomainRef() {
         this.getDomain();
         return this.#domainRuntime.domain;
+    }
+
+    /** Full group bounds, independent of navigation and output range. */
+    getFullExtentRef() {
+        this.getScale();
+        return (this.#fullExtentRef ??= this.#runtime.computed(
+            "scale full extent",
+            [this.#domainRuntime.stateRef, this.getConfigurationRef()],
+            () => {
+                const state = this.#domainRuntime.state;
+                if (this.type === LOCUS) {
+                    return { extent: this.#getLocusExtent(), ready: true };
+                }
+                if (
+                    this.#hasConfiguredDomain() &&
+                    !this.#getLinkedSelectionInfo()
+                ) {
+                    return {
+                        extent: /** @type {readonly number[]} */ (
+                            state.resetDomain
+                        ),
+                        ready: true,
+                    };
+                }
+                // An inferred reference assumes full data; a viewport-derived
+                // index domain would cover only its initial viewport.
+                return {
+                    extent: /** @type {readonly number[]} */ (
+                        state.initialReference ?? []
+                    ),
+                    ready: state.phase === "ready",
+                };
+            },
+            { equals: (a, b) => deepEqual(a, b) }
+        ));
     }
 
     /** @returns {any[]} A fresh snapshot of the committed display. */
@@ -1600,10 +1661,16 @@ export default class ScaleResolution {
      * @param {number} scaleFactor
      * @param {number} scaleAnchor
      * @param {number} pan
+     * @param {number} [axisLength] Actual occurrence extent in CSS pixels.
      * @returns {boolean} true if the scale was zoomed
      */
-    zoom(scaleFactor, scaleAnchor, pan) {
-        return this.#interactionController.zoom(scaleFactor, scaleAnchor, pan);
+    zoom(scaleFactor, scaleAnchor, pan, axisLength) {
+        return this.#interactionController.zoom(
+            scaleFactor,
+            scaleAnchor,
+            pan,
+            axisLength
+        );
     }
 
     /**
@@ -1683,7 +1750,9 @@ export default class ScaleResolution {
         const lengths = Array.from(this.#members)
             .map(
                 (m) =>
-                    m.view.coords?.[this.channel === "x" ? "width" : "height"]
+                    m.view.layoutCoords?.[
+                        this.channel === "x" ? "width" : "height"
+                    ]
             )
             .filter((len) => len > 0);
 

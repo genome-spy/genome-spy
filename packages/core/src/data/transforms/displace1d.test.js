@@ -1,4 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../../genomeSpy/headlessBootstrap.js";
+import { getSpecErrorLocation } from "../../utils/specError.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { createAndInitialize, renderToLayout } from "../../view/testUtils.js";
 import UnitView from "../../view/unitView.js";
@@ -37,6 +42,91 @@ function createFlow(data, length, positionFactor = 100, extent) {
 }
 
 describe("Displace1DTransform", () => {
+    test.each(["pos", "length"])(
+        "reports missing %s fields at the transform property",
+        async (property) => {
+            const declaration = {
+                type: /** @type {const} */ ("displace1d"),
+                pos: "pos",
+                length: 10,
+                [property]: "missing",
+            };
+            const context = createHeadlessViewContext();
+            context.getSpecOrigin = (fragment) =>
+                fragment === declaration ? "/transform/0" : undefined;
+
+            await expect(
+                createHeadlessEngine(
+                    {
+                        data: { values: [{ pos: 0 }] },
+                        transform: [declaration],
+                        mark: "point",
+                    },
+                    { context }
+                )
+            ).rejects.toSatisfy((error) => {
+                expect(error.message).toContain('Invalid field "missing"');
+                expect(getSpecErrorLocation(error)).toEqual({
+                    origin: "/transform/0",
+                    path: [property],
+                });
+                return true;
+            });
+        }
+    );
+
+    test("bounds centered index marks using domain bounds minus half a band", async () => {
+        const view = await createAndInitialize(
+            {
+                width: 120,
+                height: 40,
+                data: { values: [{ pos: 1 }, { pos: 1 }] },
+                transform: [
+                    { type: "collect", sort: { field: "pos" } },
+                    {
+                        type: "displace1d",
+                        pos: "pos",
+                        length: 60,
+                        positionFactor: {
+                            expr: "width * (scale('x', 1) - scale('x', 0))",
+                        },
+                        extent: {
+                            expr: "[domain('x')[0] - 0.5, domain('x')[1] - 0.5]",
+                        },
+                        as: "offset",
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "pos",
+                        type: "index",
+                        scale: { domain: [1, 2] },
+                        axis: null,
+                    },
+                    xOffset: {
+                        field: "offset",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                },
+            },
+            UnitView
+        );
+        try {
+            renderToLayout(view, Rectangle.create(0, 0, 120, 40));
+            const offsets = [...view.flowHandle.collector.getData()].map(
+                (datum) => datum.offset
+            );
+
+            // Two 60-pixel intervals fill the viewport at centers 30 and 90.
+            expect(offsets[0]).toBeCloseTo(0);
+            expect(offsets[1]).toBeCloseTo(60);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("uses one and displacement as grammar defaults", () => {
         const transform = new Displace1DTransform(
             { type: "displace1d", pos: "pos", length: 10 },
@@ -131,6 +221,12 @@ describe("Displace1DTransform", () => {
         ]);
     });
 
+    test("reports missing fields without a runtime or origin hook", () => {
+        expect(() => createFlow([{ pos: 0 }], "missing")).toThrow(
+            'Invalid field "missing"'
+        );
+    });
+
     test("accepts descending raw positions for a negative position factor", () => {
         const { output } = createFlow(
             [{ pos: 0.2 }, { pos: 0 }, { pos: 0 }],
@@ -181,12 +277,12 @@ describe("Displace1DTransform", () => {
         let listener;
         const disposer = vi.fn();
         const paramRuntime = {
+            getSpecLocation: vi.fn(),
             watchExpression: (
-                /** @type {string} */ expression,
+                /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
                 /** @type {() => void} */ callback,
                 /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
             ) => {
-                expect(expression).toBe("factor");
                 listener = callback;
                 options.registerDisposer(disposer);
                 return () => factor;
@@ -240,14 +336,17 @@ describe("Displace1DTransform", () => {
         const listeners = new Map();
         const disposer = vi.fn();
         const paramRuntime = {
+            getSpecLocation: vi.fn(),
             watchExpression: (
-                /** @type {string} */ expression,
+                /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
                 /** @type {() => void} */ callback,
                 /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
             ) => {
-                listeners.set(expression, callback);
+                listeners.set(expression.expr, callback);
                 options.registerDisposer(disposer);
-                return expression == "length" ? () => length : () => extent;
+                return expression.expr == "length"
+                    ? () => length
+                    : () => extent;
             },
         };
         const source = new Collector();
@@ -304,6 +403,7 @@ describe("Displace1DTransform", () => {
          */
         const createTransform = (expression, value) => {
             const paramRuntime = {
+                getSpecLocation: vi.fn(),
                 watchExpression: () => () => value,
             };
             const transform = new Displace1DTransform(

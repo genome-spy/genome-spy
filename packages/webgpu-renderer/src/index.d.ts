@@ -159,12 +159,16 @@ export type ChannelCondition =
       };
 
 export type ScaleSlotHandle = {
-    /** Update the scale domain; shape changes require mark recreation. */
-    setDomain(domain: number[]): void;
+    /** Update the domain and optional fractional gap ranks together; omit ranks for ordinary fitting. */
+    setDomain(domain: number[], gapRanks?: readonly number[]): void;
     /** Update the scale range or interpolator; shape changes require mark recreation. */
     setRange(
         range: Array<number | number[] | string> | ColorInterpolatorFn
     ): void;
+    /** Update cuts on an index scale created with gapEnabled. */
+    setGapPositions(positions: readonly number[] | null): void;
+    /** Update gap width in logical pixels. */
+    setGapWidth(width: number | null): void;
 };
 
 export type ValueSlotHandle = {
@@ -310,6 +314,21 @@ export type ChannelScale = {
 
     /** Band position within the step (0..1). */
     band?: number;
+
+    /** Allocate grouping-gap resources even when initial cuts or width are zero. */
+    gapEnabled?: boolean;
+    /** Sorted integer boundaries before which to insert grouping gaps. */
+    gapPositions?: readonly number[] | null;
+    /** Gap width in logical pixels. Default: 6. Zero/null disables visible gaps. */
+    gapWidth?: number | null;
+    /** Fractional cut ranks at domain edges during navigation. */
+    gapDomain?: readonly number[];
+    /** Placement axis, inferred from x/y channel names when omitted. */
+    gapAxis?: "x" | "y";
+    /** Select the before side at an exclusive interval end. */
+    gapBefore?: boolean;
+    /** Raw endpoint channel used to orient an explicit half-open interval. */
+    gapPeer?: string;
 };
 
 export type DefinedChannelScale = ChannelScale & {
@@ -771,6 +790,8 @@ export type RectChannelName =
     | "x2Offset"
     | "yOffset"
     | "y2Offset"
+    | "xClampRange"
+    | "yClampRange"
     | "fill"
     | "stroke"
     | "fillOpacity"
@@ -793,6 +814,8 @@ export type RectChannelName =
 export type RectChannels = Partial<Record<RectChannelName, ChannelConfigInput>>;
 
 export type PointChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "y"
@@ -841,6 +864,8 @@ export type PointMarkConfig = MarkConfig<"point"> & {
 };
 
 export type RuleChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"
@@ -861,6 +886,8 @@ export type RuleChannelName =
 export type RuleChannels = Partial<Record<RuleChannelName, ChannelConfigInput>>;
 
 export type LinkChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"
@@ -877,6 +904,8 @@ export type LinkChannelName =
 export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
 
 export type ArrowChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"
@@ -899,6 +928,8 @@ export type ArrowChannels = Partial<
 >;
 
 export type TextChannelName =
+    | "xClampRange"
+    | "yClampRange"
     | "uniqueId"
     | "x"
     | "x2"

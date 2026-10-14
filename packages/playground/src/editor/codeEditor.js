@@ -4,32 +4,36 @@ import { indentWithTab } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import { EditorState } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
+import { forceLinting } from "@codemirror/lint";
+import { getSpecErrorLocation } from "@genome-spy/core/utils/specError.js";
 import {
     createJsonLanguageExtensions,
     JsonLanguageServiceClient,
+    refreshJsonDiagnostics,
 } from "./jsonLanguageService.js";
 
 const editorTheme = EditorView.theme({
     "&": {
         height: "100%",
         minHeight: "0",
-        fontFamily: "'Source Code Pro', monospace",
+        fontFamily: "var(--playground-monospace)",
         fontSize: "12px",
     },
     ".cm-scroller": {
         overflow: "auto",
+        fontFamily: "var(--playground-monospace)",
     },
     ".cm-gutters": {
         backgroundColor: "rgba(0, 0, 0, 0.04)",
         borderRight: "1px solid rgba(0, 0, 0, 0.08)",
     },
     ".cm-tooltip-autocomplete > ul": {
-        fontFamily: "'Source Code Pro', monospace",
+        fontFamily: "var(--playground-monospace)",
     },
     ".cm-json-schema-hover": {
         maxWidth: "520px",
         padding: "6px 8px",
-        fontFamily: "Lato, sans-serif",
+        fontFamily: "var(--playground-font-family)",
         fontSize: "12px",
         lineHeight: "1.4",
     },
@@ -44,7 +48,7 @@ const editorTheme = EditorView.theme({
         paddingLeft: "1.5em",
     },
     ".cm-json-schema-hover code": {
-        fontFamily: "'Source Code Pro', monospace",
+        fontFamily: "var(--playground-monospace)",
     },
 });
 
@@ -57,6 +61,119 @@ export default class CodeEditor extends LitElement {
 
     /** @type {JsonLanguageServiceClient} */
     _languageService;
+
+    /** @type {import("@genome-spy/core/types/embedApi.js").DataLoadingApi | undefined} */
+    _dataLoading;
+
+    /** @type {string | undefined} Semantic identity of the authored embed document. */
+    _runtimeSpec;
+
+    _diagnosticsRevision = 0;
+
+    /** @type {() => void} */
+    _stopLoading = () => {};
+
+    _runtimeAttempt = 0;
+
+    /** @type {import("./loadingDiagnostics.js").LocatedSpecError | undefined} */
+    _specError;
+
+    /** @param {string} specText Original document, before injected base URLs/datasets. */
+    beginRuntimeDiagnostics(specText) {
+        this._stopLoading();
+        this._dataLoading = undefined;
+        this._specError = undefined;
+        this._runtimeSpec = JSON.stringify(JSON.parse(specText));
+        this._runtimeAttempt++;
+        this._refreshRuntimeDiagnostics();
+        return this._runtimeAttempt;
+    }
+
+    /** @param {unknown} error @param {number} attempt */
+    reportRuntimeError(error, attempt) {
+        // Obsolete embed callbacks must not replace diagnostics or the default error UI.
+        if (
+            attempt !== this._runtimeAttempt ||
+            !this._matchesRuntimeSpec(this.value)
+        )
+            return true;
+        const location = getSpecErrorLocation(error);
+        if (!location || this._specError) return;
+        this._specError = {
+            location,
+            message: error instanceof Error ? error.message : String(error),
+        };
+        this._refreshRuntimeDiagnostics();
+    }
+
+    /** @param {unknown} error @param {number} attempt */
+    async revealRuntimeError(error, attempt) {
+        const text = this.value;
+        const location = getSpecErrorLocation(error);
+        if (
+            !location ||
+            attempt !== this._runtimeAttempt ||
+            !this._matchesRuntimeSpec(text)
+        )
+            return;
+
+        /** @type {{ from: number, to: number } | undefined} */
+        const range = await this._languageService.request("locate", text, 0, {
+            loadingEntries: [],
+            specError: { location, message: "" },
+        });
+        // Resolve against current formatting, and ignore edits during the request.
+        if (!range || text !== this.value || attempt !== this._runtimeAttempt)
+            return;
+
+        this._editor.dispatch({
+            selection: { anchor: range.from, head: range.to },
+            effects: EditorView.scrollIntoView(range.from, { y: "center" }),
+        });
+        this._editor.focus();
+    }
+
+    /**
+     * @param {import("@genome-spy/core/types/embedApi.js").EmbedResult} api
+     * @param {number} attempt
+     */
+    observeDataLoading(api, attempt) {
+        if (attempt !== this._runtimeAttempt) return;
+        const loading = (this._dataLoading = api.dataLoading);
+        this._stopLoading = loading.subscribe(() => {
+            if (loading !== this._dataLoading) return;
+            this._refreshRuntimeDiagnostics();
+        });
+        this._refreshRuntimeDiagnostics();
+    }
+
+    /** @param {string} text */
+    _matchesRuntimeSpec(text) {
+        try {
+            return JSON.stringify(JSON.parse(text)) === this._runtimeSpec;
+        } catch {
+            // Invalid editor text has no matching runtime specification.
+            return false;
+        }
+    }
+
+    /** @param {string} text @returns {import("./loadingDiagnostics.js").RuntimeDiagnostics} */
+    _getRuntimeDiagnostics(text) {
+        return this._matchesRuntimeSpec(text)
+            ? {
+                  loadingEntries: this._dataLoading?.getSnapshot() ?? [],
+                  specError: this._specError,
+              }
+            : { loadingEntries: [] };
+    }
+
+    _refreshRuntimeDiagnostics() {
+        this._diagnosticsRevision++;
+        if (this._editor) {
+            this._editor.dispatch({ effects: refreshJsonDiagnostics.of(null) });
+            forceLinting(this._editor);
+        }
+    }
 
     /**
      * @param {string} value
@@ -89,6 +206,8 @@ export default class CodeEditor extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        this._runtimeAttempt++;
+        this._stopLoading();
         this._editor?.destroy();
         this._languageService?.dispose();
     }
@@ -107,9 +226,20 @@ export default class CodeEditor extends LitElement {
                 EditorState.tabSize.of(2),
                 keymap.of([indentWithTab]),
                 editorTheme,
-                createJsonLanguageExtensions(this._languageService),
+                createJsonLanguageExtensions(this._languageService, {
+                    getDiagnostics: (text) => this._getRuntimeDiagnostics(text),
+                    getRevision: () => this._diagnosticsRevision,
+                }),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
+                        if (
+                            this._specError ||
+                            this._dataLoading
+                                ?.getSnapshot()
+                                .some((entry) => entry.status === "error")
+                        ) {
+                            queueMicrotask(() => forceLinting(this._editor));
+                        }
                         this.dispatchEvent(
                             new CustomEvent("change", { detail: {} })
                         );

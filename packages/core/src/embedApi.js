@@ -22,6 +22,10 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
     return {
         views: createViewMutationApi(genomeSpy, isActive),
         datasets: createTopLevelDatasetApi(genomeSpy, isActive),
+        dataLoading: {
+            getSnapshot: () => getLoadingRegistry().getSnapshot(),
+            subscribe: (listener) => getLoadingRegistry().subscribe(listener),
+        },
         events: {
             subscribe(type, listener) {
                 if (!isActive()) {
@@ -69,4 +73,13 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
         },
         debug,
     };
+
+    function getLoadingRegistry() {
+        if (!isActive()) {
+            throw new Error(
+                "Cannot observe data loading through a finalized embed."
+            );
+        }
+        return genomeSpy.viewRoot.context.dataFlow.loadingStatusRegistry;
+    }
 }

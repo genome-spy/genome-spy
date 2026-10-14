@@ -7,7 +7,7 @@
   },
   "contributors": [],
   "license": "MIT",
-  "version": "0.89.0",
+  "version": "1.1.1",
   "jsdelivr": "dist/bundle/index.js",
   "unpkg": "dist/bundle/index.js",
   "browser": "dist/bundle/index.js",
@@ -35,7 +35,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "github:genome-spy/genome-spy",
+    "url": "git+https://github.com/genome-spy/genome-spy.git",
     "directory": "packages/core"
   },
   "scripts": {
@@ -47,7 +47,6 @@
     "smoke:examples:webgpu": "node scripts/runWebGpuExamples.mjs --all",
     "verify:bundle:minimal": "node scripts/verifyMinimalBundle.mjs",
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
-    "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json",
     "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src && node scripts/removeDevelopmentOnlyArtifacts.mjs",
@@ -59,7 +58,7 @@
     "@gmod/bbi": "^9.2.0",
     "@gmod/bed": "^2.1.10",
     "@gmod/indexedfasta": "^5.0.2",
-    "@gmod/tabix": "3.2.2",
+    "@gmod/tabix": "3.9.1",
     "@gmod/vcf": "^7.0.0",
     "@types/d3-array": "^3.2.2",
     "@types/d3-dsv": "^3.0.7",
@@ -87,7 +86,7 @@
     "vega-util": "2.1.0"
   },
   "devDependencies": {
-    "@genome-spy/webgpu-renderer": "^0.89.0",
+    "@genome-spy/webgpu-renderer": "^1.0.0",
     "@types/long": "^4.0.1"
   }
 }

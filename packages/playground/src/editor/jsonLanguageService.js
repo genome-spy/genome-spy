@@ -12,12 +12,14 @@
 import { pickedCompletion, snippet } from "@codemirror/autocomplete";
 import { jsonLanguage } from "@codemirror/lang-json";
 import { linter } from "@codemirror/lint";
-import { Transaction } from "@codemirror/state";
+import { StateEffect, Transaction } from "@codemirror/state";
 import { hoverTooltip } from "@codemirror/view";
 import { micromark } from "micromark";
 
 // @ts-ignore
 import JsonLanguageServiceWorker from "./jsonLanguageServiceWorker.js?worker";
+
+export const refreshJsonDiagnostics = StateEffect.define();
 
 export class JsonLanguageServiceClient {
     /** @type {Worker} */
@@ -48,16 +50,28 @@ export class JsonLanguageServiceClient {
     }
 
     /**
-     * @param {"validate" | "complete" | "hover"} type
+     * @param {"validate" | "complete" | "hover" | "locate"} type
      * @param {string} text
      * @param {number} [offset]
+     * @param {import("./loadingDiagnostics.js").RuntimeDiagnostics} [runtimeDiagnostics]
      */
-    request(type, text, offset = 0) {
+    request(
+        type,
+        text,
+        offset = 0,
+        runtimeDiagnostics = { loadingEntries: [] }
+    ) {
         const id = this._nextRequestId++;
 
         return new Promise((resolve, reject) => {
             this._requests.set(id, { resolve, reject });
-            this._worker.postMessage({ id, type, text, offset });
+            this._worker.postMessage({
+                id,
+                type,
+                text,
+                offset,
+                ...runtimeDiagnostics,
+            });
         });
     }
 
@@ -209,24 +223,46 @@ export function renderHoverMarkdown(contents) {
 
 /**
  * @param {JsonLanguageServiceClient} client
+ * @param {{ getDiagnostics: (text: string) => import("./loadingDiagnostics.js").RuntimeDiagnostics, getRevision: () => number }} [runtime]
  */
-export function createJsonLanguageExtensions(client) {
-    const validation = linter(async (view) => {
-        const document = view.state.doc;
-        /** @type {import("vscode-json-languageservice").Diagnostic[]} */
-        const diagnostics = await client.request(
-            "validate",
-            document.toString()
-        );
+export function createJsonLanguageExtensions(client, runtime) {
+    const validation = linter(
+        async (view) => {
+            const document = view.state.doc;
+            let revision;
+            /** @type {import("vscode-json-languageservice").Diagnostic[]} */
+            let diagnostics;
+            do {
+                revision = runtime?.getRevision();
+                diagnostics = await client.request(
+                    "validate",
+                    document.toString(),
+                    0,
+                    runtime?.getDiagnostics(document.toString())
+                );
+                // CodeMirror guards document changes, but not runtime diagnostics changing on the same document.
+            } while (
+                view.state.doc === document &&
+                revision !== runtime?.getRevision()
+            );
 
-        return diagnostics.map((diagnostic) => ({
-            from: positionToOffset(document, diagnostic.range.start),
-            to: positionToOffset(document, diagnostic.range.end),
-            message: getDocumentation(diagnostic.message) ?? "",
-            severity: convertSeverity(diagnostic.severity),
-            source: diagnostic.source,
-        }));
-    });
+            return diagnostics.map((diagnostic) => ({
+                from: positionToOffset(document, diagnostic.range.start),
+                to: positionToOffset(document, diagnostic.range.end),
+                message: getDocumentation(diagnostic.message) ?? "",
+                severity: convertSeverity(diagnostic.severity),
+                source: diagnostic.source,
+            }));
+        },
+        {
+            needsRefresh: (update) =>
+                update.transactions.some((transaction) =>
+                    transaction.effects.some((effect) =>
+                        effect.is(refreshJsonDiagnostics)
+                    )
+                ),
+        }
+    );
 
     const completion = jsonLanguage.data.of({
         autocomplete: async (

@@ -1,12 +1,13 @@
 import FlatQueue from "flatqueue";
 import { isNumber } from "vega-util";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 
 const maxDepth = 65536;
 
 export default class PileupTransform extends Transform {
+    #resetPartition = () => {};
+
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
@@ -14,9 +15,10 @@ export default class PileupTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").PileupParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
     }
@@ -26,13 +28,21 @@ export default class PileupTransform extends Transform {
         this.initialize();
     }
 
+    /** @param {import("../../types/flowBatch.js").FlowBatch} batch */
+    beginBatch(batch) {
+        if (batch.type == "facet") {
+            this.#resetPartition();
+        }
+        super.beginBatch(batch);
+    }
+
     initialize() {
         const params = this.params;
 
         const laneField = params.as || "lane";
         const spacing = isNumber(params.spacing) ? params.spacing : 1;
-        const startAccessor = field(params.start);
-        const endAccessor = field(params.end);
+        const startAccessor = this.createFieldAccessor(params, "start");
+        const endAccessor = this.createFieldAccessor(params, "end");
 
         // We choose the implementation based on the need of order preference.
         // The preference-aware algorithm has a lousy O(n^2) time complexity but
@@ -48,11 +58,18 @@ export default class PileupTransform extends Transform {
         } else if (params.preference) {
             const freeLaneMap = new Float64Array(maxDepth);
 
-            const preferenceAccessor = field(params.preference);
+            const preferenceAccessor = this.createFieldAccessor(
+                params,
+                "preference"
+            );
             /** @type {any[]} */
             const preferredOrder = params.preferredOrder;
 
             let lastStart = Infinity;
+            this.#resetPartition = () => {
+                freeLaneMap.fill(-Infinity);
+                lastStart = Infinity;
+            };
 
             /** @param {Record<string, any>} datum */
             this.handle = (datum) => {
@@ -97,6 +114,12 @@ export default class PileupTransform extends Transform {
             let lastStart = -Infinity;
 
             let maxLane = 0;
+            this.#resetPartition = () => {
+                ends.clear();
+                freeLanes.clear();
+                lastStart = -Infinity;
+                maxLane = 0;
+            };
 
             /** @param {Record<string, any>} datum */
             this.handle = (datum) => {

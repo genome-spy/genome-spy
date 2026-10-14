@@ -4,6 +4,7 @@ import {
     packSeriesArrays,
 } from "./packedSeriesLayout.js";
 import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
+import { validateStorageBufferSize } from "../../../utils/bufferLimits.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
@@ -34,15 +35,12 @@ export class SeriesBufferManager {
          */
         this._seriesBufferAliases = new Map();
         /**
-         * Packed series layout metadata for f32/u32/i32 buffers.
+         * One word layout shared by all scalar representations.
          * @type {import("./packedSeriesLayout.js").PackedSeriesLayout | null}
          */
         this._packedSeriesLayout = null;
-        /**
-         * Packed series buffers keyed by name ("seriesF32"/"seriesU32"/"seriesI32").
-         * @type {Map<string, { buffer: GPUBuffer, byteLength: number }>}
-         */
-        this._packedBuffers = new Map();
+        /** @type {GPUBuffer | null} */
+        this._buffer = null;
 
         this._initializeSeriesAliases();
     }
@@ -55,49 +53,34 @@ export class SeriesBufferManager {
     }
 
     /**
-     * @returns {Map<string, { stride: number, channels: Array<{ name: string, alias: string, offset: number, components: 1|2|4, stride: number }> }>}
+     * @returns {Map<string, { stride: number, channels: Array<{ name: string, scalarType: "f32"|"u32"|"i32", alias: string, offset: number, components: 1|2|4, stride: number }> }>}
      */
     getPackedSeriesInfo() {
         const layout = this._getPackedLayout();
         if (!layout) {
             return new Map();
         }
-        /** @type {Map<string, { stride: number, channels: Array<{ name: string, alias: string, offset: number, components: 1|2|4, stride: number }> }>} */
-        const info = new Map();
-        for (const [name, entry] of layout.entries) {
-            const bufferName =
-                entry.scalarType === "f32"
-                    ? "seriesF32"
-                    : entry.scalarType === "u32"
-                      ? "seriesU32"
-                      : "seriesI32";
-            const alias = this._seriesBufferAliases.get(name) ?? name;
-            let bucket = info.get(bufferName);
-            if (!bucket) {
-                bucket = { stride: entry.stride, channels: [] };
-                info.set(bufferName, bucket);
-            }
-            bucket.channels.push({
-                name,
-                alias,
-                offset: entry.offset,
-                components: entry.components,
-                stride: entry.stride,
-            });
-        }
-        return info;
+        return new Map([
+            [
+                "series",
+                {
+                    stride: layout.stride,
+                    channels: Array.from(layout.entries, ([name, entry]) => ({
+                        name,
+                        scalarType: entry.scalarType,
+                        alias: this._seriesBufferAliases.get(name) ?? name,
+                        offset: entry.offset,
+                        components: entry.components,
+                        stride: entry.stride,
+                    })),
+                },
+            ],
+        ]);
     }
 
-    /**
-     * @param {string} name
-     * @returns {GPUBuffer | null}
-     */
-    getBuffer(name) {
-        const packed = this._packedBuffers.get(name);
-        if (packed) {
-            return packed.buffer;
-        }
-        return null;
+    /** @returns {GPUBuffer | null} */
+    getBuffer() {
+        return this._buffer;
     }
 
     /**
@@ -193,9 +176,15 @@ export class SeriesBufferManager {
      */
     _updatePackedSeries(channels, count) {
         const layout = this._getPackedLayout();
-        if (!layout) {
+        if (!layout.stride) {
             return false;
         }
+
+        validateStorageBufferSize(
+            this._device,
+            Math.max(4, count * layout.stride * 4),
+            this._label + " series"
+        );
 
         /** @type {Map<string, TypedArray>} */
         const groupArrays = new Map();
@@ -222,24 +211,12 @@ export class SeriesBufferManager {
             channel.data = sourceArray;
         }
 
-        const { f32, u32, i32 } = packSeriesArrays({
+        const words = packSeriesArrays({
             channels: this._channels,
-            channelSpecs: this._channelSpecs,
             layout,
             count,
         });
-
-        let changed = false;
-        if (f32) {
-            changed = this._ensurePackedBuffer("seriesF32", f32) || changed;
-        }
-        if (u32) {
-            changed = this._ensurePackedBuffer("seriesU32", u32) || changed;
-        }
-        if (i32) {
-            changed = this._ensurePackedBuffer("seriesI32", i32) || changed;
-        }
-        return changed;
+        return this._ensurePackedBuffer(words);
     }
 
     /**
@@ -272,50 +249,34 @@ export class SeriesBufferManager {
     }
 
     /**
-     * @param {string} field
-     * @param {TypedArray} array
-     * @returns {void}
-     */
-    /**
-     * @param {string} name
-     * @param {Float32Array | Uint32Array | Int32Array} array
+     * @param {Uint32Array} array
      * @returns {boolean} Whether the buffer identity changed.
      */
-    _ensurePackedBuffer(name, array) {
-        const existing = this._packedBuffers.get(name);
+    _ensurePackedBuffer(array) {
         const requiredSize = Math.max(4, array.byteLength);
-        let buffer = existing?.buffer ?? null;
-        const changed = !buffer || existing.byteLength < requiredSize;
+        const changed = !this._buffer || this._buffer.size < requiredSize;
         if (changed) {
-            const previous = buffer;
-            buffer = this._device.createBuffer({
-                label: gpuLabel(
-                    this._label,
-                    "series " + name.slice("series".length).toLowerCase()
-                ),
+            const previous = this._buffer;
+            this._buffer = this._device.createBuffer({
+                label: gpuLabel(this._label, "series"),
                 size: requiredSize,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
-            this._packedBuffers.set(name, {
-                buffer,
-                byteLength: requiredSize,
-            });
             previous?.destroy();
         }
-
-        if (array.byteLength > 0) {
-            this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(array));
+        if (array.byteLength) {
+            this._device.queue.writeBuffer(
+                this._buffer,
+                0,
+                asGpuBufferSource(array)
+            );
         }
         return changed;
     }
 
-    /**
-     * @returns {void}
-     */
+    /** @returns {void} */
     destroy() {
-        for (const { buffer } of this._packedBuffers.values()) {
-            buffer.destroy();
-        }
-        this._packedBuffers.clear();
+        this._buffer?.destroy();
+        this._buffer = null;
     }
 }

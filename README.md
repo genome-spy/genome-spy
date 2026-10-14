@@ -89,6 +89,11 @@ Johanna Hynninen, Anni Virtanen, Sampsa Hautaniemi, Deciphering cancer genomes
 with GenomeSpy: a grammar-based visualization toolkit, _GigaScience_, Volume 13,
 2024, giae040, https://doi.org/10.1093/gigascience/giae040
 
+## Use in clinical settings
+
+GenomeSpy is intended for research and general data-visualization purposes and
+has not been validated or approved for clinical diagnostic use.
+
 ## Use of AI assistance
 
 Since the beginning of 2026, most of the code in this repository has been
@@ -98,7 +103,7 @@ decisions. All non-trivial code has been reviewed by a human developer.
 
 ## About
 
-Copyright (c) 2019-2026 Kari Lavikka and contributors. See [LICENSE](LICENSE)
+Copyright (c) 2018-2026 Kari Lavikka and contributors. See [LICENSE](LICENSE)
 for details.
 
 GenomeSpy was created by Kari Lavikka as an MSc student at the [University of

@@ -1,10 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, onTestFinished, test } from "vitest";
 
 import Rectangle from "../layout/rectangle.js";
+import LayerView from "../layerView.js";
+import { create } from "../testUtils.js";
 import {
     clipOptionsEqual,
     combineClipOptions,
-    getViewClipDirections,
+    getViewClipFlags,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "./clipOptions.js";
@@ -90,57 +92,41 @@ describe("rendering clip options", () => {
         expect(clip?.rect.equals(Rectangle.create(2, 4, 6, 4))).toBeTruthy();
     });
 
-    test("reports only a unit mark's explicit semantic clip directions", () => {
-        const createView = (
-            /** @type {boolean | "x" | "y" | "never"} */ clip
-        ) => {
-            const view = /** @type {any} */ ({
-                mark: { properties: { clip } },
-            });
-            return view;
-        };
-
-        expect(getViewClipDirections(createView(true))).toEqual({
-            clipX: true,
-            clipY: true,
-        });
-        expect(getViewClipDirections(createView("x"))).toEqual({
-            clipX: true,
-            clipY: false,
-        });
-        expect(getViewClipDirections(createView("y"))).toEqual({
-            clipX: false,
-            clipY: true,
-        });
-        expect(getViewClipDirections(createView("never"))).toEqual({
-            clipX: false,
-            clipY: false,
-        });
-        expect(getViewClipDirections(createView(false))).toEqual({
-            clipX: false,
-            clipY: false,
-        });
-        const container = /** @type {any} */ ({
-            visit(/** @type {(view: any) => void} */ visitor) {
-                visitor(this);
-                visitor(createView(true));
-                visitor(createView("x"));
-            },
-        });
-        expect(getViewClipDirections(container)).toEqual({
-            clipX: true,
-            clipY: false,
-        });
-        expect(
-            getViewClipDirections(
-                /** @type {any} */ ({
-                    visit: (/** @type {(view: any) => void} */ visitor) =>
-                        visitor({}),
-                })
-            )
-        ).toEqual({
-            clipX: false,
-            clipY: false,
-        });
-    });
+    test.each(
+        /** @type {[import("../../spec/mark.js").MarkProps["clip"][], boolean[]][]} */ ([
+            [[true], [true, true, true, true]],
+            [["x"], [true, false, false, true]],
+            [["y"], [false, true, false, true]],
+            [["never"], [false, false, false, false]],
+            [[false], [false, false, false, false]],
+            [[undefined], [false, false, false, false]],
+            [
+                [true, "x"],
+                [true, false, false, true],
+            ],
+            [
+                ["x", "y"],
+                [false, false, false, true],
+            ],
+            [
+                [true, "never"],
+                [false, false, false, true],
+            ],
+            [[], [false, false, true, false]],
+        ])
+    )(
+        "summarizes clipping for marks %j",
+        async (clips, [clipX, clipY, all, any]) => {
+            const view = await create(
+                {
+                    layer: clips.map((clip) => ({
+                        mark: { type: "point", clip },
+                    })),
+                },
+                LayerView
+            );
+            onTestFinished(() => view.disposeSubtree());
+            expect(getViewClipFlags(view)).toEqual({ clipX, clipY, all, any });
+        }
+    );
 });

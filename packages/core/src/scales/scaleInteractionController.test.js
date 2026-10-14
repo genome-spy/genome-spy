@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import ScaleInteractionController from "./scaleInteractionController.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 
 /**
  * @param {number[]} domain
@@ -57,6 +58,114 @@ function createController({
 }
 
 describe("ScaleInteractionController", () => {
+    test.each(
+        /** @type {const} */ ([
+            {
+                type: "index",
+                paddingInner: 0,
+                paddingOuter: 0,
+                align: 0.5,
+                reverse: false,
+                anchor: 0.25,
+            },
+            {
+                type: "index",
+                paddingInner: 0.5,
+                paddingOuter: 0.5,
+                align: 0.5,
+                reverse: false,
+                anchor: 0.5,
+            },
+            {
+                type: "index",
+                paddingInner: 0.5,
+                paddingOuter: 0.5,
+                align: 1,
+                reverse: true,
+                anchor: 0.25,
+            },
+            {
+                type: "index",
+                paddingInner: 0.8,
+                paddingOuter: 0.1,
+                align: 1,
+                reverse: false,
+                anchor: 0.25,
+            },
+            {
+                type: "locus",
+                paddingInner: 0.2,
+                paddingOuter: 0.4,
+                align: 0,
+                reverse: true,
+                anchor: 0.75,
+            },
+        ])
+    )(
+        "$type zoom preserves the pointer coordinate with inner=$paddingInner, outer=$paddingOuter, align=$align, reverse=$reverse",
+        async ({
+            type,
+            paddingInner,
+            paddingOuter,
+            align,
+            reverse,
+            anchor,
+        }) => {
+            const { view } = await createHeadlessEngine({
+                genomes: {
+                    test: { contigs: [{ name: "chr1", size: 100 }] },
+                },
+                assembly: "test",
+                data: { values: [{ pos: 1 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "pos",
+                        type,
+                        scale: {
+                            domain: [0, 9],
+                            zoom: true,
+                            paddingInner,
+                            paddingOuter,
+                            align,
+                            reverse,
+                        },
+                        axis: /** @type {null} */ (null),
+                    },
+                },
+            });
+            try {
+                const resolution = view.getScaleResolution("x");
+                const scale =
+                    /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+                        resolution.getScale()
+                    );
+                const coordinate = scale.invert(anchor);
+
+                // Cross the minimum step and domain spans as well as ordinary zoom levels.
+                for (const factor of [0.5, 0.3, 0.5]) {
+                    const before = scale.domain();
+                    expect(resolution.zoom(factor, anchor, 0)).toBe(true);
+                    const after = scale.domain();
+
+                    expect(after[1] - after[0]).toBeCloseTo(
+                        Math.max(1, (before[1] - before[0]) * factor)
+                    );
+                    expect(scale.invert(anchor)).toBeCloseTo(coordinate);
+                }
+
+                const beforePan = scale.domain();
+                expect(resolution.zoom(1, anchor, 0.1)).toBe(true);
+                const afterPan = scale.domain();
+                const shift = reverse ? 0.1 : -0.1;
+                expect(afterPan[0]).toBeCloseTo(beforePan[0] + shift);
+                expect(afterPan[1]).toBeCloseTo(beforePan[1] + shift);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
     test("zoom submits a transformed domain", () => {
         const scale = createLinearScale([0, 10]);
         const controller = createController({ scale });

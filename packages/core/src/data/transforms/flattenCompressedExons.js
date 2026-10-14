@@ -1,4 +1,3 @@
-import { field } from "../../utils/field.js";
 import numberExtractor from "../../utils/numberExtractor.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
@@ -16,12 +15,17 @@ export default class FlattenCompressedExonsTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").FlattenCompressedExonsParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
-        const exonsAccessor = field(params.exons ?? "exons");
-        const startAccessor = field(params.start ?? "start");
+        const exonsAccessor = this.createFieldAccessor(params, "exons", {
+            defaultValue: "exons",
+        });
+        const startAccessor = this.createFieldAccessor(params, "start", {
+            defaultValue: "start",
+        });
         const [exonStart, exonEnd] = params.as || ["exonStart", "exonEnd"];
 
         /**

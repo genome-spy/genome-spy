@@ -68,8 +68,30 @@ before `displace2d` using `inrange` with the current scale domains. Configure
 In interactive views, `displace2d` performs a bounded amount of work per frame
 and eases displayed positions toward the evolving placement. It resumes after
 data, scale, or layout changes and stops requesting frames after settling.
+Use a larger `animationHalfLife` to make this motion slower; it does not change
+the solved placement.
 Headless rendering and disabled transitions solve the same constraints
 synchronously.
+
+## Example: Population-ranked bubble annotations
+
+The Gapminder example uses `window` to rank countries by population and
+`collect` to give the most populous countries placement priority. The
+annotation filter keeps ranks up to `10 * zoomLevel()`: ten at the initial zoom
+and a higher cutoff as zoom increases. It also keeps anchors inside the current
+x and y scale domains. Filtering before `displace2d` keeps offscreen and
+lower-ranked labels out of the layout.
+
+Zoom in a little to reveal more labels, then try different half-life settings
+while zooming or panning to compare how quickly the labels move.
+
+EXAMPLE examples/docs/grammar/transform/displace2d/bubble-health-income-annotations.json height=400 spechidden
+
+!!! disclaimer ""
+
+    Data: [Gapminder](https://www.gapminder.org/data/) via vega-datasets. The
+    base bubble plot is adapted from [Vega-Lite's Bubble Plot
+    (Gapminder)](https://vega.github.io/vega-lite/examples/circle_bubble_health_income.html).
 
 ## Algorithm
 

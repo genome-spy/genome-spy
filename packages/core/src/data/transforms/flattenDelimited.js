@@ -1,5 +1,4 @@
 import { asArray } from "../../utils/arrayUtils.js";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -10,13 +9,14 @@ export default class FlattenDelimitedTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").FlattenDelimitedParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         // TODO: Validate config. string elements, etc...
 
-        const accessors = asArray(params.field).map((f) => field(f));
+        const accessors = this.createFieldAccessors(params, "field");
         const separators = asArray(params.separator);
         const as = asArray(params.as || params.field);
 

@@ -1,5 +1,4 @@
 import { isString } from "vega-util";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -10,15 +9,16 @@ export default class RegexExtractTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").RegexExtractParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
         const re = new RegExp(params.regex);
         const as = typeof params.as == "string" ? [params.as] : params.as;
-        const accessor = field(params.field);
+        const accessor = this.createFieldAccessor(params, "field");
 
         /**
          *

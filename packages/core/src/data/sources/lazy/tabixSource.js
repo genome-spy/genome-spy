@@ -19,6 +19,7 @@ export default class TabixSource extends IntervalUrlSource {
     /**
      * @typedef {object} TabixHandle
      * @prop {import("@gmod/tabix").TabixIndexedFile} tbiIndex
+     * @prop {Map<string, string>} referenceNames GenomeSpy names mapped to indexed file names
      * @prop {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
      * @prop {P} parserContext
      * @prop {string} url
@@ -68,32 +69,10 @@ export default class TabixSource extends IntervalUrlSource {
             cacheKey: (descriptor) =>
                 urlDescriptorKey(descriptor) +
                 "\n" +
-                withoutExprRef(this.params.addChrPrefix),
-            loadModules: async () => {
-                const { TabixIndexedFile, RemoteFile } =
-                    await loadTabixModules();
-                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
-
-                const renameRefSeqs =
-                    addChrPrefix === true
-                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                        : addChrPrefix
-                          ? (/** @type {string} */ refSeq) =>
-                                addChrPrefix + refSeq
-                          : undefined;
-
-                return { TabixIndexedFile, RemoteFile, renameRefSeqs };
-            },
-            createHandle: (
-                descriptor,
-                { TabixIndexedFile, RemoteFile, renameRefSeqs }
-            ) =>
-                this.#createHandle(
-                    descriptor,
-                    TabixIndexedFile,
-                    RemoteFile,
-                    renameRefSeqs
-                ),
+                JSON.stringify(withoutExprRef(this.params.addChrPrefix)),
+            loadModules: loadTabixModules,
+            createHandle: (descriptor, { TabixIndexedFile, RemoteFile }) =>
+                this.#createHandle(descriptor, TabixIndexedFile, RemoteFile),
         });
     }
 
@@ -101,26 +80,31 @@ export default class TabixSource extends IntervalUrlSource {
      * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
      * @param {typeof import("@gmod/tabix").TabixIndexedFile} TabixIndexedFile
      * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
-     * @param {((refSeq: string) => string) | undefined} renameRefSeqs
      * @returns {Promise<TabixHandle>}
      */
-    async #createHandle(
-        descriptor,
-        TabixIndexedFile,
-        RemoteFile,
-        renameRefSeqs
-    ) {
+    async #createHandle(descriptor, TabixIndexedFile, RemoteFile) {
+        const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
+        const prefix = addChrPrefix === true ? "chr" : addChrPrefix || "";
         const tbiIndex = new TabixIndexedFile({
             filehandle: new RemoteFile(descriptor.url),
             tbiFilehandle: new RemoteFile(
                 descriptor.indexUrl ?? descriptor.url + ".tbi"
             ),
-            renameRefSeqs,
         });
         const header = await tbiIndex.getHeader();
 
+        // Preserve unconditional prefixing for lookup only, including names
+        // that already have the prefix. Parsed records keep their original names.
+        const referenceNames = new Map(
+            (await tbiIndex.getReferenceSequenceNames()).map((name) => [
+                prefix + name,
+                name,
+            ])
+        );
+
         return {
             tbiIndex,
+            referenceNames,
             fields: descriptor.fields,
             parserContext: await this._createParser(header, tbiIndex),
             url: descriptor.url,
@@ -146,17 +130,22 @@ export default class TabixSource extends IntervalUrlSource {
                             /** @type {string[]} */
                             const lines = [];
 
-                            await handle.tbiIndex.getLines(
-                                discreteInterval.chrom,
-                                discreteInterval.startPos,
-                                discreteInterval.endPos,
-                                {
-                                    lineCallback: (line) => {
-                                        lines.push(line);
-                                    },
-                                    signal,
-                                }
+                            const refName = handle.referenceNames.get(
+                                discreteInterval.chrom
                             );
+                            if (refName !== undefined) {
+                                await handle.tbiIndex.getLines(
+                                    refName,
+                                    discreteInterval.startPos,
+                                    discreteInterval.endPos,
+                                    {
+                                        lineCallback: (line) => {
+                                            lines.push(line);
+                                        },
+                                        signal,
+                                    }
+                                );
+                            }
 
                             return /** @type {[TabixHandle, T[]]} */ ([
                                 handle,

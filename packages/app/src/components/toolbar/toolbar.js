@@ -15,8 +15,11 @@ import { renderVersionLink, packageJson } from "../../utils/version.js";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
-import { toggleDropdown } from "../../utils/ui/dropdown.js";
-import { menuItemToTemplate } from "../../utils/ui/contextMenu.js";
+import {
+    dismissDropdownMenu,
+    dropdownMenu,
+    isDropdownOpenFor,
+} from "../../utils/ui/contextMenu.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
@@ -138,18 +141,33 @@ export default class Toolbar extends LitElement {
                     : nothing
             }
 
-            <div class="dropdown bookmark-dropdown">
+            <div class="bookmark-dropdown">
                 <button
                     class="tool-btn"
                     title="Additional functions"
-                    @click=${(/** @type {MouseEvent} */ event) =>
-                        toggleDropdown(event)}
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    @click=${(/** @type {MouseEvent} */ event) => {
+                        const opener = /** @type {HTMLElement} */ (
+                            event.currentTarget
+                        );
+                        if (isDropdownOpenFor(opener)) {
+                            dismissDropdownMenu();
+                        } else {
+                            dropdownMenu(
+                                {
+                                    items: this.#makeEllipsisItems(),
+                                    mode: "command",
+                                    label: "Additional functions",
+                                },
+                                opener,
+                                "bottom-end"
+                            );
+                        }
+                    }}
                 >
                     ${icon(faEllipsisVertical).node[0]}
                 </button>
-                <ul class="gs-dropdown-menu gs-dropdown-menu-right">
-                    ${this.#makeEllipsisTemplate()}
-                </ul>
             </div>
         `);
 
@@ -175,7 +193,7 @@ export default class Toolbar extends LitElement {
         `;
     }
 
-    #makeEllipsisTemplate() {
+    #makeEllipsisItems() {
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
         items.push({
@@ -228,7 +246,7 @@ export default class Toolbar extends LitElement {
                 ),
         });
 
-        return items.map(menuItemToTemplate);
+        return items;
     }
 
     #showAboutDialog() {

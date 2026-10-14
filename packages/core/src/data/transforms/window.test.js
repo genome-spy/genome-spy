@@ -377,7 +377,7 @@ describe("Window transform", () => {
         ).toThrow(/one entry/);
     });
 
-    test("flushes every batch independently", () => {
+    test("lead cannot read into the next facet", () => {
         const window = new WindowTransform({
             type: "window",
             ops: ["lead"],

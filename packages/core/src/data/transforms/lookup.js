@@ -1,8 +1,11 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import createCloner from "../../utils/cloner.js";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
+import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "../fileBatchUtils.js";
 
 /** @typedef {import("../flowNode.js").Datum} Datum */
 /** @typedef {(datum: Datum) => any} FieldAccessor */
@@ -37,9 +40,10 @@ export default class LookupTransform extends Transform {
      * @param {import("../../spec/transform.js").LookupParams | import("../../spec/transform.js").CoordinateLookupParams} params
      * @param {import("../collector.js").default} [foreignCollector]
      * @param {LookupOptions} [options]
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params, foreignCollector, options = {}) {
-        super(params);
+    constructor(params, foreignCollector, options = {}, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
         this.#foreignCollector = foreignCollector;
         this.params = params;
         const selfInput = isSelfLookup(params);
@@ -73,10 +77,15 @@ export default class LookupTransform extends Transform {
             throw new Error('The "values" property must not be empty.');
         }
 
-        const foreignKeyAccessors = foreignKeyFields.map((name) => field(name));
-        const primaryAccessors = primaryFields.map((name) => field(name));
+        const foreignKeyAccessors = this.createFieldAccessors(params, "key");
+        const primaryAccessors = this.createFieldAccessors(
+            params,
+            params.fields != null ? "fields" : "key"
+        );
         const implicitValues = !values;
-        let valueAccessors = values?.map((name) => field(name)) ?? [];
+        let valueAccessors = values
+            ? this.createFieldAccessors(params, "values")
+            : [];
         let outputFields = as ?? values ?? [];
         const defaultValue = params.default ?? null;
         let pendingInput = false;
@@ -85,6 +94,8 @@ export default class LookupTransform extends Transform {
         // references can be resolved.
         /** @type {Datum[]} */
         let bufferedData = [];
+        /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
+        let bufferedFiles = [];
         /** @type {FlowBatch | undefined} */
         let bufferedBatch;
         let hasBufferedBatch = false;
@@ -153,20 +164,24 @@ export default class LookupTransform extends Transform {
             }
 
             const foreignData = lookupData ?? foreignCollector.getData();
+            index = buildLookupIndex(
+                foreignData,
+                foreignKeyAccessors,
+                params.key
+            );
             if (implicitValues) {
                 const resolved = resolveImplicitValues(
                     foreignData[Symbol.iterator]().next().value,
                     foreignKeyFields
                 );
                 outputFields = resolved;
-                valueAccessors = resolved.map((name) => field(name));
+                valueAccessors = resolved.map((name) =>
+                    this.createFieldAccessor(params, "values", {
+                        defaultValue: name,
+                    })
+                );
             }
 
-            index = buildLookupIndex(
-                foreignData,
-                foreignKeyAccessors,
-                params.key
-            );
             writeValues = createLookupWriter(
                 outputFields,
                 valueAccessors,
@@ -246,11 +261,21 @@ export default class LookupTransform extends Transform {
                 // Forward the delayed boundary immediately before its rows.
                 beginBatch(/** @type {FlowBatch} */ (bufferedBatch));
             }
+            const propagate = createFileBatchPropagator(
+                createFileBatchAccessor(bufferedData, bufferedFiles),
+                (batch) => {
+                    clone = undefined;
+                    this.handle = specializeAndPropagate;
+                    beginBatch(batch);
+                },
+                (datum) => this.handle(datum)
+            );
             for (const datum of bufferedData) {
-                this.handle(datum);
+                propagate(datum);
             }
 
             bufferedData = [];
+            bufferedFiles = [];
             bufferedBatch = undefined;
             hasBufferedBatch = false;
             index = null;
@@ -273,6 +298,7 @@ export default class LookupTransform extends Transform {
             clone = undefined;
             if (selfInput) {
                 bufferedData = [];
+                bufferedFiles = [];
                 bufferedBatch = undefined;
                 hasBufferedBatch = false;
                 index = null;
@@ -291,6 +317,16 @@ export default class LookupTransform extends Transform {
         /** @param {FlowBatch} flowBatch */
         this.beginBatch = (flowBatch) => {
             if (selfInput) {
+                if (
+                    flowBatch.type == "file" &&
+                    bufferedBatch?.type == "facet"
+                ) {
+                    bufferedFiles.push({
+                        index: bufferedData.length,
+                        batch: flowBatch,
+                    });
+                    return;
+                }
                 // A new boundary proves that the preceding group is complete.
                 if (hasBufferedBatch || bufferedData.length > 0) {
                     flushBufferedBatch();

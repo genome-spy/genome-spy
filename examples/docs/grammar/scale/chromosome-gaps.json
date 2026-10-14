@@ -1,0 +1,27 @@
+{
+  "description": [
+    "Chromosome grouping gaps",
+    "Chromosome intervals in hg38 are separated by fixed 5 px gaps."
+  ],
+
+  "assembly": "hg38",
+
+  "data": { "lazy": { "type": "axisGenome", "channel": "x" } },
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "continuousStart",
+      "type": "locus",
+      "scale": { "gapPositions": "chromosomes", "gapWidth": 5, "zoom": true }
+    },
+    "x2": { "field": "continuousEnd" },
+    "color": {
+      "field": "odd",
+      "type": "nominal",
+      "scale": { "range": ["#c6dbef", "#6baed6"] },
+      "legend": null
+    }
+  }
+}

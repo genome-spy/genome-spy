@@ -1,4 +1,3 @@
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -13,9 +12,10 @@ export default class SetIntersectionTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").SetIntersectionParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         const elementFields = Array.isArray(params.element)
             ? params.element
@@ -29,12 +29,10 @@ export default class SetIntersectionTransform extends Transform {
             throw new Error('"membership" must name a non-empty field.');
         }
 
-        this.elementAccessors = elementFields.map((fieldName) =>
-            field(fieldName)
-        );
-        this.setAccessor = field(params.set);
+        this.elementAccessors = this.createFieldAccessors(params, "element");
+        this.setAccessor = this.createFieldAccessor(params, "set");
         this.membershipAccessor = params.membership
-            ? field(params.membership)
+            ? this.createFieldAccessor(params, "membership")
             : null;
 
         this.#initialize();
@@ -215,6 +213,9 @@ export default class SetIntersectionTransform extends Transform {
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
+        if (flowBatch.type == "file" && this.inFacet) {
+            return;
+        }
         if (this.elements.length > 0) {
             this.#flush();
         }

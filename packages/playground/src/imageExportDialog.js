@@ -22,134 +22,97 @@ export default class ImageExportDialog extends LitElement {
         playgroundComponentStyles,
         css`
             dialog {
-                width: min(31rem, calc(100vw - 2rem));
-                max-height: calc(100vh - 2rem);
+                width: min(31rem, calc(100vw - 24px));
+                max-height: calc(100dvh - 24px);
                 padding: 0;
                 overflow: hidden;
-                border: none;
-                border-radius: 0.6rem;
-                background: var(--playground-panel-bg, #f7f5ef);
+                border: 1px solid var(--playground-border);
+                border-radius: var(--playground-radius);
+                background: var(--playground-surface);
                 color: inherit;
-                box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.28);
+                box-shadow: var(--playground-shadow);
             }
+
             dialog::backdrop {
-                background: rgba(17, 24, 39, 0.42);
+                background: var(--playground-backdrop);
             }
+
             form {
                 display: flex;
-                max-height: calc(100vh - 2rem);
+                max-height: calc(100dvh - 26px);
                 flex-direction: column;
             }
+
             header,
             main,
             footer {
-                padding: 1rem 1.15rem;
+                padding: 16px;
             }
+
             header {
-                border-bottom: 1px solid
-                    var(--playground-border-soft, rgba(23, 32, 51, 0.15));
+                border-bottom: 1px solid var(--playground-divider);
             }
-            h2,
-            p {
-                margin: 0;
-            }
-            h2 {
-                font-size: 1.15rem;
-            }
+
             main {
                 display: grid;
-                gap: 1rem;
+                gap: 16px;
                 overflow: auto;
             }
+
             fieldset {
                 margin: 0;
                 padding: 0;
                 border: none;
             }
+
             legend,
             strong.heading {
-                font-size: 0.88rem;
                 font-weight: 600;
             }
+
+            p {
+                margin: 0;
+            }
+
             .format-options {
                 display: flex;
-                margin-top: 0.6rem;
-                gap: 1.25rem;
+                margin-top: 8px;
+                gap: 16px;
             }
+
             label {
                 display: flex;
                 align-items: center;
-                gap: 0.45rem;
+                gap: 8px;
             }
+
             .number-field {
                 justify-content: space-between;
             }
+
             input[type="number"] {
                 width: 7rem;
-                padding: 0.35rem 0.45rem;
-                box-sizing: border-box;
-                border: 1px solid
-                    var(--playground-border-strong, rgba(23, 32, 51, 0.2));
-                border-radius: 0.35rem;
-                background: var(--playground-surface-raised, white);
-                color: inherit;
-                font: inherit;
             }
-            .settings {
-                display: grid;
-                gap: 0.75rem;
-                padding: 0.85rem;
-                border-radius: 0.5rem;
-                background: var(
-                    --playground-surface-soft,
-                    rgba(255, 255, 255, 0.65)
-                );
-            }
+
+            .settings,
             .preview {
                 display: grid;
-                gap: 0.55rem;
-                padding: 0.8rem;
-                border: 1px solid
-                    var(--playground-border-soft, rgba(23, 32, 51, 0.13));
-                border-radius: 0.5rem;
-                background: var(--playground-surface-raised, white);
-                font-size: 0.88rem;
+                gap: var(--playground-spacing);
             }
+
             .preview ul {
                 max-height: 9rem;
                 margin: 0;
-                padding-left: 1.25rem;
+                padding-left: 20px;
                 overflow: auto;
             }
-            .error {
-                color: var(--playground-danger-text, #9c2f2f);
-            }
+
             footer {
                 display: flex;
                 justify-content: flex-end;
-                gap: 0.65rem;
-                border-top: 1px solid
-                    var(--playground-border-soft, rgba(23, 32, 51, 0.15));
-            }
-            button {
-                padding: 0.45rem 0.8rem;
-                border: 1px solid
-                    var(--playground-border-strong, rgba(23, 32, 51, 0.2));
-                border-radius: 0.4rem;
-                background: var(--playground-surface-raised, white);
-                color: inherit;
-                font: inherit;
-                cursor: pointer;
-            }
-            button.primary {
-                border-color: #3d76ac;
-                background: #548fcc;
-                color: white;
-            }
-            button:disabled,
-            input:disabled {
-                cursor: default;
-                opacity: 0.55;
+                gap: 8px;
+                border-top: 1px solid var(--playground-divider);
+                background: var(--playground-panel);
             }
         `,
     ];
@@ -307,7 +270,7 @@ export default class ImageExportDialog extends LitElement {
     #renderSettings() {
         if (this.format == "png") {
             return html`
-                <div class="settings">
+                <div class="settings notice">
                     ${renderNumberField(
                         "pngPixelRatio",
                         "Scale factor",
@@ -319,7 +282,7 @@ export default class ImageExportDialog extends LitElement {
         }
 
         return html`
-            <div class="settings">
+            <div class="settings notice">
                 <label>
                     <input
                         id="rasterizeDenseMarks"
@@ -348,7 +311,7 @@ export default class ImageExportDialog extends LitElement {
                     !this.rasterizeDenseMarks
                 )}
             </div>
-            <section class="preview">
+            <section class="preview notice">
                 <strong class="heading">Rasterization preview</strong>
                 ${this.#renderRasterizationPreview()}
             </section>
@@ -403,6 +366,7 @@ export default class ImageExportDialog extends LitElement {
                     <footer>
                         <button
                             type="button"
+                            class="button"
                             @click=${() =>
                                 /** @type {HTMLDialogElement} */ (
                                     this.renderRoot.querySelector("dialog")
@@ -411,7 +375,7 @@ export default class ImageExportDialog extends LitElement {
                             Cancel
                         </button>
                         <button
-                            class="primary"
+                            class="button primary"
                             type="submit"
                             ?disabled=${this.saving}
                         >
@@ -474,6 +438,7 @@ function renderNumberField(
             <input
                 id=${id}
                 type="number"
+                class="field"
                 min=${range.min}
                 max=${range.max ?? nothing}
                 step=${range.step}

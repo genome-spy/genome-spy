@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/* global document, HTMLDivElement */
+/* global console, document, HTMLDivElement */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +20,12 @@ vi.mock("./appEmbedRuntime.js", () => ({
 }));
 
 import "./index.js";
+import CoreGenomeSpy from "@genome-spy/core/genomeSpy.js";
+import { createEmbed } from "@genome-spy/core/embedFactory.js";
+import { embed as embedApp } from "../app/src/index.js";
+
+// jsdom cannot parse scoped CSS; these assertions cover the rendered error content.
+vi.mock("@genome-spy/core/styles/genome-spy.css.js", () => ({ default: "" }));
 
 class TestIntersectionObserver {
     /** @type {TestIntersectionObserver[]} */
@@ -74,7 +80,8 @@ describe("GenomeSpyDocEmbed", () => {
         document.body.replaceChildren();
         document.head.querySelector("meta[name='base_url']")?.remove();
         document.head.querySelector("#genome-spy-app-embed-styles")?.remove();
-        vi.clearAllMocks();
+        vi.resetAllMocks();
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
         vi.useRealTimers();
     });
@@ -92,7 +99,7 @@ describe("GenomeSpyDocEmbed", () => {
         expect(appEmbed).toHaveBeenCalledWith(
             expect.any(HTMLDivElement),
             { baseUrl: "/docs/example-specs/", mark: "point" },
-            { embedMode: "embedded" }
+            { embedMode: "embedded", onError: expect.any(Function) }
         );
         expect(element.appStyles).toBe(".genome-spy-app { color: red; }");
         expect(
@@ -108,10 +115,11 @@ describe("GenomeSpyDocEmbed", () => {
     it("uses Core by default", async () => {
         const element = await mountEmbed("core");
 
-        expect(coreEmbed).toHaveBeenCalledWith(expect.any(HTMLDivElement), {
-            baseUrl: "/docs/example-specs/",
-            mark: "point",
-        });
+        expect(coreEmbed).toHaveBeenCalledWith(
+            expect.any(HTMLDivElement),
+            { baseUrl: "/docs/example-specs/", mark: "point" },
+            { onError: expect.any(Function) }
+        );
 
         element.remove();
 
@@ -131,28 +139,77 @@ describe("GenomeSpyDocEmbed", () => {
                 element.shadowRoot.querySelector(".embed-spec")
             );
 
-        expect(getToggle().textContent).toBe("Show specification");
+        expect(getToggle().textContent).toBe("Show JSON specification");
         expect(getSpec().style.display).toBe("none");
 
         getToggle().click();
         await element.updateComplete;
 
-        expect(getToggle().textContent).toBe("Hide specification");
+        expect(getToggle().textContent).toBe("Hide JSON specification");
         expect(getSpec().style.display).toBe("block");
 
         getToggle().click();
         await element.updateComplete;
 
-        expect(getToggle().textContent).toBe("Show specification");
+        expect(getToggle().textContent).toBe("Show JSON specification");
         expect(getSpec().style.display).toBe("none");
+    });
+
+    it("links to a curated Python example beside the existing controls", async () => {
+        const element = await mountEmbed("core", true);
+        element.playgroundUrl = "/playground/?spec=example.json";
+        element.pythonUrl =
+            "https://genomespy.app/genome-spy-python/gallery/ascat_fitting.html";
+        await element.updateComplete;
+
+        const links = Array.from(
+            element.shadowRoot.querySelectorAll(".embed-links a")
+        );
+
+        expect(
+            links.map((link) => link.textContent.trim().replace(/\s+/g, " "))
+        ).toEqual([
+            "Show JSON specification",
+            "Edit this example in Playground",
+            "View Python example",
+        ]);
+        expect(links[2].getAttribute("href")).toBe(element.pythonUrl);
     });
 
     it("renders an error for an unknown runtime", async () => {
         const element = await mountEmbed("unknown");
 
         expect(element.embedResult).toBeUndefined();
-        expect(element.shadowRoot.textContent).toContain(
-            "Unknown GenomeSpy embed runtime: unknown"
-        );
+        expect(
+            element.shadowRoot.querySelector(".embed-container pre").textContent
+        ).toContain("Unknown GenomeSpy embed runtime: unknown");
     });
+
+    it.each(["core", "app"])(
+        "shows a failed %s embed error only once",
+        async (runtime) => {
+            const error = new Error("Invalid visualization");
+            vi.spyOn(console, "error").mockImplementation(() => {});
+            vi.spyOn(CoreGenomeSpy.prototype, "launch").mockImplementation(
+                async function () {
+                    // Use the real embed failure handler and cleanup without starting a renderer.
+                    this.options.onError(error, this.container);
+                    return false;
+                }
+            );
+            coreEmbed.mockImplementation(createEmbed(CoreGenomeSpy));
+            appEmbed.mockImplementation(embedApp);
+
+            const element = await mountEmbed(runtime);
+            const container =
+                element.shadowRoot.querySelector(".embed-container");
+
+            expect(element.embedResult).toBeUndefined();
+            expect(container.querySelectorAll(".message-box")).toHaveLength(1);
+            expect(container.querySelector(".message-box").textContent).toBe(
+                String(error)
+            );
+            expect(container.querySelector("pre")).toBeNull();
+        }
+    );
 });

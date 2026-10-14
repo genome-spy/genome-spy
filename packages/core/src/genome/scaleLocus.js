@@ -33,23 +33,33 @@ export default function scaleLocus() {
         const domainSpan = domain[1] - domain[0];
         const numberingOffset = scale.numberingOffset();
 
-        const minChrom = genome.toChromosome(Math.max(domain[0], 0));
+        // Tick values identify band starts, but their visible anchors are centers.
+        const centerOffset = (1 - scale.paddingInner()) / 2;
+        const [minTick, maxTick] = scale
+            .range()
+            .map((value) => scale.invert(value) - centerOffset);
+        const minChrom = genome.toChromosome(Math.max(minTick, 0));
         const maxChrom = genome.toChromosome(
-            Math.min(domain[1], genome.totalSize - 1)
+            Math.min(maxTick, genome.totalSize - 1)
         );
 
-        const requestedCount = Math.max(
-            1,
-            Math.min(count ?? 10, Math.floor(domainSpan))
-        );
+        const requestedCount = Math.max(1, Math.min(count ?? 10, domainSpan));
 
         let step = tickStep(domain[0], domain[1], requestedCount);
 
         if (step < EXACT_LOCUS_LABEL_STEP_THRESHOLD) {
+            // Thin before limiting by the visible span. Keep the cap continuous
+            // so fractional zoom levels retain stable one-base spacing.
             step = tickStep(
                 domain[0],
                 domain[1],
-                requestedCount * EXACT_LOCUS_LABEL_THINNING_FACTOR
+                Math.max(
+                    1,
+                    Math.min(
+                        (count ?? 10) * EXACT_LOCUS_LABEL_THINNING_FACTOR,
+                        domainSpan
+                    )
+                )
             );
         }
 
@@ -62,14 +72,19 @@ export default function scaleLocus() {
 
             const from = Math.max(
                 chrom.continuousStart + step,
-                domain[0] - ((domain[0] - chrom.continuousStart) % step)
+                chrom.continuousStart +
+                    Math.ceil(
+                        (minTick + numberingOffset - chrom.continuousStart) /
+                            step
+                    ) *
+                        step
             );
-            const to = Math.min(chrom.continuousEnd - step / 4, domain[1] + 1);
+            const to = Math.min(
+                chrom.continuousEnd - step / 4,
+                maxTick + numberingOffset
+            );
             for (let pos = from; pos <= to; pos += step) {
-                const tick = pos - numberingOffset;
-                if (tick >= domain[0] && tick < domain[1]) {
-                    ticks.push(tick);
-                }
+                ticks.push(pos - numberingOffset);
             }
         }
 
@@ -94,7 +109,7 @@ export default function scaleLocus() {
         const step = tickStep(
             domain[0],
             domain[1],
-            Math.max(1, Math.min(count ?? 10, Math.floor(domainSpan)))
+            Math.max(1, Math.min(count ?? 10, domainSpan))
         );
         // Use higher display precision for smaller spans
         // TODO: max absolute value should be taken into account too. 2.00M vs 200M

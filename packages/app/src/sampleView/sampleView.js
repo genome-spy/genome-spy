@@ -1,5 +1,6 @@
 import ContainerView from "@genome-spy/core/view/containerView.js";
 import { html } from "lit";
+import { invertScalePosition } from "@genome-spy/core/scales/scalePosition.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
@@ -52,7 +53,6 @@ import { SampleLabelView } from "./sampleLabelView.js";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
-    isSubtreeLazyReady,
 } from "@genome-spy/core/view/dataReadiness.js";
 import {
     asSelectionConfig,
@@ -297,12 +297,6 @@ export default class SampleView extends ContainerView {
      * @returns {Promise<void>}
      */
     #awaitSubtreeDataReady(subtreeRoot, signal, readinessRequest) {
-        if (
-            readinessRequest &&
-            isSubtreeLazyReady(subtreeRoot, readinessRequest)
-        ) {
-            return Promise.resolve();
-        }
         if (readinessRequest) {
             return awaitSubtreeLazyReady(
                 this.context,
@@ -1444,11 +1438,13 @@ export default class SampleView extends ContainerView {
 
             const normalizedValue =
                 channel === "x" ? normalized.x : normalized.y;
-            // @ts-ignore
-            let value = scale.invert(normalizedValue);
-            if (["index", "locus"].includes(scale.type)) {
-                value = /** @type {number} */ (value) + 0.5;
-            }
+            const value = invertScalePosition(
+                scale,
+                normalizedValue,
+                channel === "x"
+                    ? this.childCoords.width
+                    : this.childCoords.height
+            );
             point[channel] = /** @type {number} */ (value);
         }
 
@@ -1815,7 +1811,12 @@ export default class SampleView extends ContainerView {
             zoomEvent.y + zoomEvent.yDelta
         );
 
-        const changed = resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
+        const changed = resolution.zoom(
+            2 ** zoomEvent.zDelta,
+            p.x,
+            tp.x - p.x,
+            coords.width
+        );
 
         if (changed) {
             this.context.animator.requestRender();

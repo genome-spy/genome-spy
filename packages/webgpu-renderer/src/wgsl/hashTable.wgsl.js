@@ -30,18 +30,23 @@ export function hashLookupFunctionName(bufferName) {
  * extension, so generated helpers access module-scope storage buffers directly.
  *
  * @param {string} bufferName
+ * @param {{buffer: string, offset: string, capacity: string}} [slice]
  */
-export function emitHashLookupFunction(bufferName) {
+export function emitHashLookupFunction(bufferName, slice) {
     return /* wgsl */ `
 fn ${hashLookupFunctionName(bufferName)}(key: u32, maxProbes: u32) -> u32 {
-    let size = arrayLength(&${bufferName});
+    let size = ${slice?.capacity ?? `arrayLength(&${bufferName})`};
     if (size == 0u) {
         return HASH_NOT_FOUND;
     }
     let mask = size - 1u;
     var index = hash32(key) & mask;
     for (var probe = 0u; probe < maxProbes; probe += 1u) {
-        let entry = ${bufferName}[index];
+        let entry = ${
+            slice
+                ? `HashEntry(${slice.buffer}[${slice.offset} + index * 2u], ${slice.buffer}[${slice.offset} + index * 2u + 1u])`
+                : `${bufferName}[index]`
+        };
         if (entry.key == key) {
             return entry.value;
         }

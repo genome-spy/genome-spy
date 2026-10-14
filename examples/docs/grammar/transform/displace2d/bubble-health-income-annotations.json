@@ -1,0 +1,177 @@
+{
+  "description": [
+    "Example: Population-ranked bubble annotations",
+    "Adds displaced country labels and leader lines to a zoomable health and income bubble plot.",
+    "Data source: Gapminder Foundation, via vega-datasets (https://www.gapminder.org/data/).",
+    "Base plot adapted from Vega-Lite's Bubble Plot (Gapminder): https://vega.github.io/vega-lite/examples/circle_bubble_health_income.html"
+  ],
+
+  "title": {
+    "text": "Health, income, and population (Gapminder)",
+    "subtitle": "Zoom in to reveal more countries"
+  },
+
+  "params": [
+    {
+      "name": "labelAnimationHalfLife",
+      "description": "Larger values make country labels move more slowly.",
+      "value": 180,
+      "bind": { "input": "range", "min": 60, "max": 400, "step": 20 }
+    }
+  ],
+
+  "data": { "url": "vega-datasets/gapminder-health-income.csv" },
+  "transform": [
+    {
+      "type": "window",
+      "sort": { "field": "population", "order": "descending" },
+      "ops": ["rank"],
+      "as": ["populationRank"]
+    }
+  ],
+
+  "resolve": { "scale": { "x": "shared", "y": "shared" } },
+  "encoding": {
+    "x": {
+      "field": "income",
+      "type": "quantitative",
+      "title": "Income per person (USD)",
+      "scale": { "type": "log", "domain": [500, 150000], "zoom": true }
+    },
+    "y": {
+      "field": "health",
+      "type": "quantitative",
+      "title": "Life expectancy (years)",
+      "scale": { "domain": [47, 85], "zoom": true },
+      "axis": { "minExtent": 35 }
+    }
+  },
+
+  "layer": [
+    {
+      "name": "Countries",
+      "mark": {
+        "type": "point",
+        "filled": true,
+        "shape": "circle",
+        "opacity": 0.7
+      },
+      "encoding": {
+        "size": {
+          "field": "population",
+          "type": "quantitative",
+          "scale": { "range": [4, 400] }
+        },
+        "color": {
+          "field": "region",
+          "type": "nominal",
+          "scale": { "scheme": "category10" },
+          "legend": { "title": "Region" }
+        },
+        "tooltip": [
+          { "field": "country", "type": "nominal" },
+          { "field": "population", "type": "quantitative" },
+          { "field": "income", "type": "quantitative" },
+          { "field": "health", "type": "quantitative" }
+        ]
+      }
+    },
+
+    {
+      "name": "Ranked annotations",
+      "transform": [
+        {
+          "type": "measureText",
+          "field": "country",
+          "fontSize": 11,
+          "as": "labelWidth"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelWidth + 10",
+          "as": "collisionWidth"
+        },
+        { "type": "collect", "sort": { "field": "populationRank" } },
+        {
+          "type": "filter",
+          "expr": "datum.populationRank <= 10 * zoomLevel() && inrange(datum.income, domain('x')) && inrange(datum.health, domain('y'))"
+        },
+        {
+          "type": "displace2d",
+          "key": "country",
+          "x": "income",
+          "y": "health",
+          "width": "collisionWidth",
+          "height": 17,
+          "anchorWidth": 20,
+          "anchorHeight": 20,
+          "animationHalfLife": { "expr": "labelAnimationHalfLife" },
+          "as": ["labelDx", "labelDy"]
+        },
+        {
+          "type": "formula",
+          "expr": "max(0, 1 - min(datum.collisionWidth / 2 / max(abs(datum.labelDx), 1e-6), 8 / max(abs(datum.labelDy), 1e-6)))",
+          "as": "leaderScale"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelDx * datum.leaderScale",
+          "as": "leaderDx"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelDy * datum.leaderScale",
+          "as": "leaderDy"
+        }
+      ],
+      "layer": [
+        {
+          "name": "Leader lines",
+          "mark": {
+            "type": "rule",
+            "color": "#64748b",
+            "opacity": 0.75,
+            "size": 1
+          },
+          "encoding": {
+            "x2": { "field": "income" },
+            "y2": { "field": "health" },
+            "xOffset": {
+              "field": "leaderDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "leaderDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        },
+        {
+          "name": "Country labels",
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "middle",
+            "size": 11,
+            "color": "#253247"
+          },
+          "encoding": {
+            "text": { "field": "country", "type": "nominal" },
+            "xOffset": {
+              "field": "labelDx",
+              "type": "quantitative",
+              "scale": null
+            },
+            "yOffset": {
+              "field": "labelDy",
+              "type": "quantitative",
+              "scale": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

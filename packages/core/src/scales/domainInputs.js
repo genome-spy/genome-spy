@@ -48,7 +48,7 @@ import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
  * @param {Set<import("./scaleResolution.js").ScaleResolutionMember>} options.members
  * @param {Set<import("./scaleResolution.js").ScaleResolutionMember>} options.dataMembers
  * @param {import("./domainPlanner.js").ConfiguredDomainSource | undefined} options.viewLevelDomain
- * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
+ * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
  * @param {import("./domainPlanner.js").SelectionBindingResolver} options.resolveSelectionBinding
  * @param {import("./domainPlanner.js").FromComplexInterval} options.fromComplexInterval
  * @param {import("./domainPlanner.js").GetLocusExtent} options.getLocusExtent
@@ -115,7 +115,7 @@ export default function createDomainInputs({
         ]) {
             for (const ref of collectConfiguredDomainExprRefs(domain)) {
                 if (!expressions.has(ref.expr))
-                    expressions.set(ref.expr, createExpression(ref.expr));
+                    expressions.set(ref.expr, createExpression(ref));
             }
         }
         const zoomLevelResolutions = new Set(
@@ -199,7 +199,7 @@ export default function createDomainInputs({
                 resolveConfiguredDomain(
                     members,
                     viewLevelDomain,
-                    (expr) => expressions.get(expr),
+                    (expr) => expressions.get(expr.expr),
                     link
                         ? () => ({
                               runtime: link.runtime,
@@ -275,6 +275,12 @@ export default function createDomainInputs({
             }
 
             const configuredDomain = configured.get();
+            const linkedInterval = link
+                ? selection.get().value?.intervals[link.encoding]
+                : undefined;
+            const collapsed =
+                linkedInterval != null &&
+                linkedInterval[0] === linkedInterval[1];
 
             // Authored domains need rows only for linked fallback or loaded extent;
             // genomic fallback comes from the assembly rather than loaded rows.
@@ -299,10 +305,11 @@ export default function createDomainInputs({
             }
 
             const candidate =
-                reason === "viewport" &&
-                !isViewportDataReady(dataMembers, (member) =>
-                    constraints.get(member)
-                )
+                collapsed ||
+                (reason === "viewport" &&
+                    !isViewportDataReady(dataMembers, (member) =>
+                        constraints.get(member)
+                    ))
                     ? undefined
                     : (normalized.domain ?? undefined);
 

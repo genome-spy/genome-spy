@@ -156,7 +156,7 @@ describe("BaseProgram count inference", () => {
         });
 
         expect(program._resourceLayout).toEqual([
-            { name: "seriesF32", role: "series" },
+            { name: "series", role: "series" },
         ]);
     });
 

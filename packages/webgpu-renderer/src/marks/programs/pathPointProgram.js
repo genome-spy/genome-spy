@@ -1,3 +1,4 @@
+import { POSITION_CLAMP_WGSL } from "./positionClamping.js";
 import PointProgram from "./pointProgram.js";
 import { getMsdfAtlasGenerator } from "../../symbols/sparseGpuPathAtlas.js";
 import { asGpuBufferSource } from "../../utils/webgpuTextureUtils.js";
@@ -15,6 +16,15 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
  */
 
 export const PATH_POINT_SHADER_BODY = /* wgsl */ `
+${POSITION_CLAMP_WGSL}
+fn placeClampedPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
+#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
+    return clip;
+#else
+    return applyPlacementClipForPoint(clip, anchor, i);
+#endif
+}
+
 const PI: f32 = 3.141592653589793;
 const AA_COVERAGE_RADIUS_PIXELS: f32 = 0.5;
 const FILL_RASTER_SAFETY_PIXELS: f32 = 0.5;
@@ -75,12 +85,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         return culledPoint();
     }
 
-    var quad = array<vec2<f32>, 6>(
+    var quad = array<vec2<f32>, 4>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),
         vec2<f32>(0.0, 1.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0),
         vec2<f32>(1.0, 1.0)
     );
 
@@ -132,8 +140,16 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
     let screenOffset = rot * localScreen;
-    let centerX = getScaled_x(i) + getScaled_xOffset(i) + getScaled_dx(i);
-    let centerY = getScaled_y(i) + getScaled_yOffset(i) + getScaled_dy(i);
+    let center = projectClampedPosition(
+#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
+        vec2<f32>(getScaled_x(i), getScaled_y(i)),
+        vec2<f32>(getScaled_xOffset(i) + getScaled_dx(i), getScaled_yOffset(i) + getScaled_dy(i)), i);
+#else
+        vec2<f32>(getScaled_x(i) + getScaled_dx(i), getScaled_y(i) + getScaled_dy(i)),
+        vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i)), i);
+#endif
+    let centerX = center.x;
+    let centerY = center.y;
 
     if (isOutsideVisibleRange(vec2<f32>(centerX, centerY))) {
         return culledPoint();
@@ -164,7 +180,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.placementClip = placementClipBounds(i);
 #endif
     out.pos = vec4<f32>(
-        applyPlacementClipForPoint(clip, centerClip, i),
+        placeClampedPoint(clip, centerClip, i),
         0.0,
         1.0
     );

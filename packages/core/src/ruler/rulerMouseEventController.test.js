@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import Rectangle from "../view/layout/rectangle.js";
+import scaleIndex from "../genome/scaleIndex.js";
 import { RulerMouseEventController } from "./rulerMouseEventController.js";
 
 /**
@@ -9,10 +10,14 @@ import { RulerMouseEventController } from "./rulerMouseEventController.js";
  */
 function createScaleResolution(type, toComplex) {
     /** @param {number} value */
-    const scale = (value) => value / 100;
-    scale.type = type;
-    /** @param {number} value */
-    scale.invert = (value) => value * 100;
+    const scale = Object.assign(
+        type === "index" || type === "locus"
+            ? scaleIndex().domain([0, 100])
+            : Object.assign((/** @type {number} */ value) => value / 100, {
+                  invert: (/** @type {number} */ value) => value * 100,
+              }),
+        { type }
+    );
 
     return {
         getResolvedScaleType() {
@@ -57,11 +62,11 @@ function createController(ruler, scaleResolutions, runtime) {
                 listeners.delete(type);
             }
         },
-        paramRuntime: runtime ?? { setValue },
+        paramRuntime: runtime ?? { setValue, getSpecLocation: () => undefined },
     };
     const previousDocument = globalThis.document;
     installMockDocument(documentListeners);
-    const gridChild = { view };
+    const gridChild = { view, getProjectionCoords: () => view.coords };
     const controller = new RulerMouseEventController(
         /** @type {any} */ (gridChild),
         "cursor",
@@ -169,7 +174,7 @@ describe("RulerMouseEventController", () => {
         expect(setValue).toHaveBeenCalledWith("cursor", {
             type: "ruler",
             values: {
-                x: 26,
+                x: 25,
             },
         });
     });
@@ -193,7 +198,7 @@ describe("RulerMouseEventController", () => {
         expect(setValue).toHaveBeenCalledWith("cursor", {
             type: "ruler",
             values: {
-                x: { chrom: "chr1", pos: 26 },
+                x: { chrom: "chr1", pos: 25 },
             },
         });
     });
@@ -204,7 +209,7 @@ describe("RulerMouseEventController", () => {
             { x: createScaleResolution("linear") }
         );
 
-        listeners.get("mouseleave")({});
+        listeners.get("mouseleave")({ pointedViews: new Map() });
 
         expect(setValue).toHaveBeenCalledWith("cursor", {
             type: "ruler",
@@ -408,7 +413,7 @@ test("disabling one pushed binding leaves another able to update the shared coor
         bindings[1].listeners.get("mousemove")(event);
         await parent.whenPropagated();
         expect(parent.findValue("cursor").values.x).toBe(25);
-        bindings[0].listeners.get("mouseleave")({});
+        bindings[0].listeners.get("mouseleave")({ pointedViews: new Map() });
         expect(parent.findValue("cursor").values.x).toBe(25);
     } finally {
         for (const { controller } of bindings) controller.dispose();

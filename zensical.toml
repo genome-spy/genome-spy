@@ -62,6 +62,7 @@ nav = [
             "grammar/composition/index.md",
             { "Concat" = "grammar/composition/concat.md" },
             { "Layer" = "grammar/composition/layer.md" },
+            { "Facet" = "grammar/facet.md" },
             { "Multiscale" = "grammar/composition/multiscale.md" },
         ] },
         { "Scales" = "grammar/scale.md" },
@@ -94,6 +95,7 @@ nav = [
         "api/inspector.md",
         "api/instance.md",
         "api/embed-options.md",
+        "api/editor-integration.md",
     ] },
     { "Examples" = [
         "examples/index.md",

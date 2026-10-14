@@ -1,3 +1,4 @@
+import { mockGpuLimits } from "../../../testUtils/mockRenderer.js";
 import { describe, expect, it, vi } from "vitest";
 
 import { SelectionResourceManager as DefinedSelectionResourceManager } from "./selectionResources.js";
@@ -111,6 +112,7 @@ function makeMultiChannels() {
 function createDevice() {
     return /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({
+            limits: mockGpuLimits,
             createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
                 size,
                 destroy: vi.fn(),
@@ -694,6 +696,7 @@ describe("SelectionResourceManager", () => {
         const buffers = [];
         const device = /** @type {GPUDevice} */ (
             /** @type {unknown} */ ({
+                limits: mockGpuLimits,
                 createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => {
                     const buffer = { size, destroy: vi.fn() };
                     buffers.push(buffer);
@@ -728,6 +731,7 @@ describe("SelectionResourceManager", () => {
         const buffers = [];
         const device = /** @type {GPUDevice} */ (
             /** @type {unknown} */ ({
+                limits: mockGpuLimits,
                 createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => {
                     const buffer = {
                         size,

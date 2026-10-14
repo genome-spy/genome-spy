@@ -42,14 +42,123 @@ vi.mock("@genome-spy/core/index.js", () => ({
 }));
 
 import { embed } from "./index.js";
+import { loadSpec } from "@genome-spy/core/index.js";
 
 describe("embed", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.spyOn(console, "error").mockImplementation(() => {});
     });
 
     afterEach(() => {
+        vi.restoreAllMocks();
         vi.unstubAllEnvs();
+        document.body.replaceChildren();
+    });
+
+    it("preserves spec-loading errors instead of dereferencing an absent app", async () => {
+        const error = new Error("Could not load configuration");
+        loadSpec.mockRejectedValueOnce(error);
+        const element = document.createElement("div");
+        const onError = vi.fn();
+
+        await expect(embed(element, "missing.json", { onError })).rejects.toBe(
+            error
+        );
+        expect(AppMock).not.toHaveBeenCalled();
+        expect(element.querySelector(".message-box").textContent).toBe(
+            String(error)
+        );
+        expect(onError).toHaveBeenCalledOnce();
+        expect(onError).toHaveBeenCalledWith(error, element);
+    });
+
+    it("preserves constructor errors", async () => {
+        const error = new Error("Invalid app configuration");
+        AppMock.mockImplementationOnce(function () {
+            throw error;
+        });
+        const element = document.createElement("div");
+
+        await expect(embed(element, {})).rejects.toBe(error);
+        expect(element.querySelector(".message-box").textContent).toBe(
+            String(error)
+        );
+    });
+
+    it.each([false, true])(
+        "rejects errors during App startup even if launch completes: %s",
+        async (succeeded) => {
+            const error = new Error("Core initialization failed");
+            const element = document.createElement("div");
+            const pluginDispose = vi.fn();
+            const plugin = {
+                install(app) {
+                    app.launch.mockImplementation(async () => {
+                        app.options.onError(error, element);
+                        return succeeded;
+                    });
+                    return pluginDispose;
+                },
+            };
+            const onError = vi.fn(() => {
+                expect(pluginDispose).toHaveBeenCalledOnce();
+                element.textContent = "Host error display";
+                return true;
+            });
+
+            await expect(
+                embed(element, {}, { plugins: [plugin], onError })
+            ).rejects.toBe(error);
+            expect(AppMock.mock.instances[0].finalize).toHaveBeenCalledOnce();
+            expect(
+                AppMock.mock.instances[0].genomeSpy.destroy
+            ).toHaveBeenCalledOnce();
+            expect(onError).toHaveBeenCalledOnce();
+            expect(onError).toHaveBeenCalledWith(error, element);
+            expect(element.textContent).toBe("Host error display");
+        }
+    );
+
+    it("preserves plugin installation errors and finishes cleanup if a disposer throws", async () => {
+        const error = new Error("Plugin installation failed");
+        const cleanupError = new Error("Plugin cleanup failed");
+        const disposals = [];
+        const plugins = [
+            {
+                install: () => () => {
+                    disposals.push("first");
+                },
+            },
+            {
+                install: () => () => {
+                    disposals.push("second");
+                    throw cleanupError;
+                },
+            },
+            {
+                install: async () => {
+                    throw error;
+                },
+            },
+        ];
+        const element = document.createElement("div");
+
+        await expect(embed(element, {}, { plugins })).rejects.toBe(error);
+        expect(disposals).toEqual(["second", "first"]);
+        expect(AppMock.mock.instances[0].finalize).toHaveBeenCalledOnce();
+        expect(
+            AppMock.mock.instances[0].genomeSpy.destroy
+        ).toHaveBeenCalledOnce();
+        expect(element.querySelector(".message-box").textContent).toBe(
+            String(error)
+        );
+        expect(console.error).toHaveBeenCalledWith(cleanupError);
+
+        const api = await embed(element, {});
+        expect(element.textContent).not.toContain(error.message);
+        expect(element.querySelector("style")).toBeNull();
+        api.finalize();
     });
 
     it("installs and disposes app plugins", async () => {

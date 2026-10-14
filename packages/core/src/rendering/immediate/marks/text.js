@@ -1,3 +1,4 @@
+import { isMarkClamped } from "../../../marks/markUtils.js";
 import { format } from "d3-format";
 import { isString } from "vega-util";
 import { intersectsBounds, isOutsideBounds } from "../bounds.js";
@@ -72,13 +73,15 @@ export function visitTextInstances(mark, properties, options, visitor) {
         coords,
         encoders,
         "x",
-        data[0]
+        data[0],
+        isMarkClamped(mark, "x")
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[0]
+        data[0],
+        isMarkClamped(mark, "y")
     );
     const channelDef = mark.encoding.text;
     const numberFormat =
@@ -111,6 +114,8 @@ export function visitTextInstances(mark, properties, options, visitor) {
     };
     const hasX2 = !!encoders.x2;
     const hasY2 = !!encoders.y2;
+    const clampXRange = hasX2 && isMarkClamped(mark, "x");
+    const clampYRange = hasY2 && isMarkClamped(mark, "y");
     let instanceCount = 0;
 
     for (const datum of data) {
@@ -121,6 +126,12 @@ export function visitTextInstances(mark, properties, options, visitor) {
         }
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
+        if (
+            (clampXRange && xRange[0] === xRange[1]) ||
+            (clampYRange && yRange[0] === yRange[1])
+        ) {
+            continue;
+        }
         let [x, x2] = xRange;
         let [y, y2] = yRange;
         const size = encoders.size.constant

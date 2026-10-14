@@ -138,6 +138,8 @@ H3K27ac BigWig per visible row. The initial domain shows a ten-megabase region
 of the mm10 genome. See the [full mouse fetal-development
 example](https://genomespy.app/examples/encode-mouse-fetal-development-mm10/)
 for the complete 24-sample visualization with metadata and annotations.
+The [genomic facet example](../facet.md#genomic-tracks) displays the same five
+tracks using only Core.
 
 EXAMPLE examples/app/multi-url-bigwig.json runtime=app height=260 spechidden
 

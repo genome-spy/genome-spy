@@ -1,5 +1,4 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
-import { field } from "../../utils/field.js";
 import { requestFont } from "../../fonts/textMetrics.js";
 import Transform from "./transform.js";
 
@@ -21,7 +20,7 @@ export default class MeasureTextTransform extends Transform {
 
         this.params = params;
 
-        const accessor = field(params.field);
+        const accessor = this.createFieldAccessor(params, "field");
         const as = params.as;
 
         let size = 0;

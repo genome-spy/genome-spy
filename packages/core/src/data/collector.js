@@ -1,7 +1,6 @@
 import { InternMap } from "internmap";
-import { bisector, group } from "d3-array";
-import { compare } from "vega-util";
-import iterateNestedMaps from "../utils/iterateNestedMaps.js";
+import { bisector } from "d3-array";
+import { compare, splitAccessPath } from "vega-util";
 import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
 import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
@@ -10,6 +9,10 @@ import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 import KeyIndex from "./keyIndex.js";
 import ViewportDomainManager from "./viewportDomain.js";
 import createDomain from "../utils/domainArray.js";
+import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "./fileBatchUtils.js";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -29,12 +32,20 @@ export default class Collector extends FlowNode {
      */
     #buffer = [];
 
+    /** @type {import("./fileBatchUtils.js").FileBatchStart[]} */
+    #fileBatchStarts = [];
+
+    /** @type {import("./fileBatchUtils.js").FileBatchAccessor} */
+    #getFileBatch = () => undefined;
+
+    #rowCount = 0;
+
     #uniqueIdAccessor = field(UNIQUE_ID_KEY);
 
     /**
-     * @type {number[]}
+     * @type {Uint32Array}
      */
-    #uniqueIdIndex = [];
+    #uniqueIdIndex = new Uint32Array(0);
 
     /** @type {KeyIndex} */
     #keyIndex = new KeyIndex();
@@ -67,9 +78,10 @@ export default class Collector extends FlowNode {
 
     /**
      * @param {import("../spec/transform.js").CollectParams} [params]
+     * @param {import("./flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super();
+    constructor(params, paramRuntimeProvider) {
+        super(paramRuntimeProvider);
 
         this.params = params ?? { type: "collect" };
         this.#viewportDomains = new ViewportDomainManager(
@@ -88,14 +100,20 @@ export default class Collector extends FlowNode {
         /** @type {Map<import("../spec/channel.js").Scalar[], Data>} TODO: proper type for key */
         this.facetBatches = new InternMap([], JSON.stringify);
 
-        this.#comparator = makeComparator(this.params?.sort);
+        this.#comparator = makeComparator(
+            this.params.sort,
+            paramRuntimeProvider
+        );
 
         this.#init();
     }
 
     #init() {
         this.#buffer = [];
-        this.#uniqueIdIndex = [];
+        this.#fileBatchStarts = [];
+        this.#getFileBatch = () => undefined;
+        this.#rowCount = 0;
+        this.#uniqueIdIndex = new Uint32Array(0);
         this.#keyIndex.invalidate();
         this.#viewportDomains.reset();
 
@@ -113,6 +131,7 @@ export default class Collector extends FlowNode {
      */
     handle(datum) {
         this.#buffer.push(datum);
+        this.#rowCount++;
     }
 
     /**
@@ -124,16 +143,33 @@ export default class Collector extends FlowNode {
         if (isFacetBatch(flowBatch)) {
             this.#buffer = [];
             this.facetBatches.set(asArray(flowBatch.facetId), this.#buffer);
+        } else {
+            this.#fileBatchStarts.push({
+                index: this.#rowCount,
+                batch: flowBatch,
+            });
         }
     }
 
     complete() {
+        this.#getFileBatch = createFileBatchAccessor(
+            iterateFacetBatchData(this.facetBatches.values()),
+            this.#fileBatchStarts
+        );
+
         // Free some memory
         this.#buffer = [];
 
         if (this.params.groupby?.length) {
-            const accessors = this.params.groupby.map((fieldName) =>
-                field(fieldName)
+            const accessors = this.params.groupby.map((fieldName, index) =>
+                field(
+                    fieldName,
+                    undefined,
+                    this.paramRuntimeProvider?.paramRuntime?.getSpecLocation(
+                        this.params,
+                        ["groupby", index]
+                    )
+                )
             );
             const data =
                 this.facetBatches.size > 1
@@ -142,7 +178,7 @@ export default class Collector extends FlowNode {
             const groups = groupData(data, accessors);
 
             this.facetBatches.clear();
-            for (const [key, data] of iterateNestedMaps(groups)) {
+            for (const [key, data] of groups) {
                 this.facetBatches.set(key, data);
             }
         }
@@ -188,8 +224,17 @@ export default class Collector extends FlowNode {
                         child.beginBatch(facetBatch);
                     }
                 }
+                const propagate = createFileBatchPropagator(
+                    this.#getFileBatch,
+                    (batch) => {
+                        for (const child of this.children) {
+                            child.beginBatch(batch);
+                        }
+                    },
+                    (datum) => this._propagate(datum)
+                );
                 for (let i = 0, n = data.length; i < n; i++) {
-                    this._propagate(data[i]);
+                    propagate(data[i]);
                 }
             }
         }
@@ -383,7 +428,7 @@ export default class Collector extends FlowNode {
         this.#facetIndices = [];
 
         /** @type {Datum} */
-        const obj = this.facetBatches.values().next().value?.[0];
+        const obj = this.facetBatches.values().find((data) => data.length)?.[0];
         if (obj == null || !(UNIQUE_ID_KEY in obj)) {
             return; // No unique ids in the data
         }
@@ -557,30 +602,32 @@ function iterateFacetBatchData(batches) {
  * @param {((data: Datum) => import("../spec/channel.js").Scalar)[]} accessors
  */
 function groupData(data, accessors) {
-    return accessors.length > 1
-        ? // There's something strange in d3-array's typings
-          /** @type {Map<any, any>} */ /** @type {any} */ (
-              group(data, ...accessors)
-          )
-        : // D3's group is SLOW!
-          groupBy(data, accessors[0]);
-}
+    // Keep first-occurrence order across compound keys, so facet column order
+    // does not depend on which row category was encountered first.
+    const root = new Map();
+    /** @type {[import("../spec/channel.js").Scalar[], Data][]} */
+    const groups = [];
+    const parentAccessors = accessors.slice(0, -1);
+    const lastAccessor = accessors.at(-1);
 
-/**
- * Like D3's group but without InternMap, which is slow.
- * TODO: Implement multi-level grouping
- *
- * @param {Iterable<Datum>} data
- * @param {(data: Datum) => import("../spec/channel.js").Scalar} accessor
- */
-function groupBy(data, accessor) {
-    const groups = new Map();
     for (const datum of data) {
-        const key = accessor(datum);
-        let group = groups.get(key);
+        let node = root;
+        for (const accessor of parentAccessors) {
+            const key = accessor(datum);
+            let next = node.get(key);
+            if (!next) {
+                next = new Map();
+                node.set(key, next);
+            }
+            node = next;
+        }
+
+        const key = lastAccessor(datum);
+        let group = node.get(key);
         if (!group) {
             group = [];
-            groups.set(key, group);
+            node.set(key, group);
+            groups.push([accessors.map((accessor) => accessor(datum)), group]);
         }
         group.push(datum);
     }
@@ -591,30 +638,44 @@ function groupBy(data, accessor) {
  * Creates a comparator function based on the provided sort parameters.
  *
  * @param {import("../spec/transform.js").CompareParams} sort
+ * @param {import("./flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
  * @returns {(a: Datum, b: Datum) => number}
  */
-function makeComparator(sort) {
-    // For simple cases, create a simple comparator.
-    // For more complex cases, use Vega's compare function. However,
-    // is uses megamorphic field accessors, which makes it slow.
+function makeComparator(sort, paramRuntimeProvider) {
+    // Keep the generated numeric fast path. Complex sorts use Vega's comparator
+    // with our compiled accessors to keep field accesses monomorphic.
     if (sort?.field) {
         const fields = asArray(sort.field);
-        if (fields.length == 1 && !fields[0].includes(".")) {
+        const accessors = fields.map((name, index) =>
+            field(
+                name,
+                undefined,
+                paramRuntimeProvider?.paramRuntime?.getSpecLocation(
+                    sort,
+                    Array.isArray(sort.field) ? ["field", index] : ["field"]
+                )
+            )
+        );
+        const path = fields.length == 1 ? splitAccessPath(fields[0]) : [];
+        if (path.length == 1 && !fields[0].includes(".")) {
             const order = asArray(sort.order)[0] ?? "ascending";
-            const fieldName = JSON.stringify(fields[0]);
+            const fieldName = JSON.stringify(path[0]);
             return /** @type {(a: Datum, b: Datum) => number} */ (
                 new Function(
-                    "a",
-                    "b",
-                    `return ${
-                        order === "ascending"
-                            ? `a[${fieldName}] - b[${fieldName}]`
-                            : `b[${fieldName}] - a[${fieldName}]`
+                    "accessor",
+                    `return (a, b) => {
+                        if (!(${fieldName} in a)) accessor(a);
+                        if (!(${fieldName} in b)) accessor(b);
+                        return ${
+                            order === "ascending"
+                                ? `a[${fieldName}] - b[${fieldName}]`
+                                : `b[${fieldName}] - a[${fieldName}]`
+                        };
                     };`
-                )
+                )(accessors[0])
             );
         }
 
-        return compare(sort.field, sort.order);
+        return compare(accessors, sort.order);
     }
 }

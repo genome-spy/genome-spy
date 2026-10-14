@@ -92,12 +92,11 @@ export default class SeparatorView {
      * @param {import("../layout/flexLayout.js").LocSize[]} flexCoords
      * @param {number} count
      * @param {import("../layout/rectangle.js").default} coords
-     * @param {(direction: "row" | "column", index: number) => number} getViewSlot
-     * @param {boolean} wrappingFacet
+     * @param {(index: number) => number} getViewSlot
      * @param {import("../layout/padding.js").default} overhang
      */
-    update(flexCoords, count, coords, getViewSlot, wrappingFacet, overhang) {
-        this.#collectPositions(flexCoords, count, getViewSlot, wrappingFacet);
+    update(flexCoords, count, coords, getViewSlot, overhang) {
+        this.#collectPositions(flexCoords, count, getViewSlot);
         this.#updateDirection(coords, overhang);
     }
 
@@ -113,22 +112,18 @@ export default class SeparatorView {
     /**
      * @param {import("../layout/flexLayout.js").LocSize[]} flexCoords
      * @param {number} count
-     * @param {(direction: "row" | "column", index: number) => number} getViewSlot
-     * @param {boolean} wrappingFacet
+     * @param {(index: number) => number} getViewSlot
      */
-    #collectPositions(flexCoords, count, getViewSlot, wrappingFacet) {
+    #collectPositions(flexCoords, count, getViewSlot) {
         this.#positions.length = 0;
 
         if (count < 2) {
             return;
         }
 
-        const axis = this.#direction === "vertical" ? "column" : "row";
-        const spacingOffset = wrappingFacet ? 3 : 2;
-
         for (let index = 1; index < count; index++) {
-            const viewSlot = getViewSlot(axis, index);
-            const spacingSlot = viewSlot - spacingOffset;
+            const viewSlot = getViewSlot(index);
+            const spacingSlot = viewSlot - 2;
             const spacing = flexCoords[spacingSlot];
             const location = spacing ? spacing.location : 0;
             const size = spacing ? spacing.size : 0;

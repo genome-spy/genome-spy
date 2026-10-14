@@ -19,12 +19,21 @@ export default function GenomeSpy(props) {
          * @param {import("@genome-spy/core/spec/root.js").RootSpec} config
          */
         async function embedInContainer(container, config) {
+            // Core displays reported errors before rejecting; wrapper errors need fallback UI.
+            /** @type {Set<unknown>} */
+            const reportedErrors = new Set();
             try {
-                const api = await embed(container, config);
-                onEmbed(api);
+                const api = await embed(container, config, {
+                    onError: (error) => {
+                        reportedErrors.add(error);
+                    },
+                });
                 apiRef.current = api;
+                onEmbed(api);
             } catch (e) {
-                setError(e.toString());
+                if (!reportedErrors.has(e)) {
+                    setError(String(e));
+                }
             }
         }
         embedInContainer(containerRef.current, spec);

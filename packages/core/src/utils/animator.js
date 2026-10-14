@@ -4,9 +4,11 @@ export default class Animator {
     /**
      *
      * @param {function(number):void} renderCallback
+     * @param {(error: Error) => void} [onError] Handles transition and render errors.
      */
-    constructor(renderCallback) {
+    constructor(renderCallback, onError) {
         this._renderCallback = renderCallback;
+        this._onError = onError;
         this._renderRequested = false;
         this._finalized = false;
         this._warn = false;
@@ -74,14 +76,21 @@ export default class Animator {
                     const transitions = this.transitions;
                     this.transitions = [];
 
-                    /** @type {function} */
-                    let transitionCallback;
-                    while ((transitionCallback = transitions.shift())) {
-                        transitionCallback(timestamp);
-                    }
+                    try {
+                        /** @type {function} */
+                        let transitionCallback;
+                        while ((transitionCallback = transitions.shift())) {
+                            transitionCallback(timestamp);
+                        }
 
-                    if (!this._finalized) {
-                        this._renderCallback(timestamp);
+                        if (!this._finalized) {
+                            this._renderCallback(timestamp);
+                        }
+                    } catch (error) {
+                        if (!this._onError) {
+                            throw error;
+                        }
+                        this._onError(error);
                     }
                 }
             );

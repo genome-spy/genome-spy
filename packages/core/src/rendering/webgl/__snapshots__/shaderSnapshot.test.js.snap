@@ -1066,6 +1066,21 @@ vec2 applySampleFacet(vec2 pos) {
     return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
 }
 
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+vec2 clampPosition(vec2 pos) {
+#ifdef CLAMP_X
+    pos.x = clamp(pos.x, 0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    SampleFacetPosition facet = getSampleFacetPos();
+    pos.y = clamp(pos.y, facet.pos, facet.pos + facet.height);
+#endif
+    return pos;
+}
+#else
+#define clampPosition(pos) (pos)
+#endif
+
 
 /*
  * Based on concepts presented at:
@@ -1283,14 +1298,15 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 }
 
 void main(void) {
-    vec2 a = applyOffset(
+    vec2 a = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
-    vec2 b = applyOffset(
+    ));
+    vec2 b = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    );
+    ));
+
     float direction = getScaled_direction();
     bool bidirectional = direction == DIRECTION_BOTH;
 
@@ -2461,6 +2477,21 @@ vec2 applySampleFacet(vec2 pos) {
     return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
 }
 
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+vec2 clampPosition(vec2 pos) {
+#ifdef CLAMP_X
+    pos.x = clamp(pos.x, 0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    SampleFacetPosition facet = getSampleFacetPos();
+    pos.y = clamp(pos.y, facet.pos, facet.pos + facet.height);
+#endif
+    return pos;
+}
+#else
+#define clampPosition(pos) (pos)
+#endif
+
 
 /*
  * Based on concepts presented at:
@@ -2678,14 +2709,15 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 }
 
 void main(void) {
-    vec2 a = applyOffset(
+    vec2 a = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
-    vec2 b = applyOffset(
+    ));
+    vec2 b = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    );
+    ));
+
     float direction = getScaled_direction();
     bool bidirectional = direction == DIRECTION_BOTH;
 
@@ -3638,7 +3670,7 @@ vec3 accessor_fill_1() {
 }
 
 vec3 getScaled_fill() {
-    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) || (true && !!isSelectionEmpty_brush()))) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]))) || (true && !!isSelectionEmpty_brush()))) {
         return accessor_fill_0();
     }
     else {
@@ -3661,7 +3693,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
+    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]))) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
 }
 
 
@@ -3716,6 +3748,21 @@ vec2 applySampleFacet(vec2 pos) {
     SampleFacetPosition facetPos = getSampleFacetPos();
     return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
 }
+
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+vec2 clampPosition(vec2 pos) {
+#ifdef CLAMP_X
+    pos.x = clamp(pos.x, 0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    SampleFacetPosition facet = getSampleFacetPos();
+    pos.y = clamp(pos.y, facet.pos, facet.pos + facet.height);
+#endif
+    return pos;
+}
+#else
+#define clampPosition(pos) (pos)
+#endif
 
 
 /*
@@ -3802,11 +3849,17 @@ void main(void) {
     }
 
     float size = getScaled_size();
-    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applyOffset(
-        applySampleFacet(pos),
+    vec2 pos = vec2(getScaled_x(), getScaled_y());
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    // Positional aliases retain their pixel size in a clamped sample facet.
+    vec2 placed = applySampleFacet(pos) + getDxDy();
+#else
+    vec2 placed = applySampleFacet(pos + getDxDy());
+#endif
+    vec2 facetedPos = clampPosition(applyOffset(
+        placed,
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
+    ));
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {
@@ -4683,6 +4736,21 @@ vec2 applySampleFacet(vec2 pos) {
     return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
 }
 
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+vec2 clampPosition(vec2 pos) {
+#ifdef CLAMP_X
+    pos.x = clamp(pos.x, 0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    SampleFacetPosition facet = getSampleFacetPos();
+    pos.y = clamp(pos.y, facet.pos, facet.pos + facet.height);
+#endif
+    return pos;
+}
+#else
+#define clampPosition(pos) (pos)
+#endif
+
 
 /*
  * Based on concepts presented at:
@@ -4851,14 +4919,21 @@ void main(void) {
     // The bezier's control points
     vec2 p1, p2, p3, p4;
 
-    vec2 a = applyOffset(
+    vec2 a = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    ) * uViewportSize;
-    vec2 b = applyOffset(
+    )) * uViewportSize;
+    vec2 b = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    ) * uViewportSize;
+    )) * uViewportSize;
+
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    if (all(equal(a, b))) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
 
     if (uShape <= SHAPE_DOME) {
         if (uShape == SHAPE_DOME) {
@@ -5864,7 +5939,7 @@ vec3 scale_stroke(uint value) {
 }
 
 vec3 getScaled_stroke() {
-    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush()))) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) && (uParam_brush_y[0] < uParam_brush_y[1] && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush()))) {
         return scale_stroke(accessor_stroke_0());
     }
     else {
@@ -5911,7 +5986,7 @@ vec3 scale_fill(uint value) {
 }
 
 vec3 getScaled_fill() {
-    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush()))) {
+    if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) && (uParam_brush_y[0] < uParam_brush_y[1] && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush()))) {
         return scale_fill(accessor_fill_0());
     }
     else {
@@ -5934,7 +6009,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1])) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
+    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) && (uParam_brush_y[0] < uParam_brush_y[1] && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
 }
 
 
@@ -5989,6 +6064,21 @@ vec2 applySampleFacet(vec2 pos) {
     SampleFacetPosition facetPos = getSampleFacetPos();
     return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
 }
+
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+vec2 clampPosition(vec2 pos) {
+#ifdef CLAMP_X
+    pos.x = clamp(pos.x, 0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    SampleFacetPosition facet = getSampleFacetPos();
+    pos.y = clamp(pos.y, facet.pos, facet.pos + facet.height);
+#endif
+    return pos;
+}
+#else
+#define clampPosition(pos) (pos)
+#endif
 
 
 /*
@@ -6075,11 +6165,17 @@ void main(void) {
     }
 
     float size = getScaled_size();
-    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applyOffset(
-        applySampleFacet(pos),
+    vec2 pos = vec2(getScaled_x(), getScaled_y());
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    // Positional aliases retain their pixel size in a clamped sample facet.
+    vec2 placed = applySampleFacet(pos) + getDxDy();
+#else
+    vec2 placed = applySampleFacet(pos + getDxDy());
+#endif
+    vec2 facetedPos = clampPosition(applyOffset(
+        placed,
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
+    ));
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {
@@ -7089,6 +7185,21 @@ vec2 applySampleFacet(vec2 pos) {
     return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
 }
 
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+vec2 clampPosition(vec2 pos) {
+#ifdef CLAMP_X
+    pos.x = clamp(pos.x, 0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    SampleFacetPosition facet = getSampleFacetPos();
+    pos.y = clamp(pos.y, facet.pos, facet.pos + facet.height);
+#endif
+    return pos;
+}
+#else
+#define clampPosition(pos) (pos)
+#endif
+
 
 /*
  * Based on concepts presented at:
@@ -7174,11 +7285,17 @@ void main(void) {
     }
 
     float size = getScaled_size();
-    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applyOffset(
-        applySampleFacet(pos),
+    vec2 pos = vec2(getScaled_x(), getScaled_y());
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+    // Positional aliases retain their pixel size in a clamped sample facet.
+    vec2 placed = applySampleFacet(pos) + getDxDy();
+#else
+    vec2 placed = applySampleFacet(pos + getDxDy());
+#endif
+    vec2 facetedPos = clampPosition(applyOffset(
+        placed,
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
+    ));
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {
@@ -8345,6 +8462,21 @@ vec2 applySampleFacet(vec2 pos) {
     return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
 }
 
+#if defined(CLAMP_X) || defined(CLAMP_Y)
+vec2 clampPosition(vec2 pos) {
+#ifdef CLAMP_X
+    pos.x = clamp(pos.x, 0.0, 1.0);
+#endif
+#ifdef CLAMP_Y
+    SampleFacetPosition facet = getSampleFacetPos();
+    pos.y = clamp(pos.y, facet.pos, facet.pos + facet.height);
+#endif
+    return pos;
+}
+#else
+#define clampPosition(pos) (pos)
+#endif
+
 
 /*
  * Based on concepts presented at:
@@ -8440,37 +8572,34 @@ void main(void) {
         uCornerRadiusBottomLeft
     );
 
-    SampleFacetPosition sampleFacetPos = getSampleFacetPos();
-    if (sampleFacetPos.height == 0.0) {
-        // Filtered samples have no facet height. Cull them before minimum-size
-        // clamping can expand their rectangles at the viewport boundary.
-        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
-        return;
-    }
-
-    vec2 pos1 = applyOffset(
+    vec2 pos1 = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
-    vec2 pos2 = applyOffset(
+    ));
+    vec2 pos2 = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    );
+    ));
 
     sort(pos1.x, pos2.x);
     sort(pos1.y, pos2.y);
 
-    // Clamp x to prevent precision artifacts when the scale is zoomed very close.
-	// TODO: clamp y as well
-	float clampMargin = 1.0;
-    pos1.x = clamp(pos1.x, 0.0 - clampMargin, 1.0 + clampMargin);
-    pos2.x = clamp(pos2.x, 0.0 - clampMargin, 1.0 + clampMargin);
+    // Preserve ordinary rect overscan to prevent precision artifacts.
+    pos1.x = clamp(pos1.x, -1.0, 2.0);
+    pos2.x = clamp(pos2.x, -1.0, 2.0);
 
     vec2 size = pos2 - pos1;
 
-    if (size.x < 0.0 || size.y < 0.0) {
-        // Keep zero-sized rects alive so min-size clamping can stabilize them.
-        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+    // Unclamped zero-sized rectangles remain eligible for minimum-size expansion.
+    bool collapsed = false;
+#ifdef CLAMP_X
+    collapsed = size.x == 0.0;
+#endif
+#ifdef CLAMP_Y
+    collapsed = collapsed || size.y == 0.0;
+#endif
+    if (collapsed) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
 

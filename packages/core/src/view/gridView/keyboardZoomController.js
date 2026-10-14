@@ -1,6 +1,9 @@
 import KeyboardZoomMotion from "../../utils/keyboardZoomMotion.js";
 import { markZoomActivity } from "../zoom.js";
-import { getKeyboardZoomTarget } from "./zoomNavigationUtils.js";
+import {
+    getKeyboardZoomTarget,
+    getZoomInteractionTarget,
+} from "./zoomNavigationUtils.js";
 
 /**
  * Handles WASD keyboard navigation for the root grid view.
@@ -92,7 +95,13 @@ export default class KeyboardZoomController {
                     this.#zoomAnchorX = Math.max(0, Math.min(1, anchor));
                 }
             } else {
-                const normalizedPoint = pointedChild.coords.normalizePoint(
+                const coords =
+                    getZoomInteractionTarget(
+                        pointedChild.view,
+                        event.point,
+                        pointedChild.coords
+                    )?.coords ?? pointedChild.coords;
+                const normalizedPoint = coords.normalizePoint(
                     event.point.x,
                     event.point.y
                 );

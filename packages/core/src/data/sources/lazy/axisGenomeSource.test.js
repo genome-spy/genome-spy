@@ -24,7 +24,7 @@ function createViewStub() {
             context: {
                 dataFlow: {
                     loadingStatusRegistry: {
-                        set: vi.fn(),
+                        setSource: vi.fn(),
                     },
                 },
             },

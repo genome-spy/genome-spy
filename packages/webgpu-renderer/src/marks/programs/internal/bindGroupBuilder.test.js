@@ -12,9 +12,6 @@ describe("buildBindGroup", () => {
         const ordinalRangeBuffer = /** @type {GPUBuffer} */ (
             /** @type {unknown} */ ({ id: "ordinal" })
         );
-        const domainMapBuffer = /** @type {GPUBuffer} */ (
-            /** @type {unknown} */ ({ id: "domain" })
-        );
         const sampler = /** @type {GPUSampler} */ (
             /** @type {unknown} */ ({ id: "sampler" })
         );
@@ -54,25 +51,16 @@ describe("buildBindGroup", () => {
                     uniformBuffer,
                     resourceLayout: [
                         { name: "x", role: "series" },
-                        { name: "x", role: "ordinalRange" },
-                        { name: "x", role: "domainMap" },
+                        { name: "scaleTables", role: "scaleTables" },
                         { name: "x", role: "rangeTexture" },
                         { name: "x", role: "rangeSampler" },
                     ],
-                    getSeriesBuffer: (name) =>
-                        name === "x" ? seriesBuffer : null,
+                    getScaleTableBuffer: () => ordinalRangeBuffer,
+                    getSeriesBuffer: () => seriesBuffer,
                     getScaleResources: (name) =>
                         name === "x"
                             ? {
                                   scaleStops: undefined,
-                                  ordinalRange: {
-                                      buffer: ordinalRangeBuffer,
-                                      size: { length: 1, byteLength: 4 },
-                                  },
-                                  domainMap: {
-                                      buffer: domainMapBuffer,
-                                      size: { length: 1, byteLength: 8 },
-                                  },
                                   rangeTexture: {
                                       texture,
                                       sampler,
@@ -89,7 +77,7 @@ describe("buildBindGroup", () => {
         );
 
         expect(bindGroup.entries.map((entry) => entry.binding)).toEqual([
-            0, 1, 2, 3, 4, 5,
+            0, 1, 2, 3, 4,
         ]);
         const uniformResource = /** @type {{ buffer: GPUBuffer }} */ (
             bindGroup.entries[0].resource
@@ -100,16 +88,11 @@ describe("buildBindGroup", () => {
         const ordinalResource = /** @type {{ buffer: GPUBuffer }} */ (
             bindGroup.entries[2].resource
         );
-        const domainResource = /** @type {{ buffer: GPUBuffer }} */ (
-            bindGroup.entries[3].resource
-        );
-
         expect(uniformResource.buffer).toBe(uniformBuffer);
         expect(seriesResource.buffer).toBe(seriesBuffer);
         expect(ordinalResource.buffer).toBe(ordinalRangeBuffer);
-        expect(domainResource.buffer).toBe(domainMapBuffer);
-        expect(bindGroup.entries[4].resource).toBe(textureView);
-        expect(bindGroup.entries[5].resource).toBe(sampler);
+        expect(bindGroup.entries[3].resource).toBe(textureView);
+        expect(bindGroup.entries[4].resource).toBe(sampler);
         expect(
             /** @type {GPUBindGroupDescriptor} */ (
                 /** @type {unknown} */ (bindGroup)
@@ -140,6 +123,7 @@ describe("buildBindGroup", () => {
                     /** @type {unknown} */ ({ id: "uniform" })
                 ),
                 resourceLayout: [{ name: "x", role: "series" }],
+                getScaleTableBuffer: () => null,
                 getSeriesBuffer: () => null,
                 getScaleResources: () => undefined,
                 extraTextures: new Map(),

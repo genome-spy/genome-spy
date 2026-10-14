@@ -1,51 +1,73 @@
 import { expect, test } from "vitest";
 import scaleIndex from "./scaleIndex.js";
 
-test("Scale with defaults works as expected", () => {
+test("grouping gaps separate half-open endpoints without stretching bands", () => {
+    const scale = scaleIndex()
+        .domain([0, 20])
+        .range([100, 200])
+        .gapPositions([10])
+        .gapWidth(6);
+
+    const mapping = scale.gapMapping();
+    const before = mapping.position(10, 0, true);
+    const after = scale(10);
+    expect(after - before).toBeCloseTo(6);
+    expect(mapping.position(9, 1)).toBeCloseTo(before);
+    expect(mapping.position(9, 0.5) - scale(9)).toBeCloseTo(
+        scale.bandwidth() / 2
+    );
+    expect(mapping.position(20, 0, true) - scale(0)).toBeCloseTo(100);
+    for (const pixel of [before, before + 1, after - 1, after]) {
+        expect(scale.invert(pixel)).toBeCloseTo(10);
+    }
+});
+
+test("gap width uses the final placement extent and preserves reversed output", () => {
+    const scale = scaleIndex()
+        .domain([0, 20])
+        .range([1, 0])
+        .gapPositions([10])
+        .gapWidth(6)
+        .axisLength(100);
+
+    for (const extent of [100, 200]) {
+        const mapping = scale.gapMapping(extent);
+        const before = mapping.position(10, 0, true);
+        const after = mapping.position(10);
+        expect((before - after) * extent).toBeCloseTo(6);
+        expect(mapping.invertPoint((before + after) / 2).value).toBe(10);
+    }
+    expect(scale.copy()(10)).toBe(scale(10));
+});
+
+test("returns band starts with defaults", () => {
     const scale = scaleIndex();
 
-    // Align is 0.5 by default
-    expect(scale(-1)).toEqual(-0.5);
-    expect(scale(0)).toEqual(0.5);
-    expect(scale(1)).toEqual(1.5);
-    expect(scale(2)).toEqual(2.5);
+    expect(scale(-1)).toEqual(-1);
+    expect(scale(0)).toEqual(0);
+    expect(scale(1)).toEqual(1);
+    expect(scale(2)).toEqual(2);
 });
 
-test("Scale scales correctly with custom domain and range", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.0);
+test.each([0, 0.5, 1])(
+    "alignment %s does not affect unpadded mapping or viewport inversion",
+    (align) => {
+        const scale = scaleIndex()
+            .domain([1.25, 11.25])
+            .range([100, 200])
+            .align(align);
 
-    expect(scale(0)).toEqual(100);
-    expect(scale(10)).toEqual(200);
-});
+        expect(scale(2)).toBe(107.5);
+        expect(scale.invert(107.5)).toBe(2);
+        expect([scale.invert(100), scale.invert(200)]).toEqual(scale.domain());
+    }
+);
 
 test("Scale floors fractional index inputs", () => {
     const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0);
 
     expect(scale(3.1)).toEqual(scale(3));
     expect(scale(3.9)).toEqual(scale(3));
-});
-
-test("Invert works as expected", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.0);
-
-    expect(scale.invert(scale(0))).toEqual(0);
-    expect(scale.invert(scale(5))).toEqual(5);
-    expect(scale.invert(scale(10))).toEqual(10);
-});
-
-test("Scale scales correctly with custom domain, range, and align", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.5);
-
-    expect(scale(0)).toEqual(105);
-    expect(scale(10)).toEqual(205);
-});
-
-test("Invert works as expected with align", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.5);
-
-    expect(scale.invert(scale(0))).toEqual(0);
-    expect(scale.invert(scale(5))).toEqual(5);
-    expect(scale.invert(scale(10))).toEqual(10);
 });
 
 test("domain() accepts numeric ordinal domain and computes its extent", () => {
@@ -59,6 +81,14 @@ test("domain() clamps the minimum domain span to one", () => {
 
     scale.domain([1.75, 2.25]);
     expect(scale.domain()).toEqual([1.5, 2.5]);
+
+    // Navigation can leave a gap at the viewport edge with less than one data band.
+    scale.domain([10, 10.5], [0.5, 1]);
+    expect(scale.copy().domain()).toEqual([10, 10.5]);
+    expect(scale.copy().gapDomain()).toEqual([0.5, 1]);
+    scale.domain(scale.domain());
+    expect(scale.domain()).toEqual([9.75, 10.75]);
+    expect(scale.gapDomain()).toBeUndefined();
 });
 
 test("bandwidth() is positive and respects inner padding", () => {
@@ -72,8 +102,8 @@ test("padding affects step, placement, and inversion like the WebGL scale", () =
 
     expect(scale.step()).toBeCloseTo(-1 / 40.5);
     expect(scale.bandwidth()).toBeCloseTo(0.5 / 40.5);
-    expect(scale(0)).toBeCloseTo(0.9814814815);
-    expect(scale(40)).toBeCloseTo(-0.0061728395);
+    expect(scale(0)).toBeCloseTo(0.987654321);
+    expect(scale(40)).toBeCloseTo(0);
     expect(scale.invert(scale(0))).toBeCloseTo(0);
     expect(scale.invert(scale(17))).toBeCloseTo(17);
     expect(scale.invert(scale(40))).toBeCloseTo(40);
@@ -101,6 +131,16 @@ test("ticks() produces integer values", () => {
     expect(scale.ticks(100)).toEqual([0, 1, 2, 3, 4]);
 });
 
+test("ticks follow visible band centers when padding and alignment shift bands", () => {
+    const scale = scaleIndex()
+        .domain([0.4, 5.4])
+        .paddingInner(0.2)
+        .paddingOuter(0.4);
+
+    expect(scale.align(0).ticks(5)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(scale.align(1).ticks(5)).toEqual([0, 1, 2, 3, 4]);
+});
+
 test("ticks() take numberingOffset into account", () => {
     const scale = scaleIndex().domain([10, 15]).numberingOffset(1);
 
@@ -115,4 +155,22 @@ test("tickFormat() takes numberingOffset into account", () => {
 
     // Although the ticks have been offset, the labels should be nice
     expect(scale.ticks(5).map(format)).toEqual(["11", "12", "13", "14", "15"]);
+});
+
+test("navigation retains partial gaps and the data slope while panning", () => {
+    const scale = scaleIndex()
+        .domain([9, 29])
+        .range([0, 100])
+        .gapPositions([10])
+        .gapWidth(6);
+    const previous = scale.gapMapping();
+    const next = previous.navigate(1, 50, -0.06);
+    expect(next.domain[0]).toBe(10);
+    expect(next.ranks[0]).toBeGreaterThan(0);
+    expect(next.ranks[0]).toBeLessThan(1);
+    scale.domain(next.domain, next.ranks);
+    expect(scale.gapMapping().step).toBeCloseTo(previous.step);
+    expect(scale(10)).toBeCloseTo(previous.position(10) - 6);
+    expect(scale.invert(2)).toBe(10);
+    expect(scale.copy()(10)).toBeCloseTo(scale(10));
 });

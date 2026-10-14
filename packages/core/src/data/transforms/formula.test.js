@@ -3,6 +3,7 @@ import { makeParamRuntimeProvider, processData } from "../flowTestUtils.js";
 import Collector from "../collector.js";
 import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import FormulaTransform from "./formula.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 
 test.todo("Implement stub for ParamRuntime");
 
@@ -24,6 +25,25 @@ test("FormulaTransform", () => {
         { a: 2, b: 4 },
         { a: 3, b: 6 },
     ]);
+});
+
+test("validates fields after upstream transforms produce them", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{ label: "abc" }] },
+        transform: [
+            { type: "formula", expr: "length(datum.label)", as: "labelWidth" },
+            {
+                type: "formula",
+                expr: "datum.labelWidth + 10",
+                as: "collisionWidth",
+            },
+        ],
+        mark: "point",
+    });
+    expect(Array.from(view.flowHandle.collector.getData())).toMatchObject([
+        { labelWidth: 3, collisionWidth: 13 },
+    ]);
+    view.disposeSubtree();
 });
 
 test("refreshes expression snapshots at flow boundaries", () => {

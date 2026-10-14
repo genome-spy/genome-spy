@@ -98,7 +98,7 @@ defaults and built-in theme, but before `spec.config`.
 
 > `optional` **onError?**: (`error`, `container`) => `boolean` \| `void`
 
-Optional hook for handling launch errors. Return true to suppress default UI.
+Optional hook for handling launch and runtime errors. Return true to suppress default UI.
 
 #### Parameters
 
@@ -110,3 +110,33 @@ Optional hook for handling launch errors. Return true to suppress default UI.
 #### Returns
 
 `boolean` \| `void`
+
+***
+
+### getSpecOrigin?
+
+> `optional` **getSpecOrigin?**: (`fragment`) => `string`
+
+Links reported errors to locations in your specification.
+
+Called with a data definition, encoding branch, parameter, transform,
+expression reference, or interaction configuration from your specification.
+Return a string identifying that object, such as the JSON Pointer `"/encoding/x"` for
+`{ field: "position", type: "quantitative" }`. Located errors include this
+string and a relative property path in `SpecLocation`.
+`getSpecErrorLocation(error)` reads it from errors delivered to `onError`
+or rejected by `embed`. Data-loading reports expose `errorLocation` for
+located processing errors and `origin` for the data definition itself.
+
+Return `undefined` if the definition's location is unknown. Equivalent data
+definitions may share one source; its reports contain one definition's origin.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `fragment` | `object` |
+
+#### Returns
+
+`string`

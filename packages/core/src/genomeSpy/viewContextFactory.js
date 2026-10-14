@@ -24,6 +24,8 @@ export function createViewContext(options) {
         animator: options.animator ?? missing("animator"),
         genomeStore: options.genomeStore,
         textMetrics: options.textMetrics ?? missing("textMetrics"),
+        reportError: options.reportError,
+        getSpecOrigin: options.getSpecOrigin,
         createOrImportView: async function (
             spec,
             layoutParent,

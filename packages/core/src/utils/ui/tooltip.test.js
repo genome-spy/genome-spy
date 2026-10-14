@@ -4,6 +4,29 @@ import Tooltip, { TOOLTIP_CLASS_NAME } from "./tooltip.js";
 import { html } from "lit";
 
 describe("Tooltip async updates", () => {
+    it("refreshes repeated data and ignores an async result from the previous cell", async () => {
+        const tooltip = new Tooltip(document.createElement("div"));
+        tooltip.mouseCoords = [0, 0];
+        const setContent = vi.spyOn(tooltip, "setContent");
+        const datum = { x: 5 };
+        /** @type {(value: string) => void} */
+        let resolveA;
+        const pendingA = new Promise((resolve) => {
+            resolveA = resolve;
+        });
+        const convertB = vi.fn(async () => "B");
+        const cellB = {};
+        tooltip.updateWithDatum(datum, () => pendingA, {});
+        tooltip.updateWithDatum(datum, convertB, cellB);
+        tooltip.updateWithDatum(datum, convertB, cellB);
+        resolveA("A");
+        await pendingA;
+        await Promise.resolve();
+        expect(convertB).toHaveBeenCalledOnce();
+        expect(setContent).toHaveBeenCalledWith("B");
+        expect(setContent).not.toHaveBeenCalledWith("A");
+    });
+
     it("ignores stale async result after clear", async () => {
         const container = document.createElement("div");
         const tooltip = new Tooltip(container);

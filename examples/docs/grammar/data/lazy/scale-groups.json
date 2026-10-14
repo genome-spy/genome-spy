@@ -1,0 +1,66 @@
+{
+  "description": [
+    "Outlined heatmap groups",
+    "Grouping gaps retain their pixel widths during zooming. Gray outlines enclose each two-dimensional group above the heatmap cells."
+  ],
+
+  "data": { "sequence": { "start": 0, "stop": 200, "as": "cell" } },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.cell % 20", "as": "column" },
+    { "type": "formula", "expr": "floor(datum.cell / 20)", "as": "row" },
+    {
+      "type": "formula",
+      "expr": "sin(datum.column * 0.7 + datum.row)",
+      "as": "value"
+    }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "column",
+      "type": "index",
+      "scale": { "domain": [0, 19], "gapPositions": [5, 12], "gapWidth": 8 }
+    },
+    "y": {
+      "field": "row",
+      "type": "index",
+      "scale": { "domain": [0, 9], "gapPositions": [4, 7], "gapWidth": 8 }
+    }
+  },
+
+  "layer": [
+    {
+      "name": "cells",
+      "mark": "rect",
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "legend": { "style": null }
+        }
+      }
+    },
+
+    {
+      "name": "groupOutlines",
+      "domainInert": true,
+      "data": { "lazy": { "type": "scaleGroups", "channels": ["x", "y"] } },
+      "mark": {
+        "type": "rect",
+        "clamp": true,
+        "clip": false,
+        "filled": false,
+        "stroke": "gray",
+        "strokeWidth": 1,
+        "tooltip": null
+      },
+      "encoding": {
+        "x": { "field": "xStart", "type": "index", "title": null },
+        "x2": { "field": "xEnd" },
+        "y": { "field": "yStart", "type": "index", "title": null },
+        "y2": { "field": "yEnd" }
+      }
+    }
+  ]
+}

@@ -1,3 +1,59 @@
+# WebGPU example audit
+
+Run all shared Core and docs specifications with default WebGPU limits:
+
+```sh
+npm -w @genome-spy/core run smoke:examples:webgpu
+```
+
+The runner records supported startup buffer-size requests and forces both byte
+limits back to WebGPU defaults. It rejects every other explicit limit, including
+binding-count overrides, and rejects unsupported byte requests before forcing
+defaults. It collects uncaptured GPU validation errors, waits for visible lazy
+data, and checks canvas screenshots.
+`output/webgpu-core/summary.json` includes device defaults, per-stage binding
+counts across explicit pipeline layouts, and buffer allocation/binding peaks.
+`failure-report.md` lists failures and peaks at or above 80% of the defaults.
+Auto-layout compute pipelines receive normal GPU validation but do not have
+reflected binding counts in the headroom report. Initial-state smoke checks do
+not exhaust interactions, hidden views, future lazy data, or visual parity.
+
+Use `--output-dir`, `--match`, or explicit example paths for focused runs.
+
+# Data preparation benchmark
+
+With the repository development server running (`npm start`), compare WebGL and
+WebGPU using a generated scatterplot of 1.5 million JavaScript objects:
+
+```sh
+node packages/core/scripts/runWebGpuDataBenchmark.mjs
+```
+
+The driver uses headed Chrome on the native GPU, DPR 1, two A/B warmups, and five
+counterbalanced measured runs. It embeds Core directly and measures initial
+named-dataset population, replacement, and navigation separately. Data generation
+happens outside timing; each fresh embed starts with an empty dataset. This
+isolates row propagation, channel extraction, index construction, packing/upload, and rendering from
+network loading, decoding, and initial module/font loading. Completion waits for
+two animation frames and a WebGPU queue fence or WebGL `finish()`.
+
+Results in `output/webgpu-data-benchmark/summary.json` include environment,
+per-run timings, profiler phases/counters, and the default-limit audit. GPU
+validation errors fail the run, as does rebuilding/uploading series during
+navigation. `preparation` measures WebGL point preparation/upload or WebGPU mark
+translation, including index construction and retained resource synchronization.
+`configuration` includes channel extraction; `resources` includes packing/upload.
+These phases overlap and must not be added together.
+
+Use `--rows 1000` for a small-data check, `--runs 7` for longer measurements,
+`--server URL` for another development server, and `--output PATH` to retain
+before/after results. `--headless` is diagnostic; inspect the actual adapter and
+use native headed runs for performance conclusions. The benchmark forces buffer
+sizes and binding counts to WebGPU defaults, like the example audit above.
+
+See [recorded data preparation results](webgpu-data-performance.md) for the
+reference measurements and validation.
+
 # Interaction performance benchmark
 
 `runWebGpuInteractionBenchmark.mjs` is a generic App benchmark driver. It

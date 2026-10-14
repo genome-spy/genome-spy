@@ -6,6 +6,8 @@ import { isStillZooming } from "../view/zoom.js";
 import createTooltipContext from "../tooltip/tooltipContext.js";
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
+import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import { isFacetSpec } from "../view/viewSpecGuards.js";
 import CursorManager from "./cursorManager.js";
 import EventListenerRegistry from "./eventListenerRegistry.js";
 
@@ -1000,31 +1002,42 @@ export default class InteractionController {
         this.#replaceHover(hit ?? null);
 
         if (this.#currentHover) {
-            const mark = this.#currentHover.mark;
-            this.updateTooltip(this.#currentHover.datum, async (datum) => {
-                if (!mark.isPickingParticipant()) {
-                    return;
-                }
-
-                const tooltipProps = mark.properties.tooltip;
-
-                if (tooltipProps !== null && tooltipProps !== false) {
-                    const handlerName = tooltipProps?.handler ?? "default";
-                    const handler = this.#tooltipHandlers[handlerName];
-                    if (!handler) {
-                        throw new Error(
-                            "No such tooltip handler: " + handlerName
-                        );
+            const hover = this.#currentHover;
+            const mark = hover.mark;
+            this.updateTooltip(
+                hover.datum,
+                async (datum) => {
+                    if (!mark.isPickingParticipant()) {
+                        return;
                     }
 
-                    const context = createTooltipContext(
-                        datum,
-                        mark,
-                        tooltipProps?.params
-                    );
-                    return handler(datum, mark, tooltipProps?.params, context);
-                }
-            });
+                    const tooltipProps = mark.properties.tooltip;
+
+                    if (tooltipProps !== null && tooltipProps !== false) {
+                        const handlerName = tooltipProps?.handler ?? "default";
+                        const handler = this.#tooltipHandlers[handlerName];
+                        if (!handler) {
+                            throw new Error(
+                                "No such tooltip handler: " + handlerName
+                            );
+                        }
+
+                        const context = createTooltipContext(
+                            datum,
+                            mark,
+                            tooltipProps?.params,
+                            hover.facetId
+                        );
+                        return handler(
+                            datum,
+                            mark,
+                            tooltipProps?.params,
+                            context
+                        );
+                    }
+                },
+                hover
+            );
         }
     }
 
@@ -1046,16 +1059,35 @@ export default class InteractionController {
             if (
                 view instanceof UnitView &&
                 view.mark.isPickingParticipant() &&
-                (!scopeView || view.getLayoutAncestors().includes(scopeView)) &&
-                [...view.facetCoords.values()].some((coords) =>
-                    coords.containsPoint(x, y)
-                )
+                (!scopeView || view.getLayoutAncestors().includes(scopeView))
             ) {
-                const datum = view
-                    .getCollector()
-                    ?.findDatumByUniqueId(uniqueId);
-                if (datum) {
-                    hit = { mark: view.mark, datum, uniqueId };
+                for (const [facetId, coords] of view.facetCoords) {
+                    if (!coords.containsPoint(x, y)) {
+                        continue;
+                    }
+                    const datum = view
+                        .getCollector()
+                        ?.findDatumByUniqueId(uniqueId);
+                    if (datum) {
+                        // Shader-based sample facets can share the same bounds;
+                        // only facet operators establish cell identity by point.
+                        const cellFacetId =
+                            facetId !== undefined &&
+                            view
+                                .getLayoutAncestors()
+                                .some((ancestor) => isFacetSpec(ancestor.spec))
+                                ? facetId
+                                : undefined;
+                        hit = {
+                            mark: view.mark,
+                            datum,
+                            uniqueId,
+                            ...(cellFacetId === undefined
+                                ? {}
+                                : { facetId: cellFacetId }),
+                        };
+                    }
+                    break;
                 }
             }
             if (hit) {
@@ -1111,17 +1143,24 @@ export default class InteractionController {
      */
     #replaceHover(hover) {
         const previousHover = this.#currentHover;
-        this.#currentHover = hover;
         if (
-            (!previousHover && !this.#currentHover) ||
+            (!previousHover && !hover) ||
             (previousHover &&
-                this.#currentHover &&
-                previousHover.mark === this.#currentHover.mark &&
-                previousHover.uniqueId === this.#currentHover.uniqueId &&
-                previousHover.datum === this.#currentHover.datum)
+                hover &&
+                previousHover.mark === hover.mark &&
+                previousHover.uniqueId === hover.uniqueId &&
+                previousHover.datum === hover.datum &&
+                (previousHover.facetId === hover.facetId ||
+                    (previousHover.facetId &&
+                        hover.facetId &&
+                        shallowArrayEquals(
+                            previousHover.facetId,
+                            hover.facetId
+                        ))))
         ) {
             return;
         }
+        this.#currentHover = hover;
         // TODO: Consider comparing previous and next hits within each listener's
         // scope, so hover changes entirely outside it do not emit undefined again.
         for (const entry of [...this.#hoverListeners]) {
@@ -1143,15 +1182,16 @@ export default class InteractionController {
      *
      * @param {T} datum
      * @param {function(T):Promise<string | HTMLElement | import("lit").TemplateResult>} [converter]
+     * @param {unknown} [identity] Distinguishes repeated occurrences of a datum.
      * @template T
      */
-    updateTooltip(datum, converter) {
+    updateTooltip(datum, converter, identity = datum) {
         if (this.#suppressTooltipUntilMouseMove) {
             return;
         }
 
         if (!this.#tooltipUpdateRequested || !datum) {
-            this.#tooltip.updateWithDatum(datum, converter);
+            this.#tooltip.updateWithDatum(datum, converter, identity);
             this.#tooltipUpdateRequested = true;
         } else {
             throw new Error(

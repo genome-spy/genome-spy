@@ -1,5 +1,4 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
-import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 
 const DEFAULT_ELLIPSIS = "...";
@@ -55,7 +54,7 @@ export default class TruncateTextTransform extends Transform {
         super(params, paramRuntimeProvider);
 
         this.params = params;
-        this.accessor = field(params.field);
+        this.accessor = this.createFieldAccessor(params, "field");
         this.as = params.as ?? params.field;
         this.fontSize = params.fontSize;
         this.ellipsis = params.ellipsis ?? DEFAULT_ELLIPSIS;

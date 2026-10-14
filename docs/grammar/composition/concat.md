@@ -105,6 +105,17 @@ for the step size. Scrollable viewports are particularly useful for categorical
 data types (`"ordinal"` and `"nominal"`) and respective scales and axes that
 do not support zooming and panning.
 
+Besides using the scrollbars, you can scroll a viewport by dragging its content.
+Scrolling differs from panning: panning changes a zoomable scale's domain, such
+as the visible genomic interval, whereas scrolling moves the viewport over
+content that is already laid out, leaving the scales unchanged. A drag pans along
+axes that have a zoomable scale and scrolls along axes that don't. For example,
+in a tall stack of tracks with a genomic x axis and a `viewportHeight`, dragging
+sideways pans the genome and dragging up or down scrolls through the tracks.
+
+Once a drag can scroll, it follows its main direction after the first few
+pixels, so scrolling vertically does not also pan horizontally.
+
 EXAMPLE examples/docs/grammar/composition/concat/scrollable-viewports.json height=200
 
 ## Collapsed overhang

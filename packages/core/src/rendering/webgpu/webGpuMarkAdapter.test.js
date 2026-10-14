@@ -561,8 +561,9 @@ describe("WebGPU mark adapter", () => {
             }
         );
         /** @type {any} */ (mark.unitView).paramRuntime = {
-            evaluateAndGet: (/** @type {string} */ name) =>
-                name == "fadeWidth" ? 12 : -9,
+            evaluateAndGet: (
+                /** @type {import("../../spec/parameter.js").ExprRef} */ ref
+            ) => (ref.expr == "fadeWidth" ? 12 : -9),
             watchExpression: vi.fn(),
         };
 
@@ -1249,8 +1250,11 @@ describe("WebGPU mark adapter", () => {
         );
     });
 
-    test("forwards unique ids for renderer picking", () => {
-        const data = [{ id: 4 }, { id: 9 }];
+    test.each([3, 20000])("forwards exact picking ids for %i rows", (count) => {
+        const ids = [4, 2 ** 24 + 1, 0xffffffff];
+        const data = Array.from({ length: count }, (_, i) => ({
+            id: ids[i % 3],
+        }));
         const mark = createMark("point", data, {
             uniqueId: createEncoder((datum) => datum.id, {
                 channelDef: { field: "id", type: "quantitative" },
@@ -1262,9 +1266,95 @@ describe("WebGPU mark adapter", () => {
         expect(
             /** @type {any} */ (translated).config.channels.uniqueId
         ).toEqual({
-            data: new Uint32Array([4, 9]),
+            data: new Uint32Array(data.map((datum) => datum.id)),
             type: "u32",
         });
+    });
+
+    test.each([2, 20000])(
+        "reuses field series for %i rows until rows or the accessor change",
+        (count) => {
+            const data = Array.from({ length: count }, (_, i) => ({
+                x: i + 1,
+            }));
+            const read = vi.fn((datum) => datum.x);
+            const mark = createMark("point", data, {
+                x: createEncoder(read, {
+                    scale: createLinearScale([0, 4]),
+                    channelDef: { field: "x", type: "quantitative" },
+                }),
+            });
+            /** @param {object[]} rows */
+            const translate = (rows) =>
+                /** @type {any} */ (
+                    createWebGpuMarkConfig(mark, {}, Rectangle.ZERO, 1, rows)
+                        .config
+                ).channels.x.data;
+
+            const first = translate(data);
+            expect(translate(data)).toBe(first);
+            expect(read).toHaveBeenCalledTimes(count);
+
+            const replacement = [{ x: 3 }];
+            const second = translate(replacement);
+            expect(second).toEqual(new Float32Array([3]));
+            expect(second).not.toBe(first);
+            expect(read).toHaveBeenCalledTimes(count + 1);
+
+            mark.encoders.x = createEncoder((datum) => datum.x + 1, {
+                scale: createLinearScale([0, 4]),
+                channelDef: { field: "x", type: "quantitative" },
+            });
+            expect(translate(replacement)).toEqual(new Float32Array([4]));
+        }
+    );
+
+    test("validates the tail of large batches without caching partial series", () => {
+        const data = Array.from({ length: 20000 }, () => ({ x: 1, id: 1 }));
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x, {
+                scale: createLinearScale([0, 4]),
+                channelDef: { field: "x", type: "quantitative" },
+            }),
+            uniqueId: createEncoder((datum) => datum.id, {
+                channelDef: { field: "id" },
+            }),
+        });
+        data.at(-1).id = 2 ** 32;
+        expect(() => createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)).toThrow(
+            'Channel "uniqueId" must contain u32 integers.'
+        );
+        data.at(-1).id = 1;
+        data.at(-1).x = Infinity;
+        expect(() => createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)).toThrow(
+            'Channel "x" contains an infinite value.'
+        );
+        data.at(-1).x = NaN;
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        expect(
+            /** @type {any} */ (translated.config).channels.x.data.at(-1)
+        ).toBeNaN();
+    });
+
+    test("reevaluates expression series with unchanged rows", () => {
+        // Parameter changes retain the collector batch but invalidate expressions.
+        let offset = 0;
+        const data = [{ x: 1 }];
+        const mark = createMark("point", data, {
+            x: createEncoder((datum) => datum.x + offset, {
+                scale: createLinearScale([0, 4]),
+                channelDef: { expr: "datum.x + offset" },
+            }),
+        });
+        const first = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        offset = 2;
+        const second = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        expect(/** @type {any} */ (first.config).channels.x.data).toEqual(
+            new Float32Array([1])
+        );
+        expect(/** @type {any} */ (second.config).channels.x.data).toEqual(
+            new Float32Array([3])
+        );
     });
 
     test("translates point semantic zoom into generic visibility predicates", () => {
@@ -1640,6 +1730,26 @@ describe("WebGPU mark adapter", () => {
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.strokeWidth).toEqual({ value: 0 });
         expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
+    });
+
+    test("keeps clamping local to the selected axes after resizing", () => {
+        for (const clamp of [false, "x", "y", true]) {
+            const mark = createMark("point", [{}], {}, { clamp });
+            for (const width of [100, 240]) {
+                const coords = Rectangle.create(10, 20, width, 200);
+                const { channels } = /** @type {any} */ (
+                    createWebGpuMarkConfig(mark, {}, coords)
+                ).config;
+                expect(channels.xClampRange?.value).toEqual(
+                    clamp === true || clamp === "x"
+                        ? [10, 10 + width]
+                        : undefined
+                );
+                expect(channels.yClampRange?.value).toEqual(
+                    clamp === true || clamp === "y" ? [20, 220] : undefined
+                );
+            }
+        }
     });
 
     test("preserves nested rect endpoint bands", () => {

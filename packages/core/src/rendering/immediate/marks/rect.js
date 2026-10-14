@@ -1,3 +1,4 @@
+import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
@@ -145,16 +146,20 @@ export function visitRectInstances(mark, properties, options, visitor) {
         coords,
         encoders,
         "x",
-        data[start]
+        data[start],
+        isMarkClamped(mark, "x")
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[start]
+        data[start],
+        isMarkClamped(mark, "y")
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
+    const clampX = isMarkClamped(mark, "x");
+    const clampY = isMarkClamped(mark, "y");
     /** @type {RectInstance} */
     const instance = {
         datum: {},
@@ -174,6 +179,13 @@ export function visitRectInstances(mark, properties, options, visitor) {
         const datum = data[i];
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
+        if (
+            (clampX && xRange[0] === xRange[1]) ||
+            (clampY && yRange[0] === yRange[1])
+        ) {
+            continue;
+        }
+
         let x = Math.min(xRange[0], xRange[1]);
         let y = Math.min(yRange[0], yRange[1]);
         let width = Math.abs(xRange[1] - xRange[0]);

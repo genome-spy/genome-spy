@@ -1,5 +1,6 @@
 import GridView, { getLegendLayoutHost } from "./gridView.js";
 import { filterLegendResolutionOwners } from "./legendCollection.js";
+import FacetView from "../facetView.js";
 
 /**
  * Recreates guide views after resolution-level properties have been attached.
@@ -39,5 +40,11 @@ export async function syncViewGuideViews(viewRoot) {
         await gridView.syncGuideViews({
             legendOwners: legendOwnersByHost.get(gridView) ?? [],
         });
+    }
+
+    for (const facetView of descendants.filter(
+        (view) => view instanceof FacetView
+    )) {
+        await facetView.syncGuideViews();
     }
 }

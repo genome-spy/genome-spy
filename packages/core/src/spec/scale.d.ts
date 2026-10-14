@@ -62,6 +62,25 @@ export interface Scale {
     assembly?: string | InlineLocusAssembly;
 
     /**
+     * Boundaries before which to insert grouping gaps on positional index or
+     * locus scales. A cut at 10 separates bands 9 and 10. Positions are sorted
+     * and deduplicated. `"chromosomes"` uses the bound locus assembly's internal
+     * chromosome boundaries. An expression may return an array or null.
+     *
+     * Constant null or an empty array completely disables grouping gaps.
+     * __Default value:__ null.
+     */
+    gapPositions?: number[] | "chromosomes" | ExprRef | null;
+
+    /**
+     * Grouping gap width in CSS pixels, independent of zoom and device pixel
+     * ratio. An expression may return a nonnegative number or null. Constant
+     * zero or null completely disables grouping gaps.
+     * __Default value:__ 6 when gapPositions is supplied, otherwise 0.
+     */
+    gapWidth?: number | ExprRef | null;
+
+    /**
      * Customized domain values.
      *
      * For _quantitative_ fields, `domain` can take the form of a two-element array with minimum and maximum values. [Vega-Lite piecewise scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise) can be created by providing a `domain` with more than two entries.

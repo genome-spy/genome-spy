@@ -66,37 +66,34 @@ void main(void) {
         uCornerRadiusBottomLeft
     );
 
-    SampleFacetPosition sampleFacetPos = getSampleFacetPos();
-    if (sampleFacetPos.height == 0.0) {
-        // Filtered samples have no facet height. Cull them before minimum-size
-        // clamping can expand their rectangles at the viewport boundary.
-        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
-        return;
-    }
-
-    vec2 pos1 = applyOffset(
+    vec2 pos1 = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
         vec2(getScaled_xOffset(), getScaled_yOffset())
-    );
-    vec2 pos2 = applyOffset(
+    ));
+    vec2 pos2 = clampPosition(applyOffset(
         applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
-    );
+    ));
 
     sort(pos1.x, pos2.x);
     sort(pos1.y, pos2.y);
 
-    // Clamp x to prevent precision artifacts when the scale is zoomed very close.
-	// TODO: clamp y as well
-	float clampMargin = 1.0;
-    pos1.x = clamp(pos1.x, 0.0 - clampMargin, 1.0 + clampMargin);
-    pos2.x = clamp(pos2.x, 0.0 - clampMargin, 1.0 + clampMargin);
+    // Preserve ordinary rect overscan to prevent precision artifacts.
+    pos1.x = clamp(pos1.x, -1.0, 2.0);
+    pos2.x = clamp(pos2.x, -1.0, 2.0);
 
     vec2 size = pos2 - pos1;
 
-    if (size.x < 0.0 || size.y < 0.0) {
-        // Keep zero-sized rects alive so min-size clamping can stabilize them.
-        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+    // Unclamped zero-sized rectangles remain eligible for minimum-size expansion.
+    bool collapsed = false;
+#ifdef CLAMP_X
+    collapsed = size.x == 0.0;
+#endif
+#ifdef CLAMP_Y
+    collapsed = collapsed || size.y == 0.0;
+#endif
+    if (collapsed) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
 

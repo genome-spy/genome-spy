@@ -14,7 +14,7 @@ title: Visualizing Genomic Sample Collections
 You can use the following HTML template to create a web page for your
 visualization. The template loads the app from a content delivery network
 and the visualization specification from a separate `spec.json` file placed
-in the same directory. See the [getting started](../getting-started.md#local-or-remote-web-server)
+in the same directory. See the [getting started](../getting-started.md#local-web-server)
 page for more information.
 
 SNIPPET sample-collections/app-module-spec-file.html
@@ -40,16 +40,20 @@ The GenomeSpy app extends the core library with a new view composition operator
 that allows visualization of multiple samples. In this context, a _sample_ means
 a set of records representing an organism, a piece of tissue, a cell line,
 a single cell, etc. Each sample gets its own track in the visualization, and the
-behavior resembles the _facet_ operator of Vega-Lite. However, there are subtle
-differences in the behavior.
+behavior resembles the Core [facet operator](../grammar/facet.md). Sample views
+are optimized for rendering and interacting with very large datasets, and can
+show [sample-specific metadata](metadata-sources.md) alongside the tracks.
+For a simple repeated plot using only Core, see the
+[genomic facet example](../grammar/facet.md#genomic-tracks).
 
 A sample view is defined by the `samples` and `spec` properties. To assign a
 track for a row, define a sample-identifier field using the `sample`
 channel. More complex visualizations can be created using the
-[`layer`](../grammar/composition/layer.md) operator. Each composed view may have
-a different data source, enabling concurrent visualization of multiple data
-types. For instance, the bottom layer could display segmented copy-number data,
-while the top layer might show single-nucleotide variants.
+[`layer`](../grammar/composition/layer.md) operator. Unlike Core facets, sample
+views can partition a different data source for each layer using its `sample`
+channel. This enables concurrent visualization of multiple data types. For
+instance, the bottom layer could display segmented copy-number data, while the
+top layer might show single-nucleotide variants.
 
 ```json
 {

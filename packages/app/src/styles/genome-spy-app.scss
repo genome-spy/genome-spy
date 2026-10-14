@@ -88,6 +88,17 @@ $basic-spacing: generic.$basic-spacing;
 
     z-index: 1;
 
+    // Keep provenance navigation clickable above the shared menu backdrop.
+    &:has(.provenance-dropdown > button[aria-expanded="true"]) {
+        pointer-events: none;
+
+        genome-spy-provenance-buttons {
+            position: relative;
+            z-index: 101;
+            pointer-events: auto;
+        }
+    }
+
     height: 38px;
 
     background-color: var(--gs-toolbar-bg);
@@ -270,57 +281,27 @@ $basic-spacing: generic.$basic-spacing;
             }
         }
 
-        &:focus {
-            outline: none;
-            // TODO: Should be made visible, but
-            /*
-                outline-offset: 2px;
-                outline: 1px dashed white;
-                */
+        &:focus-visible {
+            outline: 2px solid white;
+            outline-offset: 2px;
         }
     }
 
     .btn-group,
-    .dropdown {
+    .bookmark-dropdown,
+    .provenance-dropdown {
         .tool-btn {
             margin-left: 0;
         }
     }
 
-    .dropdown {
-        position: relative;
-
-        &.show {
-            .gs-dropdown-menu {
-                display: block;
-            }
-
-            > button {
-                background-image: linear-gradient(
-                    to bottom,
-                    oklch(from var(--gs-toolbar-bg) calc(l + 0.09) c h),
-                    oklch(from var(--gs-toolbar-bg) calc(l + 0.06) c h)
-                );
-            }
-        }
-    }
-}
-
-.provenance-menu {
-    .operator {
-        // Make less/greater-than-or-equal symbols clearer
-        font-size: 125%;
-        line-height: 0.8;
-    }
-}
-
-.gs-dropdown-menu.provenance-menu {
-    .active-state {
-        $tickSize: 5px;
-
-        background-color: #e0e0e0;
-        border-left: $tickSize solid #c0c0c0;
-        padding-left: generic.$menu-item-h-padding - $tickSize;
+    :is(.bookmark-dropdown, .provenance-dropdown)
+        > button[aria-expanded="true"] {
+        background-image: linear-gradient(
+            to bottom,
+            oklch(from var(--gs-toolbar-bg) calc(l + 0.09) c h),
+            oklch(from var(--gs-toolbar-bg) calc(l + 0.06) c h)
+        );
     }
 }
 

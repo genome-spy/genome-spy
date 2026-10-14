@@ -4,15 +4,14 @@ import {
     isExprRef,
 } from "../../paramRuntime/paramUtils.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
-import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import { Displace2DConstraintSolver } from "./displace2dConstraintSolver.js";
 
 const FRAME_BUDGET = 4;
 const INITIAL_STEPS = 2;
 const MAX_STEPS_PER_FRAME = 64;
-const DISPLAY_HALF_LIFE = 60;
-const MAX_DISPLAY_STEP = 10;
+const DEFAULT_ANIMATION_HALF_LIFE = 120;
+const MAX_DISPLAY_SPEED = 600; // Logical pixels per second, per axis.
 const DISPLAY_EPSILON = 0.05;
 const DEFAULT_FRAME_INTERVAL = 1000 / 60;
 
@@ -78,13 +77,13 @@ export default class Displace2DTransform extends Transform {
     /** @type {[string, string]} */
     #as;
 
-    /** @type {ReturnType<typeof field>} */
+    /** @type {ReturnType<Transform["createFieldAccessor"]>} */
     #xAccessor;
 
-    /** @type {ReturnType<typeof field>} */
+    /** @type {ReturnType<Transform["createFieldAccessor"]>} */
     #yAccessor;
 
-    /** @type {ReturnType<typeof field> | undefined} */
+    /** @type {ReturnType<Transform["createFieldAccessor"]> | undefined} */
     #keyAccessor;
 
     /** @type {DimensionAccessor} */
@@ -98,6 +97,9 @@ export default class Displace2DTransform extends Transform {
 
     /** @type {DimensionAccessor} */
     #anchorHeightAccessor;
+
+    /** @type {() => number} */
+    #animationHalfLifeReader = () => DEFAULT_ANIMATION_HALF_LIFE;
 
     get behavior() {
         return BEHAVIOR_COLLECTS | BEHAVIOR_MODIFIES;
@@ -116,9 +118,12 @@ export default class Displace2DTransform extends Transform {
         if (params.key && this.#as.includes(params.key)) {
             throw new Error("displace2d output fields must preserve the key.");
         }
-        this.#xAccessor = field(params.x);
-        this.#yAccessor = field(params.y);
-        this.#keyAccessor = params.key ? field(params.key) : undefined;
+
+        this.#xAccessor = this.createFieldAccessor(params, "x");
+        this.#yAccessor = this.createFieldAccessor(params, "y");
+        this.#keyAccessor = params.key
+            ? this.createFieldAccessor(params, "key")
+            : undefined;
         this.#states = params.key ? new Map() : new WeakMap();
 
         const placementProps = {
@@ -145,21 +150,34 @@ export default class Displace2DTransform extends Transform {
                   )
               )
             : /** @type {any} */ (placementProps);
-        this.#widthAccessor = dimensionAccessor(
-            params.width,
-            () => props.width
-        );
-        this.#heightAccessor = dimensionAccessor(
-            params.height,
-            () => props.height
-        );
+
+        /** @param {keyof PlacementProps} property @param {() => number} getValue */
+        const dimensionAccessor = (property, getValue) => {
+            const param = params[property];
+            return typeof param == "string"
+                ? this.createFieldAccessor(params, property)
+                : getValue;
+        };
+
+        this.#widthAccessor = dimensionAccessor("width", () => props.width);
+        this.#heightAccessor = dimensionAccessor("height", () => props.height);
         this.#anchorWidthAccessor = dimensionAccessor(
-            params.anchorWidth,
+            "anchorWidth",
             () => props.anchorWidth
         );
         this.#anchorHeightAccessor = dimensionAccessor(
-            params.anchorHeight,
+            "anchorHeight",
             () => props.anchorHeight
+        );
+
+        const animationHalfLife =
+            params.animationHalfLife ?? DEFAULT_ANIMATION_HALF_LIFE;
+        if (!isExprRef(animationHalfLife)) {
+            validateAnimationHalfLife(animationHalfLife);
+        }
+        this.#animationHalfLifeReader = this.watchExprRef(
+            animationHalfLife,
+            () => validateAnimationHalfLife(this.#animationHalfLifeReader())
         );
 
         const view = /** @type {import("../../view/view.js").default} */ (
@@ -392,11 +410,15 @@ export default class Displace2DTransform extends Transform {
     }
 
     #requestAnimation() {
+        if (this.#relaxations.length == 0) {
+            this.#lastAnimationTimestamp = undefined;
+            return;
+        }
+
         if (
             !this.#animator ||
             this.#animator.transitionsEnabled === false ||
-            this.#animationRequested ||
-            this.#relaxations.length == 0
+            this.#animationRequested
         ) {
             return;
         }
@@ -408,7 +430,6 @@ export default class Displace2DTransform extends Transform {
     #cancelAnimation() {
         this.#animator?.cancelTransition(this.#animate);
         this.#animationRequested = false;
-        this.#lastAnimationTimestamp = undefined;
     }
 
     /** @param {number} timestamp */
@@ -444,6 +465,8 @@ export default class Displace2DTransform extends Transform {
         }
         if (solverActive || displayState == 2) {
             this.#requestAnimation();
+        } else {
+            this.#lastAnimationTimestamp = undefined;
         }
     };
 
@@ -463,7 +486,11 @@ export default class Displace2DTransform extends Transform {
      * @returns {0 | 1 | 2} No change, changed and settled, or still moving.
      */
     #advanceDisplayedPositions(elapsed) {
-        const alpha = 1 - 2 ** (-elapsed / DISPLAY_HALF_LIFE);
+        const halfLife = validateAnimationHalfLife(
+            this.#animationHalfLifeReader()
+        );
+        const alpha = 1 - 2 ** (-elapsed / halfLife);
+        const maxStep = (MAX_DISPLAY_SPEED * elapsed) / 1000;
         let changed = false;
         let pending = false;
         for (const relaxation of this.#relaxations) {
@@ -475,22 +502,14 @@ export default class Displace2DTransform extends Transform {
                     placement.displayX +=
                         Math.abs(dx) <= DISPLAY_EPSILON
                             ? dx
-                            : clamp(
-                                  dx * alpha,
-                                  -MAX_DISPLAY_STEP,
-                                  MAX_DISPLAY_STEP
-                              );
+                            : clamp(dx * alpha, -maxStep, maxStep);
                     changed = true;
                 }
                 if (dy != 0) {
                     placement.displayY +=
                         Math.abs(dy) <= DISPLAY_EPSILON
                             ? dy
-                            : clamp(
-                                  dy * alpha,
-                                  -MAX_DISPLAY_STEP,
-                                  MAX_DISPLAY_STEP
-                              );
+                            : clamp(dy * alpha, -maxStep, maxStep);
                     changed = true;
                 }
                 pending ||=
@@ -569,6 +588,7 @@ export default class Displace2DTransform extends Transform {
     }
 
     reset() {
+        // Preserve frame timing across replays while labels are still moving.
         this.#cancelAnimation();
         super.reset();
         this.#clearBufferedData();
@@ -582,17 +602,6 @@ export default class Displace2DTransform extends Transform {
     }
 }
 
-/**
- * @param {import("../../spec/transform.js").Displace2DParams["anchorWidth"]} param
- * @param {() => PlacementProps["width"]} getValue
- * @returns {DimensionAccessor}
- */
-function dimensionAccessor(param, getValue) {
-    return typeof param == "string"
-        ? field(param)
-        : () => /** @type {number} */ (getValue());
-}
-
 /** @param {any} key */
 function validateKey(key) {
     if (
@@ -601,6 +610,16 @@ function validateKey(key) {
     ) {
         throw new Error("displace2d keys must be strings or finite numbers.");
     }
+}
+
+/** @param {number} halfLife */
+function validateAnimationHalfLife(halfLife) {
+    if (!Number.isFinite(halfLife) || halfLife <= 0) {
+        throw new Error(
+            "displace2d animationHalfLife must be positive and finite."
+        );
+    }
+    return halfLife;
 }
 
 /** @param {number} value @param {number} min @param {number} max */

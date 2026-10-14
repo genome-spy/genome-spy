@@ -168,6 +168,13 @@ export default class View {
     facetCoords = new InternMap([], JSON.stringify);
 
     /**
+     * Full coordinates of an arbitrary occurrence, before viewport clipping.
+     * Used for scale sizing; visible coordinates remain in `facetCoords`.
+     * @type {import("./layout/rectangle.js").default | undefined}
+     */
+    layoutCoords;
+
+    /**
      *
      * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context
@@ -247,7 +254,11 @@ export default class View {
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
             context.animator,
-            { settleTemporalUpdatesImmediately: true }
+            {
+                settleTemporalUpdatesImmediately: true,
+                onError: context.reportError,
+                getSpecOrigin: context.getSpecOrigin,
+            }
         );
         this.paramRuntime.setSelectionSource(this);
 
@@ -272,7 +283,8 @@ export default class View {
             // TODO: If interval selection, validate `encodings` or provides defaults
             if ("expr" in param) {
                 const { usesScaleHelper, globals } = analyzeExpression(
-                    param.expr
+                    param.expr,
+                    this.paramRuntime.getSpecLocation(param, ["expr"])
                 );
                 const dependsOnDeferredParam = globals.some((name) =>
                     this.paramRuntime.isPendingParam(name)
@@ -359,7 +371,7 @@ export default class View {
     getCursor() {
         const cursor = this.getCursorSpec();
         return isExprRef(cursor)
-            ? this.paramRuntime.evaluateAndGet(cursor.expr)
+            ? this.paramRuntime.evaluateAndGet(cursor)
             : cursor;
     }
 
@@ -373,7 +385,7 @@ export default class View {
             return;
         }
 
-        this.paramRuntime.watchExpression(cursor.expr, listener, {
+        this.paramRuntime.watchExpression(cursor, listener, {
             scopeOwned: false,
             registerDisposer,
         });
@@ -713,12 +725,9 @@ export default class View {
     #registerSizeExprRefInvalidationFor(dimension) {
         const { value } = this.#getDimensionValue(dimension);
         if (isExprRef(value)) {
-            this.#registerSizeExprRefReader(dimension, value.expr);
+            this.#registerSizeExprRefReader(dimension, value);
         } else if (isStepSize(value) && isExprRef(value.step)) {
-            this.#registerSizeExprRefReader(
-                dimension + ".step",
-                value.step.expr
-            );
+            this.#registerSizeExprRefReader(dimension + ".step", value.step);
         }
     }
 
@@ -744,11 +753,11 @@ export default class View {
 
     /**
      * @param {string} key
-     * @param {string} expr
+     * @param {import("../spec/parameter.js").ExprRef} source
      */
-    #registerSizeExprRefReader(key, expr) {
+    #registerSizeExprRefReader(key, source) {
         if (!this.#sizeExprRefReaders.has(key)) {
-            const reader = this.paramRuntime.watchExpression(expr, () => {
+            const reader = this.paramRuntime.watchExpression(source, () => {
                 this.invalidateSizeCache();
                 this.context.requestLayoutReflow();
             });
@@ -960,7 +969,7 @@ export default class View {
      */
     handleInteraction(event, capturing) {
         if (capturing && event.type === "mousemove") {
-            event.pointedViews.add(this);
+            event.pointedViews.set(this, event.facetId);
         }
 
         const listenersByType = capturing
@@ -1085,9 +1094,8 @@ export default class View {
         this.paramRuntime.dispose();
         this.namedDataScope.dispose();
 
-        this.context.dataFlow.loadingStatusRegistry.delete(this);
-
         this.flowHandle = undefined;
+        this.context.dataFlow.loadingStatusRegistry.delete(this);
     }
 
     /**
@@ -1098,11 +1106,16 @@ export default class View {
     }
 
     /**
-     * Dispose this view and all descendants in post-order.
+     * Dispose owned scales before releasing views in post-order.
      */
     disposeSubtree() {
         /** @type {Visitor} */
-        const visitor = () => undefined;
+        const visitor = (view) => {
+            // Member removal must not reconfigure scales that are being torn down.
+            for (const resolution of Object.values(view.resolutions.scale)) {
+                resolution.dispose();
+            }
+        };
         visitor.postOrder = (view) => {
             view.dispose();
         };
@@ -1181,6 +1194,8 @@ export default class View {
      * @type {import("../types/rendering.js").ArrangeMethod}
      */
     arrange(context, coords, options = {}) {
+        this.layoutCoords = coords;
+
         // TODO: When using sample faceting, all facets have the same coords.
         // It would be better to save only single coords with an `undefined` facetId.
         if (options.firstFacet) {
@@ -1400,7 +1415,7 @@ export default class View {
             return isString(title)
                 ? title
                 : isExprRef(title.text)
-                  ? this.paramRuntime.evaluateAndGet(title.text.expr)
+                  ? this.paramRuntime.evaluateAndGet(title.text)
                   : title.text;
         }
     }
@@ -1544,13 +1559,10 @@ function createViewOpacityFunction(view) {
 
             stopReaders = opacityDef.unitsPerPixel.map((stop) => {
                 if (isExprRef(stop)) {
-                    const fn = view.paramRuntime.watchExpression(
-                        stop.expr,
-                        () => {
-                            updateInterpolator();
-                            view.context.animator.requestRender();
-                        }
-                    );
+                    const fn = view.paramRuntime.watchExpression(stop, () => {
+                        updateInterpolator();
+                        view.context.animator.requestRender();
+                    });
                     return () => fn(null);
                 } else {
                     return () => stop;
@@ -1608,7 +1620,7 @@ function createViewOpacityFunction(view) {
                 return interpolate(getMetric()) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
-            const fn = view.paramRuntime.watchExpression(opacityDef.expr, () =>
+            const fn = view.paramRuntime.watchExpression(opacityDef, () =>
                 view.context.animator.requestRender()
             );
             return (parentOpacity) => fn(null) * parentOpacity;

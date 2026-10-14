@@ -2,7 +2,7 @@ import { bisector } from "d3-array";
 import { BEHAVIOR_COLLECTS } from "../flowNode.js";
 import { topK } from "../../utils/topK.js";
 import ReservationMap from "../../utils/reservationMap.js";
-import { field } from "../../utils/field.js";
+import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import Transform from "./transform.js";
 
 export default class FilterScoredLabelsTransform extends Transform {
@@ -25,7 +25,7 @@ export default class FilterScoredLabelsTransform extends Transform {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        super(params);
+        super(params, view);
 
         this.params = params;
 
@@ -38,15 +38,18 @@ export default class FilterScoredLabelsTransform extends Transform {
             throw new Error("Invalid channel: " + this.channel);
         }
 
-        this.startPosAccessor = field(this.params.pos);
-        this.endPosAccessor = field(this.params.pos2 ?? this.params.pos);
+        this.startPosAccessor = this.createFieldAccessor(params, "pos");
+        this.endPosAccessor = this.createFieldAccessor(
+            params,
+            params.pos2 != null ? "pos2" : "pos"
+        );
         this.startPosBisector = bisector(this.startPosAccessor);
         this.endPosBisector = bisector(this.endPosAccessor);
-        this.scoreAccessor = field(this.params.score);
-        this.widthAccessor = field(this.params.width);
+        this.scoreAccessor = this.createFieldAccessor(params, "score");
+        this.widthAccessor = this.createFieldAccessor(params, "width");
         /** @type {function(any):any} */
         this.laneAccessor = this.params.lane
-            ? field(this.params.lane)
+            ? this.createFieldAccessor(params, "lane")
             : (d) => 0;
         this.padding = this.params.padding ?? 0;
 
@@ -92,11 +95,18 @@ export default class FilterScoredLabelsTransform extends Transform {
         super.reset();
 
         const scale = this.resolution.getScale();
+        const positionAdjustment = getScalePositionAdjustment(scale);
         const rangeSpan = this.resolution.getAxisLength();
         if (!rangeSpan) {
             // The view size is not (yet) available
             return;
         }
+        const gapMapping =
+            "gapMapping" in scale &&
+            /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+                scale
+            ).gapMapping(rangeSpan);
+        const rangedGaps = gapMapping && this.params.pos2 != null;
 
         for (const reservationMap of this.reservationMaps.values()) {
             reservationMap.reset();
@@ -119,8 +129,16 @@ export default class FilterScoredLabelsTransform extends Transform {
 
         // Try to fit the elements on the available lanes and propagate if there was room
         for (const datum of topElements) {
-            let startPos = scale(this.startPosAccessor(datum)) * rangeSpan;
-            let endPos = scale(this.endPosAccessor(datum)) * rangeSpan;
+            let startPos =
+                (rangedGaps
+                    ? gapMapping.position(this.startPosAccessor(datum))
+                    : scale(this.startPosAccessor(datum)) +
+                      positionAdjustment) * rangeSpan;
+            let endPos =
+                (rangedGaps
+                    ? gapMapping.position(this.endPosAccessor(datum), 0, true)
+                    : scale(this.endPosAccessor(datum)) + positionAdjustment) *
+                rangeSpan;
 
             const span = endPos - startPos;
             const width = this.widthAccessor(datum) + this.padding * 2;
@@ -151,7 +169,8 @@ export default class FilterScoredLabelsTransform extends Transform {
                     const clonedDatum = Object.assign({}, datum);
                     // @ts-ignore
                     clonedDatum[this.params.asMidpoint] = scale.invert(
-                        midpoint / rangeSpan
+                        midpoint / rangeSpan -
+                            (rangedGaps ? 0 : positionAdjustment)
                     );
                     this._propagate(clonedDatum);
                 } else {

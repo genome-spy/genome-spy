@@ -1,5 +1,6 @@
 import Collector from "../data/collector.js";
 import { isDataReady, iterateDataDependencies } from "../data/dataReadiness.js";
+import DataSource from "../data/sources/dataSource.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import UnitView from "./unitView.js";
 
@@ -113,6 +114,7 @@ export function awaitSubtreeLazyReady(
     const shouldConsiderView = viewFilter ?? isEffectivelyVisible;
 
     return new Promise((resolve, reject) => {
+        let settled = false;
         /** @type {Set<() => void>} */
         const unregisters = new Set();
         /** @type {Set<import("../data/collector.js").default>} */
@@ -139,16 +141,31 @@ export function awaitSubtreeLazyReady(
         };
 
         const checkReady = () => {
-            if (
-                isSubtreeLazyReady(
-                    subtreeRoot,
-                    readinessRequest,
-                    shouldConsiderView
+            if (settled) return true;
+            try {
+                if (
+                    !areSubtreeSourcesSettled(
+                        context,
+                        subtreeRoot,
+                        shouldConsiderView
+                    ) ||
+                    !isSubtreeLazyReady(
+                        subtreeRoot,
+                        readinessRequest,
+                        shouldConsiderView
+                    )
                 )
-            ) {
+                    return false;
+
+                settled = true;
                 cleanup();
                 resolve();
+            } catch (error) {
+                settled = true;
+                cleanup();
+                reject(error);
             }
+            return true;
         };
 
         const attachCollectors = () => {
@@ -169,6 +186,7 @@ export function awaitSubtreeLazyReady(
         };
 
         const abortHandler = () => {
+            settled = true;
             cleanup();
             reject(new Error("Lazy subtree readiness was aborted."));
         };
@@ -185,6 +203,11 @@ export function awaitSubtreeLazyReady(
 
         try {
             attachCollectors();
+            unregisters.add(
+                context.dataFlow.loadingStatusRegistry.subscribe(checkReady)
+            );
+            // Observation must not retry an already failed source.
+            if (checkReady()) return;
             requestUnavailableLazyData(
                 subtreeRoot,
                 readinessRequest,
@@ -192,10 +215,43 @@ export function awaitSubtreeLazyReady(
             );
             checkReady();
         } catch (error) {
+            settled = true;
             cleanup();
             reject(error);
         }
     });
+}
+
+/**
+ * Only branches with lazy dependencies participate in lazy waits. Failures on
+ * their eager primary or side inputs are relevant too. Collector notifications
+ * can precede transaction-end processing, so loading attempts must settle first.
+ *
+ * @param {import("../types/viewContext.js").default} context
+ * @param {View} subtreeRoot
+ * @param {(view: View) => boolean} viewFilter
+ */
+function areSubtreeSourcesSettled(context, subtreeRoot, viewFilter) {
+    let loading = false;
+    for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
+        const sources = Array.from(iterateDataDependencies(collector)).filter(
+            (node) => node instanceof DataSource
+        );
+        if (!sources.some((source) => source instanceof SingleAxisLazySource))
+            continue;
+
+        for (const source of sources) {
+            const entry =
+                context.dataFlow.loadingStatusRegistry.getSource(source);
+            if (entry?.status === "error") {
+                throw new Error(
+                    `Data loading failed at "${entry.viewPath}": ${entry.message ?? entry.sourceId}`
+                );
+            }
+            loading ||= entry?.status === "loading";
+        }
+    }
+    return !loading;
 }
 
 /**
@@ -244,7 +300,7 @@ function collectSubtreeCollectors(subtreeRoot, viewFilter) {
  * @returns {boolean}
  */
 export function isEffectivelyVisible(view) {
-    return view.isConfiguredVisible() && view.getEffectiveOpacity() > 0;
+    return view.isVisible() && view.getEffectiveOpacity() > 0;
 }
 
 /**

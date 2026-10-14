@@ -22,6 +22,7 @@ export interface MarkRenderingDebugState {
 export interface Hover {
     mark: Mark;
     datum: Datum;
+    facetId?: import("../spec/channel.js").Scalar[];
 }
 
 export type DataLoadingStatus = "loading" | "complete" | "error";
@@ -53,6 +54,12 @@ export default interface ViewContext {
     animator: Animator;
     genomeStore?: GenomeStore;
     textMetrics: TextMetricsProvider;
+
+    /** Reports runtime errors without suppressing propagation failures. */
+    reportError?: (error: unknown) => void;
+
+    /** Optional opaque authored-spec context for diagnostics. */
+    getSpecOrigin?: (fragment: object) => string | undefined;
 
     requestLayoutReflow: () => void;
 

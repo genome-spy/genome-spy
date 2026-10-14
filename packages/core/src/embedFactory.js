@@ -1,6 +1,7 @@
 import { isObject, isString } from "vega-util";
 
 import { createEmbedResult } from "./embedApi.js";
+import { createEmbedErrorHandler } from "./embedError.js";
 import { fetchJson } from "./utils/fetchUtils.js";
 import inferSpecBaseUrl from "./utils/inferSpecBaseUrl.js";
 
@@ -37,6 +38,7 @@ export function createEmbed(GenomeSpy) {
 
         /** @type {InstanceType<typeof GenomeSpy> | undefined} */
         let genomeSpy;
+        const errorHandler = createEmbedErrorHandler(element, options);
 
         try {
             const specObject = isObject(spec) ? spec : await loadSpec(spec);
@@ -54,12 +56,14 @@ export function createEmbed(GenomeSpy) {
                 element = wrapper;
             }
 
-            genomeSpy = new GenomeSpy(element, specObject, options);
+            genomeSpy = new GenomeSpy(element, specObject, {
+                ...options,
+                onError: errorHandler.onError,
+            });
             applyOptions(genomeSpy, options);
-            await genomeSpy.launch();
-        } catch (e) {
-            element.innerText = e.toString();
-            console.error(e);
+            errorHandler.complete(await genomeSpy.launch());
+        } catch (error) {
+            errorHandler.fail(error, element, [() => genomeSpy?.destroy()]);
         }
 
         return createEmbedResult({

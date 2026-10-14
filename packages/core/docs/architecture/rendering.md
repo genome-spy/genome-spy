@@ -247,3 +247,6 @@ owned operations depending on mapping so captured scale functions and metadata
 stay current, including conditional branches. Retained marks and WebGL range textures continue
 observing the same resolution-owned mapping ref; replacement needs no renderer
 subscription reconnection.
+
+Grouping-gap tables stay in renderer-owned resources while navigation updates
+mapping uniforms. Constant-disabled gaps omit their shader code and resources.

@@ -55,3 +55,30 @@ describe("GLSL conditional selection encoders", () => {
         expect(source).toContain("(!(");
     });
 });
+
+describe("index gap specialization", () => {
+    test.each([
+        { gapPositions: [10], gapWidth: 0 },
+        { gapPositions: [10], gapWidth: null },
+        { gapPositions: [], gapWidth: { expr: "width" } },
+        { gapPositions: null, gapWidth: 6 },
+        { gapPositions: { expr: "cuts" }, gapWidth: 0 },
+    ])(
+        "omits gap helpers and uniforms for statically disabled %j",
+        async (props) => {
+            const { default: scaleIndex } =
+                await import("../../../genome/scaleIndex.js");
+            const { generateScaleGlsl } =
+                await import("./glslScaleGenerator.js");
+            const scale = Object.assign(scaleIndex().domain([0, 20]), {
+                type: "index",
+                props,
+            });
+            const result = generateScaleGlsl("x", scale, {
+                field: "index",
+                type: "index",
+            });
+            expect(JSON.stringify(result)).not.toMatch(/Gap|gapRank|scaleGaps/);
+        }
+    );
+});

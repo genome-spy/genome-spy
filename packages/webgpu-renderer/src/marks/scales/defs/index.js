@@ -11,6 +11,7 @@ import {
     toU32Expr,
 } from "../scaleEmitUtils.js";
 import { packHighPrecisionDomain } from "../../../utils/highPrecision.js";
+import { hasIndexGaps } from "../indexGaps.js";
 
 const indexWgsl = /* wgsl */ `
 const lowBits: i32 = 12;
@@ -167,12 +168,29 @@ function emitIndexScale({
     rawValueExpr,
     inputScalarType,
     inputComponents,
+    scaleConfig,
 }) {
     const valueExpr =
         inputComponents === 2
             ? rawValueExpr
             : toU32Expr(rawValueExpr, inputScalarType);
     const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
+    if (hasIndexGaps(scaleConfig)) {
+        const key =
+            inputComponents === 2
+                ? valueExpr
+                : `vec2<u32>(${valueExpr} >> 12u, ${valueExpr} & 4095u)`;
+        const axis = scaleConfig.gapAxis ?? (name.startsWith("y") ? "y" : "x");
+        const before = scaleConfig.gapPeer
+            ? `gapKeyGreater(v, gapPeer_${scaleConfig.gapPeer}(i, v))`
+            : `${!!scaleConfig.gapBefore}`;
+        return `${makeFnHeader(name, "f32", functionName)} {
+    let v = ${key};
+    return scaleIndexGaps(v, ${domainVec3(name)}, ${rangeVec2(name)}, params.gapTable_${name}, params.gapGeometry_${name},
+        params.${SCALE_PADDING_INNER_PREFIX}${name}, params.${SCALE_PADDING_OUTER_PREFIX}${name},
+        params.${SCALE_ALIGN_PREFIX}${name}, params.${SCALE_BAND_PREFIX}${name}, ${before}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u));
+}`;
+    }
     return `${makeFnHeader(name, "f32", functionName)} {
     let v = ${valueExpr};
     return ${fnName}(

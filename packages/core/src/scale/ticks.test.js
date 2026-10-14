@@ -11,6 +11,7 @@ import { expect, test } from "vitest";
  */
 
 import { tickFormat, validTicks } from "./ticks.js";
+import scaleIndex from "../genome/scaleIndex.js";
 
 test("uses default precision for a zero tick count", function () {
     const scale = scaleLinear().domain([0, 0.5]);
@@ -49,4 +50,28 @@ test("validTicks uses count correctly", function () {
     // single tick should pass through
     var t5 = validTicks(identity, [1], 5);
     expect(t5).toEqual([1]);
+});
+
+test.each(["index", "locus"])(
+    "validTicks checks %s centers against the exact reversed range",
+    (type) => {
+        const scale = Object.assign(
+            scaleIndex().domain([100.01, 103.27]).range([0.8, 0.2]),
+            { type }
+        );
+
+        expect(validTicks(scale, [99, 100, 101, 102, 103])).toEqual([
+            100, 101, 102,
+        ]);
+    }
+);
+
+test("validTicks includes centers on either range boundary", () => {
+    const scale = Object.assign(scaleIndex().domain([100.5, 102.5]), {
+        type: "index",
+    });
+
+    expect(validTicks(scale, [99, 100, 101, 102, 103])).toEqual([
+        100, 101, 102,
+    ]);
 });

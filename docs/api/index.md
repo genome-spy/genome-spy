@@ -22,3 +22,4 @@ their source in the
 - [Inspector](./inspector.md)
 - [Instance, events, and export](./instance.md)
 - [Embed options](./embed-options.md)
+- [Editor integration](./editor-integration.md)

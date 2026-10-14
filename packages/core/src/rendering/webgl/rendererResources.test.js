@@ -444,3 +444,70 @@ test("range textures keep observing a recreated physical scale", async () => {
         view.disposeSubtree();
     }
 });
+
+test("static disabling releases a cut texture shared by multiple marks", () => {
+    const glHelper = createGlHelper();
+    Object.assign(glHelper.gl, {
+        MAX_TEXTURE_SIZE: 0x0d33,
+        getParameter: () => 2048,
+        createTexture: () => ({}),
+        bindTexture: vi.fn(),
+        texParameteri: vi.fn(),
+        texImage2D: vi.fn(),
+    });
+    const scale = {
+        props: { gapPositions: [10], gapWidth: 6 },
+        gapPositions: () => [10],
+    };
+    const resolution = { ...createScaleResolution(), getScale: () => scale };
+    const resources = new WebGLRendererResources(glHelper);
+    const fixtures = [createMark("first"), createMark("second")];
+    for (const { mark } of fixtures) {
+        mark.encoders.x = { scale, channelDef: { field: "x", type: "index" } };
+        mark.unitView.getScaleResolution = () => resolution;
+    }
+    resources.prepareMarks(fixtures.map(({ mark }) => mark));
+    resources.getGapTexture(/** @type {any} */ (resolution));
+    scale.props.gapWidth = 0;
+    resolution.listeners.get("mapping")();
+    resources.prepareMarks(fixtures.map(({ mark }) => mark));
+    expect(glHelper.gl.deleteTexture).toHaveBeenCalledOnce();
+    expect(
+        mocks.delegates
+            .slice(0, 2)
+            .every((delegate) => delegate.disposeCount === 1)
+    ).toBe(true);
+    resources.dispose();
+});
+
+test("cut uploads preserve another axis's bound sampler", () => {
+    const glHelper = createGlHelper();
+    const gl = glHelper.gl;
+    let boundTexture = {};
+    Object.assign(gl, {
+        MAX_TEXTURE_SIZE: 0x0d33,
+        TEXTURE_BINDING_2D: 0x8069,
+        getParameter: (/** @type {number} */ parameter) =>
+            parameter === gl.MAX_TEXTURE_SIZE ? 2048 : boundTexture,
+        createTexture: () => ({}),
+        bindTexture: (
+            /** @type {number} */ target,
+            /** @type {object} */ texture
+        ) => {
+            boundTexture = texture;
+        },
+        texParameteri: vi.fn(),
+        texImage2D: vi.fn(),
+    });
+    const resources = new WebGLRendererResources(glHelper);
+    const resolution = /** @type {any} */ ({
+        getScale: () => ({ gapPositions: () => [4, 7] }),
+    });
+    const otherAxisTexture = boundTexture;
+
+    resources.getGapTexture(resolution);
+
+    expect(boundTexture).toBe(otherAxisTexture);
+    expect(gl.texImage2D).toHaveBeenCalledOnce();
+    resources.dispose();
+});

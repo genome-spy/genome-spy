@@ -138,10 +138,7 @@ export default class WebGLTextMark extends WebGLMark {
         for (const value of values) {
             readers.push(
                 isExprRef(value)
-                    ? this.unitView.paramRuntime.watchExpression(
-                          value.expr,
-                          update
-                      )
+                    ? this.unitView.paramRuntime.watchExpression(value, update)
                     : () => value
             );
         }
@@ -157,7 +154,7 @@ export default class WebGLTextMark extends WebGLMark {
             this.properties
         );
         const logoLetters = isExprRef(props.logoLetters)
-            ? this.unitView.paramRuntime.evaluateAndGet(props.logoLetters.expr)
+            ? this.unitView.paramRuntime.evaluateAndGet(props.logoLetters)
             : props.logoLetters;
 
         // Count the total number of characters to that we can pre-allocate a typed array

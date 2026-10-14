@@ -15,7 +15,18 @@ function shouldSuppressConsoleLog(log) {
 
 export default defineConfig({
     test: {
-        projects: ["packages/*"],
+        projects: [
+            "packages/*",
+            {
+                extends: true,
+                test: {
+                    name: "release-tools",
+                    environment: "node",
+                    include: ["scripts/*.test.mjs"],
+                    testTimeout: 30000,
+                },
+            },
+        ],
         onConsoleLog(log) {
             if (shouldSuppressConsoleLog(log)) {
                 return false;

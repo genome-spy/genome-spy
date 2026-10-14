@@ -181,8 +181,8 @@ const placementSentinel = 1u;
             packedSeriesLayout,
         });
 
-        expect(resourceLayout).toEqual([{ name: "seriesF32", role: "series" }]);
-        expect(shaderCode).toContain("var<storage, read> seriesF32");
+        expect(resourceLayout).toEqual([{ name: "series", role: "series" }]);
+        expect(shaderCode).toContain("var<storage, read> series: array<u32>");
         expect(shaderCode).toContain("fn read_x");
         expect(shaderCode).toContain("fn read_y");
         expect(shaderCode).toContain("base = 1u + i * 3u");
@@ -276,8 +276,8 @@ const placementSentinel = 1u;
         });
 
         expect(resourceLayout).toEqual([
-            { name: "seriesU32", role: "series" },
-            { name: "x", role: "domainMap" },
+            { name: "scaleTables", role: "scaleTables" },
+            { name: "series", role: "series" },
         ]);
         expect(shaderCode).toContain("fn hashLookup_domainMap_x");
         expect(shaderCode).toContain("domainMap_x");
@@ -697,5 +697,38 @@ const placementSentinel = 1u;
         expect(() => program.updateValues({ fillOpacity: 0.5 })).toThrow(
             /u_fillOpacity/
         );
+    });
+});
+
+describe("index gap specialization", () => {
+    it.each([
+        { gapPositions: [10], gapWidth: 0 },
+        { gapPositions: [10], gapWidth: null },
+        { gapPositions: /** @type {number[]} */ ([]), gapWidth: 6 },
+        { gapPositions: null, gapWidth: 6 },
+    ])("omits all gap shader fields and resources for %j", (gaps) => {
+        const { shaderCode, resourceLayout } = buildMarkShader({
+            channels: {
+                x: {
+                    value: 10,
+                    type: "u32",
+                    components: 1,
+                    scale: {
+                        type: "index",
+                        domain: [0, 20],
+                        range: [0, 100],
+                        ...gaps,
+                    },
+                },
+            },
+            uniformLayout: [],
+            shaderBody,
+        });
+        expect(shaderCode).not.toMatch(
+            /gapCuts|gapTable|gapGeometry|cutRank|scaleIndexGaps|gapPlacement/
+        );
+        expect(
+            resourceLayout.some((entry) => entry.role === "scaleTables")
+        ).toBe(false);
     });
 });

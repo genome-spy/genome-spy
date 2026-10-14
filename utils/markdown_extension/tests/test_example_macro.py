@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import unittest
 from pathlib import Path
 
-from extension.extension import MyPreprocessor
+from extension.extension import MyPreprocessor, PYTHON_GALLERY_EXAMPLES
 
 
 class ExampleMacroTest(unittest.TestCase):
@@ -57,6 +57,40 @@ class ExampleMacroTest(unittest.TestCase):
             html,
         )
         self.assertIn('playground-url=', html)
+        self.assertNotIn('python-url=', html)
+
+    def test_curated_example_links_to_python_gallery(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            preprocessor = self.create_preprocessor(repo_root)
+            example_path = (
+                repo_root
+                / 'examples'
+                / 'docs'
+                / 'examples'
+                / 'genomic-data'
+                / 'ASCAT-algorithm.json'
+            )
+            example_path.parent.mkdir(parents=True)
+            example_path.write_text('{"mark": "point"}', encoding='utf8')
+
+            lines = preprocessor.getExample(
+                'examples/docs/examples/genomic-data/ASCAT-algorithm.json spechidden'
+            )
+
+        html = '\n'.join(lines)
+        self.assertIn(
+            'python-url="https://genomespy.app/genome-spy-python/gallery/ascat_fitting.html"',
+            html,
+        )
+
+    def test_curated_python_links_reference_existing_specs(self) -> None:
+        repo_root = Path(__file__).resolve().parents[3]
+
+        for example_path, slug in PYTHON_GALLERY_EXAMPLES.items():
+            with self.subTest(example_path=example_path):
+                self.assertTrue((repo_root / example_path).is_file())
+                self.assertRegex(slug, r'^[a-z0-9_]+$')
 
     def test_first_example_screenshot_is_recorded_in_page_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

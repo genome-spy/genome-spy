@@ -104,9 +104,34 @@ export interface EmbedOptions {
     theme?: GenomeSpyConfig;
 
     /**
-     * Optional hook for handling launch errors. Return true to suppress default UI.
+     * Optional hook for handling launch and runtime errors. Return true to suppress default UI.
      */
     onError?: (error: unknown, container: HTMLElement) => boolean | void;
+
+    /**
+     * Links reported errors to locations in your specification.
+     *
+     * Called with a data definition, encoding branch, parameter, transform,
+     * expression reference, or interaction configuration from your specification.
+     * Return a string identifying that object, such as the JSON Pointer `"/encoding/x"` for
+     * `{ field: "position", type: "quantitative" }`. Located errors include this
+     * string and a relative property path in `SpecLocation`.
+     * `getSpecErrorLocation(error)` reads it from errors delivered to `onError`
+     * or rejected by `embed`. Data-loading reports expose `errorLocation` for
+     * located processing errors and `origin` for the data definition itself.
+     *
+     * Return `undefined` if the definition's location is unknown. Equivalent data
+     * definitions may share one source; its reports contain one definition's origin.
+     */
+    getSpecOrigin?: (fragment: object) => string | undefined;
+}
+
+/** A declaration identifier and property path within that declaration. */
+export interface SpecLocation {
+    /** String returned by `EmbedOptions.getSpecOrigin`; Core does not interpret it. */
+    readonly origin: string;
+    /** Property segments relative to the declaration, e.g. `["field"]` or `["expr"]`. */
+    readonly path?: readonly (string | number)[];
 }
 
 /**
@@ -364,6 +389,9 @@ export interface MarkHit {
 
     /** Picking identifier for the mark in the current rendered scene. */
     readonly uniqueId: number;
+
+    /** Tuple for a `facet` cell in row/column order, or undefined outside one. */
+    readonly facetId?: readonly Scalar[];
 
     /** Data row associated with the mark, without the internal picking id. */
     readonly datum: Readonly<Record<string, unknown>>;
@@ -896,6 +924,46 @@ export interface ImageExportApi {
     ) => Promise<SvgExportAnalysis>;
 }
 
+/** Current outcome of one canonical source that has attempted loading. */
+export interface DataLoadingEntry {
+    /** Stable source identity within this embed. Equivalent sources may be shared. */
+    sourceId: string;
+    /** Original declaring view's id. That view may no longer be live. */
+    viewId: string;
+    /** Original declaring view's descriptive path, captured at its first attempt. */
+    viewPath: string;
+    /** Specification location or identifier returned by `EmbedOptions.getSpecOrigin`. */
+    origin?: string;
+    status: "loading" | "complete" | "error";
+    /** Present only for errors. */
+    message?: string;
+    /** Confirmed failure boundary; absent when attribution is ambiguous. */
+    errorPhase?: "request" | "processing";
+    /** Responsible declaration when a processing error carries a specification location. */
+    errorLocation?: SpecLocation;
+}
+
+/** One source update or removal, rather than a complete snapshot. */
+export type DataLoadingChange =
+    | { type: "update"; entry: DataLoadingEntry }
+    | { type: "remove"; sourceId: string };
+
+/**
+ * Observes eager URL and lazy loading attempts, including transform side inputs.
+ * Does not validate unrequested data or report synchronous named-data updates.
+ */
+export interface DataLoadingApi {
+    /** Returns detached current entries, including errors preceding embed completion. */
+    getSnapshot: () => readonly DataLoadingEntry[];
+    /**
+     * Observes future changes. Subscribe, then read the snapshot synchronously
+     * for initial state and subsequent changes. Finalization unsubscribes all
+     * listeners. Listener exceptions are reported asynchronously to the browser
+     * and cannot change loading outcomes or prevent delivery to other listeners.
+     */
+    subscribe: (listener: (change: DataLoadingChange) => void) => () => void;
+}
+
 /**
  * An API for controlling the embedded GenomeSpy instance.
  */
@@ -915,6 +983,9 @@ export interface EmbedResult {
      * search nested views.
      */
     readonly datasets: DatasetApi;
+
+    /** Observes loading performed by GenomeSpy, independently of named-data updates. */
+    readonly dataLoading: DataLoadingApi;
 
     /** Synchronous native input subscriptions for the embedded canvas. */
     readonly events: EmbedEventApi;
@@ -976,7 +1047,9 @@ export interface EmbedResult {
 
     /**
      * Waits until lazy data sources have loaded data for the current visible
-     * positional domain.
+     * positional domain. Rejects if a required source has failed or the signal
+     * is aborted. An existing failure rejects without starting another request.
+     * Entirely eager branches and unrelated hidden failures are ignored.
      */
     awaitVisibleLazyData: (signal?: AbortSignal) => Promise<void>;
 

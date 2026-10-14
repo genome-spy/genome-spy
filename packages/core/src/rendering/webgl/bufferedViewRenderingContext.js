@@ -181,6 +181,13 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     }
 
     finish() {
+        if (
+            this.#batch &&
+            this.#markAdapter.hasStructuralChanges(this.#entries)
+        ) {
+            this.#batch = undefined;
+            this.#entries.clear();
+        }
         if (!this.#batch) {
             const marks = this.#buffer.map((request) => request.mark);
             this.#markAdapter.prepareMarks(marks);

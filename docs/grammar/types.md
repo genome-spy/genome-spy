@@ -269,6 +269,26 @@ SCHEMA ExprParameter
 
 See the [ExprRef documentation](expressions.md).
 
+## FacetFieldDef
+
+See the [FacetFieldDef documentation](facet.md#facet-fields).
+
+## FacetHeader
+
+See the [FacetHeader documentation](facet.md#headers).
+
+## FacetMapping
+
+SCHEMA FacetMapping
+
+## FacetSpacing
+
+See the [FacetSpacing documentation](facet.md#spacing).
+
+## FacetSpec
+
+See the [FacetSpec documentation](facet.md#defining-a-facet).
+
 ## FadedMultiscaleStops
 
 See the [FadedMultiscaleStops documentation](composition/multiscale.md#fadedmultiscalestops).
@@ -772,6 +792,10 @@ SCHEMA Scale
 ## ScaleConfig
 
 See the [ScaleConfig documentation](config.md#scale-defaults).
+
+## ScaleGroupsData
+
+See the [ScaleGroupsData documentation](data/lazy.md#scale-groups-parameters).
 
 ## ScaleInterpolate
 

@@ -17,6 +17,7 @@
 import { isLogarithmic } from "vega-scale";
 import { error, isNumber, isObject, isString, peek, span } from "vega-util";
 import { format as numberFormat, formatSpecifier } from "d3-format";
+import { getScalePositionAdjustment } from "../scales/scalePosition.js";
 
 /**
  * Determine the tick count or interval function.
@@ -50,9 +51,13 @@ export function tickCount(scale, count, minStep) {
  * @return {Array<*>} - The filtered tick values.
  */
 export function validTicks(scale, ticks, count) {
+    const indexLike = scale.type === "index" || scale.type === "locus";
+    const positionAdjustment = indexLike
+        ? getScalePositionAdjustment(scale)
+        : 0;
     var range = scale.range(),
-        lo = Math.floor(range[0]),
-        hi = Math.ceil(peek(range));
+        lo = indexLike ? range[0] : Math.floor(range[0]),
+        hi = indexLike ? peek(range) : Math.ceil(peek(range));
 
     if (lo > hi) {
         range = hi;
@@ -61,7 +66,7 @@ export function validTicks(scale, ticks, count) {
     }
 
     ticks = ticks.filter(function (v) {
-        v = scale(v);
+        v = scale(v) + positionAdjustment;
         return lo <= v && v <= hi;
     });
 

@@ -4,7 +4,7 @@ import {
     visitMarkOccurrences,
 } from "../immediate/markData.js";
 import {
-    getViewClipDirections,
+    getViewClipFlags,
     normalizeClipOptions,
     prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
@@ -133,7 +133,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
 
         const opacity = view.getOpacity();
         if (this.paint && opacity > 0 && opacity !== 1) {
-            const clip = getViewClipDirections(view);
+            const clip = getViewClipFlags(view);
             const bounds = normalizeOffscreenBounds(
                 coords,
                 this.devicePixelRatio,

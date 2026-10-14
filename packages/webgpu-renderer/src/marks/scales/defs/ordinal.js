@@ -1,5 +1,6 @@
 import {
     DOMAIN_MAP_COUNT_PREFIX,
+    DOMAIN_MAP_TABLE_PREFIX,
     RANGE_COUNT_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { hashLookupFunctionName } from "../../../wgsl/hashTable.wgsl.js";
@@ -51,7 +52,6 @@ function emitOrdinalScale({
         outputComponents === 1
             ? outputScalarType
             : `vec${outputComponents}<f32>`;
-    const rangeName = `range_${name}`;
     const zero =
         outputComponents === 1
             ? outputScalarType === "u32"
@@ -71,14 +71,14 @@ function emitOrdinalScale({
         let count = u32(params.${RANGE_COUNT_PREFIX}${name});
         if (count == 0u) { return ${zero}; }
         let slot = raw % count;
-        return ${rangeName}[slot];
+        return readRange_${name}(slot);
     }
-    let idx = ${hashLookupFunctionName(domainMapName)}(raw, arrayLength(&${domainMapName}));
+    let idx = ${hashLookupFunctionName(domainMapName)}(raw, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
     if (idx == HASH_NOT_FOUND) { return ${zero}; }
     let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }
     let slot = idx % count;
-    return ${rangeName}[slot];
+    return readRange_${name}(slot);
 }`;
     }
 
@@ -87,7 +87,7 @@ function emitOrdinalScale({
     let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }
     let slot = idx % count;
-    return ${rangeName}[slot];
+    return readRange_${name}(slot);
 }`;
 }
 

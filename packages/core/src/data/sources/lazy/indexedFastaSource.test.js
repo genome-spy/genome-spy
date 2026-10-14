@@ -107,7 +107,7 @@ function createViewStub() {
             addBroadcastListener: /** @returns {undefined} */ () => undefined,
             removeBroadcastListener: /** @returns {undefined} */ () =>
                 undefined,
-            dataFlow: { loadingStatusRegistry: { set: vi.fn() } },
+            dataFlow: { loadingStatusRegistry: { setSource: vi.fn() } },
         },
     };
 }

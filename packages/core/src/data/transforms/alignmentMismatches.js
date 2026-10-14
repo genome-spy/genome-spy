@@ -1,4 +1,3 @@
-import { field } from "../../utils/field.js";
 import { createCachedCloner } from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import { walkCigar } from "./cigarUtils.js";
@@ -12,15 +11,26 @@ export default class AlignmentMismatchesTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").AlignmentMismatchesParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
-        const startAccessor = field(params.start ?? "start");
-        const cigarAccessor = field(params.cigar ?? "cigar");
-        const sequenceAccessor = field(params.sequence ?? "seq");
-        const qualityAccessor = field(params.quality ?? "qual");
-        const mdAccessor = field(params.md ?? "md");
+        const startAccessor = this.createFieldAccessor(params, "start", {
+            defaultValue: "start",
+        });
+        const cigarAccessor = this.createFieldAccessor(params, "cigar", {
+            defaultValue: "cigar",
+        });
+        const sequenceAccessor = this.createFieldAccessor(params, "sequence", {
+            defaultValue: "seq",
+        });
+        const qualityAccessor = this.createFieldAccessor(params, "quality", {
+            defaultValue: "qual",
+        });
+        const mdAccessor = this.createFieldAccessor(params, "md", {
+            defaultValue: "md",
+        });
         const clone = createCachedCloner({ copyFields: params.copyFields });
 
         /** @param {Record<string, any>} datum */
@@ -39,7 +49,7 @@ export default class AlignmentMismatchesTransform extends Transform {
                 throw new Error(`Invalid CIGAR start coordinate: ${start}`);
             }
 
-            const md = accessOptional(mdAccessor, datum);
+            const md = mdAccessor(datum);
             if (typeof md !== "string" || md.length == 0) {
                 throw new Error("alignmentMismatches requires the MD tag");
             }
@@ -49,7 +59,6 @@ export default class AlignmentMismatchesTransform extends Transform {
                     .filter((event) => event.type == "mismatch")
                     .map((event) => [event.refOffset, event.refBase])
             );
-            const sequence = accessOptional(sequenceAccessor, datum);
             const quality = accessOptional(qualityAccessor, datum);
 
             // TODO: Avoid scanning all MD mismatch events for every M operation.
@@ -66,7 +75,7 @@ export default class AlignmentMismatchesTransform extends Transform {
                                 (mismatchStart - operation.cigarStart);
                             this.#emitMismatch(
                                 datum,
-                                sequence,
+                                sequenceAccessor,
                                 quality,
                                 mismatchStart,
                                 readOffset,
@@ -88,7 +97,7 @@ export default class AlignmentMismatchesTransform extends Transform {
 
                         this.#emitMismatch(
                             datum,
-                            sequence,
+                            sequenceAccessor,
                             quality,
                             mismatchStart,
                             operation.readStart + i,
@@ -109,7 +118,7 @@ export default class AlignmentMismatchesTransform extends Transform {
 
     /**
      * @param {Record<string, any>} datum
-     * @param {unknown} sequence
+     * @param {(datum: Record<string, any>) => unknown} sequenceAccessor
      * @param {unknown} quality
      * @param {number} mismatchStart
      * @param {number} readOffset
@@ -118,13 +127,14 @@ export default class AlignmentMismatchesTransform extends Transform {
      */
     #emitMismatch(
         datum,
-        sequence,
+        sequenceAccessor,
         quality,
         mismatchStart,
         readOffset,
         refBase,
         clone
     ) {
+        const sequence = sequenceAccessor(datum);
         if (typeof sequence !== "string") {
             throw new Error("alignmentMismatches requires read sequence");
         }

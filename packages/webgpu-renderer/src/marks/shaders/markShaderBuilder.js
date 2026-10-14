@@ -6,12 +6,16 @@ import HASH_TABLE_WGSL, {
 import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
+import { hasIndexGaps, INDEX_GAPS_WGSL } from "../scales/indexGaps.js";
+import { rangeVec2 } from "../scales/scaleEmitUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_MAP_PREFIX,
     intervalSelectionActiveName,
     intervalSelectionBoundsName,
     RANGE_COUNT_PREFIX,
+    RANGE_TABLE_PREFIX,
+    DOMAIN_MAP_TABLE_PREFIX,
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
@@ -72,7 +76,7 @@ import {
 /**
  * Resource list used for debug output and validation.
  *
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  */
 
 /**
@@ -179,6 +183,26 @@ export function buildMarkShader({
     const domainMapChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.needsDomainMap
     );
+    const gapChannels = channelIRs.filter((ir) =>
+        hasIndexGaps(ir.channel.scale)
+    );
+    const hasGaps = gapChannels.length > 0;
+    if (
+        hasGaps ||
+        ordinalRangeChannelIRs.length ||
+        domainMapChannelIRs.length
+    ) {
+        const binding = bindingIndex++;
+        resourceBindings.push({
+            binding,
+            visibility: vertexComputeVisibility,
+            buffer: { type: "read-only-storage" },
+        });
+        resourceLayout.push({ name: "scaleTables", role: "scaleTables" });
+        bufferDecls.push(
+            `@group(1) @binding(${binding}) var<storage, read> scaleTables: array<u32>;`
+        );
+    }
     const rangeTextureChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.useRangeTexture
     );
@@ -191,7 +215,8 @@ export function buildMarkShader({
     );
     const visibilityPredicate = buildVisibilityPredicate({
         predicate: visibleWhen,
-        functionName: order ? "isInstanceVisibleBase" : "isInstanceVisible",
+        functionName:
+            order || hasGaps ? "isInstanceVisibleBase" : "isInstanceVisible",
         channelIRs,
         channelNames,
         inputNames,
@@ -209,17 +234,30 @@ export function buildMarkShader({
               selectionDefs,
           })
         : "";
-    const orderVisibility = order
-        ? /* wgsl */ `
+    const gapChecks = gapChannels.map(({ name, channel }) => {
+        const axis =
+            channel.scale.gapAxis ?? (name.startsWith("y") ? "y" : "x");
+        return `indexGapsFit(${rangeVec2(name)}, params.gapGeometry_${name}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
+    });
+    const instanceVisibility =
+        order || hasGaps
+            ? /* wgsl */ `
 fn isInstanceVisible(i: u32) -> bool {
     if (!isInstanceVisibleBase(i)) { return false; }
+    ${hasGaps ? `if (!(${gapChecks.join(" && ")})) { return false; }` : ""}
+    ${
+        order
+            ? /* wgsl */ `
     if (globals.orderPass == 0u) { return true; }
     let matches = isInstanceOrderMatch(i);
     return ((globals.orderPass & 3u) == 1u && matches) ||
         ((globals.orderPass & 3u) == 2u && !matches);
+    `
+            : "return true;"
+    }
 }
 `
-        : "";
+            : "";
 
     /**
      * @param {string} name
@@ -347,7 +385,7 @@ fn ${fnName}_p${projectionIndex}(i: u32) -> bool {
     if (params.${active} == 0u) { return false; }
 ${boundsSetup}
 ${datumSetup}
-    return ${test};
+    return ${lt(lo, hi)} && (${test});
 }
 `;
                     }
@@ -402,6 +440,41 @@ ${clauses.join("\n")}
 `;
     }
 
+    // Only explicit gapped ranges need a conditional raw peer accessor.
+    const gapPeers = new Set(
+        channelIRs
+            .filter((ir) => hasIndexGaps(ir.channel.scale))
+            .map((ir) => ir.channel.scale.gapPeer)
+            .filter((peer) => peer !== undefined)
+    );
+    for (const peer of gapPeers) {
+        const ir = channelIRByName.get(peer);
+        if (!ir)
+            throw new Error(`Unknown grouping-gap peer channel "${peer}".`);
+        const rawKey = (
+            /** @type {import("./channelIR.js").ChannelIR} */ branch
+        ) => {
+            if (branch.channel.scale?.type !== "index") return "fallback";
+            if (branch.inputComponents === 2) return branch.rawValueExpr;
+            const value = `u32(${branch.rawValueExpr})`;
+            return `vec2<u32>(${value} >> 12u, ${value} & 4095u)`;
+        };
+        const clauses = (ir.channel.conditions ?? []).map((condition) => {
+            const predicate = emitPredicateExpression(
+                condition.when,
+                selectionDefsByName
+            );
+            const value = condition.channelName
+                ? rawKey(channelIRByName.get(condition.channelName))
+                : "fallback";
+            return `    if (${predicate}) { return ${value}; }`;
+        });
+        channelFns.push(`fn gapPeer_${peer}(i: u32, fallback: vec2<u32>) -> vec2<u32> {
+${clauses.join("\n")}
+    return ${rawKey(ir)};
+}`);
+    }
+
     // Literal formatting is centralized so constants always match the expected
     // WGSL types (e.g., float literals use ".0" when appropriate).
 
@@ -418,8 +491,6 @@ ${clauses.join("\n")}
 
     // First pass: series-backed channels must map to packed series buffers and
     // emit read_* accessors plus getScaled_* wrappers.
-    /** @type {Set<"f32"|"u32"|"i32">} */
-    const packedTypes = new Set();
     const packedSeriesEntries = packedSeriesLayout ?? new Map();
 
     // Internal invariant: packed series is required when series channels exist.
@@ -433,54 +504,16 @@ ${clauses.join("\n")}
         );
     }
 
-    for (const entry of packedSeriesEntries.values()) {
-        if (
-            entry.scalarType === "f32" ||
-            entry.scalarType === "u32" ||
-            entry.scalarType === "i32"
-        ) {
-            packedTypes.add(entry.scalarType);
-        } else if (__DEV__) {
-            throw new Error(
-                `Packed series only supports f32/u32/i32. Found "${entry.scalarType}".`
-            );
-        }
-    }
-
-    if (packedTypes.has("f32")) {
+    if (seriesChannelIRs.length) {
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
             visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
-        resourceLayout.push({ name: "seriesF32", role: "series" });
+        resourceLayout.push({ name: "series", role: "series" });
         bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> seriesF32: array<f32>;`
-        );
-    }
-    if (packedTypes.has("u32")) {
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name: "seriesU32", role: "series" });
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> seriesU32: array<u32>;`
-        );
-    }
-    if (packedTypes.has("i32")) {
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name: "seriesI32", role: "series" });
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> seriesI32: array<i32>;`
+            `@group(1) @binding(${binding}) var<storage, read> series: array<u32>;`
         );
     }
 
@@ -514,41 +547,23 @@ ${clauses.join("\n")}
                 `Packed series component mismatch for "${name}". Expected ${channelIR.inputComponents}, got ${layoutEntry.components}.`
             );
         }
-        const bufferName =
-            layoutEntry.scalarType === "f32"
-                ? "seriesF32"
-                : layoutEntry.scalarType === "u32"
-                  ? "seriesU32"
-                  : "seriesI32";
-        const offset = layoutEntry.offset;
-        const stride = layoutEntry.stride;
-        if (layoutEntry.components === 1) {
-            bufferReaders.push(
-                `fn read_${name}(i: u32) -> ${layoutEntry.scalarType} {
-    return ${bufferName}[${offset}u + i * ${stride}u];
-}`
-            );
-        } else if (layoutEntry.components === 2) {
-            bufferReaders.push(
-                `fn read_${name}(i: u32) -> vec2<${layoutEntry.scalarType}> {
+        const { offset, stride, components, scalarType } = layoutEntry;
+        const type =
+            components === 1 ? scalarType : `vec${components}<${scalarType}>`;
+        const loads = Array.from(
+            { length: components },
+            (_, c) => `series[base${c ? ` + ${c}u` : ""}]`
+        );
+        const words =
+            components === 1
+                ? loads[0]
+                : `vec${components}<u32>(${loads.join(", ")})`;
+        bufferReaders.push(`fn read_${name}(i: u32) -> ${type} {
     let base = ${offset}u + i * ${stride}u;
-    return vec2<${layoutEntry.scalarType}>(${bufferName}[base], ${bufferName}[base + 1u]);
-}`
-            );
-        } else {
-            bufferReaders.push(
-                `fn read_${name}(i: u32) -> vec4<${layoutEntry.scalarType}> {
-    let base = ${offset}u + i * ${stride}u;
-    return vec4<${layoutEntry.scalarType}>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
-}`
-            );
-        }
+    return ${scalarType === "u32" ? words : `bitcast<${type}>(${words})`};
+}`);
 
-        // getScaled_* is the only function mark shaders call. It hides whether
-        // values come from buffers or uniforms and applies scale logic.
-        const hasConditions =
-            Array.isArray(channelIR.channel.conditions) &&
-            channelIR.channel.conditions.length > 0;
+        const hasConditions = (channelIR.channel.conditions?.length ?? 0) > 0;
         const baseFunctionName = hasConditions ? `${name}_base` : name;
         if (channelIR.needsScaleFunction) {
             channelFns.push(
@@ -602,52 +617,26 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
         }
     }
 
-    // Ordinal scales pull range values from storage buffers. These bindings are
-    // separate from series data so ranges can grow/shrink without reallocating
-    // per-instance buffers.
     for (const channelIR of ordinalRangeChannelIRs) {
         const { name } = channelIR;
         const requirements = ensureRequirements(name);
         requirements.ordinalRange = true;
         requirements.rangeCountUniform = true;
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name, role: "ordinalRange" });
-
-        const elementType =
-            channelIR.outputComponents === 1
-                ? channelIR.outputScalarType
-                : "vec4<f32>";
-        const rangeBufferName = `range_${name}`;
-
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> ${rangeBufferName}: array<${elementType}>;`
-        );
+        const scalar = channelIR.outputScalarType;
+        const vector = channelIR.outputComponents !== 1;
+        const type = vector ? "vec4<f32>" : scalar;
+        const load = vector
+            ? "vec4<u32>(scaleTables[offset], scaleTables[offset + 1u], scaleTables[offset + 2u], scaleTables[offset + 3u])"
+            : "scaleTables[offset]";
+        bufferReaders.push(`fn readRange_${name}(index: u32) -> ${type} {
+    let offset = params.${RANGE_TABLE_PREFIX}${name} + index * ${vector ? 4 : 1}u;
+    return ${!vector && scalar === "u32" ? load : `bitcast<${type}>(${load})`};
+}`);
     }
-
-    // Ordinal/band scales can map sparse category IDs to dense indices via a
-    // hash table stored in a read-only storage buffer.
-    for (const channelIR of domainMapChannelIRs) {
-        const { name } = channelIR;
+    for (const { name } of domainMapChannelIRs) {
         const requirements = ensureRequirements(name);
         requirements.domainMap = true;
         requirements.domainMapCountUniform = true;
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name, role: "domainMap" });
-
-        const mapBufferName = `${DOMAIN_MAP_PREFIX}${name}`;
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> ${mapBufferName}: array<HashEntry>;`
-        );
     }
 
     // Color ramps are stored as textures so interpolation matches d3 in
@@ -852,7 +841,18 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
             .map((def) => SELECTION_BUFFER_PREFIX + def.name),
     ];
     const hashLookupFunctions = hashTableBufferNames
-        .map(emitHashLookupFunction)
+        .map((name) => {
+            const channel = domainMapChannelIRs.find(
+                (ir) => DOMAIN_MAP_PREFIX + ir.name === name
+            );
+            return channel
+                ? emitHashLookupFunction(name, {
+                      buffer: "scaleTables",
+                      offset: `params.${DOMAIN_MAP_TABLE_PREFIX}${channel.name}.x`,
+                      capacity: `params.${DOMAIN_MAP_TABLE_PREFIX}${channel.name}.y`,
+                  })
+                : emitHashLookupFunction(name);
+        })
         .join("\n");
     const needsHashTable = hashTableBufferNames.length > 0;
 
@@ -1041,6 +1041,7 @@ fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {
 }
 
 ${scalesWgsl}
+${hasGaps ? INDEX_GAPS_WGSL : ""}
 ${needsHashTable ? HASH_TABLE_WGSL : ""}
 
 struct Params {
@@ -1065,7 +1066,7 @@ ${visibilityPredicate}
 
 ${orderPredicate}
 
-${orderVisibility}
+${instanceVisibility}
 
 fn premultiplyAlpha(color: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(color.rgb * color.a, color.a);

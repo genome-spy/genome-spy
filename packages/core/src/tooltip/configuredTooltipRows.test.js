@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { getConfiguredTooltipRows } from "./configuredTooltipRows.js";
 
 /**
@@ -11,13 +12,7 @@ function makeMark(tooltip) {
             tooltip,
         },
         unitView: {
-            paramRuntime: {
-                /**
-                 * @param {string} expr
-                 */
-                createExpression: (expr) =>
-                    new Function("datum", `return ${expr};`),
-            },
+            paramRuntime: new ViewParamRuntime(),
         },
     };
 }

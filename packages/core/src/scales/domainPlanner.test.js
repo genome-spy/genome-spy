@@ -13,11 +13,11 @@ import { validateSharedViewportDomain } from "./viewportDomain.js";
 /** @typedef {import("./scaleResolution.js").ScaleResolutionMember} Member */
 
 /**
- * @param {string} expr
+ * @param {import("../spec/parameter.js").ExprRef} expr
  * @returns {never}
  */
 function rejectUnexpectedExpression(expr) {
-    throw new Error(`Unexpected expression: ${expr}`);
+    throw new Error(`Unexpected expression: ${expr.expr}`);
 }
 
 /**

@@ -12,6 +12,7 @@ import { ExprRef } from "./parameter.js";
 import { Scale } from "./scale.js";
 import { GenomeAxis } from "./axis.js";
 import { Legend } from "./legend.js";
+import { Title } from "./title.js";
 
 // TODO: Rename Scalar to PrimitiveValue
 export type Scalar = string | number | boolean;
@@ -66,8 +67,76 @@ export type ChannelWithoutScale =
 
 export type Channel = ChannelWithScale | ChannelWithoutScale;
 
-// TODO
-export type FacetFieldDef = any;
+/** A category field whose values are used as facet labels. */
+export interface FacetFieldDef extends FieldDefBase {
+    /**
+     * Categories to display, including empty cells. An expression reference
+     * can supply a reactive category array. Values outside the domain have no cells.
+     *
+     * __Default value:__ Categories found in the input data.
+     */
+    domain?: Scalar[] | ExprRef;
+
+    /**
+     * A shared title for this facet dimension. A string uses the regular view
+     * title style; an object supports view-title placement and styling.
+     * Row titles default to the left, and column titles to the top.
+     * Set to `null` to hide the title.
+     *
+     * __Default value:__ The field name.
+     */
+    title?: string | Title | null;
+
+    /**
+     * Category order. An array places listed values first, followed by unlisted
+     * values in domain or input order. Sorting does not add cells.
+     *
+     * __Default value:__ Domain order when `domain` is specified; otherwise `"ascending"`.
+     */
+    sort?: "ascending" | "descending" | Scalar[];
+
+    /** Category label options. `null` hides labels and the field title, reclaiming their space. */
+    header?: FacetHeader | null;
+}
+
+/**
+ * Category labels use view-title placement and styling properties. Defaults
+ * are 12-pixel centered text above columns and rotated -90 degrees beside rows,
+ * with a 9-pixel offset and at least 18 pixels of reserved header space.
+ */
+export interface FacetHeader extends Pick<
+    Title,
+    | "style"
+    | "orient"
+    | "anchor"
+    | "frame"
+    | "offset"
+    | "reserve"
+    | "zindex"
+    | "align"
+    | "angle"
+    | "baseline"
+    | "dx"
+    | "dy"
+    | "color"
+    | "font"
+    | "fontSize"
+    | "fontStyle"
+    | "fontWeight"
+> {
+    /**
+     * Whether category labels are shown. Hidden labels reserve no space.
+     *
+     * __Default value:__ `true`
+     */
+    labels?: boolean;
+
+    /**
+     * D3 number format for numeric category labels, for example `".1f"` or
+     * `",.0f"`. String and boolean categories retain their original labels.
+     */
+    format?: string;
+}
 
 // TODO: Belongs to "guide"
 export interface TitleMixins {

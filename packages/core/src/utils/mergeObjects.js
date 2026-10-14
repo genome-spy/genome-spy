@@ -1,4 +1,5 @@
 import { isObject } from "vega-util";
+import { inheritSpecOrigin } from "./specOrigin.js";
 
 /**
  * Deep merge.
@@ -65,9 +66,9 @@ export default function mergeObjects(objects, propertyOf, skip) {
                             );
                         }
                     } else if (isPlainObject(sourceValue)) {
-                        if (
-                            !(targetValue === true || targetValue === undefined)
-                        ) {
+                        if (!(
+                            targetValue === true || targetValue === undefined
+                        )) {
                             throw new Error(
                                 "Bug in merge! Target is: " + targetValue
                             );
@@ -77,6 +78,8 @@ export default function mergeObjects(objects, propertyOf, skip) {
                     } else {
                         // Scalar
                         target[prop] = sourceValue;
+                        // Preserve the declaration of expressions in merged guide properties.
+                        if (prop === "expr") inheritSpecOrigin(obj, target);
                     }
                 }
             }

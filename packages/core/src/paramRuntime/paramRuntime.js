@@ -28,11 +28,18 @@ import { bindExpression } from "./expressionRef.js";
 export default class ParamRuntime {
     #lifecycleRegistry = new LifecycleRegistry();
 
-    #graphRuntime = new GraphRuntime({
-        lifecycleRegistry: this.#lifecycleRegistry,
-    });
+    /** @type {GraphRuntime} */
+    #graphRuntime;
 
     #paramStore = new ParamStore();
+
+    /** @param {{ onError?: (error: unknown) => void }} [options] */
+    constructor(options = {}) {
+        this.#graphRuntime = new GraphRuntime({
+            lifecycleRegistry: this.#lifecycleRegistry,
+            onError: options.onError,
+        });
+    }
 
     /**
      * Creates a new parameter scope.
@@ -150,7 +157,7 @@ export default class ParamRuntime {
      * @param {ScopeId} scope
      * @param {string} name
      * @param {string} expr
-     * @param {{ expressionScope?: ScopeId, resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
+     * @param {import("./expressionRef.js").ExpressionBindingOptions & { expressionScope?: ScopeId }} [options]
      * @returns {import("./types.js").ParamRef<T>}
      */
     registerDerived(scope, name, expr, options) {
@@ -180,7 +187,7 @@ export default class ParamRuntime {
      *
      * @param {ScopeId} scope
      * @param {string} expr
-     * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
+     * @param {import("./expressionRef.js").ExpressionBindingOptions} [options]
      * @returns {import("./types.js").ExprRefFunction}
      */
     createExpression(scope, expr, options) {

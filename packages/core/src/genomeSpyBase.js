@@ -53,6 +53,7 @@ import { mergeConfigScopes } from "./config/mergeConfig.js";
 import { resolveBaseConfig } from "./config/resolveConfig.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./config/themes.js";
 import { warnOnce } from "./utils/warning.js";
+import { formatErrorMessage, logError } from "./utils/errorPresentation.js";
 import {
     getCanvasBackground,
     getExportBackground,
@@ -86,7 +87,7 @@ export default class GenomeSpy {
 
     #destroyed = false;
     #launchPending = false;
-    /** @type {Error | undefined} */
+    /** @type {unknown} */
     #launchRuntimeError;
     /** @type {Set<unknown>} */
     #reportedErrors = new Set();
@@ -124,7 +125,10 @@ export default class GenomeSpy {
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
 
-        this.animator = new Animator(() => this.renderAll());
+        this.animator = new Animator(
+            () => this.renderAll(),
+            (error) => this.#reportRuntimeError(error)
+        );
 
         // Use a stable callback identity so repeated layout requests coalesce
         // in Animator's transition queue before the next render.
@@ -272,12 +276,16 @@ export default class GenomeSpy {
         );
 
         const resizeCallback = () => {
-            this.#surface.invalidateSize();
-            this.dpr = this.#surface.getDevicePixelRatio();
-            dprSetter(this.dpr);
-            this.computeLayout();
-            // Render immediately, without RAF
-            this.renderAll();
+            try {
+                this.#surface.invalidateSize();
+                this.dpr = this.#surface.getDevicePixelRatio();
+                dprSetter(this.dpr);
+                this.computeLayout();
+                // Render immediately, without RAF
+                this.renderAll();
+            } catch (error) {
+                this.#reportRuntimeError(error);
+            }
         };
 
         this.#onCanvasResize = resizeCallback;
@@ -346,7 +354,8 @@ export default class GenomeSpy {
         this.#loadingStatusRegistry = new LoadingStatusRegistry();
         this.#loadingIndicatorManager = new LoadingIndicatorManager(
             loadingIndicatorsElement,
-            this.#loadingStatusRegistry
+            this.#loadingStatusRegistry,
+            () => this.viewRoot
         );
     }
 
@@ -371,6 +380,8 @@ export default class GenomeSpy {
         this.#keyboardListenerManager.removeAll();
 
         this.#destructionCallbacks.forEach((callback) => callback());
+
+        this.#loadingStatusRegistry?.clear();
 
         this.#disposeInitializedResources();
 
@@ -438,6 +449,8 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             textMetrics: this.#renderingBackend.textMetrics,
+            reportError: this.#reportRuntimeError.bind(this),
+            getSpecOrigin: this.options.getSpecOrigin,
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
@@ -631,13 +644,13 @@ export default class GenomeSpy {
             if (this.#destroyed) {
                 this.#disposeInitializedResources();
             }
-            if (launched && this.viewRoot) {
+            if (launched) {
                 this.#loadingStatusRegistry.set(this.viewRoot, "complete");
             }
         }
     }
 
-    /** @param {Error} error */
+    /** @param {unknown} error */
     #reportRuntimeError(error) {
         if (this.#destroyed) {
             return;
@@ -657,23 +670,27 @@ export default class GenomeSpy {
         }
     }
 
-    /** @param {any} reason */
+    /** @param {unknown} reason */
     #reportError(reason) {
         if (this.#destroyed || this.#reportedErrors.has(reason)) {
             return;
         }
         this.#reportedErrors.add(reason);
-        const message = `${
-            reason.view ? `At "${reason.view.getPathString()}": ` : ""
-        }${reason.toString()}`;
-        console.error(reason.stack);
-        const handled = this.options.onError?.(reason, this.container);
+        const message = formatErrorMessage(reason);
+        logError(reason);
+        let handled;
+        try {
+            handled = this.options.onError?.(reason, this.container);
+        } catch (reportingError) {
+            console.error(reportingError);
+        }
         if (!handled) {
             createMessageBox(this.container, message);
         }
 
         if (this.viewRoot && this.#loadingStatusRegistry) {
-            this.#loadingStatusRegistry.set(this.viewRoot, "error", message);
+            // Fatal UI belongs to the message box or host, not a loading indicator.
+            this.#loadingStatusRegistry.delete(this.viewRoot);
         }
     }
 
@@ -930,6 +947,12 @@ export default class GenomeSpy {
     }
 
     renderAll() {
+        // Resize and animation callbacks can run while startup awaits fonts.
+        // Launch schedules a fresh frame after preparation has completed.
+        if (this.#launchPending) {
+            return;
+        }
+
         this.#interactionController?.invalidatePendingPicks();
         this.#renderCoordinator.renderAll();
     }

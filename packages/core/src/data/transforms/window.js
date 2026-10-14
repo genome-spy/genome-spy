@@ -1,7 +1,10 @@
 import { compare } from "vega-util";
-import { field } from "../../utils/field.js";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
+import {
+    createFileBatchAccessor,
+    createFileBatchPropagator,
+} from "../fileBatchUtils.js";
 import {
     createAggregatePartitionEvaluator,
     WINDOW_AGGREGATE_OPS,
@@ -32,21 +35,25 @@ import {
  * propagation order. The transform buffers one FlowNode batch at a time.
  */
 export default class WindowTransform extends Transform {
+    /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
+    #fileBatchStarts = [];
+
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
 
     /**
      * @param {import("../../spec/transform.js").WindowParams} params
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
         this.params = params;
 
         /** @type {Datum[]} */
         this.buffer = [];
 
-        const normalized = normalizeParams(params);
+        const normalized = normalizeParams(params, this);
         this.frame = normalized.frame;
         this.ignorePeers = normalized.ignorePeers;
         this.comparator = normalized.comparator;
@@ -58,6 +65,7 @@ export default class WindowTransform extends Transform {
     reset() {
         super.reset();
         this.buffer = [];
+        this.#fileBatchStarts = [];
     }
 
     /** @param {Datum} datum */
@@ -69,6 +77,13 @@ export default class WindowTransform extends Transform {
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
+        if (flowBatch.type == "file" && this.inFacet) {
+            this.#fileBatchStarts.push({
+                index: this.buffer.length,
+                batch: flowBatch,
+            });
+            return;
+        }
         this.#flushBuffer();
         super.beginBatch(flowBatch);
     }
@@ -79,6 +94,12 @@ export default class WindowTransform extends Transform {
     }
 
     #flushBuffer() {
+        const propagate = createFileBatchPropagator(
+            createFileBatchAccessor(this.buffer, this.#fileBatchStarts),
+            (batch) => super.beginBatch(batch),
+            (datum) => this._propagate(datum)
+        );
+        this.#fileBatchStarts = [];
         if (this.buffer.length == 0) {
             return;
         }
@@ -91,7 +112,7 @@ export default class WindowTransform extends Transform {
         }
 
         for (const datum of buffer) {
-            this._propagate(datum);
+            propagate(datum);
         }
     }
 
@@ -134,8 +155,9 @@ export default class WindowTransform extends Transform {
 
 /**
  * @param {import("../../spec/transform.js").WindowParams} params
+ * @param {Transform} transform
  */
-function normalizeParams(params) {
+function normalizeParams(params, transform) {
     if (!Array.isArray(params.ops) || params.ops.length == 0) {
         throw new Error(
             'The "ops" property must contain at least one operation.'
@@ -161,9 +183,12 @@ function normalizeParams(params) {
         }
     }
 
-    const groupAccessors = (params.groupby ?? []).map((name) => field(name));
+    const groupAccessors = transform.createFieldAccessors(params, "groupby");
     const comparator = params.sort
-        ? compare(params.sort.field, params.sort.order)
+        ? compare(
+              transform.createFieldAccessors(params.sort, "field"),
+              params.sort.order
+          )
         : undefined;
 
     /** @type {PartitionEvaluator[]} */
@@ -177,7 +202,7 @@ function normalizeParams(params) {
     const outputFields = [];
 
     for (let resultIndex = 0; resultIndex < params.ops.length; resultIndex++) {
-        const operation = compileOperation(params, resultIndex);
+        const operation = compileOperation(params, resultIndex, transform);
         outputFields.push(operation.as);
 
         if (operation.kind == "window") {
@@ -243,9 +268,10 @@ function normalizeParams(params) {
 /**
  * @param {import("../../spec/transform.js").WindowParams} params
  * @param {number} index
+ * @param {Transform} transform
  * @returns {CompiledOperation}
  */
-function compileOperation(params, index) {
+function compileOperation(params, index, transform) {
     const op = params.ops[index];
     const fieldName = params.fields?.[index] ?? null;
     const parameter = params.params?.[index];
@@ -285,7 +311,10 @@ function compileOperation(params, index) {
         op,
         kind,
         field: fieldName,
-        accessor: fieldName == null ? undefined : field(fieldName),
+        accessor:
+            fieldName == null
+                ? undefined
+                : transform.createFieldAccessor(params, "fields", { index }),
         parameter,
         as: output ?? defaultOutputName(op, fieldName),
     };

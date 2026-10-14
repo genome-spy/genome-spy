@@ -13,6 +13,10 @@ import schema from "@genome-spy/core/schema.json";
 import corePackage from "../../../core/package.json" with { type: "json" };
 import { getLanguageService, TextDocument } from "vscode-json-languageservice";
 import { createSchemaRequestService } from "./schemaRequestService.js";
+import {
+    resolveRuntimeDiagnostics,
+    resolveSpecErrorDiagnostic,
+} from "./loadingDiagnostics.js";
 
 const SPEC_URI = "inmemory://genome-spy/spec.json";
 const DEFAULT_SCHEMA_URI = "inmemory://genome-spy/core-schema.json";
@@ -48,7 +52,7 @@ function createDocument(text, version) {
 }
 
 workerScope.addEventListener("message", async (event) => {
-    const { id, type, text, offset } = event.data;
+    const { id, type, text, offset, loadingEntries, specError } = event.data;
     const document = createDocument(text, id);
     const jsonDocument = languageService.parseJSONDocument(document);
 
@@ -56,7 +60,7 @@ workerScope.addEventListener("message", async (event) => {
         let result;
 
         switch (type) {
-            case "validate":
+            case "validate": {
                 result = await languageService.doValidation(
                     document,
                     jsonDocument,
@@ -67,7 +71,23 @@ workerScope.addEventListener("message", async (event) => {
                         schemaRequest: "error",
                     }
                 );
+                const runtime = resolveRuntimeDiagnostics(jsonDocument.root, {
+                    loadingEntries,
+                    specError,
+                });
+                result.push(
+                    ...runtime.map((diagnostic) => ({
+                        range: {
+                            start: document.positionAt(diagnostic.from),
+                            end: document.positionAt(diagnostic.to),
+                        },
+                        message: diagnostic.message,
+                        severity: /** @type {const} */ (1),
+                        source: "GenomeSpy",
+                    }))
+                );
                 break;
+            }
             case "complete":
                 result = await languageService.doComplete(
                     document,
@@ -80,6 +100,12 @@ workerScope.addEventListener("message", async (event) => {
                     document,
                     document.positionAt(offset),
                     jsonDocument
+                );
+                break;
+            case "locate":
+                result = resolveSpecErrorDiagnostic(
+                    jsonDocument.root,
+                    specError
                 );
                 break;
             default:

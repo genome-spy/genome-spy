@@ -23,6 +23,243 @@ If applicable, the scope in the commit message should be the package name, e.g.,
 `core` or `app`. However, when making commits that will be squashed into a
 single commit, the scope can be omitted.
 
+Conventional Commits describe Git history. They no longer calculate versions or
+generate release notes after `v1.0.0`; Changesets records those decisions.
+
+## Release notes for contributions
+
+Include a `.changeset/*.md` fragment with each user-visible change, whether it
+arrives through a PR or a direct commit to `master` or `main`:
+
+```sh
+npm run changeset
+npm run release:check
+npm run release:status
+```
+
+Select the directly affected packages and describe the benefit or corrected
+behavior in language GenomeSpy users understand. Use `patch` for compatible
+fixes, `minor` for compatible functionality, and `major` for breaking API or
+specification changes. Every breaking note must explain the required migration.
+The eight release packages share one fixed version, so selecting a single
+affected package propagates the bump to the group. Private applications are
+versioned but never published or tagged. The private WebGPU prototype remains
+outside the group, at its own development version.
+
+Update an existing fragment when further commits change the same unreleased
+feature. Use separate fragments for independent changes. For changes with no
+release impact, such as tests, CI, pure refactoring, or internal documentation,
+record the decision with an empty fragment:
+
+```sh
+npm run changeset -- --empty
+```
+
+CI checks PRs and pushes to `master`/`main` for a new or updated fragment. It
+validates package names, release plans, and the publication boundary; reviewers
+still assess the bump and prose. Version commits consume fragments and do not
+need another no-release marker. See [.changeset/README.md](.changeset/README.md)
+for the complete contribution contract.
+
+## Releases
+
+`v1.0.0` was the final release calculated with Lerna Lite and Conventional
+Commits. Preserve the existing versions and changelog history as the baseline;
+start accumulating Changesets fragments for subsequent changes.
+
+Prepare a stable release from a clean checkout with committed fragments:
+
+```sh
+npm run release:status
+npm run release:check
+npm run release:version
+git diff
+```
+
+`release:status` inspects the calculated versions without modifying the repo.
+`release:version` runs Changesets, consumes pending fragments, updates manifests
+and package changelogs, synchronizes `package-lock.json`, and
+adds a root changelog entry grouped into breaking changes, features, and fixes.
+Each logical fragment appears once in the root entry, even when several fixed
+packages are affected. The GitHub changelog formatter supplies PR/commit links
+and contributor attribution; release preparation needs a `GITHUB_TOKEN` with
+the formatter's documented read permissions. See the
+[formatter documentation](https://changesets.dev/packages/changelog-github).
+Empty fragments alone do not create a release. This command supports stable
+releases. The deferred branch policy and required prerelease work are recorded
+under [future major release lines](#future-major-release-lines). Snapshot
+workflows require a separate design.
+
+Review and commit all generated changes using Conventional Commits, then run the
+normal lint, type, build, and test checks and `npm run smoke:examples` before
+publication. Inspect the npm publication candidates with:
+
+```sh
+npm run release:plan
+```
+
+Only App, Core, Inspector, and the React component are published. All eight
+release packages share Core's manifest version; the private WebGPU prototype
+keeps its independent version. npm workspaces builds packages in the explicit
+order in the root `build` script, with Core and the plugins before App and the
+frontends. Update that order when introducing a new build dependency.
+
+### Set up npm trusted publishing once
+
+For each of `@genome-spy/core`, `@genome-spy/app`, `@genome-spy/inspector`, and
+`@genome-spy/react-component`, open its npm package settings and add a GitHub
+Actions trusted publisher with:
+
+- Organization: `genome-spy`
+- Repository: `genome-spy`
+- Workflow filename: `publish.yml` (just the filename)
+- Environment: leave empty; this workflow does not use a GitHub environment
+- Allowed actions: enable direct `npm publish`
+
+New trusted publisher configurations default to staged publishing, which this
+Changesets workflow does not use. Enable direct publishing explicitly. The
+workflow uses a GitHub-hosted runner, Node 24, npm 11 (at least 11.5.1), and
+`id-token: write`. npm exchanges the workflow identity for a short-lived publish
+credential and automatically supplies provenance for these public packages.
+No `NPM_TOKEN` or `NODE_AUTH_TOKEN` secret is needed. See
+[npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
+After verifying the first successful trusted release, restrict legacy token
+publishing and revoke unused automation tokens in npm settings.
+
+Keep the existing `ACTIONS_DEPLOY_KEY` repository secret for the separate site
+repository. The release action needs permission to create repository tags and
+GitHub releases; repository rules must permit those operations by GitHub Actions.
+
+### Publish a reviewed release commit
+
+Push the reviewed version commit to `master` and let CI pass. In GitHub Actions,
+select **Publish GenomeSpy**, choose **Run workflow** on `master`, and enter the
+exact prepared manifest version, such as `1.0.1`. The run uses the commit selected
+when it starts; subsequent commits do not change that checkout.
+
+The action verifies the expected stable version, synchronized packages, consumed
+release fragments, root release notes, and absence of the global tag. It then
+runs lint, type checks, tests, embedding-example builds, then the complete
+ordered build and real npm packing with lifecycle scripts. The final build runs
+after tests because bundle smoke tests rewrite App outputs without its schema.
+Archive validation checks runtime and type entry files before publication. Core's packing hook rewrites its source
+exports to built files and restores the working manifest afterward.
+
+Changesets publishes the four public packages at their reviewed versions and
+skips versions already present on npm. Publication reuses the completed
+builds; publishing does not repeat them. The action creates the single
+annotated `vX.Y.Z` tag at that commit and a GitHub release containing the root
+changelog entry after npm succeeds. Package-specific Git tags are disabled.
+
+The action explicitly calls the docs/Playground deployment workflow at the new
+tag, including versioned schemas and alias updates. A GitHub release created
+with `GITHUB_TOKEN` does not trigger another release-event workflow. Human-created
+releases and manual docs deployments still use the existing triggers. See
+[GitHub's workflow trigger rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+
+If npm publication fails partway through, rerun the publish job at the same
+commit; Changesets skips successfully published package versions. If the tag and
+GitHub release already exist and only docs failed, rerun the failed docs job.
+The publish job rejects an existing global tag, so inspect a failure during tag
+or release creation and complete that step manually before deploying docs.
+
+`npm run release:publish` is the action's publishing command and performs a real
+npm publication. Do not run it during preparation or rehearsal. Use
+`npm run release:version` instead of plain `changeset version` so the lockfile
+and root changelog are prepared too.
+
+### Rehearse without publishing
+
+Use a disposable checkout or worktree to rehearse versioning. `changeset version`
+has no non-mutating dry run. `release:status` and `release:plan` inspect plans;
+versioning consumes fragments and changes files. To build and pack locally:
+
+```sh
+npm run build
+mkdir -p /tmp/genomespy-pack
+npm run --silent release:pack -- --pack-destination /tmp/genomespy-pack --json \
+  > /tmp/genomespy-pack/packed-packages.json
+node scripts/verifyPackedPackages.mjs /tmp/genomespy-pack/packed-packages.json
+git diff --exit-code -- packages/*/package.json
+```
+
+Packing runs the actual `prepack`/`postpack` lifecycle and writes only the four
+public tarballs. Inspect their manifests and entry files before release. Never
+run publication, tag pushes, or GitHub-release creation during rehearsal.
+
+### Future major release lines
+
+This policy is deferred. Continue compatible 1.x development on `master`, using
+patch and minor changesets and stable releases under npm's `latest` tag. Create
+the maintenance branch and enter prerelease mode when work on the next breaking
+release begins, after the supporting tooling below is implemented.
+
+Before merging the first breaking PR, create `release/1.x` from the chosen
+stable 1.x baseline, including the release tooling. Prefer cutting the branch
+after a stable release so pending release fragments have been consumed. The
+intended branch roles are:
+
+| Branch        | Accepted changes                                  | Release line                       |
+| ------------- | ------------------------------------------------- | ---------------------------------- |
+| `master`      | Main development, including breaking changes      | Next major, initially 2.0 previews |
+| `release/1.x` | Compatible fixes and selected compatible features | Stable 1.x                         |
+
+Keep `.changeset/config.json`'s `baseBranch` as `master` on the development
+branch and set it to `release/1.x` on the maintenance branch. Use temporary
+branches for feature and backport PRs; each supported major needs one enduring
+maintenance branch, not a branch per feature.
+
+Breaking PRs target `master` and include a major changeset with migration
+instructions. Compatible work also targets `master` by default. Merging a PR
+records release intent; it does not publish packages. Once prerelease support
+is ready, enter Changesets prerelease mode with `next` on `master` and prepare
+reviewed previews such as `2.0.0-next.0`. When the major is ready, exit prerelease
+mode and prepare the final stable version commit. See the
+[Changesets prerelease guide](https://changesets.dev/guide/prereleases).
+
+For changes needed by both lines, merge the implementation into `master`, then
+open a backport PR against `release/1.x` by cherry-picking or adapting it. Include
+a changeset appropriate to the 1.x behavior, usually patch for a fix. Fix bugs
+specific to 1.x on the maintenance branch and forward-port them when relevant.
+Keep release/version commits, generated changelogs, lockfile version updates,
+and prerelease state local to each line; port individual implementation changes
+rather than routinely merging whole release branches. See the
+[Changesets backporting guide](https://changesets.dev/guide/backporting-changes).
+
+The intended npm channel policy is:
+
+| Release                                          | npm dist-tag |
+| ------------------------------------------------ | ------------ |
+| Stable 1.x while it is the current stable major  | `latest`     |
+| 2.0 prereleases                                  | `next`       |
+| Final 2.0 and subsequent current stable releases | `latest`     |
+| 1.x maintenance after 2.0 becomes stable         | `latest-1`   |
+
+Older-major releases must explicitly use their maintenance tag to preserve the
+current `latest`. GitHub prereleases must be marked as such, and older-major
+releases must not replace the current major as the latest GitHub release. See
+[npm dist-tags](https://docs.npmjs.com/adding-dist-tags-to-packages/).
+
+Before activating this policy, complete the following work:
+
+- Extend `scripts/release.mjs` and the contribution gate for Changesets
+  prerelease entry, repeated previews, and exit. Preserve the fixed/private
+  package policy, handle archived `.changeset/pre/` notes in the final changelog,
+  and check the expected version against the selected release channel.
+- Extend both CI workflows to cover maintenance branches and their PRs.
+- Make `publish.yml` validate the branch, version, and npm channel together,
+  including the transition from 1.x `latest` to 2.x `latest`. Preserve the global
+  Git tags and mark GitHub releases with the appropriate prerelease/latest status.
+- Route preview and maintenance docs and Playground builds separately from the
+  primary stable site. Publish schemas and advance aliases for the appropriate
+  release line; previews and old-major docs must not replace current stable docs.
+- Rehearse repeated previews, finalization, and maintenance publication in
+  disposable fixtures before enabling the workflow, including checking that a
+  backport cannot move npm's `latest` or overwrite the primary site.
+
+The current scripts reject prerelease state and the publisher accepts stable
+versions from `master` only. Keep those restrictions until this work is ready.
+
 ## Coding Practices
 
 ### Language and Typings
@@ -127,6 +364,9 @@ recommended IDE for GenomeSpy development, as it provides a seamless development
 experience with integrated tools and extensions. However, any IDE that supports
 JavaScript and TypeScript can be used.
 
+Use Node.js 24 (as CI does) and npm 10.9 or newer for the development and release
+tools.
+
 After installing dependencies, generate the JSON Schemas used for editing
 GenomeSpy examples:
 
@@ -190,7 +430,8 @@ See the [`README.md`](./README.md) for instructions on how to start the developm
 
 ### Submitting Pull Requests
 
-All changes should be submitted through pull requests (PRs). Please provide a
+Prefer submitting changes through pull requests (PRs). Direct maintainer commits
+to `master` or `main` follow the same changeset/no-release convention. Please provide a
 clear and detailed description of your changes, including the motivation and
 context behind them. PRs undergo a review process, and constructive feedback
 should be expected and welcomed.

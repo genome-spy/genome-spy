@@ -27,6 +27,7 @@ TYPE_NAME_PATTERN = re.compile(r"^\w+$")
 # the Markdown extension does not need a separate hardcoded link map.
 MANUAL_DOCUMENTATION: dict[str, tuple[str, str | None]] = {
     "Encoding": ("grammar/mark/index.md", "Encoding"),
+    "FacetSpec": ("grammar/facet.md", "Defining a Facet"),
     "ExprRef": ("grammar/expressions.md", None),
     "VariableParameter": ("grammar/parameters.md", None),
     "SelectionParameter": ("grammar/parameters.md", "Selection Parameters"),

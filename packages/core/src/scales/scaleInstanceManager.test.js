@@ -28,7 +28,7 @@ function createManager({ runtime = new ViewParamRuntime(), ...options }) {
  */
 function createScale(manager, props) {
     return manager.createScale(props, (domain) =>
-        runtimes.get(manager).signal("domain", domain)
+        runtimes.get(manager).signal("domain state", { visibleDomain: domain })
     );
 }
 

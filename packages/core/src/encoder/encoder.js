@@ -5,7 +5,9 @@ import {
     resolveSelectionPredicateTree,
 } from "../selection/selectionPredicateTree.js";
 import { createAccessor } from "./accessor.js";
-import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
+import { isExprRef, makeConstantExprRef } from "../paramRuntime/paramUtils.js";
+import { color } from "d3-color";
+import { annotateSpecError } from "../utils/specError.js";
 
 /**
  * @typedef {(channel: import("../spec/channel.js").ChannelWithScale,
@@ -73,7 +75,7 @@ export function createSelectionPredicate(
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, findValue: (param: string) => any }} paramRuntime
+ * @param {Pick<import("../paramRuntime/viewParamRuntime.js").default, "createExpression" | "findValue"> & Partial<Pick<import("../paramRuntime/viewParamRuntime.js").default, "getSpecLocation">>} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @returns {import("../types/encoder.js").EncodingBranch[]}
@@ -104,6 +106,22 @@ export function createConditionalBranches(
             branchChannelDef,
             paramRuntime
         );
+
+        if (isColorChannel(channel) && isValueDef(branchChannelDef)) {
+            const value = branchChannelDef.value;
+            // Validate literals only: expressions can depend on domains that
+            // are not populated until sources finish loading.
+            if (
+                value !== null &&
+                !isExprRef(value) &&
+                (typeof value !== "string" || !color(value))
+            ) {
+                throw annotateSpecError(
+                    new Error("Invalid color: " + JSON.stringify(value)),
+                    paramRuntime.getSpecLocation?.(branchChannelDef, ["value"])
+                );
+            }
+        }
 
         const selectionPredicate = condition
             ? normalizeSelectionPredicate(condition)

@@ -4,10 +4,12 @@ title: GenomeSpy Visualization Grammar
 
 # Visualization Grammar
 
-Genome browser applications typically couple the visual representations to
-specific file formats and provide few customization options. GenomeSpy instead
-uses declarative JSON specifications: you describe the data and its visual
-representation rather than issue drawing commands.
+GenomeSpy Core uses a declarative visualization grammar, not a set of predefined
+chart templates. Its JSON specifications describe which data to use, how to
+display it, and how views fit together. This lets you create genome tracks and
+other views tailored to your data without writing drawing commands. If you work
+in Python, [GenomeSpy for Python](https://genomespy.app/genome-spy-python/)
+builds the same specifications from Python chart definitions.
 
 The grammar combines [data sources](data/index.md),
 [transformations](transform/index.md), [marks](mark/index.md),
@@ -50,7 +52,8 @@ resources.
 [Composition views](composition/index.md) arrange child views into a hierarchy.
 For example, [`layer`](composition/layer.md) overlays views to create custom
 glyphs, while the [concatenation](composition/concat.md) operators arrange views
-into tracks or grids. Common properties such as `data`, `transform`, and
+into tracks or grids. The [`facet`](facet.md) operator repeats one child view
+for groups of data. Common properties such as `data`, `transform`, and
 `encoding` can be defined on a composition view and inherited by its
 descendants.
 
@@ -92,6 +95,15 @@ also explains how to associate schemas through workspace or user settings.
 The Playground selects the Core schema automatically, and inline documentation
 examples omit `$schema`. Schema validation cannot verify external resources,
 data fields, or expression behavior.
+
+The Playground also underlines declarations with reported loading failures,
+missing encoding fields, invalid expressions (including syntax errors and unknown
+parameter names), duplicate parameter names, missing `push: "outer"` targets, or
+transform construction failures such as invalid regular expressions. These checks
+run as the visualization loads and executes. Flat field mappings and static
+top-level `datum` references in expressions require the property to exist on every
+processed row, even if its value is `undefined` or `null`. Nested properties and
+computed expression keys are not checked.
 
 ## Unit view reference
 

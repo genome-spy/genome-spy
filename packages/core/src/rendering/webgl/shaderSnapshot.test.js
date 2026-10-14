@@ -174,10 +174,11 @@ async function captureShaderSources(spec, unitName) {
 
 describe("generated shader snapshots", () => {
     test("order guard survives production GLSL minification", () => {
-        const shader = "void main(void) {\n#pragma orderGuard\nfloat x = 0.0;}";
+        const shader =
+            "void main(void) {\n#pragma orderGuard\n#if defined(CLAMP_X)\nfloat x = 0.0;\n#endif\n}";
         const result = replaceOrderGuard(shader, "if (hidden) return;");
 
-        expect(result).toContain("if (hidden) return;");
+        expect(result).toContain("if (hidden) return;\n#if defined(CLAMP_X)");
         expect(result).not.toContain("#pragma orderGuard");
     });
 
@@ -206,26 +207,33 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("scale_xOffset");
     });
 
-    test("rect culls hidden sample facets before minimum-size clamping", async () => {
-        const sources = await captureShaderSources({
-            data: { values: [{ facetIndex: 0 }] },
-            mark: "rect",
-            encoding: {
-                facetIndex: { field: "facetIndex" },
-            },
-        });
+    test.each(/** @type {const} */ (["rect", "point"]))(
+        "%s culls hidden sample facets before projection",
+        async (type) => {
+            const sources = await captureShaderSources({
+                data: { values: [{ facetIndex: 0 }] },
+                mark: { type, clamp: type === "point" },
+                encoding: {
+                    x: { value: 0.5 },
+                    facetIndex: { field: "facetIndex" },
+                },
+            });
 
-        const cullIndex = sources.vertex.indexOf(
-            "sampleFacetPos.height == 0.0"
-        );
-        const minSizeIndex = sources.vertex.indexOf(
-            "clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y)"
-        );
+            const mainIndex = sources.vertex.indexOf("void main(void)");
+            const cullIndex = sources.vertex.indexOf(
+                "getSampleFacetPos().height == 0.0",
+                mainIndex
+            );
+            const projectionIndex = sources.vertex.indexOf(
+                "getScaled_",
+                mainIndex
+            );
 
-        expect(sources.vertex).toContain("#define SAMPLE_FACET_TEXTURE");
-        expect(cullIndex).toBeGreaterThan(-1);
-        expect(cullIndex).toBeLessThan(minSizeIndex);
-    });
+            expect(sources.vertex).toContain("#define SAMPLE_FACET_TEXTURE");
+            expect(cullIndex).toBeGreaterThan(-1);
+            expect(cullIndex).toBeLessThan(projectionIndex);
+        }
+    );
 
     test("legacy point dx and dy retain their pre-facet direction", async () => {
         const sources = await captureShaderSources({
@@ -240,8 +248,8 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain(
             "return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;"
         );
-        expect(sources.vertex.indexOf("+ getDxDy()")).toBeLessThan(
-            sources.vertex.indexOf("applySampleFacet(pos)")
+        expect(sources.vertex).toContain(
+            "#else\n    vec2 placed = applySampleFacet(pos + getDxDy());\n#endif"
         );
     });
 

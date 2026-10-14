@@ -1,0 +1,18 @@
+{
+  "description": "Anscombe's Quartet",
+
+  "data": { "url": "vega-datasets/anscombe.json" },
+
+  "facet": { "field": "Series" },
+
+  "columns": 2,
+
+  "spec": {
+    "view": { "stroke": "lightgray" },
+    "mark": "point",
+    "encoding": {
+      "x": { "field": "X", "type": "quantitative" },
+      "y": { "field": "Y", "type": "quantitative" }
+    }
+  }
+}

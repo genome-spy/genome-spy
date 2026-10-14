@@ -45,6 +45,9 @@ export default class BamSource extends IntervalUrlSource {
             getUrlDescriptorExpressions(paramsWithDefaults.url)
         );
 
+        /** @type {[string, string][]} */
+        this.tagFields = createTagFields(paramsWithDefaults.tags);
+
         if (!this.params.url) {
             throw new Error("No URL provided for BamSource");
         }
@@ -108,7 +111,11 @@ export default class BamSource extends IntervalUrlSource {
                         )
                         .then((records) =>
                             records.map((record) =>
-                                createBamReadDatum(d.chrom, record)
+                                createBamReadDatum(
+                                    d.chrom,
+                                    record,
+                                    this.tagFields
+                                )
                             )
                         ),
                 signal
@@ -136,11 +143,38 @@ function isBamSource(params) {
 registerBuiltInLazyDataSource(isBamSource, BamSource);
 
 /**
+ * Validates the requested SAM tags and pairs each with its datum field name.
+ *
+ * @param {string[]} [tags]
+ * @returns {[string, string][]} `[fieldName, tag]` pairs
+ */
+export function createTagFields(tags) {
+    if (!tags) {
+        return [];
+    }
+    if (!Array.isArray(tags)) {
+        throw new Error("BAM tags must be an array of SAM tag names");
+    }
+    // Each tag occurs at most once per record, so a repeated name adds nothing
+    return [...new Set(tags)].map((tag) => {
+        if (!/^[A-Za-z][A-Za-z0-9]$/.test(tag)) {
+            throw new Error(
+                `Invalid SAM tag name "${tag}". Tags have two characters, e.g. "HP".`
+            );
+        }
+        return ["tag_" + tag, tag];
+    });
+}
+
+/**
  * @param {string} chrom
  * @param {import("@gmod/bam").BamRecord} record
+ * @param {[string, string][]} [tagFields] `[fieldName, tag]` pairs from
+ *   `createTagFields`, copied onto the datum
  */
-export function createBamReadDatum(chrom, record) {
-    return {
+export function createBamReadDatum(chrom, record, tagFields) {
+    /** @type {import("../../flowNode.js").Datum} */
+    const datum = {
         chrom,
         start: record.start,
         end: record.end,
@@ -159,4 +193,14 @@ export function createBamReadDatum(chrom, record) {
         isSecondary: record.isSecondary(),
         isSupplementary: record.isSupplementary(),
     };
+
+    if (tagFields) {
+        // Always set the field, even when the tag is missing, so that every
+        // row has the same shape.
+        for (const [field, tag] of tagFields) {
+            datum[field] = record.getTag(tag);
+        }
+    }
+
+    return datum;
 }

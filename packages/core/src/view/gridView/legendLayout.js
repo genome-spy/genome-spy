@@ -1,7 +1,27 @@
 import { getExternalAxisOverhang } from "../axisView.js";
-import { isActiveLegendRegion } from "./gridChildLegends.js";
+import Padding from "../layout/padding.js";
+import { getLegendOverhang, isActiveLegendRegion } from "./gridChildLegends.js";
 
 const LEGEND_ZINDEX = 1;
+
+/**
+ * @param {Partial<Record<import("../../spec/axis.js").AxisOrient, import("../axisView.js").default>>} axes
+ * @param {import("./gridChildLegends.js").GridChildLegends} legends
+ */
+export function getGuideOverhang(axes, legends) {
+    const getSize = (
+        /** @type {import("../../spec/axis.js").AxisOrient} */ orient
+    ) =>
+        getExternalAxisOverhang(axes[orient]) +
+        getLegendOverhang(legends, orient);
+
+    return new Padding(
+        getSize("top"),
+        getSize("right"),
+        getSize("bottom"),
+        getSize("left")
+    );
+}
 
 /**
  * Based on Vega's start/middle/end legend region anchoring:
