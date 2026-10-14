@@ -1,153 +1,132 @@
-const MAX_INTEGER = 2147483647;
-const MAX_INTEGER_DIGIT = getDigits([MAX_INTEGER]);
-
-// TODO: Optimize more! Some ideas: https://travisdowns.github.io/blog/2019/05/22/sorting.html
-
 /**
- * @param {number[]} arr An array of unsigned integers
- */
-function checkIfSorted(arr) {
-    for (let i = 1; i < arr.length; i++) {
-        if (arr[i] < arr[i - 1]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * @param {number[]} arr An array of unsigned integers
+ * Sorts nonnegative safe integer keys using 11-bit digits.
+ * May modify the input; returns a sorted ordinary array.
+ *
+ * @param {number[]} arr
+ * @returns {number[]}
  */
 export default function radixSort(arr) {
-    const maxDigits = getDigits(arr);
+    const n = arr.length;
+    let max = 0;
+    let sorted = true;
 
-    // Early exit if already sorted
-    if (checkIfSorted(arr)) {
+    for (let i = 0; i < n; i++) {
+        const value = arr[i];
+        if (value > max) {
+            max = value;
+        }
+        if (i && value < arr[i - 1]) {
+            sorted = false;
+        }
+    }
+
+    if (sorted) {
         return arr;
     }
 
-    let buffer = new Array(arr.length);
-    let bufferPtr = buffer;
-    const counts = new Array(16);
+    /** @type {number[] | Float64Array} */
+    let values = arr;
 
-    for (let digitIndex = 0; digitIndex < maxDigits; digitIndex++) {
+    /** @type {number[] | Float64Array} */
+    let buffer = new Float64Array(n);
+
+    const counts = new Uint32Array(2048);
+
+    for (let shift = 0; shift < 53 && 2 ** shift <= max; shift += 11) {
         counts.fill(0);
 
-        const shift = digitIndex * 4;
-        const pow = Math.pow(16, digitIndex);
-
-        /**
-         * @param {*} i number
-         */
-        const getDigit = (/** @type {number} */ i) => {
-            const value = arr[i];
-
-            // Need hacks for large numbers because JS bitwise operators only work
-            // with 32-bit integers.
-            // TODO: This could be implemented in WASM for better performance as
-            // it would be able to use 64-bit integers.
-            if (digitIndex >= MAX_INTEGER_DIGIT) {
-                if (value > MAX_INTEGER) {
-                    return Math.floor(value / pow) % 16;
-                } else {
-                    return 0;
-                }
-            } else {
-                return (value >> shift) & 0xf;
-            }
-        };
-
-        // Count occurrences of each digit
-        for (let i = 0, n = arr.length; i < n; i++) {
-            counts[getDigit(i)]++;
+        for (let i = 0; i < n; i++) {
+            counts[getDigit(values[i], shift)]++;
         }
 
-        // Prefix sum to get starting indexes
-        for (let i = 1; i < 16; i++) {
-            counts[i] += counts[i - 1];
+        let total = 0;
+        for (let i = 0; i < counts.length; i++) {
+            const count = counts[i];
+            counts[i] = total;
+            total += count;
         }
 
-        // Sort based on current digit
-        for (let i = arr.length - 1; i >= 0; i--) {
-            bufferPtr[--counts[getDigit(i)]] = arr[i];
+        for (let i = 0; i < n; i++) {
+            const value = values[i];
+            buffer[counts[getDigit(value, shift)]++] = value;
         }
 
-        // Swap buffer and arr for next iteration
-        [arr, bufferPtr] = [bufferPtr, arr];
+        [values, buffer] = [buffer, values];
+    }
+
+    // Reuse the input array when the last pass finishes in typed scratch.
+    if (values !== arr) {
+        for (let i = 0; i < n; i++) {
+            arr[i] = values[i];
+        }
     }
 
     return arr;
 }
 
 /**
- * @param {number[]} arr An array of unsigned integers
+ * The 11-bit digit starting at bit 22 crosses the 32-bit bitwise boundary.
+ * Division by a power of two preserves every safe-integer digit.
+ *
+ * @param {number} value
+ * @param {number} shift
  */
-function getDigits(arr) {
-    let max = 0;
-    for (let i = 0, n = arr.length; i < n; i++) {
-        if (arr[i] > max) {
-            max = arr[i];
-        }
-    }
-    return Math.floor(Math.log2(max) / 4) + 1;
+function getDigit(value, shift) {
+    return shift < 22
+        ? (value >>> shift) & 0x7ff
+        : Math.floor(value / 2 ** shift) & 0x7ff;
 }
 
 /**
- * @param {number[]} arr An array of unsigned integers
+ * Returns a stable permutation of positions without modifying the input.
+ * Uses 11-bit digits and four-byte positions; keys retain safe-integer precision.
+ *
+ * @param {number[]} arr Nonnegative safe integer keys
+ * @returns {Uint32Array}
  */
 export function radixSortIntoLookupArray(arr) {
-    const maxDigits = getDigits(arr);
-    let indexes = Array.from({ length: arr.length }, (_, i) => i);
+    const n = arr.length;
+    let indexes = new Uint32Array(n);
+    let max = 0;
+    let sorted = true;
 
-    // Early exit if already sorted
-    if (checkIfSorted(arr)) {
+    for (let i = 0; i < n; i++) {
+        indexes[i] = i;
+        max = Math.max(max, arr[i]);
+        if (i && arr[i] < arr[i - 1]) {
+            sorted = false;
+        }
+    }
+
+    if (sorted) {
         return indexes;
     }
 
-    let buffer = new Array(arr.length);
-    const counts = new Array(16);
+    let buffer = new Uint32Array(n);
+    const counts = new Uint32Array(2048);
 
-    for (let digitIndex = 0; digitIndex < maxDigits; digitIndex++) {
+    for (let shift = 0; shift < 53 && 2 ** shift <= max; shift += 11) {
         counts.fill(0);
 
-        const shift = digitIndex * 4;
-        const pow = Math.pow(16, digitIndex);
-
-        /**
-         * @param {*} i number
-         */
-        const getDigit = (i) => {
-            const value = arr[indexes[i]]; // Use index to access array value
-
-            if (digitIndex >= MAX_INTEGER_DIGIT) {
-                if (value > MAX_INTEGER) {
-                    return Math.floor(value / pow) % 16;
-                } else {
-                    return 0;
-                }
-            } else {
-                return (value >> shift) & 0xf;
-            }
-        };
-
-        // Count occurrences of each digit
-        for (let i = 0; i < arr.length; i++) {
-            counts[getDigit(i)]++;
+        for (let i = 0; i < n; i++) {
+            counts[getDigit(arr[indexes[i]], shift)]++;
         }
 
-        // Prefix sum to get starting indexes
-        for (let i = 1; i < 16; i++) {
-            counts[i] += counts[i - 1];
+        let total = 0;
+        for (let i = 0; i < counts.length; i++) {
+            const count = counts[i];
+            counts[i] = total;
+            total += count;
         }
 
-        // Sort indexes based on current digit
-        for (let i = arr.length - 1; i >= 0; i--) {
-            buffer[--counts[getDigit(i)]] = indexes[i];
+        // Forward scatter keeps equal keys in their current physical order.
+        for (let i = 0; i < n; i++) {
+            const index = indexes[i];
+            buffer[counts[getDigit(arr[index], shift)]++] = index;
         }
 
-        // Swap buffer and indexes for next iteration
         [indexes, buffer] = [buffer, indexes];
     }
 
-    return indexes; // Return the sorted index array
+    return indexes;
 }

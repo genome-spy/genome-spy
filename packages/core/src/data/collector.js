@@ -43,9 +43,9 @@ export default class Collector extends FlowNode {
     #uniqueIdAccessor = field(UNIQUE_ID_KEY);
 
     /**
-     * @type {number[]}
+     * @type {Uint32Array}
      */
-    #uniqueIdIndex = [];
+    #uniqueIdIndex = new Uint32Array(0);
 
     /** @type {KeyIndex} */
     #keyIndex = new KeyIndex();
@@ -113,7 +113,7 @@ export default class Collector extends FlowNode {
         this.#fileBatchStarts = [];
         this.#getFileBatch = () => undefined;
         this.#rowCount = 0;
-        this.#uniqueIdIndex = [];
+        this.#uniqueIdIndex = new Uint32Array(0);
         this.#keyIndex.invalidate();
         this.#viewportDomains.reset();
 
