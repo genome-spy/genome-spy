@@ -946,6 +946,12 @@ export default class GenomeSpy {
     }
 
     renderAll() {
+        // Resize and animation callbacks can run while startup awaits fonts.
+        // Launch schedules a fresh frame after preparation has completed.
+        if (this.#launchPending) {
+            return;
+        }
+
         this.#interactionController?.invalidatePendingPicks();
         this.#renderCoordinator.renderAll();
     }

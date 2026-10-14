@@ -270,6 +270,60 @@ test.each([false, true])(
     }
 );
 
+test("waits for startup fonts before resize or scheduled rendering", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const onError = vi.fn();
+    /** @type {() => void} */
+    let resize;
+    vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            /** @param {() => void} callback */
+            constructor(callback) {
+                resize = callback;
+            }
+            observe() {}
+            disconnect() {}
+        }
+    );
+
+    // Keep the real launch/dataflow path paused at its asynchronous font wait.
+    /** @type {PromiseWithResolvers<void>} */
+    const fontsReady = Promise.withResolvers();
+    const waitUntilReady = vi.fn(() => fontsReady.promise);
+    const coordinator = { computeLayout: vi.fn(), renderAll: vi.fn() };
+    mocks.createRenderingBackend.mockImplementation((options) => {
+        const backend = createMockBackend(options);
+        backend.textMetrics.waitUntilReady = waitUntilReady;
+        backend.createRenderCoordinator = () => coordinator;
+        return backend;
+    });
+    const genomeSpy = new GenomeSpy(
+        container,
+        { data: { values: [{}] }, mark: "rect" },
+        { renderer: "webgpu", onError }
+    );
+
+    const launch = genomeSpy.launch();
+    await vi.waitFor(() => expect(waitUntilReady).toHaveBeenCalled());
+    resize();
+    genomeSpy.requestLayoutReflow();
+    vi.mocked(window.requestAnimationFrame).mock.lastCall[0](0);
+    expect(coordinator.computeLayout).toHaveBeenCalled();
+    expect(coordinator.renderAll).not.toHaveBeenCalled();
+
+    fontsReady.resolve();
+    expect(await launch).toBe(true);
+    vi.mocked(window.requestAnimationFrame).mock.lastCall[0](1);
+    expect(coordinator.renderAll).toHaveBeenCalledOnce();
+    resize();
+    expect(coordinator.renderAll).toHaveBeenCalledTimes(2);
+    expect(onError).not.toHaveBeenCalled();
+
+    genomeSpy.destroy();
+});
+
 test("reports an early resize error once and fails launch", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
