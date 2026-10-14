@@ -85,8 +85,10 @@ limits at defaults. Simple plots must fit baseline full WebGPU; huge datasets
 may fail with contextual capacity errors on devices with insufficient byte
 limits. The example audit will force default byte limits as well as binding
 counts, while separate large-data tests exercise negotiated capacity, including
-the 160,000,000-byte mixed-series case. Packing, startup negotiation, and this
-audit adaptation are not implemented yet; current example failures remain visible.
+the 160,000,000-byte mixed-series case. Scale/gap packing is now implemented and all five formerly-over-budget examples
+pass a focused default-limit rerun. Independent scale growth/updates and picking
+have regression coverage. Mixed-series packing, startup negotiation, audit
+adaptation, and the final full sweep remain in progress.
 
 ## Milestone 1: Close current Core parity gaps
 

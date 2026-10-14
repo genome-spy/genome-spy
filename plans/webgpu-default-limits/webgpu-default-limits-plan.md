@@ -1,8 +1,8 @@
 # WebGPU default limits: example audit and mitigation design
 
 Status: default device limits and repeatable example audit implemented;
-startup buffer-size negotiation and resource-packing mitigations below are
-proposed, not implemented.
+scale/gap packing is implemented. Startup buffer-size negotiation, mixed-series
+packing, and final integration verification remain in progress.
 
 The font startup race found by the audit is now fixed in Core's shared render
 entry point: resize and animation callbacks can update layout during launch,
@@ -417,6 +417,29 @@ after milestone 2. Final integration must verify the rebased #563/#562 path
 alongside the full example sweep. Changes remain confined to the experimental
 renderer/adapter tooling; assess release impact again when implementing.
 
+## Implementation record
+
+### Milestone 1: scale/gap packing complete
+
+Scale ranges, sparse domain maps, and exact gap keys share one mark-owned
+storage buffer. Independent CPU slices retain their capacity and upload only
+changed bytes; growth republishes word offsets and rebuilds the binding without
+recompiling shaders. Selection hash tables retain their separate whole-buffer
+layout and ownership. Obsolete per-channel buffer bindings and disposal paths
+were removed. Production source changed by +2 lines overall (raw line count,
+excluding tests), replacing existing paths rather than adding a second layout.
+
+Verification: 163 renderer program/shader unit tests and renderer TypeScript
+checks pass. All five formerly-over-budget Core/docs examples pass with actual
+default device limits (`output/webgpu-scale-packing/`). GPU categorical mapping,
+whole-buffer hashes, grouping gaps, placement, and point rendering/picking pass.
+A new GPU regression covers independent categorical updates after relocation.
+The broader shader GPU suite exposes five existing inclusive-endpoint fixture
+expectations against half-open interval code; one was reproduced with the
+unchanged baseline shader. Reconcile these fixtures during milestone 3.
+#563 borrowing/capture qualification remains an integration follow-up because
+that PR's API is not present in this branch.
+
 ## Risks and open questions
 
 - Binary layout mistakes can corrupt f32 values or precision-sensitive IDs;
@@ -462,5 +485,8 @@ renderer/adapter tooling; assess release impact again when implementing.
       capacity boundaries, and loaded/lazy-data growth errors.
 - [ ] Integration follow-up: qualify the rebased #563/#562 lasso and linked-view
       scenarios on default limits without table copies or per-frame readback.
-- [ ] Proposed follow-up: implement and verify resource packing and contextual
-      budget errors. This is outside the implementation scope of this audit.
+- [x] Milestone 1: implement scale/gap packing and verify categorical updates,
+      gaps, picking, and the five default-limit example failures.
+- [ ] Milestone 2: unify mixed series and implement contextual budget errors.
+- [ ] Milestone 3: finish the full example and interaction/integration matrix,
+      including reconciliation of the existing interval GPU fixtures.

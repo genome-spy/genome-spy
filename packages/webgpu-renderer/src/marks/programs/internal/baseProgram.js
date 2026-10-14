@@ -282,7 +282,7 @@ export default class BaseProgram {
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
-        /** @type {{ name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
+        /** @type {{ name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
@@ -635,6 +635,7 @@ export default class BaseProgram {
             layout: this._bindGroupLayout,
             uniformBuffer: this._uniformBuffer,
             resourceLayout: this._resourceLayout,
+            getScaleTableBuffer: () => this._scaleResources.tableBuffer,
             getSeriesBuffer: (name) => this._seriesBuffers.getBuffer(name),
             getScaleResources: (name) =>
                 this._scaleResources.getChannelResources(name),
@@ -697,21 +698,11 @@ export default class BaseProgram {
             const scaleResources = this._scaleResources.getChannelResources(
                 entry.name
             );
-            if (entry.role === "ordinalRange") {
-                const buffer = scaleResources?.ordinalRange?.buffer;
+            if (entry.role === "scaleTables") {
                 storage.push({
                     name: entry.name,
                     role: entry.role,
-                    bytes: buffer?.size ?? 0,
-                });
-                continue;
-            }
-            if (entry.role === "domainMap") {
-                const buffer = scaleResources?.domainMap?.buffer;
-                storage.push({
-                    name: entry.name,
-                    role: entry.role,
-                    bytes: buffer?.size ?? 0,
+                    bytes: this._scaleResources.tableBuffer.size,
                 });
                 continue;
             }

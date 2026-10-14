@@ -21,6 +21,8 @@ import {
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
+    RANGE_TABLE_PREFIX,
+    DOMAIN_MAP_TABLE_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 import {
@@ -36,9 +38,6 @@ import {
  * @typedef {import("../../../types.js").ScalarType} ScalarType
  * @typedef {object} ChannelResources
  * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
- * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } } | undefined} ordinalRange
- * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } } | undefined} domainMap
- * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } }} [gapCuts]
  * @property {{ texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat } | undefined} rangeTexture
  */
 
@@ -79,6 +78,74 @@ export class ScaleResourceManager {
 
         /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, ranks: readonly number[] | undefined}>} */
         this._gapScales = new Map();
+
+        /** @type {GPUBuffer | null} */
+        this._tableBuffer = null;
+
+        /** @type {Map<string, {data: Uint32Array, offset: number, capacity: number, publish: (offset: number) => void}>} */
+        this._tables = new Map();
+    }
+
+    /** The single mark-owned scale/gap storage buffer. */
+    get tableBuffer() {
+        return this._tableBuffer;
+    }
+
+    /**
+     * Retain independent CPU slices; only growth relocates and reuploads them.
+     * Offsets and capacities use 32-bit words, without binding-alignment padding.
+     *
+     * @param {string} key
+     * @param {TypedArray} data
+     * @param {(offset: number) => void} publish
+     * @returns {boolean} Whether the aggregate buffer identity changed.
+     */
+    _setTable(key, data, publish) {
+        const words = new Uint32Array(
+            data.buffer,
+            data.byteOffset,
+            data.byteLength / 4
+        );
+        const previous = this._tables.get(key);
+        if (previous && words.length <= previous.capacity) {
+            previous.data = words;
+            previous.publish = publish;
+            publish(previous.offset);
+            this._device.queue.writeBuffer(
+                this._tableBuffer,
+                previous.offset * 4,
+                asGpuBufferSource(words)
+            );
+            return false;
+        }
+
+        this._tables.set(key, {
+            data: words,
+            offset: 0,
+            capacity: Math.max(1, words.length),
+            publish,
+        });
+        let length = 0;
+        for (const table of this._tables.values()) {
+            table.offset = length;
+            length += table.capacity;
+        }
+        const buffer = this._device.createBuffer({
+            label: gpuLabel(this._label, "scale/gap tables"),
+            size: length * 4,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+        for (const table of this._tables.values()) {
+            table.publish(table.offset);
+            this._device.queue.writeBuffer(
+                buffer,
+                table.offset * 4,
+                asGpuBufferSource(table.data)
+            );
+        }
+        this._tableBuffer?.destroy();
+        this._tableBuffer = buffer;
+        return true;
     }
 
     /**
@@ -176,12 +243,22 @@ export class ScaleResourceManager {
         }
         if (requirements.needsOrdinalRange) {
             layout.push({
+                name: RANGE_TABLE_PREFIX + name,
+                type: "u32",
+                components: 1,
+            });
+            layout.push({
                 name: RANGE_COUNT_PREFIX + name,
                 type: "f32",
                 components: 1,
             });
         }
         if (requirements.needsDomainMap) {
+            layout.push({
+                name: DOMAIN_MAP_TABLE_PREFIX + name,
+                type: "u32",
+                components: 2,
+            });
             layout.push({
                 name: DOMAIN_MAP_COUNT_PREFIX + name,
                 type: "f32",
@@ -652,6 +729,8 @@ export class ScaleResourceManager {
         const packed = [];
         /** @type {{cuts: readonly number[], offset: number}[]} */
         const tables = [];
+        /** @type {Array<{name: string, offset: number, length: number}>} */
+        const slices = [];
         for (const [name, { cuts }] of this._gapScales) {
             const previous = tables.find(
                 (table) =>
@@ -664,26 +743,17 @@ export class ScaleResourceManager {
                     packed.push(Math.floor(cut / 4096), cut % 4096);
                 tables.push({ cuts, offset });
             }
-            this._setUniformValue("gapTable_" + name, [offset, cuts.length]);
+            slices.push({ name, offset: offset * 2, length: cuts.length });
         }
-        const resources = this._ensureChannelResources("__gapCuts");
         const data = new Uint32Array(packed.length ? packed : [0, 0]);
-        const previous = resources.gapCuts;
-        const rebind = !previous || previous.size.byteLength < data.byteLength;
-        const buffer = rebind
-            ? this._device.createBuffer({
-                  label: gpuLabel(this._label, "index gap cuts"),
-                  size: data.byteLength,
-                  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-              })
-            : previous.buffer;
-        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
-        if (rebind) previous?.buffer.destroy();
-        resources.gapCuts = {
-            buffer,
-            size: { length: data.length / 2, byteLength: buffer.size },
-        };
-        return rebind;
+        return this._setTable("gapCuts", data, (offset) => {
+            for (const slice of slices) {
+                this._setUniformValue("gapTable_" + slice.name, [
+                    offset + slice.offset,
+                    slice.length,
+                ]);
+            }
+        });
     }
 
     /**
@@ -819,30 +889,13 @@ export class ScaleResourceManager {
      * @returns {boolean}
      */
     _setDomainMapBuffer(name, data, length) {
-        const resources = this._ensureChannelResources(name);
-        const prev = resources.domainMap;
-        const nextBytes = data.byteLength;
-        let buffer = resources.domainMap?.buffer;
-        const needsNewBuffer =
-            !buffer || !prev || prev.size.byteLength !== nextBytes;
-
-        if (needsNewBuffer) {
-            const previous = buffer;
-            buffer = this._device.createBuffer({
-                label: gpuLabel(this._label, `scale ${name} domain map`),
-                size: nextBytes,
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-            });
-            previous?.destroy();
-        }
-
-        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
-        resources.domainMap = {
-            buffer,
-            size: { length, byteLength: nextBytes },
-        };
         this._setUniformValue(DOMAIN_MAP_COUNT_PREFIX + name, length);
-        return needsNewBuffer;
+        return this._setTable("domainMap_" + name, data, (offset) => {
+            this._setUniformValue(DOMAIN_MAP_TABLE_PREFIX + name, [
+                offset,
+                data.length / 2,
+            ]);
+        });
     }
 
     /**
@@ -877,30 +930,10 @@ export class ScaleResourceManager {
      * @returns {boolean}
      */
     _setOrdinalRangeBuffer(name, data, length) {
-        const resources = this._ensureChannelResources(name);
-        const prev = resources.ordinalRange;
-        const nextBytes = data.byteLength;
-        let buffer = resources.ordinalRange?.buffer;
-        const needsNewBuffer =
-            !buffer || !prev || prev.size.byteLength !== nextBytes;
-
-        if (needsNewBuffer) {
-            const previous = buffer;
-            buffer = this._device.createBuffer({
-                label: gpuLabel(this._label, `scale ${name} ordinal range`),
-                size: nextBytes,
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-            });
-            previous?.destroy();
-        }
-
-        this._device.queue.writeBuffer(buffer, 0, asGpuBufferSource(data));
-        resources.ordinalRange = {
-            buffer,
-            size: { length, byteLength: nextBytes },
-        };
         this._setUniformValue(RANGE_COUNT_PREFIX + name, length);
-        return needsNewBuffer;
+        return this._setTable("range_" + name, data, (offset) => {
+            this._setUniformValue(RANGE_TABLE_PREFIX + name, offset);
+        });
     }
 
     /**
@@ -908,11 +941,11 @@ export class ScaleResourceManager {
      */
     destroy() {
         for (const resources of this._channelResources.values()) {
-            resources.ordinalRange?.buffer.destroy();
-            resources.domainMap?.buffer.destroy();
-            resources.gapCuts?.buffer.destroy();
             resources.rangeTexture?.texture.destroy();
         }
+        this._tableBuffer?.destroy();
+        this._tableBuffer = null;
+        this._tables.clear();
         this._channelResources.clear();
         this._scaleUpdaters.clear();
         this._gapScales.clear();

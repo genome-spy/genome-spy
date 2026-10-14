@@ -1,3 +1,5 @@
+export const RANGE_TABLE_PREFIX = "uRangeTable_";
+export const DOMAIN_MAP_TABLE_PREFIX = "uDomainMapTable_";
 export const DOMAIN_PREFIX = "uDomain_";
 export const RANGE_PREFIX = "uRange_";
 export const RANGE_COUNT_PREFIX = "uRangeCount_";

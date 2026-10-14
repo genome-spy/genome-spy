@@ -137,10 +137,10 @@ test("markShaderBuilder matches d3 ordinal mapping for explicit categories", asy
             uRangeCount_x: range.length,
             uDomainMapCount_x: domainMap.size,
         },
-        extraBuffers: [
-            { name: "x", role: "ordinalRange", data: range },
-            { name: "x", role: "domainMap", data: domainMap.table },
-        ],
+        scaleTables: {
+            range_x: new Float32Array(range),
+            domainMap_x: domainMap.table,
+        },
         dumpLabel: test.info().title,
     });
 
@@ -219,7 +219,7 @@ test("markShaderBuilder matches d3 band positions through a sparse domain map", 
             uScaleBand_x: band,
             uDomainMapCount_x: domainMap.size,
         },
-        extraBuffers: [{ name: "x", role: "domainMap", data: domainMap.table }],
+        scaleTables: { domainMap_x: domainMap.table },
         dumpLabel: test.info().title,
     });
 
@@ -476,10 +476,10 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
             uRangeCount_shape: 2,
             uDomainMapCount_shape: 0,
         },
-        extraBuffers: [
-            { name: "shape", role: "ordinalRange", data: rangeData },
-            { name: "shape", role: "domainMap", data: [0, 0] },
-        ],
+        scaleTables: {
+            range_shape: new Float32Array(rangeData),
+            domainMap_shape: new Uint32Array([0, 0]),
+        },
         dumpLabel,
     });
 
@@ -533,10 +533,10 @@ test("markShaderBuilder applies ordinal scales with sparse domain maps", async (
             uRangeCount_shape: 3,
             uDomainMapCount_shape: domainMap.size,
         },
-        extraBuffers: [
-            { name: "shape", role: "ordinalRange", data: rangeData },
-            { name: "shape", role: "domainMap", data: domainMap.table },
-        ],
+        scaleTables: {
+            range_shape: new Float32Array(rangeData),
+            domainMap_shape: domainMap.table,
+        },
         dumpLabel,
     });
 
@@ -585,10 +585,10 @@ test("markShaderBuilder returns zero for missing ordinal categories", async ({
             uRangeCount_fill: 1,
             uDomainMapCount_fill: domainMap.size,
         },
-        extraBuffers: [
-            { name: "fill", role: "ordinalRange", data: rangeData },
-            { name: "fill", role: "domainMap", data: domainMap.table },
-        ],
+        scaleTables: {
+            range_fill: new Float32Array(rangeData),
+            domainMap_fill: domainMap.table,
+        },
         dumpLabel,
     });
 

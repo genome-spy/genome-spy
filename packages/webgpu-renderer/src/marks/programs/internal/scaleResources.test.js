@@ -10,7 +10,7 @@ import {
 
 /**
  * @param {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} channels
- * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number>, buffers: Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>, textures: Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }> }}
+ * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number>, buffers: Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>, textures: Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }>, writes: ReturnType<typeof vi.fn> }}
  */
 function createManager(channels) {
     const analysisByChannel = analyzeTestChannels(channels);
@@ -77,7 +77,13 @@ function createManager(channels) {
             uniforms.set(name, value);
         },
     });
-    return { manager, uniforms, buffers, textures };
+    return {
+        manager,
+        uniforms,
+        buffers,
+        textures,
+        writes: vi.mocked(device.queue.writeBuffer),
+    };
 }
 
 describe("ScaleResourceManager", () => {
@@ -107,9 +113,7 @@ describe("ScaleResourceManager", () => {
         ]);
 
         expect(needsRebind).toBe(true);
-        expect(
-            manager.getChannelResources("x")?.domainMap?.buffer.size
-        ).toBeGreaterThan(0);
+        expect(manager.tableBuffer?.size).toBeGreaterThan(0);
         expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([0, 10]);
     });
 
@@ -144,10 +148,53 @@ describe("ScaleResourceManager", () => {
 
         expect(initialRebind).toBe(true);
         expect(needsRebind).toBe(false);
-        expect(
-            manager.getChannelResources("fill")?.ordinalRange?.buffer.size
-        ).toBeGreaterThan(0);
+        expect(manager.tableBuffer?.size).toBeGreaterThan(0);
         expect(uniforms.get(RANGE_COUNT_PREFIX + "fill")).toBe(2);
+    });
+
+    it("relocates independent scale slices on growth and uploads only the changed slice otherwise", () => {
+        const channels =
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
+                x: {
+                    data: new Uint32Array([10]),
+                    type: "u32",
+                    components: 1,
+                    scale: { type: "band", domain: [10, 42], range: [0, 100] },
+                },
+                y: {
+                    data: new Uint32Array([7]),
+                    type: "u32",
+                    components: 1,
+                    scale: { type: "band", domain: [7, 99], range: [0, 100] },
+                },
+            });
+        const { manager, uniforms, writes } = createManager(channels);
+        for (const [name, channel] of Object.entries(channels)) {
+            manager.initializeScale(name, channel, channel.scale);
+            manager.getScaleUpdater(name).updateDomain(channel.scale.domain);
+        }
+        const initial = manager.tableBuffer;
+        const oldY = uniforms.get("uDomainMapTable_y");
+        writes.mockClear();
+        expect(manager.getScaleUpdater("x").updateDomain([10, 43])).toBe(false);
+        expect(manager.tableBuffer).toBe(initial);
+        expect(writes).toHaveBeenCalledOnce();
+        expect(uniforms.get("uDomainMapTable_y")).toEqual(oldY);
+
+        writes.mockClear();
+        expect(
+            manager
+                .getScaleUpdater("x")
+                .updateDomain(Array.from({ length: 100 }, (_, i) => i))
+        ).toBe(true);
+        expect(manager.tableBuffer).not.toBe(initial);
+        expect(writes).toHaveBeenCalledTimes(2);
+        const y = /** @type {number[]} */ (uniforms.get("uDomainMapTable_y"));
+        expect(y[0]).toBeGreaterThan(/** @type {number[]} */ (oldY)[0]);
+        expect(writes.mock.calls[1][1]).toBe(y[0] * 4);
+        // The untouched sparse domain is retained and uploaded at its new offset.
+        expect(Array.from(writes.mock.calls[1][2])).toContain(99);
+        manager.destroy();
     });
 
     it("normalizes continuous color-texture ranges to unit coordinates", () => {
@@ -196,11 +243,12 @@ describe("ScaleResourceManager", () => {
 
         updater.updateRange(channels.fill.scale.range);
         updater.updateRange([[0, 0, 0, 1]]);
-        expect(buffers[0].destroy).toHaveBeenCalledOnce();
+        const retainedBuffer = manager.tableBuffer;
+        updater.updateRange(channels.fill.scale.range);
+        expect(manager.tableBuffer).toBe(retainedBuffer);
 
         manager._setDomainMapBuffer("fill", new Uint32Array([0, 0]), 1);
         manager._setDomainMapBuffer("fill", new Uint32Array([0, 0, 1, 1]), 2);
-        expect(buffers[2].destroy).toHaveBeenCalledOnce();
 
         manager._setRangeTexture("fill", {
             width: 1,
@@ -219,8 +267,8 @@ describe("ScaleResourceManager", () => {
         manager.destroy();
         manager.destroy();
 
-        expect(buffers[1].destroy).toHaveBeenCalledOnce();
-        expect(buffers[3].destroy).toHaveBeenCalledOnce();
+        for (const buffer of buffers)
+            expect(buffer.destroy).toHaveBeenCalledOnce();
         expect(textures[1].destroy).toHaveBeenCalledOnce();
     });
 });

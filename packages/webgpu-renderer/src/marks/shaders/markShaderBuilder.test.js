@@ -276,8 +276,8 @@ const placementSentinel = 1u;
         });
 
         expect(resourceLayout).toEqual([
+            { name: "scaleTables", role: "scaleTables" },
             { name: "seriesU32", role: "series" },
-            { name: "x", role: "domainMap" },
         ]);
         expect(shaderCode).toContain("fn hashLookup_domainMap_x");
         expect(shaderCode).toContain("domainMap_x");
@@ -727,8 +727,8 @@ describe("index gap specialization", () => {
         expect(shaderCode).not.toMatch(
             /gapCuts|gapTable|gapGeometry|cutRank|scaleIndexGaps|gapPlacement/
         );
-        expect(resourceLayout.some((entry) => entry.role === "gapCuts")).toBe(
-            false
-        );
+        expect(
+            resourceLayout.some((entry) => entry.role === "scaleTables")
+        ).toBe(false);
     });
 });

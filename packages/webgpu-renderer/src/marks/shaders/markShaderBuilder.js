@@ -14,6 +14,8 @@ import {
     intervalSelectionActiveName,
     intervalSelectionBoundsName,
     RANGE_COUNT_PREFIX,
+    RANGE_TABLE_PREFIX,
+    DOMAIN_MAP_TABLE_PREFIX,
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
@@ -74,7 +76,7 @@ import {
 /**
  * Resource list used for debug output and validation.
  *
- * @typedef {{ name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  */
 
 /**
@@ -185,16 +187,20 @@ export function buildMarkShader({
         hasIndexGaps(ir.channel.scale)
     );
     const hasGaps = gapChannels.length > 0;
-    if (hasGaps) {
+    if (
+        hasGaps ||
+        ordinalRangeChannelIRs.length ||
+        domainMapChannelIRs.length
+    ) {
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
             visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
-        resourceLayout.push({ name: "__gapCuts", role: "gapCuts" });
+        resourceLayout.push({ name: "scaleTables", role: "scaleTables" });
         bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> gapCuts: array<vec2<u32>>;`
+            `@group(1) @binding(${binding}) var<storage, read> scaleTables: array<u32>;`
         );
     }
     const rangeTextureChannelIRs = channelIRs.filter(
@@ -669,52 +675,26 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
         }
     }
 
-    // Ordinal scales pull range values from storage buffers. These bindings are
-    // separate from series data so ranges can grow/shrink without reallocating
-    // per-instance buffers.
     for (const channelIR of ordinalRangeChannelIRs) {
         const { name } = channelIR;
         const requirements = ensureRequirements(name);
         requirements.ordinalRange = true;
         requirements.rangeCountUniform = true;
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name, role: "ordinalRange" });
-
-        const elementType =
-            channelIR.outputComponents === 1
-                ? channelIR.outputScalarType
-                : "vec4<f32>";
-        const rangeBufferName = `range_${name}`;
-
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> ${rangeBufferName}: array<${elementType}>;`
-        );
+        const scalar = channelIR.outputScalarType;
+        const vector = channelIR.outputComponents !== 1;
+        const type = vector ? "vec4<f32>" : scalar;
+        const load = vector
+            ? "vec4<u32>(scaleTables[offset], scaleTables[offset + 1u], scaleTables[offset + 2u], scaleTables[offset + 3u])"
+            : "scaleTables[offset]";
+        bufferReaders.push(`fn readRange_${name}(index: u32) -> ${type} {
+    let offset = params.${RANGE_TABLE_PREFIX}${name} + index * ${vector ? 4 : 1}u;
+    return ${!vector && scalar === "u32" ? load : `bitcast<${type}>(${load})`};
+}`);
     }
-
-    // Ordinal/band scales can map sparse category IDs to dense indices via a
-    // hash table stored in a read-only storage buffer.
-    for (const channelIR of domainMapChannelIRs) {
-        const { name } = channelIR;
+    for (const { name } of domainMapChannelIRs) {
         const requirements = ensureRequirements(name);
         requirements.domainMap = true;
         requirements.domainMapCountUniform = true;
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name, role: "domainMap" });
-
-        const mapBufferName = `${DOMAIN_MAP_PREFIX}${name}`;
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> ${mapBufferName}: array<HashEntry>;`
-        );
     }
 
     // Color ramps are stored as textures so interpolation matches d3 in
@@ -919,7 +899,18 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
             .map((def) => SELECTION_BUFFER_PREFIX + def.name),
     ];
     const hashLookupFunctions = hashTableBufferNames
-        .map(emitHashLookupFunction)
+        .map((name) => {
+            const channel = domainMapChannelIRs.find(
+                (ir) => DOMAIN_MAP_PREFIX + ir.name === name
+            );
+            return channel
+                ? emitHashLookupFunction(name, {
+                      buffer: "scaleTables",
+                      offset: `params.${DOMAIN_MAP_TABLE_PREFIX}${channel.name}.x`,
+                      capacity: `params.${DOMAIN_MAP_TABLE_PREFIX}${channel.name}.y`,
+                  })
+                : emitHashLookupFunction(name);
+        })
         .join("\n");
     const needsHashTable = hashTableBufferNames.length > 0;
 

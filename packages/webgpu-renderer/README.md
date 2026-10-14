@@ -95,7 +95,11 @@ If the visible gaps leave no room for data, affected marks are hidden until
 the output extent grows or the scale configuration changes.
 
 Cuts are nonnegative integers below 2^44. The renderer sorts and deduplicates
-them, packs exact integer keys, and shares one cut storage binding per mark.
+them and packs exact integer keys into the mark-owned scale/gap table buffer.
+Ordinal ranges, sparse domain maps, and gap cuts share this one storage binding;
+selection tables remain independently bound. Changed scale slices are uploaded
+without replacing series data. Table growth relocates slices and updates their
+uniform offsets without recompiling the shader.
 Ordinary index scales allocate no gap resources. Null/empty cuts or zero/null
 width also omit gap helpers and bindings unless `gapEnabled: true` explicitly
 reserves them for later retained updates.

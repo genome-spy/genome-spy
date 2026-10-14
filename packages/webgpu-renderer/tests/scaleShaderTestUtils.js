@@ -295,7 +295,7 @@ export function buildSeriesCopyComputeShader({
  * tests can attach buffers/textures without duplicating bind-group logic.
  *
  * @param {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildResult} result
- * @returns {{ binding: number, name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler"|"extraBuffer"|"extraTexture"|"extraSampler" }[]}
+ * @returns {{ binding: number, name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraBuffer"|"extraTexture"|"extraSampler" }[]}
  */
 export function mapScaleBindings(result) {
     return result.resourceLayout.map((entry, index) => ({
@@ -626,6 +626,7 @@ export async function runScaleCompute(
  * @param {Set<string>} [params.inputNames]
  * @param {import("../src/marks/shaders/markShaderBuilder.js").ExtraResourceDef[]} [params.extraResources]
  * @param {{ name: string, data: number[] | ArrayBufferView, role?: string }[]} [params.extraBuffers]
+ * @param {Record<string, Float32Array | Uint32Array | Int32Array>} [params.scaleTables]
  * @param {{ binding: number, samplerBinding: number, texture: { format: string, width: number, height: number, bytesPerRow: number, data: number[] } }} [params.texture]
  * @param {number} [params.count]
  * @param {boolean} [params.readSeriesOnly]
@@ -650,6 +651,7 @@ export async function runScaleCase(
         inputNames,
         extraResources = [],
         extraBuffers = [],
+        scaleTables = {},
         texture,
         count = outputLength,
         readSeriesOnly = false,
@@ -659,6 +661,35 @@ export async function runScaleCase(
     }
 ) {
     attachScaleDefinitions(channels);
+    // Explicit slices exercise generated shader access independently of uploads.
+    uniformLayout = uniformLayout.slice();
+    uniforms = { ...uniforms };
+    const tableWords = [];
+    for (const [key, data] of Object.entries(scaleTables)) {
+        const offset = tableWords.length;
+        const words = new Uint32Array(
+            data.buffer,
+            data.byteOffset,
+            data.length
+        );
+        for (const word of words) tableWords.push(word);
+        const domain = key.startsWith("domainMap_");
+        const name =
+            (domain ? "uDomainMapTable_" : "uRangeTable_") +
+            key.slice(key.indexOf("_") + 1);
+        uniformLayout.push({ name, type: "u32", components: domain ? 2 : 1 });
+        uniforms[name] = domain ? [offset, data.length / 2] : offset;
+    }
+    if (tableWords.length) {
+        extraBuffers = [
+            ...extraBuffers,
+            {
+                name: "scaleTables",
+                role: "scaleTables",
+                data: new Uint32Array(tableWords),
+            },
+        ];
+    }
     const shouldReadSeriesOnly =
         readSeriesOnly || process.env.SCALE_TEST_READ_SERIES === "1";
     const hasUniforms = uniformLayout.length > 0;
@@ -758,9 +789,7 @@ export async function runScaleCase(
                     : extra.data instanceof Int32Array
                       ? "i32"
                       : "f32"
-                : role === "domainMap"
-                  ? "u32"
-                  : "f32");
+                : "f32");
         seriesBuffers.push({
             binding,
             data: toSerializable(extra.data),

@@ -40,7 +40,8 @@ fn cutRank(value: vec2<u32>, table: vec2<u32>, before: bool) -> u32 {
     var hi = table.y;
     while (lo < hi) {
         let mid = (lo + hi) / 2u;
-        let cut = gapCuts[table.x + mid];
+        let offset = table.x + mid * 2u;
+        let cut = vec2<u32>(scaleTables[offset], scaleTables[offset + 1u]);
         let less = cut.x < value.x || (cut.x == value.x && cut.y < value.y);
         if (less || (!before && all(cut == value))) { lo = mid + 1u; }
         else { hi = mid; }
