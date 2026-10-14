@@ -2,8 +2,8 @@
 
 Date: 2026-10-14. Runtime audit revision: `509ff43ee`, including scale/gap
 packing, mixed-series packing, startup byte negotiation, and the font startup
-fix. Subsequent verification-fixture and debug-metadata changes do not alter
-uploads, shaders, or rendering. Environment: macOS arm64, Playwright Chromium,
+fix. Subsequent fixture, debug-metadata, and error-boundary changes preserve
+valid uploads, shaders, and rendering. Environment: macOS arm64, Playwright Chromium,
 headless, ANGLE Metal, DPR 1.
 
 **237/238 examples pass. No binding-limit failures remain.** All 13 previously
@@ -67,7 +67,7 @@ limits, and allocation/update boundaries report contextual capacity errors.
 
 ## Integration verification
 
-- Full repository unit suite: 4,938 passed, 1 skipped, 2 todo; 525 files passed.
+- Final repository unit suite: 4,940 passed, 1 skipped, 2 todo; 526 files passed.
 - Renderer integration GPU matrix: 66 passed, covering all affected mark
   families, generated scales, precision, selection predicates, order, and scopes.
 - Earlier focused point/text/placement/gap/series matrix: 17 passed. The separate
@@ -91,6 +91,13 @@ fixture corrections, with no changes to interval or arrow rendering semantics.
 The [lasso-stack qualification](lasso-qualification.md) records the isolated
 #563/#564 rebase, shared GPU-table borrowing, native linked-view lifecycle, and
 both 10-million-point scenarios at forced default limits.
+
+The delivery review in `0a35dcd95` consolidated uniform capacity checks before
+GPU allocation and retained failed-example reporting when audit collection
+cannot run on a crashed page. All 310 renderer source tests and 8 audit tests,
+workspace TypeScript, and full source lint pass. A focused native default-limit run
+reports the existing zero-height arrow failure before passing redundant encoding,
+point2d, and plenty-of-points, and writes its summary and failure report.
 
 ## Reproduction and local evidence
 

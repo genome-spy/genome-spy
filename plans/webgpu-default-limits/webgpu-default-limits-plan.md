@@ -498,6 +498,29 @@ The temporary worktree was archived with a recoverable snapshot and local
 patches. [Qualification and rebase notes](lasso-qualification.md) describe the
 adjustments needed when updating the PR stack.
 
+### Delivery review complete
+
+A subagent reviewed the whole branch against master. The follow-up in
+`0a35dcd95` consolidates uniform binding/allocation checks at the existing
+pre-allocation boundary and records audit-collection failures after a page crash
+instead of aborting the full sweep before writing a report. Focused regressions,
+all 310 renderer source tests, TypeScript, and lint pass. A four-example native
+default-limit smoke reports the known zero-height arrow failure and then passes
+the three remaining examples. The reviewer confirmed both fixes; no decisions
+requiring user input remain for this delivery.
+
+Final PR preparation reran the complete repository suite: 4,940 tests pass
+across 526 files, with 1 skipped and 2 todo. Workspace TypeScript and full source
+lint pass. The empty changeset retains the unpublished-renderer/tooling
+no-release decision.
+
+Cross-mark shared columns for scatterplot matrices, object-to-array extraction
+performance (#567), and point-quad topology experiments are explicitly outside
+this PR. Their follow-up scope is retained in the renderer migration backlog.
+The packed series remain mark-owned; this work does not add cross-mark storage
+sharing or claim a rendering speedup. All tasks below are reconciled before
+retiring this temporary plan and its qualification reports in a later commit.
+
 ## Risks and open questions
 
 - Binary layout mistakes can corrupt f32 values or precision-sensitive IDs;
@@ -548,3 +571,7 @@ adjustments needed when updating the PR stack.
 - [x] Milestone 2: unify mixed series and implement contextual budget errors.
 - [x] Milestone 3: finish the full example and interaction/integration matrix,
       including reconciliation of the existing interval GPU fixtures.
+- [x] Review the complete branch with a subagent, fix the uniform-capacity and
+      audit-crash issues, and verify the fixes.
+- [x] Reconcile delivery scope and retain separate shared-series, extraction,
+      point-topology, and lasso-stack integration follow-ups in the migration backlog.
