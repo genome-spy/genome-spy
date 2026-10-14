@@ -8,6 +8,8 @@ import { gpuLabel } from "../utils/gpuLabel.js";
  * work submitted before the copy has completed.
  */
 export class MsdfAtlasTexture {
+    /** @type {"rgba16float"} */
+    #format;
     /** @type {GPUDevice} */
     #device;
 
@@ -28,7 +30,7 @@ export class MsdfAtlasTexture {
      */
     constructor(device, options) {
         this.#device = device;
-        this.format = options.format ?? "rgba16float";
+        this.#format = options.format ?? "rgba16float";
         this.#label = options.label ?? "MSDF atlas";
         this.#growthFactor = options.growthFactor ?? 2;
         if (!(this.#growthFactor > 1) || !Number.isFinite(this.#growthFactor)) {
@@ -63,7 +65,7 @@ export class MsdfAtlasTexture {
         return this.#device.createTexture({
             label: this.#label,
             size: [width, height],
-            format: this.format,
+            format: this.#format,
             usage:
                 GPUTextureUsage.RENDER_ATTACHMENT |
                 GPUTextureUsage.STORAGE_BINDING |

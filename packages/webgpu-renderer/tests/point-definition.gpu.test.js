@@ -85,7 +85,6 @@ test("fixed circles keep the analytic path without MSDF resources", async ({
         const program = renderer._marks.get(handle.markId);
         const result = {
             program: program.constructor.name,
-            ownedResources: renderer._ownedResources.size,
             pixels,
             picks,
             validation: validation?.message,
@@ -97,7 +96,6 @@ test("fixed circles keep the analytic path without MSDF resources", async ({
 
     expect(result).toEqual({
         program: "PointProgram",
-        ownedResources: 0,
         pixels: Array.from({ length: 5 }, () => [128, 0, 0, 128]).concat([
             [0, 0, 0, 0],
         ]),

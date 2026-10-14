@@ -1,6 +1,6 @@
 # WebGPU renderer simplification and minification
 
-Status: implementation in progress; milestones 1–4 complete.
+Status: implementation in progress; milestones 1–5 complete.
 
 ## Goal and scope
 
@@ -170,14 +170,14 @@ add some source lines; point/text gzip fixtures decrease by another 301–416 by
 
 ## Milestone 5: Encapsulate renderer orchestration and atlas generation
 
-- [ ] Privatize renderer-local picking/frame/uniform/compositing state and
+- [x] Privatize renderer-local picking/uniform/compositing state and
       helpers. Keep the narrow program/resource collaborator contract explicit.
-- [ ] Privatize placement/compositing/pass-state internals where local; preserve
+- [x] Privatize placement/compositing/pass-state internals where local; preserve
       submission order, detached targets, picking serialization, and device loss.
-- [ ] Privatize generator state, replacing reflected private buffer names with
+- [x] Privatize generator state, replacing reflected private buffer names with
       a smaller explicit representation if necessary. Preserve queue completion,
       oracle subclass hooks, atlas caches, and growth behavior.
-- [ ] Rework constructor-bypassing renderer tests to initialize actual instances
+- [x] Rework constructor-bypassing renderer tests to initialize actual instances
       and verify GPU calls/results without private-field escape hatches.
 
 Affected: renderer, render groups/pass state, MSDF generator, development oracle
@@ -188,6 +188,13 @@ compositing, and atlas growth/cleanup.
 Independent review gate: inspect the completed refactor and actual downstream
 consumers; incorporate useful KISS/correctness feedback before committing.
 Commit: `refactor(webgpu-renderer): encapsulate renderer and atlas orchestration`.
+
+Verification: 307 unit tests, renderer types/lint, and 21 focused GPU tests pass.
+Independent integrated review found no runtime regression; its active-readback
+destruction coverage and direct input-buffer representation suggestions were
+incorporated. Placement handles still share retained frames and membership maps
+through documented internals, avoiding forwarding methods solely for privacy.
+Renderer-only gzip decreases by 332 bytes in this milestone.
 
 ## Milestone 6: Validate complete integration and record outcomes
 

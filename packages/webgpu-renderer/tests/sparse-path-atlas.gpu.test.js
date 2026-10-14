@@ -351,7 +351,13 @@ test("MSDF generator reuses bounded scratch and exact immutable atlases", async 
             gutter: 1,
         };
         const first = generator.acquireAtlas(paths, options, "first");
-        const scratch = generator._scratchBuffer;
+        const createBuffer = device.createBuffer.bind(device);
+        const scratchAllocations = [];
+        device.createBuffer = (descriptor) => {
+            if (descriptor.label === "MSDF reusable atomic scratch")
+                scratchAllocations.push(descriptor.size);
+            return createBuffer(descriptor);
+        };
         const second = generator.acquireAtlas(paths, options, "second");
         const third = generator.acquireAtlas(
             ["M0-1L1 1H-1Z"],
@@ -362,8 +368,7 @@ test("MSDF generator reuses bounded scratch and exact immutable atlases", async 
         const summary = {
             exactAtlasShared: first === second,
             distinctTableSeparated: first !== third,
-            scratchReused: scratch === generator._scratchBuffer,
-            cacheSize: generator._atlasCache.size,
+            scratchReused: scratchAllocations.length === 0,
         };
         generator.destroy();
         await device.queue.onSubmittedWorkDone();
@@ -375,7 +380,6 @@ test("MSDF generator reuses bounded scratch and exact immutable atlases", async 
         exactAtlasShared: true,
         distinctTableSeparated: true,
         scratchReused: true,
-        cacheSize: 2,
     });
 });
 

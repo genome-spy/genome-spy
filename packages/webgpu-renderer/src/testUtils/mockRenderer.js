@@ -51,7 +51,6 @@ export function createMockRenderer() {
             markPickingDirty: () => {},
             _invalidate: () => {},
             _assertAlive: () => {},
-            _isAlive: () => true,
         })
     );
 }
