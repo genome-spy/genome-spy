@@ -34,6 +34,8 @@ import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { isDatumDef, isValueDef } from "../../encoder/encoder.js";
+import { measurePerformance } from "../../debug/performanceProfiler.js";
+import forEachInBatch from "../../utils/forEachInBatch.js";
 
 const SHAPE_NAMES = [
     "circle",
@@ -1060,7 +1062,7 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
             ? liveValue(() => intern(accessor(data[0])), "u32")
             : {
                   data: getCachedSeries(mark, channel, data, accessor, () =>
-                      Uint32Array.from(data, (datum) => intern(accessor(datum)))
+                      toUint32Array(data, (datum) => intern(accessor(datum)))
                   ),
                   type: /** @type {const} */ ("u32"),
               };
@@ -1456,7 +1458,7 @@ function createEnumBranch(mark, channel, data, values, encoder) {
 
     return {
         data: getCachedSeries(mark, channel, data, accessor, () =>
-            Uint32Array.from(data, (datum) =>
+            toUint32Array(data, (datum) =>
                 getEnumValue(mark, channel, values, accessor(datum))
             )
         ),
@@ -1494,7 +1496,7 @@ function createColorBranch(mark, channel, data, encoder) {
         return {
             data: getCachedSeries(mark, channel, data, accessor, () => {
                 const colors = new Float32Array(data.length * 4);
-                data.forEach((datum, index) => {
+                forEachInBatch(data, (datum, index) => {
                     colors.set(toRgba(mark, accessor(datum)), index * 4);
                 });
                 return colors;
@@ -1687,10 +1689,11 @@ function createGlyphOffsetChannel(mark, axis, data) {
     if (branchEncoder.constant) {
         return liveValue(() => read(data[0]));
     }
-    return {
-        data: Float32Array.from(data, read),
-        type: "f32",
-    };
+    const values = new Float32Array(data.length);
+    forEachInBatch(data, (datum, index) => {
+        values[index] = read(datum);
+    });
+    return { data: values, type: "f32" };
 }
 
 /**
@@ -1969,7 +1972,7 @@ function createUniqueIdChannel(mark, data) {
     return {
         uniqueId: {
             data: getCachedSeries(mark, "uniqueId", data, accessor, () =>
-                Uint32Array.from(data, (datum) =>
+                toUint32Array(data, (datum) =>
                     readUnsignedInteger(mark, "uniqueId", accessor(datum))
                 )
             ),
@@ -2031,8 +2034,9 @@ function assertUnconditional(mark, channel, encoder) {
  * @param {import("../../types/encoder.js").Accessor} accessor
  */
 function toFloat32Array(mark, channel, data, accessor) {
-    return getCachedSeries(mark, channel, data, accessor, () =>
-        Float32Array.from(data, (datum) => {
+    return getCachedSeries(mark, channel, data, accessor, () => {
+        const values = new Float32Array(data.length);
+        forEachInBatch(data, (datum, index) => {
             const value = Number(accessor(datum));
             if (!Number.isFinite(value) && !Number.isNaN(value)) {
                 throw unsupported(
@@ -2040,9 +2044,25 @@ function toFloat32Array(mark, channel, data, accessor) {
                     `Channel "${channel}" contains an infinite value.`
                 );
             }
-            return value;
-        })
-    );
+            values[index] = value;
+        });
+        return values;
+    });
+}
+
+/**
+ * TypedArray.from with a mapping callback first materializes a temporary JS
+ * array. Indexed filling avoids that allocation and lets the JIT inline reads.
+ *
+ * @param {object[]} data
+ * @param {(datum: object) => number} read
+ */
+function toUint32Array(data, read) {
+    const values = new Uint32Array(data.length);
+    forEachInBatch(data, (datum, index) => {
+        values[index] = read(datum);
+    });
+    return values;
 }
 
 /**
@@ -2059,12 +2079,16 @@ function toFloat32Array(mark, channel, data, accessor) {
 function toIndexArray(mark, channel, data, accessor, large) {
     const cacheChannel = `${channel}:${large ? "large" : "regular"}`;
     return getCachedSeries(mark, cacheChannel, data, accessor, () => {
-        const values = Array.from(data, (datum) =>
-            readIndexValue(mark, channel, accessor(datum))
-        );
-        return large
-            ? packHighPrecisionU32Array(values)
-            : Uint32Array.from(values);
+        if (!large) {
+            return toUint32Array(data, (datum) =>
+                readIndexValue(mark, channel, accessor(datum))
+            );
+        }
+        const values = new Float64Array(data.length);
+        forEachInBatch(data, (datum, index) => {
+            values[index] = readIndexValue(mark, channel, accessor(datum));
+        });
+        return packHighPrecisionU32Array(values);
     });
 }
 
@@ -2118,7 +2142,7 @@ function createIndexValue(mark, channel, read, large) {
 function toCategoricalArray(mark, channel, data, accessor, scale) {
     const { intern, readDomain } = getCategoricalMapping(mark, channel, scale);
     const values = getCachedSeries(mark, channel, data, accessor, () =>
-        Uint32Array.from(data, (datum) => intern(accessor(datum)))
+        toUint32Array(data, (datum) => intern(accessor(datum)))
     );
     return { values, readDomain };
 }
@@ -2149,7 +2173,7 @@ function getCategoricalMapping(mark, channel, scale) {
  */
 function getCachedSeries(mark, channel, data, accessor, create) {
     if (!("field" in accessor.channelDef)) {
-        return create();
+        return measurePerformance("seriesExtraction." + channel, create);
     }
 
     let cache = SERIES_CACHE.get(mark);
@@ -2163,7 +2187,7 @@ function getCachedSeries(mark, channel, data, accessor, create) {
         return /** @type {T} */ (cached.series);
     }
 
-    const series = create();
+    const series = measurePerformance("seriesExtraction." + channel, create);
     cache.channels.set(channel, { accessor, series });
     return series;
 }
