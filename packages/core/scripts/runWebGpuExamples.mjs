@@ -205,7 +205,7 @@ export async function main(args = process.argv.slice(2)) {
  * @param {number} height
  * @param {boolean} checkPicking
  */
-async function runExample(
+export async function runExample(
     browser,
     serverOrigin,
     examplePath,
@@ -321,13 +321,25 @@ async function runExample(
         );
     } finally {
         if (renderer === "webgpu") {
-            result.gpuLimits = await page.evaluate(
-                () =>
-                    window.__webGpuLimitAudit ?? {
-                        devices: [],
-                        violations: ["WebGPU audit unavailable."],
-                    }
-            );
+            try {
+                result.gpuLimits = await page.evaluate(
+                    () =>
+                        window.__webGpuLimitAudit ?? {
+                            devices: [],
+                            violations: ["WebGPU audit unavailable."],
+                        }
+                );
+            } catch (error) {
+                result.gpuLimits = {
+                    devices: [],
+                    violations: [
+                        "Could not collect WebGPU limit audit: " +
+                            (error instanceof Error
+                                ? error.message
+                                : String(error)),
+                    ],
+                };
+            }
             result.renderingFailures.push(
                 ...result.gpuLimits.violations,
                 ...result.gpuLimits.devices.flatMap(

@@ -368,15 +368,6 @@ export default class BaseProgram {
         });
         this._resourceLayout = resourceLayout;
         this._programTemplateDiagnostics = diagnostics;
-        const uniformBytes = this._uniformBufferState.byteLength;
-        if (
-            uniformBytes > this.device.limits.maxUniformBufferBindingSize ||
-            uniformBytes > this.device.limits.maxBufferSize
-        ) {
-            throw new Error(
-                `${this.label} uniforms require ${uniformBytes} bytes; available uniform binding capacity is ${Math.min(this.device.limits.maxUniformBufferBindingSize, this.device.limits.maxBufferSize)} bytes.`
-            );
-        }
         this._uniformBuffer = this.device.createBuffer({
             label: gpuLabel(this.label, "uniforms"),
             size: this._uniformBufferState?.byteLength ?? 0,
@@ -1093,15 +1084,18 @@ export default class BaseProgram {
     }
 
     /**
-     * Reject a mark whose uniform block exceeds the device's binding limit
+     * Reject a mark whose uniform block exceeds a binding or allocation limit
      * before allocating any mark GPU resources.
      *
      * @returns {void}
      */
     _validateUniformBufferCapacity() {
-        const limit = this.device.limits?.maxUniformBufferBindingSize;
-        const byteLength = this._uniformBufferState?.byteLength ?? 0;
-        if (limit === undefined || byteLength <= limit) {
+        const limit = Math.min(
+            this.device.limits.maxUniformBufferBindingSize,
+            this.device.limits.maxBufferSize
+        );
+        const byteLength = this._uniformBufferState.byteLength;
+        if (byteLength <= limit) {
             return;
         }
 
