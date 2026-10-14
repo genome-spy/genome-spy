@@ -1,3 +1,4 @@
+import { mockGpuLimits } from "../../../testUtils/mockRenderer.js";
 import { describe, expect, it } from "vitest";
 import { buildPipelines } from "./pipelineBuilder.js";
 import { ProgramTemplateCache } from "./programTemplateCache.js";
@@ -19,6 +20,7 @@ function createHarness() {
     const gpuObject = () => ({ id: nextObjectId++ });
     const device = /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({
+            limits: mockGpuLimits,
             createBindGroupLayout:
                 /** @type {(args: GPUBindGroupLayoutDescriptor) => GPUBindGroupLayout} */ (
                     (args) => {
@@ -114,6 +116,54 @@ function createHarness() {
 }
 
 describe("buildPipelines", () => {
+    it("budgets independent selection tables together with text resources and placement before GPU creation", () => {
+        const harness = createHarness();
+        const compiledChannels = compileTestMarkChannels({
+            x: { data: new Float32Array([0]), type: "f32", components: 1 },
+            uniqueId: { value: 17, type: "u32", components: 1 },
+        });
+        const extraResources = [
+            "scaleTables",
+            "glyphs",
+            "stringMetrics",
+            "glyphMetrics",
+            "renderItems",
+        ].map((name) => ({
+            name,
+            kind: /** @type {const} */ ("buffer"),
+            role: /** @type {const} */ ("extraBuffer"),
+            wgslType: "array<u32>",
+            visibility: /** @type {const} */ ("vertex"),
+        }));
+        const build = (/** @type {string[]} */ names) =>
+            harness.build({
+                compiledChannels,
+                extraResources: [
+                    ...extraResources,
+                    ...names.map((name) => ({
+                        name: "selection_" + name,
+                        kind: /** @type {const} */ ("buffer"),
+                        role: /** @type {const} */ ("extraBuffer"),
+                        wgslType: "array<HashEntry>",
+                        visibility: /** @type {const} */ ("vertex"),
+                    })),
+                ],
+                placementIndex: { source: "draw" },
+                selectionDefs: names.map((name) => ({ name, type: "multi" })),
+                uniformLayout: names.map((name) => ({
+                    name: "uSelectionCount_" + name,
+                    type: "f32",
+                    components: 1,
+                })),
+            });
+        build(["picked"]); // series + scale + four text buffers + placement + selection = 8
+        expect(() => build(["picked", "brush"])).toThrow(
+            /first mark vertex.*9.*maxStorageBuffersPerShaderStage.*8.*selection_picked.*selection_brush/
+        );
+        expect(harness.bindGroupLayoutArgs).toHaveLength(1);
+        expect(harness.shaderModuleArgs).toHaveLength(1);
+    });
+
     it("shares equivalent program templates", () => {
         const harness = createHarness();
 
@@ -130,7 +180,7 @@ describe("buildPipelines", () => {
             borrowerLabels: new Set(["first mark", "second mark"]),
         });
         expect(first.resourceLayout).toEqual([
-            { name: "seriesF32", role: "series" },
+            { name: "series", role: "series" },
         ]);
         expect(Object.isFrozen(first.resourceLayout)).toBe(true);
         expect(Object.isFrozen(first.resourceLayout[0])).toBe(true);

@@ -1,7 +1,7 @@
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 
 /**
- * @typedef {{ name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  *
  * @typedef {object} BindGroupBuildParams
  * @prop {GPUDevice} device
@@ -9,8 +9,9 @@ import { gpuLabel } from "../../../utils/gpuLabel.js";
  * @prop {GPUBindGroupLayout} layout
  * @prop {GPUBuffer} uniformBuffer
  * @prop {ResourceLayoutEntry[]} resourceLayout
- * @prop {(name: string) => GPUBuffer | null} getSeriesBuffer
+ * @prop {() => GPUBuffer | null} getSeriesBuffer
  * @prop {(name: string) => ReturnType<import("./scaleResources.js").ScaleResourceManager["getChannelResources"]>} getScaleResources
+ * @prop {() => GPUBuffer | null} getScaleTableBuffer
  * @prop {Map<string, { texture: GPUTexture, sampler?: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} extraTextures
  * @prop {Map<string, GPUBuffer>} extraBuffers
  */
@@ -29,6 +30,7 @@ export function buildBindGroup({
     resourceLayout,
     getSeriesBuffer,
     getScaleResources,
+    getScaleTableBuffer,
     extraTextures,
     extraBuffers,
 }) {
@@ -43,7 +45,7 @@ export function buildBindGroup({
     let bindingIndex = 1;
     for (const entry of resourceLayout) {
         if (entry.role === "series") {
-            const buffer = getSeriesBuffer(entry.name);
+            const buffer = getSeriesBuffer();
             if (!buffer) {
                 throw new Error(`Missing buffer binding for "${entry.name}".`);
             }
@@ -54,34 +56,10 @@ export function buildBindGroup({
             continue;
         }
         const scaleResources = getScaleResources(entry.name);
-        if (entry.role === "gapCuts") {
+        if (entry.role === "scaleTables") {
             entries.push({
                 binding: bindingIndex++,
-                resource: { buffer: scaleResources.gapCuts.buffer },
-            });
-            continue;
-        }
-        if (entry.role === "ordinalRange") {
-            const buffer = scaleResources?.ordinalRange?.buffer;
-            if (!buffer) {
-                throw new Error(`Missing buffer binding for "${entry.name}".`);
-            }
-            entries.push({
-                binding: bindingIndex++,
-                resource: { buffer },
-            });
-            continue;
-        }
-        if (entry.role === "domainMap") {
-            const buffer = scaleResources?.domainMap?.buffer;
-            if (!buffer) {
-                throw new Error(
-                    `Missing domain map buffer for "${entry.name}".`
-                );
-            }
-            entries.push({
-                binding: bindingIndex++,
-                resource: { buffer },
+                resource: { buffer: getScaleTableBuffer() },
             });
             continue;
         }

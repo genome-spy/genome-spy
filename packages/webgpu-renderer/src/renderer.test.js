@@ -1,7 +1,35 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { TransientTexturePool } from "./renderGroups.js";
-import { Renderer } from "./renderer.js";
+import { Renderer, createRenderer } from "./renderer.js";
+
+test.each([134217728, 536870912])(
+    "startup requests supported byte capacity %i without binding overrides",
+    async (maxStorageBufferBindingSize) => {
+        const limits = {
+            maxStorageBufferBindingSize,
+            maxBufferSize: Math.max(268435456, maxStorageBufferBindingSize),
+        };
+        const requestDevice = vi.fn(async () => ({}));
+        vi.stubGlobal("navigator", {
+            gpu: { requestAdapter: async () => ({ limits, requestDevice }) },
+        });
+        try {
+            // Stop after device negotiation: no data or full renderer mock is needed.
+            const canvas = /** @type {HTMLCanvasElement} */ (
+                /** @type {unknown} */ ({ getContext: vi.fn() })
+            );
+            await expect(createRenderer(canvas)).rejects.toThrow(
+                "Could not create a WebGPU context"
+            );
+            expect(requestDevice).toHaveBeenCalledWith({
+                requiredLimits: limits,
+            });
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    }
+);
 
 describe("Renderer mark definitions", () => {
     test("renders detached targets with target-local globals", async () => {

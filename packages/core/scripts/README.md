@@ -1,3 +1,25 @@
+# WebGPU example audit
+
+Run all shared Core and docs specifications with default WebGPU limits:
+
+```sh
+npm -w @genome-spy/core run smoke:examples:webgpu
+```
+
+The runner records supported startup buffer-size requests and forces both byte
+limits back to WebGPU defaults. It rejects every other explicit limit, including
+binding-count overrides, and rejects unsupported byte requests before forcing
+defaults. It collects uncaptured GPU validation errors, waits for visible lazy
+data, and checks canvas screenshots.
+`output/webgpu-core/summary.json` includes device defaults, per-stage binding
+counts across explicit pipeline layouts, and buffer allocation/binding peaks.
+`failure-report.md` lists failures and peaks at or above 80% of the defaults.
+Auto-layout compute pipelines receive normal GPU validation but do not have
+reflected binding counts in the headroom report. Initial-state smoke checks do
+not exhaust interactions, hidden views, future lazy data, or visual parity.
+
+Use `--output-dir`, `--match`, or explicit example paths for focused runs.
+
 # Interaction performance benchmark
 
 `runWebGpuInteractionBenchmark.mjs` is a generic App benchmark driver. It

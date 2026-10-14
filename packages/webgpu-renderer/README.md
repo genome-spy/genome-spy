@@ -84,6 +84,22 @@ The API design is partly inspired by
 [Vega](https://vega.github.io/vega/), [D3](https://d3js.org/), and, most
 directly, GenomeSpy's visualization requirements.
 
+## Device capacity
+
+Startup requests the adapter's supported `maxStorageBufferBindingSize` and
+`maxBufferSize`, since dataset sizes are not known yet. Binding counts and all
+other limits remain at WebGPU defaults, including eight storage buffers per
+shader stage and four bind groups. No fixed desktop-sized byte minimum is
+required, so baseline full-WebGPU devices can render simple plots.
+
+All f32/u32/i32 series channels share one packed storage binding per mark,
+with integer IDs and floating-point bits preserved. Large datasets can exceed
+a device's binding byte capacity even if their separate source arrays fit.
+The renderer checks sizes before packing/allocation and on later updates and
+reports the mark/resource, required bytes, and available capacity. It does not
+truncate data or recreate the device to retry. Negotiated limits do not reserve
+memory or guarantee allocation under memory pressure.
+
 ## Grouping gaps on index scales
 
 `indexScale({ domain: [0, 20], range: [0, 500], gapPositions: [10],
@@ -95,7 +111,11 @@ If the visible gaps leave no room for data, affected marks are hidden until
 the output extent grows or the scale configuration changes.
 
 Cuts are nonnegative integers below 2^44. The renderer sorts and deduplicates
-them, packs exact integer keys, and shares one cut storage binding per mark.
+them and packs exact integer keys into the mark-owned scale/gap table buffer.
+Ordinal ranges, sparse domain maps, and gap cuts share this one storage binding;
+selection tables remain independently bound. Changed scale slices are uploaded
+without replacing series data. Table growth relocates slices and updates their
+uniform offsets without recompiling the shader.
 Ordinary index scales allocate no gap resources. Null/empty cuts or zero/null
 width also omit gap helpers and bindings unless `gapEnabled: true` explicitly
 reserves them for later retained updates.

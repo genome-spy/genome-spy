@@ -59,8 +59,8 @@ Follow the monorepo-wide conventions in `AGENTS.md`.
     `scaleResources.js`, `selectionResources.js`, `seriesBuffers.js`, and
     `packedSeriesLayout.js`.
 - Packed series:
-  - Series are packed into f32/u32 storage buffers; dedupe behavior must remain
-    consistent across updates.
+  - Mixed f32/u32/i32 channels share one word storage buffer. Preserve exact
+    bits and source-array alias deduplication across updates.
 
 ## Testing
 

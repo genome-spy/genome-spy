@@ -520,43 +520,51 @@ describe("BaseProgram channel validation", () => {
         ).toThrow(message);
     });
 
-    it("rejects an interval uniform layout over the device limit", () => {
-        const renderer = createMockRenderer();
-        Object.defineProperty(renderer.device, "limits", {
-            value: { maxUniformBufferBindingSize: 15 },
-        });
-        const createBuffer = vi.spyOn(renderer.device, "createBuffer");
+    it.each(["maxUniformBufferBindingSize", "maxBufferSize"])(
+        "rejects an interval uniform layout over %s before GPU creation",
+        (limit) => {
+            const renderer = createMockRenderer();
+            Object.defineProperty(renderer.device, "limits", {
+                value: { ...renderer.device.limits, [limit]: 15 },
+            });
+            const createBuffer = vi.spyOn(renderer.device, "createBuffer");
+            const createShaderModule = vi.spyOn(
+                renderer.device,
+                "createShaderModule"
+            );
 
-        expect(
-            () =>
-                new TestProgram(renderer, {
-                    channels: attachScaleDefinitions({
-                        x: { value: 0.5, type: "f32" },
-                        vec: {
-                            value: [1, 0, 0, 1],
-                            type: "f32",
-                            components: 4,
-                            conditions: [
-                                {
-                                    when: {
-                                        selection: "brush",
-                                        type: "interval",
-                                        projections: [
-                                            { component: "x", input: "x" },
-                                        ],
+            expect(
+                () =>
+                    new TestProgram(renderer, {
+                        channels: attachScaleDefinitions({
+                            x: { value: 0.5, type: "f32" },
+                            vec: {
+                                value: [1, 0, 0, 1],
+                                type: "f32",
+                                components: 4,
+                                conditions: [
+                                    {
+                                        when: {
+                                            selection: "brush",
+                                            type: "interval",
+                                            projections: [
+                                                { component: "x", input: "x" },
+                                            ],
+                                        },
+                                        value: [0, 1, 0, 1],
                                     },
-                                    value: [0, 1, 0, 1],
-                                },
-                            ],
-                        },
-                    }),
-                    count: 1,
-                })
-        ).toThrow(
-            'interval selection "brush" (1 components) requires 16 bytes, exceeding the device limit of 15 bytes'
-        );
-        expect(createBuffer).not.toHaveBeenCalled();
-    });
+                                ],
+                            },
+                        }),
+                        count: 1,
+                    })
+            ).toThrow(
+                'interval selection "brush" (1 components) requires 16 bytes, exceeding the device limit of 15 bytes'
+            );
+            expect(createBuffer).not.toHaveBeenCalled();
+            expect(createShaderModule).not.toHaveBeenCalled();
+        }
+    );
 });
 
 describe("BaseProgram series type validation", () => {

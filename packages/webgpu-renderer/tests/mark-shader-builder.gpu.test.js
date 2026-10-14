@@ -137,10 +137,10 @@ test("markShaderBuilder matches d3 ordinal mapping for explicit categories", asy
             uRangeCount_x: range.length,
             uDomainMapCount_x: domainMap.size,
         },
-        extraBuffers: [
-            { name: "x", role: "ordinalRange", data: range },
-            { name: "x", role: "domainMap", data: domainMap.table },
-        ],
+        scaleTables: {
+            range_x: new Float32Array(range),
+            domainMap_x: domainMap.table,
+        },
         dumpLabel: test.info().title,
     });
 
@@ -219,7 +219,7 @@ test("markShaderBuilder matches d3 band positions through a sparse domain map", 
             uScaleBand_x: band,
             uDomainMapCount_x: domainMap.size,
         },
-        extraBuffers: [{ name: "x", role: "domainMap", data: domainMap.table }],
+        scaleTables: { domainMap_x: domainMap.table },
         dumpLabel: test.info().title,
     });
 
@@ -476,10 +476,10 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
             uRangeCount_shape: 2,
             uDomainMapCount_shape: 0,
         },
-        extraBuffers: [
-            { name: "shape", role: "ordinalRange", data: rangeData },
-            { name: "shape", role: "domainMap", data: [0, 0] },
-        ],
+        scaleTables: {
+            range_shape: new Float32Array(rangeData),
+            domainMap_shape: new Uint32Array([0, 0]),
+        },
         dumpLabel,
     });
 
@@ -533,10 +533,10 @@ test("markShaderBuilder applies ordinal scales with sparse domain maps", async (
             uRangeCount_shape: 3,
             uDomainMapCount_shape: domainMap.size,
         },
-        extraBuffers: [
-            { name: "shape", role: "ordinalRange", data: rangeData },
-            { name: "shape", role: "domainMap", data: domainMap.table },
-        ],
+        scaleTables: {
+            range_shape: new Float32Array(rangeData),
+            domainMap_shape: domainMap.table,
+        },
         dumpLabel,
     });
 
@@ -585,10 +585,10 @@ test("markShaderBuilder returns zero for missing ordinal categories", async ({
             uRangeCount_fill: 1,
             uDomainMapCount_fill: domainMap.size,
         },
-        extraBuffers: [
-            { name: "fill", role: "ordinalRange", data: rangeData },
-            { name: "fill", role: "domainMap", data: domainMap.table },
-        ],
+        scaleTables: {
+            range_fill: new Float32Array(rangeData),
+            domainMap_fill: domainMap.table,
+        },
         dumpLabel,
     });
 
@@ -783,7 +783,8 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
         dumpLabel,
     });
 
-    expect(output).toEqual([0, 1, 1, 0]);
+    // Interval membership excludes the upper endpoint.
+    expect(output).toEqual([0, 1, 0, 0]);
 });
 
 test("markShaderBuilder combines N interval targets with explicit empty state", async ({
@@ -874,7 +875,7 @@ test("markShaderBuilder combines N interval targets with explicit empty state", 
         ...base,
         uniforms: {
             uSelection_brush_0_active: 1,
-            uSelection_brush_0: [1, 2],
+            uSelection_brush_0: [1, 3],
             uSelection_brush_1_active: 1,
             uSelection_brush_1: [15, 25],
         },
@@ -886,7 +887,7 @@ test("markShaderBuilder combines N interval targets with explicit empty state", 
         channels: channelsWithEmpty(true),
         uniforms: {
             uSelection_brush_0_active: 1,
-            uSelection_brush_0: [1, 2],
+            uSelection_brush_0: [1, 3],
             uSelection_brush_1_active: 0,
             uSelection_brush_1: [0, 0],
         },
@@ -898,7 +899,7 @@ test("markShaderBuilder combines N interval targets with explicit empty state", 
         channels: channelsWithEmpty(false),
         uniforms: {
             uSelection_brush_0_active: 1,
-            uSelection_brush_0: [1, 2],
+            uSelection_brush_0: [1, 3],
             uSelection_brush_1_active: 0,
             uSelection_brush_1: [0, 0],
         },
@@ -933,7 +934,7 @@ test("markShaderBuilder combines N interval targets with explicit empty state", 
         ...base,
         uniforms: {
             uSelection_brush_0_active: 1,
-            uSelection_brush_0: [2, 1],
+            uSelection_brush_0: [3, 1],
             uSelection_brush_1_active: 1,
             uSelection_brush_1: [25, 15],
         },
@@ -1036,9 +1037,9 @@ test("markShaderBuilder applies all ranged interval hit-test modes", async ({
             dumpLabel: `${dumpLabel}-${hitTest}`,
         });
 
-    expect(await runMode("intersects")).toEqual([1, 1, 1, 1]);
+    expect(await runMode("intersects")).toEqual([1, 1, 1, 0]);
     expect(await runMode("encloses")).toEqual([0, 1, 0, 0]);
-    expect(await runMode("endpoints")).toEqual([0, 1, 0, 1]);
+    expect(await runMode("endpoints")).toEqual([0, 1, 0, 0]);
 });
 
 test("markShaderBuilder applies single selections to conditional values", async ({
@@ -1411,8 +1412,8 @@ test("logical conditions combine two interval selections and hover", async ({
             selectionDefs,
             dumpLabel: test.info().title,
         });
-    expect(await run(1, 1)).toEqual([0, 1, 1, 1]);
-    expect(await run(1, 0)).toEqual([0, 1, 1, 1]);
+    expect(await run(1, 1)).toEqual([0, 1, 0, 1]);
+    expect(await run(1, 0)).toEqual([0, 1, 0, 1]);
     expect(await run(0, 0)).toEqual([1, 1, 1, 1]);
 });
 
@@ -1573,12 +1574,13 @@ test("one interval component tests two inputs and packed numeric bounds", async 
             uSelection_range_0_active: 1,
             uSelection_range_0: [
                 ...packHighPrecisionU32(boundary),
-                ...packHighPrecisionU32(boundary + 1),
+                ...packHighPrecisionU32(boundary + 2),
             ],
         },
         selectionDefs,
         dumpLabel: test.info().title,
     });
+    // The second input at the upper boundary is excluded.
     expect(output).toEqual([0, 1, 0, 0]);
 });
 

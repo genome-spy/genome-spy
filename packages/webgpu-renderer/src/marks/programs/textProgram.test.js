@@ -397,9 +397,7 @@ describe("TextProgram series replacement", () => {
         expect(program._channels.__placementIndex.data).toHaveLength(2000);
         expect(program._channels.__placementIndex.data.byteLength).toBe(8000);
         expect(program._channels.__placementIndex.data.at(-1)).toBe(1999);
-        expect(
-            program._seriesBuffers._packedBuffers.get("seriesU32")?.byteLength
-        ).toBe(8000);
+        expect(program._seriesBuffers.getBuffer()?.size).toBe(8000);
     });
 
     it("keeps scalar scale inputs logical for vector color outputs", () => {
@@ -521,11 +519,7 @@ describe("TextProgram series replacement", () => {
         expect(program.count).toBe(2);
         expect(program._channels.x.data).toHaveLength(2);
         expect(program._extraBuffers.get("glyphs")?.size).toBe(4);
-        expect(
-            Array.from(program._seriesBuffers._packedBuffers.values()).map(
-                ({ buffer }) => buffer.size
-            )
-        ).toEqual([16]);
+        expect(program._seriesBuffers.getBuffer()?.size).toBe(16);
     });
 
     it("keeps and replaces a conditional series by logical name", () => {

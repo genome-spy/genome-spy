@@ -1,14 +1,14 @@
 /* global console, navigator, process */
 
 /**
- * Copies the generated `seriesF32` buffer directly to output to prove the
+ * Copies the generated `series` buffer directly to output to prove the
  * compute-binding layout matches the renderer's expected buffer.
  */
 import { test, expect } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 import { runSeriesCopyCase } from "./scaleShaderTestUtils.js";
 
-test("seriesF32 binding exposes raw input data", async ({ page }) => {
+test("series binding exposes raw input data", async ({ page }) => {
     await ensureWebGPU(page);
     if (process.env.SCALE_TEST_LOG_BUFFERS === "1") {
         page.on("console", (msg) => console.log("PAGE:", msg.text()));
@@ -56,7 +56,7 @@ test("empty series use a valid minimum-sized GPU buffer", async ({ page }) => {
         manager.updateSeries({ x: data }, 0);
         await device.queue.onSubmittedWorkDone();
         const error = await device.popErrorScope();
-        const buffer = manager.getBuffer("seriesF32");
+        const buffer = manager.getBuffer();
         const size = buffer?.size ?? 0;
         buffer?.destroy();
         device.destroy();

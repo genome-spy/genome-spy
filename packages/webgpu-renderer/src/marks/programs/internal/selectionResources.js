@@ -1,3 +1,4 @@
+import { validateStorageBufferSize } from "../../../utils/bufferLimits.js";
 import {
     buildHashTableSet,
     DEFAULT_MAX_LOAD_FACTOR,
@@ -595,6 +596,11 @@ export class SelectionResourceManager {
             const { table, size } = buildHashTableSet(
                 update.ids,
                 reuseExisting ? { capacity: existingCapacity } : undefined
+            );
+            validateStorageBufferSize(
+                this._device,
+                table.byteLength,
+                this._label + " selection " + name
             );
             this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
             this._setOrderSelectionActive(name, size > 0);

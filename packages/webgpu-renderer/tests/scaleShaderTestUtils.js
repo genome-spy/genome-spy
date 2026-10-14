@@ -149,7 +149,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (i >= OUTPUT_LEN) {
         return;
     }
-    output[i] = seriesF32[i];
+    output[i] = bitcast<f32>(series[i]);
 }
 `;
 }
@@ -295,7 +295,7 @@ export function buildSeriesCopyComputeShader({
  * tests can attach buffers/textures without duplicating bind-group logic.
  *
  * @param {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildResult} result
- * @returns {{ binding: number, name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler"|"extraBuffer"|"extraTexture"|"extraSampler" }[]}
+ * @returns {{ binding: number, name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraBuffer"|"extraTexture"|"extraSampler" }[]}
  */
 export function mapScaleBindings(result) {
     return result.resourceLayout.map((entry, index) => ({
@@ -626,6 +626,7 @@ export async function runScaleCompute(
  * @param {Set<string>} [params.inputNames]
  * @param {import("../src/marks/shaders/markShaderBuilder.js").ExtraResourceDef[]} [params.extraResources]
  * @param {{ name: string, data: number[] | ArrayBufferView, role?: string }[]} [params.extraBuffers]
+ * @param {Record<string, Float32Array | Uint32Array | Int32Array>} [params.scaleTables]
  * @param {{ binding: number, samplerBinding: number, texture: { format: string, width: number, height: number, bytesPerRow: number, data: number[] } }} [params.texture]
  * @param {number} [params.count]
  * @param {boolean} [params.readSeriesOnly]
@@ -650,6 +651,7 @@ export async function runScaleCase(
         inputNames,
         extraResources = [],
         extraBuffers = [],
+        scaleTables = {},
         texture,
         count = outputLength,
         readSeriesOnly = false,
@@ -659,6 +661,35 @@ export async function runScaleCase(
     }
 ) {
     attachScaleDefinitions(channels);
+    // Explicit slices exercise generated shader access independently of uploads.
+    uniformLayout = uniformLayout.slice();
+    uniforms = { ...uniforms };
+    const tableWords = [];
+    for (const [key, data] of Object.entries(scaleTables)) {
+        const offset = tableWords.length;
+        const words = new Uint32Array(
+            data.buffer,
+            data.byteOffset,
+            data.length
+        );
+        for (const word of words) tableWords.push(word);
+        const domain = key.startsWith("domainMap_");
+        const name =
+            (domain ? "uDomainMapTable_" : "uRangeTable_") +
+            key.slice(key.indexOf("_") + 1);
+        uniformLayout.push({ name, type: "u32", components: domain ? 2 : 1 });
+        uniforms[name] = domain ? [offset, data.length / 2] : offset;
+    }
+    if (tableWords.length) {
+        extraBuffers = [
+            ...extraBuffers,
+            {
+                name: "scaleTables",
+                role: "scaleTables",
+                data: new Uint32Array(tableWords),
+            },
+        ];
+    }
     const shouldReadSeriesOnly =
         readSeriesOnly || process.env.SCALE_TEST_READ_SERIES === "1";
     const hasUniforms = uniformLayout.length > 0;
@@ -689,7 +720,6 @@ export async function runScaleCase(
     const layout = buildPackedSeriesLayout(channels, {});
     const packed = packSeriesArrays({
         channels,
-        channelSpecs: {},
         layout,
         count,
     });
@@ -697,46 +727,15 @@ export async function runScaleCase(
     const toSerializable = (data) =>
         ArrayBuffer.isView(data) ? Array.from(data) : data;
 
-    if (packed.f32) {
+    if (layout.stride) {
         const binding = bindings.find(
-            (entry) => entry.role === "series" && entry.name === "seriesF32"
-        )?.binding;
-        if (binding == null) {
-            throw new Error("Series binding for packed f32 data is missing.");
-        }
+            (entry) => entry.role === "series"
+        ).binding;
         seriesBuffers.push({
             binding,
-            data: toSerializable(packed.f32),
-            role: "series",
-            type: "f32",
-        });
-    }
-    if (packed.u32) {
-        const binding = bindings.find(
-            (entry) => entry.role === "series" && entry.name === "seriesU32"
-        )?.binding;
-        if (binding == null) {
-            throw new Error("Series binding for packed u32 data is missing.");
-        }
-        seriesBuffers.push({
-            binding,
-            data: toSerializable(packed.u32),
+            data: Array.from(packed),
             role: "series",
             type: "u32",
-        });
-    }
-    if (packed.i32) {
-        const binding = bindings.find(
-            (entry) => entry.role === "series" && entry.name === "seriesI32"
-        )?.binding;
-        if (binding == null) {
-            throw new Error("Series binding for packed i32 data is missing.");
-        }
-        seriesBuffers.push({
-            binding,
-            data: toSerializable(packed.i32),
-            role: "series",
-            type: "i32",
         });
     }
 
@@ -758,9 +757,7 @@ export async function runScaleCase(
                     : extra.data instanceof Int32Array
                       ? "i32"
                       : "f32"
-                : role === "domainMap"
-                  ? "u32"
-                  : "f32");
+                : "f32");
         seriesBuffers.push({
             binding,
             data: toSerializable(extra.data),
@@ -882,13 +879,9 @@ export async function runSeriesCopyCase(
     const layout = buildPackedSeriesLayout(channels, {});
     const packed = packSeriesArrays({
         channels,
-        channelSpecs: {},
         layout,
         count,
     });
-    if (!packed.f32) {
-        throw new Error("runSeriesCopyCase requires f32 series data.");
-    }
     const hasUniforms = uniformLayout.length > 0;
     const normalizedUniformLayout = hasUniforms
         ? uniformLayout
@@ -905,18 +898,19 @@ export async function runSeriesCopyCase(
     });
     const bindings = mapScaleBindings(shader);
     const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "seriesF32"
+        (entry) => entry.role === "series" && entry.name === "series"
     );
     if (!seriesBinding) {
-        throw new Error("seriesF32 binding is missing from shader output.");
+        throw new Error("series binding is missing from shader output.");
     }
     const toSerializable = (data) =>
         ArrayBuffer.isView(data) ? Array.from(data) : data;
     const seriesBuffers = [
         {
             binding: seriesBinding.binding,
-            data: toSerializable(packed.f32),
+            data: toSerializable(packed),
             role: "series",
+            type: "u32",
         },
     ];
     const uniformData = buildUniformData(

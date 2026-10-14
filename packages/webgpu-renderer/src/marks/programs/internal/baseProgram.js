@@ -282,7 +282,7 @@ export default class BaseProgram {
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
-        /** @type {{ name: string, role: "series"|"gapCuts"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
+        /** @type {{ name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
@@ -635,7 +635,8 @@ export default class BaseProgram {
             layout: this._bindGroupLayout,
             uniformBuffer: this._uniformBuffer,
             resourceLayout: this._resourceLayout,
-            getSeriesBuffer: (name) => this._seriesBuffers.getBuffer(name),
+            getScaleTableBuffer: () => this._scaleResources.tableBuffer,
+            getSeriesBuffer: () => this._seriesBuffers.getBuffer(),
             getScaleResources: (name) =>
                 this._scaleResources.getChannelResources(name),
             extraTextures: this._extraTextures,
@@ -682,7 +683,7 @@ export default class BaseProgram {
 
         for (const entry of this._resourceLayout) {
             if (entry.role === "series") {
-                const buffer = this._seriesBuffers.getBuffer(entry.name);
+                const buffer = this._seriesBuffers.getBuffer();
                 storage.push({
                     name: entry.name,
                     role: entry.role,
@@ -697,21 +698,11 @@ export default class BaseProgram {
             const scaleResources = this._scaleResources.getChannelResources(
                 entry.name
             );
-            if (entry.role === "ordinalRange") {
-                const buffer = scaleResources?.ordinalRange?.buffer;
+            if (entry.role === "scaleTables") {
                 storage.push({
                     name: entry.name,
                     role: entry.role,
-                    bytes: buffer?.size ?? 0,
-                });
-                continue;
-            }
-            if (entry.role === "domainMap") {
-                const buffer = scaleResources?.domainMap?.buffer;
-                storage.push({
-                    name: entry.name,
-                    role: entry.role,
-                    bytes: buffer?.size ?? 0,
+                    bytes: this._scaleResources.tableBuffer.size,
                 });
                 continue;
             }
@@ -1093,15 +1084,18 @@ export default class BaseProgram {
     }
 
     /**
-     * Reject a mark whose uniform block exceeds the device's binding limit
+     * Reject a mark whose uniform block exceeds a binding or allocation limit
      * before allocating any mark GPU resources.
      *
      * @returns {void}
      */
     _validateUniformBufferCapacity() {
-        const limit = this.device.limits?.maxUniformBufferBindingSize;
-        const byteLength = this._uniformBufferState?.byteLength ?? 0;
-        if (limit === undefined || byteLength <= limit) {
+        const limit = Math.min(
+            this.device.limits.maxUniformBufferBindingSize,
+            this.device.limits.maxBufferSize
+        );
+        const byteLength = this._uniformBufferState.byteLength;
+        if (byteLength <= limit) {
             return;
         }
 

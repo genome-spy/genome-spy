@@ -181,8 +181,8 @@ const placementSentinel = 1u;
             packedSeriesLayout,
         });
 
-        expect(resourceLayout).toEqual([{ name: "seriesF32", role: "series" }]);
-        expect(shaderCode).toContain("var<storage, read> seriesF32");
+        expect(resourceLayout).toEqual([{ name: "series", role: "series" }]);
+        expect(shaderCode).toContain("var<storage, read> series: array<u32>");
         expect(shaderCode).toContain("fn read_x");
         expect(shaderCode).toContain("fn read_y");
         expect(shaderCode).toContain("base = 1u + i * 3u");
@@ -276,8 +276,8 @@ const placementSentinel = 1u;
         });
 
         expect(resourceLayout).toEqual([
-            { name: "seriesU32", role: "series" },
-            { name: "x", role: "domainMap" },
+            { name: "scaleTables", role: "scaleTables" },
+            { name: "series", role: "series" },
         ]);
         expect(shaderCode).toContain("fn hashLookup_domainMap_x");
         expect(shaderCode).toContain("domainMap_x");
@@ -727,8 +727,8 @@ describe("index gap specialization", () => {
         expect(shaderCode).not.toMatch(
             /gapCuts|gapTable|gapGeometry|cutRank|scaleIndexGaps|gapPlacement/
         );
-        expect(resourceLayout.some((entry) => entry.role === "gapCuts")).toBe(
-            false
-        );
+        expect(
+            resourceLayout.some((entry) => entry.role === "scaleTables")
+        ).toBe(false);
     });
 });
