@@ -27,13 +27,6 @@ contains only current work that still has a concrete renderer or Core consumer.
 - Adding registries, a renderer scene graph, per-facet marks, or speculative
   backend abstractions.
 
-## Active cleanup: simplification and member ownership
-
-The reviewed plan at `plans/webgpu-minification/webgpu-minification-plan.md`
-tracks removal of duplicate CPU paths and native private member adoption.
-Unused stop normalization and texture repacking are removed; channel planning,
-program/resource ownership, and complete example validation remain in progress.
-
 ## Active integration: selection predicate composition
 
 The renderer uses one recursive predicate tree for channel conditions,

@@ -1,6 +1,6 @@
 # WebGPU renderer simplification and minification
 
-Status: implementation in progress; milestones 1–5 complete.
+Status: complete; all six milestones implemented and verified.
 
 ## Goal and scope
 
@@ -198,25 +198,93 @@ Renderer-only gzip decreases by 332 bytes in this milestone.
 
 ## Milestone 6: Validate complete integration and record outcomes
 
-- [ ] Run the complete renderer unit and GPU suites, workspace TypeScript checks,
+- [x] Run the complete renderer unit and GPU suites, workspace TypeScript checks,
       root lint, renderer build/package verification, and bundle fixture matrix.
-- [ ] Run `npm -w @genome-spy/core run smoke:examples:webgpu`, which exercises
+- [x] Run `npm -w @genome-spy/core run smoke:examples:webgpu`, which exercises
       every discovered Core/docs example, awaits visible lazy data, audits default
       WebGPU limits, captures output, and records uncaptured GPU validation errors.
       Inspect every failure rather than hiding it with exclusions. Reproduce any
       apparently unrelated failure against `dca83c3ae` under the same conditions.
       Record selected/passed/failed totals and the report location.
-- [ ] Run representative point/text/index-gap/lollipop examples at DPR 2,
+- [x] Run representative point/text/index-gap/lollipop examples at DPR 2,
       including sequence logos, grouping gaps, and layered lollipops; use the
       existing runner and inspect reports/screenshots as needed.
-- [ ] Record fixture byte deltas and production-token added/deleted/net counts
+- [x] Record fixture byte deltas and production-token added/deleted/net counts
       against `dca83c3ae`; explain any growth or unchanged fixture.
-- [ ] Update `MIGRATION_PLAN.md` with the completed cleanup outcome, reconcile
+- [x] Update `MIGRATION_PLAN.md` with the completed cleanup outcome, reconcile
       every checkbox in this plan, and verify the empty changeset and release status.
 
 The broad example audit is explicitly the last milestone requested by the user.
 It is a startup/data/GPU smoke test, not exhaustive interaction or pixel parity.
 Commit: `test(webgpu-renderer): validate minification across Core examples`.
+
+## Final results
+
+All changes are committed on `codex/webgpu-minification`: one reviewed plan
+commit followed by one commit per milestone. Independent reviews covered the
+plan, program contracts, and integrated renderer/resource changes. Shader
+formulas were unchanged.
+
+### Verification
+
+- Renderer unit suite: **44 files, 307 tests passed**. Retired and duplicated
+  internal cases were removed; direct texture-upload behavior coverage was added.
+- Core WebGPU adapter suite: **8 files, 155 tests passed**.
+- Full renderer GPU suite: **121 tests passed** on native Chromium WebGPU.
+- Workspace TypeScript, root lint, renderer lint, tree shaking/export checks,
+  and package build passed. Package verification packed 138 allowed files.
+  The build used a writable temporary npm cache in this sandbox.
+- Complete Core/docs audit: **238 selected, 237 passed, 1 failed**, with no
+  exclusions. The only failure is
+  `examples/docs/grammar/mark/arrow/arrow-playground.json`: its canvas backing
+  height is zero, causing swapchain texture errors. A focused run on the
+  untouched starting commit `dca83c3ae` reproduces the same failure. This was
+  already recorded in the renderer migration backlog; it remains outside this
+  simplification's scope.
+- DPR 2: **7 selected, 7 passed**, covering points, text sequences, a sequence
+  logo, grouping/chromosome gaps, and both Core/docs layered lollipops. The logo
+  and grouping-gap screenshots were also inspected.
+- Empty changeset policy passes. Existing unrelated pending minor releases are
+  unchanged; this unpublished-package refactor introduces no release bump.
+
+Audit artifacts (ignored output, relative to the repository root):
+
+- `output/webgpu-minification/summary.json` and `failure-report.md`
+- `output/webgpu-minification-baseline/summary.json` and `failure-report.md`
+- `output/webgpu-minification-dpr2/summary.json` and `failure-report.md`
+
+The complete audit ran through the existing
+`npm -w @genome-spy/core run smoke:examples:webgpu` command. The baseline and
+DPR 2 runs used the same runner with explicit selections and output directories.
+The working branch was restored after the baseline check.
+
+### Source and bundle size
+
+Against `dca83c3ae`, runtime JavaScript under
+`packages/webgpu-renderer/src`, excluding tests, has **976 added / 1,702 deleted
+/ 726 net fewer non-comment code lines**. Including declaration files gives
+**976 added / 1,724 deleted / 748 net fewer lines**. The repository's
+TypeScript-token-aware counting skill produced these counts from the committed
+patch. Physical runtime JavaScript decreases from **22,192 to 21,352 lines**,
+a reduction of **840** including comments and WGSL strings.
+
+| Fixture            | Final minified bytes | Minified reduction | Final gzip bytes | Gzip reduction |
+| ------------------ | -------------------: | -----------------: | ---------------: | -------------: |
+| rendererOnly       |               25,918 |              3,203 |            8,553 |            343 |
+| pointLinear        |              189,774 |             13,782 |           56,559 |          2,328 |
+| pointOrdinal       |              192,212 |             13,781 |           57,346 |          2,335 |
+| customIdentityMark |               26,067 |              3,203 |            8,633 |            341 |
+| fontTrueType       |               14,277 |                  0 |            4,938 |              0 |
+| fontDefault        |               14,610 |                  0 |            5,094 |              0 |
+| textCustomFont     |              200,701 |             11,688 |           59,941 |          2,037 |
+
+Native declarations increase some individual classes' source size, but deleted
+CPU paths more than offset that growth and affected bundles become smaller.
+Standalone font factories do not import the renderer/atlas implementation and
+remain unchanged. Real subclass hooks, constructor-hook state, placement/frame
+collaboration, and development diagnostics retain documented ordinary members.
+No reflection, test-only getters, or privacy forwarding layer was introduced.
+The migration backlog no longer lists this cleanup as active work.
 
 ## Acceptance and retirement
 
