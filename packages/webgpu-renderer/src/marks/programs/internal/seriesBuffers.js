@@ -18,6 +18,30 @@ import { gpuLabel } from "../../../utils/gpuLabel.js";
  * and GPU buffer upload/reuse for columnar storage.
  */
 export class SeriesBufferManager {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {Record<string, ChannelConfigResolved>} */
+    #channels;
+
+    /** @type {string} */
+    #label;
+
+    /**
+     * Channel name -> alias group key (single source of truth).
+     * @type {Map<string, string>}
+     */
+    #seriesBufferAliases = new Map();
+
+    /**
+     * One word layout shared by all scalar representations.
+     * @type {import("./packedSeriesLayout.js").PackedSeriesLayout}
+     */
+    #packedSeriesLayout;
+
+    /** @type {GPUBuffer | null} */
+    #buffer = null;
+
     /**
      * @param {GPUDevice} device
      * @param {Record<string, ChannelConfigResolved>} channels
@@ -25,41 +49,31 @@ export class SeriesBufferManager {
      * @param {string} [label]
      */
     constructor(device, channels, channelSpecs, label = "mark") {
-        this._device = device;
-        this._channels = channels;
-        this._channelSpecs = channelSpecs;
-        this._label = label;
-        /**
-         * Channel name -> alias group key (single source of truth).
-         * @type {Map<string, string>}
-         */
-        this._seriesBufferAliases = new Map();
-        /**
-         * One word layout shared by all scalar representations.
-         * @type {import("./packedSeriesLayout.js").PackedSeriesLayout | null}
-         */
-        this._packedSeriesLayout = null;
-        /** @type {GPUBuffer | null} */
-        this._buffer = null;
+        this.#device = device;
+        this.#channels = channels;
 
-        this._initializeSeriesAliases();
+        this.#label = label;
+
+        this.#initializeSeriesAliases();
+        this.#packedSeriesLayout = buildPackedSeriesLayout(
+            channels,
+            channelSpecs,
+            this.#seriesBufferAliases
+        );
     }
 
     /**
-     * @returns {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry> | null}
+     * @returns {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry>}
      */
     get packedSeriesLayoutEntries() {
-        return this._getPackedLayout()?.entries ?? null;
+        return this.#packedSeriesLayout.entries;
     }
 
     /**
      * @returns {Map<string, { stride: number, channels: Array<{ name: string, scalarType: "f32"|"u32"|"i32", alias: string, offset: number, components: 1|2|4, stride: number }> }>}
      */
     getPackedSeriesInfo() {
-        const layout = this._getPackedLayout();
-        if (!layout) {
-            return new Map();
-        }
+        const layout = this.#packedSeriesLayout;
         return new Map([
             [
                 "series",
@@ -68,7 +82,7 @@ export class SeriesBufferManager {
                     channels: Array.from(layout.entries, ([name, entry]) => ({
                         name,
                         scalarType: entry.scalarType,
-                        alias: this._seriesBufferAliases.get(name) ?? name,
+                        alias: this.#seriesBufferAliases.get(name) ?? name,
                         offset: entry.offset,
                         components: entry.components,
                         stride: entry.stride,
@@ -80,7 +94,7 @@ export class SeriesBufferManager {
 
     /** @returns {GPUBuffer | null} */
     getBuffer() {
-        return this._buffer;
+        return this.#buffer;
     }
 
     /**
@@ -93,7 +107,7 @@ export class SeriesBufferManager {
         let inferred = null;
         let hasSeries = false;
 
-        for (const [name, channel] of Object.entries(this._channels)) {
+        for (const [name, channel] of Object.entries(this.#channels)) {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
@@ -138,12 +152,12 @@ export class SeriesBufferManager {
     /**
      * @returns {void}
      */
-    _initializeSeriesAliases() {
-        this._seriesBufferAliases.clear();
+    #initializeSeriesAliases() {
+        this.#seriesBufferAliases.clear();
 
         const groupByArray = new Map();
 
-        for (const [name, channel] of Object.entries(this._channels)) {
+        for (const [name, channel] of Object.entries(this.#channels)) {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
@@ -156,7 +170,7 @@ export class SeriesBufferManager {
                 group = name;
                 groupByArray.set(array, group);
             }
-            this._seriesBufferAliases.set(name, group);
+            this.#seriesBufferAliases.set(name, group);
         }
     }
 
@@ -166,30 +180,21 @@ export class SeriesBufferManager {
      * @returns {boolean} Whether a packed buffer identity changed.
      */
     updateSeries(channels, count) {
-        return this._updatePackedSeries(channels, count);
-    }
-
-    /**
-     * @param {Record<string, TypedArray>} channels
-     * @param {number} count
-     * @returns {boolean} Whether a packed buffer identity changed.
-     */
-    _updatePackedSeries(channels, count) {
-        const layout = this._getPackedLayout();
+        const layout = this.#packedSeriesLayout;
         if (!layout.stride) {
             return false;
         }
 
         validateStorageBufferSize(
-            this._device,
+            this.#device,
             Math.max(4, count * layout.stride * 4),
-            this._label + " series"
+            this.#label + " series"
         );
 
         /** @type {Map<string, TypedArray>} */
         const groupArrays = new Map();
 
-        for (const [name, channel] of Object.entries(this._channels)) {
+        for (const [name, channel] of Object.entries(this.#channels)) {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
@@ -197,10 +202,10 @@ export class SeriesBufferManager {
             if (!sourceArray) {
                 throw new Error(`Missing data for channel "${name}"`);
             }
-            const group = this._seriesBufferAliases.get(name) ?? name;
+            const group = this.#seriesBufferAliases.get(name) ?? name;
             const existing = groupArrays.get(group);
             if (existing && existing !== sourceArray) {
-                const members = this._getAliasMembers(group);
+                const members = this.#getAliasMembers(group);
                 throw new Error(
                     `Series channels ${members
                         .map((member) => `"${member}"`)
@@ -212,35 +217,20 @@ export class SeriesBufferManager {
         }
 
         const words = packSeriesArrays({
-            channels: this._channels,
+            channels: this.#channels,
             layout,
             count,
         });
-        return this._ensurePackedBuffer(words);
-    }
-
-    /**
-     * @returns {import("./packedSeriesLayout.js").PackedSeriesLayout | null}
-     */
-    _getPackedLayout() {
-        if (!this._packedSeriesLayout) {
-            const layout = buildPackedSeriesLayout(
-                this._channels,
-                this._channelSpecs,
-                this._seriesBufferAliases
-            );
-            this._packedSeriesLayout = layout;
-        }
-        return this._packedSeriesLayout;
+        return this.#ensurePackedBuffer(words);
     }
 
     /**
      * @param {string} group
      * @returns {string[]}
      */
-    _getAliasMembers(group) {
+    #getAliasMembers(group) {
         const members = [];
-        for (const [name, alias] of this._seriesBufferAliases.entries()) {
+        for (const [name, alias] of this.#seriesBufferAliases.entries()) {
             if (alias === group) {
                 members.push(name);
             }
@@ -252,21 +242,21 @@ export class SeriesBufferManager {
      * @param {Uint32Array} array
      * @returns {boolean} Whether the buffer identity changed.
      */
-    _ensurePackedBuffer(array) {
+    #ensurePackedBuffer(array) {
         const requiredSize = Math.max(4, array.byteLength);
-        const changed = !this._buffer || this._buffer.size < requiredSize;
+        const changed = !this.#buffer || this.#buffer.size < requiredSize;
         if (changed) {
-            const previous = this._buffer;
-            this._buffer = this._device.createBuffer({
-                label: gpuLabel(this._label, "series"),
+            const previous = this.#buffer;
+            this.#buffer = this.#device.createBuffer({
+                label: gpuLabel(this.#label, "series"),
                 size: requiredSize,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
             previous?.destroy();
         }
         if (array.byteLength) {
-            this._device.queue.writeBuffer(
-                this._buffer,
+            this.#device.queue.writeBuffer(
+                this.#buffer,
                 0,
                 asGpuBufferSource(array)
             );
@@ -276,7 +266,7 @@ export class SeriesBufferManager {
 
     /** @returns {void} */
     destroy() {
-        this._buffer?.destroy();
-        this._buffer = null;
+        this.#buffer?.destroy();
+        this.#buffer = null;
     }
 }

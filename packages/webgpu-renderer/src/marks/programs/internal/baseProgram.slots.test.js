@@ -136,13 +136,13 @@ describe("BaseProgram slot handles", () => {
         expect(domainEntry).toBeTruthy();
         const stride = domainEntry.stride ?? 16;
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 domainEntry.offset,
                 true
             )
         ).toBe(2);
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 domainEntry.offset + stride,
                 true
             )
@@ -191,7 +191,10 @@ describe("BaseProgram slot handles", () => {
         program.getSlotHandles().values.size.set(5);
         expect(sizeEntry).toBeTruthy();
         expect(
-            program._uniformBufferState.view.getFloat32(sizeEntry.offset, true)
+            new DataView(program._uniformBufferState.data).getFloat32(
+                sizeEntry.offset,
+                true
+            )
         ).toBe(5);
 
         const conditionSlot =
@@ -202,7 +205,10 @@ describe("BaseProgram slot handles", () => {
         conditionSlot.set([0.2, 0.4, 0.6, 1]);
         expect(fillEntry).toBeTruthy();
         expect(
-            program._uniformBufferState.view.getFloat32(fillEntry.offset, true)
+            new DataView(program._uniformBufferState.data).getFloat32(
+                fillEntry.offset,
+                true
+            )
         ).toBeCloseTo(0.2);
     });
 
@@ -250,13 +256,13 @@ describe("BaseProgram slot handles", () => {
         conditions[1].set([0.6, 0.7, 0.8, 1]);
 
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 program._uniformBufferState.entries.get("u_fill__cond0").offset,
                 true
             )
         ).toBeCloseTo(0.2);
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 program._uniformBufferState.entries.get("u_fill__cond1").offset,
                 true
             )
@@ -320,7 +326,10 @@ describe("BaseProgram slot handles", () => {
         program.getSlotHandles().extraValues.uExtra.set(3);
 
         expect(
-            program._uniformBufferState.view.getFloat32(entry.offset, true)
+            new DataView(program._uniformBufferState.data).getFloat32(
+                entry.offset,
+                true
+            )
         ).toBe(3);
     });
 

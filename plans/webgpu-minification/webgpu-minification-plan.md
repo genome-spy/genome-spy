@@ -1,6 +1,6 @@
 # WebGPU renderer simplification and minification
 
-Status: implementation in progress; milestones 1–3 complete.
+Status: implementation in progress; milestones 1–4 complete.
 
 ## Goal and scope
 
@@ -148,19 +148,25 @@ fixtures. Constructor-hook exceptions remain ordinary and documented.
 
 ## Milestone 4: Encapsulate resource managers and font helpers
 
-- [ ] Convert class-local state/methods in series, scale, and selection resource
+- [x] Convert class-local state/methods in series, scale, and selection resource
       managers, the uniform buffer, and template cache to native private members.
-- [ ] Privatize font/atlas-local state where consumers do not need it; preserve
+- [x] Privatize font/atlas-local state where consumers do not need it; preserve
       renderer-owned sharing and atlas update subscriptions.
-- [ ] Remove retirement sets that have no consumer while preserving deferred
+- [x] Remove retirement sets that have no consumer while preserving deferred
       resource destruction. Replace test-only batch tracking with cleanup evidence.
-- [ ] Adapt resource tests to the real initialization/update API instead of
+- [x] Adapt resource tests to the real initialization/update API instead of
       exposing private methods. Preserve byte-limit, reallocation, and disposal tests.
 
 Affected: resource managers, uniform/template utilities, outline font atlas and
 MSDF texture storage, unit/GPU stress tests. No public API migration.
 Verify renderer unit/types/lint/bundles and atlas/text GPU suites.
 Commit: `refactor(webgpu-renderer): encapsulate resource and font state`.
+
+Verification: 307 unit tests, renderer types/lint, and nine text/atlas GPU tests
+pass, including actual batch texture destruction after queue completion. Packed
+series layouts now initialize once, obsolete wrappers and capacity bookkeeping
+are removed, and fixed-size color ramps reuse their texture. Native declarations
+add some source lines; point/text gzip fixtures decrease by another 301–416 bytes.
 
 ## Milestone 5: Encapsulate renderer orchestration and atlas generation
 

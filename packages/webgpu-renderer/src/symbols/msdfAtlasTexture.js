@@ -8,35 +8,44 @@ import { gpuLabel } from "../utils/gpuLabel.js";
  * work submitted before the copy has completed.
  */
 export class MsdfAtlasTexture {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {string} */
+    #label;
+
+    /** @type {number} */
+    #growthFactor;
+
+    #destroyed = false;
+
+    /** @type {Set<(atlas: MsdfAtlasTexture) => void>} */
+    #listeners = new Set();
+
     /**
      * @param {GPUDevice} device
      * @param {{ width: number, height: number, format?: "rgba16float", label?: string, growthFactor?: number }} options
      */
     constructor(device, options) {
-        this.device = device;
+        this.#device = device;
         this.format = options.format ?? "rgba16float";
-        this.label = options.label ?? "MSDF atlas";
-        this.growthFactor = options.growthFactor ?? 2;
-        if (!(this.growthFactor > 1) || !Number.isFinite(this.growthFactor)) {
+        this.#label = options.label ?? "MSDF atlas";
+        this.#growthFactor = options.growthFactor ?? 2;
+        if (!(this.#growthFactor > 1) || !Number.isFinite(this.#growthFactor)) {
             throw new Error(
                 "MSDF atlas growth factor must be greater than one."
             );
         }
-        this._validateDimensions(options.width, options.height);
+        this.#validateDimensions(options.width, options.height);
         this.width = options.width;
         this.height = options.height;
         this.version = 1;
-        this.texture = this._createTexture(this.width, this.height);
-        this._destroyed = false;
-        /** @type {Set<(atlas: MsdfAtlasTexture) => void>} */
-        this._listeners = new Set();
-        /** @type {Set<Promise<void>>} */
-        this._retirements = new Set();
+        this.texture = this.#createTexture(this.width, this.height);
     }
 
     /** @param {number} width @param {number} height */
-    _validateDimensions(width, height) {
-        const limit = this.device.limits.maxTextureDimension2D;
+    #validateDimensions(width, height) {
+        const limit = this.#device.limits.maxTextureDimension2D;
         if (
             !Number.isInteger(width) ||
             !Number.isInteger(height) ||
@@ -50,9 +59,9 @@ export class MsdfAtlasTexture {
     }
 
     /** @param {number} width @param {number} height */
-    _createTexture(width, height) {
-        return this.device.createTexture({
-            label: this.label,
+    #createTexture(width, height) {
+        return this.#device.createTexture({
+            label: this.#label,
             size: [width, height],
             format: this.format,
             usage:
@@ -65,14 +74,11 @@ export class MsdfAtlasTexture {
     }
 
     /** @param {GPUTexture} texture */
-    _retire(texture) {
-        const retirement = this.device.queue.onSubmittedWorkDone().then(
+    #retire(texture) {
+        return this.#device.queue.onSubmittedWorkDone().then(
             () => texture.destroy(),
             () => texture.destroy()
         );
-        this._retirements.add(retirement);
-        void retirement.finally(() => this._retirements.delete(retirement));
-        return retirement;
     }
 
     /**
@@ -80,11 +86,11 @@ export class MsdfAtlasTexture {
      * @returns {() => void}
      */
     subscribe(listener) {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             throw new Error("MSDF atlas texture has been destroyed.");
         }
-        this._listeners.add(listener);
-        return () => this._listeners.delete(listener);
+        this.#listeners.add(listener);
+        return () => this.#listeners.delete(listener);
     }
 
     /**
@@ -94,10 +100,10 @@ export class MsdfAtlasTexture {
      * @param {number} minimumHeight
      */
     grow(minimumWidth, minimumHeight) {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             throw new Error("MSDF atlas texture has been destroyed.");
         }
-        this._validateDimensions(
+        this.#validateDimensions(
             Math.max(this.width, minimumWidth),
             Math.max(this.height, minimumHeight)
         );
@@ -108,45 +114,45 @@ export class MsdfAtlasTexture {
         let height = this.height;
         while (width < minimumWidth) {
             width = Math.min(
-                this.device.limits.maxTextureDimension2D,
-                Math.ceil(width * this.growthFactor)
+                this.#device.limits.maxTextureDimension2D,
+                Math.ceil(width * this.#growthFactor)
             );
         }
         while (height < minimumHeight) {
             height = Math.min(
-                this.device.limits.maxTextureDimension2D,
-                Math.ceil(height * this.growthFactor)
+                this.#device.limits.maxTextureDimension2D,
+                Math.ceil(height * this.#growthFactor)
             );
         }
-        this._validateDimensions(width, height);
+        this.#validateDimensions(width, height);
 
         const oldTexture = this.texture;
-        const texture = this._createTexture(width, height);
-        const encoder = this.device.createCommandEncoder({
-            label: gpuLabel(this.label, "growth copy"),
+        const texture = this.#createTexture(width, height);
+        const encoder = this.#device.createCommandEncoder({
+            label: gpuLabel(this.#label, "growth copy"),
         });
         encoder.copyTextureToTexture({ texture: oldTexture }, { texture }, [
             this.width,
             this.height,
         ]);
-        this.device.queue.submit([encoder.finish()]);
+        this.#device.queue.submit([encoder.finish()]);
         this.texture = texture;
         this.width = width;
         this.height = height;
         this.version++;
-        this._retire(oldTexture);
-        for (const listener of this._listeners) {
+        this.#retire(oldTexture);
+        for (const listener of this.#listeners) {
             listener(this);
         }
         return true;
     }
 
     destroy() {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             return;
         }
-        this._destroyed = true;
-        this._listeners.clear();
+        this.#destroyed = true;
+        this.#listeners.clear();
         this.texture.destroy();
     }
 }

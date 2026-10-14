@@ -29,57 +29,73 @@ const MAX_GLYPHS_PER_BATCH = 32;
  * growth copies existing texels without changing any entry coordinates.
  */
 export class OutlineFontAtlas {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {import("./trueTypeFont.js").TrueTypeFont} */
+    #font;
+
+    /** @type {ReturnType<typeof getMsdfAtlasGenerator>} */
+    #generator;
+
+    /** @type {MsdfAtlasTexture} */
+    #storage;
+
+    /** @type {Array<OutlineAtlasEntry | undefined>} */
+    #entryByGlyphId;
+
+    #entryCount = 0;
+
+    #shelfX = 0;
+
+    #shelfY = 0;
+
+    #shelfHeight = 0;
+
+    #destroyed = false;
+
     /**
      * @param {import("../renderer.js").Renderer} renderer
      * @param {import("./trueTypeFont.js").TrueTypeFont} font
      */
     constructor(renderer, font) {
-        this.renderer = renderer;
-        this.device = renderer.device;
-        this.font = font;
-        this.generator = getMsdfAtlasGenerator(renderer);
-        this.storage = new MsdfAtlasTexture(this.device, {
+        this.#device = renderer.device;
+        this.#font = font;
+        this.#generator = getMsdfAtlasGenerator(renderer);
+        this.#storage = new MsdfAtlasTexture(this.#device, {
             width: INITIAL_ATLAS_WIDTH,
             height: INITIAL_ATLAS_HEIGHT,
             label: "outline font atlas",
             growthFactor: 1.5,
         });
-        this.sampler = this.device.createSampler({
+        this.sampler = this.#device.createSampler({
             label: "outline font atlas sampler",
             addressModeU: "clamp-to-edge",
             addressModeV: "clamp-to-edge",
             magFilter: "linear",
             minFilter: "linear",
         });
-        /** @type {Array<OutlineAtlasEntry | undefined>} */
-        this._entryByGlyphId = new Array(font.glyphCount);
-        this._entryCount = 0;
-        this._shelfX = 0;
-        this._shelfY = 0;
-        this._shelfHeight = 0;
-        this._destroyed = false;
-        /** @type {Set<Promise<void>>} */
-        this._pendingBatches = new Set();
+        this.#entryByGlyphId = new Array(font.glyphCount);
     }
 
     get texture() {
-        return this.storage.texture;
+        return this.#storage.texture;
     }
 
     get width() {
-        return this.storage.width;
+        return this.#storage.width;
     }
 
     get height() {
-        return this.storage.height;
+        return this.#storage.height;
     }
 
     get version() {
-        return this.storage.version;
+        return this.#storage.version;
     }
 
     get entryCount() {
-        return this._entryCount;
+        return this.#entryCount;
     }
 
     /**
@@ -87,7 +103,7 @@ export class OutlineFontAtlas {
      * @returns {() => void}
      */
     subscribe(listener) {
-        return this.storage.subscribe(() => listener(this));
+        return this.#storage.subscribe(() => listener(this));
     }
 
     /**
@@ -97,13 +113,13 @@ export class OutlineFontAtlas {
      * @returns {OutlineAtlasEntry[]}
      */
     ensure(glyphs) {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             throw new Error("Outline font atlas has been destroyed.");
         }
         const seen = new Set();
         const missing = glyphs.filter((glyph) => {
             if (
-                this._entryByGlyphId[glyph.glyphId] !== undefined ||
+                this.#entryByGlyphId[glyph.glyphId] !== undefined ||
                 seen.has(glyph.glyphId)
             ) {
                 return false;
@@ -116,32 +132,32 @@ export class OutlineFontAtlas {
             offset < missing.length;
             offset += MAX_GLYPHS_PER_BATCH
         ) {
-            this._appendBatch(
+            this.#appendBatch(
                 missing.slice(offset, offset + MAX_GLYPHS_PER_BATCH)
             );
         }
         return glyphs.map(
             (glyph) =>
                 /** @type {OutlineAtlasEntry} */ (
-                    this._entryByGlyphId[glyph.glyphId]
+                    this.#entryByGlyphId[glyph.glyphId]
                 )
         );
     }
 
     /** @param {OutlineAtlasGlyph[]} glyphs */
-    _appendBatch(glyphs) {
+    #appendBatch(glyphs) {
         const paths = glyphs.map((glyph) => glyph.path);
-        const batch = this.generator.createAtlas(
+        const batch = this.#generator.createAtlas(
             paths,
             {
                 ...OUTLINE_ATLAS_OPTIONS,
-                normalizationSpan: this.font.unitsPerEm,
+                normalizationSpan: this.#font.unitsPerEm,
             },
             "outline glyph batch"
         );
         batch.completion.catch(() => {});
-        const placements = this._allocateBatch(batch.jobs);
-        const encoder = this.device.createCommandEncoder({
+        const placements = this.#allocateBatch(batch.jobs);
+        const encoder = this.#device.createCommandEncoder({
             label: gpuLabel("outline font atlas", "batch copy"),
         });
 
@@ -159,29 +175,27 @@ export class OutlineFontAtlas {
                 },
                 [job.slotWidth, job.slotHeight, 1]
             );
-            this._entryByGlyphId[glyphs[index].glyphId] = {
+            this.#entryByGlyphId[glyphs[index].glyphId] = {
                 x: placement.x + job.gutter + 0.5,
                 y: placement.y + job.gutter + 0.5,
                 width: job.tileWidth - 1,
                 height: job.tileHeight - 1,
             };
-            this._entryCount++;
+            this.#entryCount++;
         }
 
-        this.device.queue.submit([encoder.finish()]);
-        const completion = this.device.queue.onSubmittedWorkDone().then(
+        this.#device.queue.submit([encoder.finish()]);
+        void this.#device.queue.onSubmittedWorkDone().then(
             () => batch.destroy(),
             () => batch.destroy()
         );
-        this._pendingBatches.add(completion);
-        void completion.finally(() => this._pendingBatches.delete(completion));
     }
 
     /**
      * @param {{ slotWidth: number, slotHeight: number }[]} jobs
      * @returns {{ x: number, y: number }[]}
      */
-    _allocateBatch(jobs) {
+    #allocateBatch(jobs) {
         let requiredWidth = this.width;
         for (const job of jobs) {
             while (requiredWidth < job.slotWidth) {
@@ -189,9 +203,9 @@ export class OutlineFontAtlas {
             }
         }
 
-        let x = this._shelfX;
-        let y = this._shelfY;
-        let shelfHeight = this._shelfHeight;
+        let x = this.#shelfX;
+        let y = this.#shelfY;
+        let shelfHeight = this.#shelfHeight;
         const placements = jobs.map((job) => {
             if (x > 0 && x + job.slotWidth > requiredWidth) {
                 x = 0;
@@ -204,21 +218,21 @@ export class OutlineFontAtlas {
             return placement;
         });
         const requiredHeight = y + shelfHeight;
-        this.storage.grow(requiredWidth, requiredHeight);
-        this._shelfX = x;
-        this._shelfY = y;
-        this._shelfHeight = shelfHeight;
+        this.#storage.grow(requiredWidth, requiredHeight);
+        this.#shelfX = x;
+        this.#shelfY = y;
+        this.#shelfHeight = shelfHeight;
         return placements;
     }
 
     destroy() {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             return;
         }
-        this._destroyed = true;
-        this._entryByGlyphId.length = 0;
-        this._entryCount = 0;
-        this.storage.destroy();
+        this.#destroyed = true;
+        this.#entryByGlyphId.length = 0;
+        this.#entryCount = 0;
+        this.#storage.destroy();
     }
 }
 

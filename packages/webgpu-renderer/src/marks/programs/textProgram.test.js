@@ -598,8 +598,14 @@ function readUniform(program, name, type) {
         throw new Error(`Missing test uniform: ${name}`);
     }
     return type == "u32"
-        ? program._uniformBufferState.view.getUint32(entry.offset, true)
-        : program._uniformBufferState.view.getFloat32(entry.offset, true);
+        ? new DataView(program._uniformBufferState.data).getUint32(
+              entry.offset,
+              true
+          )
+        : new DataView(program._uniformBufferState.data).getFloat32(
+              entry.offset,
+              true
+          );
 }
 
 /**
@@ -613,7 +619,7 @@ function readUniformVector(program, name) {
         throw new Error(`Missing test uniform: ${name}`);
     }
     return Array.from({ length: 4 }, (_, index) =>
-        program._uniformBufferState.view.getFloat32(
+        new DataView(program._uniformBufferState.data).getFloat32(
             entry.offset + index * 4,
             true
         )

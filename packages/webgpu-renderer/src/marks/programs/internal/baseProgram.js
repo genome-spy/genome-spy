@@ -316,7 +316,6 @@ export default class BaseProgram {
         this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
         this.#scaleResources = new ScaleResourceManager({
             device: this.device,
-            channels: this._channels,
             analysisByChannel: compiledChannels.analysisByChannel,
             label: this.label,
             getDefaultScaleRange: (name) => this.getDefaultScaleRange(name),

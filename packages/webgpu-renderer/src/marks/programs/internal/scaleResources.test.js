@@ -11,9 +11,10 @@ import {
 
 /**
  * @param {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} channels
+ * @param {Partial<typeof mockGpuLimits>} [limits]
  * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number>, buffers: Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>, textures: Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }>, writes: ReturnType<typeof vi.fn> }}
  */
-function createManager(channels) {
+function createManager(channels, limits = {}) {
     const analysisByChannel = analyzeTestChannels(channels);
     const uniforms = new Map();
     /** @type {Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>} */
@@ -22,7 +23,7 @@ function createManager(channels) {
     const textures = [];
     const device = /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({
-            limits: mockGpuLimits,
+            limits: { ...mockGpuLimits, ...limits },
             createBuffer:
                 /** @type {(descriptor: GPUBufferDescriptor) => GPUBuffer} */ (
                     (descriptor) => {
@@ -72,7 +73,6 @@ function createManager(channels) {
     );
     const manager = new ScaleResourceManager({
         device,
-        channels,
         analysisByChannel,
         getDefaultScaleRange: () => undefined,
         setUniformValue: (name, value) => {
@@ -200,24 +200,42 @@ describe("ScaleResourceManager", () => {
     });
 
     it("releases spare slice capacity before rejecting growth at the byte limit", () => {
-        const { manager, uniforms, buffers, writes } = createManager({});
-        Object.defineProperty(manager._device, "limits", {
-            value: { ...mockGpuLimits, maxStorageBufferBindingSize: 32 },
+        const channels =
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ (
+                Object.fromEntries(
+                    ["x", "y"].map((name) => [
+                        name,
+                        {
+                            data: new Uint32Array([0]),
+                            type: "u32",
+                            components: 1,
+                            inputComponents: 1,
+                            scale: { type: "ordinal", domain: [0], range: [0] },
+                        },
+                    ])
+                )
+            );
+        const { manager, uniforms, buffers, writes } = createManager(channels, {
+            maxStorageBufferBindingSize: 32,
         });
-        manager._setOrdinalRangeBuffer("x", new Float32Array(7), 7);
-        manager._setOrdinalRangeBuffer("y", new Float32Array(1), 1);
+        for (const name of ["x", "y"])
+            manager.initializeScale(name, channels[name], channels[name].scale);
+        const x = manager.getScaleUpdater("x");
+        const y = manager.getScaleUpdater("y");
+        x.updateRange(Array(7).fill(0));
+        y.updateRange([0]);
         const retained = manager.tableBuffer;
-        manager._setOrdinalRangeBuffer("x", new Float32Array(1), 1);
+        x.updateRange([0]);
         expect(manager.tableBuffer).toBe(retained);
         // The payload fits after reclaiming x's six unused words.
-        manager._setOrdinalRangeBuffer("y", new Float32Array(7), 7);
+        y.updateRange(Array(7).fill(0));
         expect(manager.tableBuffer.size).toBe(32);
         expect(uniforms.get("uRangeTable_y")).toBe(1);
         const allocations = buffers.length;
         writes.mockClear();
-        expect(() =>
-            manager._setOrdinalRangeBuffer("y", new Float32Array(8), 8)
-        ).toThrow("requires 36 bytes");
+        expect(() => y.updateRange(Array(8).fill(0))).toThrow(
+            "requires 36 bytes"
+        );
         expect(buffers).toHaveLength(allocations);
         expect(writes).not.toHaveBeenCalled();
         manager.destroy();
@@ -238,11 +256,15 @@ describe("ScaleResourceManager", () => {
                     },
                 },
             });
-        const { manager, uniforms } = createManager(channels);
+        const { manager, uniforms, textures } = createManager(channels);
 
         manager.initializeScale("fill", channels.fill, channels.fill.scale);
-
+        manager.getScaleUpdater("fill").updateRange(["red", "blue"]);
+        expect(textures).toHaveLength(1);
         expect(uniforms.get(RANGE_PREFIX + "fill")).toEqual([0, 1]);
+        manager.destroy();
+        manager.destroy();
+        expect(textures[0].destroy).toHaveBeenCalledOnce();
     });
 
     it("destroys superseded and current scale resources exactly once", () => {
@@ -263,7 +285,7 @@ describe("ScaleResourceManager", () => {
                     },
                 },
             });
-        const { manager, buffers, textures } = createManager(channels);
+        const { manager, buffers } = createManager(channels);
         manager.initializeScale("fill", channels.fill, channels.fill.scale);
         const updater = manager.getScaleUpdater("fill");
 
@@ -273,29 +295,13 @@ describe("ScaleResourceManager", () => {
         updater.updateRange(channels.fill.scale.range);
         expect(manager.tableBuffer).toBe(retainedBuffer);
 
-        manager._setDomainMapBuffer("fill", new Uint32Array([0, 0]), 1);
-        manager._setDomainMapBuffer("fill", new Uint32Array([0, 0, 1, 1]), 2);
-
-        manager._setRangeTexture("fill", {
-            width: 1,
-            height: 1,
-            format: "rgba8unorm",
-            data: new Uint8Array(4),
-        });
-        manager._setRangeTexture("fill", {
-            width: 2,
-            height: 1,
-            format: "rgba8unorm",
-            data: new Uint8Array(8),
-        });
-        expect(textures[0].destroy).toHaveBeenCalledOnce();
-
+        updater.updateDomain([0]);
+        updater.updateDomain(Array.from({ length: 20 }, (_, i) => i));
         manager.destroy();
         manager.destroy();
 
         for (const buffer of buffers)
             expect(buffer.destroy).toHaveBeenCalledOnce();
-        expect(textures[1].destroy).toHaveBeenCalledOnce();
     });
 });
 

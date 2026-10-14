@@ -42,10 +42,39 @@ import {
  * Manages scale-related resources: uniforms, domain/range buffers, and textures.
  */
 export class ScaleResourceManager {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {string} */
+    #label;
+
+    /** @type {(name: string) => [number, number] | undefined} */
+    #getDefaultScaleRange;
+
+    /** @type {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} */
+    #setUniformValue;
+
+    /** @type {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} */
+    #analysisByChannel;
+
+    /** @type {Map<string, ChannelResources>} */
+    #channelResources = new Map();
+
+    /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }>} */
+    #scaleUpdaters = new Map();
+
+    /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, ranks: readonly number[] | undefined}>} */
+    #gapScales = new Map();
+
+    /** @type {GPUBuffer | null} */
+    #tableBuffer = null;
+
+    /** @type {Map<string, {data: Uint32Array, offset: number, capacity: number, publish: (offset: number) => void}>} */
+    #tables = new Map();
+
     /**
      * @param {object} params
      * @param {GPUDevice} params.device
-     * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {string} [params.label]
      * @param {(name: string) => [number, number] | undefined} params.getDefaultScaleRange
@@ -53,39 +82,22 @@ export class ScaleResourceManager {
      */
     constructor({
         device,
-        channels,
         analysisByChannel,
         label = "mark",
         getDefaultScaleRange,
         setUniformValue,
     }) {
-        this._device = device;
-        this._channels = channels;
-        this._label = label;
-        this._getDefaultScaleRange = getDefaultScaleRange;
-        this._setUniformValue = setUniformValue;
+        this.#device = device;
+        this.#label = label;
+        this.#getDefaultScaleRange = getDefaultScaleRange;
+        this.#setUniformValue = setUniformValue;
 
-        this._analysisByChannel = analysisByChannel;
-
-        /** @type {Map<string, ChannelResources>} */
-        this._channelResources = new Map();
-
-        /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }>} */
-        this._scaleUpdaters = new Map();
-
-        /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, ranks: readonly number[] | undefined}>} */
-        this._gapScales = new Map();
-
-        /** @type {GPUBuffer | null} */
-        this._tableBuffer = null;
-
-        /** @type {Map<string, {data: Uint32Array, offset: number, capacity: number, publish: (offset: number) => void}>} */
-        this._tables = new Map();
+        this.#analysisByChannel = analysisByChannel;
     }
 
     /** The single mark-owned scale/gap storage buffer. */
     get tableBuffer() {
-        return this._tableBuffer;
+        return this.#tableBuffer;
     }
 
     /**
@@ -97,69 +109,69 @@ export class ScaleResourceManager {
      * @param {(offset: number) => void} publish
      * @returns {boolean} Whether the aggregate buffer identity changed.
      */
-    _setTable(key, data, publish) {
+    #setTable(key, data, publish) {
         const words = new Uint32Array(
             data.buffer,
             data.byteOffset,
             data.byteLength / 4
         );
-        const previous = this._tables.get(key);
+        const previous = this.#tables.get(key);
         if (previous && words.length <= previous.capacity) {
             previous.data = words;
             previous.publish = publish;
             publish(previous.offset);
-            this._device.queue.writeBuffer(
-                this._tableBuffer,
+            this.#device.queue.writeBuffer(
+                this.#tableBuffer,
                 previous.offset * 4,
                 asGpuBufferSource(words)
             );
             return false;
         }
 
-        this._tables.set(key, {
+        this.#tables.set(key, {
             data: words,
             offset: 0,
             capacity: Math.max(1, words.length),
             publish,
         });
         let length = 0;
-        for (const table of this._tables.values()) {
+        for (const table of this.#tables.values()) {
             table.offset = length;
             length += table.capacity;
         }
         const limit = Math.min(
-            this._device.limits.maxStorageBufferBindingSize,
-            this._device.limits.maxBufferSize
+            this.#device.limits.maxStorageBufferBindingSize,
+            this.#device.limits.maxBufferSize
         );
         if (length * 4 > limit) {
             // Release spare slice capacity before rejecting a payload that fits.
             length = 0;
-            for (const table of this._tables.values()) {
+            for (const table of this.#tables.values()) {
                 table.offset = length;
                 table.capacity = Math.max(1, table.data.length);
                 length += table.capacity;
             }
         }
         validateStorageBufferSize(
-            this._device,
+            this.#device,
             length * 4,
-            this._label + " scale/gap tables"
+            this.#label + " scale/gap tables"
         );
-        const buffer = this._device.createBuffer({
-            label: gpuLabel(this._label, "scale/gap tables"),
+        const buffer = this.#device.createBuffer({
+            label: gpuLabel(this.#label, "scale/gap tables"),
             size: length * 4,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
-        for (const table of this._tables.values()) {
+        for (const table of this.#tables.values()) {
             table.publish(table.offset);
-            this._device.queue.writeBuffer(
+            this.#device.queue.writeBuffer(
                 buffer,
                 table.offset * 4,
                 asGpuBufferSource(table.data)
             );
         }
-        this._tableBuffer?.destroy();
-        this._tableBuffer = buffer;
+        this.#tableBuffer?.destroy();
+        this.#tableBuffer = buffer;
         return true;
     }
 
@@ -167,8 +179,8 @@ export class ScaleResourceManager {
      * @param {string} name
      * @returns {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>}
      */
-    _getAnalysis(name) {
-        const analysis = this._analysisByChannel.get(name);
+    #getAnalysis(name) {
+        const analysis = this.#analysisByChannel.get(name);
         if (!analysis) {
             throw new Error(`Missing channel analysis for "${name}".`);
         }
@@ -180,18 +192,18 @@ export class ScaleResourceManager {
      * @returns {ChannelResources | undefined}
      */
     getChannelResources(name) {
-        return this._channelResources.get(name);
+        return this.#channelResources.get(name);
     }
 
     /**
      * @param {string} name
      * @returns {ChannelResources}
      */
-    _ensureChannelResources(name) {
-        let resources = this._channelResources.get(name);
+    #ensureChannelResources(name) {
+        let resources = this.#channelResources.get(name);
         if (!resources) {
             resources = /** @type {ChannelResources} */ ({});
-            this._channelResources.set(name, resources);
+            this.#channelResources.set(name, resources);
         }
         return resources;
     }
@@ -200,8 +212,8 @@ export class ScaleResourceManager {
      * @param {string} name
      * @returns {ChannelResources["scaleStops"] | undefined}
      */
-    _getScaleStopInfo(name) {
-        return this._channelResources.get(name)?.scaleStops;
+    #getScaleStopInfo(name) {
+        return this.#channelResources.get(name)?.scaleStops;
     }
 
     /**
@@ -217,7 +229,7 @@ export class ScaleResourceManager {
                 { name: "gapGeometry_" + name, type: "f32", components: 4 }
             );
         }
-        const analysis = this._getAnalysis(name);
+        const analysis = this.#getAnalysis(name);
         const kind = analysis.stopKind;
         if (kind) {
             const { domainLength, rangeLength } = getScaleStopLengths(
@@ -285,19 +297,19 @@ export class ScaleResourceManager {
      */
     initializeScale(name, channel, scale) {
         if (hasIndexGaps(scale)) {
-            this._gapScales.set(name, {
+            this.#gapScales.set(name, {
                 cuts: normalizeCuts(scale.gapPositions),
-                domain: this._unpackDomain(scale.domain ?? [0, 1]),
+                domain: this.#unpackDomain(scale.domain ?? [0, 1]),
                 width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
                 ranks: scale.gapDomain,
             });
-            this._updateGapCuts();
+            this.#updateGapCuts();
             this.updateGapWidth(
                 name,
                 scale.gapWidth === undefined ? 6 : scale.gapWidth
             );
         }
-        const analysis = this._getAnalysis(name);
+        const analysis = this.#getAnalysis(name);
         const kind = analysis.stopKind;
         if (kind) {
             const { domainLength, rangeLength } = getScaleStopLengths(
@@ -305,13 +317,13 @@ export class ScaleResourceManager {
                 kind,
                 scale
             );
-            this._ensureChannelResources(name).scaleStops = {
+            this.#ensureChannelResources(name).scaleStops = {
                 kind,
                 domainLength,
                 rangeLength,
             };
             if (analysis.useRangeTexture && rangeLength) {
-                this._setUniformValue(
+                this.#setUniformValue(
                     RANGE_PREFIX + name,
                     normalizeRangePositions(rangeLength)
                 );
@@ -322,11 +334,11 @@ export class ScaleResourceManager {
             if (param.prop && scale[param.prop] !== undefined) {
                 value = scale[param.prop];
             }
-            this._setUniformValue(`${param.prefix}${name}`, value);
+            this.#setUniformValue(`${param.prefix}${name}`, value);
         }
-        this._scaleUpdaters.set(
+        this.#scaleUpdaters.set(
             name,
-            this._buildScaleUpdater({ name, channel, scale, analysis })
+            this.#buildScaleUpdater({ name, channel, scale, analysis })
         );
     }
 
@@ -335,7 +347,7 @@ export class ScaleResourceManager {
      * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }}
      */
     getScaleUpdater(name) {
-        const updater = this._scaleUpdaters.get(name);
+        const updater = this.#scaleUpdaters.get(name);
         if (!updater) {
             throw new Error(`Missing scale updater for "${name}".`);
         }
@@ -350,18 +362,18 @@ export class ScaleResourceManager {
      * @param {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} params.analysis
      * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }}
      */
-    _buildScaleUpdater({ name, channel, scale, analysis }) {
+    #buildScaleUpdater({ name, channel, scale, analysis }) {
         const useRangeTexture = analysis.useRangeTexture;
         const needsDomainMap = analysis.needsDomainMap;
         const needsOrdinalRange = analysis.needsOrdinalRange;
         const scaleDef = analysis.scaleDef;
         const stopKind = analysis.stopKind;
-        const stopInfo = stopKind ? this._getScaleStopInfo(name) : undefined;
+        const stopInfo = stopKind ? this.#getScaleStopInfo(name) : undefined;
         const domainUniformName = DOMAIN_PREFIX + name;
         const rangeUniformName = RANGE_PREFIX + name;
         const defaultRange =
             stopKind === "continuous"
-                ? this._getDefaultScaleRange(name)
+                ? this.#getDefaultScaleRange(name)
                 : undefined;
         const outputComponents = analysis.outputComponents ?? 1;
         const outputType =
@@ -425,7 +437,7 @@ export class ScaleResourceManager {
                       return { needsRebind: false };
                   }
                   return {
-                      needsRebind: this._updateDomainMap(
+                      needsRebind: this.#updateDomainMap(
                           name,
                           update.domainMap
                       ),
@@ -470,7 +482,7 @@ export class ScaleResourceManager {
                     if (!normalized) {
                         return;
                     }
-                    this._setUniformValue(domainUniformName, normalized);
+                    this.#setUniformValue(domainUniformName, normalized);
                 };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
@@ -486,7 +498,7 @@ export class ScaleResourceManager {
                             `Scale range for "${name}" expects ${expectedRangeLength} entries, got ${value.length}.`
                         );
                     }
-                    this._setUniformValue(rangeUniformName, value);
+                    this.#setUniformValue(rangeUniformName, value);
                 };
             } else {
                 if (!stopInfo) {
@@ -508,7 +520,7 @@ export class ScaleResourceManager {
                             `${label} scale on "${name}" expects ${domainLength} domain entries, got ${domain.length}.`
                         );
                     }
-                    this._setUniformValue(domainUniformName, domain);
+                    this.#setUniformValue(domainUniformName, domain);
                 };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
@@ -522,7 +534,7 @@ export class ScaleResourceManager {
                         );
                     }
                     if (outputComponents === 1 && isNumericRange(value)) {
-                        this._setUniformValue(rangeUniformName, value);
+                        this.#setUniformValue(rangeUniformName, value);
                         return;
                     }
                     const normalized = normalizeDiscreteRange(
@@ -531,7 +543,7 @@ export class ScaleResourceManager {
                         outputComponents,
                         stopKind
                     );
-                    this._setUniformValue(rangeUniformName, normalized);
+                    this.#setUniformValue(rangeUniformName, normalized);
                 };
             }
         }
@@ -542,7 +554,7 @@ export class ScaleResourceManager {
             if (updateStopDomain) {
                 updateStopDomain(mapUpdate?.domainUniform ?? domain);
             } else if (mapUpdate?.domainUniform) {
-                this._setUniformValue(
+                this.#setUniformValue(
                     domainUniformName,
                     mapUpdate.domainUniform
                 );
@@ -553,7 +565,7 @@ export class ScaleResourceManager {
         /** @type {(range: unknown) => boolean} */
         const updateRange = useRangeTexture
             ? (range) =>
-                  this._updateRangeTexture(
+                  this.#updateRangeTexture(
                       name,
                       /** @type {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} */ (
                           range
@@ -584,12 +596,12 @@ export class ScaleResourceManager {
                                   ),
                                   outputComponents
                               );
-                    const data = this._buildOrdinalRangeBufferData(
+                    const data = this.#buildOrdinalRangeBufferData(
                         normalized,
                         outputComponents,
                         outputType
                     );
-                    return this._setOrdinalRangeBuffer(
+                    return this.#setOrdinalRangeBuffer(
                         name,
                         data,
                         normalized.length
@@ -624,13 +636,13 @@ export class ScaleResourceManager {
         return {
             updateDomain: (domain, ranks) => {
                 const result = updateDomain(domain);
-                const gaps = this._gapScales.get(name);
+                const gaps = this.#gapScales.get(name);
                 if (gaps) {
-                    gaps.domain = this._unpackDomain(
+                    gaps.domain = this.#unpackDomain(
                         /** @type {number[]} */ (domain)
                     );
                     gaps.ranks = ranks;
-                    this._updateGapGeometry(name);
+                    this.#updateGapGeometry(name);
                 }
                 return result;
             },
@@ -639,14 +651,14 @@ export class ScaleResourceManager {
     }
 
     /** @param {readonly number[]} domain */
-    _unpackDomain(domain) {
+    #unpackDomain(domain) {
         const start = domain.length === 3 ? domain[0] + domain[1] : domain[0];
         return [start, domain.length === 3 ? start + domain[2] : domain[1]];
     }
 
     /** @param {string} name */
-    _getGaps(name) {
-        const state = this._gapScales.get(name);
+    #getGaps(name) {
+        const state = this.#gapScales.get(name);
         if (!state)
             throw new Error(
                 `Scale "${name}" was created without grouping gaps.`
@@ -656,7 +668,7 @@ export class ScaleResourceManager {
 
     /** @param {string} name @param {readonly number[] | null} values */
     updateGapPositions(name, values) {
-        const gaps = this._getGaps(name);
+        const gaps = this.#getGaps(name);
         const cuts = normalizeCuts(values);
         if (
             cuts.length === gaps.cuts.length &&
@@ -664,8 +676,8 @@ export class ScaleResourceManager {
         )
             return false;
         gaps.cuts = cuts;
-        const rebind = this._updateGapCuts();
-        this._updateGapGeometry(name);
+        const rebind = this.#updateGapCuts();
+        this.#updateGapGeometry(name);
         return rebind;
     }
 
@@ -673,14 +685,14 @@ export class ScaleResourceManager {
     updateGapWidth(name, width) {
         if (width != null && (!Number.isFinite(width) || width < 0))
             throw new Error("Gap width must be finite and nonnegative.");
-        this._getGaps(name).width = width ?? 0;
-        this._updateGapGeometry(name);
+        this.#getGaps(name).width = width ?? 0;
+        this.#updateGapGeometry(name);
     }
 
     /** @param {string} name */
-    _updateGapGeometry(name) {
-        const { cuts, domain, width, ranks } = this._getGaps(name);
-        this._setUniformValue("gapGeometry_" + name, [
+    #updateGapGeometry(name) {
+        const { cuts, domain, width, ranks } = this.#getGaps(name);
+        this.#setUniformValue("gapGeometry_" + name, [
             width,
             ranks?.[0] ?? cutRank(cuts, domain[0]),
             ranks?.[1] ?? cutRank(cuts, domain[1], true),
@@ -688,14 +700,14 @@ export class ScaleResourceManager {
         ]);
     }
 
-    _updateGapCuts() {
+    #updateGapCuts() {
         /** @type {number[]} */
         const packed = [];
         /** @type {{cuts: readonly number[], offset: number}[]} */
         const tables = [];
         /** @type {Array<{name: string, offset: number, length: number}>} */
         const slices = [];
-        for (const [name, { cuts }] of this._gapScales) {
+        for (const [name, { cuts }] of this.#gapScales) {
             const previous = tables.find(
                 (table) =>
                     table.cuts.length === cuts.length &&
@@ -710,9 +722,9 @@ export class ScaleResourceManager {
             slices.push({ name, offset: offset * 2, length: cuts.length });
         }
         const data = new Uint32Array(packed.length ? packed : [0, 0]);
-        return this._setTable("gapCuts", data, (offset) => {
+        return this.#setTable("gapCuts", data, (offset) => {
             for (const slice of slices) {
-                this._setUniformValue("gapTable_" + slice.name, [
+                this.#setUniformValue("gapTable_" + slice.name, [
                     offset + slice.offset,
                     slice.length,
                 ]);
@@ -727,7 +739,7 @@ export class ScaleResourceManager {
      * @param {import("../../../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
      * @returns {boolean}
      */
-    _updateRangeTexture(name, value, expectedRangeLength, interpolate) {
+    #updateRangeTexture(name, value, expectedRangeLength, interpolate) {
         /** @type {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} */
         const normalizedRange =
             /** @type {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} */ (
@@ -755,7 +767,7 @@ export class ScaleResourceManager {
             }
             textureData = createSchemeTexture(colorStops, { interpolate });
         }
-        return this._setRangeTexture(name, textureData);
+        return this.#setRangeTexture(name, textureData);
     }
 
     /**
@@ -763,17 +775,13 @@ export class ScaleResourceManager {
      * @param {import("../../../utils/colorUtils.js").TextureData} textureData
      * @returns {boolean}
      */
-    _setRangeTexture(name, textureData) {
-        const resources = this._ensureChannelResources(name);
+    #setRangeTexture(name, textureData) {
+        const resources = this.#ensureChannelResources(name);
         const prev = resources.rangeTexture;
-        const needsNewTexture =
-            !prev ||
-            prev.width !== textureData.width ||
-            prev.height !== textureData.height ||
-            prev.format !== textureData.format;
+        const needsNewTexture = !prev;
         const texture = needsNewTexture
-            ? this._device.createTexture({
-                  label: gpuLabel(this._label, `scale ${name} range texture`),
+            ? this.#device.createTexture({
+                  label: gpuLabel(this.#label, `scale ${name} range texture`),
                   size: {
                       width: textureData.width,
                       height: textureData.height,
@@ -785,11 +793,11 @@ export class ScaleResourceManager {
                       GPUTextureUsage.COPY_DST,
               })
             : prev.texture;
-        writeTextureData(this._device, texture, textureData);
+        writeTextureData(this.#device, texture, textureData);
         const sampler =
             prev?.sampler ??
-            this._device.createSampler({
-                label: gpuLabel(this._label, `scale ${name} range sampler`),
+            this.#device.createSampler({
+                label: gpuLabel(this.#label, `scale ${name} range sampler`),
             });
         resources.rangeTexture = {
             texture,
@@ -798,32 +806,24 @@ export class ScaleResourceManager {
             height: textureData.height,
             format: textureData.format,
         };
-        if (needsNewTexture) {
-            prev?.texture.destroy();
-        }
         return needsNewTexture;
     }
 
     /**
      * @param {string} name
-     * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
-     * @returns {boolean}
-     */
-    /**
-     * @param {string} name
      * @param {number[]} domain
      * @returns {boolean}
      */
-    _updateDomainMap(name, domain) {
-        const map = this._buildDomainMapBufferData(domain);
-        return this._setDomainMapBuffer(name, map.table, map.length);
+    #updateDomainMap(name, domain) {
+        const map = this.#buildDomainMapBufferData(domain);
+        return this.#setDomainMapBuffer(name, map.table, map.length);
     }
 
     /**
      * @param {number[]} domain
      * @returns {{ table: Uint32Array, length: number }}
      */
-    _buildDomainMapBufferData(domain) {
+    #buildDomainMapBufferData(domain) {
         if (domain.length === 0) {
             return { table: new Uint32Array([HASH_EMPTY_KEY, 0]), length: 0 };
         }
@@ -839,10 +839,10 @@ export class ScaleResourceManager {
      * @param {number} length
      * @returns {boolean}
      */
-    _setDomainMapBuffer(name, data, length) {
-        this._setUniformValue(DOMAIN_MAP_COUNT_PREFIX + name, length);
-        return this._setTable("domainMap_" + name, data, (offset) => {
-            this._setUniformValue(DOMAIN_MAP_TABLE_PREFIX + name, [
+    #setDomainMapBuffer(name, data, length) {
+        this.#setUniformValue(DOMAIN_MAP_COUNT_PREFIX + name, length);
+        return this.#setTable("domainMap_" + name, data, (offset) => {
+            this.#setUniformValue(DOMAIN_MAP_TABLE_PREFIX + name, [
                 offset,
                 data.length / 2,
             ]);
@@ -855,7 +855,7 @@ export class ScaleResourceManager {
      * @param {ScalarType} outputType
      * @returns {TypedArray}
      */
-    _buildOrdinalRangeBufferData(range, outputComponents, outputType) {
+    #buildOrdinalRangeBufferData(range, outputComponents, outputType) {
         if (outputComponents === 1) {
             const values = /** @type {number[]} */ (range);
             if (outputType === "u32") {
@@ -880,10 +880,10 @@ export class ScaleResourceManager {
      * @param {number} length
      * @returns {boolean}
      */
-    _setOrdinalRangeBuffer(name, data, length) {
-        this._setUniformValue(RANGE_COUNT_PREFIX + name, length);
-        return this._setTable("range_" + name, data, (offset) => {
-            this._setUniformValue(RANGE_TABLE_PREFIX + name, offset);
+    #setOrdinalRangeBuffer(name, data, length) {
+        this.#setUniformValue(RANGE_COUNT_PREFIX + name, length);
+        return this.#setTable("range_" + name, data, (offset) => {
+            this.#setUniformValue(RANGE_TABLE_PREFIX + name, offset);
         });
     }
 
@@ -891,14 +891,14 @@ export class ScaleResourceManager {
      * @returns {void}
      */
     destroy() {
-        for (const resources of this._channelResources.values()) {
+        for (const resources of this.#channelResources.values()) {
             resources.rangeTexture?.texture.destroy();
         }
-        this._tableBuffer?.destroy();
-        this._tableBuffer = null;
-        this._tables.clear();
-        this._channelResources.clear();
-        this._scaleUpdaters.clear();
-        this._gapScales.clear();
+        this.#tableBuffer?.destroy();
+        this.#tableBuffer = null;
+        this.#tables.clear();
+        this.#channelResources.clear();
+        this.#scaleUpdaters.clear();
+        this.#gapScales.clear();
     }
 }

@@ -344,6 +344,24 @@ function predicateReferences(node, name) {
  * Manages GPU resources for selection predicates declared in channel configs.
  */
 export class SelectionResourceManager {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {string} */
+    #label;
+
+    /** @type {(name: string, value: number|number[]) => void} */
+    #setUniformValue;
+
+    /** @type {Map<string, SelectionDef>} */
+    #selectionDefs;
+
+    /** @type {Map<string, boolean>} */
+    #orderSelectionActive;
+
+    /** @type {Map<string, { buffer: GPUBuffer }>} */
+    #selectionBuffers = new Map();
+
     /**
      * @param {object} params
      * @param {GPUDevice} params.device
@@ -363,28 +381,24 @@ export class SelectionResourceManager {
         label = "mark",
         setUniformValue,
     }) {
-        this._device = device;
-        this._label = label;
-        this._setUniformValue = setUniformValue;
+        this.#device = device;
+        this.#label = label;
+        this.#setUniformValue = setUniformValue;
 
-        /** @type {Map<string, SelectionDef>} */
-        this._selectionDefs = collectSelectionDefs(
+        this.#selectionDefs = collectSelectionDefs(
             channels,
             analysisByChannel,
             visibleWhen,
             order
         );
-        /** @type {Map<string, boolean>} */
-        this._orderSelectionActive = new Map(
-            Array.from(this._selectionDefs.values())
+        this.#orderSelectionActive = new Map(
+            Array.from(this.#selectionDefs.values())
                 .filter(
                     (def) => order && predicateReferences(order.when, def.name)
                 )
                 .map((def) => [def.name, false])
         );
         this.orderActive = false;
-        /** @type {Map<string, { buffer: GPUBuffer, byteLength: number }>} */
-        this._selectionBuffers = new Map();
     }
 
     /**
@@ -392,19 +406,19 @@ export class SelectionResourceManager {
      * @param {boolean} active
      * @returns {void}
      */
-    _setOrderSelectionActive(name, active) {
-        if (!this._orderSelectionActive.has(name)) {
+    #setOrderSelectionActive(name, active) {
+        if (!this.#orderSelectionActive.has(name)) {
             return;
         }
-        this._orderSelectionActive.set(name, active);
-        this.orderActive = this._orderSelectionActive.values().some(Boolean);
+        this.#orderSelectionActive.set(name, active);
+        this.orderActive = this.#orderSelectionActive.values().some(Boolean);
     }
 
     /**
      * @returns {SelectionDef[]}
      */
     get selectionDefs() {
-        return Array.from(this._selectionDefs.values());
+        return Array.from(this.#selectionDefs.values());
     }
 
     /**
@@ -412,7 +426,7 @@ export class SelectionResourceManager {
      * @returns {void}
      */
     addSelectionUniforms(layout) {
-        for (const def of this._selectionDefs.values()) {
+        for (const def of this.#selectionDefs.values()) {
             if (def.type === "single") {
                 layout.push({
                     name: SELECTION_PREFIX + def.name,
@@ -458,7 +472,7 @@ export class SelectionResourceManager {
     getExtraResourceDefs() {
         /** @type {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
         const extras = [];
-        for (const def of this._selectionDefs.values()) {
+        for (const def of this.#selectionDefs.values()) {
             if (def.type !== "multi") {
                 continue;
             }
@@ -483,7 +497,7 @@ export class SelectionResourceManager {
      * @returns {void}
      */
     initializeSelections(extraBuffers) {
-        for (const def of this._selectionDefs.values()) {
+        for (const def of this.#selectionDefs.values()) {
             if (def.type === "single") {
                 this.updateSelection(
                     def.name,
@@ -517,7 +531,7 @@ export class SelectionResourceManager {
      * @returns {boolean} Whether a bind group rebuild is required.
      */
     updateSelection(name, update, extraBuffers) {
-        const def = this._selectionDefs.get(name);
+        const def = this.#selectionDefs.get(name);
         if (!def) {
             throw new Error(`Unknown selection "${name}".`);
         }
@@ -528,8 +542,8 @@ export class SelectionResourceManager {
         }
 
         if (update.type === "single") {
-            this._setUniformValue(SELECTION_PREFIX + name, update.id);
-            this._setOrderSelectionActive(name, update.id !== 0);
+            this.#setUniformValue(SELECTION_PREFIX + name, update.id);
+            this.#setOrderSelectionActive(name, update.id !== 0);
         } else if (update.type === "interval") {
             const intervals = update.intervals ?? {};
             const components = def.components ?? [];
@@ -572,24 +586,24 @@ export class SelectionResourceManager {
             let allActive = true;
             for (const [index, { active, bounds }] of prepared.entries()) {
                 allActive &&= active;
-                this._setUniformValue(
+                this.#setUniformValue(
                     intervalSelectionActiveName(name, index),
                     active ? 1 : 0
                 );
                 if (bounds) {
-                    this._setUniformValue(
+                    this.#setUniformValue(
                         intervalSelectionBoundsName(name, index),
                         bounds
                     );
                 }
             }
-            this._setOrderSelectionActive(name, allActive);
+            this.#setOrderSelectionActive(name, allActive);
         } else if (update.type === "multi") {
             const bufferName = SELECTION_BUFFER_PREFIX + name;
-            const existing = this._selectionBuffers.get(name);
+            const existing = this.#selectionBuffers.get(name);
             // The shader derives its hash mask from the bound buffer length.
             const existingCapacity =
-                existing?.byteLength / (Uint32Array.BYTES_PER_ELEMENT * 2);
+                existing?.buffer.size / (Uint32Array.BYTES_PER_ELEMENT * 2);
             const reuseExisting =
                 existingCapacity !== undefined &&
                 update.ids.length / existingCapacity <= DEFAULT_MAX_LOAD_FACTOR;
@@ -598,32 +612,31 @@ export class SelectionResourceManager {
                 reuseExisting ? { capacity: existingCapacity } : undefined
             );
             validateStorageBufferSize(
-                this._device,
+                this.#device,
                 table.byteLength,
-                this._label + " selection " + name
+                this.#label + " selection " + name
             );
-            this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
-            this._setOrderSelectionActive(name, size > 0);
-            if (!existing || existing.byteLength < table.byteLength) {
-                const buffer = this._device.createBuffer({
-                    label: gpuLabel(this._label, `selection ${name}`),
+            this.#setUniformValue(SELECTION_COUNT_PREFIX + name, size);
+            this.#setOrderSelectionActive(name, size > 0);
+            if (!existing || existing.buffer.size < table.byteLength) {
+                const buffer = this.#device.createBuffer({
+                    label: gpuLabel(this.#label, `selection ${name}`),
                     size: table.byteLength,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
                 extraBuffers.set(bufferName, buffer);
-                this._selectionBuffers.set(name, {
+                this.#selectionBuffers.set(name, {
                     buffer,
-                    byteLength: table.byteLength,
                 });
                 existing?.buffer.destroy();
-                this._device.queue.writeBuffer(
+                this.#device.queue.writeBuffer(
                     buffer,
                     0,
                     asGpuBufferSource(table)
                 );
                 return true;
             }
-            this._device.queue.writeBuffer(
+            this.#device.queue.writeBuffer(
                 existing.buffer,
                 0,
                 asGpuBufferSource(table)
