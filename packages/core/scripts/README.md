@@ -22,18 +22,18 @@ Use `--output-dir`, `--match`, or explicit example paths for focused runs.
 
 # Data preparation benchmark
 
-With the Core development server running (`npm start`), compare WebGL and WebGPU
-using a generated scatterplot of 1.5 million JavaScript objects:
+With the repository development server running (`npm start`), compare WebGL and
+WebGPU using a generated scatterplot of 1.5 million JavaScript objects:
 
 ```sh
 node packages/core/scripts/runWebGpuDataBenchmark.mjs
 ```
 
 The driver uses headed Chrome on the native GPU, DPR 1, two A/B warmups, and five
-counterbalanced measured runs. It measures initial named-dataset population,
-replacement, and navigation separately. Data generation happens outside timing;
-each fresh embed starts with an empty dataset. This isolates row propagation,
-channel extraction, index construction, packing/upload, and rendering from
+counterbalanced measured runs. It embeds Core directly and measures initial
+named-dataset population, replacement, and navigation separately. Data generation
+happens outside timing; each fresh embed starts with an empty dataset. This
+isolates row propagation, channel extraction, index construction, packing/upload, and rendering from
 network loading, decoding, and initial module/font loading. Completion waits for
 two animation frames and a WebGPU queue fence or WebGL `finish()`.
 
@@ -50,6 +50,9 @@ Use `--rows 1000` for a small-data check, `--runs 7` for longer measurements,
 before/after results. `--headless` is diagnostic; inspect the actual adapter and
 use native headed runs for performance conclusions. The benchmark forces buffer
 sizes and binding counts to WebGPU defaults, like the example audit above.
+
+See [recorded data preparation results](webgpu-data-performance.md) for the
+reference measurements and validation.
 
 # Interaction performance benchmark
 
