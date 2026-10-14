@@ -6,8 +6,11 @@ Run all shared Core and docs specifications with default WebGPU limits:
 npm -w @genome-spy/core run smoke:examples:webgpu
 ```
 
-The runner rejects explicitly requested limits, collects uncaptured GPU
-validation errors, waits for visible lazy data, and checks canvas screenshots.
+The runner records supported startup buffer-size requests and forces both byte
+limits back to WebGPU defaults. It rejects every other explicit limit, including
+binding-count overrides, and rejects unsupported byte requests before forcing
+defaults. It collects uncaptured GPU validation errors, waits for visible lazy
+data, and checks canvas screenshots.
 `output/webgpu-core/summary.json` includes device defaults, per-stage binding
 counts across explicit pipeline layouts, and buffer allocation/binding peaks.
 `failure-report.md` lists failures and peaks at or above 80% of the defaults.

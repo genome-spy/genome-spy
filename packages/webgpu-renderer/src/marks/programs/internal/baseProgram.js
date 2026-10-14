@@ -368,6 +368,15 @@ export default class BaseProgram {
         });
         this._resourceLayout = resourceLayout;
         this._programTemplateDiagnostics = diagnostics;
+        const uniformBytes = this._uniformBufferState.byteLength;
+        if (
+            uniformBytes > this.device.limits.maxUniformBufferBindingSize ||
+            uniformBytes > this.device.limits.maxBufferSize
+        ) {
+            throw new Error(
+                `${this.label} uniforms require ${uniformBytes} bytes; available uniform binding capacity is ${Math.min(this.device.limits.maxUniformBufferBindingSize, this.device.limits.maxBufferSize)} bytes.`
+            );
+        }
         this._uniformBuffer = this.device.createBuffer({
             label: gpuLabel(this.label, "uniforms"),
             size: this._uniformBufferState?.byteLength ?? 0,
@@ -636,7 +645,7 @@ export default class BaseProgram {
             uniformBuffer: this._uniformBuffer,
             resourceLayout: this._resourceLayout,
             getScaleTableBuffer: () => this._scaleResources.tableBuffer,
-            getSeriesBuffer: (name) => this._seriesBuffers.getBuffer(name),
+            getSeriesBuffer: () => this._seriesBuffers.getBuffer(),
             getScaleResources: (name) =>
                 this._scaleResources.getChannelResources(name),
             extraTextures: this._extraTextures,
@@ -683,7 +692,7 @@ export default class BaseProgram {
 
         for (const entry of this._resourceLayout) {
             if (entry.role === "series") {
-                const buffer = this._seriesBuffers.getBuffer(entry.name);
+                const buffer = this._seriesBuffers.getBuffer();
                 storage.push({
                     name: entry.name,
                     role: entry.role,

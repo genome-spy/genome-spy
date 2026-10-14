@@ -1,8 +1,8 @@
 # WebGPU default limits: example audit and mitigation design
 
 Status: default device limits and repeatable example audit implemented;
-scale/gap packing is implemented. Startup buffer-size negotiation, mixed-series
-packing, and final integration verification remain in progress.
+scale/gap packing, mixed-series packing, startup byte negotiation, and audit
+forcing are implemented. Final integration verification remains in progress.
 
 The font startup race found by the audit is now fixed in Core's shared render
 entry point: resize and animation callbacks can update layout during launch,
@@ -76,21 +76,24 @@ Generated artifacts, ignored by Git:
   and resource peaks at or above 80% of the actual device defaults.
 - `output/webgpu-default-limits/*.png`: screenshots for ready harnesses.
 
-The current runner rejects any explicitly requested limit, rather than silently
-overriding the request. It records uncaptured GPU validation errors as failures
-even when a canvas is nonempty: axes can render while the main mark fails.
+The runner records supported startup byte requests and removes those two
+limits before native device creation, forcing baseline byte capacity. It rejects
+all other explicit limits, including binding-count overrides, and validates
+byte requests before forcing defaults. Uncaptured GPU validation errors are
+failures even when a canvas is nonempty: axes can render while a main mark fails.
 Explicit layouts are counted across all bind groups for each shader stage.
 Auto-layout MSDF compute pipelines remain subject to default device validation,
 but their inferred layouts are not reflected by the headroom instrumentation.
 Byte peaks cover explicit buffer bindings and all buffer allocations; they do
 not measure total GPU memory or texture-dimension headroom.
-The proposed startup negotiation requires the audit adaptation in decision 4:
-the sweep must continue to exercise actual default device limits.
+Decision 4 describes this deliberate audit override; normal rendering negotiates
+byte capacity while the sweep exercises actual default device limits.
 
 ## Current resource pressure
 
 `packages/webgpu-renderer/src/renderer.js` requested up to 10 storage buffers
-per shader stage. It now calls `adapter.requestDevice()` without a descriptor.
+per shader stage. The baseline reset removed that binding-count override;
+normal startup now requests only supported buffer byte limits (decision 4).
 The observed defaults are 8 storage buffers per stage and 4 bind groups.
 These match the [WebGPU default limits](https://www.w3.org/TR/webgpu/#limits).
 Moving bindings to another bind group cannot evade the per-stage limit.
@@ -361,7 +364,7 @@ code is copied or closely adapted; no new dependency is required.
   rejected for this mitigation; either risks paint-order/picking semantics or
   changes the GPU-first interaction model.
 
-## Proposed implementation milestones
+## Implementation milestones
 
 1. **Bound scale/gap bindings while preserving selection borrowing.** Change
    scale resources, WGSL slice access, uniforms, and bind-group construction as
@@ -440,6 +443,30 @@ unchanged baseline shader. Reconcile these fixtures during milestone 3.
 #563 borrowing/capture qualification remains an integration follow-up because
 that PR's API is not present in this branch.
 
+### Milestone 2: mixed series and byte negotiation complete
+
+All f32/u32/i32 channels share one interleaved word buffer, copying exact source
+bits and deduplicating source-array aliases. Scalar-type buffer/layout paths
+were removed. Startup requests exactly the two supported byte limits; all
+binding counts remain at defaults. Pipeline creation validates the complete
+per-stage layout before GPU objects are created, including independent
+selection tables and placement. Series, scale, and owned selection storage
+receive contextual capacity checks; scale growth releases unused slice capacity
+before rejecting a payload that fits. The audit records original byte requests
+but forces a default device and rejects unsupported requests/count overrides.
+
+Verification: 314 renderer unit tests, 7 audit tests, renderer/Core TypeScript,
+and targeted lint pass. Seventeen point/text/placement/gap/series GPU tests pass,
+as does the new 160,000,000-byte GPU case with first/last record picking and exact
+large IDs. That device reported both byte limits as 4,294,967,292 and counts of
+8 storage buffers/4 groups. Baseline rejection, later growth rejection, and
+scale-capacity compaction have regression coverage. A three-example Core/docs
+rerun passed and recorded the supported requests alongside effective default
+byte limits (`output/webgpu-series-packing/`). Production renderer source changed
+by +3 raw lines overall, excluding tests/test scaffolding, including the new
+capacity/count helpers. Full example/export/interaction and #563 qualification
+remain in milestone 3.
+
 ## Risks and open questions
 
 - Binary layout mistakes can corrupt f32 values or precision-sensitive IDs;
@@ -480,13 +507,13 @@ that PR's API is not present in this branch.
 - [x] Revise the design to request supported buffer byte limits at startup,
       retain default binding counts and the complete default-limit example audit,
       and accept device-dependent huge-data capacity with contextual errors.
-- [ ] Proposed follow-up: implement startup byte negotiation and audit forcing;
+- [x] Implement startup byte negotiation and audit forcing;
       verify baseline-only startup, unchanged binding counts, mixed-series
       capacity boundaries, and loaded/lazy-data growth errors.
 - [ ] Integration follow-up: qualify the rebased #563/#562 lasso and linked-view
       scenarios on default limits without table copies or per-frame readback.
 - [x] Milestone 1: implement scale/gap packing and verify categorical updates,
       gaps, picking, and the five default-limit example failures.
-- [ ] Milestone 2: unify mixed series and implement contextual budget errors.
+- [x] Milestone 2: unify mixed series and implement contextual budget errors.
 - [ ] Milestone 3: finish the full example and interaction/integration matrix,
       including reconciliation of the existing interval GPU fixtures.

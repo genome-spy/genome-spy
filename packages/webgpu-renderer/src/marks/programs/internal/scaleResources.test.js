@@ -1,3 +1,4 @@
+import { mockGpuLimits } from "../../../testUtils/mockRenderer.js";
 import { describe, expect, it, vi } from "vitest";
 import { ScaleResourceManager } from "./scaleResources.js";
 import { analyzeTestChannels } from "../../../../testUtils/scaleDefinitions.js";
@@ -21,6 +22,7 @@ function createManager(channels) {
     const textures = [];
     const device = /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({
+            limits: mockGpuLimits,
             createBuffer:
                 /** @type {(descriptor: GPUBufferDescriptor) => GPUBuffer} */ (
                     (descriptor) => {
@@ -194,6 +196,30 @@ describe("ScaleResourceManager", () => {
         expect(writes.mock.calls[1][1]).toBe(y[0] * 4);
         // The untouched sparse domain is retained and uploaded at its new offset.
         expect(Array.from(writes.mock.calls[1][2])).toContain(99);
+        manager.destroy();
+    });
+
+    it("releases spare slice capacity before rejecting growth at the byte limit", () => {
+        const { manager, uniforms, buffers, writes } = createManager({});
+        Object.defineProperty(manager._device, "limits", {
+            value: { ...mockGpuLimits, maxStorageBufferBindingSize: 32 },
+        });
+        manager._setOrdinalRangeBuffer("x", new Float32Array(7), 7);
+        manager._setOrdinalRangeBuffer("y", new Float32Array(1), 1);
+        const retained = manager.tableBuffer;
+        manager._setOrdinalRangeBuffer("x", new Float32Array(1), 1);
+        expect(manager.tableBuffer).toBe(retained);
+        // The payload fits after reclaiming x's six unused words.
+        manager._setOrdinalRangeBuffer("y", new Float32Array(7), 7);
+        expect(manager.tableBuffer.size).toBe(32);
+        expect(uniforms.get("uRangeTable_y")).toBe(1);
+        const allocations = buffers.length;
+        writes.mockClear();
+        expect(() =>
+            manager._setOrdinalRangeBuffer("y", new Float32Array(8), 8)
+        ).toThrow("requires 36 bytes");
+        expect(buffers).toHaveLength(allocations);
+        expect(writes).not.toHaveBeenCalled();
         manager.destroy();
     });
 

@@ -1,3 +1,4 @@
+import { mockGpuLimits } from "../../../testUtils/mockRenderer.js";
 import { describe, expect, it, vi } from "vitest";
 import { SeriesBufferManager } from "./seriesBuffers.js";
 
@@ -84,6 +85,45 @@ describe("SeriesBufferManager.inferCount", () => {
 });
 
 describe("SeriesBufferManager uploads", () => {
+    it("rejects the 160 MB mixed-series payload before packing or allocation on a baseline device", () => {
+        const { device, createBuffer, writeBuffer } = createDevice();
+        const channels =
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
+                x: { data: new Float32Array(1), type: "f32", components: 1 },
+                y: { data: new Float32Array(1), type: "f32", components: 1 },
+                size: { data: new Float32Array(1), type: "f32", components: 1 },
+                uniqueId: {
+                    data: new Uint32Array(1),
+                    type: "u32",
+                    components: 1,
+                },
+            });
+        const manager = createManager(channels, device);
+        expect(() => manager.updateSeries({}, 10000000)).toThrow(
+            "requires 160000000 bytes; maxStorageBufferBindingSize allows 134217728 bytes"
+        );
+        expect(createBuffer).not.toHaveBeenCalled();
+        expect(writeBuffer).not.toHaveBeenCalled();
+    });
+
+    it("checks later series growth before replacing the retained GPU buffer", () => {
+        const { device, buffers } = createDevice();
+        Object.defineProperty(device, "limits", {
+            value: { ...mockGpuLimits, maxStorageBufferBindingSize: 8 },
+        });
+        const manager = createManager(
+            { x: { data: new Float32Array(2), type: "f32", components: 1 } },
+            device
+        );
+        manager.updateSeries({}, 2);
+        const retained = manager.getBuffer();
+        expect(() =>
+            manager.updateSeries({ x: new Float32Array(3) }, 3)
+        ).toThrow("requires 12 bytes");
+        expect(manager.getBuffer()).toBe(retained);
+        expect(buffers).toHaveLength(1);
+    });
+
     it("uses a non-empty backing buffer for an empty series", () => {
         const { device, createBuffer, writeBuffer } = createDevice();
         const data = new Float32Array(0);
@@ -171,6 +211,7 @@ function createDevice() {
     const writeBuffer = vi.fn();
     const device = /** @type {GPUDevice} */ (
         /** @type {unknown} */ ({
+            limits: mockGpuLimits,
             createBuffer,
             queue: { writeBuffer },
         })

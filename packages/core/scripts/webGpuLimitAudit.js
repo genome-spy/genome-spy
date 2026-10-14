@@ -2,7 +2,7 @@
 
 /**
  * Browser init script. Observe actual API descriptors, including invalid layout
- * attempts, without changing the requested limits or renderer resource layout.
+ * attempts. Force baseline byte capacity while observing renderer resource layouts.
  * This function is serialized by Playwright and must remain self-contained.
  */
 export function installWebGpuLimitAudit() {
@@ -14,23 +14,78 @@ export function installWebGpuLimitAudit() {
     const requestDevice = GPUAdapter.prototype.requestDevice;
     /** @param {GPUDeviceDescriptor} [descriptor] */
     GPUAdapter.prototype.requestDevice = async function (descriptor = {}) {
-        if (
-            Object.values(descriptor.requiredLimits ?? {}).some(
-                (v) => v !== undefined
+        const requestedBufferLimits = Object.fromEntries(
+            Object.entries(descriptor.requiredLimits ?? {}).filter(
+                ([, value]) => value !== undefined
             )
-        ) {
-            audit.violations.push("requestDevice must use default limits.");
-            throw new Error("WebGPU example audit rejects requiredLimits.");
+        );
+        const defaults = {
+            maxStorageBufferBindingSize: 134217728,
+            maxBufferSize: 268435456,
+        };
+        for (const [name, value] of Object.entries(requestedBufferLimits)) {
+            if (!(name in defaults)) {
+                audit.violations.push(
+                    "requestDevice must keep binding counts and other limits at defaults."
+                );
+                throw new Error(
+                    "WebGPU example audit rejects requiredLimits other than buffer sizes."
+                );
+            }
+            if (
+                !Number.isSafeInteger(value) ||
+                value < defaults[name] ||
+                value > this.limits[name]
+            ) {
+                audit.violations.push(
+                    "Unsupported buffer limit request: " + name
+                );
+                throw new Error(
+                    "WebGPU example audit rejects unsupported buffer-size limits."
+                );
+            }
         }
-
-        const device = await requestDevice.call(this, descriptor);
+        if (
+            (requestedBufferLimits.maxStorageBufferBindingSize ??
+                defaults.maxStorageBufferBindingSize) >
+                (requestedBufferLimits.maxBufferSize ??
+                    defaults.maxBufferSize) ||
+            (requestedBufferLimits.maxStorageBufferBindingSize ??
+                defaults.maxStorageBufferBindingSize) %
+                4 !==
+                0
+        ) {
+            audit.violations.push("Invalid buffer-size limit combination.");
+            throw new Error(
+                "WebGPU example audit rejects unsupported buffer-size limits."
+            );
+        }
+        const deviceDescriptor = { ...descriptor };
+        delete deviceDescriptor.requiredLimits;
+        const device = await requestDevice.call(this, deviceDescriptor);
         const limits = Object.fromEntries(
             Object.keys(Object.getPrototypeOf(device.limits))
                 .filter((key) => typeof device.limits[key] === "number")
                 .map((key) => [key, device.limits[key]])
         );
-        /** @type {{ limits: Record<string, number>, peaks: Record<string, {used: number, limit: number, label: string}>, layouts: any[], validationErrors: string[] }} */
-        const record = { limits, peaks: {}, layouts: [], validationErrors: [] };
+        /** @type {{ limits: Record<string, number>, requestedBufferLimits: Record<string, number>, peaks: Record<string, {used: number, limit: number, label: string}>, layouts: any[], validationErrors: string[] }} */
+        const record = {
+            limits,
+            requestedBufferLimits,
+            peaks: {},
+            layouts: [],
+            validationErrors: [],
+        };
+        for (const [name, value] of Object.entries({
+            ...defaults,
+            maxStorageBuffersPerShaderStage: 8,
+            maxBindGroups: 4,
+        })) {
+            if (limits[name] !== value)
+                audit.violations.push(
+                    `Audited device ${name} must be ${value}, received ${limits[name]}.`
+                );
+        }
         audit.devices.push(record);
         device.addEventListener("uncapturederror", (event) => {
             record.validationErrors.push(event.error.message);

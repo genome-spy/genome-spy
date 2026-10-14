@@ -1,3 +1,4 @@
+import { validateStorageBufferSize } from "../../../utils/bufferLimits.js";
 import {
     getScaleResourceRequirements,
     getScaleUniformDef,
@@ -130,6 +131,24 @@ export class ScaleResourceManager {
             table.offset = length;
             length += table.capacity;
         }
+        const limit = Math.min(
+            this._device.limits.maxStorageBufferBindingSize,
+            this._device.limits.maxBufferSize
+        );
+        if (length * 4 > limit) {
+            // Release spare slice capacity before rejecting a payload that fits.
+            length = 0;
+            for (const table of this._tables.values()) {
+                table.offset = length;
+                table.capacity = Math.max(1, table.data.length);
+                length += table.capacity;
+            }
+        }
+        validateStorageBufferSize(
+            this._device,
+            length * 4,
+            this._label + " scale/gap tables"
+        );
         const buffer = this._device.createBuffer({
             label: gpuLabel(this._label, "scale/gap tables"),
             size: length * 4,

@@ -14,6 +14,51 @@ test("rejects raised limits before creating a device", async () => {
     expect(audit.violations).toHaveLength(1);
 });
 
+test.each([134217728, 536870912])(
+    "forces default byte limits despite supported startup request %i",
+    async (capacity) => {
+        const { adapter, requestDevice, audit } = createHarness();
+        adapter.limits.maxStorageBufferBindingSize = capacity;
+        const requested = {
+            maxStorageBufferBindingSize: capacity,
+            maxBufferSize: adapter.limits.maxBufferSize,
+        };
+        await adapter.requestDevice({
+            label: "example",
+            requiredLimits: requested,
+        });
+        expect(requestDevice).toHaveBeenCalledWith({ label: "example" });
+        expect(audit.devices[0].requestedBufferLimits).toEqual(requested);
+        expect(audit.devices[0].limits.maxStorageBufferBindingSize).toBe(
+            134217728
+        );
+        expect(audit.violations).toEqual([]);
+    }
+);
+
+test("rejects unsupported byte requests before forcing defaults", async () => {
+    const { adapter, requestDevice, audit } = createHarness();
+    await expect(
+        adapter.requestDevice({ requiredLimits: { maxBufferSize: 2 ** 40 } })
+    ).rejects.toThrow("unsupported buffer-size");
+    expect(requestDevice).not.toHaveBeenCalled();
+    expect(audit.violations).toHaveLength(1);
+});
+
+test.each([
+    { maxStorageBufferBindingSize: 536870912 },
+    { maxStorageBufferBindingSize: 134217729, maxBufferSize: 1073741824 },
+])(
+    "does not hide an invalid byte-limit combination: %j",
+    async (requiredLimits) => {
+        const { adapter, requestDevice } = createHarness();
+        await expect(adapter.requestDevice({ requiredLimits })).rejects.toThrow(
+            "unsupported buffer-size"
+        );
+        expect(requestDevice).not.toHaveBeenCalled();
+    }
+);
+
 test("counts storage visibility across groups and records binding sizes and GPU errors", async () => {
     const { adapter, audit } = createHarness();
     const device = await adapter.requestDevice();
@@ -90,7 +135,12 @@ function createHarness() {
         createBindGroup: () => ({}),
     });
     const requestDevice = vi.fn(async () => device);
-    class Adapter {}
+    class Adapter {
+        limits = {
+            maxStorageBufferBindingSize: 536870912,
+            maxBufferSize: 1073741824,
+        };
+    }
     Adapter.prototype.requestDevice = requestDevice;
     const browserWindow = {};
     vi.stubGlobal("GPUAdapter", Adapter);

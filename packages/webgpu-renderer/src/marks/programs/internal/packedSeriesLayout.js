@@ -18,9 +18,7 @@ import { packHighPrecisionU32ArrayInto } from "../../../utils/highPrecision.js";
  *
  * @typedef {object} PackedSeriesLayout
  * @prop {Map<string, PackedSeriesLayoutEntry>} entries
- * @prop {number} f32Stride
- * @prop {number} u32Stride
- * @prop {number} i32Stride
+ * @prop {number} stride
  */
 
 /**
@@ -41,9 +39,7 @@ export function buildPackedSeriesLayout(
     const entries = new Map();
     /** @type {Map<string, PackedSeriesLayoutEntry>} */
     const entriesByAlias = new Map();
-    let f32Offset = 0;
-    let u32Offset = 0;
-    let i32Offset = 0;
+    let offset = 0;
 
     for (const [name, channel] of Object.entries(channels)) {
         if (!isSeriesChannelConfig(channel)) {
@@ -84,12 +80,6 @@ export function buildPackedSeriesLayout(
             entries.set(name, existing);
             continue;
         }
-        const offset =
-            scalarType === "f32"
-                ? f32Offset
-                : scalarType === "u32"
-                  ? u32Offset
-                  : i32Offset;
         const entry = {
             name,
             scalarType,
@@ -99,30 +89,11 @@ export function buildPackedSeriesLayout(
         };
         entries.set(name, entry);
         entriesByAlias.set(aliasKey, entry);
-        if (scalarType === "f32") {
-            f32Offset += components;
-        } else if (scalarType === "u32") {
-            u32Offset += components;
-        } else {
-            i32Offset += components;
-        }
+        offset += components;
     }
 
-    for (const entry of entries.values()) {
-        entry.stride =
-            entry.scalarType === "f32"
-                ? f32Offset
-                : entry.scalarType === "u32"
-                  ? u32Offset
-                  : i32Offset;
-    }
-
-    return {
-        entries,
-        f32Stride: f32Offset,
-        u32Stride: u32Offset,
-        i32Stride: i32Offset,
-    };
+    for (const entry of entries.values()) entry.stride = offset;
+    return { entries, stride: offset };
 }
 
 /**
@@ -130,20 +101,12 @@ export function buildPackedSeriesLayout(
  *
  * @param {object} params
  * @param {Record<string, ChannelConfigResolved>} params.channels
- * @param {Record<string, ChannelSpec>} params.channelSpecs
  * @param {PackedSeriesLayout} params.layout
  * @param {number} params.count
- * @returns {{ f32: Float32Array | null, u32: Uint32Array | null, i32: Int32Array | null }}
+ * @returns {Uint32Array}
  */
-export function packSeriesArrays({ channels, channelSpecs, layout, count }) {
-    const f32 =
-        layout.f32Stride > 0
-            ? new Float32Array(count * layout.f32Stride)
-            : null;
-    const u32 =
-        layout.u32Stride > 0 ? new Uint32Array(count * layout.u32Stride) : null;
-    const i32 =
-        layout.i32Stride > 0 ? new Int32Array(count * layout.i32Stride) : null;
+export function packSeriesArrays({ channels, layout, count }) {
+    const words = new Uint32Array(count * layout.stride);
 
     const packedEntries = new Set();
 
@@ -201,23 +164,19 @@ export function packSeriesArrays({ channels, channelSpecs, layout, count }) {
             );
         }
 
-        const dest =
-            entry.scalarType === "f32"
-                ? f32
-                : entry.scalarType === "u32"
-                  ? u32
-                  : i32;
-        if (!dest) {
-            continue;
-        }
+        const sourceWords = new Uint32Array(
+            source.buffer,
+            source.byteOffset,
+            source.length
+        );
         for (let i = 0; i < count; i++) {
             const base = i * entry.stride + entry.offset;
             const srcBase = i * inputComponents;
             for (let c = 0; c < entry.components; c++) {
-                dest[base + c] = source[srcBase + c];
+                words[base + c] = sourceWords[srcBase + c];
             }
         }
     }
 
-    return { f32, u32, i32 };
+    return words;
 }

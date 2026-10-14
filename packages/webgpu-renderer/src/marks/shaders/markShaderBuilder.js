@@ -491,8 +491,6 @@ ${clauses.join("\n")}
 
     // First pass: series-backed channels must map to packed series buffers and
     // emit read_* accessors plus getScaled_* wrappers.
-    /** @type {Set<"f32"|"u32"|"i32">} */
-    const packedTypes = new Set();
     const packedSeriesEntries = packedSeriesLayout ?? new Map();
 
     // Internal invariant: packed series is required when series channels exist.
@@ -506,54 +504,16 @@ ${clauses.join("\n")}
         );
     }
 
-    for (const entry of packedSeriesEntries.values()) {
-        if (
-            entry.scalarType === "f32" ||
-            entry.scalarType === "u32" ||
-            entry.scalarType === "i32"
-        ) {
-            packedTypes.add(entry.scalarType);
-        } else if (__DEV__) {
-            throw new Error(
-                `Packed series only supports f32/u32/i32. Found "${entry.scalarType}".`
-            );
-        }
-    }
-
-    if (packedTypes.has("f32")) {
+    if (seriesChannelIRs.length) {
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
             visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
-        resourceLayout.push({ name: "seriesF32", role: "series" });
+        resourceLayout.push({ name: "series", role: "series" });
         bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> seriesF32: array<f32>;`
-        );
-    }
-    if (packedTypes.has("u32")) {
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name: "seriesU32", role: "series" });
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> seriesU32: array<u32>;`
-        );
-    }
-    if (packedTypes.has("i32")) {
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            visibility: vertexComputeVisibility,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name: "seriesI32", role: "series" });
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> seriesI32: array<i32>;`
+            `@group(1) @binding(${binding}) var<storage, read> series: array<u32>;`
         );
     }
 
@@ -587,41 +547,23 @@ ${clauses.join("\n")}
                 `Packed series component mismatch for "${name}". Expected ${channelIR.inputComponents}, got ${layoutEntry.components}.`
             );
         }
-        const bufferName =
-            layoutEntry.scalarType === "f32"
-                ? "seriesF32"
-                : layoutEntry.scalarType === "u32"
-                  ? "seriesU32"
-                  : "seriesI32";
-        const offset = layoutEntry.offset;
-        const stride = layoutEntry.stride;
-        if (layoutEntry.components === 1) {
-            bufferReaders.push(
-                `fn read_${name}(i: u32) -> ${layoutEntry.scalarType} {
-    return ${bufferName}[${offset}u + i * ${stride}u];
-}`
-            );
-        } else if (layoutEntry.components === 2) {
-            bufferReaders.push(
-                `fn read_${name}(i: u32) -> vec2<${layoutEntry.scalarType}> {
+        const { offset, stride, components, scalarType } = layoutEntry;
+        const type =
+            components === 1 ? scalarType : `vec${components}<${scalarType}>`;
+        const loads = Array.from(
+            { length: components },
+            (_, c) => `series[base${c ? ` + ${c}u` : ""}]`
+        );
+        const words =
+            components === 1
+                ? loads[0]
+                : `vec${components}<u32>(${loads.join(", ")})`;
+        bufferReaders.push(`fn read_${name}(i: u32) -> ${type} {
     let base = ${offset}u + i * ${stride}u;
-    return vec2<${layoutEntry.scalarType}>(${bufferName}[base], ${bufferName}[base + 1u]);
-}`
-            );
-        } else {
-            bufferReaders.push(
-                `fn read_${name}(i: u32) -> vec4<${layoutEntry.scalarType}> {
-    let base = ${offset}u + i * ${stride}u;
-    return vec4<${layoutEntry.scalarType}>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
-}`
-            );
-        }
+    return ${scalarType === "u32" ? words : `bitcast<${type}>(${words})`};
+}`);
 
-        // getScaled_* is the only function mark shaders call. It hides whether
-        // values come from buffers or uniforms and applies scale logic.
-        const hasConditions =
-            Array.isArray(channelIR.channel.conditions) &&
-            channelIR.channel.conditions.length > 0;
+        const hasConditions = (channelIR.channel.conditions?.length ?? 0) > 0;
         const baseFunctionName = hasConditions ? `${name}_base` : name;
         if (channelIR.needsScaleFunction) {
             channelFns.push(

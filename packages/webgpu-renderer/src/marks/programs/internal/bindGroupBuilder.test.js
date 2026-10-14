@@ -56,8 +56,7 @@ describe("buildBindGroup", () => {
                         { name: "x", role: "rangeSampler" },
                     ],
                     getScaleTableBuffer: () => ordinalRangeBuffer,
-                    getSeriesBuffer: (name) =>
-                        name === "x" ? seriesBuffer : null,
+                    getSeriesBuffer: () => seriesBuffer,
                     getScaleResources: (name) =>
                         name === "x"
                             ? {

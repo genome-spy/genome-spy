@@ -181,8 +181,8 @@ const placementSentinel = 1u;
             packedSeriesLayout,
         });
 
-        expect(resourceLayout).toEqual([{ name: "seriesF32", role: "series" }]);
-        expect(shaderCode).toContain("var<storage, read> seriesF32");
+        expect(resourceLayout).toEqual([{ name: "series", role: "series" }]);
+        expect(shaderCode).toContain("var<storage, read> series: array<u32>");
         expect(shaderCode).toContain("fn read_x");
         expect(shaderCode).toContain("fn read_y");
         expect(shaderCode).toContain("base = 1u + i * 3u");
@@ -277,7 +277,7 @@ const placementSentinel = 1u;
 
         expect(resourceLayout).toEqual([
             { name: "scaleTables", role: "scaleTables" },
-            { name: "seriesU32", role: "series" },
+            { name: "series", role: "series" },
         ]);
         expect(shaderCode).toContain("fn hashLookup_domainMap_x");
         expect(shaderCode).toContain("domainMap_x");

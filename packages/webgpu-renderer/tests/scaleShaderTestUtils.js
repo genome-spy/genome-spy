@@ -149,7 +149,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (i >= OUTPUT_LEN) {
         return;
     }
-    output[i] = seriesF32[i];
+    output[i] = bitcast<f32>(series[i]);
 }
 `;
 }
@@ -720,7 +720,6 @@ export async function runScaleCase(
     const layout = buildPackedSeriesLayout(channels, {});
     const packed = packSeriesArrays({
         channels,
-        channelSpecs: {},
         layout,
         count,
     });
@@ -728,46 +727,15 @@ export async function runScaleCase(
     const toSerializable = (data) =>
         ArrayBuffer.isView(data) ? Array.from(data) : data;
 
-    if (packed.f32) {
+    if (layout.stride) {
         const binding = bindings.find(
-            (entry) => entry.role === "series" && entry.name === "seriesF32"
-        )?.binding;
-        if (binding == null) {
-            throw new Error("Series binding for packed f32 data is missing.");
-        }
+            (entry) => entry.role === "series"
+        ).binding;
         seriesBuffers.push({
             binding,
-            data: toSerializable(packed.f32),
-            role: "series",
-            type: "f32",
-        });
-    }
-    if (packed.u32) {
-        const binding = bindings.find(
-            (entry) => entry.role === "series" && entry.name === "seriesU32"
-        )?.binding;
-        if (binding == null) {
-            throw new Error("Series binding for packed u32 data is missing.");
-        }
-        seriesBuffers.push({
-            binding,
-            data: toSerializable(packed.u32),
+            data: Array.from(packed),
             role: "series",
             type: "u32",
-        });
-    }
-    if (packed.i32) {
-        const binding = bindings.find(
-            (entry) => entry.role === "series" && entry.name === "seriesI32"
-        )?.binding;
-        if (binding == null) {
-            throw new Error("Series binding for packed i32 data is missing.");
-        }
-        seriesBuffers.push({
-            binding,
-            data: toSerializable(packed.i32),
-            role: "series",
-            type: "i32",
         });
     }
 
@@ -911,13 +879,9 @@ export async function runSeriesCopyCase(
     const layout = buildPackedSeriesLayout(channels, {});
     const packed = packSeriesArrays({
         channels,
-        channelSpecs: {},
         layout,
         count,
     });
-    if (!packed.f32) {
-        throw new Error("runSeriesCopyCase requires f32 series data.");
-    }
     const hasUniforms = uniformLayout.length > 0;
     const normalizedUniformLayout = hasUniforms
         ? uniformLayout
@@ -934,18 +898,19 @@ export async function runSeriesCopyCase(
     });
     const bindings = mapScaleBindings(shader);
     const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "seriesF32"
+        (entry) => entry.role === "series" && entry.name === "series"
     );
     if (!seriesBinding) {
-        throw new Error("seriesF32 binding is missing from shader output.");
+        throw new Error("series binding is missing from shader output.");
     }
     const toSerializable = (data) =>
         ArrayBuffer.isView(data) ? Array.from(data) : data;
     const seriesBuffers = [
         {
             binding: seriesBinding.binding,
-            data: toSerializable(packed.f32),
+            data: toSerializable(packed),
             role: "series",
+            type: "u32",
         },
     ];
     const uniformData = buildUniformData(

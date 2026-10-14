@@ -1,3 +1,4 @@
+import { globalBindings, placementBindings } from "./utils/bindingLimits.js";
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
@@ -223,7 +224,13 @@ export async function createRenderer(canvas, options = {}) {
         throw new RendererError("WebGPU adapter not available.");
     }
 
-    const device = await adapter.requestDevice();
+    const device = await adapter.requestDevice({
+        requiredLimits: {
+            maxStorageBufferBindingSize:
+                adapter.limits.maxStorageBufferBindingSize,
+            maxBufferSize: adapter.limits.maxBufferSize,
+        },
+    });
     instrumentGpuDevice(device);
     const context = canvas.getContext("webgpu");
     if (!context) {
@@ -329,17 +336,7 @@ export class Renderer {
         // Bind group 0 is reserved for global uniforms.
         this._globalBindGroupLayout = device.createBindGroupLayout({
             label: gpuLabel(RENDERER_GPU_OWNER, "global bind group layout"),
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                    buffer: {
-                        type: "uniform",
-                        hasDynamicOffset: true,
-                        minBindingSize: 80,
-                    },
-                },
-            ],
+            entries: globalBindings,
         });
 
         this._globalBindGroup = device.createBindGroup({
@@ -358,13 +355,7 @@ export class Renderer {
 
         this._placementBindGroupLayout = device.createBindGroupLayout({
             label: gpuLabel(RENDERER_GPU_OWNER, "placement bind group layout"),
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX,
-                    buffer: { type: "read-only-storage" },
-                },
-            ],
+            entries: placementBindings,
         });
 
         const dpr = window.devicePixelRatio ?? 1;

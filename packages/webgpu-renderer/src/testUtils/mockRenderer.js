@@ -1,10 +1,24 @@
 import { ProgramTemplateCache } from "../marks/programs/internal/programTemplateCache.js";
 
+export const mockGpuLimits = {
+    maxUniformBufferBindingSize: 65536,
+    maxStorageBufferBindingSize: 134217728,
+    maxBufferSize: 268435456,
+    maxStorageBuffersPerShaderStage: 8,
+    maxUniformBuffersPerShaderStage: 12,
+    maxSampledTexturesPerShaderStage: 16,
+    maxSamplersPerShaderStage: 16,
+    maxStorageTexturesPerShaderStage: 4,
+    maxBindGroups: 4,
+    maxBindingsPerBindGroup: 1000,
+};
+
 /**
  * @returns {import("../renderer.js").Renderer}
  */
 export function createMockRenderer() {
     const device = {
+        limits: mockGpuLimits,
         createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
             size,
             destroy() {},
