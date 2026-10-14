@@ -33,3 +33,9 @@ Detached rows before view transforms, not necessarily the whole backing source.
 ### scope
 
 > **scope**: `"loaded-source"`
+
+***
+
+### source
+
+> **source**: [`ViewSourceDescription`](ViewSourceDescription.md) \| `null`

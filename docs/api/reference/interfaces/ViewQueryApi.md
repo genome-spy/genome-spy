@@ -9,6 +9,24 @@ Create the query object with `createViewQuery(api.views)`.
 
 ## Properties
 
+### describeSource
+
+> **describeSource**: (`address`) => [`ViewSourceDescription`](ViewSourceDescription.md) \| `null`
+
+Describes loaded source coverage without fetching data or changing the viewport.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `address` | [`ViewAddress`](../type-aliases/ViewAddress.md) |
+
+#### Returns
+
+[`ViewSourceDescription`](ViewSourceDescription.md) \| `null`
+
+***
+
 ### readSourceData
 
 > **readSourceData**: (`address`, `options`) => [`ViewSourceDataReadResult`](ViewSourceDataReadResult.md)

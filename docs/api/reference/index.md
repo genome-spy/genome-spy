@@ -59,6 +59,7 @@ These query types are not exported by the root `@genome-spy/core` entry.
 - [ViewAnnotations](interfaces/ViewAnnotations.md)
 - [ViewSourceDataReadOptions](interfaces/ViewSourceDataReadOptions.md)
 - [ViewSourceDataReadResult](interfaces/ViewSourceDataReadResult.md)
+- [ViewSourceDescription](interfaces/ViewSourceDescription.md)
 
 ## Type Aliases
 

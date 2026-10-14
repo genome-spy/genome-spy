@@ -101,3 +101,7 @@ Captured numeric domains; locus coordinates use Core's linearized genome.
 > **sourceCoverage**: `"unknown"`
 
 Ready for the viewport does not prove full lazy-source coverage.
+
+#### primarySource
+
+> **primarySource**: [`ViewSourceDescription`](ViewSourceDescription.md) \| `null`

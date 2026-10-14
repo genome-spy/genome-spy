@@ -4,6 +4,34 @@
 
 ## Properties
 
+### visibility
+
+> **visibility**: `object`
+
+Visibility/opacity state, not proof that a row produced visible pixels.
+
+#### configured
+
+> **configured**: `boolean`
+
+#### ancestorsVisible
+
+> **ancestorsVisible**: `boolean`
+
+#### opacity
+
+> **opacity**: `number` \| `null`
+
+Null when opacity cannot yet be evaluated to a finite value.
+
+***
+
+### source
+
+> **source**: [`ViewSourceDescription`](ViewSourceDescription.md) \| `null`
+
+***
+
 ### dataRevision
 
 > **dataRevision**: `number` \| `null`

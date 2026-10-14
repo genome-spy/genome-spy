@@ -2,6 +2,7 @@ import { isContinuous, isDiscrete } from "vega-scale";
 import { splitAccessPath } from "vega-util";
 import {
     cloneDetached,
+    describeSourceData,
     getReadyCollector,
     QuerySupportError,
 } from "./viewDataApi.js";
@@ -264,6 +265,7 @@ function captureScope(view, options) {
         dataRevision: view.getCollector().dataRevision,
         data: "loaded-transformed",
         sourceCoverage: "unknown",
+        primarySource: describeSourceData(view),
     };
     for (const channel of options.channels) {
         scope.domains[channel] = continuousDomain(view, channel);

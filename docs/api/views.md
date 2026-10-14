@@ -146,6 +146,19 @@ handle with `staleHandle`. A successful read has no separate `ready` flag.
 Bounded reads serve inspection and small examples; repeated reads are not an
 API for computing statistics over a large collection.
 
+`describe()` also reports host-configured visibility, ancestor visibility and
+inherited view opacity (`null` if not yet finite). These describe view state,
+not pixel visibility, clipping, mark opacity or whether a particular row is drawn.
+
+`query.describeSource(address)` reports the nearest primary source independently
+of retention: readiness for the current viewport, loading status, retained revision
+and coverage. `complete-source` means the declared eager source finished loading;
+it does not undo parsing or view filters. `published-domain` gives a lazy source's
+last published linearized bounds and channel, not proof of full-resolution records.
+Other or unpublished sources report `unknown`. Side-input coverage is not included.
+Scoped queries capture this metadata in `scope.primarySource`; their overall
+`sourceCoverage` remains `unknown` for loaded transformed results.
+
 ### Reading source rows before display filters
 
 Set `data.retainForInspection: true` on the data owner to retain its loaded rows
@@ -159,6 +172,9 @@ console.log(source.rows, source.dataRevision, source.truncated);
 
 Use an explicit nonnegative safe-integer limit, or `null` for all retained rows.
 The returned scope is `loaded-source`; reads neither navigate nor fetch data.
+The result includes source metadata. After navigation it may describe a previous
+publication whose `ready` is false for the new viewport; inspect its coverage
+before interpreting those rows.
 An overriding data declaration requires its own retention setting. Retention
 uses additional memory proportional to loaded data and is disabled by default.
 Unready sources, stale handles, non-cloneable values and shared memory reject.

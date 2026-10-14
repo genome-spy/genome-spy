@@ -1,5 +1,10 @@
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import UnitView from "./unitView.js";
+import DataSource from "../data/sources/dataSource.js";
+import InlineSource from "../data/sources/inlineSource.js";
+import NamedSource from "../data/sources/namedSource.js";
+import UrlSource from "../data/sources/urlSource.js";
+import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import { buildReadinessRequest } from "./dataReadiness.js";
 
@@ -12,10 +17,17 @@ export function describeView(view) {
     const collector =
         view instanceof UnitView ? view.getCollector() : undefined;
 
+    const opacity = view.getEffectiveOpacity();
     return cloneDetached({
         title: view.getTitleText() ?? null,
         description: view.spec.description ?? null,
         encoding: view.getEncoding(),
+        visibility: {
+            configured: view.isConfiguredVisible(),
+            ancestorsVisible: view.isVisible(),
+            opacity: Number.isFinite(opacity) ? opacity : null,
+        },
+        source: describeSourceData(view),
         dataRevision: collector?.dataRevision ?? null,
         dataReady: Boolean(
             collector &&
@@ -74,22 +86,24 @@ export function readViewData(view, options) {
  * @returns {import("../types/viewQueryApi.js").ViewSourceDataReadResult}
  */
 export function readSourceData(view, options) {
-    const limit = options?.limit;
+    if (!options || typeof options !== "object" || Array.isArray(options)) {
+        throw new Error("Source read options with a limit are required.");
+    }
+    const limit = options.limit;
     if (limit !== null && (!Number.isSafeInteger(limit) || limit < 0)) {
         throw new Error(
             "Source read limit must be a nonnegative safe integer or null."
         );
     }
 
-    let owner = view;
-    while (owner && !owner.spec.data) owner = owner.dataParent;
-    const collector = owner?.flowHandle?.sourceCollector;
-    if (!collector) {
+    const owner = sourceOwner(view);
+    if (!owner?.spec.data.retainForInspection) {
         throw new Error(
             "Source inspection requires data.retainForInspection: true."
         );
     }
-    if (!isDataReady(collector)) {
+    const collector = owner.flowHandle?.sourceCollector;
+    if (!collector || !isDataReady(collector)) {
         throw new QuerySupportError(
             "data-not-ready",
             "Source data is not ready."
@@ -115,7 +129,60 @@ export function readSourceData(view, options) {
         truncated,
         dataRevision: collector.dataRevision,
         scope: "loaded-source",
+        source: describeSourceData(view),
     };
+}
+
+/**
+ * Describes publication and source coverage without fetching or retaining data.
+ * Published lazy bounds do not certify raw/full-resolution records.
+ * @param {import("./view.js").default} view
+ * @returns {import("../types/viewQueryApi.js").ViewSourceDescription | null}
+ */
+export function describeSourceData(view) {
+    const owner = sourceOwner(view);
+    if (!owner) return null;
+    const collector = owner.flowHandle?.sourceCollector;
+    let node = collector ?? owner.flowHandle?.node;
+    while (node && !(node instanceof DataSource)) node = node.parent;
+    const source = node instanceof DataSource ? node : undefined;
+    const request = buildReadinessRequest(view, ["x", "y"]);
+    const ready = Boolean(source && isDataReady(source, request));
+    const eager =
+        source instanceof InlineSource ||
+        source instanceof NamedSource ||
+        source instanceof UrlSource;
+    const domain =
+        source instanceof SingleAxisLazySource
+            ? source.getLoadedDomain()
+            : undefined;
+    const status = source
+        ? source.view.context.dataFlow.loadingStatusRegistry.get(source.view)
+              ?.status
+        : undefined;
+    return {
+        retentionEnabled: Boolean(owner.spec.data.retainForInspection),
+        dataRevision: collector?.dataRevision ?? null,
+        ready,
+        loadingStatus: status ?? null,
+        coverage:
+            eager && ready
+                ? { type: "complete-source" }
+                : source instanceof SingleAxisLazySource && domain
+                  ? {
+                        type: "published-domain",
+                        channel: source.channel,
+                        domain: Array.from(domain),
+                    }
+                  : { type: "unknown" },
+    };
+}
+
+/** @param {import("./view.js").default} view */
+function sourceOwner(view) {
+    let owner = view;
+    while (owner && !owner.spec.data) owner = owner.dataParent;
+    return owner;
 }
 
 /**

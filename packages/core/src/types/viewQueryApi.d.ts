@@ -7,6 +7,9 @@ import type { ViewAddress } from "./embedApi.js";
  * Create the query object with `createViewQuery(api.views)`.
  */
 export interface ViewQueryApi {
+    /** Describes loaded source coverage without fetching data or changing the viewport. */
+    describeSource: (address: ViewAddress) => ViewSourceDescription | null;
+
     /** Reads retained source rows before transforms; never loads additional data. */
     readSourceData: (
         address: ViewAddress,
@@ -43,6 +46,15 @@ export interface ViewQueryApi {
 }
 
 export interface ViewDescription {
+    /** Visibility/opacity state, not proof that a row produced visible pixels. */
+    visibility: {
+        configured: boolean;
+        ancestorsVisible: boolean;
+        /** Null when opacity cannot yet be evaluated to a finite value. */
+        opacity: number | null;
+    };
+    source: ViewSourceDescription | null;
+
     /** Current collector publication revision, or null without a collector. */
     dataRevision: number | null;
 
@@ -185,6 +197,7 @@ export interface ViewSliceQueryResult {
         data: "loaded-transformed";
         /** Ready for the viewport does not prove full lazy-source coverage. */
         sourceCoverage: "unknown";
+        primarySource: ViewSourceDescription | null;
     };
 }
 
@@ -229,4 +242,24 @@ export interface ViewSourceDataReadResult {
     truncated: boolean;
     dataRevision: number;
     scope: "loaded-source";
+    source: ViewSourceDescription | null;
+}
+
+/** Current primary source state, before any view transforms. */
+export interface ViewSourceDescription {
+    retentionEnabled: boolean;
+    /** Retained collector revision, or null when retention is disabled/uninitialized. */
+    dataRevision: number | null;
+    /** Whether the source meets its current viewport readiness policy. */
+    ready: boolean;
+    loadingStatus: "loading" | "complete" | "error" | null;
+    coverage:
+        | { type: "complete-source" }
+        | {
+              type: "published-domain";
+              channel: "x" | "y";
+              /** Linearized bounds of the last publication, not raw-record completeness. */
+              domain: number[];
+          }
+        | { type: "unknown" };
 }
