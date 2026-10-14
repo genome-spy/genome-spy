@@ -25,8 +25,9 @@ checks, Core build/schema/declarations, focused lint/format, reproducible API do
 and optional/minimal bundle checks passed. Seven added behavioral tests cover
 source filters, updates, limits, ownership, disposal, lazy state and visibility.
 
-App integration is pending: adopt one compatible runtime, name track units,
-opt in to retained gene/source rows and expose these APIs through `genomespy.*`.
+App integration is excluded from this PR and deferred until Core merges and the
+Python package is updated. Then adopt one compatible runtime, name track units,
+opt in to retained source rows and expose the native APIs through `genomespy.*`.
 Model jobs remain `app.*`. Range annotations, off-viewport source requests,
 navigation gesture events and cell selection restore remain separate work.
 No browser/PWA or live app integration is claimed for this Core-only increment.
