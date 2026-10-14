@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
-import { createMarkXIndexSpec, resolveMarkXIndexQuery } from "./markXIndex.js";
+import {
+    buildMarkXIndex,
+    createMarkXIndexSpec,
+    resolveMarkXIndexQuery,
+} from "./markXIndex.js";
 
 /** @param {string} field */
 function createAccessor(field) {
@@ -59,6 +63,39 @@ function createFixture(type = "point") {
     };
     return { mark, resolution, scale };
 }
+
+describe("buildMarkXIndex", () => {
+    test.each(["point", "rect"])(
+        "preserves conservative %s ranges for a large batch",
+        (type) => {
+            const { mark, scale } = createFixture(type);
+            if (type === "rect") {
+                mark.encoders.x2 = createEncoder("x2", scale);
+            }
+            const count = 20000;
+            const offset = 123;
+            const data = Array.from({ length: count }, (_, i) => ({
+                x: (i / count) * 100,
+                x2: (i / count) * 100 + 2,
+            }));
+            const spec = createMarkXIndexSpec(mark);
+            const lookup = buildMarkXIndex(spec, data, offset);
+            const [start, end] = lookup(40, 50);
+            // A range lookup may include neighboring bins, but must include every hit.
+            const firstHit = data.findIndex(
+                (d) => (type === "rect" ? d.x2 : d.x) >= 40
+            );
+            const afterLastHit = data.findIndex((d) => d.x >= 50);
+            expect(start).toBeGreaterThanOrEqual(offset);
+            expect(start).toBeLessThanOrEqual(offset + firstHit);
+            expect(end).toBeGreaterThanOrEqual(offset + afterLastHit);
+            expect(end).toBeLessThanOrEqual(offset + count);
+
+            data.at(-1).x = -1;
+            expect(buildMarkXIndex(spec, data, offset)).toBeUndefined();
+        }
+    );
+});
 
 describe("createMarkXIndexSpec", () => {
     test("captures eligible raw accessors and a stable zoom extent", () => {

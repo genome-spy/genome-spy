@@ -85,10 +85,16 @@ Evaluate renderer-owned shared series with logical column handles, keeping physi
 packing and offsets inside the renderer. Core sharing must account for row order,
 data revision, accessor semantics, and the encoded representation.
 
-The separate extraction optimization is tracked in
-[#567](https://github.com/genome-spy/genome-spy/issues/567). Evaluate point-quad
-topology changes independently. These follow-ups are outside the completed
-default-limit buffer-packing work.
+The extraction follow-up in
+[#567](https://github.com/genome-spy/genome-spy/issues/567) is implemented.
+Preallocated columns and independent large-batch callback call sites remove
+temporary arrays and speed up extraction and x-index construction. Scalar
+packing has a direct copy loop. A separate measured change renders analytic
+and SVG point quads as four-vertex strips. The public 1.5M-row benchmark now
+prepares data faster than WebGL and reaches a completed first frame at parity
+or better; ordinary navigation performs no full-series rebuild/upload. See the
+[performance record](../core/scripts/webgpu-data-performance.md) for measurements
+and qualification. Shared series remain a future integration task.
 
 ## Milestone 1: Close current Core parity gaps
 

@@ -85,12 +85,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         return culledPoint();
     }
 
-    var quad = array<vec2<f32>, 6>(
+    var quad = array<vec2<f32>, 4>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),
         vec2<f32>(0.0, 1.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0),
         vec2<f32>(1.0, 1.0)
     );
 

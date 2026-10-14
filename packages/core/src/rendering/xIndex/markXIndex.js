@@ -2,6 +2,7 @@ import { isMarkClamped } from "../../marks/markUtils.js";
 import { isContinuous } from "vega-scale";
 import { getEncoderDataAccessor } from "../../encoder/encoder.js";
 import { createBinningRangeIndexer } from "../../utils/binnedIndex.js";
+import forEachInBatch from "../../utils/forEachInBatch.js";
 
 /**
  * Builds an index over a stable data batch. Native indices correspond
@@ -22,9 +23,10 @@ export function buildMarkXIndex(spec, data, nativeStart = 0) {
         spec.xAccessor,
         spec.x2Accessor
     );
-    data.forEach((datum, index) =>
-        indexer(datum, nativeStart + index, nativeStart + index + 1)
-    );
+    forEachInBatch(data, (datum, i) => {
+        const index = nativeStart + i;
+        indexer(datum, index, index + 1);
+    });
     return indexer.getIndex();
 }
 

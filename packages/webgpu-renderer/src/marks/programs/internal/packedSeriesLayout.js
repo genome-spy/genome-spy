@@ -169,11 +169,18 @@ export function packSeriesArrays({ channels, layout, count }) {
             source.byteOffset,
             source.length
         );
-        for (let i = 0; i < count; i++) {
-            const base = i * entry.stride + entry.offset;
-            const srcBase = i * inputComponents;
-            for (let c = 0; c < entry.components; c++) {
-                words[base + c] = sourceWords[srcBase + c];
+        const { stride, offset, components } = entry;
+        if (components === 1) {
+            for (let i = 0, target = offset; i < count; i++, target += stride) {
+                words[target] = sourceWords[i * inputComponents];
+            }
+        } else {
+            for (let i = 0; i < count; i++) {
+                const base = i * stride + offset;
+                const srcBase = i * inputComponents;
+                for (let c = 0; c < components; c++) {
+                    words[base + c] = sourceWords[srcBase + c];
+                }
             }
         }
     }
