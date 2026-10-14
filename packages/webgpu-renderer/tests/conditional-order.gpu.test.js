@@ -220,9 +220,9 @@ test("logical order combines two independently updated interval components", asy
             return pixel;
         };
         const empty = await read();
-        mark.selections.from.set({ range0: [1, 1] });
+        mark.selections.from.set({ range0: [1, 2] });
         const fromOnly = await read();
-        mark.selections.to.set({ range0: [5, 5] });
+        mark.selections.to.set({ range0: [5, 6] });
         const both = await read();
         mark.selections.from.set({});
         const toOnly = await read();

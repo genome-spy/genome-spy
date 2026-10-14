@@ -2,7 +2,8 @@
 
 Status: default device limits and repeatable example audit implemented;
 scale/gap packing, mixed-series packing, startup byte negotiation, and audit
-forcing are implemented. Final integration verification remains in progress.
+forcing are implemented. All three implementation milestones are complete;
+the full example sweep and isolated lasso-stack qualification are recorded below.
 
 The font startup race found by the audit is now fixed in Core's shared render
 entry point: resize and animation callbacks can update layout during launch,
@@ -11,9 +12,9 @@ frame afterward. A focused regression test covers both callback paths, the
 first post-startup frame, and subsequent resize rendering. The three browser
 reproductions (`rules.json`, `multi-url-bigwig.json`, and
 `bpreveal-pisa-matrix.json`) now pass with visible content and labels. The full
-238-spec rerun on default limits returned 232 passes and 6 failures. All 13
-previous font failures now pass. The remaining failures are the same five
-9/8 storage-binding cases and the arrow playground's zero-height canvas.
+238-spec rerun after packing returned 237 passes and 1 failure. All 13 previous
+font failures and all five binding-limit failures now pass. The only remaining
+failure is the pre-existing arrow playground's zero-height canvas.
 
 ## Goals and scope
 
@@ -62,12 +63,15 @@ All 238 specs pass current Core schema validation. The initial browser sweep ret
 failures, 1 zero-height canvas failure, and 1 aborted remote request. The remote
 request example passed a focused rerun; the zero-height failure reproduced.
 After the font startup fix, all 238 examples were rerun with default limits:
-232 pass and 6 fail, with no font-preparation errors. See
+232 pass and 6 fail, with no font-preparation errors. After packing, the full
+forced-default rerun returned 237 passes and only the zero-height canvas failure. See
 [the current failure and headroom inventory](audit-report.md).
 
 Generated artifacts, ignored by Git:
 
-- `output/webgpu-default-limits-font-fix/`: the current full rerun's summary,
+- `output/webgpu-packed-default-limits/`: the final full audit after packing,
+  with 237/238 passes and actual default byte/count limits.
+- `output/webgpu-default-limits-font-fix/`: the pre-packing full rerun's summary,
   failure report, and screenshots after the font startup fix.
 - `output/webgpu-default-limits/summary.json`: every example's errors,
   observed device limits, explicit pipeline layouts, binding visibility, and
@@ -89,16 +93,17 @@ not measure total GPU memory or texture-dimension headroom.
 Decision 4 describes this deliberate audit override; normal rendering negotiates
 byte capacity while the sweep exercises actual default device limits.
 
-## Current resource pressure
+## Baseline resource pressure
 
 `packages/webgpu-renderer/src/renderer.js` requested up to 10 storage buffers
 per shader stage. The baseline reset removed that binding-count override;
 normal startup now requests only supported buffer byte limits (decision 4).
 The observed defaults are 8 storage buffers per stage and 4 bind groups.
-These match the [WebGPU default limits](https://www.w3.org/TR/webgpu/#limits).
+The forced audit still uses these counts and baseline byte capacity, matching
+the [WebGPU default limits](https://www.w3.org/TR/webgpu/#limits).
 Moving bindings to another bind group cannot evade the per-stage limit.
 
-The pressure originates in generated mark layouts:
+Before packing, the pressure originated in generated mark layouts:
 
 - `src/marks/programs/internal/packedSeriesLayout.js` and `seriesBuffers.js`
   pack series into up to three storage bindings, one per scalar type.
@@ -113,8 +118,8 @@ The pressure originates in generated mark layouts:
   glyph metrics, and, with text effects, render items.
 - Placement-enabled marks add a vertex storage binding in group 2.
 
-The five over-budget specs require 9 storage buffers in the vertex stage.
-Two grouped-bar specs reach exactly 8; nine further specs reach 7. The maximum
+The five over-budget specs required 9 storage buffers in the vertex stage.
+Two grouped-bar specs reached exactly 8; nine further specs reached 7. The maximum
 bind-group count is 3/4. Observed explicit buffer bindings are far from byte
 limits (largest storage binding 3,942,480/134,217,728 bytes; largest uniform
 binding 752/65,536 bytes).
@@ -463,9 +468,35 @@ large IDs. That device reported both byte limits as 4,294,967,292 and counts of
 scale-capacity compaction have regression coverage. A three-example Core/docs
 rerun passed and recorded the supported requests alongside effective default
 byte limits (`output/webgpu-series-packing/`). Production renderer source changed
-by +3 raw lines overall, excluding tests/test scaffolding, including the new
+by +4 raw lines overall, excluding tests/test scaffolding, including the new
 capacity/count helpers. Full example/export/interaction and #563 qualification
 remain in milestone 3.
+
+### Milestone 3: integration qualification complete
+
+The complete forced-default Core/docs audit passes 237/238 specs. All five
+binding-count failures are resolved; maximum example pressure is now 5/8
+storage bindings and 3/4 groups, with a largest storage binding of 10,830,020
+bytes. The existing zero-height arrow playground remains outside this change.
+See [the final audit report](audit-report.md).
+
+The full repository unit suite passes 4,938 tests (1 skipped, 2 todo), and the
+66-test renderer integration GPU matrix passes after reconciling old half-open
+interval and wide-arrowhead fixtures. Point/text/placement/gap GPU tests, the
+160 MB negotiated-capacity case, Core/renderer types, package exports,
+tree-shaking, and release checks pass. Public Core update/zoom/PNG/vector SVG/
+hybrid SVG checks pass on WebGPU and WebGL. Resource diagnostics retain each
+mixed-series channel's scalar type. The three milestones add only seven raw
+runtime renderer lines overall, excluding tests and test scaffolding.
+
+An isolated rebase of #563 plus #564 onto the packed renderer passed 12 affected
+GPU tests with forced defaults, 39 Core contract tests, both 10M native modes,
+and the linked-view scenario. Preview uses no ID readback, release uses one,
+and navigation preserves membership. Source/linked/filtered consumers borrow
+the same actual buffer; cancel, active-empty, clear, and ownership tests pass.
+The temporary worktree was archived with a recoverable snapshot and local
+patches. [Qualification and rebase notes](lasso-qualification.md) describe the
+adjustments needed when updating the PR stack.
 
 ## Risks and open questions
 
@@ -510,10 +541,10 @@ remain in milestone 3.
 - [x] Implement startup byte negotiation and audit forcing;
       verify baseline-only startup, unchanged binding counts, mixed-series
       capacity boundaries, and loaded/lazy-data growth errors.
-- [ ] Integration follow-up: qualify the rebased #563/#562 lasso and linked-view
+- [x] Qualify the isolated rebased #563/#564 stack and #562 lasso/linked-view
       scenarios on default limits without table copies or per-frame readback.
 - [x] Milestone 1: implement scale/gap packing and verify categorical updates,
       gaps, picking, and the five default-limit example failures.
 - [x] Milestone 2: unify mixed series and implement contextual budget errors.
-- [ ] Milestone 3: finish the full example and interaction/integration matrix,
+- [x] Milestone 3: finish the full example and interaction/integration matrix,
       including reconciliation of the existing interval GPU fixtures.

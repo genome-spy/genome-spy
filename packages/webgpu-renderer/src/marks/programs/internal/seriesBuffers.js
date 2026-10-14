@@ -53,7 +53,7 @@ export class SeriesBufferManager {
     }
 
     /**
-     * @returns {Map<string, { stride: number, channels: Array<{ name: string, alias: string, offset: number, components: 1|2|4, stride: number }> }>}
+     * @returns {Map<string, { stride: number, channels: Array<{ name: string, scalarType: "f32"|"u32"|"i32", alias: string, offset: number, components: 1|2|4, stride: number }> }>}
      */
     getPackedSeriesInfo() {
         const layout = this._getPackedLayout();
@@ -67,6 +67,7 @@ export class SeriesBufferManager {
                     stride: layout.stride,
                     channels: Array.from(layout.entries, ([name, entry]) => ({
                         name,
+                        scalarType: entry.scalarType,
                         alias: this._seriesBufferAliases.get(name) ?? name,
                         offset: entry.offset,
                         components: entry.components,

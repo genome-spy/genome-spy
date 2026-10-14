@@ -1,140 +1,114 @@
-# Default-limit WebGPU example audit after the font startup fix
+# Default-limit WebGPU audit after buffer packing
 
-Date: 2026-10-14. Baseline checkout: `22d005a08`, with the default-limit reset,
-audit tooling, and font startup fix applied. Environment: macOS arm64,
-Playwright Chromium, headless, ANGLE Metal, DPR 1.
+Date: 2026-10-14. Runtime audit revision: `509ff43ee`, including scale/gap
+packing, mixed-series packing, startup byte negotiation, and the font startup
+fix. Subsequent verification-fixture and debug-metadata changes do not alter
+uploads, shaders, or rendering. Environment: macOS arm64, Playwright Chromium,
+headless, ANGLE Metal, DPR 1.
 
-**232/238 examples pass. All 13 previous font-preparation failures now pass.**
-The remaining 6 failures are 5 storage-binding limit violations and the known
-zero-height arrow playground canvas. Every example created a default-limit
-device with 8 storage buffers per shader stage and 4 bind groups. No explicit
-`requiredLimits` were requested; remote data was enabled and no specs were skipped.
+**237/238 examples pass. No binding-limit failures remain.** All 13 previously
+failing font examples still pass. The only failure is the pre-existing
+zero-height arrow playground canvas.
 
 | Inventory | Passed | Failed | Total |
 | --------- | -----: | -----: | ----: |
-| core      |    110 |      3 |   113 |
-| docs      |    122 |      3 |   125 |
-| Total     |    232 |      6 |   238 |
+| core      |    113 |      0 |   113 |
+| docs      |    124 |      1 |   125 |
+| Total     |    237 |      1 |   238 |
 
-## Startup fix and comparison
+Every example created an actual default-limit device: 8 storage buffers per
+shader stage, 4 bind groups, 128 MiB per storage binding, and 256 MiB per buffer
+allocation. The audit recorded normal startup's supported byte requests and
+removed them before native device creation. Remote data was enabled; no
+specifications were skipped.
 
-Core now suppresses drawing through `renderAll()` while launch preparation is
-pending. Layout may still respond to resize and scheduled reflow. Successful
-launch requests a fresh frame after fonts and initial data are prepared, and
-normal resize rendering resumes. The fix uses existing launch state rather
-than adding another readiness flag or silently substituting fonts.
+## Resolved binding pressure
 
-The initial sweep returned 218 passes and 20 failures: 13 font-preparation
-failures, 5 storage-limit failures, one zero-height canvas, and one aborted
-remote request. All 13 font failures are resolved in this complete rerun.
-The formerly aborted `dynseq-spi1-bqtl.json` request also passed, as it did in
-the earlier focused recheck; that observation is separate from the font fix.
+Peak counts cover each complete example, including its generated guides.
+All five formerly failing specs now render without removing encodings,
+selection behavior, shapes, placement, or picking.
 
-| Previously failing font example                                                                                                                                            | Rerun  |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| [examples/core/marks/rule/rules.json](../../examples/core/marks/rule/rules.json)                                                                                           | passed |
-| [examples/core/scales/parameterized_range_test.json](../../examples/core/scales/parameterized_range_test.json)                                                             | passed |
-| [examples/core/scales/threshold_test.json](../../examples/core/scales/threshold_test.json)                                                                                 | passed |
-| [examples/core/techniques/geometric_zoom_expr.json](../../examples/core/techniques/geometric_zoom_expr.json)                                                               | passed |
-| [examples/core/techniques/semantic_zoom.json](../../examples/core/techniques/semantic_zoom.json)                                                                           | passed |
-| [examples/docs/examples/genomic-data/bpreveal-pisa-matrix.json](../../examples/docs/examples/genomic-data/bpreveal-pisa-matrix.json)                                       | passed |
-| [examples/docs/examples/genomic-data/bpreveal-pisa-squid.json](../../examples/docs/examples/genomic-data/bpreveal-pisa-squid.json)                                         | passed |
-| [examples/docs/grammar/facet/multi-url-bigwig.json](../../examples/docs/grammar/facet/multi-url-bigwig.json)                                                               | passed |
-| [examples/docs/grammar/index/single-view-specification.json](../../examples/docs/grammar/index/single-view-specification.json)                                             | passed |
-| [examples/docs/grammar/mark/point/point-mark.json](../../examples/docs/grammar/mark/point/point-mark.json)                                                                 | passed |
-| [examples/docs/grammar/mark/point/semantic-zoom.json](../../examples/docs/grammar/mark/point/semantic-zoom.json)                                                           | passed |
-| [examples/docs/grammar/scale/shared-scale-expression.json](../../examples/docs/grammar/scale/shared-scale-expression.json)                                                 | passed |
-| [examples/docs/grammar/transform/displace2d/bubble-health-income-annotations.json](../../examples/docs/grammar/transform/displace2d/bubble-health-income-annotations.json) | passed |
+| Specification                                                                         | Before | After | Result |
+| ------------------------------------------------------------------------------------- | -----: | ----: | ------ |
+| [redundant-encoding.json](../../examples/core/legends/redundant-encoding.json)        |    9/8 |   4/8 | passed |
+| [point.json](../../examples/core/marks/point/point.json)                              |    9/8 |   3/8 | passed |
+| [point2d.json](../../examples/core/marks/point/point2d.json)                          |    9/8 |   4/8 | passed |
+| [tcga-ov-gistic.json](../../examples/docs/examples/genomic-data/tcga-ov-gistic.json)  |    9/8 |   5/8 | passed |
+| [plenty-of-points.json](../../examples/docs/grammar/mark/point/plenty-of-points.json) |    9/8 |   3/8 | passed |
 
-The `multi-url-bigwig.json` screenshot was also visually inspected: all five
-BigWig tracks, facet labels, axes, and the facet title are visible.
+Both grouped-bar examples fell from 8/8 to 5/8. No example now reaches 80% of
+the storage-binding count limit. Scale/gap tables share one mark-owned binding;
+all series scalar types share another. Multi-selection tables remain separate.
+The `point2d.json` screenshot was inspected: points, category colors, shapes,
+axes, and legend are visible.
 
-## Remaining failing specifications
+## Remaining failure and resource peaks
 
-| Specification                                                                                                            | Failure                                       |
-| ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
-| [examples/core/legends/redundant-encoding.json](../../examples/core/legends/redundant-encoding.json)                     | 9/8 vertex storage bindings                   |
-| [examples/core/marks/point/point.json](../../examples/core/marks/point/point.json)                                       | 9/8 vertex storage bindings                   |
-| [examples/core/marks/point/point2d.json](../../examples/core/marks/point/point2d.json)                                   | 9/8 vertex storage bindings                   |
-| [examples/docs/examples/genomic-data/tcga-ov-gistic.json](../../examples/docs/examples/genomic-data/tcga-ov-gistic.json) | 9/8 vertex storage bindings                   |
-| [examples/docs/grammar/mark/arrow/arrow-playground.json](../../examples/docs/grammar/mark/arrow/arrow-playground.json)   | Zero-height canvas: 500 × 0 swapchain texture |
-| [examples/docs/grammar/mark/point/plenty-of-points.json](../../examples/docs/grammar/mark/point/plenty-of-points.json)   | 9/8 vertex storage bindings                   |
-
-## Storage bindings near or above the limit
-
-Counts include all explicit bind groups and use shader-stage visibility.
-All peaks below are in the vertex stage. No example content was simplified
-to avoid resource limits.
-
-| Specification                                                                                                                                | Peak / default | Rerun result |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | -------------: | ------------ |
-| [examples/core/legends/redundant-encoding.json](../../examples/core/legends/redundant-encoding.json)                                         |            9/8 | failed       |
-| [examples/core/legends/region-wrapping.json](../../examples/core/legends/region-wrapping.json)                                               |            7/8 | passed       |
-| [examples/core/marks/point/point.json](../../examples/core/marks/point/point.json)                                                           |            9/8 | failed       |
-| [examples/core/marks/point/point2d.json](../../examples/core/marks/point/point2d.json)                                                       |            9/8 | failed       |
-| [examples/core/marks/rect/grouped-bars-layered.json](../../examples/core/marks/rect/grouped-bars-layered.json)                               |            8/8 | passed       |
-| [examples/docs/examples/generic/upsetr-mutations.json](../../examples/docs/examples/generic/upsetr-mutations.json)                           |            7/8 | passed       |
-| [examples/docs/examples/genomic-data/dynseq-spi1-bqtl.json](../../examples/docs/examples/genomic-data/dynseq-spi1-bqtl.json)                 |            7/8 | passed       |
-| [examples/docs/examples/genomic-data/msa.json](../../examples/docs/examples/genomic-data/msa.json)                                           |            7/8 | passed       |
-| [examples/docs/examples/genomic-data/tcga-ov-gistic.json](../../examples/docs/examples/genomic-data/tcga-ov-gistic.json)                     |            9/8 | failed       |
-| [examples/docs/grammar/axis/genome-axis.json](../../examples/docs/grammar/axis/genome-axis.json)                                             |            7/8 | passed       |
-| [examples/docs/grammar/mark/point/plenty-of-points.json](../../examples/docs/grammar/mark/point/plenty-of-points.json)                       |            9/8 | failed       |
-| [examples/docs/grammar/mark/rect/grouped-bars.json](../../examples/docs/grammar/mark/rect/grouped-bars.json)                                 |            8/8 | passed       |
-| [examples/docs/grammar/mark/text/sequence-logo.json](../../examples/docs/grammar/mark/text/sequence-logo.json)                               |            7/8 | passed       |
-| [examples/docs/grammar/mark/text/text-mark.json](../../examples/docs/grammar/mark/text/text-mark.json)                                       |            7/8 | passed       |
-| [examples/docs/grammar/transform/set-intersection/co-mutation.json](../../examples/docs/grammar/transform/set-intersection/co-mutation.json) |            7/8 | passed       |
-| [examples/docs/grammar/transform/stack/sequence-logo.json](../../examples/docs/grammar/transform/stack/sequence-logo.json)                   |            7/8 | passed       |
-
-Two grouped-bar specs use all 8 storage bindings; nine further specs use 7.
-The [resource-packing mitigation design](webgpu-default-limits-plan.md) remains
-proposed and unimplemented. Font readiness no longer prevents those examples
-from reaching their complete initial resource layouts.
-
-## Other observed resource peaks
+[arrow-playground.json](../../examples/docs/grammar/mark/arrow/arrow-playground.json)
+creates a 500 × 0 canvas and an invalid swapchain texture. This reproduces the
+original baseline failure and is outside the buffer-packing change.
 
 | Limit                            | Largest observed use | Device default |
 | -------------------------------- | -------------------: | -------------: |
+| maxStorageBuffersPerShaderStage  |                    5 |              8 |
 | maxBindGroups                    |                    3 |              4 |
-| maxBindingsPerBindGroup          |                   12 |          1,000 |
+| maxBindingsPerBindGroup          |                    9 |          1,000 |
+| maxStorageBufferBindingSize      |           10,830,020 |    134,217,728 |
+| maxBufferSize                    |           10,830,020 |    268,435,456 |
+| maxUniformBufferBindingSize      |                  912 |         65,536 |
 | maxUniformBuffersPerShaderStage  |                    2 |             12 |
 | maxSampledTexturesPerShaderStage |                    2 |             16 |
 | maxSamplersPerShaderStage        |                    2 |             16 |
-| maxStorageBufferBindingSize      |            8,664,016 |    134,217,728 |
-| maxUniformBufferBindingSize      |                  912 |         65,536 |
-| maxBufferSize                    |            8,664,016 |    268,435,456 |
 
-## Reproduction and evidence
+Packing raises the largest individual series binding from the previous
+8,664,016-byte peak. These examples still have ample byte capacity. Huge mixed
+series can exceed baseline capacity; normal startup negotiates supported byte
+limits, and allocation/update boundaries report contextual capacity errors.
+
+## Integration verification
+
+- Full repository unit suite: 4,938 passed, 1 skipped, 2 todo; 525 files passed.
+- Renderer integration GPU matrix: 66 passed, covering all affected mark
+  families, generated scales, precision, selection predicates, order, and scopes.
+- Earlier focused point/text/placement/gap/series matrix: 17 passed. The separate
+  160 MB mixed-series GPU test passed with exact first/last ID picking, default
+  binding counts, and negotiated byte limits of 4,294,967,292.
+- Public Core API smoke on WebGPU and WebGL: named-data growth, zoom, PNG export,
+  vector SVG, and hybrid SVG passed. WebGPU used forced defaults and reported
+  no validation errors. Each backend exported 55 vector elements and one
+  rasterized SVG run.
+- Renderer/Core TypeScript, lint, formatting, tree-shaking/package export,
+  and Changesets policy checks passed. The existing empty fragment records no
+  release impact for this unpublished-renderer/tooling work; other release
+  fragments still schedule the fixed package group for 1.2.0.
+
+Pre-existing GPU fixtures were reconciled with the documented half-open
+interval contract. A wide-arrowhead fixture sampled a point inside the head as
+if it were outside; this reproduced with the pre-packing renderer at both DPRs.
+It now checks that interior point and an additional exterior point. These are
+fixture corrections, with no changes to interval or arrow rendering semantics.
+
+The [lasso-stack qualification](lasso-qualification.md) records the isolated
+#563/#564 rebase, shared GPU-table borrowing, native linked-view lifecycle, and
+both 10-million-point scenarios at forced default limits.
+
+## Reproduction and local evidence
 
 ```sh
 node packages/core/scripts/runWebGpuExamples.mjs --all \
-    --output-dir output/webgpu-default-limits-font-fix
+    --output-dir output/webgpu-packed-default-limits
 ```
 
-- Current full diagnostics: `output/webgpu-default-limits-font-fix/failure-report.md`.
-- Current per-example limits, layouts, errors, and buffer peaks:
-  `output/webgpu-default-limits-font-fix/summary.json`.
-- Current screenshots: `output/webgpu-default-limits-font-fix/*.png`.
-- Before-fix baseline: `output/webgpu-default-limits/summary.json`.
-- Three-example WebGPU fix smoke: `output/webgpu-default-limits-font-fix-smoke/`.
-- Three-example WebGL smoke: `output/webgl-font-fix-smoke/`.
+Ignored machine artifacts:
+
+- `output/webgpu-packed-default-limits/summary.json`, `failure-report.md`, and
+  screenshots: the complete current default-limit audit.
+- `output/webgpu-packed-exports.json`: Core update/zoom/export checks.
+- `output/webgpu-lasso-native-qualification.json` and
+  `output/webgpu-lasso-linked-lifecycle.json`: native lasso checks.
+- `output/webgpu-default-limits-font-fix/`: the pre-packing 232/238 baseline.
 
 This audit covers initial rendering and visible lazy data. It does not exhaust
-interaction states, hidden tracks, future viewports, pixel parity, texture
-dimensions, or total GPU memory. Auto-layout compute pipelines receive default
-device validation but their inferred layouts are not counted in headroom metrics.
-
-## Change verification
-
-- Current Core/docs schema validation: 238/238 passed before the runtime fix;
-  specifications and schema are unchanged.
-- Related unit tests: 105/105 passed, including the new paused-font regression
-  for resize, scheduled drawing, first post-startup frame, and subsequent resize.
-- Focused WebGPU smoke: 3/3 passed; WebGL smoke: 3/3 passed.
-- Core TypeScript check, targeted ESLint, formatting, and diff checks passed.
-- Changeset policy check passed. The shared Core startup fix has a patch note.
-  Existing minor fragments keep the fixed package group scheduled for 1.2.0.
-
-The startup fix adds 6 lines to `genomeSpyBase.js` (1,011 to 1,017) and 54 lines
-of regression coverage. It adds no runtime readiness state beyond the existing
-launch flag. The earlier default-limit reset removes 6 renderer lines; the
-repeatable audit tooling remains outside rendering hot paths.
+all interactions, hidden tracks, future viewports, pixel parity, texture
+capacity, or total GPU memory. Auto-layout compute pipelines receive GPU
+validation but their inferred binding counts are not reflected by the audit.
