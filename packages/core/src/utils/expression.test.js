@@ -98,6 +98,8 @@ describe("expression helpers", () => {
             resolveScaleResolution: (channel) =>
                 channel == "x" ? resolution : undefined,
         }).expression;
+        if (!expr.createSnapshotEvaluator)
+            throw new Error("Expected a scale snapshot evaluator");
         const snapshot = expr.createSnapshotEvaluator();
 
         let calls = 0;
