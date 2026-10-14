@@ -1,6 +1,6 @@
 # Dendrogram implementation plan
 
-Status: implementation in progress on `codex/dendrogram`; M1 complete.
+Status: implementation in progress on `codex/dendrogram`; M1 and M2 complete.
 Independently reviewed on 2026-10-14.
 
 ## Goal and scope
@@ -339,12 +339,12 @@ link endpoints use point placement at grouping cuts.
 
 ### M2 — Precomputed-tree layout to flat edges
 
-- [ ] Add `DendrogramParams`, the buffered transform, and factory registration.
-- [ ] Implement boundary validation, iterative layout, metadata/output naming,
+- [x] Add `DendrogramParams`, the buffered transform, and factory registration.
+- [x] Implement boundary validation, iterative layout, metadata/output naming,
       and per-tree batching/reset/replay.
-- [ ] Preserve physical file provenance and establish downstream edge identity
+- [x] Preserve physical file provenance and establish downstream edge identity
       after an upstream node identifier.
-- [ ] Verify the real spec-to-collector path and source-data immutability.
+- [x] Verify the real spec-to-collector path and source-data immutability.
 
 Affected areas: `spec/transform.d.ts`, new
 `data/transforms/dendrogram.js` with colocated tests, `transformFactory.js`,
@@ -371,6 +371,11 @@ application code. Native import adapters remain deferred.
 Tentative commit: `feat(core): add a dendrogram layout transform`.
 Body rationale: generate reusable edge records from precomputed trees without
 coupling layout to renderer coordinates or navigation.
+
+M2 verification: 57 focused transform/factory/dataflow tests passed, including
+an unbalanced layout, a 10,000-leaf comb, heterogeneous physical file shapes
+within facets, upstream identifiers with sibling node/link marks, and named-data
+replacement. Core TypeScript, schema generation, and focused lint passed.
 
 ### M3 — Exact orthogonal links across backends
 

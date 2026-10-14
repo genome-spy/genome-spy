@@ -5,6 +5,7 @@ import CoordinateLookupTransform from "./coordinateLookup.js";
 import CrossTransform from "./cross.js";
 import CoverageTransform from "./coverage.js";
 import Displace1DTransform from "./displace1d.js";
+import DendrogramTransform from "./dendrogram.js";
 import Displace2DTransform from "./displace2d.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
 import AxisLabelLayoutTransform from "./axisLabelLayout.js";
@@ -41,6 +42,7 @@ export const transforms = {
     alignmentMismatches: AlignmentMismatchesTransform,
     collect: Collector,
     coverage: CoverageTransform,
+    dendrogram: DendrogramTransform,
     displace1d: Displace1DTransform,
     displace2d: Displace2DTransform,
     axisLabelLayout: AxisLabelLayoutTransform,

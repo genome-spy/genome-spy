@@ -27,6 +27,36 @@ export interface TransformParamsBase {
     description?: string;
 }
 
+/** Lay out a precomputed tree and emit one parent-child edge per non-root node. */
+export interface DendrogramParams extends TransformParamsBase {
+    type: "dendrogram";
+
+    /** Unique string or finite numeric node identifier. */
+    key: Field;
+
+    /** Parent node identifier. Exactly one root must contain null. */
+    parentKey: Field;
+
+    /** Finite, nonnegative merge height, including leaf heights. */
+    height: Field;
+
+    /**
+     * Integer row position for each leaf, matching the heatmap order. Indices
+     * must be distinct and in [0, 2^44); each subtree's leaves must be contiguous
+     * in the ordered leaf sequence. Internal nodes need no value in this field.
+     */
+    leafIndex: Field;
+
+    /**
+     * Output field names for source/target IDs, heights, integer anchors, and
+     * fractional offsets. Generated values overwrite copied child metadata.
+     * Names must be distinct and cannot use the reserved internal __uniqueId.
+     *
+     * __Default value:__ ["sourceId", "targetId", "sourceHeight", "targetHeight", "sourceIndex", "targetIndex", "sourceOffset", "targetOffset"]
+     */
+    as?: [string, string, string, string, string, string, string, string];
+}
+
 /** Options for transforms whose predicates or expressions can trigger replay. */
 export interface ReactiveTransformParams {
     /**
@@ -1232,6 +1262,7 @@ export interface FlattenCompressedExonsParams extends TransformParamsBase {
 }
 
 export type TransformParams =
+    | DendrogramParams
     | AlignmentMismatchesParams
     | AggregateParams
     | CollectParams

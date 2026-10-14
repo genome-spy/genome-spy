@@ -234,7 +234,10 @@ export function buildDataFlow(
         return (
             nodeStack.findLastIndex(
                 (node) => node instanceof IdentifierTransform
-            ) > nodeStack.findLastIndex((node) => node instanceof DataSource)
+            ) >
+            nodeStack.findLastIndex(
+                (node) => node instanceof DataSource || node.createsNewIdentity
+            )
         );
     }
 
