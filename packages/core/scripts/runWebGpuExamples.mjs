@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { inflateSync } from "node:zlib";
+import { installWebGpuLimitAudit } from "./webGpuLimitAudit.js";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const packageDir = path.resolve(path.dirname(scriptPath), "..");
@@ -237,6 +238,9 @@ async function runExample(
         deviceScaleFactor: dpr,
         viewport: { width, height },
     });
+    if (renderer === "webgpu") {
+        await page.addInitScript(installWebGpuLimitAudit);
+    }
     const prefix = `${renderer}-${examplePath
         .replaceAll("/", "__")
         .replace(/\.json$/, "")}${dpr === 1 ? "" : `-dpr${dpr}`}`;
@@ -285,6 +289,7 @@ async function runExample(
             () =>
                 window.__genomeSpyScreenshot?.status === "ready" ||
                 window.__genomeSpyScreenshot?.status === "error",
+            undefined,
             { timeout: timeoutMs + harnessTimeoutPaddingMs }
         );
 
@@ -315,6 +320,26 @@ async function runExample(
             error instanceof Error ? error.message : String(error)
         );
     } finally {
+        if (renderer === "webgpu") {
+            result.gpuLimits = await page.evaluate(
+                () =>
+                    window.__webGpuLimitAudit ?? {
+                        devices: [],
+                        violations: ["WebGPU audit unavailable."],
+                    }
+            );
+            result.renderingFailures.push(
+                ...result.gpuLimits.violations,
+                ...result.gpuLimits.devices.flatMap(
+                    (device) => device.validationErrors
+                )
+            );
+            if (!result.gpuLimits.devices.length) {
+                result.renderingFailures.push(
+                    "No default-limit WebGPU device was created."
+                );
+            }
+        }
         await page.close();
     }
 
@@ -700,6 +725,26 @@ function createFailureReport(summary) {
         addReportItems(lines, "Failed requests", result.requestFailures);
         addReportItems(lines, "Console warnings", result.consoleWarnings);
         lines.push(`- Screenshot: ${result.screenshot ?? "not captured"}`, "");
+    }
+    if (summary.renderer === "webgpu") {
+        lines.push(
+            "## Resource headroom",
+            "",
+            "Explicit pipeline-layout and buffer peaks at or above 80% of device defaults.",
+            ""
+        );
+        for (const result of summary.results) {
+            for (const device of result.gpuLimits.devices) {
+                for (const [name, peak] of Object.entries(device.peaks)) {
+                    if (peak.used >= peak.limit * 0.8) {
+                        lines.push(
+                            `- ${result.examplePath}: ${name} ${peak.used}/${peak.limit} — ${peak.label}`
+                        );
+                    }
+                }
+            }
+        }
+        lines.push("");
     }
     if (summary.comparisons.length) {
         lines.push(

@@ -62,6 +62,32 @@ Remaining path/font follow-up includes a compact wide-range tier for tiny
 stroked points, portable Core/Canvas/SVG text effects, and public contract
 documentation.
 
+## Active integration: default WebGPU limits
+
+Device creation now uses WebGPU defaults, including 8 storage buffers per
+shader stage. The Core/docs browser sweep covers all 238 shared specs: 5 exceed
+the storage-binding limit, 2 grouped-bar specs reach it, and 9 specs reach 7/8.
+Bind groups peak at 3/4. Core's shared render entry point now defers drawing
+until startup preparation completes, resolving all 13 font-preparation failures.
+The full rerun returns 232 passes and 6 failures: the same five storage-binding
+violations and the arrow playground's zero-height canvas.
+
+The [audit and mitigation design](../../plans/webgpu-default-limits/webgpu-default-limits-plan.md)
+proposes one mixed-scalar series buffer and one scale/gap metadata buffer per
+mark. Selection tables remain independently bound, preserving #563's direct
+GPU-buffer borrowing and ownership contract. Worst-case text with effects and
+placement uses `7 + N` vertex storage bindings for `N` named multi-selections;
+one fits at 8/8. Lasso point capture and containment have separate compute
+budgets and must be verified with forced default limits after rebasing #563.
+Normal startup will request the adapter's supported `maxStorageBufferBindingSize`
+and `maxBufferSize` before loading data, leaving binding counts and all other
+limits at defaults. Simple plots must fit baseline full WebGPU; huge datasets
+may fail with contextual capacity errors on devices with insufficient byte
+limits. The example audit will force default byte limits as well as binding
+counts, while separate large-data tests exercise negotiated capacity, including
+the 160,000,000-byte mixed-series case. Packing, startup negotiation, and this
+audit adaptation are not implemented yet; current example failures remain visible.
+
 ## Milestone 1: Close current Core parity gaps
 
 ### Outcome
