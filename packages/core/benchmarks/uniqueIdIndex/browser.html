@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>GenomeSpy unique-ID benchmark</title>
+<p>
+    Standalone benchmark. Run browser.mjs to record isolated page measurements.
+</p>
+<script type="module">
+    import { run } from "./browser.js";
+    window.runUniqueIdBenchmark = run;
+</script>

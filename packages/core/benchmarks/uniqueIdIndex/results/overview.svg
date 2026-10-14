@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="500" viewBox="0 0 1240 500" role="img" aria-label="Measured construction throughput and retained memory">
+<rect width="1240" height="500" fill="white"/>
+<g font-family="Arial, sans-serif" font-size="12" fill="#20252b">
+<text x="305" y="32" text-anchor="middle">Construction throughput: shuffled contiguous IDs</text>
+<text x="75" y="67" text-anchor="start">Million rows/s</text>
+<path d="M75,390h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="394" text-anchor="end">0</text>
+<path d="M75,347.14285714285717h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="351.14285714285717" text-anchor="end">10</text>
+<path d="M75,304.2857142857143h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="308.2857142857143" text-anchor="end">20</text>
+<path d="M75,261.4285714285714h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="265.4285714285714" text-anchor="end">30</text>
+<path d="M75,218.57142857142858h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="222.57142857142858" text-anchor="end">40</text>
+<path d="M75,175.71428571428572h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="179.71428571428572" text-anchor="end">50</text>
+<path d="M75,132.85714285714286h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="136.85714285714286" text-anchor="end">60</text>
+<path d="M75,90h460" stroke="#d9dee5" fill="none"/>
+<text x="65" y="94" text-anchor="end">70</text>
+<path d="M75,90v300h460" stroke="#56616e" fill="none"/>
+<text x="75" y="411" text-anchor="middle">10K</text>
+<text x="214.35044534712685" y="411" text-anchor="middle">100K</text>
+<text x="353.7008906942537" y="411" text-anchor="middle">1M</text>
+<text x="493.05133604138064" y="411" text-anchor="middle">10M</text>
+<text x="535" y="411" text-anchor="middle">20M</text>
+<polyline points="75,368.45291962938995 214.35044534712685,340.25937662563763 353.7008906942537,328.85409055932985 493.05133604138064,370.0489125846846 535,373.83795323139367" stroke="#215fad" stroke-width="2.2" fill="none"/>
+<circle cx="75" cy="368.45291962938995" r="3.5" fill="#215fad"/>
+<circle cx="214.35044534712685" cy="340.25937662563763" r="3.5" fill="#215fad"/>
+<circle cx="353.7008906942537" cy="328.85409055932985" r="3.5" fill="#215fad"/>
+<circle cx="493.05133604138064" cy="370.0489125846846" r="3.5" fill="#215fad"/>
+<circle cx="535" cy="373.83795323139367" r="3.5" fill="#215fad"/>
+<polyline points="75,213.42097146718882 214.35044534712685,181.6353830345912 353.7008906942537,207.05666790454254 493.05133604138064,299.20424678831216 535,293.0620895625546" stroke="#b34b08" stroke-width="2.2" fill="none"/>
+<circle cx="75" cy="213.42097146718882" r="3.5" fill="#b34b08"/>
+<circle cx="214.35044534712685" cy="181.6353830345912" r="3.5" fill="#b34b08"/>
+<circle cx="353.7008906942537" cy="207.05666790454254" r="3.5" fill="#b34b08"/>
+<circle cx="493.05133604138064" cy="299.20424678831216" r="3.5" fill="#b34b08"/>
+<circle cx="535" cy="293.0620895625546" r="3.5" fill="#b34b08"/>
+<polyline points="75,202.64637002341172 214.35044534712685,110.64859436890868 353.7008906942537,146.61854371667272 493.05133604138064,213.52891411624367 535,199.89079042745976" stroke="#268052" stroke-width="2.2" fill="none"/>
+<circle cx="75" cy="202.64637002341172" r="3.5" fill="#268052"/>
+<circle cx="214.35044534712685" cy="110.64859436890868" r="3.5" fill="#268052"/>
+<circle cx="353.7008906942537" cy="146.61854371667272" r="3.5" fill="#268052"/>
+<circle cx="493.05133604138064" cy="213.52891411624367" r="3.5" fill="#268052"/>
+<circle cx="535" cy="199.89079042745976" r="3.5" fill="#268052"/>
+<polyline points="75,288.84214721704564 214.35044534712685,247.71985057549173 353.7008906942537,187.47747255855217 493.05133604138064,237.1530799932181 535,259.95341227947563" stroke="#893ab1" stroke-width="2.2" fill="none"/>
+<circle cx="75" cy="288.84214721704564" r="3.5" fill="#893ab1"/>
+<circle cx="214.35044534712685" cy="247.71985057549173" r="3.5" fill="#893ab1"/>
+<circle cx="353.7008906942537" cy="187.47747255855217" r="3.5" fill="#893ab1"/>
+<circle cx="493.05133604138064" cy="237.1530799932181" r="3.5" fill="#893ab1"/>
+<circle cx="535" cy="259.95341227947563" r="3.5" fill="#893ab1"/>
+<polyline points="75,337.7085995474002 214.35044534712685,318.5054033113867 353.7008906942537,288.8611066117415 493.05133604138064,326.6155257839854" stroke="#b82b47" stroke-width="2.2" fill="none"/>
+<circle cx="75" cy="337.7085995474002" r="3.5" fill="#b82b47"/>
+<circle cx="214.35044534712685" cy="318.5054033113867" r="3.5" fill="#b82b47"/>
+<circle cx="353.7008906942537" cy="288.8611066117415" r="3.5" fill="#b82b47"/>
+<circle cx="493.05133604138064" cy="326.6155257839854" r="3.5" fill="#b82b47"/>
+<text x="305" y="432" text-anchor="middle">Retained rows (log scale)</text>
+<path d="M75,447h20" stroke="#215fad" stroke-width="2.5"/>
+<text x="102" y="451" text-anchor="start">baseline</text>
+<path d="M230,447h20" stroke="#b34b08" stroke-width="2.5"/>
+<text x="257" y="451" text-anchor="start">typed11</text>
+<path d="M385,447h20" stroke="#268052" stroke-width="2.5"/>
+<text x="412" y="451" text-anchor="start">wasm8</text>
+<path d="M75,469h20" stroke="#893ab1" stroke-width="2.5"/>
+<text x="102" y="473" text-anchor="start">blocks</text>
+<path d="M230,469h20" stroke="#b82b47" stroke-width="2.5"/>
+<text x="257" y="473" text-anchor="start">hash70</text>
+<text x="935" y="32" text-anchor="middle">Retained index memory: 1M retained rows</text>
+<text x="705" y="67" text-anchor="start">MiB (log scale)</text>
+<path d="M705,390h460" stroke="#d9dee5" fill="none"/>
+<text x="695" y="394" text-anchor="end">1</text>
+<path d="M705,290h460" stroke="#d9dee5" fill="none"/>
+<text x="695" y="294" text-anchor="end">10</text>
+<path d="M705,189.99999999999997h460" stroke="#d9dee5" fill="none"/>
+<text x="695" y="193.99999999999997" text-anchor="end">100</text>
+<path d="M705,90h460" stroke="#d9dee5" fill="none"/>
+<text x="695" y="94" text-anchor="end">1000</text>
+<path d="M705,90v300h460" stroke="#56616e" fill="none"/>
+<text x="705" y="411" text-anchor="middle">100%</text>
+<text x="858.3333333333333" y="411" text-anchor="middle">10%</text>
+<text x="1011.6666666666667" y="411" text-anchor="middle">1%</text>
+<text x="1165" y="411" text-anchor="middle">0.1%</text>
+<polyline points="705,301.74751841187964 712.0161485526369,301.73857358242464 751.1579326684771,301.73857358242464 858.3333333333333,301.73857358242464 1011.6666666666667,301.73857358242464 1165,301.68021690069907" stroke="#215fad" stroke-width="2.2" fill="none"/>
+<circle cx="705" cy="301.74751841187964" r="3.5" fill="#215fad"/>
+<circle cx="712.0161485526369" cy="301.73857358242464" r="3.5" fill="#215fad"/>
+<circle cx="751.1579326684771" cy="301.73857358242464" r="3.5" fill="#215fad"/>
+<circle cx="858.3333333333333" cy="301.73857358242464" r="3.5" fill="#215fad"/>
+<circle cx="1011.6666666666667" cy="301.73857358242464" r="3.5" fill="#215fad"/>
+<circle cx="1165" cy="301.68021690069907" r="3.5" fill="#215fad"/>
+<polyline points="705,331.8256854219517 712.0161485526369,331.827247891481 751.1579326684771,331.827247891481 858.3333333333333,331.827247891481 1011.6666666666667,331.827247891481 1165,331.8966608670375" stroke="#b34b08" stroke-width="2.2" fill="none"/>
+<circle cx="705" cy="331.8256854219517" r="3.5" fill="#b34b08"/>
+<circle cx="712.0161485526369" cy="331.827247891481" r="3.5" fill="#b34b08"/>
+<circle cx="751.1579326684771" cy="331.827247891481" r="3.5" fill="#b34b08"/>
+<circle cx="858.3333333333333" cy="331.827247891481" r="3.5" fill="#b34b08"/>
+<circle cx="1011.6666666666667" cy="331.827247891481" r="3.5" fill="#b34b08"/>
+<circle cx="1165" cy="331.8966608670375" r="3.5" fill="#b34b08"/>
+<polyline points="705,331.55173518617124 712.0161485526369,326.95996263224805 751.1579326684771,301.47185851121407 858.3333333333333,300.3343603748979 1011.6666666666667,288.792475421028 1165,237.80843022767118" stroke="#268052" stroke-width="2.2" fill="none"/>
+<circle cx="705" cy="331.55173518617124" r="3.5" fill="#268052"/>
+<circle cx="712.0161485526369" cy="326.95996263224805" r="3.5" fill="#268052"/>
+<circle cx="751.1579326684771" cy="301.47185851121407" r="3.5" fill="#268052"/>
+<circle cx="858.3333333333333" cy="300.3343603748979" r="3.5" fill="#268052"/>
+<circle cx="1011.6666666666667" cy="288.792475421028" r="3.5" fill="#268052"/>
+<circle cx="1165" cy="237.80843022767118" r="3.5" fill="#268052"/>
+<polyline points="705,331.55423669616493 712.0161485526369,326.64133567441564 751.1579326684771,301.4734551353027 858.3333333333333,231.60197413069366 1011.6666666666667,131.61792361709084" stroke="#893ab1" stroke-width="2.2" fill="none"/>
+<circle cx="705" cy="331.55423669616493" r="3.5" fill="#893ab1"/>
+<circle cx="712.0161485526369" cy="326.64133567441564" r="3.5" fill="#893ab1"/>
+<circle cx="751.1579326684771" cy="301.4734551353027" r="3.5" fill="#893ab1"/>
+<circle cx="858.3333333333333" cy="231.60197413069366" r="3.5" fill="#893ab1"/>
+<circle cx="1011.6666666666667" cy="131.61792361709084" r="3.5" fill="#893ab1"/>
+<polyline points="705,268.6397987363172 712.0161485526369,268.62278237988653 751.1579326684771,268.62278237988653 858.3333333333333,268.62278237988653 1011.6666666666667,268.62278237988653 1165,268.6395961214267" stroke="#b82b47" stroke-width="2.2" fill="none"/>
+<circle cx="705" cy="268.6397987363172" r="3.5" fill="#b82b47"/>
+<circle cx="712.0161485526369" cy="268.62278237988653" r="3.5" fill="#b82b47"/>
+<circle cx="751.1579326684771" cy="268.62278237988653" r="3.5" fill="#b82b47"/>
+<circle cx="858.3333333333333" cy="268.62278237988653" r="3.5" fill="#b82b47"/>
+<circle cx="1011.6666666666667" cy="268.62278237988653" r="3.5" fill="#b82b47"/>
+<circle cx="1165" cy="268.6395961214267" r="3.5" fill="#b82b47"/>
+<text x="935" y="432" text-anchor="middle">Nominal local block occupancy (log scale)</text>
+<path d="M705,447h20" stroke="#215fad" stroke-width="2.5"/>
+<text x="732" y="451" text-anchor="start">baseline</text>
+<path d="M860,447h20" stroke="#b34b08" stroke-width="2.5"/>
+<text x="887" y="451" text-anchor="start">typed11</text>
+<path d="M1015,447h20" stroke="#268052" stroke-width="2.5"/>
+<text x="1042" y="451" text-anchor="start">hybridBlocks</text>
+<path d="M705,469h20" stroke="#893ab1" stroke-width="2.5"/>
+<text x="732" y="473" text-anchor="start">blocks</text>
+<path d="M860,469h20" stroke="#b82b47" stroke-width="2.5"/>
+<text x="887" y="473" text-anchor="start">hash70</text>
+</g></svg>
