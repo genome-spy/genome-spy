@@ -1,7 +1,11 @@
 import ViewAnnotations, { assessAnnotations } from "./view/viewAnnotations.js";
 import { queryViewData, assessViewQuery } from "./view/viewSliceQuery.js";
 import { viewQueryResolvers } from "./view/viewQueryAccess.js";
-import { describeView, readViewData } from "./view/viewDataApi.js";
+import {
+    describeView,
+    readViewData,
+    readSourceData,
+} from "./view/viewDataApi.js";
 
 /** @type {WeakMap<import("./types/embedApi.js").ViewApi, ViewAnnotations>} */
 const annotationControllers = new WeakMap();
@@ -16,6 +20,8 @@ const annotationControllers = new WeakMap();
 /** @typedef {import("./types/viewQueryApi.js").ViewDescription} ViewDescription */
 /** @typedef {import("./types/viewQueryApi.js").ViewDataReadOptions} ViewDataReadOptions */
 /** @typedef {import("./types/viewQueryApi.js").ViewDataReadResult} ViewDataReadResult */
+/** @typedef {import("./types/viewQueryApi.js").ViewSourceDataReadOptions} ViewSourceDataReadOptions */
+/** @typedef {import("./types/viewQueryApi.js").ViewSourceDataReadResult} ViewSourceDataReadResult */
 
 /** @typedef {import("./types/viewQueryApi.js").ViewSliceQueryOptions} ViewSliceQueryOptions */
 /** @typedef {import("./types/viewQueryApi.js").ViewSliceQueryResult} ViewSliceQueryResult */
@@ -43,6 +49,8 @@ export function createViewQuery(views) {
     }
     return {
         annotations,
+        readSourceData: (address, options) =>
+            readSourceData(resolve(address), options),
         assessAnnotations: (address) => assessAnnotations(resolve(address)),
         assessQuery: (address, options) =>
             assessViewQuery(resolve(address), options),

@@ -39,3 +39,10 @@ GenomeSpy in web applications.
 - [Eager data](eager.md)
 - [Lazy data](lazy.md)
 - [URL templates and multiple files](multi-url.md)
+
+## Source inspection
+
+`retainForInspection: true` on a data declaration keeps loaded source rows for
+[public inspection](../../api/views.md#reading-source-rows-before-display-filters)
+before view transforms. It is disabled by default and uses additional memory
+proportional to loaded data. Retention does not fetch unloaded regions.

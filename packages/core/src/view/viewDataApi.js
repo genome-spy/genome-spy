@@ -68,6 +68,57 @@ export function readViewData(view, options) {
 }
 
 /**
+ * Reads the nearest authored source retained before view transforms.
+ * @param {import("./view.js").default} view
+ * @param {import("../types/viewQueryApi.js").ViewSourceDataReadOptions} options
+ * @returns {import("../types/viewQueryApi.js").ViewSourceDataReadResult}
+ */
+export function readSourceData(view, options) {
+    const limit = options?.limit;
+    if (limit !== null && (!Number.isSafeInteger(limit) || limit < 0)) {
+        throw new Error(
+            "Source read limit must be a nonnegative safe integer or null."
+        );
+    }
+
+    let owner = view;
+    while (owner && !owner.spec.data) owner = owner.dataParent;
+    const collector = owner?.flowHandle?.sourceCollector;
+    if (!collector) {
+        throw new Error(
+            "Source inspection requires data.retainForInspection: true."
+        );
+    }
+    if (!isDataReady(collector)) {
+        throw new QuerySupportError(
+            "data-not-ready",
+            "Source data is not ready."
+        );
+    }
+
+    const rows = [];
+    let rowsExamined = 0;
+    let truncated = false;
+    for (const row of collector.getData()) {
+        rowsExamined++;
+        if (limit !== null && rows.length === limit) {
+            truncated = true;
+            break;
+        }
+        const datum = cloneDetached(row);
+        delete datum[UNIQUE_ID_KEY];
+        rows.push(datum);
+    }
+    return {
+        rows,
+        rowsExamined,
+        truncated,
+        dataRevision: collector.dataRevision,
+        scope: "loaded-source",
+    };
+}
+
+/**
  * Shared readiness and facet contract for previews and scoped queries.
  * @param {import("./view.js").default} view
  */

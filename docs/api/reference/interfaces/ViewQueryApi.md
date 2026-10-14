@@ -9,6 +9,25 @@ Create the query object with `createViewQuery(api.views)`.
 
 ## Properties
 
+### readSourceData
+
+> **readSourceData**: (`address`, `options`) => [`ViewSourceDataReadResult`](ViewSourceDataReadResult.md)
+
+Reads retained source rows before transforms; never loads additional data.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `address` | [`ViewAddress`](../type-aliases/ViewAddress.md) |
+| `options` | [`ViewSourceDataReadOptions`](ViewSourceDataReadOptions.md) |
+
+#### Returns
+
+[`ViewSourceDataReadResult`](ViewSourceDataReadResult.md)
+
+***
+
 ### assessAnnotations
 
 > **assessAnnotations**: (`address`) => [`ViewAnnotationAssessment`](../type-aliases/ViewAnnotationAssessment.md)

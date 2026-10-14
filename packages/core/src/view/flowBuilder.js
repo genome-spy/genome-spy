@@ -242,6 +242,12 @@ export function buildDataFlow(
             return;
         }
         if (view.spec.data) {
+            const previousSourceCollector = view.flowHandle?.sourceCollector;
+            if (previousSourceCollector) {
+                dataFlow.pruneCollectorBranch(previousSourceCollector);
+                dataFlow.removeCollector(previousSourceCollector);
+                delete view.flowHandle.sourceCollector;
+            }
             const previousDataSource = view.flowHandle?.dataSource;
             if (
                 previousDataSource &&
@@ -260,6 +266,13 @@ export function buildDataFlow(
             dataFlow.addDataSource(dataSource);
             view.flowHandle ??= {};
             view.flowHandle.dataSource = dataSource;
+            if (view.spec.data.retainForInspection) {
+                // A separate branch preserves rows before display transforms.
+                const sourceCollector = new Collector();
+                dataSource.addChild(sourceCollector);
+                dataFlow.addCollector(sourceCollector);
+                view.flowHandle.sourceCollector = sourceCollector;
+            }
         }
 
         if (view.spec.transform) {

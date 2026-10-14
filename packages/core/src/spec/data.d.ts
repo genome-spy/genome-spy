@@ -22,12 +22,7 @@ import {
 import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
-    | null
-    | string
-    | "string"
-    | "boolean"
-    | "date"
-    | "number";
+    null | string | "string" | "boolean" | "date" | "number";
 
 export interface Parse {
     [field: string]: ParseValue;
@@ -144,23 +139,25 @@ export type DataFormat =
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;
 
 export type DataSource =
-    | UrlData
-    | InlineData
-    | NamedData
-    | DynamicCallbackData
-    | LazyData;
+    UrlData | InlineData | NamedData | DynamicCallbackData | LazyData;
 
 export type Data = DataSource | Generator;
 
 export type InlineDataset =
-    | number[]
-    | string[]
-    | boolean[]
-    | object[]
-    | string
-    | object;
+    number[] | string[] | boolean[] | object[] | string | object;
 
-export interface DataBase {
+export interface DataInspection {
+    /**
+     * Retain loaded source rows for public inspection before view transforms.
+     * Uses additional memory proportional to the loaded data. Reads do not fetch
+     * additional data or bypass lazy-source loading limits.
+     *
+     * __Default value:__ `false`
+     */
+    retainForInspection?: boolean;
+}
+
+export interface DataBase extends DataInspection {
     /**
      * A description of the data source. Can be used for documentation and to
      * explain the role of the data in the visualization.
@@ -298,7 +295,7 @@ export interface DynamicCallbackData extends DataBase {
 
 export type Generator = SequenceGenerator;
 
-export interface GeneratorBase {
+export interface GeneratorBase extends DataInspection {
     /**
      * A description of the data source. Can be used for documentation and to
      * explain the role of the generated data in the visualization.
@@ -342,7 +339,7 @@ export interface SequenceParams {
     as?: FieldName | ExprRef;
 }
 
-export interface LazyData {
+export interface LazyData extends DataInspection {
     /**
      * A description of the data source. Can be used for documentation and to
      * explain the role of the lazy data in the visualization.

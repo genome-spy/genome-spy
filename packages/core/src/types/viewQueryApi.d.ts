@@ -7,6 +7,12 @@ import type { ViewAddress } from "./embedApi.js";
  * Create the query object with `createViewQuery(api.views)`.
  */
 export interface ViewQueryApi {
+    /** Reads retained source rows before transforms; never loads additional data. */
+    readSourceData: (
+        address: ViewAddress,
+        options: ViewSourceDataReadOptions
+    ) => ViewSourceDataReadResult;
+
     assessAnnotations: (address: ViewAddress) => ViewAnnotationAssessment;
     annotations: ViewAnnotations;
     /** Returns detached metadata. Throws for a removed view or finalized embed. */
@@ -209,4 +215,18 @@ export interface ViewAnnotations {
     clear: () => Promise<void>;
     inspect: () => ViewAnnotationState;
     dispose: () => void;
+}
+
+/** Explicit bound, or null for every retained loaded source row. */
+export interface ViewSourceDataReadOptions {
+    limit: number | null;
+}
+
+/** Detached rows before view transforms, not necessarily the whole backing source. */
+export interface ViewSourceDataReadResult {
+    rows: Record<string, unknown>[];
+    rowsExamined: number;
+    truncated: boolean;
+    dataRevision: number;
+    scope: "loaded-source";
 }

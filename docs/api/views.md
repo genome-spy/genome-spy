@@ -146,6 +146,25 @@ handle with `staleHandle`. A successful read has no separate `ready` flag.
 Bounded reads serve inspection and small examples; repeated reads are not an
 API for computing statistics over a large collection.
 
+### Reading source rows before display filters
+
+Set `data.retainForInspection: true` on the data owner to retain its loaded rows
+before view transforms. `query.readSourceData()` reads that source from the owner
+or an inheriting descendant, including rows omitted by display filters:
+
+```js
+const source = query.readSourceData(track, { limit: 100 });
+console.log(source.rows, source.dataRevision, source.truncated);
+```
+
+Use an explicit nonnegative safe-integer limit, or `null` for all retained rows.
+The returned scope is `loaded-source`; reads neither navigate nor fetch data.
+An overriding data declaration requires its own retention setting. Retention
+uses additional memory proportional to loaded data and is disabled by default.
+Unready sources, stale handles, non-cloneable values and shared memory reject.
+Returned rows are detached and exclude Core picking identifiers. A non-truncated
+read includes all retained rows, not necessarily the whole lazy backing file.
+
 ## Querying the current slice
 
 `query.queryData()` filters loaded transformed data to the current data-space
