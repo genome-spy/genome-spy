@@ -99,12 +99,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         return culledPoint();
     }
 
-    var quad = array<vec2<f32>, 6>(
+    var quad = array<vec2<f32>, 4>(
         vec2<f32>(0.0, 0.0),
         vec2<f32>(1.0, 0.0),
         vec2<f32>(0.0, 1.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0),
         vec2<f32>(1.0, 1.0)
     );
 
@@ -235,6 +233,16 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class PointProgram extends BaseProgram {
+    /** @returns {GPUPrimitiveTopology} */
+    get primitiveTopology() {
+        return "triangle-strip";
+    }
+
+    /** @returns {number} */
+    get verticesPerInstance() {
+        return 4;
+    }
+
     /**
      * @returns {string[]}
      */

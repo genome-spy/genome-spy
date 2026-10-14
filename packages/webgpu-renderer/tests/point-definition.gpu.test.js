@@ -18,33 +18,91 @@ test("fixed circles keep the analytic path without MSDF resources", async ({
                 import("/src/scales/linear.js"),
             ]);
         const canvas = document.createElement("canvas");
-        const renderer = await createRenderer(canvas);
+        canvas.width = canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
+        renderer.context.configure({
+            device: renderer.device,
+            format: renderer.format,
+            alphaMode: "premultiplied",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
         const handle = renderer.createMark(pointMark, {
             shape: "circle",
             channels: {
+                uniqueId: { data: new Uint32Array([99, 41]), type: "u32" },
                 x: {
-                    value: 0.5,
-                    scale: linearScale({ domain: [0, 1], range: [0, 1] }),
+                    data: new Float32Array([0, 32]),
+                    type: "f32",
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
                 },
                 y: {
-                    value: 0.5,
-                    scale: linearScale({ domain: [0, 1], range: [0, 1] }),
+                    value: 32,
+                    scale: linearScale({ domain: [0, 64], range: [0, 64] }),
                 },
-                size: { value: 100 },
+                size: { value: 400 },
+                fill: { value: [1, 0, 0, 1] },
+                fillOpacity: { value: 0.5 },
+                strokeOpacity: { value: 0 },
             },
         });
+        renderer.render({
+            draws: [{ mark: handle, firstInstance: 1, instanceCount: 1 }],
+            clearColor: { r: 0, g: 0, b: 0, a: 0 },
+        });
+        const buffer = renderer.device.createBuffer({
+            size: 64 * 64 * 4,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        const encoder = renderer.device.createCommandEncoder();
+        encoder.copyTextureToBuffer(
+            { texture: renderer.context.getCurrentTexture() },
+            { buffer, bytesPerRow: 256 },
+            { width: 64, height: 64 }
+        );
+        renderer.device.queue.submit([encoder.finish()]);
+        await buffer.mapAsync(GPUMapMode.READ);
+        const data = new Uint8Array(buffer.getMappedRange());
+        // Cover both triangles and their shared diagonal without double blending.
+        const positions = [
+            [28, 28],
+            [36, 28],
+            [28, 36],
+            [36, 36],
+            [32, 32],
+            [44, 44],
+        ];
+        const pixels = positions.map(([x, y]) =>
+            Array.from(data.slice((y * 64 + x) * 4, (y * 64 + x) * 4 + 4))
+        );
+        buffer.unmap();
+        buffer.destroy();
+        const picks = [];
+        for (const [x, y] of positions) picks.push(await renderer.pick(x, y));
+        const validation = await renderer.device.popErrorScope();
         const program = renderer._marks.get(handle.markId);
         const result = {
             program: program.constructor.name,
             ownedResources: renderer._ownedResources.size,
+            pixels,
+            picks,
+            validation: validation?.message,
         };
         renderer.destroy();
+        canvas.remove();
         return result;
     });
 
     expect(result).toEqual({
         program: "PointProgram",
         ownedResources: 0,
+        pixels: Array.from({ length: 5 }, () => [128, 0, 0, 128]).concat([
+            [0, 0, 0, 0],
+        ]),
+        picks: [41, 41, 41, 41, 41, null],
+        validation: undefined,
     });
 });
 

@@ -520,6 +520,11 @@ export default class BaseProgram {
         return "triangle-list";
     }
 
+    /** @returns {number} */
+    get verticesPerInstance() {
+        return 6;
+    }
+
     /**
      * Override to provide default scale ranges for specific channels.
      *
@@ -1248,7 +1253,12 @@ export default class BaseProgram {
      * @param {import("../../../index.d.ts").ProgramDrawOptions} options
      */
     draw(pass, options) {
-        pass.draw(6, options.instanceCount, 0, options.firstInstance);
+        pass.draw(
+            this.verticesPerInstance,
+            options.instanceCount,
+            0,
+            options.firstInstance
+        );
     }
 
     /**
@@ -1257,7 +1267,12 @@ export default class BaseProgram {
      * @returns {void}
      */
     drawPick(pass, options) {
-        pass.draw(6, options.instanceCount, 0, options.firstInstance);
+        pass.draw(
+            this.verticesPerInstance,
+            options.instanceCount,
+            0,
+            options.firstInstance
+        );
     }
 
     destroy() {
