@@ -4,7 +4,6 @@ import {
 } from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { initializePropertySlots } from "./internal/propertySlots.js";
-import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
 import {
     buildOutlineTextLayout,
@@ -83,13 +82,6 @@ export const TEXT_CHANNEL_SPECS = {
     shadowOffsetY: { type: "f32", components: 1, optional: true },
     shadowBlur: { type: "f32", components: 1, optional: true },
 };
-
-const {
-    channels: CHANNELS,
-    defaults: DEFAULTS,
-    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
-    optionalChannels: OPTIONAL_CHANNELS,
-} = buildChannelMaps(TEXT_CHANNEL_SPECS);
 
 /**
  * @param {{ enabled: boolean, shadow: boolean, outline: boolean }} effects
@@ -1071,34 +1063,6 @@ export default class TextProgram extends BaseProgram {
             firstInstance: firstGlyph,
             instanceCount: lastGlyph - firstGlyph,
         };
-    }
-
-    /**
-     * @returns {string[]}
-     */
-    get channelOrder() {
-        return CHANNELS;
-    }
-
-    /**
-     * @returns {string[]}
-     */
-    get optionalChannels() {
-        return OPTIONAL_CHANNELS;
-    }
-
-    /**
-     * @returns {Record<string, ChannelConfigInput>}
-     */
-    get defaultChannelConfigs() {
-        return DEFAULT_CHANNEL_CONFIGS;
-    }
-
-    /**
-     * @returns {Record<string, number|number[]>}
-     */
-    get defaultValues() {
-        return DEFAULTS;
     }
 
     /**

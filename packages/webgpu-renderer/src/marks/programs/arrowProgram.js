@@ -4,7 +4,6 @@ import {
 } from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { initializePropertySlots } from "./internal/propertySlots.js";
-import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 /** @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput */
 
@@ -55,13 +54,6 @@ export const ARROW_CHANNEL_SPECS = {
     size: { type: "f32", components: 1, default: 8 },
     direction: { type: "u32", components: 1, default: 0 },
 };
-
-const {
-    channels: CHANNELS,
-    defaults: DEFAULTS,
-    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
-    optionalChannels: OPTIONAL_CHANNELS,
-} = buildChannelMaps(ARROW_CHANNEL_SPECS);
 
 const ARROW_SHADER_BODY = /* wgsl */ `
 ${POSITION_CLAMP_WGSL}
@@ -577,24 +569,8 @@ export default class ArrowProgram extends BaseProgram {
         initializePropertySlots(this, this.propertySlotDefinitions);
     }
 
-    get channelOrder() {
-        return CHANNELS;
-    }
-
-    get optionalChannels() {
-        return OPTIONAL_CHANNELS;
-    }
-
     get channelSpecs() {
         return ARROW_CHANNEL_SPECS;
-    }
-
-    get defaultChannelConfigs() {
-        return DEFAULT_CHANNEL_CONFIGS;
-    }
-
-    get defaultValues() {
-        return DEFAULTS;
     }
 
     get shaderBody() {

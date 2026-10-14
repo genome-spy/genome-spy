@@ -3,10 +3,6 @@ import BaseProgram, { setDebugResourcesEnabled } from "./baseProgram.js";
 import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 
 class TestSeriesProgram extends BaseProgram {
-    get channelOrder() {
-        return ["x"];
-    }
-
     get channelSpecs() {
         return /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */ ({
             x: { type: "f32", components: 1 },
@@ -33,10 +29,6 @@ struct VSOut {
 }
 
 class TestValueProgram extends BaseProgram {
-    get channelOrder() {
-        return ["y"];
-    }
-
     get channelSpecs() {
         return /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */ ({
             y: { type: "f32", components: 1 },

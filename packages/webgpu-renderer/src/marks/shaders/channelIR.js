@@ -71,36 +71,28 @@ function buildChannelIR(analysis, seriesIndexExpression) {
     } = analysis;
     const channel = /** @type {ChannelConfigResolved} */ (analysis.channel);
 
-    if (analysis.sourceKind === "series") {
-        return {
-            name,
-            channel,
-            sourceKind: "series",
-            rawValueExpr: `read_${name}(${seriesIndexExpression})`,
-            scalarType,
-            outputComponents,
-            inputComponents,
-            outputScalarType,
-            scaleType,
-            scaleDef,
-            useRangeTexture,
-            needsScaleFunction,
-            needsOrdinalRange,
-            needsDomainMap,
-        };
-    }
-
-    const isDynamic = "dynamic" in channel && channel.dynamic === true;
-    const resolvedValue =
-        channel.value ?? /** @type {number|number[]} */ (channel.default);
-    const literal = formatLiteral(scalarType, inputComponents, resolvedValue);
-    const uniformName = `u_${name}`;
-    const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
+    const sourceKind =
+        analysis.sourceKind === "series"
+            ? "series"
+            : "dynamic" in channel && channel.dynamic
+              ? "uniform"
+              : "literal";
+    const rawValueExpr =
+        sourceKind === "series"
+            ? `read_${name}(${seriesIndexExpression})`
+            : sourceKind === "uniform"
+              ? `params.u_${name}`
+              : formatLiteral(
+                    scalarType,
+                    inputComponents,
+                    channel.value ??
+                        /** @type {number|number[]} */ (channel.default)
+                );
 
     return {
         name,
         channel,
-        sourceKind: isDynamic ? "uniform" : "literal",
+        sourceKind,
         rawValueExpr,
         scalarType,
         outputComponents,

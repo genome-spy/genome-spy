@@ -3,7 +3,6 @@ import {
     POSITION_CLAMP_WGSL,
 } from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
-import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
 
 /**
@@ -32,13 +31,6 @@ export const POINT_CHANNEL_SPECS = {
     inwardStroke: { type: "u32", components: 1, default: 0 },
     minPickingSize: { type: "f32", components: 1, default: 2.0 },
 };
-
-const {
-    channels: CHANNELS,
-    defaults: DEFAULTS,
-    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
-    optionalChannels: OPTIONAL_CHANNELS,
-} = buildChannelMaps(POINT_CHANNEL_SPECS);
 
 const POINT_SHADER_BODY = /* wgsl */ `
 ${POSITION_CLAMP_WGSL}
@@ -244,38 +236,10 @@ export default class PointProgram extends BaseProgram {
     }
 
     /**
-     * @returns {string[]}
-     */
-    get channelOrder() {
-        return CHANNELS;
-    }
-
-    /**
-     * @returns {string[]}
-     */
-    get optionalChannels() {
-        return OPTIONAL_CHANNELS;
-    }
-
-    /**
      * @returns {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>}
      */
     get channelSpecs() {
         return POINT_CHANNEL_SPECS;
-    }
-
-    /**
-     * @returns {Record<string, ChannelConfigInput>}
-     */
-    get defaultChannelConfigs() {
-        return DEFAULT_CHANNEL_CONFIGS;
-    }
-
-    /**
-     * @returns {Record<string, number|number[]>}
-     */
-    get defaultValues() {
-        return DEFAULTS;
     }
 
     /**

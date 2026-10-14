@@ -1,6 +1,5 @@
 import { POSITION_CLAMP_CHANNEL_SPECS } from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
-import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import DASH_WGSL from "../../wgsl/dash.wgsl.js";
 import { buildDashAtlas } from "../../utils/dashAtlas.js";
 import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
@@ -30,13 +29,6 @@ export const RULE_CHANNEL_SPECS = {
     strokeDash: { type: "u32", components: 1, default: 0 },
     strokeDashOffset: { components: 1, default: 0.0 },
 };
-
-const {
-    channels: CHANNELS,
-    defaults: DEFAULTS,
-    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
-    optionalChannels: OPTIONAL_CHANNELS,
-} = buildChannelMaps(RULE_CHANNEL_SPECS);
 
 const RULE_SHADER_BODY = /* wgsl */ `
 ${DASH_WGSL}
@@ -255,24 +247,8 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class RuleProgram extends BaseProgram {
-    get channelOrder() {
-        return CHANNELS;
-    }
-
-    get optionalChannels() {
-        return OPTIONAL_CHANNELS;
-    }
-
     get channelSpecs() {
         return RULE_CHANNEL_SPECS;
-    }
-
-    get defaultChannelConfigs() {
-        return DEFAULT_CHANNEL_CONFIGS;
-    }
-
-    get defaultValues() {
-        return DEFAULTS;
     }
 
     get shaderBody() {

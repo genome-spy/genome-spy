@@ -4,7 +4,6 @@ import {
 } from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
 import { initializePropertySlots } from "./internal/propertySlots.js";
-import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 /**
  * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
@@ -47,13 +46,6 @@ export const LINK_CHANNEL_SPECS = {
     color: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     opacity: { type: "f32", components: 1, default: 1.0 },
 };
-
-const {
-    channels: CHANNELS,
-    defaults: DEFAULTS,
-    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
-    optionalChannels: OPTIONAL_CHANNELS,
-} = buildChannelMaps(LINK_CHANNEL_SPECS);
 
 const LINK_SHADER_BODY = /* wgsl */ `
 ${POSITION_CLAMP_WGSL}
@@ -450,24 +442,8 @@ export default class LinkProgram extends BaseProgram {
         }
     }
 
-    get channelOrder() {
-        return CHANNELS;
-    }
-
-    get optionalChannels() {
-        return OPTIONAL_CHANNELS;
-    }
-
     get channelSpecs() {
         return LINK_CHANNEL_SPECS;
-    }
-
-    get defaultChannelConfigs() {
-        return DEFAULT_CHANNEL_CONFIGS;
-    }
-
-    get defaultValues() {
-        return DEFAULTS;
     }
 
     get shaderBody() {

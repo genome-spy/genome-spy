@@ -4,10 +4,6 @@ import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
 
 class SlotProgram extends BaseProgram {
-    get channelOrder() {
-        return ["uniqueId", "x", "size", "fill"];
-    }
-
     get channelSpecs() {
         return /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */ ({
             uniqueId: { type: "u32", components: 1 },

@@ -27,10 +27,6 @@ import { normalizeSelectionPredicate } from "../../shaders/visibilityPredicate.j
  * Context bundle for channel normalization/validation.
  *
  * @typedef {object} ChannelConfigContext
- * @property {string[]} channelOrder
- * @property {string[]} optionalChannels
- * @property {Record<string, ChannelConfigInput>} defaultChannelConfigs
- * @property {Record<string, number|number[]>} defaultValues
  * @property {Record<string, ChannelSpec>} channelSpecs
  */
 
@@ -47,9 +43,9 @@ export function normalizeChannels({ channels, context }) {
     const normalized = {};
     /** @type {Map<string, ReturnType<typeof buildChannelAnalysis>>} */
     const analysisByChannel = new Map();
-    const { channelOrder } = context;
+    const { channelSpecs } = context;
 
-    for (const name of channelOrder) {
+    for (const name of Object.keys(channelSpecs)) {
         const resolved = normalizeChannel({
             name,
             configChannel: channels?.[name],
@@ -76,17 +72,15 @@ export function normalizeChannels({ channels, context }) {
  * @returns {{ channel: ChannelConfigResolved, analysis: ReturnType<typeof buildChannelAnalysis> } | null}
  */
 export function normalizeChannel({ name, configChannel, context }) {
-    const {
-        channelOrder,
-        optionalChannels,
-        defaultChannelConfigs,
-        defaultValues,
-        channelSpecs,
-    } = context;
+    const { channelSpecs } = context;
+    const spec = channelSpecs[name];
     const merged = /** @type {ChannelConfigInput} */ (
         /** @type {unknown} */ ({
-            ...(defaultChannelConfigs[name] ?? {}),
-            ...(configChannel ?? {}),
+            type: spec.type,
+            components: spec.components,
+            scale: spec.scale,
+            value: spec.default,
+            ...configChannel,
         })
     );
 
@@ -113,25 +107,17 @@ export function normalizeChannel({ name, configChannel, context }) {
     }
     // Provide sensible defaults early so downstream code can assume data or value.
     if (!isSeriesChannelConfig(merged) && merged.value === undefined) {
-        if (merged.default !== undefined) {
-            merged.value = merged.default;
-        } else if (defaultValues[name] !== undefined) {
-            merged.value = defaultValues[name];
-        }
+        merged.value = merged.default ?? spec.default;
     }
     if (
-        optionalChannels.includes(name) &&
+        spec.optional &&
         !isSeriesChannelConfig(merged) &&
         !isValueChannelConfig(merged)
     ) {
         return null;
     }
 
-    const analysis = validateChannel(name, merged, {
-        channelOrder,
-        optionalChannels,
-        channelSpecs,
-    });
+    const analysis = validateChannel(name, merged, context);
     return {
         channel: /** @type {ChannelConfigResolved} */ (merged),
         analysis,
@@ -200,7 +186,7 @@ function normalizeConditionChannel({
     configChannel,
     context,
 }) {
-    const { channelOrder, channelSpecs } = context;
+    const { channelSpecs } = context;
     const merged = /** @type {ChannelConfigInput} */ (
         /** @type {unknown} */ ({
             ...(configChannel ?? {}),
@@ -239,16 +225,7 @@ function normalizeConditionChannel({
         delete merged.value;
         delete merged.default;
     }
-    const analysis = validateChannel(
-        name,
-        merged,
-        {
-            channelOrder,
-            optionalChannels: [],
-            channelSpecs,
-        },
-        analysisName
-    );
+    const analysis = validateChannel(name, merged, context, analysisName);
     return {
         channel: /** @type {ChannelConfigResolved} */ (merged),
         analysis,
@@ -260,13 +237,13 @@ function normalizeConditionChannel({
  *
  * @param {string} name
  * @param {ChannelConfigInput} channel
- * @param {Pick<ChannelConfigContext, "channelOrder"|"optionalChannels"|"channelSpecs">} context
+ * @param {ChannelConfigContext} context
  * @param {string} [analysisName]
  * @returns {ReturnType<typeof buildChannelAnalysis>}
  */
 export function validateChannel(name, channel, context, analysisName = name) {
-    const { channelOrder, optionalChannels, channelSpecs } = context;
-    if (!channelOrder.includes(name)) {
+    const { channelSpecs } = context;
+    if (!Object.hasOwn(channelSpecs, name)) {
         throw new Error(`Unknown channel: ${name}`);
     }
     const spec = channelSpecs[name];
@@ -296,7 +273,7 @@ export function validateChannel(name, channel, context, analysisName = name) {
         throw new Error(`Channel "${name}" must use type "${spec.type}"`);
     }
     if (
-        !optionalChannels.includes(name) &&
+        !spec.optional &&
         !isSeriesChannelConfig(channel) &&
         !isValueChannelConfig(channel)
     ) {
@@ -306,7 +283,7 @@ export function validateChannel(name, channel, context, analysisName = name) {
         throw new Error(`Channel "${name}" requires a series data type.`);
     }
     if (
-        optionalChannels.includes(name) &&
+        spec.optional &&
         !isSeriesChannelConfig(channel) &&
         !isValueChannelConfig(channel)
     ) {
@@ -358,14 +335,17 @@ export function validateChannel(name, channel, context, analysisName = name) {
                     checkInputs(node.not);
                 } else if ("selection" in node && node.type === "interval") {
                     for (const projection of node.projections) {
-                        if (!channelOrder.includes(projection.input)) {
+                        if (!Object.hasOwn(channelSpecs, projection.input)) {
                             throw new Error(
                                 `Channel "${name}" references unknown selection input "${projection.input}".`
                             );
                         }
                         if (
                             projection.secondaryInput !== undefined &&
-                            !channelOrder.includes(projection.secondaryInput)
+                            !Object.hasOwn(
+                                channelSpecs,
+                                projection.secondaryInput
+                            )
                         ) {
                             throw new Error(
                                 `Channel "${name}" references unknown selection input "${projection.secondaryInput}".`

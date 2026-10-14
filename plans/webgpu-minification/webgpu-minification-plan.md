@@ -1,6 +1,6 @@
 # WebGPU renderer simplification and minification
 
-Status: implementation in progress; milestone 1 complete.
+Status: implementation in progress; milestones 1–2 complete.
 
 ## Goal and scope
 
@@ -99,19 +99,24 @@ unpadded texture upload coverage was added.
 
 ## Milestone 2: Consolidate channel and resource descriptions
 
-- [ ] Consume one channel normalization context per built-in mark; remove
+- [x] Consume one channel normalization context per built-in mark; remove
       duplicated default maps and repetitive getters without a descriptor framework.
-- [ ] Emit common scaled/conditional accessors once for all channel source
+- [x] Emit common scaled/conditional accessors once for all channel source
       kinds, retaining a separate series-buffer reader phase.
-- [ ] Build one channel IR result and reuse its resource flags; delete redundant
+- [x] Build one channel IR result and reuse its resource flags; delete redundant
       resource-requirement bookkeeping and scale-uniform wrappers.
-- [ ] Simplify scale updater wiring and domain update composition while
+- [x] Simplify scale updater wiring and domain update composition while
       preserving allocation/rebind behavior.
 
 Affected: built-in programs, channel normalization/IR, shader assembly scaffolding,
 scale resources, and custom-definition tests. WGSL formulas remain unchanged.
 Verify focused channel/scale tests, all renderer unit/types, lint, and bundles.
 Commit: `refactor(webgpu-renderer): consolidate channel resource planning`.
+
+Verification: 309 renderer unit tests, renderer TypeScript/lint, and 38 focused
+WebGPU scale/accessor tests pass. Point/text fixtures shed another 645–663 gzip
+bytes. Built-ins now consume their channel specification directly; this deletes
+all parallel maps rather than replacing the getter set with a descriptor layer.
 
 ## Milestone 3: Simplify program updates and declare subclass contracts
 

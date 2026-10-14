@@ -201,13 +201,7 @@ export default class BaseProgram {
 
         const normalizedChannels = normalizeChannels({
             channels: config.channels,
-            context: {
-                channelOrder: this.channelOrder,
-                optionalChannels: this.optionalChannels,
-                defaultChannelConfigs: this.defaultChannelConfigs,
-                defaultValues: this.defaultValues,
-                channelSpecs: this.channelSpecs,
-            },
+            context: { channelSpecs: this.channelSpecs },
         });
         this._channels = normalizedChannels.channels;
         this.antialiasing = this._resolveAntialiasing();
@@ -432,41 +426,11 @@ export default class BaseProgram {
     }
 
     /**
-     * @returns {string[]}
-     */
-    get channelOrder() {
-        return [];
-    }
-
-    /**
-     * Channels that may be omitted without data/value/defaults.
-     *
-     * @returns {string[]}
-     */
-    get optionalChannels() {
-        return [];
-    }
-
-    /**
      * Channel metadata for validation and coercion.
      *
      * @returns {Record<string, ChannelSpec>}
      */
     get channelSpecs() {
-        return {};
-    }
-
-    /**
-     * @returns {Record<string, ChannelConfigInput>}
-     */
-    get defaultChannelConfigs() {
-        return {};
-    }
-
-    /**
-     * @returns {Record<string, number|number[]>}
-     */
-    get defaultValues() {
         return {};
     }
 

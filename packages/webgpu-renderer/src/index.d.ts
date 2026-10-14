@@ -395,12 +395,6 @@ export type ScaleUniformParam = {
         | "band";
 };
 
-/** Uniform definition bundle for a scale. */
-export type ScaleUniformDef = {
-    stopArrays: boolean;
-    params: ScaleUniformParam[];
-};
-
 /** Parameters passed to scale-specific WGSL emitter functions. */
 export type ScaleEmitParams = {
     /** Channel name used for function naming and uniform lookups. */

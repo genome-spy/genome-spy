@@ -1,9 +1,5 @@
 import { validateStorageBufferSize } from "../../../utils/bufferLimits.js";
 import {
-    getScaleResourceRequirements,
-    getScaleUniformDef,
-} from "../../scales/scaleDefinition.js";
-import {
     getScaleStopLengths,
     isColorRange,
     isRangeFunction,
@@ -222,11 +218,7 @@ export class ScaleResourceManager {
             );
         }
         const analysis = this._getAnalysis(name);
-        const requirements = getScaleResourceRequirements(
-            analysis.scaleDef,
-            analysis.isPiecewise
-        );
-        const kind = requirements.stopKind;
+        const kind = analysis.stopKind;
         if (kind) {
             const { domainLength, rangeLength } = getScaleStopLengths(
                 name,
@@ -252,15 +244,14 @@ export class ScaleResourceManager {
                 arrayLength: rangeLength,
             });
         }
-        const def = getScaleUniformDef(analysis.scaleDef);
-        for (const param of def.params) {
+        for (const param of analysis.scaleDef.params) {
             layout.push({
                 name: `${param.prefix}${name}`,
                 type: "f32",
                 components: 1,
             });
         }
-        if (requirements.needsOrdinalRange) {
+        if (analysis.needsOrdinalRange) {
             layout.push({
                 name: RANGE_TABLE_PREFIX + name,
                 type: "u32",
@@ -272,7 +263,7 @@ export class ScaleResourceManager {
                 components: 1,
             });
         }
-        if (requirements.needsDomainMap) {
+        if (analysis.needsDomainMap) {
             layout.push({
                 name: DOMAIN_MAP_TABLE_PREFIX + name,
                 type: "u32",
@@ -307,11 +298,7 @@ export class ScaleResourceManager {
             );
         }
         const analysis = this._getAnalysis(name);
-        const requirements = getScaleResourceRequirements(
-            analysis.scaleDef,
-            analysis.isPiecewise
-        );
-        const kind = requirements.stopKind;
+        const kind = analysis.stopKind;
         if (kind) {
             const { domainLength, rangeLength } = getScaleStopLengths(
                 name,
@@ -330,21 +317,16 @@ export class ScaleResourceManager {
                 );
             }
         }
-        const def = getScaleUniformDef(analysis.scaleDef);
-        for (const param of def.params) {
+        for (const param of analysis.scaleDef.params) {
             let value = param.defaultValue;
             if (param.prop && scale[param.prop] !== undefined) {
                 value = scale[param.prop];
             }
             this._setUniformValue(`${param.prefix}${name}`, value);
         }
-        this._registerScaleUpdaters(
+        this._scaleUpdaters.set(
             name,
-            channel,
-            scale,
-            analysis,
-            requirements,
-            kind
+            this._buildScaleUpdater({ name, channel, scale, analysis })
         );
     }
 
@@ -361,44 +343,19 @@ export class ScaleResourceManager {
     }
 
     /**
-     * @param {string} name
-     * @param {ChannelConfigResolved} channel
-     * @param {ChannelScale} scale
-     * @param {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} analysis
-     * @param {ReturnType<typeof getScaleResourceRequirements>} requirements
-     * @param {"continuous"|"threshold"|"piecewise"|null} kind
-     * @returns {void}
-     */
-    _registerScaleUpdaters(name, channel, scale, analysis, requirements, kind) {
-        this._scaleUpdaters.set(
-            name,
-            this._buildScaleUpdater({
-                name,
-                channel,
-                scale,
-                analysis,
-                requirements,
-                kind,
-            })
-        );
-    }
-
-    /**
      * @param {object} params
      * @param {string} params.name
      * @param {ChannelConfigResolved} params.channel
      * @param {ChannelScale} params.scale
      * @param {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} params.analysis
-     * @param {ReturnType<typeof getScaleResourceRequirements>} params.requirements
-     * @param {"continuous"|"threshold"|"piecewise"|null} params.kind
      * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }}
      */
-    _buildScaleUpdater({ name, channel, scale, analysis, requirements, kind }) {
+    _buildScaleUpdater({ name, channel, scale, analysis }) {
         const useRangeTexture = analysis.useRangeTexture;
-        const needsDomainMap = requirements.needsDomainMap;
-        const needsOrdinalRange = requirements.needsOrdinalRange;
+        const needsDomainMap = analysis.needsDomainMap;
+        const needsOrdinalRange = analysis.needsOrdinalRange;
         const scaleDef = analysis.scaleDef;
-        const stopKind = kind;
+        const stopKind = analysis.stopKind;
         const stopInfo = stopKind ? this._getScaleStopInfo(name) : undefined;
         const domainUniformName = DOMAIN_PREFIX + name;
         const rangeUniformName = RANGE_PREFIX + name;
@@ -580,30 +537,18 @@ export class ScaleResourceManager {
         }
 
         /** @type {(domain: unknown) => boolean} */
-        const updateDomain =
-            updateStopDomain && updateDomainMap
-                ? (domain) => {
-                      const mapUpdate = updateDomainMap(domain);
-                      updateStopDomain(mapUpdate.domainUniform ?? domain);
-                      return mapUpdate.needsRebind;
-                  }
-                : updateStopDomain
-                  ? (domain) => {
-                        updateStopDomain(domain);
-                        return false;
-                    }
-                  : updateDomainMap
-                    ? (domain) => {
-                          const mapUpdate = updateDomainMap(domain);
-                          if (mapUpdate.domainUniform) {
-                              this._setUniformValue(
-                                  domainUniformName,
-                                  mapUpdate.domainUniform
-                              );
-                          }
-                          return mapUpdate.needsRebind;
-                      }
-                    : () => false;
+        const updateDomain = (domain) => {
+            const mapUpdate = updateDomainMap?.(domain);
+            if (updateStopDomain) {
+                updateStopDomain(mapUpdate?.domainUniform ?? domain);
+            } else if (mapUpdate?.domainUniform) {
+                this._setUniformValue(
+                    domainUniformName,
+                    mapUpdate.domainUniform
+                );
+            }
+            return mapUpdate?.needsRebind ?? false;
+        };
 
         /** @type {(range: unknown) => boolean} */
         const updateRange = useRangeTexture
