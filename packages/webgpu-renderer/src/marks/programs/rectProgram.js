@@ -3,7 +3,6 @@ import {
     POSITION_CLAMP_WGSL,
 } from "./positionClamping.js";
 import BaseProgram from "./internal/baseProgram.js";
-import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { linearScale } from "../../scales/linear.js";
 import { isValueChannelConfig } from "../../types.js";
 
@@ -42,13 +41,6 @@ export const RECT_CHANNEL_SPECS = {
     shadowColor: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     hatchPattern: { type: "u32", components: 1, default: 0 },
 };
-
-const {
-    channels: CHANNELS,
-    defaults: DEFAULTS,
-    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
-    optionalChannels: OPTIONAL_CHANNELS,
-} = buildChannelMaps(RECT_CHANNEL_SPECS);
 
 const EDGE_CHANNELS = [
     "strokeWidth",
@@ -483,23 +475,10 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class RectProgram extends BaseProgram {
-    /** @override */
+    /** @override * @protected
+     */
     _resolveAntialiasing() {
         return determineRectAntialiasing(this._channels);
-    }
-
-    /**
-     * @returns {string[]}
-     */
-    get channelOrder() {
-        return CHANNELS;
-    }
-
-    /**
-     * @returns {string[]}
-     */
-    get optionalChannels() {
-        return OPTIONAL_CHANNELS;
     }
 
     /**
@@ -507,20 +486,6 @@ export default class RectProgram extends BaseProgram {
      */
     get channelSpecs() {
         return RECT_CHANNEL_SPECS;
-    }
-
-    /**
-     * @returns {Record<string, ChannelConfigInput>}
-     */
-    get defaultChannelConfigs() {
-        return DEFAULT_CHANNEL_CONFIGS;
-    }
-
-    /**
-     * @returns {Record<string, number|number[]>}
-     */
-    get defaultValues() {
-        return DEFAULTS;
     }
 
     /**

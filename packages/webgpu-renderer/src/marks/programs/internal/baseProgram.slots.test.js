@@ -4,10 +4,6 @@ import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 import { attachScaleDefinitions } from "../../../../testUtils/scaleDefinitions.js";
 
 class SlotProgram extends BaseProgram {
-    get channelOrder() {
-        return ["uniqueId", "x", "size", "fill"];
-    }
-
     get channelSpecs() {
         return /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */ ({
             uniqueId: { type: "u32", components: 1 },
@@ -140,13 +136,13 @@ describe("BaseProgram slot handles", () => {
         expect(domainEntry).toBeTruthy();
         const stride = domainEntry.stride ?? 16;
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 domainEntry.offset,
                 true
             )
         ).toBe(2);
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 domainEntry.offset + stride,
                 true
             )
@@ -195,7 +191,10 @@ describe("BaseProgram slot handles", () => {
         program.getSlotHandles().values.size.set(5);
         expect(sizeEntry).toBeTruthy();
         expect(
-            program._uniformBufferState.view.getFloat32(sizeEntry.offset, true)
+            new DataView(program._uniformBufferState.data).getFloat32(
+                sizeEntry.offset,
+                true
+            )
         ).toBe(5);
 
         const conditionSlot =
@@ -206,7 +205,10 @@ describe("BaseProgram slot handles", () => {
         conditionSlot.set([0.2, 0.4, 0.6, 1]);
         expect(fillEntry).toBeTruthy();
         expect(
-            program._uniformBufferState.view.getFloat32(fillEntry.offset, true)
+            new DataView(program._uniformBufferState.data).getFloat32(
+                fillEntry.offset,
+                true
+            )
         ).toBeCloseTo(0.2);
     });
 
@@ -254,13 +256,13 @@ describe("BaseProgram slot handles", () => {
         conditions[1].set([0.6, 0.7, 0.8, 1]);
 
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 program._uniformBufferState.entries.get("u_fill__cond0").offset,
                 true
             )
         ).toBeCloseTo(0.2);
         expect(
-            program._uniformBufferState.view.getFloat32(
+            new DataView(program._uniformBufferState.data).getFloat32(
                 program._uniformBufferState.entries.get("u_fill__cond1").offset,
                 true
             )
@@ -324,7 +326,10 @@ describe("BaseProgram slot handles", () => {
         program.getSlotHandles().extraValues.uExtra.set(3);
 
         expect(
-            program._uniformBufferState.view.getFloat32(entry.offset, true)
+            new DataView(program._uniformBufferState.data).getFloat32(
+                entry.offset,
+                true
+            )
         ).toBe(3);
     });
 
@@ -361,9 +366,6 @@ describe("BaseProgram slot handles", () => {
             x: new Float32Array([2, 3]),
             fill: nextFill,
         });
-
-        expect(program._channels.fill__cond0.data).toBe(nextFill);
-        expect(program._channels.fill.value).toEqual([0, 0, 0, 1]);
     });
 
     it("keeps multiple conditional series renderable but not replaceable", () => {
@@ -406,8 +408,6 @@ describe("BaseProgram slot handles", () => {
             },
         });
 
-        expect(program._channels.fill__cond0.data).toBe(first);
-        expect(program._channels.fill__cond1.data).toBe(second);
         expect(() =>
             program.getSlotHandles().series.replace({
                 uniqueId: new Uint32Array([2, 3]),

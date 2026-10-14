@@ -3,26 +3,39 @@
  * encoder calls. A new instance must be created for every pass.
  */
 export default class RenderPassState {
+    /** @type {GPURenderPassEncoder} */
+    #pass;
+
+    /** @type {GPURenderPipeline | null} */
+    #pipeline = null;
+
+    /** @type {(GPUBindGroup | undefined)[]} */
+    #bindGroups = [];
+
+    /** @type {(readonly number[] | undefined)[]} */
+    #dynamicOffsets = [];
+
+    /** @type {number[]} */
+    #viewport;
+
+    /** @type {number[]} */
+    #scissor;
+
     /** @param {GPURenderPassEncoder} pass */
     constructor(pass) {
-        this.pass = pass;
-        /** @type {GPURenderPipeline | null} */
-        this.pipeline = null;
-        /** @type {(GPUBindGroup | undefined)[]} */
-        this.bindGroups = [];
-        /** @type {(readonly number[] | undefined)[]} */
-        this.dynamicOffsets = [];
-        this.viewport = [NaN, NaN, NaN, NaN, NaN, NaN];
-        this.scissor = [NaN, NaN, NaN, NaN];
+        this.#pass = pass;
+
+        this.#viewport = [NaN, NaN, NaN, NaN, NaN, NaN];
+        this.#scissor = [NaN, NaN, NaN, NaN];
     }
 
     /** @param {GPURenderPipeline} pipeline */
     setPipeline(pipeline) {
-        if (pipeline === this.pipeline) {
+        if (pipeline === this.#pipeline) {
             return;
         }
-        this.pass.setPipeline(pipeline);
-        this.pipeline = pipeline;
+        this.#pass.setPipeline(pipeline);
+        this.#pipeline = pipeline;
     }
 
     /**
@@ -31,20 +44,20 @@ export default class RenderPassState {
      * @param {readonly number[]} [dynamicOffsets]
      */
     setBindGroup(index, bindGroup, dynamicOffsets) {
-        const previous = this.bindGroups[index];
+        const previous = this.#bindGroups[index];
         if (
             previous === bindGroup &&
-            offsetsEqual(this.dynamicOffsets[index], dynamicOffsets)
+            offsetsEqual(this.#dynamicOffsets[index], dynamicOffsets)
         ) {
             return;
         }
         if (dynamicOffsets) {
-            this.pass.setBindGroup(index, bindGroup, dynamicOffsets);
+            this.#pass.setBindGroup(index, bindGroup, dynamicOffsets);
         } else {
-            this.pass.setBindGroup(index, bindGroup);
+            this.#pass.setBindGroup(index, bindGroup);
         }
-        this.bindGroups[index] = bindGroup;
-        this.dynamicOffsets[index] = dynamicOffsets;
+        this.#bindGroups[index] = bindGroup;
+        this.#dynamicOffsets[index] = dynamicOffsets;
     }
 
     /**
@@ -56,7 +69,7 @@ export default class RenderPassState {
      * @param {number} maxDepth
      */
     setViewport(x, y, width, height, minDepth, maxDepth) {
-        const values = this.viewport;
+        const values = this.#viewport;
         if (
             values[0] === x &&
             values[1] === y &&
@@ -67,7 +80,7 @@ export default class RenderPassState {
         ) {
             return;
         }
-        this.pass.setViewport(x, y, width, height, minDepth, maxDepth);
+        this.#pass.setViewport(x, y, width, height, minDepth, maxDepth);
         values[0] = x;
         values[1] = y;
         values[2] = width;
@@ -83,7 +96,7 @@ export default class RenderPassState {
      * @param {number} height
      */
     setScissorRect(x, y, width, height) {
-        const values = this.scissor;
+        const values = this.#scissor;
         if (
             values[0] === x &&
             values[1] === y &&
@@ -92,7 +105,7 @@ export default class RenderPassState {
         ) {
             return;
         }
-        this.pass.setScissorRect(x, y, width, height);
+        this.#pass.setScissorRect(x, y, width, height);
         values[0] = x;
         values[1] = y;
         values[2] = width;

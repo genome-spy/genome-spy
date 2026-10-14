@@ -65,7 +65,6 @@ describe("rectangle antialiasing", () => {
             RectProgram.prototype,
             "shaderBody"
         ).get;
-        const resolveAntialiasing = RectProgram.prototype._resolveAntialiasing;
         const plain = {
             _channels: plainChannels(),
             antialiasing: "multisample",
@@ -78,11 +77,9 @@ describe("rectangle antialiasing", () => {
             antialiasing: "shader",
         };
 
-        expect(resolveAntialiasing.call(plain)).toBe("multisample");
         expect(getShaderBody.call(plain)).toContain(
             "const USE_MULTISAMPLE_EDGE_COVERAGE = true;"
         );
-        expect(resolveAntialiasing.call(dynamic)).toBe("shader");
         expect(getShaderBody.call(dynamic)).toContain(
             "const USE_MULTISAMPLE_EDGE_COVERAGE = false;"
         );

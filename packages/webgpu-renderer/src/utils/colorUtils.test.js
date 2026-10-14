@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createInterpolatedColorTexture } from "./colorUtils.js";
+import { createSchemeTexture } from "./colorUtils.js";
 
-describe("createInterpolatedColorTexture", () => {
+describe("createSchemeTexture", () => {
     it("interpolates the full color-stop range", () => {
-        const texture = createInterpolatedColorTexture(["black", "white"], {
+        const texture = createSchemeTexture(["black", "white"], {
             count: 3,
         });
 
@@ -20,10 +20,10 @@ describe("createInterpolatedColorTexture", () => {
             (a, b) => (/** @type {number} */ t) => (t < 0.5 ? a : b)
         );
 
-        const texture = createInterpolatedColorTexture(
-            ["red", "green", "blue"],
-            { count: 5, interpolate: factory }
-        );
+        const texture = createSchemeTexture(["red", "green", "blue"], {
+            count: 5,
+            interpolate: factory,
+        });
 
         expect(factory.mock.calls).toEqual([
             ["red", "green"],

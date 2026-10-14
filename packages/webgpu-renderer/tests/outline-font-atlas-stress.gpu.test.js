@@ -38,6 +38,23 @@ test("outline atlas grows repeatedly across thousands of dynamic labels", async 
         renderer.updateGlobals({ width: 512, height: 256, dpr: 1 });
         renderer.device.pushErrorScope("validation");
 
+        const batchTextures = [];
+        const createTexture = renderer.device.createTexture.bind(
+            renderer.device
+        );
+        renderer.device.createTexture = (descriptor) => {
+            const texture = createTexture(descriptor);
+            if (descriptor.label === "outline glyph batch") {
+                const destroyed = { value: false };
+                const destroy = texture.destroy.bind(texture);
+                texture.destroy = () => {
+                    destroyed.value = true;
+                    destroy();
+                };
+                batchTextures.push(destroyed);
+            }
+            return texture;
+        };
         const font = createSyntheticOutlineFont(glyphsPerRound * rounds);
         const positions = createLabelPositions(labelCount, 512, 256);
         const makeSeries = (uniqueGlyphs, phase) => ({
@@ -111,7 +128,8 @@ test("outline atlas grows repeatedly across thousands of dynamic labels", async 
             finalVersion: atlas.version,
             finalDimensions: [atlas.width, atlas.height],
             finalEntries: atlas.entryCount,
-            pendingBatches: atlas._pendingBatches.size,
+            batchesCreated: batchTextures.length,
+            batchesDestroyed: batchTextures.every((batch) => batch.value),
             preservedFirstEntry:
                 JSON.stringify(atlas.ensure([firstGlyph])[0]) ===
                 JSON.stringify(firstEntry),
@@ -124,7 +142,8 @@ test("outline atlas grows repeatedly across thousands of dynamic labels", async 
 
     expect(result.validationError).toBeNull();
     expect(result.finalEntries).toBe(256);
-    expect(result.pendingBatches).toBe(0);
+    expect(result.batchesCreated).toBeGreaterThan(0);
+    expect(result.batchesDestroyed).toBe(true);
     expect(result.preservedFirstEntry).toBe(true);
     expect(result.snapshots.every((snapshot) => snapshot.rebound)).toBe(true);
     expect(result.snapshots.map((snapshot) => snapshot.entries)).toEqual([

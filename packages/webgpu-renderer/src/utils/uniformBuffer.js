@@ -19,6 +19,9 @@ import { buildUniformLayout } from "./uniformLayout.js";
  * TODO: Provide TWGL.js styled uniform setters for convenience and performance.
  */
 export class UniformBuffer {
+    /** @type {DataView} */
+    #view;
+
     /**
      * @param {UniformSpec[]} specs
      */
@@ -27,7 +30,7 @@ export class UniformBuffer {
         this.entries = layout.entries;
         this.byteLength = layout.byteLength;
         this.data = new ArrayBuffer(this.byteLength);
-        this.view = new DataView(this.data);
+        this.#view = new DataView(this.data);
     }
 
     /**
@@ -59,7 +62,7 @@ export class UniformBuffer {
             for (let i = 0; i < entry.arrayLength; i++) {
                 const element = arrayValue[i];
                 const baseOffset = entry.offset + i * stride;
-                this._writeElement(entry, baseOffset, element);
+                this.#writeElement(entry, baseOffset, element);
             }
             return;
         }
@@ -79,7 +82,7 @@ export class UniformBuffer {
                         `Uniform "${name}" expects ${components} components`
                     );
                 }
-                this._writeScalar(entry, entry.offset + i * 4, component ?? 0);
+                this.#writeScalar(entry, entry.offset + i * 4, component ?? 0);
             }
         } else {
             if (components !== 1) {
@@ -88,10 +91,7 @@ export class UniformBuffer {
                 );
             }
             const scalarValue = /** @type {number} */ (value);
-            this._writeScalar(entry, entry.offset, scalarValue ?? 0);
-            for (let i = 1; i < components; i++) {
-                this._writeScalar(entry, entry.offset + i * 4, 0);
-            }
+            this.#writeScalar(entry, entry.offset, scalarValue ?? 0);
         }
     }
 
@@ -100,14 +100,14 @@ export class UniformBuffer {
      * @param {number} baseOffset
      * @param {number|number[]} value
      */
-    _writeElement(entry, baseOffset, value) {
+    #writeElement(entry, baseOffset, value) {
         if (entry.components === 1) {
             if (typeof value !== "number") {
                 throw new Error(
                     `Uniform "${entry.name}" expects scalar elements`
                 );
             }
-            this._writeScalar(entry, baseOffset, value);
+            this.#writeScalar(entry, baseOffset, value);
             return;
         }
         if (!Array.isArray(value) || value.length !== entry.components) {
@@ -116,7 +116,7 @@ export class UniformBuffer {
             );
         }
         for (let i = 0; i < entry.components; i++) {
-            this._writeScalar(entry, baseOffset + i * 4, value[i] ?? 0);
+            this.#writeScalar(entry, baseOffset + i * 4, value[i] ?? 0);
         }
     }
 
@@ -125,13 +125,13 @@ export class UniformBuffer {
      * @param {number} offset
      * @param {number} value
      */
-    _writeScalar(entry, offset, value) {
+    #writeScalar(entry, offset, value) {
         if (entry.type === "u32") {
-            this.view.setUint32(offset, value >>> 0, true);
+            this.#view.setUint32(offset, value >>> 0, true);
         } else if (entry.type === "i32") {
-            this.view.setInt32(offset, value | 0, true);
+            this.#view.setInt32(offset, value | 0, true);
         } else {
-            this.view.setFloat32(offset, value ?? 0, true);
+            this.#view.setFloat32(offset, value ?? 0, true);
         }
     }
 }

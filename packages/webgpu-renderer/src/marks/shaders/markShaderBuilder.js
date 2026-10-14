@@ -80,21 +80,9 @@ import {
  */
 
 /**
- * Flags describing which per-channel resources are required.
- *
- * @typedef {object} ResourceRequirements
- * @prop {boolean} [ordinalRange]
- * @prop {boolean} [domainMap]
- * @prop {boolean} [rangeTexture]
- * @prop {boolean} [rangeSampler]
- * @prop {boolean} [rangeCountUniform]
- * @prop {boolean} [domainMapCountUniform]
- */
-
-/**
  * Generated WGSL and corresponding binding/layout metadata.
  *
- * @typedef {{ shaderCode: string, resourceBindings: GPUBindGroupLayoutEntry[], resourceLayout: ResourceLayoutEntry[], resourceRequirements: Record<string, ResourceRequirements> }} ShaderBuildResult
+ * @typedef {{ shaderCode: string, resourceBindings: GPUBindGroupLayoutEntry[], resourceLayout: ResourceLayoutEntry[] }} ShaderBuildResult
  */
 
 /**
@@ -131,8 +119,6 @@ export function buildMarkShader({
     const resourceBindings = [];
     /** @type {ResourceLayoutEntry[]} */
     const resourceLayout = [];
-    /** @type {Record<string, ResourceRequirements>} */
-    const resourceRequirements = {};
 
     // WGSL snippets are accumulated and stitched together at the end. This
     // keeps generator logic readable and makes it easy to add/remove blocks.
@@ -171,11 +157,6 @@ export function buildMarkShader({
         GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE;
     const seriesChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.sourceKind === "series"
-    );
-    const valueChannelIRs = channelIRs.filter(
-        (channelIR) =>
-            channelIR.sourceKind === "uniform" ||
-            channelIR.sourceKind === "literal"
     );
     const ordinalRangeChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.needsOrdinalRange
@@ -258,17 +239,6 @@ fn isInstanceVisible(i: u32) -> bool {
 }
 `
             : "";
-
-    /**
-     * @param {string} name
-     * @returns {ResourceRequirements}
-     */
-    const ensureRequirements = (name) => {
-        if (!resourceRequirements[name]) {
-            resourceRequirements[name] = {};
-        }
-        return resourceRequirements[name];
-    };
 
     /**
      * @param {SelectionDef} def
@@ -490,7 +460,7 @@ ${clauses.join("\n")}
     }
 
     // First pass: series-backed channels must map to packed series buffers and
-    // emit read_* accessors plus getScaled_* wrappers.
+    // emit read_* accessors.
     const packedSeriesEntries = packedSeriesLayout ?? new Map();
 
     // Internal invariant: packed series is required when series channels exist.
@@ -562,37 +532,6 @@ ${clauses.join("\n")}
     let base = ${offset}u + i * ${stride}u;
     return ${scalarType === "u32" ? words : `bitcast<${type}>(${words})`};
 }`);
-
-        const hasConditions = (channelIR.channel.conditions?.length ?? 0) > 0;
-        const baseFunctionName = hasConditions ? `${name}_base` : name;
-        if (channelIR.needsScaleFunction) {
-            channelFns.push(
-                buildScaledFunction({
-                    name,
-                    functionName: baseFunctionName,
-                    scaleDef: channelIR.scaleDef,
-                    rawValueExpr: channelIR.rawValueExpr,
-                    scalarType: channelIR.scalarType,
-                    inputComponents: channelIR.inputComponents,
-                    outputComponents: channelIR.outputComponents,
-                    outputScalarType: channelIR.outputScalarType,
-                    scaleConfig: channelIR.channel.scale,
-                    useRangeTexture: channelIR.useRangeTexture,
-                    domainMapName: channelIR.needsDomainMap
-                        ? `${DOMAIN_MAP_PREFIX}${name}`
-                        : null,
-                })
-            );
-        } else {
-            channelFns.push(
-                emitPassthroughFunction(channelIR, baseFunctionName)
-            );
-        }
-        if (hasConditions) {
-            channelFns.push(
-                emitConditionalWrapper(channelIR, baseFunctionName)
-            );
-        }
     }
 
     if (selectionDefs.length > 0) {
@@ -619,9 +558,6 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
 
     for (const channelIR of ordinalRangeChannelIRs) {
         const { name } = channelIR;
-        const requirements = ensureRequirements(name);
-        requirements.ordinalRange = true;
-        requirements.rangeCountUniform = true;
         const scalar = channelIR.outputScalarType;
         const vector = channelIR.outputComponents !== 1;
         const type = vector ? "vec4<f32>" : scalar;
@@ -633,19 +569,11 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
     return ${!vector && scalar === "u32" ? load : `bitcast<${type}>(${load})`};
 }`);
     }
-    for (const { name } of domainMapChannelIRs) {
-        const requirements = ensureRequirements(name);
-        requirements.domainMap = true;
-        requirements.domainMapCountUniform = true;
-    }
 
     // Color ramps are stored as textures so interpolation matches d3 in
     // non-RGB color spaces when requested.
     for (const channelIR of rangeTextureChannelIRs) {
         const { name } = channelIR;
-        const requirements = ensureRequirements(name);
-        requirements.rangeTexture = true;
-        requirements.rangeSampler = true;
         const textureBinding = bindingIndex++;
         resourceBindings.push({
             binding: textureBinding,
@@ -743,13 +671,10 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
         }
     }
 
-    // Second pass: value-backed channels become either uniforms (dynamic) or
-    // inline WGSL constants (static), but still expose getScaled_* wrappers.
-    for (const channelIR of valueChannelIRs) {
+    // Every source kind shares the same scale and conditional accessor path.
+    for (const channelIR of channelIRs) {
         const { name } = channelIR;
-        const hasConditions =
-            Array.isArray(channelIR.channel.conditions) &&
-            channelIR.channel.conditions.length > 0;
+        const hasConditions = (channelIR.channel.conditions?.length ?? 0) > 0;
         const baseFunctionName = hasConditions ? `${name}_base` : name;
         if (channelIR.needsScaleFunction) {
             channelFns.push(
@@ -783,11 +708,9 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
 
     // Validate that required helper uniforms (counts) are present.
     if (__DEV__) {
-        for (const [name, requirements] of Object.entries(
-            resourceRequirements
-        )) {
+        for (const { name, needsOrdinalRange, needsDomainMap } of channelIRs) {
             if (
-                requirements.rangeCountUniform &&
+                needsOrdinalRange &&
                 !uniformNames.has(`${RANGE_COUNT_PREFIX}${name}`)
             ) {
                 throw new Error(
@@ -795,7 +718,7 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                 );
             }
             if (
-                requirements.domainMapCountUniform &&
+                needsDomainMap &&
                 !uniformNames.has(`${DOMAIN_MAP_COUNT_PREFIX}${name}`)
             ) {
                 throw new Error(
@@ -1080,6 +1003,5 @@ ${pickFns}
         shaderCode: evaluateShaderConditionals(shaderCode, definedSymbols),
         resourceBindings,
         resourceLayout,
-        resourceRequirements,
     };
 }

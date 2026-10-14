@@ -49,17 +49,6 @@ export function getScaleResourceRequirements(definition, isPiecewise) {
 
 /**
  * @param {import("../../index.d.ts").ScaleDef} definition
- * @returns {import("../../index.d.ts").ScaleUniformDef}
- */
-export function getScaleUniformDef(definition) {
-    return {
-        stopArrays: definition.resources.stopKind !== null,
-        params: definition.params,
-    };
-}
-
-/**
- * @param {import("../../index.d.ts").ScaleDef} definition
  * @param {"f32"|"u32"|"i32"} scalarType
  * @returns {"f32"|"u32"|"i32"}
  */

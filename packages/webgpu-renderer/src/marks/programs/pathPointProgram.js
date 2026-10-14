@@ -328,7 +328,8 @@ export default class PathPointProgram extends PointProgram {
         ];
     }
 
-    /** @returns {void} */
+    /** @returns {void} * @protected
+     */
     _initializeExtraResources() {
         const paths = this._markConfig.paths;
         if (!Array.isArray(paths)) {
@@ -355,6 +356,7 @@ export default class PathPointProgram extends PointProgram {
      * @param {GPUBuffer | null} sharedEntries
      * @param {boolean} borrowed
      * @param {GPUTextureFormat} atlasFormat
+     * @protected Used by development oracle subclasses.
      */
     _installPathAtlas(
         atlas,
@@ -391,7 +393,8 @@ export default class PathPointProgram extends PointProgram {
         this._setUniformValue("uPathCount", atlas.pathCount);
     }
 
-    /** @param {Float32Array} data */
+    /** @param {Float32Array} data * @internal Called by initialization hooks during super(), before private branding.
+     */
     _createPathAtlasEntries(data) {
         const entries = this.device.createBuffer({
             label: gpuLabel(this.label, "path atlas entries"),

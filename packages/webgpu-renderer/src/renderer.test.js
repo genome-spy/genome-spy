@@ -1,7 +1,15 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { TransientTexturePool } from "./renderGroups.js";
 import { Renderer, createRenderer } from "./renderer.js";
+
+const renderers = new Set();
+afterEach(() => {
+    for (const renderer of renderers) renderer.destroy();
+    renderers.clear();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+});
 
 test.each([134217728, 536870912])(
     "startup requests supported byte capacity %i without binding overrides",
@@ -70,7 +78,10 @@ describe("Renderer mark definitions", () => {
             alphaMode: "premultiplied",
         });
         expect(pass.setViewport).toHaveBeenCalledWith(0, 0, 300, 150, 0, 1);
-        expect(renderer._globalUniformStaging.floats[2]).toBe(1.5);
+        const writes = vi.mocked(renderer.device.queue.writeBuffer).mock.calls;
+        expect(
+            new Float32Array(/** @type {ArrayBuffer} */ (writes.at(-1)[2]))[2]
+        ).toBe(1.5);
         expect(renderer._globals).toEqual({ width: 100, height: 50, dpr: 2 });
         expect(renderer._renderFrame).toBeNull();
         expect(
@@ -84,15 +95,11 @@ describe("Renderer mark definitions", () => {
     });
 
     test("notifies the host instead of submitting an implicit frame", () => {
-        const { renderer } = createRendererHarness();
-        const onInvalidate = vi.fn();
-        renderer._onInvalidate = onInvalidate;
-        renderer._pickingDirty = false;
+        const { renderer, onInvalidate } = createRendererHarness();
 
         renderer._invalidate();
 
         expect(onInvalidate).toHaveBeenCalledOnce();
-        expect(renderer._pickingDirty).toBe(true);
         expect(renderer.device.queue.submit).not.toHaveBeenCalled();
     });
 
@@ -140,7 +147,6 @@ describe("Renderer mark definitions", () => {
     test("retains placement-set identity while replacing and destroying data", () => {
         const { renderer } = createRendererHarness();
         renderer._placementSets = new Map();
-        renderer._nextPlacementSetId = 1;
         renderer._placementBindGroupLayout = /** @type {GPUBindGroupLayout} */ (
             /** @type {unknown} */ ({})
         );
@@ -148,7 +154,8 @@ describe("Renderer mark definitions", () => {
         const placements = renderer.createPlacementSet({
             rectangles: new Float32Array([0, 0, 1, 1]),
         });
-        const initialBuffer = placements._buffer;
+        const buffers = vi.mocked(renderer.device.createBuffer).mock.results;
+        const initialBuffer = buffers.at(-1).value;
 
         expect(placements.placementSetId).toBe(1);
         expect(placements.count).toBe(1);
@@ -168,12 +175,10 @@ describe("Renderer mark definitions", () => {
         expect(renderer._renderFrame).toBeNull();
         expect(renderer._pickingFrame).toBeNull();
 
-        renderer._pickingDirty = false;
         placements.destroy();
         placements.destroy();
-        expect(placements._buffer.destroy).toHaveBeenCalledOnce();
+        expect(buffers.at(-1).value.destroy).toHaveBeenCalledOnce();
         expect(renderer._placementSets.size).toBe(0);
-        expect(renderer._pickingDirty).toBe(true);
         expect(renderer._renderFrame).toBeNull();
         expect(renderer._pickingFrame).toBeNull();
         expect(() =>
@@ -184,7 +189,6 @@ describe("Renderer mark definitions", () => {
     test("uses logical placement count after a set shrinks", () => {
         const { renderer } = createRendererHarness();
         renderer._placementSets = new Map();
-        renderer._nextPlacementSetId = 1;
         renderer._placementBindGroupLayout = /** @type {GPUBindGroupLayout} */ (
             /** @type {unknown} */ ({})
         );
@@ -211,7 +215,7 @@ describe("Renderer mark definitions", () => {
         });
         expect(renderer._renderFrame).toBeNull();
         expect(renderer._pickingFrame).toBeNull();
-        expect(() => renderer._normalizeDraws([draw])).toThrow(
+        expect(() => renderer.render({ draws: [draw] })).toThrow(
             "exceeds set count"
         );
 
@@ -219,7 +223,7 @@ describe("Renderer mark definitions", () => {
             draws: [{ mark, placement: { set: placements, index: 0 } }],
         });
         expect(renderer._renderFrame?.[0].placement).toMatchObject({
-            bindGroup: placements._bindGroup,
+            bindGroup: placements.bindGroup,
             count: 1,
             index: 0,
         });
@@ -234,115 +238,112 @@ describe("Renderer mark definitions", () => {
     });
 
     test("serializes concurrent pick readbacks without dropping requests", async () => {
-        const { renderer } = createRendererHarness();
-        /** @type {[number, number][]} */
-        const calls = [];
-        /** @type {() => void} */
         let releaseFirst = () => {};
         const firstReadback = new Promise((resolve) => {
-            releaseFirst = () => resolve();
+            releaseFirst = () => resolve(undefined);
         });
-        renderer._pickSingle = vi.fn(async (x, y) => {
-            calls.push([x, y]);
-            if (calls.length === 1) {
-                await firstReadback;
-            }
-            return x + y;
-        });
-
+        const mapAsync = vi
+            .fn()
+            .mockImplementationOnce(() => firstReadback)
+            .mockResolvedValue(undefined);
+        const { renderer, readbacks } = createRendererHarness({ mapAsync });
+        renderer.createMark(
+            { type: "custom", createProgram: () => createProgram() },
+            { channels: {} }
+        );
         const first = renderer.pick(1, 2);
         const second = renderer.pick(3, 4);
         const third = renderer.pick(5, 6);
-
         await Promise.resolve();
-        expect(calls).toEqual([[1, 2]]);
-
+        expect(readbacks).toEqual([[2, 4]]);
         releaseFirst();
-
         await expect(Promise.all([first, second, third])).resolves.toEqual([
             3, 7, 11,
         ]);
-        expect(calls).toEqual([
-            [1, 2],
-            [3, 4],
-            [5, 6],
+        expect(readbacks).toEqual([
+            [2, 4],
+            [6, 8],
+            [10, 12],
         ]);
     });
 
     test("reports device loss once and rejects picks before deferred work starts", async () => {
-        const { renderer } = createRendererHarness();
-        renderer._pickSingle = vi.fn(async () => 1);
+        const { renderer, loseDevice, onDeviceLoss, readbacks } =
+            createRendererHarness();
+        const info = { reason: "unknown", message: "gone" };
+        loseDevice(info);
         const first = renderer.pick(1, 2);
         const second = renderer.pick(3, 4);
-        const info = /** @type {GPUDeviceLostInfo} */ (
-            /** @type {unknown} */ ({ reason: "unknown", message: "gone" })
+        await expect(first).rejects.toThrow(
+            "WebGPU device was lost (unknown): gone"
         );
-
-        renderer._handleDeviceLoss(info);
-        const error = renderer._deviceLossError;
-
-        await expect(first).rejects.toBe(error);
-        await expect(second).rejects.toBe(error);
-        await Promise.resolve();
-        expect(renderer._pickSingle).not.toHaveBeenCalled();
-        expect(renderer._activePick).toBeNull();
-        expect(renderer._pickQueue).toHaveLength(0);
-        expect(renderer._onDeviceLoss).toHaveBeenCalledOnce();
-        expect(renderer._onDeviceLoss).toHaveBeenCalledWith(info);
-
-        renderer._handleDeviceLoss(info);
-        expect(renderer._onDeviceLoss).toHaveBeenCalledOnce();
-        expect(() => renderer.render()).toThrow(error);
+        await expect(second).rejects.toThrow(
+            "WebGPU device was lost (unknown): gone"
+        );
+        expect(readbacks).toEqual([]);
+        expect(onDeviceLoss).toHaveBeenCalledOnce();
+        expect(onDeviceLoss).toHaveBeenCalledWith(info);
+        loseDevice(info);
+        expect(onDeviceLoss).toHaveBeenCalledOnce();
+        expect(() => renderer.render()).toThrow("device was lost");
         expect(() =>
             renderer.createPlacementSet({ rectangles: new Float32Array() })
-        ).toThrow(error);
+        ).toThrow("device was lost");
     });
 
     test("settles an active pick once when loss races GPU readback", async () => {
-        const { renderer } = createRendererHarness();
-        /** @type {() => void} */
         let release = () => {};
-        renderer._pickSingle = vi.fn(
+        const mapAsync = vi.fn(
             () =>
                 new Promise((resolve) => {
-                    release = () => resolve(7);
+                    release = () => resolve(undefined);
                 })
+        );
+        const { renderer, loseDevice, onDeviceLoss } = createRendererHarness({
+            mapAsync,
+        });
+        renderer.createMark(
+            { type: "custom", createProgram: () => createProgram() },
+            { channels: {} }
         );
         const pick = renderer.pick(1, 2);
         await Promise.resolve();
-
-        renderer._handleDeviceLoss(
-            /** @type {GPUDeviceLostInfo} */ (
-                /** @type {unknown} */ ({ reason: "unknown", message: "" })
-            )
-        );
-        await expect(pick).rejects.toBe(renderer._deviceLossError);
-
+        expect(mapAsync).toHaveBeenCalledOnce();
+        loseDevice({ reason: "unknown", message: "" });
+        await expect(pick).rejects.toThrow("device was lost");
         release();
         await Promise.resolve();
         await Promise.resolve();
-        expect(renderer._activePick).toBeNull();
+        expect(onDeviceLoss).toHaveBeenCalledOnce();
     });
 
     test("resolves active and queued picks to null on intentional destruction", async () => {
-        const { renderer } = createRendererHarness();
-        renderer._pickSingle = vi.fn(async () => 1);
+        let release = () => {};
+        const mapAsync = vi.fn(
+            () =>
+                new Promise((resolve) => {
+                    release = () => resolve(undefined);
+                })
+        );
+        const { renderer, loseDevice, onDeviceLoss } = createRendererHarness({
+            mapAsync,
+        });
+        renderer.createMark(
+            { type: "custom", createProgram: () => createProgram() },
+            { channels: {} }
+        );
         const active = renderer.pick(1, 2);
         const queued = renderer.pick(3, 4);
-
+        await Promise.resolve();
+        expect(mapAsync).toHaveBeenCalledOnce();
         renderer.destroy();
-        renderer._handleDeviceLoss(
-            /** @type {GPUDeviceLostInfo} */ (
-                /** @type {unknown} */ ({
-                    reason: "destroyed",
-                    message: "",
-                })
-            )
-        );
-
+        loseDevice({ reason: "destroyed", message: "" });
         await expect(active).resolves.toBeNull();
         await expect(queued).resolves.toBeNull();
-        expect(renderer._onDeviceLoss).not.toHaveBeenCalled();
+        release();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(onDeviceLoss).not.toHaveBeenCalled();
     });
 
     test("draws retained mark occurrences in the requested order", () => {
@@ -395,7 +396,7 @@ describe("Renderer mark definitions", () => {
         expect(pass.setBindGroup).toHaveBeenNthCalledWith(
             3,
             0,
-            renderer._globalBindGroup,
+            expect.anything(),
             [512]
         );
         expect(renderer._renderFrame?.map((draw) => draw.markId)).toEqual([
@@ -405,7 +406,7 @@ describe("Renderer mark definitions", () => {
         ]);
     });
 
-    test("expands active mark ordering and skips its second partition for picking", () => {
+    test("expands active mark ordering and skips its second partition for picking", async () => {
         const program = /** @type {any} */ (
             Object.assign(createProgram(), {
                 _order: {
@@ -419,7 +420,7 @@ describe("Renderer mark definitions", () => {
             type: "custom",
             createProgram: () => program,
         });
-        const { renderer, pass } = createRendererHarness();
+        const { renderer } = createRendererHarness();
         const mark = renderer.createMark(definition, { channels: {} });
 
         renderer.render({ draws: [{ mark }] });
@@ -435,30 +436,21 @@ describe("Renderer mark definitions", () => {
             [0, 1]
         );
 
-        const scoped = renderer._normalizeRenderItems([
-            {
-                items: [{ mark }],
-                bounds: { x: 0, y: 0, width: 100, height: 50 },
-                opacity: 0.5,
-            },
-        ]);
-        expect(scoped.draws.map((draw) => draw.orderPass)).toEqual([2, 5]);
-        expect(scoped.items).toHaveLength(1);
-        expect(scoped.items[0]).toMatchObject({ type: "group", opacity: 0.5 });
-        const scopedGroup = /** @type {any} */ (scoped.items[0]);
-        const scopedDraws = /** @type {Array<{ orderPass: number }>} */ (
-            scopedGroup.items
-        );
-        expect(scopedDraws.map((draw) => draw.orderPass)).toEqual([2, 5]);
-
-        program.drawPick.mockClear();
-        renderer._writeDrawGlobals(renderer._renderFrame, true);
-        renderer._encodeDraws(
-            /** @type {any} */ (pass),
-            renderer._renderFrame,
-            true
-        );
-        expect(program.drawPick).toHaveBeenCalledOnce();
+        program.draw.mockClear();
+        renderer.render({
+            items: [
+                {
+                    items: [{ mark }],
+                    bounds: { x: 0, y: 0, width: 100, height: 50 },
+                    opacity: 0.5,
+                },
+            ],
+        });
+        expect(program.draw).toHaveBeenCalledTimes(2);
+        program.draw.mockClear();
+        renderer.renderPicking();
+        await renderer.pick(1, 2);
+        expect(program.draw).toHaveBeenCalledOnce();
 
         program._order.matching = "first";
         renderer.render({ draws: [{ mark }] });
@@ -505,15 +497,15 @@ describe("Renderer mark definitions", () => {
         expect(
             pass.setBindGroup.mock.calls.filter(([index]) => index === 0)
         ).toEqual([
-            [0, renderer._globalBindGroup, [0]],
-            [0, renderer._globalBindGroup, [256]],
+            [0, expect.anything(), [0]],
+            [0, expect.anything(), [256]],
         ]);
         expect(
             pass.setBindGroup.mock.calls.filter(([index]) => index === 1)
         ).toEqual([[1, markBindGroup]]);
         expect(
             pass.setBindGroup.mock.calls.filter(([index]) => index === 2)
-        ).toEqual([[2, placements._bindGroup]]);
+        ).toEqual([[2, placements.bindGroup]]);
         expect(program.draw).toHaveBeenCalledTimes(2);
 
         renderer.render({
@@ -541,21 +533,35 @@ describe("Renderer mark definitions", () => {
 
     test("ends transient texture frames when encoding aborts", () => {
         const { renderer } = createRendererHarness();
-        renderer._encodeRenderItems = vi.fn(() => {
+        const beginFrame = vi.spyOn(
+            TransientTexturePool.prototype,
+            "beginFrame"
+        );
+        const endFrame = vi.spyOn(TransientTexturePool.prototype, "endFrame");
+        const program = createProgram();
+        program.draw.mockImplementation(() => {
             throw new Error("encoding failed");
         });
-
-        expect(() => renderer.render({ draws: [] })).toThrow("encoding failed");
-
-        expect(renderer._transientTextures.beginFrame).toHaveBeenCalledOnce();
-        expect(renderer._transientTextures.endFrame).toHaveBeenCalledOnce();
+        const mark = renderer.createMark(
+            { type: "custom", createProgram: () => program },
+            { channels: {} }
+        );
+        expect(() => renderer.render({ draws: [{ mark }] })).toThrow(
+            "encoding failed"
+        );
+        expect(beginFrame).toHaveBeenCalledOnce();
+        expect(endFrame).toHaveBeenCalledOnce();
         expect(renderer.device.queue.submit).not.toHaveBeenCalled();
     });
 
     test("reuses draw-global CPU staging while capacity is unchanged", () => {
         const { renderer } = createRendererHarness();
-        const staging = renderer._globalUniformStaging;
-        const draw = /** @type {import("./renderer.js").NormalizedDraw} */ ({
+        const mark = renderer.createMark(
+            { type: "custom", createProgram: () => createProgram() },
+            { channels: {} }
+        );
+        const draw = {
+            mark,
             viewport: { x: 2, y: 3, width: 40, height: 30 },
             visibleRange: {
                 x1: 4,
@@ -565,26 +571,19 @@ describe("Renderer mark definitions", () => {
                 cullX: true,
                 cullY: false,
             },
-            placement: { index: 7, clipMode: 3, count: 9 },
-        });
-
-        renderer._writeDrawGlobals([draw]);
+        };
+        renderer.render({ draws: [draw] });
+        const writes = vi.mocked(renderer.device.queue.writeBuffer);
+        const first = writes.mock.calls.at(-1);
         draw.viewport.width = 50;
-        renderer._writeDrawGlobals([draw]);
-
-        expect(renderer._globalUniformStaging).toBe(staging);
-        expect(staging.floats[0]).toBe(50);
-        expect(Array.from(staging.floats.slice(4, 10))).toEqual([
-            4, 5, 20, 25, 1, 0,
-        ]);
-        expect(Array.from(staging.integers.slice(16, 19))).toEqual([7, 3, 9]);
-        expect(renderer.device.queue.writeBuffer).toHaveBeenLastCalledWith(
-            renderer._globalUniformBuffer,
-            0,
-            staging.buffer,
-            0,
-            renderer._globalUniformStride
-        );
+        renderer.render({ draws: [draw] });
+        const second = writes.mock.calls.at(-1);
+        expect(second[0]).toBe(first[0]);
+        expect(second[2]).toBe(first[2]);
+        const floats = new Float32Array(/** @type {ArrayBuffer} */ (second[2]));
+        expect(floats[0]).toBe(50);
+        expect(Array.from(floats.slice(4, 10))).toEqual([4, 5, 20, 25, 1, 0]);
+        expect(second[4]).toBe(256);
     });
 
     test("clamps physical scissors to the render target", () => {
@@ -699,10 +698,6 @@ describe("Renderer mark definitions", () => {
             textures.push(texture);
             return texture;
         });
-        renderer._transientTextures = new TransientTexturePool(
-            renderer.device,
-            "rgba8unorm"
-        );
         const mark = renderer.createMark(definition, { channels: {} });
         const frame = {
             items: [
@@ -722,7 +717,7 @@ describe("Renderer mark definitions", () => {
             textures.every((texture) => !texture.destroy.mock.calls.length)
         ).toBe(true);
 
-        renderer._transientTextures.destroy();
+        renderer.destroy();
     });
 
     test("clamps opaque nested MSAA groups into one accumulation pass", () => {
@@ -1046,49 +1041,47 @@ describe("Renderer mark definitions", () => {
     test("skips zero-sized scissors from empty clipped views", () => {
         const { renderer } = createRendererHarness();
         const program = createProgram();
-        const definition = Object.freeze({
-            type: "custom",
-            createProgram: vi.fn(() => program),
+        const mark = renderer.createMark(
+            { type: "custom", createProgram: () => program },
+            { channels: {} }
+        );
+        renderer.render({
+            draws: [{ mark, scissor: { x: 0, y: 0, width: 0, height: 50 } }],
         });
-        const mark = renderer.createMark(definition, { channels: {} });
-
-        expect(
-            renderer._normalizeDraws([
-                { mark, scissor: { x: 0, y: 0, width: 0, height: 50 } },
-            ])
-        ).toEqual([]);
+        expect(program.draw).not.toHaveBeenCalled();
     });
 
-    test("normalizes grouped leaves directly with compact uniform indices", () => {
-        const { renderer } = createRendererHarness();
-        const definition = Object.freeze({
-            type: "custom",
-            createProgram: () => createProgram(),
-        });
+    test("keeps grouped leaves at compact uniform offsets after clipping", () => {
+        const { renderer, pass } = createRendererHarness();
+        const program = createProgram();
+        const definition = { type: "custom", createProgram: () => program };
         const skipped = renderer.createMark(definition, { channels: {} });
         const visible = renderer.createMark(definition, { channels: {} });
-        const normalizeDraws = vi.spyOn(renderer, "_normalizeDraws");
-
-        const frame = renderer._normalizeRenderItems([
-            {
-                bounds: { x: 0, y: 0, width: 100, height: 50 },
-                opacity: 0.5,
-                items: [
-                    {
-                        mark: skipped,
-                        scissor: { x: 0, y: 0, width: 0, height: 50 },
-                    },
-                    { mark: visible },
-                ],
-            },
-        ]);
-
-        expect(normalizeDraws).not.toHaveBeenCalled();
-        expect(frame.draws).toHaveLength(1);
-        expect(frame.draws[0].uniformIndex).toBe(0);
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 0, y: 0, width: 100, height: 50 },
+                    opacity: 0.5,
+                    items: [
+                        {
+                            mark: skipped,
+                            scissor: { x: 0, y: 0, width: 0, height: 50 },
+                        },
+                        { mark: visible },
+                    ],
+                },
+            ],
+        });
+        expect(program.draw).toHaveBeenCalledOnce();
+        expect(pass.setBindGroup).toHaveBeenNthCalledWith(
+            1,
+            0,
+            expect.anything(),
+            [0]
+        );
     });
 
-    test("destroys owned resources exactly once and rejects later work", () => {
+    test("destroys owned resources exactly once and rejects later work", async () => {
         const firstProgram = createProgram();
         const secondProgram = createProgram();
         const definition = Object.freeze({
@@ -1101,18 +1094,14 @@ describe("Renderer mark definitions", () => {
         const { renderer } = createRendererHarness();
         renderer.createMark(definition, { channels: {} });
         renderer.createMark(definition, { channels: {} });
-        const pickTexture =
-            /** @type {GPUTexture & { destroy: ReturnType<typeof vi.fn> }} */ (
-                /** @type {unknown} */ ({ destroy: vi.fn() })
-            );
-        const pickReadbackBuffer =
-            /** @type {GPUBuffer & { destroy: ReturnType<typeof vi.fn> }} */ (
-                /** @type {unknown} */ ({ destroy: vi.fn() })
-            );
-        renderer._pickTexture = pickTexture;
-        renderer._pickReadbackBuffer = pickReadbackBuffer;
-        const msdfAtlasGenerator = { destroy: vi.fn() };
-        renderer._ownedResources.add(msdfAtlasGenerator);
+        await renderer.pick(1, 2);
+        const buffers = vi
+            .mocked(renderer.device.createBuffer)
+            .mock.results.map((result) => result.value);
+        const textures = vi
+            .mocked(renderer.device.createTexture)
+            .mock.results.map((result) => result.value);
+        const msdfAtlasGenerator = renderer._ownResource({ destroy: vi.fn() });
 
         renderer.destroy();
         renderer.destroy();
@@ -1120,9 +1109,10 @@ describe("Renderer mark definitions", () => {
         expect(firstProgram.destroy).toHaveBeenCalledOnce();
         expect(secondProgram.destroy).toHaveBeenCalledOnce();
         expect(renderer._marks).toHaveLength(0);
-        expect(renderer._globalUniformBuffer.destroy).toHaveBeenCalledOnce();
-        expect(pickTexture.destroy).toHaveBeenCalledOnce();
-        expect(pickReadbackBuffer.destroy).toHaveBeenCalledOnce();
+        for (const buffer of buffers)
+            expect(buffer.destroy).toHaveBeenCalledOnce();
+        for (const texture of textures)
+            expect(texture.destroy).toHaveBeenCalledOnce();
         expect(msdfAtlasGenerator.destroy).toHaveBeenCalledOnce();
         expect(renderer.context.unconfigure).toHaveBeenCalledOnce();
         expect(renderer.device.destroy).toHaveBeenCalledOnce();
@@ -1133,38 +1123,16 @@ describe("Renderer mark definitions", () => {
     });
 });
 
-function createRendererHarness() {
-    const renderer = Object.create(Renderer.prototype);
-    renderer._marks = new Map();
-    renderer._placementSets = new Map();
-    renderer._detachedTargets = new Set();
-    renderer._ownedResources = new Set();
-    renderer._nextMarkId = 1;
-    renderer._state = "alive";
-    renderer._deviceLossError = null;
-    renderer._onDeviceLoss = vi.fn();
-    renderer._onInvalidate = vi.fn();
-    renderer._pickingDirty = false;
-    renderer._pickQueue = [];
-    renderer._activePick = null;
-    renderer._renderFrame = null;
-    renderer._pickingFrame = null;
-    renderer.canvas = /** @type {HTMLCanvasElement} */ (
-        /** @type {unknown} */ ({ width: 200, height: 100 })
-    );
-    renderer._globals = { width: 100, height: 50, dpr: 2 };
-    renderer._globalUniformStride = 256;
-    renderer._globalUniformCapacity = 4;
-    renderer._globalUniformBuffer = { destroy: vi.fn() };
-    const globalUniformData = new ArrayBuffer(
-        renderer._globalUniformCapacity * renderer._globalUniformStride
-    );
-    renderer._globalUniformStaging = {
-        buffer: globalUniformData,
-        floats: new Float32Array(globalUniformData),
-        integers: new Uint32Array(globalUniformData),
-    };
-    renderer._globalBindGroup = {};
+/** @param {{mapAsync?: () => Promise<unknown>}} [options] */
+function createRendererHarness({ mapAsync = async () => {} } = {}) {
+    vi.stubGlobal("window", { devicePixelRatio: 2 });
+    vi.stubGlobal("GPUMapMode", { READ: 1 });
+    const onInvalidate = vi.fn();
+    const onDeviceLoss = vi.fn();
+    let loseDevice = (/** @type {any} */ _info) => {};
+    const lost = new Promise((resolve) => {
+        loseDevice = resolve;
+    });
     const pass = {
         draw: vi.fn(),
         end: vi.fn(),
@@ -1177,63 +1145,96 @@ function createRendererHarness() {
     const commandEncoderDescriptors = [];
     /** @type {GPURenderPassDescriptor[]} */
     const renderPassDescriptors = [];
-    renderer.device = {
-        createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
-            size,
-            destroy: vi.fn(),
-        }),
-        createBindGroup: vi.fn(() => ({})),
-        createCommandEncoder: (descriptor = {}) => {
-            commandEncoderDescriptors.push(descriptor);
-            return {
-                beginRenderPass: (
-                    /** @type {GPURenderPassDescriptor} */ descriptor
-                ) => {
-                    renderPassDescriptors.push(descriptor);
-                    return pass;
-                },
-                finish: vi.fn(),
-            };
-        },
-        queue: { submit: vi.fn(), writeBuffer: vi.fn() },
-        destroy: vi.fn(),
-    };
-    renderer.context = {
-        getCurrentTexture: () => ({ createView: vi.fn() }),
-        unconfigure: vi.fn(),
-    };
-    /** @type {{width: number, height: number, sampleCount: number, usage: number}[]} */
+    /** @type {{width: number, height: number, sampleCount: number}[]} */
     const transientAcquires = [];
-    let transientId = 0;
-    renderer._textureCompositor = {
-        prepare: vi.fn(),
-        flush: vi.fn(),
-        destroy: vi.fn(),
-        pipeline: {},
-        bind: vi.fn((pass) => pass.setBindGroup(0, {})),
-    };
-    renderer._transientTextures = {
-        beginFrame: vi.fn(),
-        acquire: vi.fn((width, height, sampleCount, usage) => {
-            transientAcquires.push({ width, height, sampleCount, usage });
-            return {
-                key: `texture-${transientId++}`,
-                texture: {},
-                view: {},
-                generation: 0,
-                compositeBinding: null,
-            };
-        }),
-        release: vi.fn(),
-        endFrame: vi.fn(),
-        destroy: vi.fn(),
-    };
+    /** @type {number[][]} */
+    const readbacks = [];
+    const pickData = new Uint32Array(1);
+    const device = /** @type {GPUDevice} */ (
+        /** @type {unknown} */ ({
+            lost,
+            limits: { minUniformBufferOffsetAlignment: 256 },
+            createBuffer: vi.fn(
+                (/** @type {GPUBufferDescriptor} */ { size, label }) => ({
+                    size,
+                    label,
+                    destroy: vi.fn(),
+                    mapAsync,
+                    getMappedRange: () => pickData.buffer,
+                    unmap: vi.fn(),
+                })
+            ),
+            createBindGroup: vi.fn(() => ({})),
+            createBindGroupLayout: vi.fn(() => ({})),
+            createShaderModule: vi.fn(() => ({})),
+            createPipelineLayout: vi.fn(() => ({})),
+            createRenderPipeline: vi.fn(() => ({})),
+            createTexture: vi.fn((descriptor) => {
+                if (descriptor.label.includes("transient"))
+                    transientAcquires.push({
+                        ...descriptor.size,
+                        sampleCount: descriptor.sampleCount,
+                    });
+                return { createView: vi.fn(() => ({})), destroy: vi.fn() };
+            }),
+            createCommandEncoder: (descriptor = {}) => {
+                commandEncoderDescriptors.push(descriptor);
+                return {
+                    beginRenderPass: (
+                        /** @type {GPURenderPassDescriptor} */ descriptor
+                    ) => {
+                        renderPassDescriptors.push(descriptor);
+                        return pass;
+                    },
+                    copyTextureToBuffer: (
+                        /** @type {{ origin: {x: number, y: number} }} */ {
+                            origin,
+                        }
+                    ) => {
+                        readbacks.push([origin.x, origin.y]);
+                        pickData[0] = (origin.x + origin.y) / 2 + 1;
+                    },
+                    finish: vi.fn(),
+                };
+            },
+            queue: {
+                submit: vi.fn(),
+                writeBuffer: vi.fn(),
+                onSubmittedWorkDone: vi.fn(async () => {}),
+            },
+            destroy: vi.fn(),
+        })
+    );
+    const canvas = /** @type {HTMLCanvasElement} */ (
+        /** @type {unknown} */ ({ width: 200, height: 100 })
+    );
+    const context = /** @type {GPUCanvasContext} */ (
+        /** @type {unknown} */ ({
+            configure: vi.fn(),
+            getCurrentTexture: () => ({ createView: vi.fn() }),
+            unconfigure: vi.fn(),
+        })
+    );
+    const renderer = new Renderer({
+        device,
+        canvas,
+        context,
+        format: "rgba8unorm",
+        alphaMode: "premultiplied",
+        onInvalidate,
+        onDeviceLoss,
+    });
+    renderers.add(renderer);
     return {
-        renderer: /** @type {Renderer} */ (renderer),
+        renderer,
         pass,
         commandEncoderDescriptors,
         renderPassDescriptors,
         transientAcquires,
+        onInvalidate,
+        onDeviceLoss,
+        loseDevice,
+        readbacks,
     };
 }
 
@@ -1263,12 +1264,10 @@ function createProgram(antialiasing = "shader") {
             selections: {},
         }),
         replaceSeries: series.replace,
-        updateValues: vi.fn(),
         debugResources: vi.fn(),
         prepareDraw: vi.fn(),
         preparePick: vi.fn(),
         draw: vi.fn(),
-        drawPick: vi.fn(),
         destroy: vi.fn(),
     };
 }

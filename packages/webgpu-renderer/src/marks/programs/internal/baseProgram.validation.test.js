@@ -29,14 +29,6 @@ const TEST_CHANNEL_SPECS = {
 };
 
 class TestProgram extends BaseProgram {
-    get channelOrder() {
-        return ["id", "x", "vec"];
-    }
-
-    get optionalChannels() {
-        return ["id"];
-    }
-
     get channelSpecs() {
         return TEST_CHANNEL_SPECS;
     }
@@ -66,10 +58,6 @@ const SERIES_CHANNEL_SPECS = {
 };
 
 class SeriesTypeProgram extends BaseProgram {
-    get channelOrder() {
-        return ["xF32", "xU32", "xI32"];
-    }
-
     get channelSpecs() {
         return SERIES_CHANNEL_SPECS;
     }
@@ -144,7 +132,7 @@ describe("BaseProgram channel validation", () => {
             }
         );
 
-        expect(program._channels.score.type).toBe("f32");
+        expect(program.count).toBe(1);
         expect(program.getSlotHandles().scalarSlots.threshold).toBeDefined();
         expect(() =>
             program.getSlotHandles().scalarSlots.threshold.set(Number.NaN)
@@ -231,7 +219,7 @@ describe("BaseProgram channel validation", () => {
     it("rejects series channels missing type", () => {
         expect(() =>
             createProgram({
-                x: { data: new Float32Array([1]) },
+                x: { data: new Float32Array([1]), type: undefined },
                 vec: { value: [1, 0, 0, 1], type: "f32", components: 4 },
             })
         ).toThrow('Channel "x" requires a series data type.');
@@ -375,13 +363,7 @@ describe("BaseProgram channel validation", () => {
             },
         });
 
-        const when = /** @type {any} */ (
-            program._channels.vec.conditions[0].when
-        );
-        expect(when.type).toBe("interval");
-        if (when.type === "interval") {
-            expect(when.projections).toEqual([{ component: "x", input: "x" }]);
-        }
+        expect(program.getSlotHandles().selections.brush.type).toBe("interval");
         expect(/** @type {any} */ (predicate).projections).toEqual([
             { component: "x", input: "x" },
         ]);
@@ -411,7 +393,7 @@ describe("BaseProgram channel validation", () => {
             },
         });
 
-        expect(program._channels.vec__cond0.components).toBe(4);
+        expect(program.count).toBe(1);
     });
 
     it.each(

@@ -19,8 +19,9 @@ export const mockGpuLimits = {
 export function createMockRenderer() {
     const device = {
         limits: mockGpuLimits,
-        createBuffer: (/** @type {GPUBufferDescriptor} */ { size }) => ({
+        createBuffer: (/** @type {GPUBufferDescriptor} */ { size, label }) => ({
             size,
+            label,
             destroy() {},
         }),
         createBindGroupLayout: () => ({}),
@@ -50,7 +51,6 @@ export function createMockRenderer() {
             markPickingDirty: () => {},
             _invalidate: () => {},
             _assertAlive: () => {},
-            _isAlive: () => true,
         })
     );
 }

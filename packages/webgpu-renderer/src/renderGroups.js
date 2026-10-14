@@ -52,21 +52,33 @@ const TEXTURE_IDLE_TIMEOUT_MS = 5_000;
 
 /** Renderer-owned pool for short-lived color attachments. */
 export class TransientTexturePool {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {GPUTextureFormat} */
+    #format;
+
+    /** @type {TransientTexture[]} */
+    #free = [];
+
+    /** @type {Set<TransientTexture>} */
+    #all = new Set();
+
+    #generation = 0;
+
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    #idleTimer;
+
     /** @param {GPUDevice} device @param {GPUTextureFormat} format */
     constructor(device, format) {
-        this.device = device;
-        this.format = format;
-        /** @type {TransientTexture[]} */
-        this.free = [];
-        /** @type {Set<TransientTexture>} */
-        this.all = new Set();
-        this.generation = 0;
-        /** @type {ReturnType<typeof setTimeout> | undefined} */
-        this.idleTimer = undefined;
+        this.#device = device;
+        this.#format = format;
+
+        this.#idleTimer = undefined;
     }
 
     beginFrame() {
-        this.generation++;
+        this.#generation++;
         this.#cancelIdleCleanup();
     }
 
@@ -78,20 +90,22 @@ export class TransientTexturePool {
      */
     acquire(width, height, sampleCount) {
         const key = `${width}x${height}:${sampleCount}`;
-        const freeIndex = this.free.findLastIndex((entry) => entry.key === key);
+        const freeIndex = this.#free.findLastIndex(
+            (entry) => entry.key === key
+        );
         if (freeIndex >= 0) {
-            const pooled = this.free.splice(freeIndex, 1)[0];
-            pooled.generation = this.generation;
+            const pooled = this.#free.splice(freeIndex, 1)[0];
+            pooled.generation = this.#generation;
             return pooled;
         }
 
-        const texture = this.device.createTexture({
+        const texture = this.#device.createTexture({
             label: gpuLabel(
                 RENDERER_GPU_OWNER,
                 `transient ${width}x${height} ${sampleCount}x color`
             ),
             size: { width, height },
-            format: this.format,
+            format: this.#format,
             sampleCount,
             usage:
                 GPUTextureUsage.RENDER_ATTACHMENT |
@@ -103,23 +117,23 @@ export class TransientTexturePool {
             view: texture.createView({
                 label: gpuLabel(RENDERER_GPU_OWNER, "transient color view"),
             }),
-            generation: this.generation,
+            generation: this.#generation,
             compositeBinding: null,
         });
-        this.all.add(entry);
+        this.#all.add(entry);
         return entry;
     }
 
     /** @param {TransientTexture} entry */
     release(entry) {
-        this.free.push(entry);
+        this.#free.push(entry);
     }
 
     endFrame() {
-        for (let i = this.free.length - 1; i >= 0; i--) {
-            const entry = this.free[i];
-            if (entry.generation !== this.generation) {
-                this.free.splice(i, 1);
+        for (let i = this.#free.length - 1; i >= 0; i--) {
+            const entry = this.#free[i];
+            if (entry.generation !== this.#generation) {
+                this.#free.splice(i, 1);
                 this.#destroyEntry(entry);
             }
         }
@@ -128,60 +142,78 @@ export class TransientTexturePool {
 
     destroy() {
         this.#cancelIdleCleanup();
-        for (const entry of this.all) {
+        for (const entry of this.#all) {
             entry.texture.destroy();
         }
-        this.all.clear();
-        this.free.length = 0;
+        this.#all.clear();
+        this.#free.length = 0;
     }
 
     /** @param {TransientTexture} entry */
     #destroyEntry(entry) {
-        this.all.delete(entry);
+        this.#all.delete(entry);
         entry.texture.destroy();
     }
 
     #scheduleIdleCleanup() {
         this.#cancelIdleCleanup();
-        if (this.free.length === 0) {
+        if (this.#free.length === 0) {
             return;
         }
-        this.idleTimer = setTimeout(() => {
-            this.idleTimer = undefined;
-            for (const entry of this.free) {
+        this.#idleTimer = setTimeout(() => {
+            this.#idleTimer = undefined;
+            for (const entry of this.#free) {
                 this.#destroyEntry(entry);
             }
-            this.free.length = 0;
+            this.#free.length = 0;
         }, TEXTURE_IDLE_TIMEOUT_MS);
     }
 
     #cancelIdleCleanup() {
-        if (this.idleTimer !== undefined) {
-            clearTimeout(this.idleTimer);
-            this.idleTimer = undefined;
+        if (this.#idleTimer !== undefined) {
+            clearTimeout(this.#idleTimer);
+            this.#idleTimer = undefined;
         }
     }
 }
 
 /** Encodes premultiplied-alpha texture composition. */
 export class TextureCompositor {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {number} */
+    #stride;
+
+    #capacity = 1;
+
+    /** @type {GPUBuffer} */
+    #buffer;
+
+    /** @type {Float32Array} */
+    #staging;
+
+    #count = 0;
+
+    /** @type {GPUBindGroupLayout} */
+    #layout;
+
     /** @param {GPUDevice} device @param {GPUTextureFormat} format */
     constructor(device, format) {
-        this.device = device;
-        this.stride = Math.max(
+        this.#device = device;
+        this.#stride = Math.max(
             16,
             device.limits.minUniformBufferOffsetAlignment
         );
-        this.capacity = 1;
-        this.buffer = this.#createBuffer(this.capacity);
-        this.staging = new Float32Array((this.capacity * this.stride) / 4);
-        this.count = 0;
+
+        this.#buffer = this.#createBuffer(this.#capacity);
+        this.#staging = new Float32Array((this.#capacity * this.#stride) / 4);
 
         const module = device.createShaderModule({
             label: gpuLabel(RENDERER_GPU_OWNER, "composite shader"),
             code: COMPOSITE_SHADER,
         });
-        this.layout = device.createBindGroupLayout({
+        this.#layout = device.createBindGroupLayout({
             label: gpuLabel(RENDERER_GPU_OWNER, "composite bind group layout"),
             entries: [
                 {
@@ -204,6 +236,7 @@ export class TextureCompositor {
                 },
             ],
         });
+        /** @internal Bound by renderer composite passes. */
         this.pipeline = device.createRenderPipeline({
             label: gpuLabel(RENDERER_GPU_OWNER, "composite pipeline"),
             layout: device.createPipelineLayout({
@@ -211,7 +244,7 @@ export class TextureCompositor {
                     RENDERER_GPU_OWNER,
                     "composite pipeline layout"
                 ),
-                bindGroupLayouts: [this.layout],
+                bindGroupLayouts: [this.#layout],
             }),
             vertex: { module, entryPoint: "vs_main" },
             fragment: {
@@ -241,18 +274,18 @@ export class TextureCompositor {
 
     /** @param {number} capacity */
     prepare(capacity) {
-        if (capacity > this.capacity) {
-            let next = this.capacity;
+        if (capacity > this.#capacity) {
+            let next = this.#capacity;
             while (next < capacity) {
                 next *= 2;
             }
-            const old = this.buffer;
-            this.capacity = next;
-            this.buffer = this.#createBuffer(next);
-            this.staging = new Float32Array((next * this.stride) / 4);
+            const old = this.#buffer;
+            this.#capacity = next;
+            this.#buffer = this.#createBuffer(next);
+            this.#staging = new Float32Array((next * this.#stride) / 4);
             old.destroy();
         }
-        this.count = 0;
+        this.#count = 0;
     }
 
     /**
@@ -261,20 +294,20 @@ export class TextureCompositor {
      * @param {number} opacity
      */
     bind(pass, source, opacity) {
-        const index = this.count++;
-        this.staging[(index * this.stride) / 4] = opacity;
+        const index = this.#count++;
+        this.#staging[(index * this.#stride) / 4] = opacity;
         let binding = source.compositeBinding;
-        if (binding === null || binding.buffer !== this.buffer) {
+        if (binding === null || binding.buffer !== this.#buffer) {
             binding = {
-                buffer: this.buffer,
-                bindGroup: this.device.createBindGroup({
+                buffer: this.#buffer,
+                bindGroup: this.#device.createBindGroup({
                     label: gpuLabel(RENDERER_GPU_OWNER, "composite bind group"),
-                    layout: this.layout,
+                    layout: this.#layout,
                     entries: [
                         {
                             binding: 0,
                             resource: {
-                                buffer: this.buffer,
+                                buffer: this.#buffer,
                                 size: 16,
                             },
                         },
@@ -284,30 +317,30 @@ export class TextureCompositor {
             };
             source.compositeBinding = binding;
         }
-        pass.setBindGroup(0, binding.bindGroup, [index * this.stride]);
+        pass.setBindGroup(0, binding.bindGroup, [index * this.#stride]);
     }
 
     flush() {
-        if (this.count) {
-            this.device.queue.writeBuffer(
-                this.buffer,
+        if (this.#count) {
+            this.#device.queue.writeBuffer(
+                this.#buffer,
                 0,
-                this.staging.buffer,
+                this.#staging.buffer,
                 0,
-                this.count * this.stride
+                this.#count * this.#stride
             );
         }
     }
 
     destroy() {
-        this.buffer.destroy();
+        this.#buffer.destroy();
     }
 
     /** @param {number} capacity */
     #createBuffer(capacity) {
-        return this.device.createBuffer({
+        return this.#device.createBuffer({
             label: gpuLabel(RENDERER_GPU_OWNER, "composite uniforms"),
-            size: capacity * this.stride,
+            size: capacity * this.#stride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
     }

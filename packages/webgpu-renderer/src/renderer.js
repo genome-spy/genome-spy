@@ -44,19 +44,33 @@ function finishPhase(name, start) {
 }
 
 class PlacementSet {
+    /** @type {Renderer} */
+    #renderer;
+    /** @type {string} */
+    #labelOwner;
+
+    #destroyed = false;
+
+    /** @type {GPUBuffer} */
+    #buffer;
+
+    /** @type {GPUBindGroup} */
+    #bindGroup;
+
     /** @param {Renderer} renderer @param {number} id @param {import("./index.d.ts").PlacementSetData} data */
     constructor(renderer, id, data) {
-        this.renderer = renderer;
+        this.#renderer = renderer;
         this.placementSetId = id;
-        this._labelOwner = `${RENDERER_GPU_OWNER} placement set #${id}`;
-        this._destroyed = false;
+        this.#labelOwner = `${RENDERER_GPU_OWNER} placement set #${id}`;
+
+        /** @internal Normalization reads rectangles to clip placed draws. */
         this._rectangles = validatePlacementData(data);
-        this._buffer = createPlacementBuffer(
+        this.#buffer = createPlacementBuffer(
             renderer.device,
             this._rectangles,
-            this._labelOwner
+            this.#labelOwner
         );
-        this._bindGroup = this._createBindGroup();
+        this.#bindGroup = this.#createBindGroup();
     }
 
     get count() {
@@ -64,66 +78,66 @@ class PlacementSet {
     }
 
     get bindGroup() {
-        this.renderer._assertAlive();
-        if (this._destroyed) {
+        this.#renderer._assertAlive();
+        if (this.#destroyed) {
             throw new RendererError("Placement set has been destroyed.");
         }
-        return this._bindGroup;
+        return this.#bindGroup;
     }
 
-    _createBindGroup() {
-        return this.renderer.device.createBindGroup({
-            label: gpuLabel(this._labelOwner, "bind group"),
-            layout: this.renderer._placementBindGroupLayout,
-            entries: [{ binding: 0, resource: { buffer: this._buffer } }],
+    #createBindGroup() {
+        return this.#renderer.device.createBindGroup({
+            label: gpuLabel(this.#labelOwner, "bind group"),
+            layout: this.#renderer._placementBindGroupLayout,
+            entries: [{ binding: 0, resource: { buffer: this.#buffer } }],
         });
     }
 
     /** @param {import("./index.d.ts").PlacementSetData} data */
     replace(data) {
-        this.renderer._assertAlive();
-        if (this._destroyed) {
+        this.#renderer._assertAlive();
+        if (this.#destroyed) {
             throw new RendererError("Placement set has been destroyed.");
         }
         const rectangles = validatePlacementData(data);
-        if (rectangles.byteLength > this._buffer.size) {
+        if (rectangles.byteLength > this.#buffer.size) {
             addCount("placementBufferRecreations");
-            const oldBuffer = this._buffer;
-            this._buffer = createPlacementBuffer(
-                this.renderer.device,
+            const oldBuffer = this.#buffer;
+            this.#buffer = createPlacementBuffer(
+                this.#renderer.device,
                 rectangles,
-                this._labelOwner
+                this.#labelOwner
             );
-            this._bindGroup = this._createBindGroup();
+            this.#bindGroup = this.#createBindGroup();
             oldBuffer.destroy();
         } else if (rectangles.byteLength) {
             addCount("placementBufferReplacements");
             addCount("placementUploadCalls");
             addCount("placementUploadBytes", rectangles.byteLength);
-            this.renderer.device.queue.writeBuffer(
-                this._buffer,
+            this.#renderer.device.queue.writeBuffer(
+                this.#buffer,
                 0,
                 /** @type {Float32Array<ArrayBuffer>} */ (rectangles)
             );
         }
         this._rectangles = rectangles;
-        this.renderer._renderFrame = null;
-        this.renderer._pickingFrame = null;
+        this.#renderer._renderFrame = null;
+        this.#renderer._pickingFrame = null;
         addCount("retainedNormalFrameInvalidations");
         addCount("retainedPickingFrameInvalidations");
-        this.renderer.markPickingDirty();
+        this.#renderer.markPickingDirty();
     }
 
     destroy() {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             return;
         }
-        this._destroyed = true;
-        this._buffer.destroy();
-        this.renderer._placementSets.delete(this.placementSetId);
-        this.renderer._renderFrame = null;
-        this.renderer._pickingFrame = null;
-        this.renderer.markPickingDirty();
+        this.#destroyed = true;
+        this.#buffer.destroy();
+        this.#renderer._placementSets.delete(this.placementSetId);
+        this.#renderer._renderFrame = null;
+        this.#renderer._pickingFrame = null;
+        this.#renderer.markPickingDirty();
     }
 }
 
@@ -254,6 +268,70 @@ export async function createRenderer(canvas, options = {}) {
  * Owns the WebGPU device, global uniforms, and mark programs.
  */
 export class Renderer {
+    /** @type {() => void} */
+    #onInvalidate;
+
+    /** @type {(info: GPUDeviceLostInfo) => void} */
+    #onDeviceLoss;
+
+    /** @type {"alive" | "lost" | "destroyed"} */
+    #state = "alive";
+
+    /** @type {RendererError | null} */
+    #deviceLossError = null;
+
+    /** @type {Set<import("./index.d.ts").DetachedTargetHandle>} */
+    #detachedTargets = new Set();
+
+    /** @type {TransientTexturePool} */
+    #transientTextures;
+
+    /** @type {TextureCompositor} */
+    #textureCompositor;
+
+    /** @type {Set<{ destroy: () => void }>} */
+    #ownedResources = new Set();
+
+    #nextMarkId = 1;
+
+    #nextPlacementSetId = 1;
+
+    #pickingDirty = true;
+
+    /** @type {GPUTexture | null} */
+    #pickTexture = null;
+
+    /** @type {GPUTextureView | null} */
+    #pickTextureView = null;
+
+    /** @type {GPUBuffer | null} */
+    #pickReadbackBuffer = null;
+
+    /** @type {{ width: number, height: number }} */
+    #pickTextureSize = { width: 0, height: 0 };
+
+    /**
+     * @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void }[]}
+     */
+    #pickQueue = [];
+
+    /** @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void } | null} */
+    #activePick = null;
+
+    /** @type {number} */
+    #globalUniformStride;
+
+    #globalUniformCapacity = 1;
+
+    /** @type {ReturnType<typeof createGlobalUniformStaging>} */
+    #globalUniformStaging;
+
+    /** @type {GPUBuffer} */
+    #globalUniformBuffer;
+
+    /** @type {GPUBindGroup} */
+    #globalBindGroup;
+
     /**
      * @typedef {import("./index.d.ts").MarkId} MarkId
      * @typedef {import("./index.d.ts").TypedArray} TypedArray
@@ -276,83 +354,80 @@ export class Renderer {
         this.format = format;
         this.canvas = canvas;
         this.alphaMode = alphaMode;
-        this._onInvalidate = onInvalidate ?? (() => {});
-        this._onDeviceLoss = onDeviceLoss ?? (() => {});
-        /** @type {"alive" | "lost" | "destroyed"} */
-        this._state = "alive";
-        /** @type {RendererError | null} */
-        this._deviceLossError = null;
-        void device.lost.then((info) => this._handleDeviceLoss(info));
+        this.#onInvalidate = onInvalidate ?? (() => {});
+        this.#onDeviceLoss = onDeviceLoss ?? (() => {});
+
+        void device.lost.then((info) => this.#handleDeviceLoss(info));
 
         context.configure({ device, format, alphaMode });
         // TODO: Use r32uint picking when available on all targets.
         this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
-        /** @type {Map<MarkId, import("./index.d.ts").MarkProgram>} */
-        this._marks = new Map();
-        /** @type {Map<number, PlacementSet>} */
-        this._placementSets = new Map();
-        /** @type {Set<import("./index.d.ts").DetachedTargetHandle>} */
-        this._detachedTargets = new Set();
-        this._programTemplateCache = new ProgramTemplateCache(addCount);
-        this._transientTextures = new TransientTexturePool(device, format);
-        this._textureCompositor = new TextureCompositor(device, format);
-        /** @type {Set<{ destroy: () => void }>} */
-        this._ownedResources = new Set();
-        /** @type {NormalizedDraw[] | null} */
-        this._renderFrame = null;
-        /** @type {NormalizedDraw[] | null} */
-        this._pickingFrame = null;
-        this._nextMarkId = 1;
-        this._nextPlacementSetId = 1;
-        this._pickingDirty = true;
-        this._pickTexture = null;
-        this._pickTextureView = null;
-        this._pickReadbackBuffer = null;
-        this._pickTextureSize = { width: 0, height: 0 };
         /**
-         * @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void }[]}
+         * @type {Map<MarkId, import("./index.d.ts").MarkProgram>}
+         * @internal Development GPU checks and benchmarks inspect mark programs.
          */
-        this._pickQueue = [];
-        /** @type {{ x: number, y: number, resolve: (value: number|null) => void, reject: (reason: unknown) => void } | null} */
-        this._activePick = null;
+        this._marks = new Map();
+        /**
+         * @type {Map<number, PlacementSet>}
+         * @internal Placement handles remove themselves from this map on destruction.
+         */
+        this._placementSets = new Map();
 
-        this._globalUniformStride = Math.max(
+        /** @internal Shared immutable programs used by BaseProgram. */
+        this._programTemplateCache = new ProgramTemplateCache(addCount);
+        this.#transientTextures = new TransientTexturePool(device, format);
+        this.#textureCompositor = new TextureCompositor(device, format);
+
+        /**
+         * @type {NormalizedDraw[] | null}
+         * @internal Placement handles invalidate retained frames when their rectangles change.
+         */
+        this._renderFrame = null;
+        /**
+         * @type {NormalizedDraw[] | null}
+         * @internal Placement handles invalidate retained frames when their rectangles change.
+         */
+        this._pickingFrame = null;
+
+        this.#globalUniformStride = Math.max(
             80,
             device.limits.minUniformBufferOffsetAlignment
         );
-        this._globalUniformCapacity = 1;
-        this._globalUniformStaging = createGlobalUniformStaging(
-            this._globalUniformStride
+
+        this.#globalUniformStaging = createGlobalUniformStaging(
+            this.#globalUniformStride
         );
 
         // Each occurrence gets viewport-local globals at a dynamic offset.
-        this._globalUniformBuffer = device.createBuffer({
+        this.#globalUniformBuffer = device.createBuffer({
             label: gpuLabel(RENDERER_GPU_OWNER, "global uniforms"),
-            size: this._globalUniformStride,
+            size: this.#globalUniformStride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
         // Bind group 0 is reserved for global uniforms.
+        /** @internal Shader layout shared with mark programs. */
         this._globalBindGroupLayout = device.createBindGroupLayout({
             label: gpuLabel(RENDERER_GPU_OWNER, "global bind group layout"),
             entries: globalBindings,
         });
 
-        this._globalBindGroup = device.createBindGroup({
+        this.#globalBindGroup = device.createBindGroup({
             label: gpuLabel(RENDERER_GPU_OWNER, "global bind group"),
             layout: this._globalBindGroupLayout,
             entries: [
                 {
                     binding: 0,
                     resource: {
-                        buffer: this._globalUniformBuffer,
+                        buffer: this.#globalUniformBuffer,
                         size: 80,
                     },
                 },
             ],
         });
 
+        /** @internal Shader layout shared with marks and placement handles. */
         this._placementBindGroupLayout = device.createBindGroupLayout({
             label: gpuLabel(RENDERER_GPU_OWNER, "placement bind group layout"),
             entries: placementBindings,
@@ -372,7 +447,10 @@ export class Renderer {
      */
     updateGlobals(globals) {
         this._assertAlive();
-        /** @type {import("./index.d.ts").GlobalUniforms} */
+        /**
+         * @type {import("./index.d.ts").GlobalUniforms}
+         * @internal Used by marks for default scale ranges and text sizing.
+         */
         this._globals = validateGlobals(globals);
         this.markPickingDirty();
     }
@@ -413,7 +491,7 @@ export class Renderer {
             canvas,
             render: (frame = {}) => {
                 assertAlive();
-                this._renderTarget(
+                this.#renderTarget(
                     context,
                     canvas,
                     targetGlobals,
@@ -429,11 +507,11 @@ export class Renderer {
                 if (!destroyed) {
                     destroyed = true;
                     context.unconfigure();
-                    this._detachedTargets.delete(target);
+                    this.#detachedTargets.delete(target);
                 }
             },
         };
-        this._detachedTargets.add(target);
+        this.#detachedTargets.add(target);
         return target;
     }
 
@@ -441,39 +519,39 @@ export class Renderer {
      * @param {number} drawCount
      * @returns {void}
      */
-    _ensureGlobalUniformCapacity(drawCount) {
-        if (drawCount <= this._globalUniformCapacity) {
+    #ensureGlobalUniformCapacity(drawCount) {
+        if (drawCount <= this.#globalUniformCapacity) {
             return;
         }
 
-        let capacity = this._globalUniformCapacity;
+        let capacity = this.#globalUniformCapacity;
         while (capacity < drawCount) {
             capacity *= 2;
         }
 
-        const oldBuffer = this._globalUniformBuffer;
-        this._globalUniformBuffer = this.device.createBuffer({
+        const oldBuffer = this.#globalUniformBuffer;
+        this.#globalUniformBuffer = this.device.createBuffer({
             label: gpuLabel(RENDERER_GPU_OWNER, "global uniforms"),
-            size: capacity * this._globalUniformStride,
+            size: capacity * this.#globalUniformStride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        this._globalUniformStaging = createGlobalUniformStaging(
-            capacity * this._globalUniformStride
+        this.#globalUniformStaging = createGlobalUniformStaging(
+            capacity * this.#globalUniformStride
         );
-        this._globalBindGroup = this.device.createBindGroup({
+        this.#globalBindGroup = this.device.createBindGroup({
             label: gpuLabel(RENDERER_GPU_OWNER, "global bind group"),
             layout: this._globalBindGroupLayout,
             entries: [
                 {
                     binding: 0,
                     resource: {
-                        buffer: this._globalUniformBuffer,
+                        buffer: this.#globalUniformBuffer,
                         size: 80,
                     },
                 },
             ],
         });
-        this._globalUniformCapacity = capacity;
+        this.#globalUniformCapacity = capacity;
         oldBuffer.destroy();
     }
 
@@ -481,17 +559,17 @@ export class Renderer {
      * @param {NormalizedDraw[]} draws
      * @returns {void}
      */
-    _writeDrawGlobals(draws, forceAll = false) {
+    #writeDrawGlobals(draws, forceAll = false) {
         const phaseStart = startPhase();
         if (!draws.length) {
             finishPhase("drawGlobals", phaseStart);
             return;
         }
 
-        this._ensureGlobalUniformCapacity(draws.length);
-        const { buffer, floats, integers } = this._globalUniformStaging;
+        this.#ensureGlobalUniformCapacity(draws.length);
+        const { buffer, floats, integers } = this.#globalUniformStaging;
         for (let i = 0; i < draws.length; i++) {
-            const offset = (i * this._globalUniformStride) / 4;
+            const offset = (i * this.#globalUniformStride) / 4;
             const draw = draws[i];
             floats[offset] = draw.viewport.width;
             floats[offset + 1] = draw.viewport.height;
@@ -512,14 +590,14 @@ export class Renderer {
             integers[offset + 19] = forceAll ? 0 : draw.orderPass;
         }
         this.device.queue.writeBuffer(
-            this._globalUniformBuffer,
+            this.#globalUniformBuffer,
             0,
             buffer,
             0,
-            draws.length * this._globalUniformStride
+            draws.length * this.#globalUniformStride
         );
         addCount("drawGlobalWrites");
-        addCount("drawGlobalBytes", draws.length * this._globalUniformStride);
+        addCount("drawGlobalBytes", draws.length * this.#globalUniformStride);
         finishPhase("drawGlobals", phaseStart);
     }
 
@@ -534,7 +612,7 @@ export class Renderer {
      */
     createMark(definition, config, options = {}) {
         this._assertAlive();
-        const markId = /** @type {MarkId} */ (this._nextMarkId++);
+        const markId = /** @type {MarkId} */ (this.#nextMarkId++);
         const label = options.label ?? `${definition.type} #${markId}`;
         const mark = definition.createProgram(this, config, { label });
 
@@ -557,7 +635,7 @@ export class Renderer {
     /** @param {import("./index.d.ts").PlacementSetData} data */
     createPlacementSet(data) {
         this._assertAlive();
-        const set = new PlacementSet(this, this._nextPlacementSetId++, data);
+        const set = new PlacementSet(this, this.#nextPlacementSetId++, data);
         this._placementSets.set(set.placementSetId, set);
         return set;
     }
@@ -566,10 +644,10 @@ export class Renderer {
      * @returns {void}
      */
     markPickingDirty() {
-        if (this._state !== "alive") {
+        if (this.#state !== "alive") {
             return;
         }
-        this._pickingDirty = true;
+        this.#pickingDirty = true;
     }
 
     /**
@@ -577,13 +655,14 @@ export class Renderer {
      * The host remains responsible for submitting the next frame.
      *
      * @returns {void}
+     * @internal Renderer-owned resources and marks share this lifecycle contract.
      */
     _invalidate() {
-        if (this._state !== "alive") {
+        if (this.#state !== "alive") {
             return;
         }
         this.markPickingDirty();
-        this._onInvalidate();
+        this.#onInvalidate();
     }
 
     /**
@@ -592,41 +671,42 @@ export class Renderer {
      * @template {{ destroy: () => void }} T
      * @param {T} resource
      * @returns {T}
+     * @internal Renderer-owned resources and marks share this lifecycle contract.
      */
     _ownResource(resource) {
         this._assertAlive();
-        this._ownedResources.add(resource);
+        this.#ownedResources.add(resource);
         return resource;
     }
 
     /**
      * @returns {void}
      */
-    _ensurePickTarget() {
+    #ensurePickTarget() {
         const width = Math.max(1, this.canvas.width);
         const height = Math.max(1, this.canvas.height);
         const needsResize =
-            !this._pickTexture ||
-            this._pickTextureSize.width !== width ||
-            this._pickTextureSize.height !== height;
+            !this.#pickTexture ||
+            this.#pickTextureSize.width !== width ||
+            this.#pickTextureSize.height !== height;
 
         if (!needsResize) {
             return;
         }
 
-        this._pickTexture?.destroy();
-        this._pickTexture = this.device.createTexture({
+        this.#pickTexture?.destroy();
+        this.#pickTexture = this.device.createTexture({
             label: gpuLabel(RENDERER_GPU_OWNER, "picking texture"),
             size: { width, height },
             format: this.pickFormat,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
         });
-        this._pickTextureView = this._pickTexture.createView({
+        this.#pickTextureView = this.#pickTexture.createView({
             label: gpuLabel(RENDERER_GPU_OWNER, "picking texture view"),
         });
-        this._pickTextureSize = { width, height };
-        this._pickReadbackBuffer?.destroy();
-        this._pickReadbackBuffer = this.device.createBuffer({
+        this.#pickTextureSize = { width, height };
+        this.#pickReadbackBuffer?.destroy();
+        this.#pickReadbackBuffer = this.device.createBuffer({
             label: gpuLabel(RENDERER_GPU_OWNER, "picking readback"),
             size: 256,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
@@ -636,9 +716,9 @@ export class Renderer {
     /**
      * @returns {void}
      */
-    _renderPick() {
+    #renderPick() {
         addCount("pickingRenders");
-        this._ensurePickTarget();
+        this.#ensurePickTarget();
         const commandEncoder = this.device.createCommandEncoder({
             label: gpuLabel(RENDERER_GPU_OWNER, "picking command encoder"),
         });
@@ -646,7 +726,7 @@ export class Renderer {
             label: gpuLabel(RENDERER_GPU_OWNER, "picking render pass"),
             colorAttachments: [
                 {
-                    view: this._pickTextureView,
+                    view: this.#pickTextureView,
                     loadOp: "clear",
                     storeOp: "store",
                     clearValue: { r: 0, g: 0, b: 0, a: 0 },
@@ -657,13 +737,13 @@ export class Renderer {
         const draws =
             this._pickingFrame ??
             this._renderFrame ??
-            this._normalizeDraws(this._marks.keys());
-        this._writeDrawGlobals(draws, true);
-        this._encodeDraws(pass, draws, true);
+            this.#normalizeDraws(this._marks.keys());
+        this.#writeDrawGlobals(draws, true);
+        this.#encodeDraws(pass, draws, true);
 
         pass.end();
         this.device.queue.submit([commandEncoder.finish()]);
-        this._pickingDirty = false;
+        this.#pickingDirty = false;
     }
 
     /**
@@ -674,8 +754,8 @@ export class Renderer {
     pick(x, y) {
         this._assertAlive();
         return new Promise((resolve, reject) => {
-            this._pickQueue.push({ x, y, resolve, reject });
-            this._startNextPick();
+            this.#pickQueue.push({ x, y, resolve, reject });
+            this.#startNextPick();
         });
     }
 
@@ -684,20 +764,20 @@ export class Renderer {
      *
      * @returns {void}
      */
-    _startNextPick() {
-        if (this._activePick || !this._pickQueue.length) {
+    #startNextPick() {
+        if (this.#activePick || !this.#pickQueue.length) {
             return;
         }
 
-        const request = this._pickQueue.shift();
-        this._activePick = request;
+        const request = this.#pickQueue.shift();
+        this.#activePick = request;
         const operation = Promise.resolve().then(() => {
             this._assertAlive();
-            return this._pickSingle(request.x, request.y);
+            return this.#pickSingle(request.x, request.y);
         });
         operation.then(
-            (value) => this._finishPick(request, value, false),
-            (reason) => this._finishPick(request, reason, true)
+            (value) => this.#finishPick(request, value, false),
+            (reason) => this.#finishPick(request, reason, true)
         );
     }
 
@@ -709,18 +789,18 @@ export class Renderer {
      * @param {boolean} rejected
      * @returns {void}
      */
-    _finishPick(request, result, rejected) {
-        if (this._activePick !== request) {
+    #finishPick(request, result, rejected) {
+        if (this.#activePick !== request) {
             return;
         }
-        this._activePick = null;
+        this.#activePick = null;
         if (rejected) {
             request.reject(result);
         } else {
             request.resolve(/** @type {number | null} */ (result));
         }
-        if (this._state === "alive") {
-            this._startNextPick();
+        if (this.#state === "alive") {
+            this.#startNextPick();
         }
     }
 
@@ -730,25 +810,25 @@ export class Renderer {
      * @param {GPUDeviceLostInfo} info
      * @returns {void}
      */
-    _handleDeviceLoss(info) {
-        if (this._state !== "alive") {
+    #handleDeviceLoss(info) {
+        if (this.#state !== "alive") {
             return;
         }
         const detail = info.message ? `: ${info.message}` : "";
         const error = new RendererError(
             `WebGPU device was lost (${info.reason})${detail}`
         );
-        this._state = "lost";
-        this._deviceLossError = error;
-        const active = this._activePick;
-        this._activePick = null;
+        this.#state = "lost";
+        this.#deviceLossError = error;
+        const active = this.#activePick;
+        this.#activePick = null;
         active?.reject(error);
-        for (const request of this._pickQueue) {
+        for (const request of this.#pickQueue) {
             request.reject(error);
         }
-        this._pickQueue.length = 0;
-        this._onInvalidate = () => {};
-        this._onDeviceLoss(info);
+        this.#pickQueue.length = 0;
+        this.#onInvalidate = () => {};
+        this.#onDeviceLoss(info);
     }
 
     /**
@@ -758,23 +838,23 @@ export class Renderer {
      * @param {number} y
      * @returns {Promise<number|null>}
      */
-    async _pickSingle(x, y) {
+    async #pickSingle(x, y) {
         if (!this._marks.size) {
             return null;
         }
-        this._ensurePickTarget();
-        if (this._pickingDirty) {
-            this._renderPick();
+        this.#ensurePickTarget();
+        if (this.#pickingDirty) {
+            this.#renderPick();
         }
 
-        const dpr = this._globals?.dpr ?? 1;
+        const dpr = this._globals.dpr;
         const px = Math.floor(x * dpr);
         const py = Math.floor(y * dpr);
         if (
             px < 0 ||
             py < 0 ||
-            px >= this._pickTextureSize.width ||
-            py >= this._pickTextureSize.height
+            px >= this.#pickTextureSize.width ||
+            py >= this.#pickTextureSize.height
         ) {
             return null;
         }
@@ -787,23 +867,23 @@ export class Renderer {
         });
         commandEncoder.copyTextureToBuffer(
             {
-                texture: this._pickTexture,
+                texture: this.#pickTexture,
                 origin: { x: px, y: py },
             },
             {
-                buffer: this._pickReadbackBuffer,
+                buffer: this.#pickReadbackBuffer,
                 bytesPerRow: 256,
             },
             { width: 1, height: 1, depthOrArrayLayers: 1 }
         );
         this.device.queue.submit([commandEncoder.finish()]);
 
-        await this._pickReadbackBuffer.mapAsync(GPUMapMode.READ, 0, 4);
+        await this.#pickReadbackBuffer.mapAsync(GPUMapMode.READ, 0, 4);
         const data = new Uint8Array(
-            this._pickReadbackBuffer.getMappedRange(0, 4)
+            this.#pickReadbackBuffer.getMappedRange(0, 4)
         );
         const id = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
-        this._pickReadbackBuffer.unmap();
+        this.#pickReadbackBuffer.unmap();
         if (id === 0) {
             return null;
         }
@@ -832,7 +912,7 @@ export class Renderer {
      */
     render(frame = {}) {
         this._assertAlive();
-        this._renderTarget(
+        this.#renderTarget(
             this.context,
             this.canvas,
             this._globals,
@@ -848,14 +928,14 @@ export class Renderer {
      * @param {import("./index.d.ts").RenderFrame} frame
      * @param {boolean} rememberFrame
      */
-    _renderTarget(context, canvas, globals, frame, rememberFrame) {
+    #renderTarget(context, canvas, globals, frame, rememberFrame) {
         const previousGlobals =
             /** @type {import("./index.d.ts").GlobalUniforms} */ (
                 this._globals
             );
         this._globals = globals;
         try {
-            this._renderTargetFrame(context, canvas, frame, rememberFrame);
+            this.#renderTargetFrame(context, canvas, frame, rememberFrame);
         } finally {
             this._globals = previousGlobals;
         }
@@ -867,14 +947,14 @@ export class Renderer {
      * @param {import("./index.d.ts").RenderFrame} frame
      * @param {boolean} rememberFrame
      */
-    _renderTargetFrame(context, canvas, frame, rememberFrame) {
-        const { items, draws, groupCount } = this._normalizeRenderItems(
+    #renderTargetFrame(context, canvas, frame, rememberFrame) {
+        const { items, draws, groupCount } = this.#normalizeRenderItems(
             frame.items ?? frame.draws ?? this._marks.keys()
         );
         addCount("renderDraws", draws.length);
         addCount("renderGroups", groupCount);
-        this._writeDrawGlobals(draws);
-        this._textureCompositor.prepare(draws.length + groupCount + 1);
+        this.#writeDrawGlobals(draws);
+        this.#textureCompositor.prepare(draws.length + groupCount + 1);
         const commandEncoder = this.device.createCommandEncoder({
             label: gpuLabel(RENDERER_GPU_OWNER, "main command encoder"),
         });
@@ -882,10 +962,10 @@ export class Renderer {
             label: gpuLabel(RENDERER_GPU_OWNER, "canvas texture view"),
         });
 
-        this._transientTextures.beginFrame();
+        this.#transientTextures.beginFrame();
         try {
             const encodingStart = startPhase();
-            this._encodeRenderItems(
+            this.#encodeRenderItems(
                 commandEncoder,
                 {
                     view,
@@ -899,17 +979,17 @@ export class Renderer {
                 1,
                 frame.clearColor ?? { r: 1, g: 1, b: 1, a: 1 }
             );
-            this._textureCompositor.flush();
+            this.#textureCompositor.flush();
             finishPhase("commandEncoding", encodingStart);
             const submissionStart = startPhase();
             this.device.queue.submit([commandEncoder.finish()]);
             finishPhase("submission", submissionStart);
         } finally {
-            this._transientTextures.endFrame();
+            this.#transientTextures.endFrame();
         }
         if (rememberFrame) {
             this._renderFrame = draws;
-            this._pickingDirty = true;
+            this.#pickingDirty = true;
         }
     }
 
@@ -922,18 +1002,18 @@ export class Renderer {
     renderPicking(frame = {}) {
         this._assertAlive();
         this._pickingFrame = frame.draws
-            ? this._normalizeDraws(frame.draws)
+            ? this.#normalizeDraws(frame.draws)
             : (this._pickingFrame ??
               this._renderFrame ??
-              this._normalizeDraws(this._marks.keys()));
-        this._pickingDirty = true;
+              this.#normalizeDraws(this._marks.keys()));
+        this.#pickingDirty = true;
     }
 
     /**
      * @param {Iterable<import("./index.d.ts").DrawCommand | MarkId>} draws
      * @returns {NormalizedDraw[]}
      */
-    _normalizeDraws(draws) {
+    #normalizeDraws(draws) {
         const phaseStart = startPhase();
         const canvas = {
             x: 0,
@@ -944,7 +1024,7 @@ export class Renderer {
         /** @type {NormalizedDraw[]} */
         const normalized = [];
         for (const draw of draws) {
-            const normalizedDraw = this._normalizeDraw(
+            const normalizedDraw = this.#normalizeDraw(
                 draw,
                 canvas,
                 normalized.length
@@ -964,7 +1044,7 @@ export class Renderer {
      * @param {number} uniformIndex
      * @returns {NormalizedDraw | undefined}
      */
-    _normalizeDraw(draw, canvas, uniformIndex) {
+    #normalizeDraw(draw, canvas, uniformIndex) {
         const command =
             typeof draw == "number" ? { mark: { markId: draw } } : draw;
         const markId = command.mark.markId;
@@ -1095,7 +1175,7 @@ export class Renderer {
      * @param {Iterable<import("./index.d.ts").RenderItem | MarkId>} items
      * @returns {{items: NormalizedRenderItem[], draws: NormalizedDraw[], groupCount: number}}
      */
-    _normalizeRenderItems(items) {
+    #normalizeRenderItems(items) {
         const phaseStart = startPhase();
         // TODO: If normalization becomes costly, retain semantic topology with
         // slots for live opacity and bounds. Physical layerization must still
@@ -1146,7 +1226,7 @@ export class Renderer {
                         items: children,
                     });
                 } else {
-                    const draw = this._normalizeDraw(
+                    const draw = this.#normalizeDraw(
                         item,
                         canvas,
                         draws.length
@@ -1291,7 +1371,7 @@ export class Renderer {
      * @param {1 | 4} sampleCount
      * @param {GPUColor} clearValue
      */
-    _encodeRenderItems(commandEncoder, target, items, sampleCount, clearValue) {
+    #encodeRenderItems(commandEncoder, target, items, sampleCount, clearValue) {
         let initialized = false;
         /** @type {NormalizedDraw[]} */
         let pending = [];
@@ -1301,34 +1381,34 @@ export class Renderer {
                 return;
             }
             if (sampleCount === 1) {
-                this._encodeDrawPass(
+                this.#encodeDrawPass(
                     commandEncoder,
                     target,
                     pending,
                     initialized ? undefined : clearValue
                 );
             } else if (!initialized) {
-                this._encodeMultisampleDrawPass(
+                this.#encodeMultisampleDrawPass(
                     commandEncoder,
                     target,
                     pending
                 );
             } else {
-                const texture = this._transientTextures.acquire(
+                const texture = this.#transientTextures.acquire(
                     target.width,
                     target.height,
                     1
                 );
                 const chunk = { texture, ...target, view: texture.view };
-                this._encodeMultisampleDrawPass(commandEncoder, chunk, pending);
-                this._encodeCompositePass(
+                this.#encodeMultisampleDrawPass(commandEncoder, chunk, pending);
+                this.#encodeCompositePass(
                     commandEncoder,
                     target,
                     chunk,
                     1,
                     initialized ? undefined : clearValue
                 );
-                this._transientTextures.release(chunk.texture);
+                this.#transientTextures.release(chunk.texture);
             }
             initialized = true;
             pending = [];
@@ -1337,16 +1417,16 @@ export class Renderer {
         for (const item of items) {
             if (item.type === "group") {
                 flush();
-                const group = this._renderGroup(commandEncoder, target, item);
+                const group = this.#renderGroup(commandEncoder, target, item);
                 if (group) {
-                    this._encodeCompositePass(
+                    this.#encodeCompositePass(
                         commandEncoder,
                         target,
                         group,
                         item.opacity,
                         initialized ? undefined : clearValue
                     );
-                    this._transientTextures.release(group.texture);
+                    this.#transientTextures.release(group.texture);
                     initialized = true;
                 }
             } else {
@@ -1356,7 +1436,7 @@ export class Renderer {
         flush();
 
         if (!initialized) {
-            this._encodeDrawPass(commandEncoder, target, [], clearValue);
+            this.#encodeDrawPass(commandEncoder, target, [], clearValue);
         }
     }
 
@@ -1366,7 +1446,7 @@ export class Renderer {
      * @param {NormalizedRenderGroup} group
      * @returns {RenderedGroup | undefined}
      */
-    _renderGroup(commandEncoder, parent, group) {
+    #renderGroup(commandEncoder, parent, group) {
         const clippedBounds = intersectRects(group.bounds, {
             x: parent.logicalX,
             y: parent.logicalY,
@@ -1383,7 +1463,7 @@ export class Renderer {
         if (!bounds.width || !bounds.height) {
             return undefined;
         }
-        const texture = this._transientTextures.acquire(
+        const texture = this.#transientTextures.acquire(
             bounds.width,
             bounds.height,
             1
@@ -1396,7 +1476,7 @@ export class Renderer {
             logicalY: bounds.y / dpr,
             label: group.label,
         };
-        this._encodeRenderItems(
+        this.#encodeRenderItems(
             commandEncoder,
             target,
             group.items,
@@ -1411,8 +1491,8 @@ export class Renderer {
      * @param {RenderTarget} target
      * @param {NormalizedDraw[]} draws
      */
-    _encodeMultisampleDrawPass(commandEncoder, target, draws) {
-        const multisampled = this._transientTextures.acquire(
+    #encodeMultisampleDrawPass(commandEncoder, target, draws) {
+        const multisampled = this.#transientTextures.acquire(
             target.width,
             target.height,
             4
@@ -1429,9 +1509,9 @@ export class Renderer {
                 },
             ],
         });
-        this._encodeDraws(pass, draws, false, target, 4);
+        this.#encodeDraws(pass, draws, false, target, 4);
         pass.end();
-        this._transientTextures.release(multisampled);
+        this.#transientTextures.release(multisampled);
     }
 
     /**
@@ -1440,7 +1520,7 @@ export class Renderer {
      * @param {NormalizedDraw[]} draws
      * @param {GPUColor} [clearValue]
      */
-    _encodeDrawPass(commandEncoder, target, draws, clearValue) {
+    #encodeDrawPass(commandEncoder, target, draws, clearValue) {
         const pass = commandEncoder.beginRenderPass({
             label: gpuLabel(target.label, "main render pass"),
             colorAttachments: [
@@ -1452,7 +1532,7 @@ export class Renderer {
                 },
             ],
         });
-        this._encodeDraws(pass, draws, false, target);
+        this.#encodeDraws(pass, draws, false, target);
         pass.end();
     }
 
@@ -1463,7 +1543,7 @@ export class Renderer {
      * @param {number} opacity
      * @param {GPUColor} [clearValue]
      */
-    _encodeCompositePass(commandEncoder, target, source, opacity, clearValue) {
+    #encodeCompositePass(commandEncoder, target, source, opacity, clearValue) {
         const pass = commandEncoder.beginRenderPass({
             label: gpuLabel(source.label, "group composite pass"),
             colorAttachments: [
@@ -1483,8 +1563,8 @@ export class Renderer {
         );
         pass.setViewport(x, y, source.width, source.height, 0, 1);
         pass.setScissorRect(x, y, source.width, source.height);
-        pass.setPipeline(this._textureCompositor.pipeline);
-        this._textureCompositor.bind(pass, source.texture, opacity);
+        pass.setPipeline(this.#textureCompositor.pipeline);
+        this.#textureCompositor.bind(pass, source.texture, opacity);
         pass.draw(6);
         pass.end();
     }
@@ -1497,7 +1577,7 @@ export class Renderer {
      * @param {1 | 4} [sampleCount]
      * @returns {void}
      */
-    _encodeDraws(
+    #encodeDraws(
         pass,
         draws,
         picking,
@@ -1548,8 +1628,8 @@ export class Renderer {
                 scissor.width,
                 scissor.height
             );
-            state.setBindGroup(0, this._globalBindGroup, [
-                draw.uniformIndex * this._globalUniformStride,
+            state.setBindGroup(0, this.#globalBindGroup, [
+                draw.uniformIndex * this.#globalUniformStride,
             ]);
             /** @type {import("./index.d.ts").ProgramDrawOptions} */
             const options = {
@@ -1568,11 +1648,7 @@ export class Renderer {
             if (draw.placement) {
                 state.setBindGroup(2, draw.placement.bindGroup);
             }
-            if (picking) {
-                mark.drawPick(pass, options);
-            } else {
-                mark.draw(pass, options);
-            }
+            mark.draw(pass, options);
         }
     }
 
@@ -1581,7 +1657,7 @@ export class Renderer {
      * @returns {void}
      */
     destroyMark(markId) {
-        if (this._state === "destroyed") {
+        if (this.#state === "destroyed") {
             return;
         }
         const mark = this._marks.get(markId);
@@ -1598,61 +1674,57 @@ export class Renderer {
      * @returns {void}
      */
     destroy() {
-        if (this._state === "destroyed") {
+        if (this.#state === "destroyed") {
             return;
         }
-        this._state = "destroyed";
+        this.#state = "destroyed";
         for (const mark of this._marks.values()) {
             mark.destroy();
         }
         this._marks.clear();
-        for (const set of this._placementSets?.values() ?? []) {
+        for (const set of this._placementSets.values()) {
             set.destroy();
         }
-        this._placementSets?.clear();
-        for (const target of this._detachedTargets) {
+        this._placementSets.clear();
+        for (const target of this.#detachedTargets) {
             target.destroy();
         }
-        for (const resource of this._ownedResources) {
+        for (const resource of this.#ownedResources) {
             resource.destroy();
         }
-        this._ownedResources.clear();
+        this.#ownedResources.clear();
         this._renderFrame = null;
-        this._globalUniformBuffer.destroy();
-        this._transientTextures.destroy();
-        this._textureCompositor.destroy();
-        this._pickTexture?.destroy();
-        this._pickTexture = null;
-        this._pickTextureView = null;
-        this._pickReadbackBuffer?.destroy();
-        this._pickReadbackBuffer = null;
-        for (const request of this._pickQueue) {
+        this.#globalUniformBuffer.destroy();
+        this.#transientTextures.destroy();
+        this.#textureCompositor.destroy();
+        this.#pickTexture?.destroy();
+        this.#pickTexture = null;
+        this.#pickTextureView = null;
+        this.#pickReadbackBuffer?.destroy();
+        this.#pickReadbackBuffer = null;
+        for (const request of this.#pickQueue) {
             request.resolve(null);
         }
-        this._pickQueue.length = 0;
-        const active = this._activePick;
-        this._activePick = null;
+        this.#pickQueue.length = 0;
+        const active = this.#activePick;
+        this.#activePick = null;
         active?.resolve(null);
-        this._onInvalidate = () => {};
+        this.#onInvalidate = () => {};
         this.context.unconfigure();
         this.device.destroy();
     }
 
     /**
      * @returns {void}
+     * @internal Renderer-owned resources and marks share this lifecycle contract.
      */
     _assertAlive() {
-        if (this._state === "lost") {
-            throw this._deviceLossError;
+        if (this.#state === "lost") {
+            throw this.#deviceLossError;
         }
-        if (this._state === "destroyed") {
+        if (this.#state === "destroyed") {
             throw new RendererError("Renderer has been destroyed.");
         }
-    }
-
-    /** @returns {boolean} */
-    _isAlive() {
-        return this._state === "alive";
     }
 }
 

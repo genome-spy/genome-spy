@@ -170,7 +170,7 @@ describe("buildPipelines", () => {
         const first = harness.build();
         const second = harness.build({ label: "second mark" });
 
-        expect(second.pipeline).toBe(first.pipeline);
+        expect(second.getPipeline(1)).toBe(first.getPipeline(1));
         expect(second.getPickPipeline).toBe(first.getPickPipeline);
         expect(second.bindGroupLayout).toBe(first.bindGroupLayout);
         expect(first.diagnostics).toBe(second.diagnostics);
@@ -201,6 +201,7 @@ describe("buildPipelines", () => {
         const harness = createHarness();
 
         const template = harness.build();
+        template.getPipeline(1);
         const pickPipeline = template.getPickPipeline();
 
         const pipelineArgs = harness.renderPipelineArgs[0];
@@ -252,14 +253,14 @@ describe("buildPipelines", () => {
 
         const first = harness.build();
         const second = harness.build({ label: "second mark" });
-        expect(harness.renderPipelineArgs).toHaveLength(1);
+        expect(harness.renderPipelineArgs).toHaveLength(0);
 
         const multisampled = first.getPipeline(4);
 
         expect(second.getPipeline(4)).toBe(multisampled);
-        expect(harness.renderPipelineArgs).toHaveLength(2);
-        expect(harness.renderPipelineArgs[1].multisample).toEqual({ count: 4 });
-        expect(harness.renderPipelineArgs[1].label).toBe(
+        expect(harness.renderPipelineArgs).toHaveLength(1);
+        expect(harness.renderPipelineArgs[0].multisample).toEqual({ count: 4 });
+        expect(harness.renderPipelineArgs[0].label).toBe(
             "webgpu-renderer program template #1 (first used by first mark): 4x render pipeline"
         );
     });
@@ -280,7 +281,7 @@ describe("buildPipelines", () => {
             )
         );
 
-        expect(second.pipeline).not.toBe(first.pipeline);
+        expect(second.getPipeline(1)).not.toBe(first.getPipeline(1));
         expect(harness.shaderModuleArgs).toHaveLength(2);
         expect(harness.renderPipelineArgs).toHaveLength(2);
     });
@@ -328,7 +329,7 @@ describe("buildPipelines", () => {
             extraResources: [{ ...extraResource, name: "secondLookup" }],
         });
 
-        expect(second.pipeline).toBe(first.pipeline);
+        expect(second.getPipeline(1)).toBe(first.getPipeline(1));
         expect(first.resourceLayout.at(-1)?.name).toBe("firstLookup");
         expect(second.resourceLayout.at(-1)?.name).toBe("secondLookup");
     });

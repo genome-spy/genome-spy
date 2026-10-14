@@ -931,9 +931,7 @@ test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", a
         .domain(domain)
         .range(colors)
         .interpolate(gammaInterpolator);
-    const textureData = createSchemeTexture({
-        scheme: colors,
-        mode: "interpolate",
+    const textureData = createSchemeTexture(colors, {
         interpolate: gammaInterpolator,
         count: 256,
     });
@@ -1077,9 +1075,7 @@ test("scaleCodegen reproduces d3 piecewise color interpolation via ramp texture"
         .domain(domain)
         .range(colors)
         .interpolate(interpolateHcl);
-    const textureData = createSchemeTexture({
-        scheme: colors,
-        mode: "interpolate",
+    const textureData = createSchemeTexture(colors, {
         interpolate: interpolateHcl,
         count: 1024,
     });

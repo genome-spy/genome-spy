@@ -179,6 +179,56 @@ export function setDebugResourcesEnabled(enabled) {
  * Subclasses supply channel lists, defaults, and shader bodies.
  */
 export default class BaseProgram {
+    #destroyed = false;
+
+    /** @type {Record<string, import("../../../index.d.ts").ScalarSlotConfig>} */
+    #scalarSlots;
+
+    /** @type {Set<string>} */
+    #conditionalChannelNames;
+
+    /** @type {Map<string, string[]>} */
+    #logicalSeriesTargets;
+
+    /** @type {ScaleResourceManager} */
+    #scaleResources;
+
+    /** @type {SelectionResourceManager} */
+    #selectionResources;
+
+    /** @type {import("../../shaders/markShaderBuilder.js").ResourceLayoutEntry[]} */
+    #resourceLayout;
+
+    /** @type {import("../../../utils/uniformLayout.js").UniformSpec[]} */
+    #uniformLayout;
+
+    /** @type {GPUBuffer} */
+    #uniformBuffer;
+
+    /** @type {GPUBindGroupLayout} */
+    #bindGroupLayout;
+
+    /** @type {GPUBindGroup} */
+    #bindGroup;
+
+    /** @type {import("./pipelineBuilder.js").ProgramTemplate["getPipeline"]} */
+    #getPipeline;
+
+    /** @type {import("./pipelineBuilder.js").ProgramTemplate["getPickPipeline"]} */
+    #getPickPipeline;
+
+    /** @type {import("./pipelineBuilder.js").ProgramTemplate["diagnostics"]} */
+    #programTemplateDiagnostics;
+
+    #slotUpdateDepth = 0;
+
+    #slotUniformsDirty = false;
+
+    #slotBindingsDirty = false;
+
+    /** @type {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">} */
+    #slotHandles;
+
     /**
      * @typedef {import("../../../index.d.ts").TypedArray} TypedArray
      * @typedef {import("../../../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -195,28 +245,24 @@ export default class BaseProgram {
         this.renderer = renderer;
         this.device = renderer.device;
         this.label = context.label;
-        this._destroyed = false;
-        /** @type {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} */
+        /** @type {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} * @internal
+         */
         this._markConfig = config;
 
         const normalizedChannels = normalizeChannels({
             channels: config.channels,
-            context: {
-                channelOrder: this.channelOrder,
-                optionalChannels: this.optionalChannels,
-                defaultChannelConfigs: this.defaultChannelConfigs,
-                defaultValues: this.defaultValues,
-                channelSpecs: this.channelSpecs,
-            },
+            context: { channelSpecs: this.channelSpecs },
         });
+        /** @protected */
         this._channels = normalizedChannels.channels;
         this.antialiasing = this._resolveAntialiasing();
-        this._visualChannelNames = new Set(Object.keys(this._channels));
-        this._conditionalChannelNames = this._collectConditionalChannelNames();
-        this._publicChannelNames = new Set(this._visualChannelNames);
-        for (const name of this._conditionalChannelNames) {
-            this._publicChannelNames.delete(name);
+        const visualChannelNames = new Set(Object.keys(this._channels));
+        this.#conditionalChannelNames = this.#collectConditionalChannelNames();
+        const publicChannelNames = new Set(visualChannelNames);
+        for (const name of this.#conditionalChannelNames) {
+            publicChannelNames.delete(name);
         }
+        /** @internal */
         this._placementIndex =
             /** @type {import("../../../index.d.ts").MarkConfig["placementIndex"]} */ (
                 config.placementIndex
@@ -230,32 +276,37 @@ export default class BaseProgram {
                       __placementIndex: this._placementIndex,
                   }
                 : config.inputs;
-        this._inputs = normalizeScalarInputs(inputs, this._visualChannelNames);
-        this._scalarSlots = normalizeScalarSlots(config.scalarSlots);
-        this._visibleWhen = normalizeVisibilityPredicate(
+        const normalizedInputs = normalizeScalarInputs(
+            inputs,
+            visualChannelNames
+        );
+        this.#scalarSlots = normalizeScalarSlots(config.scalarSlots);
+        const visibleWhen = normalizeVisibilityPredicate(
             /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
                 config.visibleWhen
             )
         );
+        /** @internal */
         this._order = normalizeOrder(config.order);
-        this._channels = { ...this._channels, ...this._inputs };
-        for (const [name, channel] of Object.entries(this._inputs)) {
+        this._channels = { ...this._channels, ...normalizedInputs };
+        for (const [name, channel] of Object.entries(normalizedInputs)) {
             normalizedChannels.analysisByChannel.set(
                 name,
                 buildChannelAnalysis(name, channel)
             );
         }
-        this._compiledChannels = compileMarkChannels({
+        const compiledChannels = compileMarkChannels({
             channels: this._channels,
             analysisByChannel: normalizedChannels.analysisByChannel,
-            channelNames: this._publicChannelNames,
-            inputNames: new Set(Object.keys(this._inputs)),
+            channelNames: publicChannelNames,
+            inputNames: new Set(Object.keys(normalizedInputs)),
             seriesIndexExpression:
                 typeof config.seriesIndexExpression === "string"
                     ? config.seriesIndexExpression
                     : undefined,
         });
-        this._logicalSeriesTargets = this._collectLogicalSeriesTargets();
+        this.#logicalSeriesTargets = this.#collectLogicalSeriesTargets();
+        /** @protected */
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
             this._channels,
@@ -263,54 +314,46 @@ export default class BaseProgram {
             this.label
         );
         this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
-        this._scaleResources = new ScaleResourceManager({
+        this.#scaleResources = new ScaleResourceManager({
             device: this.device,
-            channels: this._channels,
-            analysisByChannel: this._compiledChannels.analysisByChannel,
+            analysisByChannel: compiledChannels.analysisByChannel,
             label: this.label,
             getDefaultScaleRange: (name) => this.getDefaultScaleRange(name),
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
-        this._selectionResources = new SelectionResourceManager({
+        this.#selectionResources = new SelectionResourceManager({
             device: this.device,
             channels: this._channels,
-            analysisByChannel: this._compiledChannels.analysisByChannel,
-            visibleWhen: this._visibleWhen,
+            analysisByChannel: compiledChannels.analysisByChannel,
+            visibleWhen,
             order: this._order,
             label: this.label,
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
         });
-        /** @type {{ name: string, role: "series"|"scaleTables"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
-        this._resourceLayout = [];
-
-        /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
-        this._uniformLayout = [];
-
-        /** @type {UniformBuffer | null} */
+        /** @type {UniformBuffer | null} * @internal
+         */
         this._uniformBufferState = null;
 
-        /** @type {Map<string, { texture: GPUTexture, sampler?: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} */
+        /** @type {Map<string, { texture: GPUTexture, sampler?: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} * @protected
+         */
         this._extraTextures = new Map();
 
-        /** @type {Map<string, GPUBuffer>} */
+        /** @type {Map<string, GPUBuffer>} * @protected
+         */
         this._extraBuffers = new Map();
 
-        /** @type {Set<string>} */
+        /** @type {Set<string>} * @protected
+         */
         this._borrowedExtraTextures = new Set();
 
-        /** @type {Set<string>} */
+        /** @type {Set<string>} * @protected
+         */
         this._borrowedExtraBuffers = new Set();
 
-        this._slotUpdateDepth = 0;
-        this._slotUniformsDirty = false;
-        this._slotBindingsDirty = false;
-        this._slotPickingDirty = false;
-
-        /** @type {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">} */
-        this._slotHandles = {
-            batchUpdates: (update) => this._batchSlotUpdates(update),
+        this.#slotHandles = {
+            batchUpdates: (update) => this.#batchSlotUpdates(update),
             series: {
                 replace: (channels, count) => {
                     this._assertAlive();
@@ -330,17 +373,16 @@ export default class BaseProgram {
         // Create a shader that matches the active channels (series vs values)
         // and the selected scale types. This keeps GPU programs minimal but makes
         // shader generation dynamic.
-        this._buildUniformLayout();
-        this._validateUniformBufferCapacity();
+        this.#buildUniformLayout();
+        this.#validateUniformBufferCapacity();
         this._initializeExtraResources();
-        this._selectionResources.initializeSelections(this._extraBuffers);
+        this.#selectionResources.initializeSelections(this._extraBuffers);
         const extraResources = [
-            ...this._selectionResources.getExtraResourceDefs(),
+            ...this.#selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
         const {
             bindGroupLayout,
-            pipeline,
             getPipeline,
             getPickPipeline,
             diagnostics,
@@ -351,29 +393,29 @@ export default class BaseProgram {
             globalBindGroupLayout: renderer._globalBindGroupLayout,
             format: renderer.format,
             pickFormat: renderer.pickFormat,
-            compiledChannels: this._compiledChannels,
-            uniformLayout: this._uniformLayout,
+            compiledChannels,
+            uniformLayout: this.#uniformLayout,
             shaderBody: this.shaderBody,
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
-            selectionDefs: this._selectionResources.selectionDefs,
-            visibleWhen: this._visibleWhen,
+            selectionDefs: this.#selectionResources.selectionDefs,
+            visibleWhen: visibleWhen,
             order: this._order,
-            scalarSlots: this._scalarSlots,
+            scalarSlots: this.#scalarSlots,
             extraResources,
             primitiveTopology: this.primitiveTopology,
             placementBindGroupLayout: renderer._placementBindGroupLayout,
             placementIndex: this._placementIndex,
             label: this.label,
         });
-        this._resourceLayout = resourceLayout;
-        this._programTemplateDiagnostics = diagnostics;
-        this._uniformBuffer = this.device.createBuffer({
+        this.#resourceLayout = resourceLayout;
+        this.#programTemplateDiagnostics = diagnostics;
+        this.#uniformBuffer = this.device.createBuffer({
             label: gpuLabel(this.label, "uniforms"),
-            size: this._uniformBufferState?.byteLength ?? 0,
+            size: this._uniformBufferState.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        this._initializeUniforms();
+        this.#initializeUniforms();
         const dynamicValues =
             /** @type {Record<string, {value: number | number[]}>} */ (
                 this._markConfig.dynamicValues ?? {}
@@ -381,15 +423,14 @@ export default class BaseProgram {
         for (const [name, config] of Object.entries(dynamicValues)) {
             this._setUniformValue(name, config.value);
         }
-        for (const [name, config] of Object.entries(this._scalarSlots)) {
+        for (const [name, config] of Object.entries(this.#scalarSlots)) {
             this._setUniformValue(scalarSlotUniformName(name), config.value);
         }
         this._writeUniforms();
-        this._buildSlotHandles();
-        this._bindGroupLayout = bindGroupLayout;
-        this._pipeline = pipeline;
-        this._getPipeline = getPipeline;
-        this._getPickPipeline = getPickPipeline;
+        this.#buildSlotHandles();
+        this.#bindGroupLayout = bindGroupLayout;
+        this.#getPipeline = getPipeline;
+        this.#getPickPipeline = getPickPipeline;
 
         // Initialize any series-backed channels.
         this.updateSeries(
@@ -415,9 +456,10 @@ export default class BaseProgram {
      * Whether a referenced selection currently contains any selected values.
      *
      * @returns {boolean}
+     * @internal
      */
     get _orderActive() {
-        return this._selectionResources.orderActive;
+        return this.#selectionResources.orderActive;
     }
 
     /**
@@ -432,41 +474,12 @@ export default class BaseProgram {
     }
 
     /**
-     * @returns {string[]}
-     */
-    get channelOrder() {
-        return [];
-    }
-
-    /**
-     * Channels that may be omitted without data/value/defaults.
-     *
-     * @returns {string[]}
-     */
-    get optionalChannels() {
-        return [];
-    }
-
-    /**
      * Channel metadata for validation and coercion.
      *
      * @returns {Record<string, ChannelSpec>}
+     * @protected
      */
     get channelSpecs() {
-        return {};
-    }
-
-    /**
-     * @returns {Record<string, ChannelConfigInput>}
-     */
-    get defaultChannelConfigs() {
-        return {};
-    }
-
-    /**
-     * @returns {Record<string, number|number[]>}
-     */
-    get defaultValues() {
         return {};
     }
 
@@ -474,6 +487,7 @@ export default class BaseProgram {
      * Extra per-mark uniform fields (not tied to channels).
      *
      * @returns {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]}
+     * @protected
      */
     getExtraUniformLayout() {
         return [];
@@ -483,6 +497,7 @@ export default class BaseProgram {
      * Extra bind group resources (not tied to channels).
      *
      * @returns {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]}
+     * @protected
      */
     getExtraResourceDefs() {
         return [];
@@ -492,11 +507,13 @@ export default class BaseProgram {
      * Allocate extra GPU resources before building bind groups.
      *
      * @returns {void}
+     * @protected
      */
     _initializeExtraResources() {}
 
     /**
      * @returns {string}
+     * @protected
      */
     get shaderBody() {
         return "";
@@ -506,6 +523,7 @@ export default class BaseProgram {
      * Returns the immutable edge-antialiasing strategy for this program.
      *
      * @returns {"shader" | "multisample"}
+     * @protected
      */
     _resolveAntialiasing() {
         return "shader";
@@ -515,6 +533,7 @@ export default class BaseProgram {
      * Pipeline primitive topology for this mark.
      *
      * @returns {GPUPrimitiveTopology}
+     * @protected
      */
     get primitiveTopology() {
         return "triangle-list";
@@ -530,6 +549,7 @@ export default class BaseProgram {
      *
      * @param {string} _name
      * @returns {[number, number] | undefined}
+     * @protected
      */
     getDefaultScaleRange(_name) {
         return undefined;
@@ -549,7 +569,7 @@ export default class BaseProgram {
             this.count
         );
 
-        if (packedBuffersChanged || boundResourcesChanged || !this._bindGroup) {
+        if (packedBuffersChanged || boundResourcesChanged || !this.#bindGroup) {
             this._rebuildBindGroup();
         }
         this.renderer.markPickingDirty();
@@ -563,9 +583,19 @@ export default class BaseProgram {
      * @returns {void}
      */
     replaceSeries(channels, count) {
+        this.updateSeries(this._resolveSeries(channels), count);
+    }
+
+    /**
+     * Translate the complete public series set before changing GPU resources.
+     * @protected
+     * @param {Record<string, import("../../../index.d.ts").SeriesData>} channels
+     * @returns {Record<string, TypedArray>}
+     */
+    _resolveSeries(channels) {
         /** @type {Record<string, TypedArray>} */
         const resolved = {};
-        for (const [name, targets] of this._logicalSeriesTargets) {
+        for (const [name, targets] of this.#logicalSeriesTargets) {
             if (targets.length > 1) {
                 throw new Error(
                     `Series replacement for channel "${name}" is not supported because it has multiple series-backed branches.`
@@ -579,13 +609,13 @@ export default class BaseProgram {
             }
             resolved[targets[0]] = /** @type {TypedArray} */ (data);
         }
-        this.updateSeries(resolved, count);
+        return resolved;
     }
 
     /**
      * @returns {Set<string>}
      */
-    _collectConditionalChannelNames() {
+    #collectConditionalChannelNames() {
         const names = new Set();
         for (const channel of Object.values(this._channels)) {
             for (const condition of channel.conditions ?? []) {
@@ -604,10 +634,10 @@ export default class BaseProgram {
      *
      * @returns {Map<string, string[]>}
      */
-    _collectLogicalSeriesTargets() {
+    #collectLogicalSeriesTargets() {
         const targetsByChannel = new Map();
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (this._conditionalChannelNames.has(name)) {
+            if (this.#conditionalChannelNames.has(name)) {
                 continue;
             }
             const targets = [];
@@ -632,43 +662,22 @@ export default class BaseProgram {
 
     /**
      * @returns {void}
+     * @protected
      */
     _rebuildBindGroup() {
-        this._bindGroup = buildBindGroup({
+        this.#bindGroup = buildBindGroup({
             device: this.device,
             label: this.label,
-            layout: this._bindGroupLayout,
-            uniformBuffer: this._uniformBuffer,
-            resourceLayout: this._resourceLayout,
-            getScaleTableBuffer: () => this._scaleResources.tableBuffer,
+            layout: this.#bindGroupLayout,
+            uniformBuffer: this.#uniformBuffer,
+            resourceLayout: this.#resourceLayout,
+            getScaleTableBuffer: () => this.#scaleResources.tableBuffer,
             getSeriesBuffer: () => this._seriesBuffers.getBuffer(),
             getScaleResources: (name) =>
-                this._scaleResources.getChannelResources(name),
+                this.#scaleResources.getChannelResources(name),
             extraTextures: this._extraTextures,
             extraBuffers: this._extraBuffers,
         });
-    }
-
-    /**
-     * @param {Record<string, number|number[]>} values
-     * @returns {void}
-     */
-    updateValues(values) {
-        for (const [key, value] of Object.entries(values)) {
-            const uniformKey = `u_${key}`;
-            if (!this._uniformBufferState?.entries.has(uniformKey)) {
-                throw new Error(
-                    `Uniform "${uniformKey}" is not available for updates.`
-                );
-            }
-            this._setUniformValue(
-                uniformKey,
-
-                /** @type {number|number[]} */ (value)
-            );
-        }
-        this._writeUniforms();
-        this.renderer.markPickingDirty();
     }
 
     /**
@@ -686,7 +695,7 @@ export default class BaseProgram {
         const samplers = [];
         const packedSeriesInfo = this._seriesBuffers.getPackedSeriesInfo();
 
-        for (const entry of this._resourceLayout) {
+        for (const entry of this.#resourceLayout) {
             if (entry.role === "series") {
                 const buffer = this._seriesBuffers.getBuffer();
                 storage.push({
@@ -700,14 +709,14 @@ export default class BaseProgram {
                 });
                 continue;
             }
-            const scaleResources = this._scaleResources.getChannelResources(
+            const scaleResources = this.#scaleResources.getChannelResources(
                 entry.name
             );
             if (entry.role === "scaleTables") {
                 storage.push({
                     name: entry.name,
                     role: entry.role,
-                    bytes: this._scaleResources.tableBuffer.size,
+                    bytes: this.#scaleResources.tableBuffer.size,
                 });
                 continue;
             }
@@ -753,11 +762,11 @@ export default class BaseProgram {
 
         console.debug(`[webgpu-renderer] ${label} resources`, {
             programTemplate: {
-                id: this._programTemplateDiagnostics.id,
+                id: this.#programTemplateDiagnostics.id,
                 firstBorrowerLabel:
-                    this._programTemplateDiagnostics.firstBorrowerLabel,
+                    this.#programTemplateDiagnostics.firstBorrowerLabel,
                 borrowerLabels: Array.from(
-                    this._programTemplateDiagnostics.borrowerLabels
+                    this.#programTemplateDiagnostics.borrowerLabels
                 ),
             },
             uniforms: this._uniformBufferState?.byteLength ?? 0,
@@ -773,7 +782,7 @@ export default class BaseProgram {
      * @returns {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">}
      */
     getSlotHandles() {
-        return this._slotHandles;
+        return this.#slotHandles;
     }
 
     /**
@@ -781,7 +790,7 @@ export default class BaseProgram {
      *
      * @returns {void}
      */
-    _buildSlotHandles() {
+    #buildSlotHandles() {
         /**
          * @param {Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>} map
          * @param {string} name
@@ -828,19 +837,19 @@ export default class BaseProgram {
         };
 
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (this._conditionalChannelNames.has(name)) {
+            if (this.#conditionalChannelNames.has(name)) {
                 continue;
             }
             if (channel.scale) {
                 attachScaleSlot(
-                    ensureScaleGroup(this._slotHandles.scales, name),
-                    this._createScaleSlot(name)
+                    ensureScaleGroup(this.#slotHandles.scales, name),
+                    this.#createScaleSlot(name)
                 );
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {
                 attachValueSlot(
-                    ensureValueGroup(this._slotHandles.values, name),
-                    this._createValueSlot(name)
+                    ensureValueGroup(this.#slotHandles.values, name),
+                    this.#createValueSlot(name)
                 );
             }
             const conditions = channel.conditions ?? [];
@@ -857,13 +866,13 @@ export default class BaseProgram {
                 }
                 if (conditionChannel.scale) {
                     const group = ensureScaleGroup(
-                        this._slotHandles.scales,
+                        this.#slotHandles.scales,
                         name
                     );
                     if (!group.conditions) {
                         group.conditions = {};
                     }
-                    group.conditions[conditionIndex] = this._createScaleSlot(
+                    group.conditions[conditionIndex] = this.#createScaleSlot(
                         condition.channelName
                     );
                 }
@@ -872,13 +881,13 @@ export default class BaseProgram {
                     conditionChannel.dynamic
                 ) {
                     const group = ensureValueGroup(
-                        this._slotHandles.values,
+                        this.#slotHandles.values,
                         name
                     );
                     if (!group.conditions) {
                         group.conditions = {};
                     }
-                    group.conditions[conditionIndex] = this._createValueSlot(
+                    group.conditions[conditionIndex] = this.#createValueSlot(
                         condition.channelName
                     );
                 }
@@ -889,17 +898,17 @@ export default class BaseProgram {
             this._markConfig.dynamicValues ?? {}
         );
         for (const name of Object.keys(dynamicValues)) {
-            this._slotHandles.extraValues[name] =
-                this._createExtraValueSlot(name);
+            this.#slotHandles.extraValues[name] =
+                this.#createExtraValueSlot(name);
         }
 
-        for (const name of Object.keys(this._scalarSlots)) {
-            this._slotHandles.scalarSlots[name] = this._createScalarSlot(name);
+        for (const name of Object.keys(this.#scalarSlots)) {
+            this.#slotHandles.scalarSlots[name] = this.#createScalarSlot(name);
         }
 
-        for (const def of this._selectionResources.selectionDefs) {
-            this._slotHandles.selections[def.name] =
-                this._createSelectionSlot(def);
+        for (const def of this.#selectionResources.selectionDefs) {
+            this.#slotHandles.selections[def.name] =
+                this.#createSelectionSlot(def);
         }
     }
 
@@ -907,18 +916,18 @@ export default class BaseProgram {
      * @param {string} name
      * @returns {import("../../../index.d.ts").ScaleSlotHandle}
      */
-    _createScaleSlot(name) {
-        const updater = this._scaleResources.getScaleUpdater(name);
+    #createScaleSlot(name) {
+        const updater = this.#scaleResources.getScaleUpdater(name);
         return {
             setGapPositions: (values) => {
                 this._assertAlive();
                 this._queueSlotUpdate(
-                    this._scaleResources.updateGapPositions(name, values)
+                    this.#scaleResources.updateGapPositions(name, values)
                 );
             },
             setGapWidth: (width) => {
                 this._assertAlive();
-                this._scaleResources.updateGapWidth(name, width);
+                this.#scaleResources.updateGapWidth(name, width);
                 this._queueSlotUpdate(false);
             },
             setDomain: (domain, ranks) => {
@@ -938,7 +947,7 @@ export default class BaseProgram {
      * @param {string} name
      * @returns {import("../../../index.d.ts").ValueSlotHandle}
      */
-    _createValueSlot(name) {
+    #createValueSlot(name) {
         const uniformName = `u_${name}`;
         if (!this._uniformBufferState?.entries.has(uniformName)) {
             throw new Error(
@@ -958,7 +967,7 @@ export default class BaseProgram {
      * @param {string} name
      * @returns {import("../../../index.d.ts").ValueSlotHandle}
      */
-    _createExtraValueSlot(name) {
+    #createExtraValueSlot(name) {
         if (!this._uniformBufferState?.entries.has(name)) {
             throw new Error(`Uniform "${name}" is not available for updates.`);
         }
@@ -975,8 +984,8 @@ export default class BaseProgram {
      * @param {string} name
      * @returns {import("../../../index.d.ts").ScalarSlotHandle}
      */
-    _createScalarSlot(name) {
-        const config = this._scalarSlots[name];
+    #createScalarSlot(name) {
+        const config = this.#scalarSlots[name];
         if (!config) {
             throw new Error(`Unknown scalar slot "${name}".`);
         }
@@ -1001,6 +1010,7 @@ export default class BaseProgram {
      *
      * @param {string} name
      * @param {number | number[]} value
+     * @protected
      */
     _setExtraUniformValue(name, value) {
         this._setUniformValue(name, value);
@@ -1010,13 +1020,13 @@ export default class BaseProgram {
      * @param {{ name: string, type: import("../../../index.d.ts").SelectionType, components?: string[] }} def
      * @returns {import("../../../index.d.ts").SelectionSlotHandle}
      */
-    _createSelectionSlot(def) {
+    #createSelectionSlot(def) {
         /**
          * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} next
          */
         const update = (next) => {
             this._assertAlive();
-            const needsRebind = this._selectionResources.updateSelection(
+            const needsRebind = this.#selectionResources.updateSelection(
                 def.name,
                 next,
                 this._extraBuffers
@@ -1050,42 +1060,40 @@ export default class BaseProgram {
      *
      * @param {() => void} update
      */
-    _batchSlotUpdates(update) {
+    #batchSlotUpdates(update) {
         this._assertAlive();
-        this._slotUpdateDepth++;
+        this.#slotUpdateDepth++;
         try {
             update();
         } finally {
-            this._slotUpdateDepth--;
-            if (this._slotUpdateDepth === 0) {
-                this._flushSlotUpdates();
+            this.#slotUpdateDepth--;
+            if (this.#slotUpdateDepth === 0) {
+                this.#flushSlotUpdates();
             }
         }
     }
 
-    /** @param {boolean} needsRebind */
+    /** @param {boolean} needsRebind * @internal
+     */
     _queueSlotUpdate(needsRebind) {
-        this._slotUniformsDirty = true;
-        this._slotBindingsDirty ||= needsRebind;
-        this._slotPickingDirty = true;
-        if (this._slotUpdateDepth === 0) {
-            this._flushSlotUpdates();
+        this.#slotUniformsDirty = true;
+        this.#slotBindingsDirty ||= needsRebind;
+        if (this.#slotUpdateDepth === 0) {
+            this.#flushSlotUpdates();
         }
     }
 
-    _flushSlotUpdates() {
-        if (this._slotUniformsDirty) {
-            this._writeUniforms();
+    #flushSlotUpdates() {
+        if (!this.#slotUniformsDirty) {
+            return;
         }
-        if (this._slotBindingsDirty) {
+        this._writeUniforms();
+        if (this.#slotBindingsDirty) {
             this._rebuildBindGroup();
         }
-        if (this._slotPickingDirty) {
-            this.renderer.markPickingDirty();
-        }
-        this._slotUniformsDirty = false;
-        this._slotBindingsDirty = false;
-        this._slotPickingDirty = false;
+        this.renderer.markPickingDirty();
+        this.#slotUniformsDirty = false;
+        this.#slotBindingsDirty = false;
     }
 
     /**
@@ -1094,7 +1102,7 @@ export default class BaseProgram {
      *
      * @returns {void}
      */
-    _validateUniformBufferCapacity() {
+    #validateUniformBufferCapacity() {
         const limit = Math.min(
             this.device.limits.maxUniformBufferBindingSize,
             this.device.limits.maxBufferSize
@@ -1104,7 +1112,7 @@ export default class BaseProgram {
             return;
         }
 
-        const intervalDefs = this._selectionResources.selectionDefs.filter(
+        const intervalDefs = this.#selectionResources.selectionDefs.filter(
             (def) => def.type === "interval"
         );
         const details = intervalDefs
@@ -1121,7 +1129,7 @@ export default class BaseProgram {
     /**
      * @returns {void}
      */
-    _buildUniformLayout() {
+    #buildUniformLayout() {
         /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         const layout = [];
 
@@ -1135,14 +1143,14 @@ export default class BaseProgram {
                 });
             }
             if (isSeriesChannelConfig(channel) && channel.scale) {
-                this._scaleResources.addScaleUniforms(layout, name, channel);
+                this.#scaleResources.addScaleUniforms(layout, name, channel);
             }
             if (isValueChannelConfig(channel) && channel.scale) {
-                this._scaleResources.addScaleUniforms(layout, name, channel);
+                this.#scaleResources.addScaleUniforms(layout, name, channel);
             }
         }
 
-        for (const [name, config] of Object.entries(this._scalarSlots)) {
+        for (const [name, config] of Object.entries(this.#scalarSlots)) {
             layout.push({
                 name: scalarSlotUniformName(name),
                 type: config.type,
@@ -1150,35 +1158,35 @@ export default class BaseProgram {
             });
         }
 
-        this._selectionResources.addSelectionUniforms(layout);
-        this._uniformLayout = layout.concat(this.getExtraUniformLayout());
-        if (this._uniformLayout.length === 0) {
+        this.#selectionResources.addSelectionUniforms(layout);
+        this.#uniformLayout = layout.concat(this.getExtraUniformLayout());
+        if (this.#uniformLayout.length === 0) {
             // WebGPU does not allow empty uniform buffers; keep a dummy entry.
-            this._uniformLayout.push({
+            this.#uniformLayout.push({
                 name: "dummy",
                 type: "f32",
                 components: 1,
             });
         }
-        this._uniformBufferState = new UniformBuffer(this._uniformLayout);
+        this._uniformBufferState = new UniformBuffer(this.#uniformLayout);
     }
 
     /**
      * @returns {void}
      */
-    _initializeUniforms() {
+    #initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
             if (
                 (isSeriesChannelConfig(channel) ||
                     isValueChannelConfig(channel)) &&
                 channel.scale
             ) {
-                this._scaleResources.initializeScale(
+                this.#scaleResources.initializeScale(
                     name,
                     channel,
                     channel.scale
                 );
-                const updater = this._scaleResources.getScaleUpdater(name);
+                const updater = this.#scaleResources.getScaleUpdater(name);
                 updater.updateDomain(
                     channel.scale.domain,
                     channel.scale.gapDomain
@@ -1200,6 +1208,7 @@ export default class BaseProgram {
      * Initialize non-channel uniforms after the main uniform buffer is ready.
      *
      * @returns {void}
+     * @protected
      */
     _initializeExtraUniforms() {}
 
@@ -1207,6 +1216,7 @@ export default class BaseProgram {
      * @param {string} name
      * @param {number|ArrayLike<number>|Array<number|number[]>} value
      * @returns {void}
+     * @internal
      */
     _setUniformValue(name, value) {
         this._uniformBufferState?.setValue(name, value);
@@ -1214,6 +1224,7 @@ export default class BaseProgram {
 
     /**
      * @returns {void}
+     * @protected
      */
     _writeUniforms() {
         if (
@@ -1224,7 +1235,7 @@ export default class BaseProgram {
         }
         // Single uniform buffer update keeps GPU bindings stable.
         this.device.queue.writeBuffer(
-            this._uniformBuffer,
+            this.#uniformBuffer,
             0,
             this._uniformBufferState.data
         );
@@ -1236,16 +1247,16 @@ export default class BaseProgram {
      * @param {import("../../../index.d.ts").ProgramDrawOptions} options
      */
     prepareDraw(state, options) {
-        state.setPipeline(this._getPipeline(options.sampleCount));
-        state.setBindGroup(1, this._bindGroup);
+        state.setPipeline(this.#getPipeline(options.sampleCount));
+        state.setBindGroup(1, this.#bindGroup);
     }
 
     /**
      * @param {import("../../../index.d.ts").RenderPassState} state
      */
     preparePick(state) {
-        state.setPipeline(this._getPickPipeline());
-        state.setBindGroup(1, this._bindGroup);
+        state.setPipeline(this.#getPickPipeline());
+        state.setBindGroup(1, this.#bindGroup);
     }
 
     /**
@@ -1261,28 +1272,14 @@ export default class BaseProgram {
         );
     }
 
-    /**
-     * @param {GPURenderPassEncoder} pass
-     * @param {import("../../../index.d.ts").ProgramDrawOptions} options
-     * @returns {void}
-     */
-    drawPick(pass, options) {
-        pass.draw(
-            this.verticesPerInstance,
-            options.instanceCount,
-            0,
-            options.firstInstance
-        );
-    }
-
     destroy() {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             return;
         }
-        this._destroyed = true;
-        this._uniformBuffer.destroy();
+        this.#destroyed = true;
+        this.#uniformBuffer.destroy();
         this._seriesBuffers.destroy();
-        this._scaleResources.destroy();
+        this.#scaleResources.destroy();
         for (const [name, buffer] of this._extraBuffers) {
             if (!this._borrowedExtraBuffers.has(name)) {
                 buffer.destroy();
@@ -1299,10 +1296,11 @@ export default class BaseProgram {
 
     /**
      * @returns {void}
+     * @internal
      */
     _assertAlive() {
         this.renderer._assertAlive();
-        if (this._destroyed) {
+        if (this.#destroyed) {
             throw new Error(`${this.constructor.name} has been destroyed.`);
         }
     }

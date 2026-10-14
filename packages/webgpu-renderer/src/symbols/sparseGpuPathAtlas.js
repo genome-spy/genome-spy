@@ -887,108 +887,113 @@ function atlasCacheKey(paths, options) {
  * Reusable, device-owned resources for GPU MSDF generation.
  */
 export class MsdfAtlasGenerator {
+    /** @type {GPUDevice} */
+    #device;
+
+    /** @type {number} */
+    #maxScratchBytes;
+
+    #destroyed = false;
+
+    #width = 0;
+
+    #height = 0;
+
+    /** @type {Record<"segments" | "jobs", GPUBuffer | null>} */
+    #inputs;
+
+    /** @type {GPUBuffer | null} */
+    #trueParamsBuffer = null;
+
+    /** @type {GPUBuffer | null} */
+    #pseudoParamsBuffer = null;
+
+    /** @type {GPUBuffer | null} */
+    #scratchBuffer = null;
+
+    /** @type {GPUBuffer | null} */
+    #trueScratchBuffer = null;
+
+    /** @type {GPUTexture | null} */
+    #rawTexture = null;
+
+    /** @type {Map<string, ReturnType<MsdfAtlasGenerator["createAtlas"]>>} */
+    #atlasCache = new Map();
+
     /**
      * @param {GPUDevice} device
      * @param {{ maxScratchBytes?: number }} [options]
      */
     constructor(device, options = {}) {
-        this.device = device;
-        this.maxScratchBytes =
+        this.#device = device;
+        this.#maxScratchBytes =
             options.maxScratchBytes ?? DEFAULT_MAX_SCRATCH_BYTES;
         if (
-            !Number.isSafeInteger(this.maxScratchBytes) ||
-            this.maxScratchBytes < BYTES_PER_SCRATCH_PIXEL
+            !Number.isSafeInteger(this.#maxScratchBytes) ||
+            this.#maxScratchBytes < BYTES_PER_SCRATCH_PIXEL
         ) {
             throw new Error("MSDF scratch limit must be a positive integer.");
         }
 
-        this._destroyed = false;
-        this._width = 0;
-        this._height = 0;
-        this._segmentCapacity = 0;
-        this._jobCapacity = 0;
-        /** @type {GPUBuffer | null} */
-        this._segmentBuffer = null;
-        /** @type {GPUBuffer | null} */
-        this._jobBuffer = null;
-        /** @type {GPUBuffer | null} */
-        this._trueParamsBuffer = null;
-        /** @type {GPUBuffer | null} */
-        this._pseudoParamsBuffer = null;
-        /** @type {GPUBuffer | null} */
-        this._scratchBuffer = null;
-        /** @type {GPUBuffer | null} */
-        this._trueScratchBuffer = null;
-        /** @type {GPUTexture | null} */
-        this._rawTexture = null;
-        /** @type {Set<Promise<void>>} */
-        this._retirements = new Set();
-        /** @type {Map<string, ReturnType<MsdfAtlasGenerator["createAtlas"]>>} */
-        this._atlasCache = new Map();
+        this.#inputs = { segments: null, jobs: null };
     }
 
     /** @param {GPUBuffer | GPUTexture | null} resource */
-    _retire(resource) {
+    #retire(resource) {
         if (!resource) {
             return;
         }
-        const retirement = this.device.queue.onSubmittedWorkDone().then(
+        void this.#device.queue.onSubmittedWorkDone().then(
             () => resource.destroy(),
             () => resource.destroy()
         );
-        this._retirements.add(retirement);
-        void retirement.finally(() => this._retirements.delete(retirement));
     }
 
     /**
      * @param {number} required
      * @param {"segments" | "jobs"} kind
      */
-    _ensureInputBuffer(required, kind) {
-        const capacityProperty =
-            kind === "segments" ? "_segmentCapacity" : "_jobCapacity";
-        const bufferProperty =
-            kind === "segments" ? "_segmentBuffer" : "_jobBuffer";
-        if (required <= this[capacityProperty]) {
+    #ensureInputBuffer(required, kind) {
+        const input = this.#inputs[kind];
+        if (required <= (input?.size ?? 0)) {
             return;
         }
         const alignedRequired = alignToFour(required);
-        let capacity = Math.max(4, this[capacityProperty]);
+        let capacity = Math.max(4, input?.size ?? 0);
         while (capacity < alignedRequired) {
             capacity *= 2;
         }
         const maxBindingSize =
-            this.device.limits.maxStorageBufferBindingSize ?? Infinity;
+            this.#device.limits.maxStorageBufferBindingSize ?? Infinity;
         if (capacity > maxBindingSize) {
             throw new Error(`MSDF ${kind} exceed the device buffer limit.`);
         }
-        const oldBuffer = this[bufferProperty];
-        this[bufferProperty] = this.device.createBuffer({
+        const oldBuffer = input;
+        this.#inputs[kind] = this.#device.createBuffer({
             label: `MSDF reusable ${kind}`,
             size: capacity,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
-        this[capacityProperty] = capacity;
-        this._retire(oldBuffer);
+        this.#retire(oldBuffer);
     }
 
     /** @param {number} width @param {number} height */
-    _ensureScratch(width, height) {
-        const nextWidth = Math.max(width, this._width);
-        const nextHeight = Math.max(height, this._height);
-        if (nextWidth === this._width && nextHeight === this._height) {
+    #ensureScratch(width, height) {
+        const nextWidth = Math.max(width, this.#width);
+        const nextHeight = Math.max(height, this.#height);
+        if (nextWidth === this.#width && nextHeight === this.#height) {
             return;
         }
-        const maxDimension = this.device.limits.maxTextureDimension2D;
+        const maxDimension = this.#device.limits.maxTextureDimension2D;
         const pixels = nextWidth * nextHeight;
         const scratchBytes = pixels * BYTES_PER_SCRATCH_PIXEL;
         const atomicBytes = pixels * 3 * 4;
         const maxBindingSize =
-            this.device.limits.maxStorageBufferBindingSize ?? Infinity;
+            this.#device.limits.maxStorageBufferBindingSize ?? Infinity;
         if (
             nextWidth > maxDimension ||
             nextHeight > maxDimension ||
-            scratchBytes > this.maxScratchBytes ||
+            scratchBytes > this.#maxScratchBytes ||
             atomicBytes > maxBindingSize
         ) {
             throw new Error(
@@ -996,15 +1001,15 @@ export class MsdfAtlasGenerator {
             );
         }
 
-        const oldScratch = this._scratchBuffer;
-        const oldTrueScratch = this._trueScratchBuffer;
-        const oldRawTexture = this._rawTexture;
-        this._scratchBuffer = this.device.createBuffer({
+        const oldScratch = this.#scratchBuffer;
+        const oldTrueScratch = this.#trueScratchBuffer;
+        const oldRawTexture = this.#rawTexture;
+        this.#scratchBuffer = this.#device.createBuffer({
             label: "MSDF reusable atomic scratch",
             size: atomicBytes,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
-        this._trueScratchBuffer = this.device.createBuffer({
+        this.#trueScratchBuffer = this.#device.createBuffer({
             label: "MSDF reusable true-distance scratch",
             size: atomicBytes,
             usage:
@@ -1012,7 +1017,7 @@ export class MsdfAtlasGenerator {
                 GPUBufferUsage.COPY_SRC |
                 GPUBufferUsage.COPY_DST,
         });
-        this._rawTexture = this.device.createTexture({
+        this.#rawTexture = this.#device.createTexture({
             label: "MSDF reusable raw distances",
             size: [nextWidth, nextHeight],
             format: "rgba16float",
@@ -1020,23 +1025,23 @@ export class MsdfAtlasGenerator {
                 GPUTextureUsage.STORAGE_BINDING |
                 GPUTextureUsage.TEXTURE_BINDING,
         });
-        this._width = nextWidth;
-        this._height = nextHeight;
-        this._retire(oldScratch);
-        this._retire(oldTrueScratch);
-        this._retire(oldRawTexture);
+        this.#width = nextWidth;
+        this.#height = nextHeight;
+        this.#retire(oldScratch);
+        this.#retire(oldTrueScratch);
+        this.#retire(oldRawTexture);
     }
 
-    _ensureParams() {
-        if (this._trueParamsBuffer) {
+    #ensureParams() {
+        if (this.#trueParamsBuffer) {
             return;
         }
-        this._trueParamsBuffer = this.device.createBuffer({
+        this.#trueParamsBuffer = this.#device.createBuffer({
             label: "MSDF true-distance parameters",
             size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        this._pseudoParamsBuffer = this.device.createBuffer({
+        this.#pseudoParamsBuffer = this.#device.createBuffer({
             label: "MSDF pseudo-distance parameters",
             size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -1054,51 +1059,51 @@ export class MsdfAtlasGenerator {
      * @param {string} [label]
      */
     createAtlas(paths, options = {}, label = "path atlas") {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             throw new Error("MSDF atlas generator has been destroyed.");
         }
         const layout = buildSparsePathAtlasLayout(paths, options);
-        this._ensureInputBuffer(layout.segmentData.byteLength, "segments");
-        this._ensureInputBuffer(layout.jobData.byteLength, "jobs");
-        this._ensureScratch(layout.width, layout.height);
-        this._ensureParams();
+        this.#ensureInputBuffer(layout.segmentData.byteLength, "segments");
+        this.#ensureInputBuffer(layout.jobData.byteLength, "jobs");
+        this.#ensureScratch(layout.width, layout.height);
+        this.#ensureParams();
 
-        const segmentBuffer = /** @type {GPUBuffer} */ (this._segmentBuffer);
-        const jobBuffer = /** @type {GPUBuffer} */ (this._jobBuffer);
+        const segmentBuffer = /** @type {GPUBuffer} */ (this.#inputs.segments);
+        const jobBuffer = /** @type {GPUBuffer} */ (this.#inputs.jobs);
         const trueParamsBuffer = /** @type {GPUBuffer} */ (
-            this._trueParamsBuffer
+            this.#trueParamsBuffer
         );
         const pseudoParamsBuffer = /** @type {GPUBuffer} */ (
-            this._pseudoParamsBuffer
+            this.#pseudoParamsBuffer
         );
-        const scratchBuffer = /** @type {GPUBuffer} */ (this._scratchBuffer);
+        const scratchBuffer = /** @type {GPUBuffer} */ (this.#scratchBuffer);
         const trueScratchBuffer = /** @type {GPUBuffer} */ (
-            this._trueScratchBuffer
+            this.#trueScratchBuffer
         );
-        const rawTexture = /** @type {GPUTexture} */ (this._rawTexture);
-        const pipelines = getPipelines(this.device);
-        this.device.queue.writeBuffer(
+        const rawTexture = /** @type {GPUTexture} */ (this.#rawTexture);
+        const pipelines = getPipelines(this.#device);
+        this.#device.queue.writeBuffer(
             segmentBuffer,
             0,
             asGpuBufferSource(new Uint8Array(layout.segmentData))
         );
-        this.device.queue.writeBuffer(
+        this.#device.queue.writeBuffer(
             jobBuffer,
             0,
             asGpuBufferSource(new Uint8Array(layout.jobData))
         );
-        this.device.queue.writeBuffer(
+        this.#device.queue.writeBuffer(
             trueParamsBuffer,
             0,
             asGpuBufferSource(new Uint8Array(createParams(layout, 0)))
         );
-        this.device.queue.writeBuffer(
+        this.#device.queue.writeBuffer(
             pseudoParamsBuffer,
             0,
             asGpuBufferSource(new Uint8Array(createParams(layout, 1)))
         );
 
-        const texture = this.device.createTexture({
+        const texture = this.#device.createTexture({
             label,
             size: [layout.width, layout.height],
             format: "rgba16float",
@@ -1108,19 +1113,19 @@ export class MsdfAtlasGenerator {
                 GPUTextureUsage.TEXTURE_BINDING |
                 GPUTextureUsage.COPY_SRC,
         });
-        const entryBuffer = this.device.createBuffer({
+        const entryBuffer = this.#device.createBuffer({
             label: gpuLabel(label, "entries"),
             size: layout.entries.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
-        this.device.queue.writeBuffer(
+        this.#device.queue.writeBuffer(
             entryBuffer,
             0,
             asGpuBufferSource(layout.entries)
         );
         /** @param {string} passLabel @param {GPUBuffer} paramsBuffer */
         const createEdgeBindGroup = (passLabel, paramsBuffer) =>
-            this.device.createBindGroup({
+            this.#device.createBindGroup({
                 label: gpuLabel(label, passLabel + " edge raster bindings"),
                 layout: pipelines.edge.getBindGroupLayout(0),
                 entries: [
@@ -1139,7 +1144,7 @@ export class MsdfAtlasGenerator {
             "pseudo-distance",
             pseudoParamsBuffer
         );
-        const rawBindGroup = this.device.createBindGroup({
+        const rawBindGroup = this.#device.createBindGroup({
             label: gpuLabel(label, "raw distance bindings"),
             layout: pipelines.raw.getBindGroupLayout(0),
             entries: [
@@ -1151,7 +1156,7 @@ export class MsdfAtlasGenerator {
                 { binding: 5, resource: { buffer: trueScratchBuffer } },
             ],
         });
-        const correctionBindGroup = this.device.createBindGroup({
+        const correctionBindGroup = this.#device.createBindGroup({
             label: gpuLabel(label, "correction bindings"),
             layout: pipelines.correction.getBindGroupLayout(0),
             entries: [
@@ -1163,7 +1168,7 @@ export class MsdfAtlasGenerator {
         });
 
         const scratchSize = layout.width * layout.height * 3 * 4;
-        const encoder = this.device.createCommandEncoder({
+        const encoder = this.#device.createCommandEncoder({
             label: gpuLabel(label, "generation commands"),
         });
         /**
@@ -1229,14 +1234,14 @@ export class MsdfAtlasGenerator {
             pipelines.correction,
             correctionBindGroup
         );
-        this.device.queue.submit([encoder.finish()]);
+        this.#device.queue.submit([encoder.finish()]);
 
         let atlasDestroyed = false;
         return {
             ...layout,
             texture,
             entryBuffer,
-            completion: this.device.queue.onSubmittedWorkDone(),
+            completion: this.#device.queue.onSubmittedWorkDone(),
             destroy: () => {
                 if (!atlasDestroyed) {
                     atlasDestroyed = true;
@@ -1255,17 +1260,17 @@ export class MsdfAtlasGenerator {
      * @param {string} [label]
      */
     acquireAtlas(paths, options = {}, label = "path atlas") {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             throw new Error("MSDF atlas generator has been destroyed.");
         }
         const key = atlasCacheKey(paths, options);
-        let atlas = this._atlasCache.get(key);
+        let atlas = this.#atlasCache.get(key);
         if (!atlas) {
             atlas = this.createAtlas(paths, options, label);
-            this._atlasCache.set(key, atlas);
+            this.#atlasCache.set(key, atlas);
             void atlas.completion.catch(() => {
-                if (this._atlasCache.get(key) === atlas) {
-                    this._atlasCache.delete(key);
+                if (this.#atlasCache.get(key) === atlas) {
+                    this.#atlasCache.delete(key);
                     atlas.destroy();
                 }
             });
@@ -1275,32 +1280,32 @@ export class MsdfAtlasGenerator {
 
     /** Destroy reusable scratch after all submitted generation completes. */
     destroy() {
-        if (this._destroyed) {
+        if (this.#destroyed) {
             return;
         }
-        this._destroyed = true;
-        for (const atlas of this._atlasCache.values()) {
+        this.#destroyed = true;
+        for (const atlas of this.#atlasCache.values()) {
             atlas.destroy();
         }
-        this._atlasCache.clear();
+        this.#atlasCache.clear();
         for (const resource of [
-            this._segmentBuffer,
-            this._jobBuffer,
-            this._trueParamsBuffer,
-            this._pseudoParamsBuffer,
-            this._scratchBuffer,
-            this._trueScratchBuffer,
-            this._rawTexture,
+            this.#inputs.segments,
+            this.#inputs.jobs,
+            this.#trueParamsBuffer,
+            this.#pseudoParamsBuffer,
+            this.#scratchBuffer,
+            this.#trueScratchBuffer,
+            this.#rawTexture,
         ]) {
-            this._retire(resource);
+            this.#retire(resource);
         }
-        this._segmentBuffer = null;
-        this._jobBuffer = null;
-        this._trueParamsBuffer = null;
-        this._pseudoParamsBuffer = null;
-        this._scratchBuffer = null;
-        this._trueScratchBuffer = null;
-        this._rawTexture = null;
+        this.#inputs.segments = null;
+        this.#inputs.jobs = null;
+        this.#trueParamsBuffer = null;
+        this.#pseudoParamsBuffer = null;
+        this.#scratchBuffer = null;
+        this.#trueScratchBuffer = null;
+        this.#rawTexture = null;
     }
 }
 
