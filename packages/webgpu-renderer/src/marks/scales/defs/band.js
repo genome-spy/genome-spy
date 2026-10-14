@@ -82,7 +82,6 @@ export const bandScaleDef = {
         needsOrdinalRange: false,
     },
     normalizeDomainMap: normalizeBandDomainMap,
-    normalizeStops: normalizeBandStops,
     validate: validateBandScale,
     emit: emitBandScale,
 };
@@ -161,34 +160,6 @@ function validateBandScale({ name, channel, inputComponents, needsDomainMap }) {
         }
     }
     return null;
-}
-
-/**
- * @param {import("../../../index.d.ts").ScaleStopNormalizeParams} params
- * @returns {import("../../../index.d.ts").ScaleStopNormalizeResult | undefined}
- */
-function normalizeBandStops({ name, scale, getDefaultScaleRange }) {
-    const domainSource =
-        Array.isArray(scale.domain) || ArrayBuffer.isView(scale.domain)
-            ? scale.domain
-            : undefined;
-    const ordinalDomain = normalizeOrdinalDomain(name, "band", domainSource);
-    if (!ordinalDomain) {
-        return undefined;
-    }
-    const range = Array.isArray(scale.range)
-        ? scale.range
-        : (getDefaultScaleRange(name) ?? [0, 1]);
-    if (typeof range[0] !== "number" || typeof range[1] !== "number") {
-        throw new Error(`Scale range for "${name}" must be numeric.`);
-    }
-    const numericRange = /** @type {number[]} */ (range);
-    return {
-        domain: [0, ordinalDomain.length],
-        range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
-        domainLength: 2,
-        rangeLength: 2,
-    };
 }
 
 /**

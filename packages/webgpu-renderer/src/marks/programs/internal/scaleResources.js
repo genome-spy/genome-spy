@@ -15,7 +15,7 @@ import { buildHashTableMap, HASH_EMPTY_KEY } from "../../../utils/hashTable.js";
 import { createSchemeTexture } from "../../../utils/colorUtils.js";
 import {
     asGpuBufferSource,
-    prepareTextureData,
+    writeTextureData,
 } from "../../../utils/webgpuTextureUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
@@ -808,14 +808,7 @@ export class ScaleResourceManager {
                     `Scale on "${name}" expects ${expectedRangeLength} range entries, got ${colorStops.length}.`
                 );
             }
-            textureData = createSchemeTexture({
-                scheme: colorStops,
-                mode: "interpolate",
-                interpolate,
-            });
-        }
-        if (!textureData) {
-            throw new Error(`Failed to build range texture for "${name}".`);
+            textureData = createSchemeTexture(colorStops, { interpolate });
         }
         return this._setRangeTexture(name, textureData);
     }
@@ -826,34 +819,28 @@ export class ScaleResourceManager {
      * @returns {boolean}
      */
     _setRangeTexture(name, textureData) {
-        const prepared = prepareTextureData(textureData);
         const resources = this._ensureChannelResources(name);
         const prev = resources.rangeTexture;
         const needsNewTexture =
             !prev ||
-            prev.width !== prepared.width ||
-            prev.height !== prepared.height ||
-            prev.format !== prepared.format;
+            prev.width !== textureData.width ||
+            prev.height !== textureData.height ||
+            prev.format !== textureData.format;
         const texture = needsNewTexture
             ? this._device.createTexture({
                   label: gpuLabel(this._label, `scale ${name} range texture`),
                   size: {
-                      width: prepared.width,
-                      height: prepared.height,
+                      width: textureData.width,
+                      height: textureData.height,
                       depthOrArrayLayers: 1,
                   },
-                  format: prepared.format,
+                  format: textureData.format,
                   usage:
                       GPUTextureUsage.TEXTURE_BINDING |
                       GPUTextureUsage.COPY_DST,
               })
             : prev.texture;
-        this._device.queue.writeTexture(
-            { texture },
-            asGpuBufferSource(prepared.data),
-            { bytesPerRow: prepared.bytesPerRow },
-            { width: prepared.width, height: prepared.height }
-        );
+        writeTextureData(this._device, texture, textureData);
         const sampler =
             prev?.sampler ??
             this._device.createSampler({
@@ -862,9 +849,9 @@ export class ScaleResourceManager {
         resources.rangeTexture = {
             texture,
             sampler,
-            width: prepared.width,
-            height: prepared.height,
-            format: prepared.format,
+            width: textureData.width,
+            height: textureData.height,
+            format: textureData.format,
         };
         if (needsNewTexture) {
             prev?.texture.destroy();

@@ -1,6 +1,6 @@
 # WebGPU renderer simplification and minification
 
-Status: reviewed; implementation ready.
+Status: implementation in progress; milestone 1 complete.
 
 ## Goal and scope
 
@@ -77,20 +77,25 @@ against the starting commit after implementation.
 
 ## Milestone 1: Remove unused normalization and texture work
 
-- [ ] Remove the unused stop normalization path, associated scale definition
+- [x] Remove the unused stop normalization path, associated scale definition
       hooks/types, and unused coercion/inspection helpers. Preserve active stop
       length, domain, domain-map, and range update behavior.
-- [ ] Narrow color texture generation to interpolated array/function ramps;
+- [x] Narrow color texture generation to interpolated array/function ramps;
       preserve custom interpolation and focused GPU test fixture needs.
-- [ ] Remove 256-byte row repacking from `queue.writeTexture` uploads and use
+- [x] Remove 256-byte row repacking from `queue.writeTexture` uploads and use
       one upload helper for scale textures. Keep buffer-copy alignment elsewhere.
-- [ ] Remove obsolete tests and preserve representative contracts through live
+- [x] Remove obsolete tests and preserve representative contracts through live
       initialization/update tests.
 
 Affected: scale definitions/stops, color/texture utilities, scale resources,
 public ScaleDef declarations, and tests. Core adapter inputs remain unchanged.
 Verify renderer unit/types/lint and bundle checks. No user docs change.
 Commit: `refactor(webgpu-renderer): remove obsolete scale and texture paths`.
+
+Verification: 309 renderer unit tests pass; renderer TypeScript and lint pass.
+Point gzip fixtures decreased by 496–500 bytes and text by 475 bytes; other
+fixtures are unchanged. Retired normalization tests were removed and direct
+unpadded texture upload coverage was added.
 
 ## Milestone 2: Consolidate channel and resource descriptions
 

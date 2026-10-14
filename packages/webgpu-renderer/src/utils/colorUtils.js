@@ -1,190 +1,45 @@
 import { color as d3color } from "d3-color";
 import { interpolateRgb } from "d3-interpolate";
 
+/** @typedef {(t: number) => string} ColorInterpolatorFn */
+/** @typedef {string | number[]} ColorStop */
 /**
- * CSS-color interpolator function used to build color ramps.
- *
- * @typedef {(t: number) => string} ColorInterpolatorFn
- */
-
-/**
- * A color stop in the input scheme (CSS string or RGBA array).
- *
- * @typedef {string | number[]} ColorStop
- */
-
-/**
- * Either a discrete set of color stops or a continuous interpolator.
- *
- * @typedef {ColorStop[] | ColorInterpolatorFn} ColorScheme
- */
-
-/**
- * Normalized scheme options for building discrete or interpolated textures.
- *
- * @typedef {object} SchemeParams
- * @prop {ColorScheme} scheme
- * @prop {[number, number]} [extent]
- * @prop {boolean} [reverse]
- * @prop {number} [count]
- * @prop {"discrete"|"interpolate"} [mode]
- * @prop {import("../index.d.ts").ColorInterpolatorFactory} [interpolate]
- */
-
-/**
- * Raw texture payload ready for GPU upload.
- *
  * @typedef {object} TextureData
- * @prop {GPUTextureFormat} format
- * @prop {number} width
- * @prop {number} height
- * @prop {ArrayBufferView} data
+ * @property {GPUTextureFormat} format
+ * @property {number} width
+ * @property {number} height
+ * @property {ArrayBufferView} data
  */
 
 /**
- * Create a texture from either a discrete scheme (array) or interpolator function.
+ * Sample an interpolated color ramp for GPU upload.
  *
- * @param {ColorScheme | SchemeParams} schemeParams
- * @param {number} [count]
- * @returns {TextureData | undefined}
- */
-export function createSchemeTexture(schemeParams, count) {
-    const params =
-        typeof schemeParams === "function" || Array.isArray(schemeParams)
-            ? { scheme: schemeParams }
-            : schemeParams;
-
-    if (params.count === undefined && count !== undefined) {
-        params.count = count;
-    }
-
-    if (typeof params.scheme === "function") {
-        return interpolatorToTextureData(params.scheme, params);
-    }
-
-    if (Array.isArray(params.scheme)) {
-        if (params.mode === "interpolate" || params.interpolate) {
-            return createInterpolatedColorTexture(params.scheme, params);
-        }
-        return createDiscreteColorTexture(params.scheme, params.count);
-    }
-
-    return undefined;
-}
-
-/**
- * Creates an interpolated color texture from color stops.
- *
- * @param {ColorStop[]} colors
- * @param {{ extent?: [number, number], reverse?: boolean, count?: number, interpolate?: import("../index.d.ts").ColorInterpolatorFactory }} [options]
+ * @param {ColorStop[] | ColorInterpolatorFn} scheme
+ * @param {{ count?: number, interpolate?: import("../index.d.ts").ColorInterpolatorFactory }} [options]
  * @returns {TextureData}
  */
-export function createInterpolatedColorTexture(colors, options = {}) {
-    const interpolator = createColorInterpolator(colors, options.interpolate);
-    return interpolatorToTextureData(interpolator, options);
-}
-
-/**
- * Creates a texture that maps integer indices to discrete 32bit integers.
- * The range may represent point shapes, for example.
- *
- * @param {number[]} range
- * @param {number} [count]
- * @returns {TextureData}
- */
-export function createDiscreteTexture(range, count) {
-    const size = Math.max(range.length, count || 0);
-    const textureData = new Uint32Array(size);
-
-    for (let i = 0; i < size; i++) {
-        textureData[i] = range[i % range.length];
-    }
-
-    return {
-        data: textureData,
-        format: "r32uint",
-        width: size,
-        height: 1,
-    };
-}
-
-/**
- * Creates a texture that maps integer indices to discrete RGB colors.
- *
- * @param {ColorStop[]} colors
- * @param {number} [count]
- * @returns {TextureData}
- */
-export function createDiscreteColorTexture(colors, count) {
-    const normalized = colors.map(normalizeColorStop);
-    return colorArrayToTextureData(normalized, count);
-}
-
-/**
- * Renders an interpolator to a texture, which can be used for mapping
- * quantitative values to colors (sequential scale).
- *
- * @param {ColorInterpolatorFn} interpolator
- * @param {object} options
- * @param {[number, number]} [options.extent]
- * @param {boolean} [options.reverse]
- * @param {number} [options.count]
- * @returns {TextureData}
- */
-function interpolatorToTextureData(
-    interpolator,
-    { extent = [0, 1], reverse = false, count = 256 } = {}
-) {
-    const start = extent[0];
-    const span = extent[extent.length - 1] - start;
-    const denom = span === 0 ? 1 : span;
-    const colors = new Array(count);
-
+export function createSchemeTexture(scheme, { count = 256, interpolate } = {}) {
+    const interpolator =
+        typeof scheme === "function"
+            ? scheme
+            : createColorInterpolator(scheme, interpolate);
+    const data = new Uint8Array(count * 4);
     for (let i = 0; i < count; i++) {
-        const t = count > 1 ? i / (count - 1) : 0;
-        const v = start + t / denom;
-        colors[i] = interpolator(v);
-    }
-
-    if (reverse) {
-        colors.reverse();
-    }
-
-    return colorArrayToTextureData(colors);
-}
-
-/**
- * Renders a scheme (an array of colors) to a texture.
- *
- * @param {string[]} scheme
- * @param {number} [count]
- * @returns {TextureData}
- */
-function colorArrayToTextureData(scheme, count) {
-    const size = Math.max(scheme.length, count || 0);
-
-    const textureData = new Uint8Array(size * 4);
-    for (let i = 0; i < size; i++) {
-        const colorString = scheme[i % scheme.length];
+        const colorString = interpolator(count > 1 ? i / (count - 1) : 0);
         const color = d3color(colorString);
         if (!color) {
             throw new Error(
-                `Invalid color "${colorString}" in the scheme ${JSON.stringify(scheme)}!`
+                `Invalid color "${colorString}" in the color ramp.`
             );
         }
         const rgb = color.rgb();
         const base = i * 4;
-        textureData[base] = rgb.r;
-        textureData[base + 1] = rgb.g;
-        textureData[base + 2] = rgb.b;
-        textureData[base + 3] = 255;
+        data[base] = rgb.r;
+        data[base + 1] = rgb.g;
+        data[base + 2] = rgb.b;
+        data[base + 3] = 255;
     }
-    return {
-        data: textureData,
-        format: "rgba8unorm",
-        width: size,
-        height: 1,
-    };
+    return { data, format: "rgba8unorm", width: count, height: 1 };
 }
 
 /**

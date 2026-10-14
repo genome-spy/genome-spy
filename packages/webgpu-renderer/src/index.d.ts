@@ -550,23 +550,6 @@ export type ScaleStopLengthParams = {
     scale: ChannelScale;
 };
 
-/** Parameters passed to scale-specific stop normalization hooks. */
-export type ScaleStopNormalizeParams = {
-    name: string;
-    channel: ChannelConfigResolved;
-    scale: ChannelScale;
-    kind: ScaleStopKind;
-    getDefaultScaleRange: (name: string) => number[] | null | undefined;
-};
-
-/** Normalized stop arrays returned by scale-specific hooks. */
-export type ScaleStopNormalizeResult = {
-    domain: number[];
-    range: Array<number | number[]>;
-    domainLength: number;
-    rangeLength: number;
-};
-
 /** Parameters passed to scale-specific domain normalization hooks. */
 export type ScaleDomainNormalizeParams = {
     name: string;
@@ -651,11 +634,6 @@ export type ScaleDef = {
     getStopLengths?: (
         params: ScaleStopLengthParams
     ) => ScaleStopLengths | undefined;
-
-    /** Optional hook for scale-specific stop normalization. */
-    normalizeStops?: (
-        params: ScaleStopNormalizeParams
-    ) => ScaleStopNormalizeResult | undefined;
 
     /** Optional hook for normalizing continuous domain values. */
     normalizeDomain?: (

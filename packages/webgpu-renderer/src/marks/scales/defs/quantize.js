@@ -3,7 +3,6 @@ import {
     emitScalePipeline,
     quantizeStep,
 } from "../scalePipeline.js";
-import { isRangeFunction, normalizeDiscreteRangeValue } from "../scaleStops.js";
 
 /**
  * Quantize scale: maps a continuous domain into discrete range buckets.
@@ -26,7 +25,6 @@ export const quantizeScaleDef = {
         needsOrdinalRange: false,
     },
     getStopLengths: getQuantizeStopLengths,
-    normalizeStops: normalizeQuantizeStops,
     validate: validateQuantizeScale,
     emit: emitQuantizeScale,
 };
@@ -118,45 +116,4 @@ function getQuantizeStopLengths({ scale }) {
         );
     }
     return { domainLength: 2, rangeLength: range.length };
-}
-
-/**
- * @param {import("../../../index.d.ts").ScaleStopNormalizeParams} params
- * @returns {import("../../../index.d.ts").ScaleStopNormalizeResult}
- */
-function normalizeQuantizeStops({
-    name,
-    scale,
-    channel,
-    getDefaultScaleRange,
-}) {
-    const domain = Array.isArray(scale.domain) ? scale.domain : [0, 1];
-    if (domain.length !== 2) {
-        throw new Error(
-            `Quantize scale on "${name}" requires a domain with exactly two entries.`
-        );
-    }
-    if (isRangeFunction(scale.range)) {
-        throw new Error(
-            `Quantize scale on "${name}" does not support interpolator ranges.`
-        );
-    }
-    const outputComponents = channel.components ?? 1;
-    const range = Array.isArray(scale.range)
-        ? scale.range
-        : (getDefaultScaleRange(name) ?? [0, 1]);
-    if (!Array.isArray(range) || range.length < 1) {
-        throw new Error(
-            `Quantize scale on "${name}" requires at least one range entry.`
-        );
-    }
-    const normalizedRange = range.map((value) =>
-        normalizeDiscreteRangeValue(name, value, outputComponents, "Quantize")
-    );
-    return {
-        domain: [domain[0] ?? 0, domain[1] ?? 1],
-        range: normalizedRange,
-        domainLength: 2,
-        rangeLength: normalizedRange.length,
-    };
 }

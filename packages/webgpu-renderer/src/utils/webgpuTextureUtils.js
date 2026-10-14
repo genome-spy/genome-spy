@@ -6,55 +6,9 @@
  * @prop {ArrayBufferView} data
  */
 
-/**
- * @typedef {TextureData & { bytesPerRow: number }} TextureWriteData
- */
-
 const DEFAULT_TEXTURE_USAGE =
     (globalThis.GPUTextureUsage?.TEXTURE_BINDING ?? 0) |
     (globalThis.GPUTextureUsage?.COPY_DST ?? 0);
-
-/**
- * Prepare texture data for GPU writes by applying WebGPU row alignment.
- *
- * @param {TextureData} textureData
- * @returns {TextureWriteData}
- */
-export function prepareTextureData(textureData) {
-    const bytesPerPixel = bytesPerPixelForFormat(textureData.format);
-    const unpaddedBytesPerRow = textureData.width * bytesPerPixel;
-    const bytesPerRow = alignTo(unpaddedBytesPerRow, 256);
-
-    if (bytesPerRow === unpaddedBytesPerRow) {
-        return {
-            ...textureData,
-            bytesPerRow,
-        };
-    }
-
-    const rowCount = Math.max(1, textureData.height);
-    const padded = new Uint8Array(bytesPerRow * rowCount);
-    const source = new Uint8Array(
-        textureData.data.buffer,
-        textureData.data.byteOffset,
-        textureData.data.byteLength
-    );
-
-    for (let row = 0; row < rowCount; row++) {
-        const srcOffset = row * unpaddedBytesPerRow;
-        const destOffset = row * bytesPerRow;
-        padded.set(
-            source.subarray(srcOffset, srcOffset + unpaddedBytesPerRow),
-            destOffset
-        );
-    }
-
-    return {
-        ...textureData,
-        data: padded,
-        bytesPerRow,
-    };
-}
 
 /**
  * Create a GPUTexture and upload data in one step.
@@ -95,17 +49,17 @@ export function createTextureFromData(
  * @returns {void}
  */
 export function writeTextureData(device, texture, textureData) {
-    const writeData = prepareTextureData(textureData);
     device.queue.writeTexture(
         { texture },
-        asGpuBufferSource(writeData.data),
+        asGpuBufferSource(textureData.data),
         {
-            bytesPerRow: writeData.bytesPerRow,
-            rowsPerImage: writeData.height,
+            bytesPerRow:
+                textureData.width * bytesPerPixelForFormat(textureData.format),
+            rowsPerImage: textureData.height,
         },
         {
-            width: writeData.width,
-            height: writeData.height,
+            width: textureData.width,
+            height: textureData.height,
             depthOrArrayLayers: 1,
         }
     );
@@ -143,13 +97,4 @@ function bytesPerPixelForFormat(format) {
         default:
             return 4;
     }
-}
-
-/**
- * @param {number} value
- * @param {number} alignment
- * @returns {number}
- */
-function alignTo(value, alignment) {
-    return Math.ceil(value / alignment) * alignment;
 }

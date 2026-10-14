@@ -611,7 +611,7 @@ test("markShaderBuilder samples range textures for vec4 output", async ({
         .domain(domain)
         .range(["green", "red"])
         .interpolate(interpolateHcl);
-    const textureData = createSchemeTexture(interpolator, 256);
+    const textureData = createSchemeTexture(interpolator, { count: 256 });
     if (!textureData) {
         throw new Error("Failed to create range texture.");
     }
@@ -669,7 +669,7 @@ test("markShaderBuilder clamps range texture sampling to endpoints", async ({
         .domain(domain)
         .range(["green", "red"])
         .interpolate(interpolateHcl);
-    const textureData = createSchemeTexture(interpolator, 256);
+    const textureData = createSchemeTexture(interpolator, { count: 256 });
     if (!textureData) {
         throw new Error("Failed to create range texture.");
     }
