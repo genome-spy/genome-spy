@@ -157,7 +157,7 @@ export function describeSourceData(view) {
             ? source.getLoadedDomain()
             : undefined;
     const status = source
-        ? source.view.context.dataFlow.loadingStatusRegistry.get(source.view)
+        ? source.view.context.dataFlow.loadingStatusRegistry.getSource(source)
               ?.status
         : undefined;
     return {
