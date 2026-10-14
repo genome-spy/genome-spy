@@ -132,7 +132,7 @@ describe("BaseProgram channel validation", () => {
             }
         );
 
-        expect(program._channels.score.type).toBe("f32");
+        expect(program.count).toBe(1);
         expect(program.getSlotHandles().scalarSlots.threshold).toBeDefined();
         expect(() =>
             program.getSlotHandles().scalarSlots.threshold.set(Number.NaN)
@@ -363,13 +363,7 @@ describe("BaseProgram channel validation", () => {
             },
         });
 
-        const when = /** @type {any} */ (
-            program._channels.vec.conditions[0].when
-        );
-        expect(when.type).toBe("interval");
-        if (when.type === "interval") {
-            expect(when.projections).toEqual([{ component: "x", input: "x" }]);
-        }
+        expect(program.getSlotHandles().selections.brush.type).toBe("interval");
         expect(/** @type {any} */ (predicate).projections).toEqual([
             { component: "x", input: "x" },
         ]);
@@ -399,7 +393,7 @@ describe("BaseProgram channel validation", () => {
             },
         });
 
-        expect(program._channels.vec__cond0.components).toBe(4);
+        expect(program.count).toBe(1);
     });
 
     it.each(

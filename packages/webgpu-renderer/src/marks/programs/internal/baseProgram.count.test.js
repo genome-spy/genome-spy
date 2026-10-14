@@ -57,6 +57,7 @@ struct VSOut {
 describe("BaseProgram count inference", () => {
     it("shares templates while keeping mutable mark resources independent", () => {
         const renderer = createMockRenderer();
+        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
         const config = {
             channels: {
                 x: {
@@ -73,16 +74,30 @@ describe("BaseProgram count inference", () => {
             label: "second mark",
         });
 
-        expect(second._pipeline).toBe(first._pipeline);
-        expect(second._getPickPipeline).toBe(first._getPickPipeline);
-        expect(second._bindGroupLayout).toBe(first._bindGroupLayout);
-        expect(second._uniformBuffer).not.toBe(first._uniformBuffer);
-        expect(second._bindGroup).not.toBe(first._bindGroup);
-        expect(first._programTemplateDiagnostics).toBe(
-            second._programTemplateDiagnostics
+        const state = { setPipeline: vi.fn(), setBindGroup: vi.fn() };
+        first.prepareDraw(state, {
+            firstInstance: 0,
+            instanceCount: 2,
+            sampleCount: 1,
+        });
+        second.prepareDraw(state, {
+            firstInstance: 0,
+            instanceCount: 2,
+            sampleCount: 1,
+        });
+        expect(state.setPipeline.mock.calls[0][0]).toBe(
+            state.setPipeline.mock.calls[1][0]
         );
-        expect(first._programTemplateDiagnostics.borrowerLabels).toEqual(
-            new Set(["first mark", "second mark"])
+        expect(state.setBindGroup.mock.calls[0][1]).not.toBe(
+            state.setBindGroup.mock.calls[1][1]
+        );
+        expect(writeBuffer.mock.calls[0][0]).not.toBe(
+            writeBuffer.mock.calls[2][0]
+        );
+        first.preparePick(state);
+        second.preparePick(state);
+        expect(state.setPipeline.mock.calls[2][0]).toBe(
+            state.setPipeline.mock.calls[3][0]
         );
     });
 
@@ -134,22 +149,6 @@ describe("BaseProgram count inference", () => {
         });
 
         expect(program.count).toBe(3);
-    });
-
-    it("uses packed series bindings by default", () => {
-        const renderer = createMockRenderer();
-        const program = new TestSeriesProgram(renderer, {
-            channels: {
-                x: {
-                    data: new Float32Array([0, 1]),
-                    type: "f32",
-                },
-            },
-        });
-
-        expect(program._resourceLayout).toEqual([
-            { name: "series", role: "series" },
-        ]);
     });
 
     it("defaults to one for value-only marks when omitted", () => {

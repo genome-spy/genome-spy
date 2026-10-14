@@ -565,6 +565,7 @@ export default class ArrowProgram extends BaseProgram {
         };
     }
 
+    /** @protected */
     _initializeExtraUniforms() {
         initializePropertySlots(this, this.propertySlotDefinitions);
     }
@@ -596,13 +597,5 @@ export default class ArrowProgram extends BaseProgram {
             { name: "uHeadShape", type: "u32", components: 1 },
             { name: "uHeadPlacement", type: "u32", components: 1 },
         ];
-    }
-
-    /**
-     * @param {GPURenderPassEncoder} pass
-     * @param {import("../../index.d.ts").ProgramDrawOptions} options
-     */
-    draw(pass, options) {
-        pass.draw(6, options.instanceCount, 0, options.firstInstance);
     }
 }

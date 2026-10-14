@@ -279,12 +279,14 @@ export default class RuleProgram extends BaseProgram {
         return defs;
     }
 
+    /** @protected */
     _initializeExtraResources() {
         const patterns = /** @type {number[][] | null | undefined} */ (
             this._markConfig?.dashPatterns ?? null
         );
         const atlas = buildDashAtlas(patterns);
-        /** @type {number} */
+        /** @type {number} * @internal Populated by base-constructor hooks.
+         */
         this._dashPatternCount = atlas.patternCount;
 
         const texture = createTextureFromData(
@@ -322,6 +324,7 @@ export default class RuleProgram extends BaseProgram {
         }
     }
 
+    /** @protected */
     _initializeExtraUniforms() {
         this._setUniformValue("uDashPatternCount", this._dashPatternCount ?? 0);
     }

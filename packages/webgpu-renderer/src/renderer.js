@@ -1568,11 +1568,7 @@ export class Renderer {
             if (draw.placement) {
                 state.setBindGroup(2, draw.placement.bindGroup);
             }
-            if (picking) {
-                mark.drawPick(pass, options);
-            } else {
-                mark.draw(pass, options);
-            }
+            mark.draw(pass, options);
         }
     }
 

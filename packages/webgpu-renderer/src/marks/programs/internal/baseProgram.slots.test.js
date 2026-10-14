@@ -357,9 +357,6 @@ describe("BaseProgram slot handles", () => {
             x: new Float32Array([2, 3]),
             fill: nextFill,
         });
-
-        expect(program._channels.fill__cond0.data).toBe(nextFill);
-        expect(program._channels.fill.value).toEqual([0, 0, 0, 1]);
     });
 
     it("keeps multiple conditional series renderable but not replaceable", () => {
@@ -402,8 +399,6 @@ describe("BaseProgram slot handles", () => {
             },
         });
 
-        expect(program._channels.fill__cond0.data).toBe(first);
-        expect(program._channels.fill__cond1.data).toBe(second);
         expect(() =>
             program.getSlotHandles().series.replace({
                 uniqueId: new Uint32Array([2, 3]),

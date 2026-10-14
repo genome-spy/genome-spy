@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { buildMarkShader as buildDefinedMarkShader } from "./markShaderBuilder.js";
-import RectProgram from "../programs/rectProgram.js";
-import { createMockRenderer } from "../../testUtils/mockRenderer.js";
 import { compileTestMarkChannels } from "../../../testUtils/scaleDefinitions.js";
 
 /**
@@ -678,24 +676,6 @@ const placementSentinel = 1u;
         expect(shaderCode).toContain("hpLess(vec2<u32>(u32(0), u32(3)), hi)");
         expect(shaderCode).toContain(
             "select(checkSelection_brush_p0(i) && checkSelection_brush_p1(i), true, isSelectionEmpty_brush(i))"
-        );
-    });
-
-    it("throws when updating non-dynamic uniforms", () => {
-        const renderer = createMockRenderer();
-        const program = new RectProgram(renderer, {
-            count: 1,
-            channels: {
-                x: { value: 0, dynamic: true, scale: { type: "identity" } },
-                x2: { value: 1, dynamic: true, scale: { type: "identity" } },
-                y: { value: 0, dynamic: true, scale: { type: "identity" } },
-                y2: { value: 1, dynamic: true, scale: { type: "identity" } },
-                fillOpacity: { value: 1.0 },
-            },
-        });
-
-        expect(() => program.updateValues({ fillOpacity: 0.5 })).toThrow(
-            /u_fillOpacity/
         );
     });
 });

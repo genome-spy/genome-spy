@@ -1,6 +1,6 @@
 # WebGPU renderer simplification and minification
 
-Status: implementation in progress; milestones 1–2 complete.
+Status: implementation in progress; milestones 1–3 complete.
 
 ## Goal and scope
 
@@ -120,15 +120,15 @@ all parallel maps rather than replacing the getter set with a descriptor layer.
 
 ## Milestone 3: Simplify program updates and declare subclass contracts
 
-- [ ] Resolve replacement series once for ordinary and text marks. Preserve
+- [x] Resolve replacement series once for ordinary and text marks. Preserve
       complete replacement, text count validation, and update order.
-- [ ] Remove duplicate conditional-channel validation, unused `updateValues`,
+- [x] Remove duplicate conditional-channel validation, unused `updateValues`,
       duplicate picking geometry submission, and redundant slot dirty flags.
-- [ ] Remove the test-only eager pipeline field; keep real pipelines lazy.
-- [ ] Convert BaseProgram and subclass-local helpers/state to native privacy;
+- [x] Remove the test-only eager pipeline field; keep real pipelines lazy.
+- [x] Convert BaseProgram and subclass-local helpers/state to native privacy;
       annotate overridden/shared subclass members `@protected` and genuine peer
       access `@internal`, including the property-slot compiler boundary.
-- [ ] Replace direct private state assertions with resource/public behavior;
+- [x] Replace direct private state assertions with resource/public behavior;
       preserve meaningful pipeline reuse, text replacement, and batching tests.
 
 Affected: BaseProgram, built-in programs, property slots, MarkProgram declarations,
@@ -139,6 +139,12 @@ draw, and retained updates alongside the affected normal/picking paths.
 Independent review gate: inspect subclass initialization, custom programs,
 series replacement, picking, and text effects before committing.
 Commit: `refactor(webgpu-renderer): simplify program updates and member contracts`.
+
+Verification: 307 renderer unit tests, 155 Core adapter tests, renderer types/lint,
+and 28 focused text/rule/link/path GPU tests pass. Independent review found no
+behavior regression; its scalar-state and subclass-contract simplifications were
+incorporated. Program privacy trims another 362–378 gzip bytes from point/text
+fixtures. Constructor-hook exceptions remain ordinary and documented.
 
 ## Milestone 4: Encapsulate resource managers and font helpers
 

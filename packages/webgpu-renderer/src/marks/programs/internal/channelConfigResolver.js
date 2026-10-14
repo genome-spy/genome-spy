@@ -225,6 +225,11 @@ function normalizeConditionChannel({
         delete merged.value;
         delete merged.default;
     }
+    if (isSeriesChannelConfig(merged) && !merged.type) {
+        throw new Error(
+            `Channel "${name}" conditions require a series data type.`
+        );
+    }
     const analysis = validateChannel(name, merged, context, analysisName);
     return {
         channel: /** @type {ChannelConfigResolved} */ (merged),
@@ -367,35 +372,6 @@ export function validateChannel(name, channel, context, analysisName = name) {
                 if (!conditional || typeof conditional !== "object") {
                     throw new Error(
                         `Channel "${name}" conditions must include a channel config.`
-                    );
-                }
-                if (
-                    "conditions" in conditional &&
-                    conditional.conditions !== undefined
-                ) {
-                    throw new Error(
-                        `Channel "${name}" conditions must not nest other conditions.`
-                    );
-                }
-                if (
-                    "default" in conditional &&
-                    conditional.default !== undefined
-                ) {
-                    throw new Error(
-                        `Channel "${name}" conditions must not include defaults.`
-                    );
-                }
-                if (
-                    !isSeriesChannelConfig(conditional) &&
-                    !isValueChannelConfig(conditional)
-                ) {
-                    throw new Error(
-                        `Channel "${name}" conditions must supply data or value.`
-                    );
-                }
-                if (isSeriesChannelConfig(conditional) && !conditional.type) {
-                    throw new Error(
-                        `Channel "${name}" conditions require a series data type.`
                     );
                 }
                 continue;

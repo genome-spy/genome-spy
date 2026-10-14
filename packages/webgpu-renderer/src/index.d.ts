@@ -1250,12 +1250,10 @@ export type MarkProgram<
     ): { firstInstance: number; instanceCount: number };
     getSlotHandles(): Omit<MarkHandle<TSeries, TProperties>, "markId">;
     replaceSeries(channels: TSeries, count?: number): void;
-    updateValues(values: Record<string, number | number[]>): void;
     debugResources(label?: string): void;
     prepareDraw(state: RenderPassState, options: ProgramDrawOptions): void;
     preparePick(state: RenderPassState, options: ProgramDrawOptions): void;
     draw(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;
-    drawPick(pass: GPURenderPassEncoder, options: ProgramDrawOptions): void;
     destroy(): void;
 };
 

@@ -1005,6 +1005,7 @@ export default class TextProgram extends BaseProgram {
         };
     }
 
+    /** @protected */
     _initializeExtraUniforms() {
         initializePropertySlots(this, this.propertySlotDefinitions);
     }
@@ -1183,6 +1184,7 @@ export default class TextProgram extends BaseProgram {
         return resources;
     }
 
+    /** @protected */
     _initializeExtraResources() {
         const layout = /** @type {import("../../index.js").TextLayout} */ (
             this._markConfig.textLayout
@@ -1200,6 +1202,7 @@ export default class TextProgram extends BaseProgram {
     /**
      * @param {import("../../index.js").TextLayout & { outlineGlyphs: { glyphId: number, path: string, bounds: import("../../fonts/trueTypeFont.js").TrueTypeBounds, tileWidth: number, tileHeight: number }[] }} layout
      * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
+     * @internal Called by initialization hooks during super(), before private branding.
      */
     _initializeOutlineFontResources(layout, font) {
         const atlas = getOutlineFontAtlas(this.renderer, font);
@@ -1220,10 +1223,13 @@ export default class TextProgram extends BaseProgram {
         this._setUniformValue("uDescent", -font.descender * atlasScale);
         this._setUniformValue("uShapePixels", shapePixels);
         this._setUniformValue("uSpread", OUTLINE_ATLAS_OPTIONS.spread);
+        /** @internal Populated by base-constructor hooks. */
         this._sdfNumeratorBase = shapePixels * 0.35;
         this._extraTextures.set("fontAtlas", outlineAtlasResource(atlas));
         this._borrowedExtraTextures.add("fontAtlas");
+        /** @internal Populated by base-constructor hooks. */
         this._outlineAtlas = atlas;
+        /** @internal Populated by base-constructor hooks. */
         this._outlineAtlasUnsubscribe = atlas.subscribe((grownAtlas) => {
             this._setUniformValue("uAtlasScale", [
                 1 / grownAtlas.width,
@@ -1244,6 +1250,7 @@ export default class TextProgram extends BaseProgram {
      * @param {import("../../fonts/trueTypeFont.js").TrueTypeFont} font
      * @param {import("../../fonts/outlineFontAtlas.js").OutlineFontAtlas} atlas
      * @returns {boolean} Whether the metric buffer identity changed.
+     * @internal Called by initialization hooks during super(), before private branding.
      */
     _updateOutlineGlyphMetrics(layout, font, atlas) {
         const entries = atlas.ensure(layout.outlineGlyphs);
@@ -1276,6 +1283,7 @@ export default class TextProgram extends BaseProgram {
     /**
      * @param {import("../../index.js").TextLayout} layout
      * @returns {boolean} Whether a bound buffer identity changed.
+     * @internal Called by initialization hooks during super(), before private branding.
      */
     _updateTextLayoutBuffers(layout) {
         const glyphCount = layout.glyphIds.length;
@@ -1306,6 +1314,7 @@ export default class TextProgram extends BaseProgram {
             changed =
                 this._writeExtraBuffer("renderItems", renderItems.data) ||
                 changed;
+            /** @internal Populated during super(), before subclass branding. */
             this._drawOffsets = renderItems.offsets;
         } else {
             this._drawOffsets = buildGlyphOffsets(layout);
@@ -1317,6 +1326,7 @@ export default class TextProgram extends BaseProgram {
      * @param {string} name
      * @param {ArrayBuffer | ArrayBufferView} data
      * @returns {boolean} Whether the buffer identity changed.
+     * @internal Called by initialization hooks during super(), before private branding.
      */
     _writeExtraBuffer(name, data) {
         const byteLength = data.byteLength;
@@ -1381,23 +1391,7 @@ export default class TextProgram extends BaseProgram {
             ),
             this._markConfig
         );
-        /** @type {Record<string, import("../../index.js").TypedArray>} */
-        const resolved = {};
-        for (const [name, targets] of this._logicalSeriesTargets) {
-            if (targets.length > 1) {
-                throw new Error(
-                    `Series replacement for channel "${name}" is not supported because it has multiple series-backed branches.`
-                );
-            }
-            const data = channels[name];
-            if (data === undefined) {
-                throw new Error(
-                    `Series replacement is missing channel "${name}".`
-                );
-            }
-            resolved[targets[0]] =
-                /** @type {import("../../index.js").TypedArray} */ (data);
-        }
+        const resolved = this._resolveSeries(channels);
         const seriesCount = this._seriesBuffers.inferCount(resolved);
         if (seriesCount !== null && seriesCount !== strings.length) {
             throw new Error(

@@ -29,7 +29,6 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  *
  * @typedef {object} ProgramTemplate
  * @property {GPUBindGroupLayout} bindGroupLayout
- * @property {GPURenderPipeline} pipeline
  * @property {(sampleCount: 1 | 4) => GPURenderPipeline} getPipeline
  * @property {() => GPURenderPipeline} getPickPipeline
  * @property {{ id: number, firstBorrowerLabel: string, borrowerLabels: Set<string> }} diagnostics
@@ -222,7 +221,6 @@ export function buildPipelines({
             }
             return pipeline;
         };
-        const pipeline = getPipeline(1);
         /** @type {GPURenderPipeline | undefined} */
         let pickPipeline;
         const getPickPipeline = () => {
@@ -243,7 +241,6 @@ export function buildPipelines({
         };
         return {
             bindGroupLayout,
-            pipeline,
             getPipeline,
             getPickPipeline,
             diagnostics,

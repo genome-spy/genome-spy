@@ -420,6 +420,7 @@ export default class LinkProgram extends BaseProgram {
                 default: 101,
                 encode: (/** @type {number} */ value) => {
                     const segments = Math.round(Number(value));
+                    /** @internal Populated during super(), before subclass branding. */
                     this._segmentCount = segments;
                     return segments;
                 },
@@ -427,6 +428,7 @@ export default class LinkProgram extends BaseProgram {
         };
     }
 
+    /** @protected */
     _initializeExtraUniforms() {
         initializePropertySlots(this, this.propertySlotDefinitions);
     }
@@ -434,6 +436,7 @@ export default class LinkProgram extends BaseProgram {
     /**
      * @param {string} name
      * @param {number | number[]} value
+     * @protected
      */
     _setExtraUniformValue(name, value) {
         super._setExtraUniformValue(name, value);
@@ -478,16 +481,6 @@ export default class LinkProgram extends BaseProgram {
      * @param {import("../../index.d.ts").ProgramDrawOptions} options
      */
     draw(pass, options) {
-        const segmentCount = Math.max(1, this._segmentCount ?? 1);
-        const vertexCount = (segmentCount + 1) * 2;
-        pass.draw(vertexCount, options.instanceCount, 0, options.firstInstance);
-    }
-
-    /**
-     * @param {GPURenderPassEncoder} pass
-     * @param {import("../../index.d.ts").ProgramDrawOptions} options
-     */
-    drawPick(pass, options) {
         const segmentCount = Math.max(1, this._segmentCount ?? 1);
         const vertexCount = (segmentCount + 1) * 2;
         pass.draw(vertexCount, options.instanceCount, 0, options.firstInstance);

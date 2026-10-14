@@ -451,14 +451,14 @@ describe("Renderer mark definitions", () => {
         );
         expect(scopedDraws.map((draw) => draw.orderPass)).toEqual([2, 5]);
 
-        program.drawPick.mockClear();
+        program.draw.mockClear();
         renderer._writeDrawGlobals(renderer._renderFrame, true);
         renderer._encodeDraws(
             /** @type {any} */ (pass),
             renderer._renderFrame,
             true
         );
-        expect(program.drawPick).toHaveBeenCalledOnce();
+        expect(program.draw).toHaveBeenCalledOnce();
 
         program._order.matching = "first";
         renderer.render({ draws: [{ mark }] });
@@ -1263,12 +1263,10 @@ function createProgram(antialiasing = "shader") {
             selections: {},
         }),
         replaceSeries: series.replace,
-        updateValues: vi.fn(),
         debugResources: vi.fn(),
         prepareDraw: vi.fn(),
         preparePick: vi.fn(),
         draw: vi.fn(),
-        drawPick: vi.fn(),
         destroy: vi.fn(),
     };
 }

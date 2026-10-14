@@ -244,8 +244,16 @@ describe("TextProgram series replacement", () => {
                 },
             },
         });
-        const pipeline = program._pipeline;
-        const fontAtlas = program._extraTextures.get("fontAtlas")?.texture;
+        const createPipeline = vi.spyOn(
+            renderer.device,
+            "createRenderPipeline"
+        );
+        const state = { setPipeline: vi.fn(), setBindGroup: vi.fn() };
+        program.prepareDraw(state, {
+            firstInstance: 0,
+            instanceCount: 2,
+            sampleCount: 1,
+        });
 
         program.getSlotHandles().series.replace({
             text: ["-1", "2"],
@@ -254,13 +262,16 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program.count).toBe(2);
-        expect(program._drawOffsets).toEqual(new Uint32Array([0, 2, 3]));
-        expect(program._channels.x.data).toEqual(new Float32Array([10, 20]));
-        expect(program._channels.y.data).toEqual(new Float32Array([30, 40]));
-        expect(program._pipeline).toBe(pipeline);
-        expect(program._extraTextures.get("fontAtlas")?.texture).toBe(
-            fontAtlas
-        );
+        expect(program.resolveDrawRange(1, 1)).toEqual({
+            firstInstance: 2,
+            instanceCount: 1,
+        });
+        program.prepareDraw(state, {
+            firstInstance: 0,
+            instanceCount: 2,
+            sampleCount: 1,
+        });
+        expect(createPipeline).toHaveBeenCalledOnce();
     });
 
     it("rebuilds its bind group only when text layout buffers grow", () => {
@@ -309,12 +320,17 @@ describe("TextProgram series replacement", () => {
 
         program.getSlotHandles().series.replace({ text: "y" }, 2);
         expect(program.drawCount).toBe(2);
-        expect(program._drawOffsets).toEqual(new Uint32Array([0, 1, 2]));
+        expect(program.resolveDrawRange(0, 2)).toEqual({
+            firstInstance: 0,
+            instanceCount: 2,
+        });
     });
 
     it("preserves aliases between logical per-string arrays", () => {
         const shared = new Float32Array([1, 2]);
-        const program = createTextProgram(createMockRenderer(), {
+        const renderer = createMockRenderer();
+        const uploaded = captureSeriesUploads(renderer);
+        const program = createTextProgram(renderer, {
             count: 2,
             channels: {
                 text: { data: ["aa", "b"] },
@@ -323,8 +339,6 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.x.data).toBe(program._channels.y.data);
-
         const next = new Float32Array([10, 20]);
         program.getSlotHandles().series.replace({
             text: ["ccc", "d"],
@@ -332,12 +346,15 @@ describe("TextProgram series replacement", () => {
             y: next,
         });
 
-        expect(program._channels.x.data).toBe(program._channels.y.data);
-        expect(program._channels.x.data).toEqual(new Float32Array([10, 20]));
+        expect(new Float32Array(uploaded().buffer)).toEqual(
+            new Float32Array([10, 20])
+        );
     });
 
     it("keeps and replaces per-string placement indices", () => {
-        const program = createTextProgram(createMockRenderer(), {
+        const renderer = createMockRenderer();
+        const uploaded = captureSeriesUploads(renderer);
+        const program = createTextProgram(renderer, {
             count: 2,
             placementIndex: {
                 data: new Uint32Array([5, 8]),
@@ -354,9 +371,6 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.__placementIndex.data).toEqual(
-            new Uint32Array([5, 8])
-        );
         expect(program.drawCount).toBe(2);
         expect(program.resolveDrawRange(1, 1)).toEqual({
             firstInstance: 2,
@@ -368,13 +382,13 @@ describe("TextProgram series replacement", () => {
             text: ["c", "dd"],
             x: new Float32Array([3, 4]),
         });
-        expect(program._channels.__placementIndex.data).toEqual(
-            new Uint32Array([9, 10])
-        );
         expect(program.resolveDrawRange(0, 2)).toEqual({
             firstInstance: 0,
             instanceCount: 3,
         });
+        expect(uploaded().byteLength).toBe(16);
+        expect(uploaded()[1]).toBe(9);
+        expect(uploaded()[3]).toBe(10);
     });
 
     it("keeps 2,000 long labels and placement indices at logical cardinality", () => {
@@ -383,7 +397,9 @@ describe("TextProgram series replacement", () => {
             (_, index) => `Sample label ${index.toString().padStart(4, "0")}`
         );
         const placementIndices = Uint32Array.from(labels, (_, index) => index);
-        const program = createTextProgram(createMockRenderer(), {
+        const renderer = createMockRenderer();
+        const uploaded = captureSeriesUploads(renderer);
+        const program = createTextProgram(renderer, {
             count: labels.length,
             placementIndex: { data: placementIndices, type: "u32" },
             channels: {
@@ -394,14 +410,13 @@ describe("TextProgram series replacement", () => {
         });
         expect(placementIndices.byteLength).toBe(8000);
         expect(program.drawCount).toBe(2000);
-        expect(program._channels.__placementIndex.data).toHaveLength(2000);
-        expect(program._channels.__placementIndex.data.byteLength).toBe(8000);
-        expect(program._channels.__placementIndex.data.at(-1)).toBe(1999);
-        expect(program._seriesBuffers.getBuffer()?.size).toBe(8000);
+        expect(uploaded()).toEqual(placementIndices);
     });
 
     it("keeps scalar scale inputs logical for vector color outputs", () => {
-        const program = createTextProgram(createMockRenderer(), {
+        const renderer = createMockRenderer();
+        const uploaded = captureSeriesUploads(renderer);
+        const program = createTextProgram(renderer, {
             count: 2,
             channels: {
                 text: { data: ["aa", "b"] },
@@ -423,19 +438,21 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.fill.data).toEqual(new Float32Array([0, 1]));
-
         program.getSlotHandles().series.replace({
             text: ["c", "dd"],
             x: new Float32Array([3, 4]),
             fill: new Float32Array([2, 3]),
         });
 
-        expect(program._channels.fill.data).toEqual(new Float32Array([2, 3]));
+        expect(new Float32Array(uploaded().buffer)).toEqual(
+            new Float32Array([3, 2, 4, 3])
+        );
     });
 
     it("keeps logical Float64 index values before high-precision packing", () => {
-        const program = createTextProgram(createMockRenderer(), {
+        const renderer = createMockRenderer();
+        const uploaded = captureSeriesUploads(renderer);
+        const program = createTextProgram(renderer, {
             count: 2,
             channels: {
                 text: { data: ["aa", "b"] },
@@ -449,14 +466,12 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.x.data).toEqual(new Float64Array([1, 2]));
-
         program.getSlotHandles().series.replace({
             text: ["c", "dd"],
             x: new Float64Array([3, 4]),
         });
 
-        expect(program._channels.x.data).toEqual(new Float64Array([3, 4]));
+        expect(uploaded()).toEqual(new Uint32Array([0, 3, 0, 4]));
     });
 
     it("rejects glyph-length arrays in the logical replacement API", () => {
@@ -499,7 +514,9 @@ describe("TextProgram series replacement", () => {
     });
 
     it("supports logical strings that produce no glyphs", () => {
-        const program = createTextProgram(createMockRenderer(), {
+        const renderer = createMockRenderer();
+        const uploaded = captureSeriesUploads(renderer);
+        const program = createTextProgram(renderer, {
             count: 2,
             channels: {
                 text: { data: ["", ""] },
@@ -517,13 +534,14 @@ describe("TextProgram series replacement", () => {
         });
 
         expect(program.count).toBe(2);
-        expect(program._channels.x.data).toHaveLength(2);
-        expect(program._extraBuffers.get("glyphs")?.size).toBe(4);
-        expect(program._seriesBuffers.getBuffer()?.size).toBe(16);
+        expect(uploaded().byteLength).toBe(16);
+        expect(program.resolveDrawRange(0, 2).instanceCount).toBe(0);
     });
 
     it("keeps and replaces a conditional series by logical name", () => {
-        const program = createTextProgram(createMockRenderer(), {
+        const renderer = createMockRenderer();
+        const uploaded = captureSeriesUploads(renderer);
+        const program = createTextProgram(renderer, {
             count: 2,
             channels: {
                 uniqueId: {
@@ -558,8 +576,6 @@ describe("TextProgram series replacement", () => {
             },
         });
 
-        expect(program._channels.fill__cond0.data).toHaveLength(8);
-
         program.getSlotHandles().series.replace({
             uniqueId: new Uint32Array([3, 4]),
             text: ["ccc", "d"],
@@ -567,9 +583,7 @@ describe("TextProgram series replacement", () => {
             fill: new Float32Array([1, 0, 0, 1, 0, 0, 1, 1]),
         });
 
-        expect(program._channels.fill__cond0.data).toEqual(
-            new Float32Array([1, 0, 0, 1, 0, 0, 1, 1])
-        );
+        expect(uploaded().byteLength).toBe(48);
     });
 });
 
@@ -604,4 +618,16 @@ function readUniformVector(program, name) {
             true
         )
     );
+}
+
+/** @param {import("../../renderer.js").Renderer} renderer */
+function captureSeriesUploads(renderer) {
+    const writes = vi.spyOn(renderer.device.queue, "writeBuffer");
+    return () => {
+        const call = writes.mock.calls.findLast(([buffer]) =>
+            buffer.label.endsWith(": series")
+        );
+        const data = /** @type {Uint32Array} */ (call[2]);
+        return data.slice();
+    };
 }

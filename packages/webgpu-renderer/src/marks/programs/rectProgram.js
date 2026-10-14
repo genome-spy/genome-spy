@@ -475,7 +475,8 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class RectProgram extends BaseProgram {
-    /** @override */
+    /** @override * @protected
+     */
     _resolveAntialiasing() {
         return determineRectAntialiasing(this._channels);
     }
