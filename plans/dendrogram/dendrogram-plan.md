@@ -1,6 +1,6 @@
 # Dendrogram implementation plan
 
-Status: implementation in progress on `codex/dendrogram`; M1–M3 complete.
+Status: implemented and independently reviewed on `codex/dendrogram`; all four milestones complete.
 Independently reviewed on 2026-10-14.
 
 ## Goal and scope
@@ -416,13 +416,13 @@ pipeline specialization so hit width does not enlarge visible geometry.
 
 ### M4 — Heatmap composition, documentation, and delivery
 
-- [ ] Add a compact user-facing dendrogram/heatmap example with one link layer,
+- [x] Add a compact user-facing dendrogram/heatmap example with one link layer,
       supplied merge heights, and a shared discrete row scale.
-- [ ] Add focused Core scenarios for grouping gaps/reversal and the existing
+- [x] Add focused Core scenarios for grouping gaps/reversal and the existing
       diagonal presentation using the same layout output.
-- [ ] Complete cross-component verification and document the accepted gap
+- [x] Complete cross-component verification and document the accepted gap
       asymmetry, selection behavior, and initial input/ordering scope.
-- [ ] Add/update one Core minor Changeset for the complete user-visible feature
+- [x] Add/update one Core minor Changeset for the complete user-visible feature
       using `write-genomespy-changeset` and follow the fixed release-group policy.
 
 Affected areas: `examples/docs/grammar/transform/dendrogram/`,
@@ -435,6 +435,29 @@ self-contained. Update the link shape/orientation gallery and reuse
 Tentative commit: `feat(core): demonstrate heatmap-aligned dendrograms`.
 Body rationale: make the complete layout/offset/link composition discoverable
 and verify that shared row navigation keeps branches aligned.
+
+M4 verification: the complete unit suite passed (529 files, 4,987 tests),
+workspace type checks and lint passed, and schema/docs generation plus the full
+documentation and Storybook builds passed. The renderer integration script
+checks both row directions with fixed gaps through navigation, click/interval
+selection, dataset replacement, shape changes, and raster/SVG export on Canvas,
+WebGL, and WebGPU. The example preview was captured and visually inspected.
+
+User feedback caught swapped orientation routing: a horizontal elbow must be
+`(sourceX, targetY)` so splits stay at the parent merge height. Corrected all
+backends and docs, and made that coordinate an explicit integration assertion.
+The shared example scale is declared at its owning concat view, rather than in
+an inherited encoding overridden by its children.
+
+Independent implementation review found two short-leg defects: folded GPU
+miter strips could overdraw translucent strokes, and software picking filled
+beyond short butt caps. Both are fixed. GPU rendering now uses three small
+rectangles (two legs and the outer corner), with deterministic fragment
+ownership and continuous union coverage. Software picking uses only the outer
+corner quadrant. Regression probes cover short/collapsed legs, coincidence,
+both orientations/reversals, and minimum hit width at viewport edges at DPR 1 and 2 across all
+three live backends. The reviewer reproduced the fixes and accepted them with
+no remaining material findings or decisions requiring user input.
 
 ## Final integration verification and acceptance
 

@@ -58,6 +58,39 @@ const SHAPE_ORTHOGONAL: u32 = 4u;
 const ORIENT_VERTICAL: u32 = 0u;
 const ORIENT_HORIZONTAL: u32 = 1u;
 
+
+fn orthogonalBounds(part: u32, a: vec2<f32>, b: vec2<f32>, h: f32) -> vec4<f32> {
+    let c = select(vec2<f32>(b.x, a.y), vec2<f32>(a.x, b.y), params.uOrient == ORIENT_HORIZONTAL);
+    let first = c - a;
+    let second = b - c;
+    if (part < 2u) {
+        let start = select(c, a, part == 0u);
+        let end = select(b, c, part == 0u);
+        if (all(start == end)) { return vec4<f32>(c, c); }
+        let pad = vec2<f32>(select(0.0, h, start.x == end.x), select(0.0, h, start.y == end.y));
+        return vec4<f32>(min(start, end) - pad, max(start, end) + pad);
+    }
+    if (all(first == vec2<f32>(0.0)) || all(second == vec2<f32>(0.0))) { return vec4<f32>(c, c); }
+    let t1 = sign(first);
+    let t2 = sign(second);
+    if (part == 2u) {
+        let outer = c + (t1 - t2) * h;
+        return vec4<f32>(min(c, outer), max(c, outer));
+    }
+    // This interior rectangle fills antialiasing seams without changing the union.
+    let l1 = abs(first.x) + abs(first.y);
+    let l2 = abs(second.x) + abs(second.y);
+    let low = c - t1 * min(l1, h) - t2 * h;
+    let high = c + t1 * h + t2 * min(l2, h);
+    return vec4<f32>(min(low, high), max(low, high));
+}
+
+fn orthogonalDistance(p: vec2<f32>, bounds: vec4<f32>) -> f32 {
+    if (any(bounds.zw <= bounds.xy)) { return 1e20; }
+    let distance = max(bounds.xy - p, p - bounds.zw);
+    return max(distance.x, distance.y);
+}
+
 struct VSOut {
 #if defined(PLACEMENT_ENABLED)
     @location(15) @interpolate(flat) placementClip: vec4<f32>,
@@ -70,6 +103,9 @@ struct VSOut {
     @location(2) size: f32,
     @location(3) @interpolate(flat) pickId: u32,
     @location(4) fadeDistance: f32,
+    @location(5) @interpolate(flat) orthogonalEndpoints: vec4<f32>,
+    @location(6) orthogonalPosition: vec2<f32>,
+    @location(7) @interpolate(flat) orthogonalPart: u32,
 };
 
 fn culledLink() -> VSOut {
@@ -83,6 +119,9 @@ fn culledLink() -> VSOut {
     out.size = 0.0;
     out.pickId = 0u;
     out.fadeDistance = -1.0;
+    out.orthogonalEndpoints = vec4<f32>(0.0);
+    out.orthogonalPosition = vec2<f32>(0.0);
+    out.orthogonalPart = 0u;
     return out;
 }
 
@@ -312,18 +351,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     var p: vec2<f32>;
     var normal: vec2<f32>;
     if (params.uShape == SHAPE_ORTHOGONAL) {
-        let elbow = select(vec2<f32>(b.x, a.y), vec2<f32>(a.x, b.y),
-            params.uOrient == ORIENT_VERTICAL);
-        let first = elbow - a;
-        let second = b - elbow;
-        let firstTangent = normalize(select(first, second, all(first == vec2<f32>(0.0))));
-        let secondTangent = normalize(select(second, first, all(second == vec2<f32>(0.0))));
-        let n1 = vec2<f32>(-firstTangent.y, firstTangent.x);
-        let n2 = vec2<f32>(-secondTangent.y, secondTangent.x);
-        p = select(select(b, elbow, segment == 1u), a, segment == 0u);
-        // One six-vertex strip shares the right-angle miter without overdraw.
-        normal = select(select(n1 + n2, n1, all(n1 == n2)), n1, segment == 0u);
-        if (segment == 2u) { normal = n2; }
+        p = a;
+        normal = vec2<f32>(0.0);
     } else {
         // Match Core's de Casteljau evaluation for stable long links.
         let q1 = mix(p1, p2, t);
@@ -361,8 +390,21 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         }
     }
 
-    // Extrude along the normal.
-    p = p + normal * normalDistance;
+    var orthogonalPart = 0u;
+    let orthogonalWidth = select(size, max(size, params.uMinPickingSize), pickingEnabled);
+    if (params.uShape == SHAPE_ORTHOGONAL) {
+        // Three quads joined by degenerate triangles; fragment ownership
+        // prevents overdraw while keeping fill proportional to stroke area.
+        orthogonalPart = (v + 1u) / 6u;
+        let corner = u32(clamp(i32((v + 1u) % 6u) - 1, 0, 3));
+        var bounds = orthogonalBounds(orthogonalPart, a, b, orthogonalWidth * 0.5);
+        if (all(bounds.zw > bounds.xy)) {
+            bounds += vec4<f32>(-pixelSize, -pixelSize, pixelSize, pixelSize);
+        }
+        p = mix(bounds.xy, bounds.zw, vec2<f32>(f32(corner % 2u), f32(corner / 2u)));
+    } else {
+        p = p + normal * normalDistance;
+    }
 
     let clip = vec2<f32>(
         (p.x / globals.width) * 2.0 - 1.0,
@@ -378,7 +420,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.color = premultiplyAlpha(vec4<f32>(color.rgb, color.a * opacity));
     out.normalDistance = normalDistance;
     out.fadeDistance = fadeDistance;
-    out.size = paddedSize;
+    out.size = select(paddedSize, orthogonalWidth, params.uShape == SHAPE_ORTHOGONAL);
+    out.orthogonalEndpoints = vec4<f32>(a, b);
+    out.orthogonalPosition = p;
+    out.orthogonalPart = orthogonalPart;
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
@@ -390,6 +435,19 @@ fn shade(in: VSOut) -> vec4<f32> {
     // Linear AA ramp based on distance from the line center.
     let distance = abs(in.normalDistance);
     var alpha = clamp(((in.size * 0.5 - distance) * globals.dpr), 0.0, 1.0);
+    if (params.uShape == SHAPE_ORTHOGONAL) {
+        var nearest = 1e20;
+        var coverageDistance = 1e20;
+        var owner = 0u;
+        for (var part = 0u; part < 4u; part++) {
+            let d = orthogonalDistance(in.orthogonalPosition,
+                orthogonalBounds(part, in.orthogonalEndpoints.xy, in.orthogonalEndpoints.zw, in.size * 0.5));
+            if (part < 3u && d < nearest) { nearest = d; owner = part; }
+            coverageDistance = min(coverageDistance, d);
+        }
+        if (owner != in.orthogonalPart) { discard; }
+        alpha = clamp(select(0.5, 0.0, pickingEnabled) - coverageDistance * globals.dpr, 0.0, 1.0);
+    }
     if (in.fadeDistance >= 0.0) {
         alpha *= 1.0 - smoothstep(params.uArcFadingDistance.x, params.uArcFadingDistance.y, in.fadeDistance);
     }
@@ -513,7 +571,7 @@ export default class LinkProgram extends BaseProgram {
         const segmentCount = Math.max(1, this._segmentCount ?? 1);
         const vertexCount =
             this._shape == LINK_SHAPES.indexOf("orthogonal")
-                ? 6
+                ? 16
                 : (segmentCount + 1) * 2;
         pass.draw(vertexCount, options.instanceCount, 0, options.firstInstance);
     }

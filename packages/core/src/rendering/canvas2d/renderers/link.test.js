@@ -315,7 +315,7 @@ test.each([
         const source = [a * 100, (1 - a) * 100].map(Math.round);
         const target = [b * 100, (1 - b) * 100].map(Math.round);
         const elbow =
-            orient == "vertical"
+            orient == "horizontal"
                 ? [source[0], target[1]]
                 : [target[0], source[1]];
         expect(result.context.moveTo).toHaveBeenCalledWith(...source);

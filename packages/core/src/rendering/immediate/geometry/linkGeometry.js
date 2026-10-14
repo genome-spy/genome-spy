@@ -25,7 +25,7 @@
 export function getLinkGeometry(a, b, viewport, options) {
     if (options.shape == "orthogonal") {
         const elbow = /** @type {LinkPoint} */ (
-            options.orient == "vertical" ? [a[0], b[1]] : [b[0], a[1]]
+            options.orient == "horizontal" ? [a[0], b[1]] : [b[0], a[1]]
         );
         return { type: "orthogonal", points: [a, elbow, b] };
     }

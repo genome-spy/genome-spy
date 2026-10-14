@@ -1,4 +1,7 @@
 flat out vec4 vColor;
+flat out vec4 vOrthogonalEndpoints;
+flat out int vOrthogonalPart;
+out vec2 vOrthogonalPosition;
 
 /** Stroke width */
 flat out float vSize;
@@ -15,7 +18,6 @@ const int SHAPE_ARC = 0;
 const int SHAPE_DOME = 1;
 const int SHAPE_DIAGONAL = 2;
 const int SHAPE_LINE = 3;
-const int SHAPE_ORTHOGONAL = 4;
 const int ORIENT_VERTICAL = 0;
 const int ORIENT_HORIZONTAL = 1;
 
@@ -256,19 +258,8 @@ void main(void) {
     vec2 p;
     vec2 normal;
     if (uShape == SHAPE_ORTHOGONAL) {
-        vec2 elbow = uOrient == ORIENT_VERTICAL ? vec2(a.x, b.y) : vec2(b.x, a.y);
-        vec2 first = elbow - a;
-        vec2 second = b - elbow;
-        // A collapsed leg uses the other leg's normal; never normalize zero.
-        vec2 firstTangent = normalize(all(equal(first, vec2(0.0))) ? second : first);
-        vec2 secondTangent = normalize(all(equal(second, vec2(0.0))) ? first : second);
-        vec2 n1 = vec2(-firstTangent.y, firstTangent.x);
-        vec2 n2 = vec2(-secondTangent.y, secondTangent.x);
-        int corner = gl_VertexID / 2;
-        p = corner == 0 ? a : (corner == 1 ? elbow : b);
-        // Fixed right-angle miter, shared by both legs in one strip.
-        normal = corner == 0 ? n1 : (corner == 2 ? n2 :
-            (all(equal(n1, n2)) ? n1 : n1 + n2));
+        p = a;
+        normal = vec2(0.0);
     } else {
         // de Casteljau evaluation keeps the cubic stable for long chords.
         vec2 q1 = mix(p1, p2, t);
@@ -312,8 +303,23 @@ void main(void) {
         }
     }
 
-    // Extrude
-    p += normal * vNormalLengthInPixels;
+    vOrthogonalEndpoints = vec4(a, b);
+    vOrthogonalPart = 0;
+    if (uShape == SHAPE_ORTHOGONAL) {
+        // Three small quads, joined by degenerate triangles, keep fill work
+        // proportional to stroke area even for long, widely separated legs.
+        vOrthogonalPart = (gl_VertexID + 1) / 6;
+        int corner = clamp((gl_VertexID + 1) % 6 - 1, 0, 3);
+        float width = uPickingEnabled ? max(size, uMinPickingSize) : size;
+        vec4 bounds = orthogonalBounds(vOrthogonalPart, a, b, width * 0.5);
+        if (all(greaterThan(bounds.zw, bounds.xy))) {
+            bounds += vec4(-pixelSize, -pixelSize, pixelSize, pixelSize);
+        }
+        p = mix(bounds.xy, bounds.zw, vec2(corner % 2, corner / 2));
+    } else {
+        p += normal * vNormalLengthInPixels;
+    }
+    vOrthogonalPosition = p;
 
     gl_Position = pixelsToNdc(p);
 
@@ -323,7 +329,8 @@ void main(void) {
 
     vGamma = getGammaForColor(color);
 
-    vSize = paddedSize;
+    vSize = uShape == SHAPE_ORTHOGONAL
+        ? (uPickingEnabled ? max(size, uMinPickingSize) : size) : paddedSize;
 
     setupPicking();
 }

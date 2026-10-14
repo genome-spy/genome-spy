@@ -30,7 +30,7 @@ export function resolveLinkProperties(mark) {
 /**
  * @param {import("../../../marks/link.js").default} mark
  * @param {ReturnType<typeof resolveLinkProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, minPickingSize?: number}} options
  * @param {(instance: LinkInstance) => void} visitor
  */
 export function visitLinkInstances(mark, properties, options, visitor) {
@@ -83,20 +83,27 @@ export function visitLinkInstances(mark, properties, options, visitor) {
             viewport,
             properties
         );
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
         for (const point of geometry.points) {
             point[0] += coordsX;
             point[1] = coordsY2 - point[1];
+            minX = Math.min(minX, point[0]);
+            minY = Math.min(minY, point[1]);
+            maxX = Math.max(maxX, point[0]);
+            maxY = Math.max(maxY, point[1]);
         }
-        const points = geometry.points;
         const strokeWidth = encodeNumber(encoders.size, datum);
         if (
             !intersectsBounds(
                 visibleBounds,
-                Math.min(...points.map((point) => point[0])),
-                Math.min(...points.map((point) => point[1])),
-                Math.max(...points.map((point) => point[0])),
-                Math.max(...points.map((point) => point[1])),
-                strokeWidth / 2
+                minX,
+                minY,
+                maxX,
+                maxY,
+                Math.max(strokeWidth, options.minPickingSize ?? 0) / 2
             )
         ) {
             continue;

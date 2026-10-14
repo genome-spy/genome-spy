@@ -20,8 +20,10 @@ SCHEMA LinkProps
 ## Orthogonal links
 
 The `"orthogonal"` shape draws two straight legs with a right-angle miter join
-and butt caps. With `orient: "vertical"`, the elbow is `(x, y2)`; with
-`orient: "horizontal"`, it is `(x2, y)`. The source-to-target direction matters.
+and butt caps. With `orient: "horizontal"`, the elbow is `(x, y2)`; with
+`orient: "vertical"`, it is `(x2, y)`. For parent-to-child dendrogram edges,
+this keeps each split at the parent's merge height. The source-to-target
+direction matters.
 A zero-length leg becomes a straight link; coincident endpoints draw nothing.
 `segments` and arc-specific properties do not affect this shape.
 
@@ -72,7 +74,7 @@ This example shows the different link shapes and orientations. All links have
 the same coordinates: `{ x: 2, y: 2, x2: 8, y2: 8 }`. The links are arranged in
 grid with
 
-`linkShape` as columns: `"arc"`, `"dome"`, `"diagonal"`, `"line"`.  
+`linkShape` as columns: `"arc"`, `"dome"`, `"diagonal"`, `"line"`, `"orthogonal"`.
 `orient` as rows: `"vertical"`, `"horizontal"`.
 
 EXAMPLE examples/docs/grammar/mark/link/link-shapes-and-orientations.json height=350

@@ -1011,7 +1011,7 @@ export type LinkMarkOptions = {
     /** Path shape. Orthogonal uses two straight legs with butt caps and a miter join. */
     linkShape?: LinkShape;
 
-    /** Orientation for dome, diagonal, and orthogonal shapes. Orthogonal first travels along this axis. */
+    /** Orientation for dome, diagonal, and orthogonal shapes. Orthogonal keeps the source coordinate along this axis at its elbow (horizontal: x/y2; vertical: x2/y). */
     orient?: LinkOrient;
 
     /** Height multiplier for arc shape. */

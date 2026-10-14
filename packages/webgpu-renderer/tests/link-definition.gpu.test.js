@@ -308,7 +308,7 @@ for (const orient of ["vertical", "horizontal"]) {
                 const a = reversed ? [100, 20] : [20, 100];
                 const b = reversed ? [20, 100] : [100, 20];
                 const elbow =
-                    orient == "vertical" ? [a[0], b[1]] : [b[0], a[1]];
+                    orient == "horizontal" ? [a[0], b[1]] : [b[0], a[1]];
                 const mark = renderer.createMark(linkMark, {
                     count: 1,
                     linkShape: "orthogonal",
@@ -350,7 +350,7 @@ for (const orient of ["vertical", "horizontal"]) {
                 const alphaAt = ([x, y]) => bytes[y * 512 + x * 4 + 3];
                 const middle = [(a[0] + elbow[0]) / 2, (a[1] + elbow[1]) / 2];
                 const nearby =
-                    orient == "vertical"
+                    orient == "horizontal"
                         ? [middle[0] + 3, middle[1]]
                         : [middle[0], middle[1] + 3];
                 const alpha = [

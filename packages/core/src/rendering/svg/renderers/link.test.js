@@ -103,10 +103,10 @@ describe("SVG link renderer", () => {
         });
         const paths = svg.querySelectorAll('[data-mark-type="link"] path');
 
-        expect(paths).toHaveLength(8);
+        expect(paths).toHaveLength(10);
         expect(
             Array.from(paths).every((path) =>
-                /^M .* C /.test(path.getAttribute("d"))
+                /^M .* [CL] /.test(path.getAttribute("d"))
             )
         ).toBe(true);
         expect(svg.querySelector("image")).toBeNull();

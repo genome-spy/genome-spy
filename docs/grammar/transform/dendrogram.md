@@ -4,6 +4,13 @@ The `"dendrogram"` transform turns a precomputed clustering tree into
 parent–child edges for a [link mark](../mark/link.md). It preserves merge heights
 and computes positions aligned with the integer rows of a heatmap.
 
+EXAMPLE examples/docs/grammar/transform/dendrogram/heatmap.json height=320
+
+The example uses supplied merge heights and a single link layer. The heatmap and
+links share their `y` scale; the offset scale converts each derived fraction to
+part of the current row step. Clustering and leaf ordering happen before the
+specification is rendered.
+
 ## Input tree
 
 Each input row describes a node. The root's parent is `null`; every other parent
@@ -76,7 +83,9 @@ Zoom, pan, and resize update scale mappings without recomputing the tree.
 Grouping gaps can move parents away from their children's visual midpoints;
 branches remain connected and leaves remain aligned. With multifurcations,
 separate edges may overlap on a shared trunk, so transparency and picking follow
-ordinary paint order.
+ordinary paint order. Point selections and tooltips identify the child edge;
+interval selections retain the link mark's endpoint semantics. Heatmap selections
+continue to use integer rows.
 
 A facet contains one complete tree and can span several physical files.
 Outside facets, each input file contains one tree. Empty input or a single leaf

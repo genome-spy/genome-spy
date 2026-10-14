@@ -814,9 +814,10 @@ export interface LinkProps
 
     /**
      * The orientation of the link path. Either `"vertical"` or `"horizontal"`.
-     * Applies to dome, diagonal, and orthogonal links. Orthogonal links first
-     * travel along the orientation axis, then turn toward the target.
-     * Vertical uses `(x, y2)` as the elbow; horizontal uses `(x2, y)`.
+     * Applies to dome, diagonal, and orthogonal links. Orthogonal links place
+     * the elbow at the source position along the orientation axis:
+     * horizontal uses `(x, y2)`; vertical uses `(x2, y)`.
+     * With parent-to-child tree edges, the turn stays at the parent's merge height.
      *
      * **Default value:** `"vertical"`
      */

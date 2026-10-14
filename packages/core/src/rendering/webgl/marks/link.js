@@ -167,7 +167,7 @@ export default class WebGLLinkMark extends WebGLMark {
                 this.markUniformInfo.uniforms.uShape
             )[0];
             if (shape == LINK_SHAPES.indexOf("orthogonal")) {
-                return 6;
+                return 16;
             }
             const breaks = /** @type {Float32Array} */ (
                 this.markUniformInfo.uniforms.uSegmentBreaks
