@@ -126,9 +126,7 @@ test.each([false, true])(
             }
         }
         // Reuse the exact same collector output with the existing curved presentation.
-        /** @type {import("../../marks/link.js").default} */ (
-            treeView.mark
-        ).properties.linkShape = "diagonal";
+        view.paramRuntime.setValue("shape", "diagonal");
         const { svg } = createSvg({
             viewRoot: view,
             logicalWidth: 600,

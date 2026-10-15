@@ -1,7 +1,15 @@
 {
   "description": [
-    "Gapped reversed dendrogram",
-    "Fixed grouping gaps and reversed rows preserve branch connectivity and heatmap alignment."
+    "Gapped dendrogram shapes",
+    "Switch between orthogonal and diagonal links. Fixed grouping gaps and reversed rows preserve branch connectivity and heatmap alignment."
+  ],
+
+  "params": [
+    {
+      "name": "shape",
+      "value": "orthogonal",
+      "bind": { "input": "select", "options": ["orthogonal", "diagonal"] }
+    }
   ],
 
   "datasets": {
@@ -47,7 +55,7 @@
       ],
       "mark": {
         "type": "link",
-        "linkShape": "orthogonal",
+        "linkShape": { "expr": "shape" },
         "orient": "horizontal",
         "clip": "y",
         "size": 1.5
