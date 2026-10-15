@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { expect, test } from "vitest";
-import heatmapSpec from "../../../../../examples/docs/grammar/transform/dendrogram/heatmap.json" with { type: "json" };
+import heatmapSpec from "../../../../../examples/core/marks/link/dendrogram-gaps.json" with { type: "json" };
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";

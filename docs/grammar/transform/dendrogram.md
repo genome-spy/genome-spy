@@ -2,20 +2,19 @@
 
 The `"dendrogram"` transform turns a precomputed clustering tree into
 parent–child edges for a [link mark](../mark/link.md). It preserves merge heights
-and computes positions aligned with the integer rows of a heatmap.
+and computes node positions along a discrete index scale.
 
-EXAMPLE examples/docs/grammar/transform/dendrogram/heatmap.json height=320
+EXAMPLE examples/docs/grammar/transform/dendrogram/dendrogram.json height=320
 
-The example uses supplied merge heights and a single link layer. The heatmap and
-links share their `y` scale; the offset scale converts each derived fraction to
-part of the current row step. Clustering and leaf ordering happen before the
-specification is rendered.
+The example uses supplied merge heights and a single link mark. The offset scale
+converts each derived fraction to part of the current row step. Clustering and
+leaf ordering happen before the specification is rendered.
 
 ## Input tree
 
 Each input row describes a node. The root's parent is `null`; every other parent
-identifies another node. Leaves have explicit integer row positions matching
-the heatmap. Internal nodes need no row position.
+identifies another node. Leaves have explicit integer positions along the index
+scale. Internal nodes need no row position.
 
 ```json
 [

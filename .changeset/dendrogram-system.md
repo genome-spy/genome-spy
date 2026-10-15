@@ -14,4 +14,4 @@ integer anchors and relative offsets for heatmap-aligned links.
 
 Add orthogonal links with exact right-angle joins across WebGL, WebGPU, Canvas,
 and SVG, including minimum-width link picking in WebGPU. New examples show
-heatmap composition, reversed rows, grouping gaps, and diagonal links.
+precomputed trees, reversed rows, grouping gaps, and diagonal links.
