@@ -34,9 +34,24 @@ describe("built-in semantic property slots", () => {
         const renderer = createMockRenderer();
         const program = new LinkProgram(renderer, {
             channels: endpointChannels(),
+            linkShape: "orthogonal",
+            segments: 3,
+            dynamicValues: {
+                uShape: { value: 4 },
+                uSegmentBreaks: { value: 3 },
+            },
         });
         const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
-        const properties = program.getSlotHandles().properties;
+        const { properties, extraValues } = program.getSlotHandles();
+        const draw = vi.fn();
+        const pass = /** @type {GPURenderPassEncoder} */ (
+            /** @type {unknown} */ ({ draw })
+        );
+        /** @type {import("../../index.js").ProgramDrawOptions} */
+        const options = { firstInstance: 1, instanceCount: 2, sampleCount: 1 };
+
+        program.draw(pass, options);
+        expect(draw).toHaveBeenLastCalledWith(16, 2, 0, 1);
 
         properties.linkShape.set("diagonal");
         properties.orient.set("horizontal");
@@ -45,8 +60,19 @@ describe("built-in semantic property slots", () => {
         expect(readUniform(program, "uShape", "u32")).toBe(2);
         expect(readUniform(program, "uOrient", "u32")).toBe(1);
         expect(readUniform(program, "uSegmentBreaks", "f32")).toBe(24);
-        expect(program._segmentCount).toBe(24);
+        program.draw(pass, options);
+        expect(draw).toHaveBeenLastCalledWith(50, 2, 0, 1);
         expect(writeBuffer).toHaveBeenCalledTimes(3);
+
+        // Raw uniform slots and semantic properties must drive the same draw state.
+        extraValues.uShape.set(4);
+        program.draw(pass, options);
+        expect(draw).toHaveBeenLastCalledWith(16, 2, 0, 1);
+
+        extraValues.uSegmentBreaks.set(5);
+        extraValues.uShape.set(0);
+        program.draw(pass, options);
+        expect(draw).toHaveBeenLastCalledWith(12, 2, 0, 1);
     });
 });
 

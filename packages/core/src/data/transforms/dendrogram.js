@@ -113,19 +113,14 @@ export default class DendrogramTransform extends Transform {
                 const parent = node.parent;
                 const edge = { ...node.datum };
                 delete edge[UNIQUE_ID_KEY];
-                const values = [
-                    parent.key,
-                    node.key,
-                    parent.height,
-                    node.height,
-                    Math.floor(parent.position),
-                    Math.floor(node.position),
-                    parent.position % 1,
-                    node.position % 1,
-                ];
-                this.as.forEach((field, i) => {
-                    edge[field] = values[i];
-                });
+                edge[this.as[0]] = parent.key;
+                edge[this.as[1]] = node.key;
+                edge[this.as[2]] = parent.height;
+                edge[this.as[3]] = node.height;
+                edge[this.as[4]] = Math.floor(parent.position);
+                edge[this.as[5]] = Math.floor(node.position);
+                edge[this.as[6]] = parent.position % 1;
+                edge[this.as[7]] = node.position % 1;
                 this._propagate(edge);
             }
         );
@@ -194,16 +189,14 @@ export default class DendrogramTransform extends Transform {
 
         const order = [];
         const pending = [roots[0]];
-        const visited = new Set();
+        // Unique nodes with one parent cannot form a cycle reachable from the root.
         while (pending.length) {
             const node = pending.pop();
-            if (visited.has(node))
-                throw new Error("Dendrogram cycle at node " + String(node.key));
-            visited.add(node);
             order.push(node);
             for (const child of node.children) pending.push(child);
         }
         if (order.length !== nodes.length) {
+            const visited = new Set(order);
             const unreachable = nodes.find((node) => !visited.has(node));
             throw new Error(
                 "Dendrogram cycle or disconnected node: " +

@@ -40,7 +40,7 @@ export function initializePropertySlots(program, definitions) {
                         `Property "${name}" must encode to numeric uniform data.`
                     );
                 }
-                program._setUniformValue(definition.uniform, encoded);
+                program._setExtraUniformValue(definition.uniform, encoded);
             }
         };
         const configured = program._markConfig[name];

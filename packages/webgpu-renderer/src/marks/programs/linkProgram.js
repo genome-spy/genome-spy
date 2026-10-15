@@ -481,11 +481,7 @@ export default class LinkProgram extends BaseProgram {
             linkShape: {
                 uniform: "uShape",
                 default: "arc",
-                encode: (/** @type {string} */ value) => {
-                    /** @internal Populated during super(), before subclass branding. */
-                    this._shape = encodeLinkShape(value);
-                    return this._shape;
-                },
+                encode: encodeLinkShape,
             },
             orient: {
                 uniform: "uOrient",
@@ -501,12 +497,7 @@ export default class LinkProgram extends BaseProgram {
             segments: {
                 uniform: "uSegmentBreaks",
                 default: 101,
-                encode: (/** @type {number} */ value) => {
-                    const segments = Math.round(Number(value));
-                    /** @internal Populated during super(), before subclass branding. */
-                    this._segmentCount = segments;
-                    return segments;
-                },
+                encode: (/** @type {number} */ value) => Math.round(value),
             },
         };
     }
@@ -519,7 +510,7 @@ export default class LinkProgram extends BaseProgram {
     /**
      * @param {string} name
      * @param {number | number[]} value
-     * @protected
+     * @internal
      */
     _setExtraUniformValue(name, value) {
         super._setExtraUniformValue(name, value);
