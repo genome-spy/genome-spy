@@ -2,16 +2,28 @@
 "@genome-spy/core": minor
 ---
 
-Encode independent secondary endpoint displacements with `x2Offset` and
-`y2Offset`, sharing the corresponding primary offset scale. The reactive
-`bandstep()` expression helper converts relative row positions into padded row-step
-offsets while preserving discrete index scales, including grouping gaps.
-Canvas and SVG now honor within-band placement on nested offset scales.
+Add support for dendrograms aligned with heatmap rows or columns while keeping
+index scales discrete. Leaves stay aligned and branches remain connected during
+zooming, panning, and resizing.
 
-The `dendrogram` transform lays out precomputed node tables with explicit leaf
-row indices and merge heights, producing parent–child edges with separate
-integer anchors and relative offsets for heatmap-aligned links.
+The new `dendrogram` transform lays out precomputed node tables using explicit
+leaf indices and merge heights. It emits parent–child edges with integer anchors
+and relative offsets for rendering with a single link mark.
 
-Add orthogonal links with exact right-angle joins across WebGL, WebGPU, Canvas,
-and SVG, including minimum-width link picking in WebGPU. New examples show
-precomputed trees, reversed rows, grouping gaps, and diagonal links.
+The new `x2Offset` and `y2Offset` encoding channels independently displace
+secondary endpoints using the corresponding `xOffset` or `yOffset` scale.
+
+The reactive `bandstep()` expression helper returns the regular spacing between
+adjacent bands, including padding. `bandwidth()` returns the band size without
+that padding. Dendrogram offsets can follow row or column spacing during zooming
+and resizing, including scales with grouping gaps.
+
+Link marks now support `linkShape: "orthogonal"` with horizontal and vertical
+orientations across WebGL, WebGPU, Canvas, and SVG. Right-angle joins remain
+consistent across rendering and picking.
+
+Canvas and SVG now honor within-band placement on nested offset scales, so
+points align with their corresponding grouped bars.
+
+WebGPU link picking now honors `minPickingSize`, making thin links easier to
+select.
