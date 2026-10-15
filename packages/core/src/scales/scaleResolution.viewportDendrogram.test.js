@@ -13,6 +13,7 @@ test.each(["horizontal", "vertical"])(
                 source: /** @type {const} */ ("viewport"),
                 mode: /** @type {const} */ ("contain"),
             },
+            padding: 0.05,
             zero: true,
             nice: false,
             zoom: false,
@@ -88,7 +89,16 @@ test.each(["horizontal", "vertical"])(
         const index = getRequiredScaleResolution(matrix, indexChannel);
         const height = getRequiredScaleResolution(tree, heightChannel);
         expect(getRequiredScaleResolution(tree, indexChannel)).toBe(index);
-        expect(height.getDomain()).toEqual([0, 10]);
+
+        /** @param {number} maximum */
+        const expectHeightPadding = (maximum) => {
+            const scale = height.getScale();
+            const baseline = scale(0);
+            const top = scale(maximum);
+            expect(Math.min(baseline, top)).toBeCloseTo(0.05);
+            expect(Math.max(baseline, top)).toBeCloseTo(0.95);
+        };
+        expectHeightPadding(10);
 
         vi.useFakeTimers();
         try {
@@ -100,7 +110,7 @@ test.each(["horizontal", "vertical"])(
             ]) {
                 index.getScale().domain(/** @type {number[]} */ (domain));
                 await vi.advanceTimersByTimeAsync(150);
-                expect(height.getDomain()).toEqual([0, maximum]);
+                expectHeightPadding(/** @type {number} */ (maximum));
             }
         } finally {
             vi.useRealTimers();

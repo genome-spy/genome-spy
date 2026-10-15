@@ -41,7 +41,7 @@ Do not create a second indexing or scheduling path.
 
 Enable containment domains on both dendrogram height scales in
 `examples/docs/examples/generic/clustered-heatmap.json`, preserving their
-existing zero/nice/zoom/reverse options. Set the two link marks to `clip: true`
+existing zero/nice/zoom/reverse options and adding `padding: 0.05`. Set the two link marks to `clip: true`
 so ancestors beyond the fitted height domain stay inside their panels.
 
 Vega-Lite's [scale domains and clipping documentation](https://vega.github.io/vega-lite/docs/scale.html#scale-domains)
@@ -131,3 +131,12 @@ later retirement, and delete it in a later commit before PR creation or merge.
   changes add 43 net lines, with no new scheduling or indexing path.
 - Release policy checks passed; the optional Core feature requests a minor bump
   to 1.2.0 in the configured fixed release group.
+
+### Padding follow-up
+
+Added `padding: 0.05` to both example height scales. Existing domain preparation
+already applies it during viewport autoscaling, so no runtime change was needed.
+The navigation regression now checks 5% margins initially, after zoom/pan/reset,
+and when retaining an empty viewport's previous domain. All 12 focused tests,
+Core TypeScript checks, and the clean docs build passed. Real WebGL checks
+confirmed the 5% margins on both orientations through zoom, pan, and reset.

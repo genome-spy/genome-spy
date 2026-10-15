@@ -303,9 +303,9 @@ Configured viewport domains on a shared scale must use the same mode. Members
 without a configured domain inherit that mode.
 
 GenomeSpy calculates the domain shortly after navigation pauses and applies the
-normal smooth domain transition. Existing scale options such as `zero`, `nice`,
-`domainMin`, and `domainMax` still apply. If a ready viewport has no values, the
-scale retains its last nonempty domain.
+normal smooth domain transition. Existing scale options such as `padding`,
+`zero`, `nice`, `domainMin`, and `domainMax` still apply. If a ready viewport has
+no values, the scale retains its last nonempty domain.
 
 GenomeSpy uses at least one continuous x or y scale to determine which data are
 inside the viewport. The domain of that positional scale must not depend on the

@@ -36,8 +36,9 @@ sample origin. Gray sample-origin cells indicate unknown values.
 
 Zooming and panning fit each tree's height scale to links whose two index anchors
 are inside the visible range. Local branches can then use the available panel
-space. Branches extending beyond the fitted height domain are clipped. If no
-complete link is visible, the previous height domain is retained.
+space. Height-scale padding leaves room for links at the panel edges. Branches
+extending beyond the fitted height domain are clipped. If no complete link is
+visible, the previous height domain is retained.
 
 ## Preparing the data
 

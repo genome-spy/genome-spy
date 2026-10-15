@@ -112,6 +112,7 @@
           "type": "quantitative",
           "scale": {
             "domain": { "source": "viewport", "mode": "contain" },
+            "padding": 0.05,
             "zero": true,
             "nice": false,
             "zoom": false
@@ -195,6 +196,7 @@
           "type": "quantitative",
           "scale": {
             "domain": { "source": "viewport", "mode": "contain" },
+            "padding": 0.05,
             "reverse": true,
             "zero": true,
             "nice": false,
