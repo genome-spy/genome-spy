@@ -32,6 +32,7 @@ EXAMPLE_GALLERY examples/docs/examples/genomic-data
 
 EXAMPLE_GALLERY examples/docs/examples/generic
 
+- [Clustered Heatmap with Dendrograms](generic/clustered-heatmap.md) clustered-heatmap.json
 - [Set Intersections with an UpSet Plot](generic/upsetr-mutations.md) upsetr-mutations.json
 
 ## More examples

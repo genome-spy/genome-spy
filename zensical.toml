@@ -117,6 +117,7 @@ nav = [
         "examples/genomic-data/bam-read-alignments.md",
         { "Multiple Sequence Alignment" = "examples/genomic-data/multiple-sequence-alignment.md" },
         "examples/genomic-data/genome-browser.md",
+        "examples/generic/clustered-heatmap.md",
         "examples/generic/upsetr-mutations.md",
     ] },
     "license.md",
