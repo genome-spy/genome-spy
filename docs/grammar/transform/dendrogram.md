@@ -74,9 +74,9 @@ index scale continues to receive integers.
 For a horizontal dendrogram, encode heights on `x`/`x2`, anchors on `y`/`y2`
 with `band: 0.5`, and fractions on `yOffset`/`y2Offset`. Give the primary offset
 scale an explicit domain `[0, 1]` and range
-`[0, { "expr": "-height * step('y', height)" }]`. Both offset channels then use
+`[0, { "expr": "-height * bandstep('y', height)" }]`. Both offset channels then use
 the full padded row step. See [offset channels](../mark/index.md#offset-channels)
-and the [`step()` helper](../expressions.md#step).
+and the [`bandstep()` helper](../expressions.md#bandstep).
 
 Zoom, pan, and resize update scale mappings without recomputing the tree.
 Grouping gaps can move parents away from their children's visual midpoints;

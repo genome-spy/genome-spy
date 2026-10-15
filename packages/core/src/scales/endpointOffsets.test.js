@@ -50,7 +50,7 @@ test.each([false, true])(
                     type: "quantitative",
                     scale: {
                         domain: [0, 1],
-                        range: [0, { expr: "-height * step('y', height)" }],
+                        range: [0, { expr: "-height * bandstep('y', height)" }],
                     },
                 },
                 y2Offset: { field: "target" },
@@ -111,7 +111,7 @@ test.each([false, true])(
     }
 );
 
-test("step validates scale support and grouping-gap extents", async () => {
+test("bandstep validates scale support and grouping-gap extents", async () => {
     const { view } = await createHeadlessEngine({
         data: { values: [{ row: 0, value: 1 }] },
         mark: "point",
@@ -126,10 +126,14 @@ test("step validates scale support and grouping-gap extents", async () => {
     });
     /** @param {string} expr */
     const evaluate = (expr) => view.paramRuntime.createExpression({ expr })();
-    expect(() => evaluate("step('y')")).toThrow("requires a pixel extent");
-    expect(() => evaluate("step('y', -1)")).toThrow("finite and nonnegative");
-    expect(() => evaluate("step('x')")).toThrow("does not support step()");
-    expect(evaluate("step('y', 0)")).toBe(0);
+    expect(() => evaluate("bandstep('y')")).toThrow("requires a pixel extent");
+    expect(() => evaluate("bandstep('y', -1)")).toThrow(
+        "finite and nonnegative"
+    );
+    expect(() => evaluate("bandstep('x')")).toThrow(
+        "does not support bandstep()"
+    );
+    expect(evaluate("bandstep('y', 0)")).toBe(0);
 });
 
 test("secondary offset values contribute to the primary scale domain", async () => {

@@ -179,7 +179,7 @@ function buildFunctions(codegen, context) {
         "domain",
         "range",
         "bandwidth",
-        "step",
+        "bandstep",
         "linearize",
         "zoomLevel",
     ])) {
@@ -207,7 +207,7 @@ function buildFunctions(codegen, context) {
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
- * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "step" | "linearize" | "zoomLevel"} ScaleHelperKind
+ * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "bandstep" | "linearize" | "zoomLevel"} ScaleHelperKind
  *
  * @typedef {ExpressionCompileContext & {
  *   globalvar: string,
@@ -261,9 +261,9 @@ function buildScaleHelperCall(codegen, context, kind, args) {
         );
     }
 
-    if (kind === "step" && args.length > 2) {
+    if (kind === "bandstep" && args.length > 2) {
         throw new Error(
-            'Scale helper "step" accepts a channel and an optional pixel extent.'
+            'Scale helper "bandstep" accepts a channel and an optional pixel extent.'
         );
     }
 
@@ -333,7 +333,7 @@ function createScaleHelperFunction(kind, resolution) {
                 return scale.bandwidth();
             });
     }
-    if (kind === "step") {
+    if (kind === "bandstep") {
         return (extent) =>
             run(() => {
                 const scale =
@@ -342,7 +342,7 @@ function createScaleHelperFunction(kind, resolution) {
                     );
                 if (typeof scale.step !== "function") {
                     throw new Error(
-                        `Scale channel "${resolution.channel}" does not support step().`
+                        `Scale channel "${resolution.channel}" does not support bandstep().`
                     );
                 }
                 if (
@@ -350,12 +350,12 @@ function createScaleHelperFunction(kind, resolution) {
                     (!Number.isFinite(extent) || extent < 0)
                 ) {
                     throw new Error(
-                        "Scale step extent must be finite and nonnegative."
+                        "bandstep() extent must be finite and nonnegative."
                     );
                 }
                 if (hasGroupingGaps(scale.props) && extent === undefined) {
                     throw new Error(
-                        "step() requires a pixel extent for a scale with grouping gaps."
+                        "bandstep() requires a pixel extent for a scale with grouping gaps."
                     );
                 }
                 // Before arrangement, a zero-sized placement has no pixel displacement.
