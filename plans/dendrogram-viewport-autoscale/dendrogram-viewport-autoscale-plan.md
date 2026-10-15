@@ -97,12 +97,16 @@ Tentative implementation commit:
 - [x] Independent subagent review of this plan; resolve actionable findings.
       Clarified shared-mode validation and retained conservative block rejection.
 - [x] Commit the reviewed plan before implementation (`25b7476b1`).
-- [x] Implement and verify the milestone, then commit it.
-- [ ] Independent implementation review covering downstream query consumers,
+- [x] Implement and verify the milestone, then commit it (`3244ebf04`).
+- [x] Independent implementation review covering downstream query consumers,
       shared scales, boundaries, clipping, and default compatibility.
-- [ ] Apply worthwhile correctness and KISS fixes, verify, and commit the fixes
+      No runtime findings or worthwhile production simplifications; found stale
+      validator return-value assertions in the existing domain planner tests.
+- [x] Apply worthwhile correctness and KISS fixes, verify, and commit the fixes
       with this plan's final task status. Do not manufacture a code fix if none
       is justified; the final record can be the last commit.
+      Updated the existing assertions and exercised view-level containment in
+      their existing fixture; added no duplicate test cases.
 
 The plan remains a temporary branch artifact. Reconcile all tasks before any
 later retirement, and delete it in a later commit before PR creation or merge.
@@ -111,6 +115,9 @@ later retirement, and delete it in a later commit before PR creation or merge.
 
 - 148 tests passed across collector, scale domains, real dendrogram navigation,
   owner/lifecycle behavior, and generated schema suites.
+- The full suite initially found three stale validator assertions. After the
+  review fixes, all 530 suites passed: 4,993 tests passed, one skipped, two todo.
+  Core TypeScript checks passed again after the test changes.
 - Workspace TypeScript checks passed after correcting the new fixture's required
   concat column count; lint and formatting checks passed.
 - Regenerated schemas, docs assets, and the grammar type index. Zensical's clean
@@ -123,4 +130,4 @@ later retirement, and delete it in a later commit before PR creation or merge.
 - Main query helpers grew from 739 to 770 lines. The runtime and specification
   changes add 43 net lines, with no new scheduling or indexing path.
 - Release policy checks passed; the optional Core feature requests a minor bump
-  in the configured fixed release group.
+  to 1.2.0 in the configured fixed release group.
