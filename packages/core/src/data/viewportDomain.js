@@ -9,6 +9,7 @@ const BLOCK_SIZE = 256;
  * @property {[number, number]} domain
  * @property {import("../types/encoder.js").Accessor} accessor
  * @property {import("../types/encoder.js").Accessor} [accessor2]
+ * @property {import("../spec/scale.js").ViewportDomainRef["mode"]} [mode]
  */
 
 /**
@@ -294,7 +295,8 @@ function queryIndex(index, domainKey, type, targetAccessor, constraints) {
                     batch,
                     block,
                     xConstraint.domain,
-                    Boolean(index.accessor2)
+                    Boolean(index.accessor2),
+                    xConstraint.mode
                 )
             ) {
                 const summary = batch.targets.get(domainKey);
@@ -355,7 +357,11 @@ function scanDomain(batches, type, targetAccessor, constraints) {
 function scanRows(data, start, end, domain, targetAccessor, constraints) {
     for (let i = start; i < end; i++) {
         const datum = data[i];
-        if (constraints.every((constraint) => overlaps(datum, constraint))) {
+        if (
+            constraints.every((constraint) =>
+                matchesViewport(datum, constraint)
+            )
+        ) {
             domain.extend(targetAccessor(datum));
         }
     }
@@ -375,7 +381,7 @@ function normalizeConstraint(constraint) {
  * @param {import("./flowNode.js").Datum} datum
  * @param {ViewportConstraint} constraint
  */
-function overlaps(datum, constraint) {
+function matchesViewport(datum, constraint) {
     const interval = readInterval(
         datum,
         constraint.accessor,
@@ -386,6 +392,10 @@ function overlaps(datum, constraint) {
     }
 
     const [lo, hi] = constraint.domain;
+    if (constraint.mode === "contain") {
+        return interval.start >= lo && interval.end <= hi;
+    }
+
     return interval.start === interval.end
         ? interval.start >= lo && interval.start <= hi
         : interval.start < hi && interval.end > lo;
@@ -434,9 +444,14 @@ function isBlockDisjoint(batch, block, domain, interval) {
  * @param {number} block
  * @param {[number, number]} domain
  * @param {boolean} interval
+ * @param {import("../spec/scale.js").ViewportDomainRef["mode"]} mode
  */
-function isBlockFullyVisible(batch, block, domain, interval) {
+function isBlockFullyVisible(batch, block, domain, interval, mode) {
     const [lo, hi] = domain;
+    if (mode === "contain") {
+        return batch.minStart[block] >= lo && batch.maxEnd[block] <= hi;
+    }
+
     return interval
         ? batch.maxStart[block] < hi && batch.minEnd[block] > lo
         : batch.minStart[block] >= lo && batch.maxStart[block] <= hi;

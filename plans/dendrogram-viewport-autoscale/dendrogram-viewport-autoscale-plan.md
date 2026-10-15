@@ -73,20 +73,20 @@ and other interval/link marks, using the existing lifecycle and rendering paths.
 Consumers: specification/schema, scale constraints, collector queries, docs,
 and the shared clustered heatmap example.
 
-- [ ] Add the option and thread it through resolved scale constraints; test
+- [x] Add the option and thread it through resolved scale constraints; test
       conflicting shared modes and inheritance by implicit contributors.
-- [ ] Implement containment in exact scans and existing block queries.
-- [ ] Verify representative contained/crossing/reversed/point boundary cases;
+- [x] Implement containment in exact scans and existing block queries.
+- [x] Verify representative contained/crossing/reversed/point boundary cases;
       extend the indexed-versus-scan coverage to both modes.
-- [ ] Add a focused spec-to-scale regression using the real dendrogram
+- [x] Add a focused spec-to-scale regression using the real dendrogram
       transform, shared index scales, both orientations, navigation, and an
       empty eligible viewport. Cover a view-level domain declaration.
-- [ ] Update schema validation, scale docs, example prose, and the example.
+- [x] Update schema validation, scale docs, example prose, and the example.
       Build current schemas before editing example specs.
-- [ ] Add a minor Core changeset for the optional functionality.
-- [ ] Run focused Vitest suites with the agent reporter, workspace type checks,
+- [x] Add a minor Core changeset for the optional functionality.
+- [x] Run focused Vitest suites with the agent reporter, workspace type checks,
       lint, release checks, and targeted schema/docs generation as needed.
-- [ ] Use the browser to inspect the real clustered heatmap at full extent,
+- [x] Use the browser to inspect the real clustered heatmap at full extent,
       zoomed/panned extents, and reset; verify fitted domains and clipping.
 
 Tentative implementation commit:
@@ -96,8 +96,8 @@ Tentative implementation commit:
 
 - [x] Independent subagent review of this plan; resolve actionable findings.
       Clarified shared-mode validation and retained conservative block rejection.
-- [ ] Commit the reviewed plan before implementation.
-- [ ] Implement and verify the milestone, then commit it.
+- [x] Commit the reviewed plan before implementation (`25b7476b1`).
+- [x] Implement and verify the milestone, then commit it.
 - [ ] Independent implementation review covering downstream query consumers,
       shared scales, boundaries, clipping, and default compatibility.
 - [ ] Apply worthwhile correctness and KISS fixes, verify, and commit the fixes
@@ -106,3 +106,21 @@ Tentative implementation commit:
 
 The plan remains a temporary branch artifact. Reconcile all tasks before any
 later retirement, and delete it in a later commit before PR creation or merge.
+
+## Verification record
+
+- 148 tests passed across collector, scale domains, real dendrogram navigation,
+  owner/lifecycle behavior, and generated schema suites.
+- Workspace TypeScript checks passed after correcting the new fixture's required
+  concat column count; lint and formatting checks passed.
+- Regenerated schemas, docs assets, and the grammar type index. Zensical's clean
+  docs build passed. Used the existing virtualenv directly after uv's default
+  cache was sandbox-restricted.
+- Browser smoke checks passed for the clustered heatmap and existing viewport
+  signal example. Real WebGL zoom/pan/reset checks matched independently computed
+  contained-link maxima; zero baselines and both-axis clipping remained active.
+  Example zoom: column maximum 44.27 to 12.94, row maximum 50.53 to 17.79.
+- Main query helpers grew from 739 to 770 lines. The runtime and specification
+  changes add 43 net lines, with no new scheduling or indexing path.
+- Release policy checks passed; the optional Core feature requests a minor bump
+  in the configured fixed release group.

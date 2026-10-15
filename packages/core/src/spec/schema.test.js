@@ -132,7 +132,7 @@ describe("generated core schema", () => {
         }
     });
 
-    test("accepts viewport scale domains and rejects unknown sources", () => {
+    test("accepts viewport scale domains and rejects unknown sources and modes", () => {
         const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
@@ -142,7 +142,12 @@ describe("generated core schema", () => {
                 y: {
                     field: "y",
                     type: "quantitative",
-                    scale: { domain: { source: "viewport" } },
+                    scale: {
+                        domain: {
+                            source: "viewport",
+                            mode: /** @type {string | undefined} */ (undefined),
+                        },
+                    },
                 },
             },
         };
@@ -150,6 +155,13 @@ describe("generated core schema", () => {
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
         );
+        for (const mode of ["intersect", "contain"]) {
+            spec.encoding.y.scale.domain.mode = mode;
+            expect(validate(spec)).toBe(true);
+        }
+        spec.encoding.y.scale.domain.mode = "unknown";
+        expect(validate(spec)).toBe(false);
+        delete spec.encoding.y.scale.domain.mode;
         spec.encoding.y.scale.domain.source = "visible";
         expect(validate(spec)).toBe(false);
     });

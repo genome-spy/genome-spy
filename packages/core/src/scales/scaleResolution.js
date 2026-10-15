@@ -504,7 +504,7 @@ export default class ScaleResolution {
         return link;
     }
 
-    #hasViewportDomain() {
+    #getViewportDomainMode() {
         return validateSharedViewportDomain(
             this.#members,
             this.#getViewLevelDomainSource()
@@ -895,7 +895,7 @@ export default class ScaleResolution {
 
     /**
      * @param {ScaleResolutionMember} member
-     * @returns {{ channel: "x" | "y", domain: [number, number], accessor: import("../types/encoder.js").Accessor, accessor2?: import("../types/encoder.js").Accessor }[]}
+     * @returns {import("../data/viewportDomain.js").ViewportConstraint[]}
      */
     #getViewportConstraints(member) {
         return getViewportConstraints(
@@ -903,7 +903,8 @@ export default class ScaleResolution {
             this,
             /** @type {ChannelWithScale} */ (this.channel),
             (resolution) =>
-                this.#hasVisibleDependencyPath(resolution, new Set())
+                this.#hasVisibleDependencyPath(resolution, new Set()),
+            this.#getViewportDomainMode()
         );
     }
 
@@ -915,7 +916,7 @@ export default class ScaleResolution {
         if (resolution === this) {
             return true;
         }
-        if (visited.has(resolution) || !resolution.#hasViewportDomain()) {
+        if (visited.has(resolution) || !resolution.#getViewportDomainMode()) {
             return false;
         }
 
@@ -1025,7 +1026,7 @@ export default class ScaleResolution {
 
         const props = this.#getMergedScaleProps();
         const link = this.#getLinkedSelectionInfo();
-        const viewport = this.#hasViewportDomain();
+        const viewport = this.#getViewportDomainMode() !== undefined;
 
         // Pass resolved participants/configuration and scope-aware readers into
         // one replaceable binding. It derives source snapshots for the owner;
@@ -1213,7 +1214,7 @@ export default class ScaleResolution {
      */
     #validateViewportDomainConfiguration(props) {
         if (
-            !this.#hasViewportDomain() ||
+            !this.#getViewportDomainMode() ||
             props === null ||
             props.type === "null"
         ) {
@@ -1570,7 +1571,7 @@ export default class ScaleResolution {
             getScaleMemberAccessors(member).filter(
                 (accessor) => !accessor.channelDef.domainInert
             );
-        return this.#hasViewportDomain()
+        return this.#getViewportDomainMode()
             ? resolveVisibleDataDomain(
                   members,
                   () => this.type,

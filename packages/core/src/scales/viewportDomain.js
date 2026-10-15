@@ -37,7 +37,7 @@ export function isViewportDomainRef(domain) {
  *
  * @param {Set<ScaleResolutionMember>} members
  * @param {ConfiguredDomainSource | undefined} viewLevelDomain
- * @returns {boolean}
+ * @returns {ViewportDomainRef["mode"]}
  */
 export function validateSharedViewportDomain(members, viewLevelDomain) {
     /** @type {ConfiguredDomainSource[]} */
@@ -61,12 +61,21 @@ export function validateSharedViewportDomain(members, viewLevelDomain) {
     const visibleSources = sources.filter((source) =>
         isViewportDomainRef(source.domain)
     );
+    /** @type {Set<NonNullable<ViewportDomainRef["mode"]>>} */
+    const modes = new Set();
     for (const source of visibleSources) {
         if (source.type === NOMINAL || source.type === ORDINAL) {
             throw new Error(
                 `Viewport-derived domains require a continuous scale, but channel "${source.channel}" has type "${source.type}".`
             );
         }
+
+        const domain = /** @type {ViewportDomainRef} */ (source.domain);
+        const mode = domain.mode ?? "intersect";
+        if (mode !== "intersect" && mode !== "contain") {
+            throw new Error(`Unknown viewport domain mode: ${mode}.`);
+        }
+        modes.add(mode);
     }
 
     if (visibleSources.length > 0 && visibleSources.length !== sources.length) {
@@ -75,7 +84,11 @@ export function validateSharedViewportDomain(members, viewLevelDomain) {
         );
     }
 
-    return visibleSources.length > 0;
+    if (modes.size > 1) {
+        throw new Error("Cannot mix viewport domain modes on a shared scale.");
+    }
+
+    return modes.values().next().value;
 }
 
 /**
@@ -133,13 +146,15 @@ export function resolveVisibleDataDomain(
  * @param {import("./scaleResolution.js").default} targetResolution
  * @param {import("../spec/channel.js").ChannelWithScale} targetChannel
  * @param {(resolution: import("./scaleResolution.js").default) => boolean} hasDependencyPath
+ * @param {ViewportDomainRef["mode"]} mode
  * @returns {import("../data/viewportDomain.js").ViewportConstraint[]}
  */
 export function getViewportConstraints(
     member,
     targetResolution,
     targetChannel,
-    hasDependencyPath
+    hasDependencyPath,
+    mode
 ) {
     /** @type {import("../data/viewportDomain.js").ViewportConstraint[]} */
     const constraints = [];
@@ -180,6 +195,7 @@ export function getViewportConstraints(
             domain: [domain[0], domain.at(-1)],
             accessor,
             ...(accessor2 && { accessor2 }),
+            mode,
         });
     }
 

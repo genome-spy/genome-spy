@@ -1079,7 +1079,7 @@ SCHEMA ViewSpec
 
 ## ViewportDomainRef
 
-SCHEMA ViewportDomainRef
+See the [ViewportDomainRef documentation](scale.md#viewport-autoscaling).
 
 ## WigDataFormat
 
