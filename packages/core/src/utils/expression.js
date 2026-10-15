@@ -201,6 +201,8 @@ function buildFunctions(codegen, context) {
  *
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
+ * @typedef {ExpressionFunction & Required<Pick<ExpressionProps, "createEvaluator">>} CompiledExpressionFunction
+ *
  * @typedef {object} ExpressionCompileContext
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
@@ -390,7 +392,7 @@ function createScaleDependency(kind, resolution) {
  * @param {Record<string, any>} globalObject
  * @param {ExpressionCompileContext} context
  *
- * @returns {ExpressionFunction}
+ * @returns {CompiledExpressionFunction}
  */
 export default function createFunction(expr, globalObject = {}, context = {}) {
     try {
@@ -496,7 +498,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
             functionContext
         );
 
-        const exprFunction = /** @type {ExpressionFunction} */ (
+        const exprFunction = /** @type {CompiledExpressionFunction} */ (
             createEvaluator(globalObject)
         );
         // Reuse the compiled function so consumers can supply optimized global
