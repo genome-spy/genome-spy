@@ -14,9 +14,13 @@ Visibility/opacity state, not proof that a row produced visible pixels.
 
 > **configured**: `boolean`
 
+Host-configured visibility of this view.
+
 #### ancestorsVisible
 
 > **ancestorsVisible**: `boolean`
+
+Whether this view and all its layout ancestors are configured visible.
 
 #### opacity
 
@@ -29,6 +33,8 @@ Null when opacity cannot yet be evaluated to a finite value.
 ### source
 
 > **source**: [`ViewSourceDescription`](ViewSourceDescription.md) \| `null`
+
+Nearest authored primary source, or null when none exists.
 
 ***
 

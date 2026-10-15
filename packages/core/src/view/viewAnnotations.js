@@ -29,6 +29,9 @@ export function assessAnnotations(view) {
     const support = assessViewQuery(view, { channels: ["x", "y"] });
     if (support.status !== "ready") return support;
 
+    const point = /** @type {import("../marks/point.js").default} */ (
+        view.mark
+    );
     const encoding = view.getEncoding();
     const properties = typeof view.spec.mark === "object" ? view.spec.mark : {};
     for (const channel of /** @type {const} */ (["x", "y"])) {
@@ -48,19 +51,15 @@ export function assessAnnotations(view) {
             };
         }
     }
-    for (const channel of [
+    for (const channel of /** @type {const} */ ([
         "size",
         "shape",
         "angle",
         "strokeWidth",
         "semanticScore",
-    ]) {
-        const definition = /** @type {Record<string, any>} */ (encoding)[
-            channel
-        ];
-        const property = /** @type {Record<string, any>} */ (
-            view.mark.properties
-        )[channel];
+    ])) {
+        const definition = encoding[channel];
+        const property = point.properties[channel];
         if (hasDynamicValue(definition) || hasDynamicValue(property)) {
             return {
                 status: "unsupported",

@@ -115,7 +115,7 @@ Optional hook for handling launch and runtime errors. Return true to suppress de
 
 ### getSpecOrigin?
 
-> `optional` **getSpecOrigin?**: (`fragment`) => `string`
+> `optional` **getSpecOrigin?**: (`fragment`) => `string` \| `undefined`
 
 Links reported errors to locations in your specification.
 
@@ -139,4 +139,4 @@ definitions may share one source; its reports contain one definition's origin.
 
 #### Returns
 
-`string`
+`string` \| `undefined`

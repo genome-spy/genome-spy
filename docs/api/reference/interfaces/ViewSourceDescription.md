@@ -32,6 +32,8 @@ Whether the source meets its current viewport readiness policy.
 
 > **loadingStatus**: `"error"` \| `"loading"` \| `"complete"` \| `null`
 
+Null when this source has no registered loading status. Readiness is separate.
+
 ***
 
 ### coverage

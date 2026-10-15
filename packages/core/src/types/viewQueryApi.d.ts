@@ -48,11 +48,14 @@ export interface ViewQueryApi {
 export interface ViewDescription {
     /** Visibility/opacity state, not proof that a row produced visible pixels. */
     visibility: {
+        /** Host-configured visibility of this view. */
         configured: boolean;
+        /** Whether this view and all its layout ancestors are configured visible. */
         ancestorsVisible: boolean;
         /** Null when opacity cannot yet be evaluated to a finite value. */
         opacity: number | null;
     };
+    /** Nearest authored primary source, or null when none exists. */
     source: ViewSourceDescription | null;
 
     /** Current collector publication revision, or null without a collector. */
@@ -252,6 +255,7 @@ export interface ViewSourceDescription {
     dataRevision: number | null;
     /** Whether the source meets its current viewport readiness policy. */
     ready: boolean;
+    /** Null when this source has no registered loading status. Readiness is separate. */
     loadingStatus: "loading" | "complete" | "error" | null;
     coverage:
         | { type: "complete-source" }

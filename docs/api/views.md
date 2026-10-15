@@ -109,6 +109,51 @@ standalone `@genome-spy/core/browser` bundle with a separately bundled query
 module is not supported. Core does not load or include the query module unless
 the application imports it.
 
+### Choosing a hook
+
+These hooks let applications and agents inspect data behind a plot, summarize a
+selected region, and show findings on supported point tracks. They do not run
+models, generate candidates, fetch off-screen data, or record application history.
+
+| Hook | Use |
+| --- | --- |
+| `createViewQuery(api.views)` | Load optional inspection/analysis for this embed. |
+| `query.describe(view)` | Read track encoding, readiness, revision and visibility/opacity metadata. |
+| `query.describeSource(view)` | Check source loading, readiness and known publication bounds. |
+| `query.readData(view, {limit})` | Preview up to 1,000 loaded transformed rows. |
+| `data.retainForInspection` + `query.readSourceData(view, {limit})` | Opt in to reading loaded source rows before display transforms hide or reshape them. |
+| `query.assessQuery(view, scope)` | Check whether a viewport/interval query is ready, pending or unsupported. |
+| `query.queryData(view, options)` | Read, filter, summarize, group or rank loaded data in a captured viewport/brush scope. |
+| `query.assessAnnotations(view)` | Check whether a point track supports temporary annotations. |
+| `query.annotations.replace(set)` | Add labels, connectors and emphasis to queried point references. |
+| `query.annotations.clear()` / `inspect()` / `dispose()` | Clear, inspect or release the shared temporary annotation state. |
+| `view.getScaleResolution(channel)` | Access this view's resolved scale, including unnamed scales, for domain inspection and supported navigation. |
+
+For example, an agent can find high-scoring points inside a brush, compute a
+summary over all matching loaded rows, and label selected findings. A gene-track
+inspector can use retained source rows to include genes omitted by display-only
+lane filters. Neither result proves that the backing biological dataset is complete.
+
+### Missing values and explicit limits
+
+`undefined` marks an absent JavaScript lookup, such as a view with no scale for
+the requested channel. The new metadata records use `null` for explicitly absent
+or unknown values: no title, collector revision or primary source, unavailable
+loading status, or an opacity that cannot yet be evaluated to a finite number.
+These cases are distinct from readiness (`false`) and a valid empty result (`rows: []`).
+
+`limit: null` is an explicit request for every output row in `queryData` or every
+retained row in `readSourceData`. It is not an omitted/default limit. `readData`
+always requires a numeric limit. Empty aggregate results such as a mean are
+reported as `null`; analysis also normalizes missing input fields to `null`.
+Raw row reads otherwise preserve source values.
+
+The generated reference includes `null` and `undefined` where the declared API
+allows them. Strict null checking keeps those cases visible; it does not add
+nullable values to methods that always return a value or throw.
+
+### Reading transformed rows
+
 `query.describe(address)` returns detached title, description, authored and inherited encoding,
 data readiness and collector `dataRevision` metadata (null without a collector). Encoding excludes mark defaults and runtime
 adjustments. `dataReady` reports unit-view data readiness for the current viewport;
