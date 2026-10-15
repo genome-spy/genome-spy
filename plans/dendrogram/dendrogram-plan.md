@@ -1,6 +1,6 @@
 # Dendrogram implementation plan
 
-Status: implemented and independently reviewed on `codex/dendrogram`; all four milestones complete.
+Status: complete and reconciled for PR delivery on `codex/dendrogram`; all four milestones complete.
 Independently reviewed on 2026-10-14.
 
 ## Goal and scope
@@ -416,8 +416,8 @@ pipeline specialization so hit width does not enlarge visible geometry.
 
 ### M4 — Heatmap composition, documentation, and delivery
 
-- [x] Add a compact user-facing dendrogram/heatmap example with one link layer,
-      supplied merge heights, and a shared discrete row scale.
+- [x] Add a compact standalone documentation example with one link mark and
+      supplied merge heights; retain heatmap composition in focused Core examples.
 - [x] Add focused Core scenarios for grouping gaps/reversal and the existing
       diagonal presentation using the same layout output.
 - [x] Complete cross-component verification and document the accepted gap
@@ -448,6 +448,11 @@ User feedback caught swapped orientation routing: a horizontal elbow must be
 backends and docs, and made that coordinate an explicit integration assertion.
 The shared example scale is declared at its owning concat view, rather than in
 an inherited encoding overridden by its children.
+
+Final documentation feedback simplified the transform page to a standalone tree
+without explicit width or height. Its preview was regenerated and inspected.
+Heatmap alignment coverage now imports the existing Core grouping-gap example;
+the focused schema, initialization, and SVG checks passed.
 
 Independent implementation review found two short-leg defects: folded GPU
 miter strips could overdraw translucent strokes, and software picking filled
@@ -517,15 +522,17 @@ successful unit-only implementation is not sufficient for the new stroke path.
   Large row coordinates retain existing JS/GPU precision limits; a leaf at a
   large index remains an integer, but very small derived fractions may round.
 
-User input would be useful on these product choices; the proposed defaults allow
-the implementation to proceed without broadening the first release:
+Accepted defaults for this release; the remaining options are deliberately
+deferred rather than unfinished implementation tasks:
 
 1. **First input source:** use the flat node table above, with small SciPy/R
    conversion examples. A representative real clustering export would help
-   decide whether a native importer should replace one of those examples.
+   decide whether a native importer should replace one of those examples later.
 2. **Leaf ordering:** require the explicit heatmap-compatible `leafIndex` field
    initially. Automatically deriving and publishing a leaf-order mapping is a
    separate API decision, especially if the App should own sample reordering.
+   Dataflow parameter publication and data-derived grouping gaps belong in a
+   separate PR under issue #513, as agreed with the user.
 3. **Node output:** emit links and preserve child metadata initially. Add a
    node-output mode only if separate internal-node marks/labels are needed now.
 4. **Multifurcations:** support them with ordinary overlapping-edge semantics.
@@ -550,11 +557,11 @@ actionable findings were incorporated:
 
 The optional multifurcation finding is documented with ordinary overlap/paint
 order semantics. Special trunk deduplication remains deferred pending a concrete
-styling/picking requirement. No required review finding remains unaddressed in
-the plan; the product choices above remain open with explicit proposed defaults.
-This is a design review, not evidence that the unimplemented feature passes tests.
+styling/picking requirement. No required review finding remains unaddressed.
+Independent implementation review and the verification recorded above cover
+the completed feature.
 
-No implementation commits are created by this planning task. During delivery,
-complete or explicitly discard every incomplete milestone, commit the reconciled
-record, then delete this temporary plan in a later commit before creating a PR
-or merging. Do not merge temporary plan files.
+All required milestones are complete. Native importers, automatic ordering,
+node-output mode, shared-trunk styling, and reactive parameter publication are
+explicitly deferred from this release. Commit this reconciled record, then
+delete the temporary plan in a later commit before creating the PR.
