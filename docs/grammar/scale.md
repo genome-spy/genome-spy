@@ -291,10 +291,21 @@ then derives the quantitative scale domain from data in the current positional
 viewport. This is useful for autoscaling a genomic signal's y-axis or a scatter
 plot's size or color while zooming and panning.
 
+For dendrogram heights, `domain: { "source": "viewport", "mode": "contain" }`
+fits the scale to links whose positional endpoints are both inside the viewport.
+Boundary-crossing branches then no longer determine the height domain. Clip
+the link mark on both axes to keep those branches inside the panel. See the
+[clustered heatmap](../examples/generic/clustered-heatmap.md).
+
+SCHEMA ViewportDomainRef
+
+Configured viewport domains on a shared scale must use the same mode. Members
+without a configured domain inherit that mode.
+
 GenomeSpy calculates the domain shortly after navigation pauses and applies the
-normal smooth domain transition. Existing scale options such as `zero`, `nice`,
-`domainMin`, and `domainMax` still apply. If a ready viewport has no values, the
-scale retains its last nonempty domain.
+normal smooth domain transition. Existing scale options such as `padding`,
+`zero`, `nice`, `domainMin`, and `domainMax` still apply. If a ready viewport has
+no values, the scale retains its last nonempty domain.
 
 GenomeSpy uses at least one continuous x or y scale to determine which data are
 inside the viewport. The domain of that positional scale must not depend on the

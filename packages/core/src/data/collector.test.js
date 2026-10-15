@@ -278,29 +278,45 @@ describe("Viewport domains", () => {
     const y = createAccessor("y", "y");
     const size = createAccessor("size", "size");
 
-    test("uses exact point and half-open interval boundaries", () => {
-        const collector = new Collector();
-        const values = [
-            { x: 0, x2: 2, y: 10 },
-            { x: 2, x2: 4, y: 20 },
-            { x: 3, x2: 3, y: 30 },
-            { x: 4, x2: 5, y: 40 },
-        ];
-        for (const datum of values) {
-            collector.handle(datum);
+    test.each([
+        { mode: undefined, expected: [20, 30] },
+        { mode: /** @type {const} */ ("intersect"), expected: [20, 30] },
+        { mode: /** @type {const} */ ("contain"), expected: [25, 30] },
+    ])(
+        "uses exact point and interval boundaries, mode=$mode",
+        ({ mode, expected }) => {
+            const collector = new Collector();
+            const values = [
+                { x: 0, x2: 2, y: 10 },
+                { x: 2, x2: 4, y: 20 },
+                { x: 3, x2: 3, y: 30 },
+                { x: 3, x2: 2, y: 25 },
+                { x: 4, x2: 5, y: 40 },
+            ];
+            for (const datum of values) {
+                collector.handle(datum);
+            }
+            collector.complete();
+
+            const domain = collector.getViewportDomain(
+                "quantitative|y|field|y",
+                "quantitative",
+                y,
+                [
+                    {
+                        channel: "x",
+                        domain: [3, 2],
+                        accessor: x,
+                        accessor2: x2,
+                        mode,
+                    },
+                ]
+            );
+
+            expect(toRegularArray(domain)).toEqual(expected);
+            expect(collector.getViewportIndexCount()).toBe(0);
         }
-        collector.complete();
-
-        const domain = collector.getViewportDomain(
-            "quantitative|y|field|y",
-            "quantitative",
-            y,
-            [{ channel: "x", domain: [2, 3], accessor: x, accessor2: x2 }]
-        );
-
-        expect(toRegularArray(domain)).toEqual([20, 30]);
-        expect(collector.getViewportIndexCount()).toBe(0);
-    });
+    );
 
     test.each(["ascending", "descending"])(
         "builds an index for %s x-sorted points",
@@ -354,7 +370,10 @@ describe("Viewport domains", () => {
         expect(collector.getViewportIndexCount()).toBe(1);
     });
 
-    test("indexes x-sorted intervals without changing overlap semantics", () => {
+    test.each([
+        { mode: undefined, expected: [247, 511] },
+        { mode: /** @type {const} */ ("contain"), expected: [256, 502] },
+    ])("indexes x-sorted intervals, mode=$mode", ({ mode, expected }) => {
         const collector = new Collector({
             type: "collect",
             sort: { field: "x" },
@@ -374,11 +393,12 @@ describe("Viewport domains", () => {
                     domain: [256, 512],
                     accessor: x,
                     accessor2: x2,
+                    mode,
                 },
             ]
         );
 
-        expect(toRegularArray(domain)).toEqual([247, 511]);
+        expect(toRegularArray(domain)).toEqual(expected);
         expect(collector.getViewportIndexCount()).toBe(1);
     });
 
@@ -442,22 +462,26 @@ describe("Viewport domains", () => {
             [0, 1],
             [255, 512],
             [1000, 900],
+            [0, 2000],
         ])) {
-            const constraints = [
-                { channel: "x", domain, accessor: x, accessor2: x2 },
-            ];
-            /** @param {Collector} collector */
-            const query = (collector) =>
-                toRegularArray(
-                    collector.getViewportDomain(
-                        "quantitative|y|field|y",
-                        "quantitative",
-                        y,
-                        /** @type {any} */ (constraints)
-                    )
-                );
+            // Alternate modes on the same cached index and target summaries.
+            for (const mode of [undefined, "contain"]) {
+                const constraints = [
+                    { channel: "x", domain, accessor: x, accessor2: x2, mode },
+                ];
+                /** @param {Collector} collector */
+                const query = (collector) =>
+                    toRegularArray(
+                        collector.getViewportDomain(
+                            "quantitative|y|field|y",
+                            "quantitative",
+                            y,
+                            /** @type {any} */ (constraints)
+                        )
+                    );
 
-            expect(query(indexed)).toEqual(query(exact));
+                expect(query(indexed)).toEqual(query(exact));
+            }
         }
     });
 

@@ -88,7 +88,7 @@
         "orient": "vertical",
         "size": 0.9,
         "minPickingSize": 5,
-        "clip": "x"
+        "clip": true
       },
       "encoding": {
         "x": {
@@ -110,7 +110,13 @@
         "y": {
           "field": "sourceHeight",
           "type": "quantitative",
-          "scale": { "zero": true, "nice": false, "zoom": false },
+          "scale": {
+            "domain": { "source": "viewport", "mode": "contain" },
+            "padding": 0.02,
+            "zero": true,
+            "nice": false,
+            "zoom": false
+          },
           "axis": null
         },
         "y2": { "field": "targetHeight" },
@@ -182,13 +188,15 @@
         "orient": "horizontal",
         "size": 0.9,
         "minPickingSize": 5,
-        "clip": "y"
+        "clip": true
       },
       "encoding": {
         "x": {
           "field": "sourceHeight",
           "type": "quantitative",
           "scale": {
+            "domain": { "source": "viewport", "mode": "contain" },
+            "padding": 0.02,
             "reverse": true,
             "zero": true,
             "nice": false,

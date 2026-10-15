@@ -102,6 +102,7 @@
   "VariableParameter": "/grammar/parameters/",
   "VcfData": "/grammar/data/lazy/#parameters_4",
   "ViewConfig": "/grammar/config/#view-size-defaults",
+  "ViewportDomainRef": "/grammar/scale/#viewport-autoscaling",
   "WindowParams": "/grammar/transform/window/#parameters",
   "ZarrBackendDef": "/sample-collections/metadata-sources/#zarr-backend-schema",
   "ZarrMatrixLayoutDef": "/sample-collections/metadata-sources/#zarr-layout-details",
@@ -283,7 +284,6 @@
   "ViewBackground": "/grammar/types/#viewbackground",
   "ViewOpacityDef": "/grammar/types/#viewopacitydef",
   "ViewSpec": "/grammar/types/#viewspec",
-  "ViewportDomainRef": "/grammar/types/#viewportdomainref",
   "WigDataFormat": "/grammar/types/#wigdataformat",
   "WindowOnlyOp": "/grammar/types/#windowonlyop",
   "WindowOp": "/grammar/types/#windowop"

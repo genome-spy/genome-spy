@@ -250,7 +250,9 @@ describe("viewport domain declarations", () => {
                 ),
                 configuredMember(undefined),
             ]);
-            expect(validateSharedViewportDomain(members, undefined)).toBe(true);
+            expect(validateSharedViewportDomain(members, undefined)).toBe(
+                "intersect"
+            );
             expect(
                 resolveConfiguredDomain(
                     members,
@@ -296,9 +298,9 @@ describe("viewport domain declarations", () => {
         const source = {
             channel: "y",
             type: "quantitative",
-            domain: { source: "viewport" },
+            domain: { source: "viewport", mode: "contain" },
         };
-        expect(validateSharedViewportDomain(new Set(), source)).toBe(true);
+        expect(validateSharedViewportDomain(new Set(), source)).toBe("contain");
         expect(
             resolveConfiguredDomain(
                 new Set(),

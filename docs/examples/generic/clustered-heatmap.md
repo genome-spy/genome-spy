@@ -34,6 +34,10 @@ derived from expression and can span multiple cancer lineages. The three
 annotation strips show cancer lineage, growth pattern, and primary/metastatic
 sample origin. Gray sample-origin cells indicate unknown values.
 
+Zooming and panning fit each tree's height scale to links whose two index
+anchors are inside the visible range. Local branches can then use the available
+panel space. Branches extending beyond the fitted height domain are clipped.
+
 ## Preparing the data
 
 GenomeSpy does not perform clustering. This visualization loads a wide
@@ -67,6 +71,7 @@ gene tree above the heatmap and the cell-line tree to its left. The matrix and
 gene tree share an x [`index` scale](../../grammar/scale.md#index-scale); the
 matrix, cell-line tree, labels, and annotation strips share the y scale. Each
 tree excludes its quantitative merge-height axis from this scale sharing.
+Its height domain uses viewport autoscaling with `mode: "contain"`.
 The dendrogram's fractional offsets are converted to pixels with
 [`bandstep()`](../../grammar/expressions.md#bandstep), keeping branches connected
 as the view changes size or zoom level. Explicit `gapPositions` on the index

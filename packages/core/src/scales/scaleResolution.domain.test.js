@@ -1269,37 +1269,75 @@ describe("Scale resolution domain handling", () => {
         ).rejects.toThrow("form a dependency cycle");
     });
 
-    test("implicit members participate in a shared viewport-domain resolution", async () => {
-        const view = await initView(
-            {
-                resolve: { scale: { y: "shared" } },
-                layer: [
-                    {
-                        data: { values: [{ x: 0, y: 2 }] },
+    test.each([
+        { mode: "intersect", maximum: 100 },
+        { mode: "contain", maximum: 5 },
+    ])(
+        "implicit members inherit shared viewport mode $mode",
+        async ({ mode, maximum }) => {
+            const view = await initView(
+                {
+                    resolve: { scale: { y: "shared" } },
+                    scales: { x: { domain: [0, 2] } },
+                    layer: [
+                        {
+                            data: { values: [{ x: 0, x2: 1, y: 2 }] },
+                            mark: "rule",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                x2: { field: "x2" },
+                                y: {
+                                    field: "y",
+                                    type: "quantitative",
+                                    scale: {
+                                        domain: { source: "viewport", mode },
+                                    },
+                                },
+                            },
+                        },
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, x2: 2, y: 5 },
+                                    { x: -1, x2: 3, y: 100 },
+                                ],
+                            },
+                            mark: "rule",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                x2: { field: "x2" },
+                                y: { field: "y", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                LayerView
+            );
+
+            expect(getScaleDomain(view, "y")).toEqual([0, maximum]);
+        }
+    );
+
+    test("shared viewport domains reject conflicting modes", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [{ x: 0, y: 2 }] },
+                    layer: ["contain", undefined].map((mode) => ({
                         mark: "point",
                         encoding: {
                             x: { field: "x", type: "quantitative" },
                             y: {
                                 field: "y",
                                 type: "quantitative",
-                                scale: { domain: { source: "viewport" } },
+                                scale: { domain: { source: "viewport", mode } },
                             },
                         },
-                    },
-                    {
-                        data: { values: [{ x: 1, y: 5 }] },
-                        mark: "point",
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                            y: { field: "y", type: "quantitative" },
-                        },
-                    },
-                ],
-            },
-            LayerView
-        );
-
-        expect(getScaleDomain(view, "y")).toEqual([0, 5]);
+                    })),
+                },
+                LayerView
+            )
+        ).rejects.toThrow("Cannot mix viewport domain modes");
     });
 
     test("viewport domains reject discrete scales", async () => {

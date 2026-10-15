@@ -328,6 +328,17 @@ export interface ViewportDomainRef {
      * data-derived domain options, such as `zero` and `nice`, still apply.
      */
     source: "viewport";
+
+    /**
+     * Determines which positional values contribute to the domain.
+     * `"intersect"` includes intervals that overlap the viewport. `"contain"`
+     * requires both endpoints to be inside it, including its boundaries.
+     * Points use inclusive boundaries in either mode. Encoded values are tested
+     * before applying band placement or pixel offsets.
+     *
+     * __Default value:__ `"intersect"`.
+     */
+    mode?: "intersect" | "contain";
 }
 
 export interface SchemeParams {
