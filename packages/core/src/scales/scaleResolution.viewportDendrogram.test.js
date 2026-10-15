@@ -13,7 +13,7 @@ test.each(["horizontal", "vertical"])(
                 source: /** @type {const} */ ("viewport"),
                 mode: /** @type {const} */ ("contain"),
             },
-            padding: 0.05,
+            padding: 0.02,
             zero: true,
             nice: false,
             zoom: false,
@@ -95,8 +95,8 @@ test.each(["horizontal", "vertical"])(
             const scale = height.getScale();
             const baseline = scale(0);
             const top = scale(maximum);
-            expect(Math.min(baseline, top)).toBeCloseTo(0.05);
-            expect(Math.max(baseline, top)).toBeCloseTo(0.95);
+            expect(Math.min(baseline, top)).toBeCloseTo(0.02);
+            expect(Math.max(baseline, top)).toBeCloseTo(0.98);
         };
         expectHeightPadding(10);
 
