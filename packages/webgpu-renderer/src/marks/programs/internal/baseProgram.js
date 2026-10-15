@@ -1010,7 +1010,7 @@ export default class BaseProgram {
      *
      * @param {string} name
      * @param {number | number[]} value
-     * @protected
+     * @internal
      */
     _setExtraUniformValue(name, value) {
         this._setUniformValue(name, value);

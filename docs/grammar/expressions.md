@@ -212,9 +212,27 @@ resolved against the current view's scale resolution.
 
 <a name="bandwidth" href="#bandwidth">#</a>
 <b>bandwidth</b>(<i>channel</i>)<br/>
-Returns the current bandwidth of a band-like scale for the given channel. The
-value uses the same units as the scale range. For positional scales, multiply
-the result by `width` or `height` to convert it to pixels.
+Returns the size of an individual band on a band-like scale for the given
+channel, excluding padding between bands. The value uses the same units as the
+scale range. For positional scales, multiply the result by `width` or `height`
+to convert it to pixels. See [`bandstep()`](#bandstep) for the spacing between
+bands.
+
+<a name="bandstep" href="#bandstep">#</a>
+<b>bandstep</b>(<i>channel</i>, <i>extent?</i>)<br/>
+Returns the signed regular spacing from one band's start to the next on a band,
+point, index, or locus scale, in scale-range units. This includes padding between
+bands; [`bandwidth()`](#bandwidth) measures only the band itself. For example,
+8 px bands separated by 2 px of padding have an 8 px bandwidth and a 10 px step.
+Extra grouping gaps are excluded from this regular spacing.
+
+For positional scales, multiply by `width` or `height` to convert to pixels.
+Pixel y offsets increase downward, so a relative row offset uses
+`-height * bandstep('y', height)`.
+
+Pass the actual pixel extent when the scale has grouping gaps: `bandstep('x', width)`
+or `bandstep('y', height)`. This keeps fixed gap widths consistent during resize.
+A zero extent returns zero while the view is being arranged.
 
 <a name="zoomLevel" href="#zoomLevel">#</a>
 <b>zoomLevel</b>()<br/>

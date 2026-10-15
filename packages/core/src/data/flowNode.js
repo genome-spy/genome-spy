@@ -78,6 +78,11 @@ export default class FlowNode {
         return 0;
     }
 
+    /** Whether output rows need identities distinct from the input rows. */
+    get createsNewIdentity() {
+        return false;
+    }
+
     /**
      * Scale channels whose current domain affects this node's output.
      * Downstream views must not feed these channels back into shared-domain

@@ -1,12 +1,36 @@
 /**
  * @typedef {object} LinkGeometryOptions
- * @prop {"arc" | "dome" | "diagonal" | "line"} shape
+ * @prop {"arc" | "dome" | "diagonal" | "line" | "orthogonal"} shape
  * @prop {"vertical" | "horizontal"} orient
  * @prop {number} arcHeightFactor
  * @prop {number} minArcHeight
  * @prop {number} maxChordLength
  * @prop {boolean} clampApex
  */
+
+/**
+ * @typedef {[number, number]} LinkPoint
+ * @typedef {{type: "cubic", points: [LinkPoint, LinkPoint, LinkPoint, LinkPoint]} |
+ *     {type: "orthogonal", points: [LinkPoint, LinkPoint, LinkPoint]}} LinkGeometry
+ */
+
+/**
+ * Returns exact path geometry in bottom-left logical pixels.
+ * @param {LinkPoint} a
+ * @param {LinkPoint} b
+ * @param {{width: number, height: number}} viewport
+ * @param {LinkGeometryOptions} options
+ * @returns {LinkGeometry}
+ */
+export function getLinkGeometry(a, b, viewport, options) {
+    if (options.shape == "orthogonal") {
+        const elbow = /** @type {LinkPoint} */ (
+            options.orient == "horizontal" ? [a[0], b[1]] : [b[0], a[1]]
+        );
+        return { type: "orthogonal", points: [a, elbow, b] };
+    }
+    return { type: "cubic", points: getBezierPoints(a, b, viewport, options) };
+}
 
 /**
  * Computes the same cubic Bezier control points as the link vertex shader.

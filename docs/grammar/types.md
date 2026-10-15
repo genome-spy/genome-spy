@@ -209,6 +209,10 @@ SCHEMA DataSource
 
 SCHEMA DebouncedExprParameter
 
+## DendrogramParams
+
+See the [DendrogramParams documentation](transform/dendrogram.md#parameters).
+
 ## DirectionDef
 
 SCHEMA DirectionDef
@@ -820,6 +824,14 @@ SCHEMA SearchDef
 ## SecondaryChromPosDef
 
 SCHEMA SecondaryChromPosDef
+
+## SecondaryOffsetChannel
+
+SCHEMA SecondaryOffsetChannel
+
+## SecondaryOffsetDef
+
+SCHEMA SecondaryOffsetDef
 
 ## SecondaryPositionalChannel
 

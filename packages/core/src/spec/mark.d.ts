@@ -803,16 +803,21 @@ export interface LinkProps
      * The primary positional channel determines the apex of the arc and the secondary
      * determines the endpoint placement.
      * The `"diagonal"` shape draws an "S"-shaped curve between the two points.
+     * The `"orthogonal"` shape draws two straight legs joined at a right angle,
+     * with butt caps and a miter join. Coincident endpoints draw nothing.
      * The `"line"` shape draws a straight line between the two points. See an
      * [example](#different-link-shapes-and-orientations) of the different shapes below.
      *
      * **Default value:** `"arc"`
      */
-    linkShape?: "arc" | "diagonal" | "line" | "dome" | ExprRef;
+    linkShape?: "arc" | "diagonal" | "line" | "dome" | "orthogonal" | ExprRef;
 
     /**
      * The orientation of the link path. Either `"vertical"` or `"horizontal"`.
-     * Only applies to diagonal links.
+     * Applies to dome, diagonal, and orthogonal links. Orthogonal links place
+     * the elbow at the source position along the orientation axis:
+     * horizontal uses `(x, y2)`; vertical uses `(x2, y)`.
+     * With parent-to-child tree edges, the turn stays at the parent's merge height.
      *
      * **Default value:** `"vertical"`
      */

@@ -50,6 +50,8 @@ export function renderLinkSvg(baseMark, options) {
     });
     group.setAttribute("fill", "none");
     group.setAttribute("stroke-linecap", "butt");
+    group.setAttribute("stroke-linejoin", "miter");
+    group.setAttribute("stroke-miterlimit", "2");
     /** @type {SVGGElement} */
     let pathGroup = group;
 
@@ -59,8 +61,7 @@ export function renderLinkSvg(baseMark, options) {
         mark,
         properties,
         { coords, data, visibleBounds },
-        ({ datum, points }) => {
-            const [p1, p2, p3, p4] = points;
+        ({ datum, geometry }) => {
             if (options.countOnly) {
                 return;
             }
@@ -69,13 +70,18 @@ export function renderLinkSvg(baseMark, options) {
             if (!constantOpacity) {
                 styles["stroke-opacity"] = encodeOpacity(datum);
             }
-            const mask = arcFadingDistance
-                ? options.getLinkArcFadeMaskUrl({
-                      p1: /** @type {[number, number]} */ (p1),
-                      p4: /** @type {[number, number]} */ (p4),
-                      distances: arcFadingDistance,
-                  })
-                : undefined;
+            const mask =
+                arcFadingDistance && geometry.type == "cubic"
+                    ? options.getLinkArcFadeMaskUrl({
+                          p1: /** @type {[number, number]} */ (
+                              geometry.points[0]
+                          ),
+                          p4: /** @type {[number, number]} */ (
+                              geometry.points[3]
+                          ),
+                          distances: arcFadingDistance,
+                      })
+                    : undefined;
             if (mask !== currentMask) {
                 currentMask = mask;
                 pathGroup = mask ? createSvgElement("g", { mask }) : group;
@@ -85,7 +91,10 @@ export function renderLinkSvg(baseMark, options) {
             }
             pathGroup.appendChild(
                 createSvgElement("path", {
-                    d: `M ${formatSvgPoint(p1)} C ${formatSvgPoint(p2)} ${formatSvgPoint(p3)} ${formatSvgPoint(p4)}`,
+                    d:
+                        geometry.type == "orthogonal"
+                            ? `M ${formatSvgPoint(geometry.points[0])} L ${formatSvgPoint(geometry.points[1])} L ${formatSvgPoint(geometry.points[2])}`
+                            : `M ${formatSvgPoint(geometry.points[0])} C ${geometry.points.slice(1).map(formatSvgPoint).join(" ")}`,
                     ...styles,
                 })
             );

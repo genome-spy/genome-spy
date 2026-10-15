@@ -17,7 +17,14 @@ export default class LinkMark extends Mark {
 
     /** @returns {import("../spec/channel.js").Channel[]} */
     getSupportedChannels() {
-        return [...super.getSupportedChannels(), "x2", "y2", "size"];
+        return [
+            ...super.getSupportedChannels(),
+            "x2",
+            "y2",
+            "x2Offset",
+            "y2Offset",
+            "size",
+        ];
     }
 
     /**

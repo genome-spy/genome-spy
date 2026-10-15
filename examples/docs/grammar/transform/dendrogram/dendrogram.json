@@ -1,0 +1,70 @@
+{
+  "description": [
+    "Unbalanced dendrogram",
+    "A precomputed tree rendered with one orthogonal link mark. Pan and zoom vertically to explore the discrete leaf positions."
+  ],
+
+  "data": {
+    "values": [
+      { "id": "A", "parent": "AB", "height": 0, "row": 0 },
+      { "id": "B", "parent": "AB", "height": 0, "row": 1 },
+      { "id": "C", "parent": "ABC", "height": 0, "row": 2 },
+      { "id": "D", "parent": "root", "height": 0, "row": 3 },
+      { "id": "AB", "parent": "ABC", "height": 0.8 },
+      { "id": "ABC", "parent": "root", "height": 1.6 },
+      { "id": "root", "parent": null, "height": 3 }
+    ]
+  },
+  "transform": [
+    {
+      "type": "dendrogram",
+      "key": "id",
+      "parentKey": "parent",
+      "height": "height",
+      "leafIndex": "row"
+    }
+  ],
+
+  "scales": {
+    "y": {
+      "type": "index",
+      "domain": [0, 3],
+      "paddingInner": 0.08,
+      "paddingOuter": 0.15
+    }
+  },
+
+  "mark": {
+    "type": "link",
+    "linkShape": "orthogonal",
+    "orient": "horizontal",
+    "clip": "y",
+    "size": 1.5
+  },
+  "encoding": {
+    "x": {
+      "field": "sourceHeight",
+      "type": "quantitative",
+      "scale": { "domain": [0, 3], "reverse": true, "zoom": false },
+      "axis": { "title": "Merge height" }
+    },
+    "x2": { "field": "targetHeight" },
+    "y": {
+      "field": "sourceIndex",
+      "type": "index",
+      "band": 0.5,
+      "axis": { "orient": "right", "title": "Leaf index" }
+    },
+    "y2": { "field": "targetIndex", "band": 0.5 },
+    "yOffset": {
+      "field": "sourceOffset",
+      "type": "quantitative",
+      "scale": {
+        "domain": [0, 1],
+        "range": [0, { "expr": "-height * bandstep('y', height)" }]
+      }
+    },
+    "y2Offset": { "field": "targetOffset" },
+    "color": { "value": "#34495e" }
+  }
+}

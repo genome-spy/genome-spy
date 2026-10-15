@@ -26,7 +26,7 @@
     "size": { "value": 2 }
   },
 
-  "columns": 4,
+  "columns": 5,
 
   "spacing": 20,
 
@@ -44,6 +44,13 @@
       "mark": { "type": "link", "linkShape": "line", "orient": "vertical" }
     },
     {
+      "mark": {
+        "type": "link",
+        "linkShape": "orthogonal",
+        "orient": "vertical"
+      }
+    },
+    {
       "mark": { "type": "link", "linkShape": "arc", "orient": "horizontal" }
     },
     {
@@ -58,6 +65,13 @@
     },
     {
       "mark": { "type": "link", "linkShape": "line", "orient": "horizontal" }
+    },
+    {
+      "mark": {
+        "type": "link",
+        "linkShape": "orthogonal",
+        "orient": "horizontal"
+      }
     }
   ],
 

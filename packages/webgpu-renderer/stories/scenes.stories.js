@@ -13,6 +13,7 @@ import runRectClampingScene from "../examples/rectClampingScene.js";
 import runIndexScene from "../examples/indexScene.js";
 import runRuleScene from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
+import runOrthogonalLinkScene from "../examples/orthogonalLinkScene.js";
 import runArrowScene from "../examples/arrowScene.js";
 import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
@@ -332,3 +333,17 @@ export const IndexGroupingGaps = withSource(
         render: (args) => renderScene(runIndexGapScene, args),
     }
 );
+
+export const OrthogonalLinks = withSource("runOrthogonalLinkScene", null, {
+    args: { shape: "orthogonal", orient: "horizontal", size: 3, opacity: 0.5 },
+    argTypes: {
+        shape: {
+            control: "select",
+            options: ["orthogonal", "diagonal", "line"],
+        },
+        orient: { control: "select", options: ["horizontal", "vertical"] },
+        size: { control: { type: "range", min: 0.5, max: 20, step: 0.5 } },
+        opacity: { control: { type: "range", min: 0.1, max: 1, step: 0.1 } },
+    },
+    render: (args) => renderScene(runOrthogonalLinkScene, args),
+});

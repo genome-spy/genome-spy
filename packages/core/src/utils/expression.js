@@ -18,6 +18,7 @@ import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
 import { annotateSpecError } from "./specError.js";
 import compileDatumAccessor from "./compileDatumAccessor.js";
+import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -178,6 +179,7 @@ function buildFunctions(codegen, context) {
         "domain",
         "range",
         "bandwidth",
+        "bandstep",
         "linearize",
         "zoomLevel",
     ])) {
@@ -205,7 +207,7 @@ function buildFunctions(codegen, context) {
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
- * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "linearize" | "zoomLevel"} ScaleHelperKind
+ * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "bandstep" | "linearize" | "zoomLevel"} ScaleHelperKind
  *
  * @typedef {ExpressionCompileContext & {
  *   globalvar: string,
@@ -256,6 +258,12 @@ function buildScaleHelperCall(codegen, context, kind, args) {
     if (kind === "zoomLevel" && args.length > 1) {
         throw new Error(
             'Scale helper "zoomLevel" accepts zero arguments or one literal channel name.'
+        );
+    }
+
+    if (kind === "bandstep" && args.length > 2) {
+        throw new Error(
+            'Scale helper "bandstep" accepts a channel and an optional pixel extent.'
         );
     }
 
@@ -323,6 +331,41 @@ function createScaleHelperFunction(kind, resolution) {
                     );
                 }
                 return scale.bandwidth();
+            });
+    }
+    if (kind === "bandstep") {
+        return (extent) =>
+            run(() => {
+                const scale =
+                    /** @type {import("../genome/scaleIndex.js").ScaleIndex & { type: string, props?: import("../spec/scale.js").Scale }} */ (
+                        resolution.getScale()
+                    );
+                if (typeof scale.step !== "function") {
+                    throw new Error(
+                        `Scale channel "${resolution.channel}" does not support bandstep().`
+                    );
+                }
+                if (
+                    extent !== undefined &&
+                    (!Number.isFinite(extent) || extent < 0)
+                ) {
+                    throw new Error(
+                        "bandstep() extent must be finite and nonnegative."
+                    );
+                }
+                if (hasGroupingGaps(scale.props) && extent === undefined) {
+                    throw new Error(
+                        "bandstep() requires a pixel extent for a scale with grouping gaps."
+                    );
+                }
+                // Before arrangement, a zero-sized placement has no pixel displacement.
+                if (extent === 0) return 0;
+                const step = scale.gapMapping?.(extent)?.step ?? scale.step();
+                const range = scale.range();
+                return (
+                    Math.sign(range[range.length - 1] - range[0]) *
+                    Math.abs(step)
+                );
             });
     }
     if (kind === "scale") {

@@ -279,3 +279,108 @@ for (const [
         }
     });
 }
+
+for (const orient of ["vertical", "horizontal"]) {
+    test(`orthogonal ${orient} links join once and expand only picking`, async ({
+        page,
+    }) => {
+        await ensureWebGPU(page);
+        const results = await page.evaluate(async (orient) => {
+            const [{ createRenderer }, { linkMark }] = await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/link.js"),
+            ]);
+            const canvas = document.createElement("canvas");
+            canvas.width = canvas.height = 128;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.context.configure({
+                device: renderer.device,
+                format: renderer.format,
+                alphaMode: "premultiplied",
+                usage:
+                    GPUTextureUsage.RENDER_ATTACHMENT |
+                    GPUTextureUsage.COPY_SRC,
+            });
+            renderer.updateGlobals({ width: 128, height: 128, dpr: 1 });
+            const results = [];
+            for (const reversed of [false, true]) {
+                const a = reversed ? [100, 20] : [20, 100];
+                const b = reversed ? [20, 100] : [100, 20];
+                const elbow =
+                    orient == "horizontal" ? [a[0], b[1]] : [b[0], a[1]];
+                const mark = renderer.createMark(linkMark, {
+                    count: 1,
+                    linkShape: "orthogonal",
+                    orient,
+                    segments: 1,
+                    minPickingSize: 8,
+                    channels: {
+                        uniqueId: { value: 17, type: "u32" },
+                        x: { value: a[0] },
+                        y: { value: a[1] },
+                        x2: { value: b[0] },
+                        y2: { value: b[1] },
+                        size: { value: 2 },
+                        color: { value: [1, 0, 0, 1] },
+                        opacity: { value: 0.5 },
+                    },
+                });
+                // Shape updates also change the draw's vertex count.
+                mark.properties.linkShape.set("diagonal");
+                renderer.render({ draws: [{ mark }] });
+                mark.properties.linkShape.set("orthogonal");
+                renderer.render({
+                    draws: [{ mark }],
+                    clearColor: { r: 0, g: 0, b: 0, a: 0 },
+                });
+                const buffer = renderer.device.createBuffer({
+                    size: 512 * 128,
+                    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+                });
+                const encoder = renderer.device.createCommandEncoder();
+                encoder.copyTextureToBuffer(
+                    { texture: renderer.context.getCurrentTexture() },
+                    { buffer, bytesPerRow: 512 },
+                    { width: 128, height: 128 }
+                );
+                renderer.device.queue.submit([encoder.finish()]);
+                await buffer.mapAsync(GPUMapMode.READ);
+                const bytes = new Uint8Array(buffer.getMappedRange());
+                const alphaAt = ([x, y]) => bytes[y * 512 + x * 4 + 3];
+                const middle = [(a[0] + elbow[0]) / 2, (a[1] + elbow[1]) / 2];
+                const nearby =
+                    orient == "horizontal"
+                        ? [middle[0] + 3, middle[1]]
+                        : [middle[0], middle[1] + 3];
+                const alpha = [
+                    alphaAt(middle),
+                    alphaAt(elbow),
+                    alphaAt(nearby),
+                ];
+                buffer.unmap();
+                buffer.destroy();
+                const picks = [];
+                for (const [x, y] of [middle, elbow, nearby, [60, 60]]) {
+                    picks.push(await renderer.pick(x, y));
+                }
+                mark.properties.minPickingSize.set(2);
+                renderer.render({ draws: [{ mark }] });
+                const narrow = await renderer.pick(...nearby);
+                results.push({ alpha, picks, narrow });
+                renderer.destroyMark(mark.markId);
+            }
+            renderer.destroy();
+            canvas.remove();
+            return results;
+        }, orient);
+        for (const result of results) {
+            expect(result.alpha[0]).toBeGreaterThan(120);
+            expect(result.alpha[0]).toBeLessThan(135);
+            expect(result.alpha[1]).toBeLessThan(135);
+            expect(result.alpha[2]).toBe(0);
+            expect(result.picks).toEqual([17, 17, 17, null]);
+            expect(result.narrow).toBeNull();
+        }
+    });
+}

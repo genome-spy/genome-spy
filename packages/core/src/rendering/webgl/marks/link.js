@@ -6,7 +6,7 @@ import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 
 import WebGLMark from "./webGlMark.js";
 
-const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
+const LINK_SHAPES = ["arc", "dome", "diagonal", "line", "orthogonal"];
 const ORIENTS = ["vertical", "horizontal"];
 
 /**
@@ -163,6 +163,12 @@ export default class WebGLLinkMark extends WebGLMark {
         const gl = this.gl;
 
         const getInstanceVertexCount = () => {
+            const shape = /** @type {Int32Array} */ (
+                this.markUniformInfo.uniforms.uShape
+            )[0];
+            if (shape == LINK_SHAPES.indexOf("orthogonal")) {
+                return 16;
+            }
             const breaks = /** @type {Float32Array} */ (
                 this.markUniformInfo.uniforms.uSegmentBreaks
             )[0];

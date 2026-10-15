@@ -10,6 +10,8 @@ export default class RectMark extends Mark {
             ...super.getSupportedChannels(),
             "x2",
             "y2",
+            "x2Offset",
+            "y2Offset",
             "fill",
             "stroke",
             "fillOpacity",

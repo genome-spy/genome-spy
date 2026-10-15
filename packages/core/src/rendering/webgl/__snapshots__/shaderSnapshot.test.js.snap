@@ -3987,6 +3987,44 @@ layout(std140) uniform Mark {
 
 };
 
+const int SHAPE_ORTHOGONAL = 4;
+
+// Butt rectangles, the outer miter quadrant, and an interior rectangle for
+// continuous antialiasing across their shared boundaries. The interior is
+// already covered by the first three and needs no separate draw geometry.
+vec4 orthogonalBounds(int part, vec2 a, vec2 b, float h) {
+    vec2 c = uOrient == 1 ? vec2(a.x, b.y) : vec2(b.x, a.y);
+    vec2 first = c - a;
+    vec2 second = b - c;
+    bool hasFirst = any(notEqual(first, vec2(0.0)));
+    bool hasSecond = any(notEqual(second, vec2(0.0)));
+    if (part < 2) {
+        vec2 start = part == 0 ? a : c;
+        vec2 end = part == 0 ? c : b;
+        if (all(equal(start, end))) return vec4(c, c);
+        vec2 pad = vec2(start.x == end.x ? h : 0.0, start.y == end.y ? h : 0.0);
+        return vec4(min(start, end) - pad, max(start, end) + pad);
+    }
+    if (!hasFirst || !hasSecond) return vec4(c, c);
+    vec2 t1 = sign(first);
+    vec2 t2 = sign(second);
+    if (part == 2) {
+        vec2 outer = c + (t1 - t2) * h;
+        return vec4(min(c, outer), max(c, outer));
+    }
+    float l1 = abs(first.x) + abs(first.y);
+    float l2 = abs(second.x) + abs(second.y);
+    vec2 low = c - t1 * min(l1, h) - t2 * h;
+    vec2 high = c + t1 * h + t2 * min(l2, h);
+    return vec4(min(low, high), max(low, high));
+}
+
+float orthogonalDistance(vec2 p, vec4 bounds) {
+    if (any(lessThanEqual(bounds.zw, bounds.xy))) return 1e20;
+    vec2 distance = max(bounds.xy - p, p - bounds.zw);
+    return max(distance.x, distance.y);
+}
+
 
 #define PI 3.141593
 
@@ -4124,6 +4162,9 @@ in highp vec4 vPickingColor;
 
 
 flat in vec4 vColor;
+flat in vec4 vOrthogonalEndpoints;
+flat in int vOrthogonalPart;
+in vec2 vOrthogonalPosition;
 flat in float vSize;
 in float vNormalLengthInPixels;
 flat in float vGamma;
@@ -4137,6 +4178,20 @@ void main(void) {
     float distance = abs(vNormalLengthInPixels);
     float opacity = clamp(((vSize / 2.0 - distance) * dpr), 0.0, 1.0);
 
+    if (uShape == SHAPE_ORTHOGONAL) {
+        float nearest = 1e20;
+        float coverageDistance = 1e20;
+        int owner = 0;
+        for (int part = 0; part < 4; part++) {
+            float d = orthogonalDistance(vOrthogonalPosition,
+                orthogonalBounds(part, vOrthogonalEndpoints.xy, vOrthogonalEndpoints.zw, vSize * 0.5));
+            if (part < 3 && d < nearest) { nearest = d; owner = part; }
+            coverageDistance = min(coverageDistance, d);
+        }
+        // Only one quad shades a pixel, including where short legs overlap.
+        if (owner != vOrthogonalPart) discard;
+        opacity = clamp((uPickingEnabled ? 0.0 : 0.5) - coverageDistance * dpr, 0.0, 1.0);
+    }
     opacity = pow(opacity, vGamma);
 
     if (vFadeDistance >= 0.0) {
@@ -4188,6 +4243,44 @@ layout(std140) uniform Mark {
 
 
 };
+
+const int SHAPE_ORTHOGONAL = 4;
+
+// Butt rectangles, the outer miter quadrant, and an interior rectangle for
+// continuous antialiasing across their shared boundaries. The interior is
+// already covered by the first three and needs no separate draw geometry.
+vec4 orthogonalBounds(int part, vec2 a, vec2 b, float h) {
+    vec2 c = uOrient == 1 ? vec2(a.x, b.y) : vec2(b.x, a.y);
+    vec2 first = c - a;
+    vec2 second = b - c;
+    bool hasFirst = any(notEqual(first, vec2(0.0)));
+    bool hasSecond = any(notEqual(second, vec2(0.0)));
+    if (part < 2) {
+        vec2 start = part == 0 ? a : c;
+        vec2 end = part == 0 ? c : b;
+        if (all(equal(start, end))) return vec4(c, c);
+        vec2 pad = vec2(start.x == end.x ? h : 0.0, start.y == end.y ? h : 0.0);
+        return vec4(min(start, end) - pad, max(start, end) + pad);
+    }
+    if (!hasFirst || !hasSecond) return vec4(c, c);
+    vec2 t1 = sign(first);
+    vec2 t2 = sign(second);
+    if (part == 2) {
+        vec2 outer = c + (t1 - t2) * h;
+        return vec4(min(c, outer), max(c, outer));
+    }
+    float l1 = abs(first.x) + abs(first.y);
+    float l2 = abs(second.x) + abs(second.y);
+    vec2 low = c - t1 * min(l1, h) - t2 * h;
+    vec2 high = c + t1 * h + t2 * min(l2, h);
+    return vec4(min(low, high), max(low, high));
+}
+
+float orthogonalDistance(vec2 p, vec4 bounds) {
+    if (any(lessThanEqual(bounds.zw, bounds.xy))) return 1e20;
+    vec2 distance = max(bounds.xy - p, p - bounds.zw);
+    return max(distance.x, distance.y);
+}
 
 
 #define PI 3.141593
@@ -4781,6 +4874,9 @@ bool setupPicking() {
 
 
 flat out vec4 vColor;
+flat out vec4 vOrthogonalEndpoints;
+flat out int vOrthogonalPart;
+out vec2 vOrthogonalPosition;
 
 /** Stroke width */
 flat out float vSize;
@@ -4928,6 +5024,11 @@ void main(void) {
         vec2(getScaled_x2Offset(), getScaled_y2Offset())
     )) * uViewportSize;
 
+    if (uShape == SHAPE_ORTHOGONAL && all(equal(a, b))) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+
 #if defined(CLAMP_X) || defined(CLAMP_Y)
     if (all(equal(a, b))) {
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
@@ -5028,21 +5129,21 @@ void main(void) {
     }
 
     vec2 p;
-    vec2 tangent;
-
-    // de Casteljau evaluation keeps the cubic stable for long chords.
-    vec2 q1 = mix(p1, p2, t);
-    vec2 q2 = mix(p2, p3, t);
-    vec2 q3 = mix(p3, p4, t);
-
-    vec2 r1 = mix(q1, q2, t);
-    vec2 r2 = mix(q2, q3, t);
-
-    p = mix(r1, r2, t);
-    tangent = 3.0 * (r2 - r1);
-
-    tangent = normalize(tangent);
-    vec2 normal = vec2(-tangent.y, tangent.x);
+    vec2 normal;
+    if (uShape == SHAPE_ORTHOGONAL) {
+        p = a;
+        normal = vec2(0.0);
+    } else {
+        // de Casteljau evaluation keeps the cubic stable for long chords.
+        vec2 q1 = mix(p1, p2, t);
+        vec2 q2 = mix(p2, p3, t);
+        vec2 q3 = mix(p3, p4, t);
+        vec2 r1 = mix(q1, q2, t);
+        vec2 r2 = mix(q2, q3, t);
+        p = mix(r1, r2, t);
+        vec2 tangent = normalize(3.0 * (r2 - r1));
+        normal = vec2(-tangent.y, tangent.x);
+    }
 
     float size = getScaled_size();
 
@@ -5075,8 +5176,23 @@ void main(void) {
         }
     }
 
-    // Extrude
-    p += normal * vNormalLengthInPixels;
+    vOrthogonalEndpoints = vec4(a, b);
+    vOrthogonalPart = 0;
+    if (uShape == SHAPE_ORTHOGONAL) {
+        // Three small quads, joined by degenerate triangles, keep fill work
+        // proportional to stroke area even for long, widely separated legs.
+        vOrthogonalPart = (gl_VertexID + 1) / 6;
+        int corner = clamp((gl_VertexID + 1) % 6 - 1, 0, 3);
+        float width = uPickingEnabled ? max(size, uMinPickingSize) : size;
+        vec4 bounds = orthogonalBounds(vOrthogonalPart, a, b, width * 0.5);
+        if (all(greaterThan(bounds.zw, bounds.xy))) {
+            bounds += vec4(-pixelSize, -pixelSize, pixelSize, pixelSize);
+        }
+        p = mix(bounds.xy, bounds.zw, vec2(corner % 2, corner / 2));
+    } else {
+        p += normal * vNormalLengthInPixels;
+    }
+    vOrthogonalPosition = p;
 
     gl_Position = pixelsToNdc(p);
 
@@ -5086,7 +5202,8 @@ void main(void) {
 
     vGamma = getGammaForColor(color);
 
-    vSize = paddedSize;
+    vSize = uShape == SHAPE_ORTHOGONAL
+        ? (uPickingEnabled ? max(size, uMinPickingSize) : size) : paddedSize;
 
     setupPicking();
 }
