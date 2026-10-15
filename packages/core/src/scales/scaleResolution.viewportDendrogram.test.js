@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import dendrogramSpec from "../../../../examples/core/marks/link/dendrogram-gaps.json" with { type: "json" };
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import UnitView from "../view/unitView.js";
 import { getRequiredScaleResolution } from "./scaleResolutionTestUtils.js";
@@ -8,6 +9,9 @@ test.each(["horizontal", "vertical"])(
     async (orient) => {
         const indexChannel = orient === "horizontal" ? "y" : "x";
         const heightChannel = orient === "horizontal" ? "x" : "y";
+        const treeSpec = /** @type {import("../spec/view.js").UnitSpec} */ (
+            structuredClone(dendrogramSpec.hconcat[0])
+        );
         const heightScale = {
             domain: {
                 source: /** @type {const} */ ("viewport"),
@@ -20,37 +24,19 @@ test.each(["horizontal", "vertical"])(
             reverse: orient === "horizontal",
         };
         const { view } = await createHeadlessEngine({
+            datasets: structuredClone(dendrogramSpec.datasets),
             columns: orient === "horizontal" ? 2 : 1,
             resolve: { scale: { [indexChannel]: "shared" } },
             scales: { [indexChannel]: { domain: [0, 3], reverse: true } },
             concat: [
                 {
+                    ...treeSpec,
                     name: "tree",
                     // Exercise both view-level and encoding-level declarations.
                     scales:
                         orient === "horizontal"
                             ? { [heightChannel]: heightScale }
                             : undefined,
-                    data: {
-                        values: [
-                            { id: "A", parent: "AB", height: 0, index: 0 },
-                            { id: "B", parent: "AB", height: 0, index: 1 },
-                            { id: "C", parent: "CD", height: 0, index: 2 },
-                            { id: "D", parent: "CD", height: 0, index: 3 },
-                            { id: "AB", parent: "root", height: 2 },
-                            { id: "CD", parent: "root", height: 4 },
-                            { id: "root", parent: null, height: 10 },
-                        ],
-                    },
-                    transform: [
-                        {
-                            type: "dendrogram",
-                            key: "id",
-                            parentKey: "parent",
-                            height: "height",
-                            leafIndex: "index",
-                        },
-                    ],
                     mark: {
                         type: "link",
                         linkShape: "orthogonal",
@@ -98,15 +84,15 @@ test.each(["horizontal", "vertical"])(
             expect(Math.min(baseline, top)).toBeCloseTo(0.02);
             expect(Math.max(baseline, top)).toBeCloseTo(0.98);
         };
-        expectHeightPadding(10);
+        expectHeightPadding(3);
 
         vi.useFakeTimers();
         try {
             for (const [domain, maximum] of [
-                [[-0.1, 0.9], 2],
-                [[1.9, 3.9], 4],
-                [[3.1, 3.9], 4], // No complete edge: retain the previous domain.
-                [[0, 4], 10],
+                [[-0.1, 0.9], 0.8],
+                [[-0.1, 1.9], 1.6],
+                [[3.1, 3.9], 1.6], // No complete edge: retain the previous domain.
+                [[0, 4], 3],
             ]) {
                 index.getScale().domain(/** @type {number[]} */ (domain));
                 await vi.advanceTimersByTimeAsync(150);
