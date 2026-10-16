@@ -141,6 +141,7 @@ shared values and `push: "outer"` targets.
 
 - [Set intersections with an UpSet plot](../../examples/generic/upsetr-mutations.md)
 - [Clustered heatmap with dendrograms](../../examples/generic/clustered-heatmap.md)
+- [PISA interaction matrix with genomic margin tracks](../../examples/genomic-data/bpreveal-pisa-matrix.md)
 
 ## Properties
 
