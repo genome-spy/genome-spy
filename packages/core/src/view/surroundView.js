@@ -7,8 +7,7 @@ import ViewError from "./viewError.js";
 import { VISIT_SKIP } from "./view.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
-import { isImportSpec, isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
-import { isMultiscaleSpec } from "./multiscale.js";
+import { isImportSpec, isLayerableSpec } from "./viewSpecGuards.js";
 import { cloneWithSpecOrigin, inheritSpecOrigin } from "../utils/specOrigin.js";
 import {
     findChannelDefWithScale,
@@ -236,11 +235,7 @@ export default class SurroundView extends GridView {
      * @param {Side} [side]
      */
     #validatePlot(spec, side) {
-        if (
-            !isUnitSpec(spec) &&
-            !isLayerSpec(spec) &&
-            !isMultiscaleSpec(spec)
-        ) {
+        if (!isLayerableSpec(spec)) {
             throw this.#error(
                 `Surround ${side ?? "center"} currently accepts only unit or layer plots.`,
                 spec
@@ -535,45 +530,46 @@ class SurroundGrid extends Grid {
         super(regions.length, 3);
         const column = Number(regions.includes("left"));
         const row = Number(regions.includes("top"));
+
+        /** @type {Record<Region, [number, number]>} */
+        const positions = {
+            center: [column, row],
+            top: [column, 0],
+            right: [column + 1, row],
+            bottom: [column, row + 1],
+            left: [0, row],
+        };
+
         this.#cells = regions.map((region) => {
-            switch (region) {
-                case "center":
-                    return [column, row];
-                case "top":
-                    return [column, 0];
-                case "right":
-                    return [column + 1, row];
-                case "bottom":
-                    return [column, row + 1];
-                case "left":
-                    return [0, row];
-                default:
-                    throw new Error(`Unknown surround region: ${region}`);
+            if (!Object.hasOwn(positions, region)) {
+                throw new Error(`Unknown surround region: ${region}`);
             }
+            return positions[region];
         });
     }
 
     get nCols() {
-        return this.#cells.length
-            ? Math.max(...this.#cells.map(([column]) => column)) + 1
-            : 0;
+        return Math.max(-1, ...this.#cells.map(([column]) => column)) + 1;
     }
 
     get nRows() {
-        return this.#cells.length
-            ? Math.max(...this.#cells.map(([, row]) => row)) + 1
-            : 0;
+        return Math.max(-1, ...this.#cells.map(([, row]) => row)) + 1;
     }
 
     get colIndices() {
-        return Array.from({ length: this.nCols }, (_, column) =>
-            this.#cells.flatMap(([col], i) => (col === column ? [i] : []))
-        );
+        return this.#getIndices(0, this.nCols);
     }
 
     get rowIndices() {
-        return Array.from({ length: this.nRows }, (_, row) =>
-            this.#cells.flatMap(([, r], i) => (r === row ? [i] : []))
+        return this.#getIndices(1, this.nRows);
+    }
+
+    /** @param {0 | 1} dimension @param {number} count */
+    #getIndices(dimension, count) {
+        return Array.from({ length: count }, (_, index) =>
+            this.#cells.flatMap((cell, i) =>
+                cell[dimension] === index ? [i] : []
+            )
         );
     }
 

@@ -1,4 +1,5 @@
 import { isArray, isObject, isString } from "vega-util";
+import { isMultiscaleSpec } from "./multiscale.js";
 
 /**
  *
@@ -16,6 +17,14 @@ export function isUnitSpec(spec) {
  */
 export function isLayerSpec(spec) {
     return "layer" in spec && isObject(spec.layer);
+}
+
+/**
+ * @param {import("../spec/view.js").ViewSpec} spec
+ * @returns {spec is import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec | import("../spec/view.js").MultiscaleSpec}
+ */
+export function isLayerableSpec(spec) {
+    return isUnitSpec(spec) || isLayerSpec(spec) || isMultiscaleSpec(spec);
 }
 
 /**

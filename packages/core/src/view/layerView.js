@@ -1,8 +1,7 @@
 import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
-import { isMultiscaleSpec } from "./multiscale.js";
-import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
+import { isLayerableSpec } from "./viewSpecGuards.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 
 /**
@@ -50,11 +49,7 @@ export default class LayerView extends ContainerView {
                             this,
                             this.getNextAutoName("layer"),
                             (importedSpec) => {
-                                if (
-                                    !isLayerSpec(importedSpec) &&
-                                    !isUnitSpec(importedSpec) &&
-                                    !isMultiscaleSpec(importedSpec)
-                                ) {
+                                if (!isLayerableSpec(importedSpec)) {
                                     throw new ViewError(
                                         "LayerView accepts only unit, layer, or multiscale specs as children!",
                                         this
