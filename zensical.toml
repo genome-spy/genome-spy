@@ -62,8 +62,8 @@ nav = [
         { "View Composition" = [
             "grammar/composition/index.md",
             { "Concat" = "grammar/composition/concat.md" },
-            { "Surround" = "grammar/composition/surround.md" },
             { "Layer" = "grammar/composition/layer.md" },
+            { "Surround" = "grammar/composition/surround.md" },
             { "Facet" = "grammar/facet.md" },
             { "Multiscale" = "grammar/composition/multiscale.md" },
         ] },
