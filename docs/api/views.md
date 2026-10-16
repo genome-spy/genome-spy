@@ -197,9 +197,10 @@ not pixel visibility, clipping, mark opacity or whether a particular row is draw
 
 `query.describeSource(address)` reports the nearest primary source independently
 of retention: readiness for the current viewport, loading status, retained revision
-and coverage. `complete-source` means the declared eager source finished loading;
-it does not undo parsing or view filters. `published-domain` gives a lazy source's
-last published linearized bounds and channel, not proof of full-resolution records.
+and coverage. `complete-source` means the declared eager source loaded successfully;
+failed URL requests or parsing report `unknown` coverage. It does not undo parsing
+or view filters. `published-domain` gives a lazy source's last published linearized
+bounds and channel, not proof of full-resolution records.
 Other or unpublished sources report `unknown`. Side-input coverage is not included.
 Scoped queries capture this metadata in `scope.primarySource`; their overall
 `sourceCoverage` remains `unknown` for loaded transformed results.

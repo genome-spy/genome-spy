@@ -12,3 +12,5 @@ Set `data.retainForInspection: true` to inspect source rows before view transfor
 with `readSourceData`. Source descriptions report loading status, readiness and
 published bounds; they do not guarantee complete lazy-source coverage. View
 descriptions also expose configured visibility, ancestor visibility and opacity.
+Source descriptions follow shared sources after optimization and do not certify
+failed URL loads as complete.

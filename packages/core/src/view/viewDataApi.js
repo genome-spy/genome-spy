@@ -1,6 +1,5 @@
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import UnitView from "./unitView.js";
-import DataSource from "../data/sources/dataSource.js";
 import InlineSource from "../data/sources/inlineSource.js";
 import NamedSource from "../data/sources/namedSource.js";
 import UrlSource from "../data/sources/urlSource.js";
@@ -143,38 +142,36 @@ export function describeSourceData(view) {
     const owner = sourceOwner(view);
     if (!owner) return null;
     const collector = owner.flowHandle?.sourceCollector;
-    let node = collector ?? owner.flowHandle?.node;
-    while (node && !(node instanceof DataSource)) node = node.parent;
-    const source = node instanceof DataSource ? node : undefined;
+    const source = owner.flowHandle?.dataSource;
     const request = buildReadinessRequest(view, ["x", "y"]);
     const ready = Boolean(source && isDataReady(source, request));
-    const eager =
-        source instanceof InlineSource ||
-        source instanceof NamedSource ||
-        source instanceof UrlSource;
-    const domain =
-        source instanceof SingleAxisLazySource
-            ? source.getLoadedDomain()
-            : undefined;
     const status = source
         ? source.view.context.dataFlow.loadingStatusRegistry.getSource(source)
               ?.status
         : undefined;
+    const completeSource =
+        ready &&
+        (source instanceof InlineSource ||
+            source instanceof NamedSource ||
+            (source instanceof UrlSource && status === "complete"));
+    const domain =
+        source instanceof SingleAxisLazySource
+            ? source.getLoadedDomain()
+            : undefined;
     return {
         retentionEnabled: Boolean(owner.spec.data.retainForInspection),
         dataRevision: collector?.dataRevision ?? null,
         ready,
         loadingStatus: status ?? null,
-        coverage:
-            eager && ready
-                ? { type: "complete-source" }
-                : source instanceof SingleAxisLazySource && domain
-                  ? {
-                        type: "published-domain",
-                        channel: source.channel,
-                        domain: Array.from(domain),
-                    }
-                  : { type: "unknown" },
+        coverage: completeSource
+            ? { type: "complete-source" }
+            : source instanceof SingleAxisLazySource && domain
+              ? {
+                    type: "published-domain",
+                    channel: source.channel,
+                    domain: Array.from(domain),
+                }
+              : { type: "unknown" },
     };
 }
 

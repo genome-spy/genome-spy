@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
 import { createViewQuery } from "../viewQuery.js";
@@ -29,6 +29,110 @@ function fixtureGuard(params) {
 }
 
 describe("source observations", () => {
+    test.each([
+        [
+            "successful",
+            () => new Response('[{"x":1}]'),
+            "complete",
+            "complete-source",
+        ],
+        [
+            "failed request",
+            () => new Response("Missing", { status: 404 }),
+            "error",
+            "unknown",
+        ],
+        [
+            "failed parsing",
+            () => new Response("Invalid JSON"),
+            "error",
+            "unknown",
+        ],
+    ])(
+        "reports coverage for a %s URL load",
+        async (_, response, status, coverage) => {
+            vi.stubGlobal(
+                "fetch",
+                vi.fn(async () => response())
+            );
+            const log = vi.spyOn(console, "error").mockImplementation(() => {});
+            try {
+                const { view } = await createHeadlessEngine({
+                    data: {
+                        url: "https://fixture.invalid/data.json",
+                        retainForInspection: true,
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: [0, 3] },
+                        },
+                    },
+                });
+                const query = createViewQuery(
+                    createViewMutationApi({ viewRoot: view })
+                );
+                const source = {
+                    loadingStatus: status,
+                    coverage: { type: coverage },
+                };
+                expect(query.describeSource("root")).toMatchObject(source);
+                expect(
+                    query.readSourceData("root", { limit: null }).source
+                ).toMatchObject(source);
+                const result = await query.queryData("root", {
+                    channels: ["x"],
+                    limit: null,
+                });
+                expect(result.scope.primarySource).toMatchObject(source);
+            } finally {
+                vi.unstubAllGlobals();
+                log.mockRestore();
+            }
+        }
+    );
+
+    test("describes shared named sources through every source-owning container", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: { table: [{ x: 1 }] },
+            vconcat: ["first", "second"].map((name) => ({
+                name,
+                data: { name: "table" },
+                layer: [
+                    {
+                        name: name + "-points",
+                        mark: /** @type {const} */ ("point"),
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: /** @type {const} */ ("quantitative"),
+                            },
+                        },
+                    },
+                ],
+            })),
+        });
+        const query = createViewQuery(
+            createViewMutationApi({ viewRoot: view })
+        );
+        for (const name of ["first", "second"]) {
+            /** @type {import("../types/embedApi.js").ViewAddress} */
+            const points = { scope: [], view: name + "-points" };
+            expect(query.readData(points, { limit: 1 }).rows).toEqual([
+                { x: 1 },
+            ]);
+            for (const address of [{ scope: [], view: name }, points]) {
+                expect(query.describeSource(address)).toMatchObject({
+                    ready: true,
+                    retentionEnabled: false,
+                    coverage: { type: "complete-source" },
+                });
+            }
+        }
+    });
+
     test("reports pending, published bounds, moved viewport and failed lazy sources", async () => {
         const unregister = registerLazyDataSource(fixtureGuard, ManualSource);
         try {
