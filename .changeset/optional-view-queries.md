@@ -16,3 +16,4 @@ Source descriptions follow shared sources after optimization and do not certify
 failed URL loads as complete.
 Pending annotation overlays are released when their source track is removed.
 Annotation assessment rejects parameter-driven geometry scales.
+The optional entry exports `ViewAnnotations` for typed annotation clients.

@@ -66,26 +66,28 @@ test("distinct source references survive filter/window despite duplicate labels"
 
 test("replacement validates before clearing, references expire, clear and disposal release state", async () => {
     const { query } = await setup();
+    /** @type {import("@genome-spy/core/view-query").ViewAnnotations} */
+    const annotations = query.annotations;
     const result = await query.queryData("root", options);
     expect(new Set(result.annotationTargets).size).toBe(2);
-    await query.annotations.replace({
+    await annotations.replace({
         targets: [{ reference: result.annotationTargets[0] }],
         emphasis: "blue",
     });
     await expect(
-        query.annotations.replace({ targets: [{ reference: "foreign" }] })
+        annotations.replace({ targets: [{ reference: "foreign" }] })
     ).rejects.toThrow("Unknown");
-    expect(query.annotations.inspect().activeTargets).toBe(1);
+    expect(annotations.inspect().activeTargets).toBe(1);
     await query.queryData("root", options);
     await expect(
-        query.annotations.replace({
+        annotations.replace({
             targets: [{ reference: result.annotationTargets[0] }],
         })
     ).rejects.toThrow("expired");
-    query.annotations.clear();
-    expect(query.annotations.inspect().activeTargets).toBe(0);
-    query.annotations.dispose();
-    expect(() => query.annotations.inspect()).toThrow("disposed");
+    annotations.clear();
+    expect(annotations.inspect().activeTargets).toBe(0);
+    annotations.dispose();
+    expect(() => annotations.inspect()).toThrow("disposed");
 });
 
 test("aggregate results cannot request point references", async () => {

@@ -1,4 +1,6 @@
-import ViewAnnotations, { assessAnnotations } from "./view/viewAnnotations.js";
+import ViewAnnotationController, {
+    assessAnnotations,
+} from "./view/viewAnnotations.js";
 import { queryViewData, assessViewQuery } from "./view/viewSliceQuery.js";
 import { viewQueryResolvers } from "./view/viewQueryAccess.js";
 import {
@@ -8,10 +10,11 @@ import {
     describeSourceData,
 } from "./view/viewDataApi.js";
 
-/** @type {WeakMap<import("./types/embedApi.js").ViewApi, ViewAnnotations>} */
+/** @type {WeakMap<import("./types/embedApi.js").ViewApi, ViewAnnotationController>} */
 const annotationControllers = new WeakMap();
 
 /** @typedef {import("./types/viewQueryApi.js").ViewQueryApi} ViewQueryApi */
+/** @typedef {import("./types/viewQueryApi.js").ViewAnnotations} ViewAnnotations */
 /** @typedef {import("./types/viewQueryApi.js").ViewAnnotationAssessment} ViewAnnotationAssessment */
 /** @typedef {import("./types/viewQueryApi.js").ViewAnnotationSet} ViewAnnotationSet */
 /** @typedef {import("./types/viewQueryApi.js").ViewAnnotationState} ViewAnnotationState */
@@ -46,7 +49,7 @@ export function createViewQuery(views) {
 
     let annotations = annotationControllers.get(views);
     if (!annotations || annotations.disposed) {
-        annotations = new ViewAnnotations(resolve);
+        annotations = new ViewAnnotationController(resolve);
         annotationControllers.set(views, annotations);
     }
     return {
