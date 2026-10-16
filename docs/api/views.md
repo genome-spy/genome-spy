@@ -111,28 +111,26 @@ the application imports it.
 
 ### Choosing a hook
 
-These hooks let applications and agents inspect data behind a plot, summarize a
-selected region, and show findings on supported point tracks. They do not run
-models, generate candidates, fetch off-screen data, or record application history.
+These hooks let applications and agents inspect the records behind a plot.
+The host chooses thresholds, computes summaries, and composes any higher-level
+agent tools using the returned data and existing visualization controls.
 
-| Hook | Use |
-| --- | --- |
-| `createViewQuery(api.views)` | Load optional inspection/analysis for this embed. |
-| `query.describe(view)` | Read track encoding, readiness, revision and visibility/opacity metadata. |
-| `query.describeSource(view)` | Check source loading, readiness and known publication bounds. |
-| `query.readData(view, {limit})` | Preview up to 1,000 loaded transformed rows. |
-| `data.retainForInspection` + `query.readSourceData(view, {limit})` | Opt in to reading loaded source rows before display transforms hide or reshape them. |
-| `query.assessQuery(view, scope)` | Check whether a viewport/interval query is ready, pending or unsupported. |
-| `query.queryData(view, options)` | Read, filter, summarize, group or rank loaded data in a captured viewport/brush scope. |
-| `query.assessAnnotations(view)` | Check whether a point track supports temporary annotations. |
-| `query.annotations.replace(set)` | Add labels, connectors and emphasis to queried point references. |
-| `query.annotations.clear()` / `inspect()` / `dispose()` | Clear, inspect or release the shared temporary annotation state. |
-| `view.getScaleResolution(channel)` | Access this view's resolved scale, including unnamed scales, for domain inspection and supported navigation. |
+| Hook                                                               | Use                                                                                      |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `createViewQuery(api.views)`                                       | Load optional data inspection for this embed.                                            |
+| `query.describe(view)`                                             | Read track encoding, readiness, revision and visibility/opacity metadata.                |
+| `query.describeSource(view)`                                       | Check source loading, readiness and known publication bounds.                            |
+| `query.readData(view, {limit})`                                    | Preview up to 1,000 loaded transformed rows.                                             |
+| `data.retainForInspection` + `query.readSourceData(view, {limit})` | Read retained loaded source rows before display transforms hide or reshape them.         |
+| `query.assessQuery(view, scope)`                                   | Check whether a viewport/interval read is ready, pending or unsupported.                 |
+| `query.queryData(view, options)`                                   | Read loaded records in a captured viewport/brush scope.                                  |
+| `view.params.getSelection(name).setValue(keys)`                    | Set point selection membership by record keys; style it with conditional encodings.      |
+| `view.getScaleResolution(channel)`                                 | Access a resolved scale, including unnamed scales, for domain inspection and navigation. |
 
-For example, an agent can find high-scoring points inside a brush, compute a
-summary over all matching loaded rows, and label selected findings. A gene-track
-inspector can use retained source rows to include genes omitted by display-only
-lane filters. Neither result proves that the backing biological dataset is complete.
+For example, a host can read records inside a brush, apply its own thresholds,
+and set selection membership for all qualifying records. A gene-track inspector
+can use retained source rows to include genes omitted by display-only lane
+filters. Neither result proves that the backing biological dataset is complete.
 
 ### Missing values and explicit limits
 
@@ -144,8 +142,7 @@ These cases are distinct from readiness (`false`) and a valid empty result (`row
 
 `limit: null` is an explicit request for every output row in `queryData` or every
 retained row in `readSourceData`. It is not an omitted/default limit. `readData`
-always requires a numeric limit. Empty aggregate results such as a mean are
-reported as `null`; analysis also normalizes missing input fields to `null`.
+always requires a numeric limit.
 Raw row reads otherwise preserve source values.
 
 The generated reference includes `null` and `undefined` where the declared API
@@ -229,22 +226,19 @@ read includes all retained rows, not necessarily the whole lazy backing file.
 
 ## Querying the current slice
 
-`query.queryData()` filters loaded transformed data to the current data-space
-viewport **before** limiting returned rows or computing aggregates. Navigate or
-set an interval selection, wait for data readiness, then query the relevant axes:
+`query.queryData()` reads loaded transformed records in the current data-space
+viewport, optionally intersected with an interval selection. Scope filtering
+precedes the returned-row limit. Navigate or set an interval selection, wait for
+data readiness, then query the relevant axes:
 
 ```js
 const result = await query.queryData(track, {
   channels: ["x"],
   limit: 10,
-  fields: ["logR"],
-  aggregate: [
-    { op: "count", as: "count" },
-    { op: "mean", field: "logR", as: "meanLogR" },
-  ],
+  fields: ["gene", "logR"],
   signal: controller.signal,
 });
-console.log(result.rows, result.aggregates, result.scope);
+console.log(result.rows, result.rowsMatched, result.scope);
 ```
 
 Before offering a query control, assess its exact axes and optional selection:
@@ -260,24 +254,17 @@ if (assessment.status === "ready") {
 Assessment shares query preparation without scanning rows or triggering loading.
 `pending` means data is not ready and support is not yet established; `unsupported`
 includes a reason such as `multiple-facets` or `unsupported-position`. Support is
-specific to this scope, including axes added by a selection. A cleared selection
-retains its empty-result semantics. Invalid requests, stale handles and unexpected
-errors throw normally. Assessment does not validate aggregate fields or guarantee
-row cloneability. Execution always checks again because chart state may change.
+specific to this scope, including axes added by a selection. Invalid requests,
+stale handles and unexpected errors throw normally. Assessment does not validate
+returned fields or guarantee row cloneability. Execution checks again because
+chart state may change.
 
-A numeric `limit` is a nonnegative safe integer bounding output rows, not the
-matching population. Use `limit: null` to return all output rows in one result.
-Complete results consume memory proportional to their size; callers choose any
-transport or presentation budget. Neither mode loads data outside the current sources. `rowsExamined`
-counts all visited loaded rows; `rowsMatched` counts all rows in the slice.
-`truncated` concerns only row output; aggregates use every matching loaded row.
-Setting `limit: 0` computes aggregates without copying any source rows.
-Operations `count`, `valid`, `sum`, `min`, `max`, `mean` and `variance` share the
-aggregate transform's numeric semantics. Undefined results, such as an empty
-mean, are returned as null. Count includes rows with missing field values;
-`valid` counts numeric values using the existing aggregate operation. Min/max
-retain input values (including nonnumeric values) exactly as the transform does;
-all returned aggregate values are detached and shared memory is rejected.
+A numeric `limit` is a nonnegative safe integer bounding returned rows. Use
+`limit: null` to return every matching loaded record. Complete results consume
+memory proportional to their size, so callers choose their read budgets.
+`rowsExamined` counts all visited loaded rows; `rowsMatched` counts all matches;
+`truncated` indicates that some matches were omitted from `rows`. Setting
+`limit: 0` counts matches without returning records. No option fetches more data.
 
 Each requested axis uses its captured numeric or locus scale domain. Points use
 half-open containment; ranged positions overlap the half-open slice. Equal
@@ -301,131 +288,31 @@ conditional encodings. Ordinary field and numeric datum positions use Core's
 normalized mark accessors; categorical and pixel-valued positions are unsupported.
 
 Scanning yields cooperatively and rejects cancellation, removed views, data
-publications, readiness changes or changed scope. Matching row references are
-buffered for the existing aggregate operations. The query yields and revalidates
-its scope between aggregate passes, but output cloning and each individual pass
-are synchronous and not hard-preemptible. This API does not promise
-constant-memory or hard real-time execution. It never reports a partial scan as
-an exact answer.
+publications, readiness changes or changed scope. Individual cloning work is
+synchronous; the API does not promise hard real-time execution. It never reports
+a partial scan as an exact answer.
 
-### Analyzing a scoped table
-
-An optional `analysis` pipeline filters, groups or ranks the entire matching
-loaded population before the output limit. Supply `fields` to disclose its input
-columns. Analysis cannot be combined with the separate `aggregate` option.
-
-```js
-const result = await query.queryData(track, {
-  channels: ["x"],
-  fields: ["group", "score", "position"],
-  limit: 100,
-  analysis: [
-    { type: "filter", field: "score", op: "gt", value: 2, absolute: true },
-    {
-      type: "aggregate",
-      groupby: ["group"],
-      fields: [null, "position", "position"],
-      ops: ["count", "min", "max"],
-      as: ["count", "start", "end"],
-    },
-  ],
-});
-```
-
-Numeric filters support `gt`, `gte`, `lt`, `lte`, `eq` and `neq`, with optional
-`absolute: true`. Only finite numeric values match; null, missing values, strings,
-NaN and infinities do not match, including for `neq`. Thresholds must be finite.
-Aggregate stages use the operations described above, with aligned `fields`, `ops`
-and `as` arrays. A count field may be null. `groupby` is optional. No matching
-rows produce no aggregate rows, following the existing aggregate transform.
-
-A `window` stage supports `row_number` and `count`, with required full-partition
-`frame: [null, null]`, optional `groupby`, and optional `sort: {field, order}`.
-Sort fields and orders accept a scalar or aligned arrays; order is `ascending`
-by default or `descending`. For example, assign row numbers ordered by a score
-and then filter row number to one to select a representative in each group.
-Include `count` in the same window to retain the group's population before
-representative filtering. Window transforms preserve input output order; sorting
-controls ranks, not the order of returned rows. Equal sort keys use stable input
-order; specify a secondary field for another tie policy. Sorting uses Core's
-comparator, including null ordering; a preceding numeric filter can exclude
-invalid score values before ranking.
-
-Grouping and sorting require scalar string, boolean, finite number or null
-values. Missing grouping/sort values become null. Group rows follow first-seen
-group order. Every stage may reference only disclosed input columns or preceding
-output columns. An aggregate stage replaces the table with its grouping columns
-and named outputs. A window stage retains columns and adds unique output names;
-its output names cannot overwrite existing columns. Aggregate output names cannot
-overwrite grouping columns. Private metadata and prototype-related output names
-are rejected. Missing disclosed input values become null. Input field paths, such as
-`nested.score`, become literal column names in this table; use that exact string
-in subsequent stages.
-
-`rowsMatched` remains the number of source rows in the captured slice.
-`outputRows` counts the analysis output before limiting, and `truncated` reports
-whether that table was limited. `scope.analysis` records the detached pipeline.
-An empty pipeline returns the projected input table with the same metadata.
-Analysis operates on detached rows and cannot mutate the visualization's data.
-All results retain the captured viewport and unknown source coverage. The query
-rechecks cancellation and scope between transform passes; each pass remains
-synchronous, with no hard real-time or constant-memory guarantee.
-
-### Annotating queried points
-
-`query.assessAnnotations(track)` reports whether a point track supports temporary
-visual annotations. The initial contract accepts one facet with unconditional
-numeric or locus positions. Ranged, displaced or conditional positions,
-parameter-dependent geometry (including scale configuration), and expression-driven
-mark properties are unsupported. An annotation adds a text label, optional connector
-and/or colored outline; it preserves the original mark colors and data.
+The host applies analysis explicitly. For a small dataset, it can request all
+matching rows, filter them in ordinary JavaScript, and set a point selection:
 
 ```js
 const result = await query.queryData(track, {
   channels: ["x", "y"],
-  fields: ["name", "score"],
-  limit: 20,
-  includeAnnotationTargets: true,
+  fields: ["gene", "score"],
+  limit: null,
 });
-
-await query.annotations.replace({
-  targets: result.annotationTargets.map((reference, i) => ({
-    reference,
-    text: String(result.rows[i].name),
-  })),
-  emphasis: "purple", // purple, orange or blue; omit for labels alone
-  connectors: true,
-});
-
-await query.annotations.clear();
+const keys = result.rows
+  .filter((row) => row.score >= 2)
+  .map((row) => [row.gene]);
+const selection = track.params.getSelection("chosen");
+if (selection.type === "point") selection.setValue(keys);
 ```
 
-References are opaque, separate from disclosed values, and aligned with returned
-rows. Filters and window/rank analysis preserve references; aggregation cannot
-produce point targets. A truncated result supplies targets for its preview only.
-Use `limit: null` to obtain references for the complete query output. Annotation
-sets have no fixed target-count ceiling; rendering cost and label overlap grow
-with the number of targets.
-The next successful target-producing query expires previous references, while an
-already applied set remains visible. Ordinary queries do not expire references.
-
-Annotations follow pan, zoom and resize and clip to the source plotting area.
-A new source publication or view removal clears the applied set. `inspect()` returns
-`activeTargets`, `sourceRevision` and `invalidated`. Invalid replacement arguments
-leave the previous valid set unchanged. An abort before commit prevents publication;
-after commit the applied set remains. Clear and disposal prevent unfinished older
-replacements from publishing.
-
-Replacement and clear promises resolve after Core submits the updated rendering
-commands. This does not promise browser paint completion or animated transitions.
-Generated point, rule and text marks do not change scale domains, source collectors,
-measurement queries, legends or normal picking. Labels currently have fixed offsets;
-there is no automatic collision avoidance.
-
-Query clients created from the same `api.views` share one annotation controller.
-`dispose()` releases its references, subscriptions and generated marks; disposing
-one client therefore ends annotation use for those clients. Creating a new query
-client afterward creates a fresh controller. Embed finalization also disposes it.
+This requires `encoding.key: {field: "gene"}` on the source unit view. See
+[point selection writes](runtime-state.md#setting-point-selections) for key and
+lifecycle rules, and the region/expression pages in
+[embed examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+for complete host-side threshold and summary controllers.
 
 ## Accessing a view's scales
 
@@ -501,7 +388,7 @@ if (brush.type === "interval" && brush.contains({ x: 120, y: 80 })) {
 ```
 
 See [Parameters](runtime-state.md#parameters) for selection snapshot shape,
-subscription delivery, and clearing behavior.
+subscription delivery, and key-based point selection writes.
 
 For a runnable browser form and notebook bridge, see the `annotationEditor` and
 `selectionForm` pages in the [embed examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples).

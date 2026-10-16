@@ -23,15 +23,16 @@ These browser-only examples use fixed synthetic omics data and the optional
 
 - [Copy number region summary](src/regionSummary/): zoom or brush to compute
   regional statistics over all matches while showing a five-row preview.
-- [Expression findings](src/expressionFindings/): filter and summarize pathways,
-  rank representative genes, and apply temporary labels and outlines. Replacing
-  the toy contrast invalidates previous findings.
+- [Expression records](src/expressionFindings/): apply thresholds in the host,
+  select every qualifying record by key, and highlight membership through
+  conditional encodings. Clicking records updates the same selection.
 - [Retained gene data](src/retainedGeneData/): compare loaded source rows with
   rows kept by a display filter, using opt-in source retention.
 
 Each page explains the hooks it uses and shows readable track/source information
-with expandable API responses. GenomeSpy executes declarative filters and query
-analysis in the browser; the application formats the returned rows and summaries.
+with expandable API responses. GenomeSpy reads the scoped visualization records and sets selection membership.
+The example code computes summaries and thresholds; no combined analysis API is
+added to Core.
 Queries inspect currently loaded data rather than fetching off-screen records.
 The examples use eager fixtures; lazy-source coverage is outside their scope.
 See the [view query guide](https://genomespy.app/docs/api/views/#choosing-a-hook).

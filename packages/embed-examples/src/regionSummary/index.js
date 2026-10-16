@@ -84,16 +84,19 @@ async function refresh() {
         const result = await query.queryData(track, {
             ...scope,
             fields: ["id", "positionKb", "log2Ratio"],
-            limit: 5,
-            aggregate: [
-                { op: "count", as: "count" },
-                { op: "mean", field: "log2Ratio", as: "mean" },
-                { op: "min", field: "log2Ratio", as: "min" },
-                { op: "max", field: "log2Ratio", as: "max" },
-            ],
+            limit: null,
             signal,
         });
         signal.throwIfAborted();
+        // Analysis belongs to this example. Core only reads the scoped records.
+        const values = result.rows.map((row) => Number(row.log2Ratio));
+        const count = values.length;
+        const mean = count
+            ? values.reduce((sum, value) => sum + value, 0) / count
+            : null;
+        const min = count ? Math.min(...values) : null;
+        const max = count ? Math.max(...values) : null;
+        const preview = result.rows.slice(0, 5);
         status.textContent = "Summary current.";
         render(
             html`
@@ -105,20 +108,15 @@ async function refresh() {
                 </p>
                 <dl>
                     <dt>Matching bins</dt>
-                    <dd data-testid="count">${result.aggregates.count}</dd>
+                    <dd data-testid="count">${count}</dd>
                     <dt>Mean log2 ratio</dt>
-                    <dd data-testid="mean">
-                        ${formatValue(result.aggregates.mean)}
-                    </dd>
+                    <dd data-testid="mean">${formatValue(mean)}</dd>
                     <dt>Minimum / maximum</dt>
-                    <dd>
-                        ${formatValue(result.aggregates.min)} /
-                        ${formatValue(result.aggregates.max)}
-                    </dd>
+                    <dd>${formatValue(min)} / ${formatValue(max)}</dd>
                 </dl>
                 <p data-testid="preview-count">
-                    Showing ${result.rows.length} of ${result.rowsMatched}
-                    matching bins.
+                    Showing ${preview.length} of ${result.rowsMatched} matching
+                    bins.
                 </p>
                 ${dataTable(
                     [
@@ -126,7 +124,7 @@ async function refresh() {
                         ["positionKb", "Position (kb)"],
                         ["log2Ratio", "Log2 ratio"],
                     ],
-                    result.rows
+                    preview
                 )}
                 <details>
                     <summary>Captured query response</summary>
@@ -173,12 +171,11 @@ const onDomain = () => {
 scale.addEventListener("domain", onDomain);
 const stopBrush = brush.subscribe(() => void refresh(), { delivery: "commit" });
 
-/** Release subscriptions, query annotations, and the embed when leaving the page. */
+/** Release subscriptions and the embed when leaving the page. */
 export function dispose() {
     controller.abort();
     scale.removeEventListener("domain", onDomain);
     stopBrush();
-    query.annotations.dispose();
     api.finalize();
 }
 window.addEventListener("pagehide", dispose, { once: true });

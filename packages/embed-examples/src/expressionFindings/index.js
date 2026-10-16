@@ -7,7 +7,6 @@ import { html, render } from "lit";
 import { dataTable, formatValue, renderTrackInfo } from "../queryExamples.js";
 import { contrastA, contrastB } from "./data.js";
 
-/** @typedef {import("@genome-spy/core/view-query").ViewSliceAnalysisStage} AnalysisStage */
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
     name: "expression",
@@ -20,10 +19,20 @@ const spec = {
     datasets: { expression: contrastA },
     data: { name: "expression" },
     params: [
+        { name: "chosen", select: "point" },
         { name: "region", select: { type: "interval", encodings: ["x", "y"] } },
     ],
     mark: { type: "point", size: 85 },
     encoding: {
+        key: { field: "gene" },
+        opacity: {
+            condition: { param: "chosen", empty: false, value: 1 },
+            value: 0.2,
+        },
+        size: {
+            condition: { param: "chosen", empty: false, value: 160 },
+            value: 55,
+        },
         x: {
             field: "log2FoldChange",
             type: "quantitative",
@@ -57,7 +66,10 @@ export const api = await embed(document.getElementById("plot"), spec, {
 const query = createViewQuery(api.views);
 const track = api.views.get({ scope: [], view: "expression" });
 const scales = [track.getScaleResolution("x"), track.getScaleResolution("y")];
-const brush = api.params.getSelection("region");
+const brush = track.params.getSelection("region");
+const selection = track.params.getSelection("chosen");
+if (selection.type !== "point") throw new Error("Expected a point selection.");
+const chosen = selection;
 const form = /** @type {HTMLFormElement} */ (
     document.getElementById("controls")
 );
@@ -85,202 +97,102 @@ function getScope() {
     };
 }
 
-/** Reflect the applied annotation state, including source-update invalidation. */
-function showAnnotations() {
-    const state = query.annotations.inspect();
-    document.getElementById("annotation-status").textContent = state.invalidated
-        ? "Findings cleared because the source data changed."
-        : state.activeTargets + " labeled findings.";
+/** Show the same membership used by conditional encodings, including clicks. */
+function showSelection() {
+    const { data } = chosen.getValue();
+    document.getElementById("selection-status").textContent =
+        data.length + " selected records.";
+    render(
+        html`
+            <h2>Selected expression records</h2>
+            <p>
+                These are the records highlighted by the plot's conditional
+                encodings.
+            </p>
+            ${dataTable(
+                [
+                    ["gene", "Gene"],
+                    ["pathway", "Pathway"],
+                    ["log2FoldChange", "Log2 fold change"],
+                    ["negLog10Padj", "Score"],
+                ],
+                data
+            )}
+        `,
+        results
+    );
 }
 
-/** Cancel obsolete work and explain why the action is available or unavailable. */
+/** Cancel a previous read when its controls or captured scope change. */
 function invalidate() {
     controller.abort();
     const scope = query.assessQuery(track, getScope());
-    const annotations = query.assessAnnotations(track);
-    find.disabled =
-        !form.checkValidity() ||
-        scope.status !== "ready" ||
-        annotations.status !== "ready";
+    find.disabled = !form.checkValidity() || scope.status !== "ready";
     status.textContent =
         scope.status !== "ready"
             ? scope.status + ": " + scope.reason
-            : annotations.status !== "ready"
-              ? annotations.status + ": " + annotations.reason
-              : "Scope or controls changed. Run the query for current findings.";
+            : "Scope or controls changed. Apply thresholds to update the selection.";
 }
 
-/** Query summaries and row-preserving representatives, then annotate the latter. */
-async function findRepresentatives() {
+/** The host owns the thresholds; Core reads records and sets membership. */
+async function highlightQualifying() {
     controller.abort();
     controller = new AbortController();
     const { signal } = controller;
-    const scope = getScope();
-    /** @type {AnalysisStage[]} */
-    const filters = [
-        {
-            type: "filter",
-            field: "log2FoldChange",
-            op: "gte",
-            value: fold.valueAsNumber,
-            absolute: true,
-        },
-        {
-            type: "filter",
-            field: "negLog10Padj",
-            op: "gte",
-            value: score.valueAsNumber,
-        },
-    ];
-    /** @type {import("@genome-spy/core/view-query").ViewSliceQueryOptions} */
-    const options = {
-        ...scope,
-        fields: ["gene", "pathway", "log2FoldChange", "negLog10Padj"],
-        limit: null,
-        signal,
-    };
-    status.textContent = "Analyzing the captured region…";
-    render(html`<p>Updating findings…</p>`, results);
+    const minimumFold = fold.valueAsNumber;
+    const minimumScore = score.valueAsNumber;
+    status.textContent = "Reading the captured region…";
     try {
-        const [summary, points] = await Promise.all([
-            query.queryData(track, {
-                ...options,
-                analysis: [
-                    ...filters,
-                    {
-                        type: "aggregate",
-                        groupby: ["pathway"],
-                        fields: [null, "log2FoldChange"],
-                        ops: ["count", "mean"],
-                        as: ["eligibleCount", "meanFoldChange"],
-                    },
-                ],
-            }),
-            query.queryData(track, {
-                ...options,
-                includeAnnotationTargets: true,
-                analysis: [
-                    ...filters,
-                    {
-                        type: "window",
-                        groupby: ["pathway"],
-                        sort: {
-                            field: ["negLog10Padj", "gene"],
-                            order: ["descending", "ascending"],
-                        },
-                        ops: ["row_number", "count"],
-                        as: ["rank", "eligibleCount"],
-                        frame: [null, null],
-                    },
-                    { type: "filter", field: "rank", op: "eq", value: 1 },
-                ],
-            }),
-        ]);
+        const result = await query.queryData(track, {
+            ...getScope(),
+            fields: ["gene", "pathway", "log2FoldChange", "negLog10Padj"],
+            limit: null,
+            signal,
+        });
         signal.throwIfAborted();
-        // Both independently validated queries must describe the same evidence.
-        const captured = (/** @type {typeof summary} */ result) =>
-            JSON.stringify([
-                result.scope.domains,
-                result.scope.selection,
-                result.scope.dataRevision,
-            ]);
-        if (captured(summary) !== captured(points))
-            throw new Error("Query scopes changed; run the query again.");
-        await query.annotations.replace(
-            {
-                targets: points.annotationTargets.map((reference, i) => ({
-                    reference,
-                    text: String(points.rows[i].gene),
-                })),
-                emphasis: "purple",
-                connectors: true,
-            },
-            { signal }
+        const qualifying = result.rows.filter(
+            (row) =>
+                Math.abs(Number(row.log2FoldChange)) >= minimumFold &&
+                Number(row.negLog10Padj) >= minimumScore
         );
-        signal.throwIfAborted();
-        render(
-            html`
-                <h2>Captured findings</h2>
-                <p>
-                    ${points.rowsMatched} genes in the captured region;
-                    ${points.outputRows} pathway representatives.
-                </p>
-                <p class="hint">
-                    Viewport x:
-                    ${points.scope.domains.x.map(formatValue).join("–")}; y:
-                    ${points.scope.domains.y.map(formatValue).join("–")}.
-                    ${points.scope.selection ? "Also constrained by the captured brush." : "No brush constraint."}
-                </p>
-                <h3>Pathway summary</h3>
-                <div id="pathways">
-                    ${dataTable(
-                        [
-                            ["pathway", "Pathway"],
-                            ["eligibleCount", "Qualifying genes"],
-                            ["meanFoldChange", "Mean log2 fold change"],
-                        ],
-                        summary.rows
-                    )}
-                </div>
-                <h3>Representative genes</h3>
-                <div id="representatives">
-                    ${dataTable(
-                        [
-                            ["gene", "Gene"],
-                            ["pathway", "Pathway"],
-                            ["negLog10Padj", "Score"],
-                            ["eligibleCount", "Qualifying genes"],
-                        ],
-                        points.rows
-                    )}
-                </div>
-                ${points.rows.length ? "" : html`<p>No genes meet the current criteria. Previous labels were cleared.</p>`}
-                <details>
-                    <summary>Captured query responses</summary>
-                    <pre>
-${JSON.stringify({ summary, representatives: points }, null, 2)}</pre>
-                </details>
-            `,
-            results
-        );
-        status.textContent =
-            "Findings current. Pan or zoom to follow their labels.";
+        chosen.setValue(qualifying.map((row) => [String(row.gene)]));
+        status.textContent = `${qualifying.length} of ${result.rowsMatched} records qualify in the captured region. Viewport x: ${result.scope.domains.x.map(formatValue).join("–")}; y: ${result.scope.domains.y.map(formatValue).join("–")}.${result.scope.selection ? " Also constrained by the brush." : ""}`;
         renderTrackInfo(query, track, info);
-        showAnnotations();
     } catch (error) {
         if (signal.aborted) return;
         status.textContent = String(error);
-        render(html`<p>Analysis failed. ${String(error)}</p>`, results);
         console.error(error);
     }
 }
 
 form.addEventListener("submit", (event) => {
     event.preventDefault();
-    void findRepresentatives();
+    void highlightQualifying();
 });
 fold.addEventListener("input", invalidate);
 score.addEventListener("input", invalidate);
 scopeControl.addEventListener("change", invalidate);
 contrast.addEventListener("change", () => {
     controller.abort();
+    // Membership refers to the current publication. The host decides when to
+    // clear or reapply it after replacing data.
+    chosen.clear();
     api.datasets.set(
         "expression",
         contrast.value === "A" ? contrastA : contrastB
     );
-    render(
-        html`<p>
-            Source data changed. Run the query to inspect this contrast.
-        </p>`,
-        results
-    );
     invalidate();
     renderTrackInfo(query, track, info);
-    showAnnotations();
 });
 document
     .getElementById("clear-brush")
     .addEventListener("click", () => brush.clear());
+document.getElementById("clear-selection").addEventListener("click", () => {
+    controller.abort();
+    chosen.clear();
+    status.textContent =
+        "Selection cleared. Apply thresholds to select records again.";
+});
 document.getElementById("download").addEventListener("click", async () => {
     const { blob } = await api.imageExport.svg();
     const url = URL.createObjectURL(blob);
@@ -290,40 +202,31 @@ document.getElementById("download").addEventListener("click", async () => {
     link.click();
     URL.revokeObjectURL(url);
 });
-document.getElementById("clear-labels").addEventListener("click", async () => {
-    controller.abort();
-    await query.annotations.clear();
-    showAnnotations();
-    status.textContent =
-        "Labels cleared. Run the query to label findings again.";
-});
 document.getElementById("reset-example").addEventListener("click", async () => {
     controller.abort();
     form.reset();
     brush.clear();
+    chosen.clear();
     api.datasets.set("expression", contrastA);
     await Promise.all([scales[0].zoomTo([-3, 3]), scales[1].zoomTo([0, 7])]);
-    await query.annotations.clear();
-    render(html`<p>Run a query to inspect the expression data.</p>`, results);
     invalidate();
     renderTrackInfo(query, track, info);
-    showAnnotations();
 });
 scales.forEach((scale) => scale.addEventListener("domain", invalidate));
 const stopBrush = brush.subscribe(invalidate, { delivery: "commit" });
+const stopChosen = chosen.subscribe(showSelection);
 
-/** Release references and generated marks as well as ordinary subscriptions. */
+/** Release subscriptions and the embed when leaving the page. */
 export function dispose() {
     controller.abort();
     scales.forEach((scale) => scale.removeEventListener("domain", invalidate));
     stopBrush();
-    query.annotations.dispose();
+    stopChosen();
     api.finalize();
 }
 window.addEventListener("pagehide", dispose, { once: true });
 invalidate();
 status.textContent =
-    "Ready. Find and label representatives in the current region.";
-render(html`<p>Run a query to inspect the expression data.</p>`, results);
+    "Ready. Apply thresholds to highlight every qualifying record.";
 renderTrackInfo(query, track, info);
-showAnnotations();
+showSelection();

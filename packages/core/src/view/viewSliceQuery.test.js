@@ -2,8 +2,6 @@ import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
 import { createViewQuery } from "../viewQuery.js";
-import { processData } from "../data/flowTestUtils.js";
-import AggregateTransform from "../data/transforms/aggregate.js";
 
 /** @param {any[]} rows @param {Record<string, any>} [spec] */
 async function setup(rows, spec = {}) {
@@ -29,7 +27,7 @@ const options = /** @type {const} */ ({ channels: ["x"], limit: 2 });
 const request = { channels: [...options.channels], limit: options.limit };
 
 describe("scoped loaded-data queries", () => {
-    test("filters before limiting, aggregates all matches and records scope", async () => {
+    test("filters before limiting and records the full matching population and scope", async () => {
         const rows = Array.from({ length: 3000 }, (_, x) => ({
             x,
             value: x * 2,
@@ -40,17 +38,12 @@ describe("scoped loaded-data queries", () => {
         const result = await query.queryData(handle, {
             ...request,
             fields: ["x", "nested"],
-            aggregate: [
-                { op: "mean", field: "value", as: "average" },
-                { op: "count", as: "count" },
-            ],
         });
         expect(result).toMatchObject({
             rows: [{ x: 2000 }, { x: 2001 }],
             rowsExamined: 3000,
             rowsMatched: 200,
             truncated: true,
-            aggregates: { average: 4199, count: 200 },
             scope: {
                 domains: { x: [2000, 2200] },
                 data: "loaded-transformed",
@@ -123,134 +116,13 @@ describe("scoped loaded-data queries", () => {
         ).toEqual([{ x: 1, end: 3, y: 0 }]);
     });
 
-    test("matches aggregate transform semantics without cloning source payloads", async () => {
-        // Uncloneable payloads prove an aggregate-only query doesn't copy input rows.
-        const rows = [
-            { x: 1, value: 2 },
-            { x: 2, value: null },
-            { x: 3, value: 4 },
-            { x: 4, value: NaN },
-        ];
-        const { query, handle, view } = await setup(rows);
-        for (const row of /** @type {any} */ (view).getCollector().getData())
-            row.payload = () => {};
-        const ops = /** @type {const} */ ([
-            "count",
-            "valid",
-            "min",
-            "max",
-            "sum",
-            "mean",
-            "variance",
-        ]);
-        const result = await query.queryData(handle, {
-            ...request,
-            limit: 0,
-            aggregate: ops.map((op) => ({ op, field: "value", as: op })),
-        });
-        const expected = processData(
-            new AggregateTransform({
-                type: "aggregate",
-                ops: [...ops],
-                fields: ops.map(() => "value"),
-                as: [...ops],
-            }),
-            rows
-        )[0];
-        expect(result.aggregates).toEqual(expected);
-        expect(result.rows).toEqual([]);
-        expect(result.rowsMatched).toBe(4);
-    });
-
-    test("cancellation between aggregate passes prevents later work", async () => {
-        const { query, handle, view } = await setup([
-            { x: 1, first: 2, second: 3 },
-        ]);
-        const [row] = /** @type {any} */ (
-            Array.from(/** @type {any} */ (view).getCollector().getData())
-        );
-        const controller = new AbortController();
-        let secondRead = false;
-        Object.defineProperties(row, {
-            first: {
-                get() {
-                    setTimeout(() => controller.abort(), 0);
-                    return 2;
-                },
-            },
-            second: {
-                get() {
-                    secondRead = true;
-                    return 3;
-                },
-            },
-        });
-
-        await expect(
-            query.queryData(handle, {
-                ...request,
-                limit: 0,
-                aggregate: [
-                    { op: "mean", field: "first", as: "first" },
-                    { op: "mean", field: "second", as: "second" },
-                ],
-                signal: controller.signal,
-            })
-        ).rejects.toMatchObject({ name: "AbortError" });
-        expect(secondRead).toBe(false);
-    });
-
-    test("detaches nonnumeric extrema and rejects shared memory in aggregate-only results", async () => {
-        const { query, handle, view } = await setup([
-            { x: 1, value: { nested: [7] } },
-        ]);
-        const aggregateRequest = {
-            ...request,
-            limit: 0,
-            aggregate: [
-                {
-                    op: /** @type {const} */ ("min"),
-                    field: "value",
-                    as: "minimum",
-                },
-            ],
-        };
-        const result = await query.queryData(handle, aggregateRequest);
-        expect(result.aggregates.minimum).toEqual({ nested: [7] });
-        /** @type {{nested:number[]}} */ (result.aggregates.minimum).nested[0] =
-            99;
-        expect(
-            (await query.queryData(handle, aggregateRequest)).aggregates.minimum
-        ).toEqual({ nested: [7] });
-
-        if (typeof SharedArrayBuffer !== "undefined") {
-            /** @type {any} */ (view)
-                .getCollector()
-                .getData()
-                [Symbol.iterator]()
-                .next().value.value = { payload: new SharedArrayBuffer(8) };
-            await expect(
-                query.queryData(handle, aggregateRequest)
-            ).rejects.toThrow("Shared memory");
-        }
-    });
-
-    test("empty slices return exact zero counts and null missing statistics", async () => {
+    test("empty slices return zero matches without truncation", async () => {
         const { query, handle } = await setup([{ x: 1 }]);
         await handle.getScaleResolution("x").zoomTo([10, 20]);
-        expect(
-            await query.queryData(handle, {
-                ...request,
-                aggregate: [
-                    { op: "count", as: "count" },
-                    { op: "mean", field: "x", as: "mean" },
-                ],
-            })
-        ).toMatchObject({
+        expect(await query.queryData(handle, request)).toMatchObject({
             rows: [],
             rowsMatched: 0,
             truncated: false,
-            aggregates: { count: 0, mean: null },
         });
     });
 
@@ -703,19 +575,13 @@ describe("scoped loaded-data queries", () => {
         ".",
         "..",
     ])(
-        "rejects private or identity field path %s in previews and aggregates",
+        "rejects private or identity field path %s in projected rows",
         async (name) => {
             const { query, handle } = await setup([{ x: 1 }]);
             await expect(
                 query.queryData(handle, {
                     ...request,
                     fields: [name],
-                })
-            ).rejects.toThrow("public field names");
-            await expect(
-                query.queryData(handle, {
-                    ...request,
-                    aggregate: [{ op: "sum", field: name, as: "total" }],
                 })
             ).rejects.toThrow("public field names");
         }
@@ -728,9 +594,6 @@ describe("scoped loaded-data queries", () => {
         const result = await query.queryData(handle, {
             ...request,
             fields: ["nested.__uniqueId", 'nested["__uniqueId"]', "a\\.b"],
-            aggregate: [
-                { op: "sum", field: 'nested["__uniqueId"]', as: "total" },
-            ],
         });
         expect(result.rows).toEqual([
             {
@@ -739,7 +602,6 @@ describe("scoped loaded-data queries", () => {
                 "a\\.b": 3,
             },
         ]);
-        expect(result.aggregates).toEqual({ total: 7 });
     });
 
     test("rejects unready, malformed and unsupported requests", async () => {
@@ -752,8 +614,9 @@ describe("scoped loaded-data queries", () => {
                 (limit) => ({ ...request, limit })
             ),
             { ...request, fields: ["["] },
-            { ...request, aggregate: [{ op: "sum", as: "sum", field: "[" }] },
-            { ...request, aggregate: [{ op: "median", as: "m", field: "x" }] },
+            { ...request, aggregate: [] },
+            { ...request, analysis: [] },
+            { ...request, includeAnnotationTargets: true },
         ]) {
             await expect(
                 query.queryData(handle, /** @type {any} */ (invalid))
@@ -945,352 +808,5 @@ test("assessment and execution reject conditional positions identically", async 
     });
     await expect(query.queryData(handle, request)).rejects.toMatchObject({
         reason: "unsupported-position",
-    });
-});
-
-describe("scoped analysis", () => {
-    test.each([null, 1500])(
-        "returns more than 1000 rows with limit %s",
-        async (limit) => {
-            const rows = Array.from({ length: 1500 }, (_, x) => ({
-                x,
-                group: x,
-            }));
-            const { query, handle } = await setup(rows);
-            const raw = await query.queryData(handle, { ...request, limit });
-            expect(raw.rows).toEqual(
-                rows.map(({ x, group }) => ({ x, group }))
-            );
-            expect(raw.truncated).toBe(false);
-
-            const grouped = await query.queryData(handle, {
-                ...request,
-                limit,
-                fields: ["group"],
-                analysis: [
-                    {
-                        type: "aggregate",
-                        groupby: ["group"],
-                        ops: ["count"],
-                        fields: [null],
-                        as: ["count"],
-                    },
-                ],
-            });
-            expect(grouped.rows).toEqual(
-                rows.map(({ group }) => ({ group, count: 1 }))
-            );
-            expect(grouped.outputRows).toBe(1500);
-            expect(grouped.truncated).toBe(false);
-        }
-    );
-
-    test("complete output still respects the viewport and analysis filters", async () => {
-        const { query, handle } = await setup([
-            { x: 1 },
-            { x: 2 },
-            { x: 6000 },
-        ]);
-        const result = await query.queryData(handle, {
-            ...request,
-            limit: null,
-            fields: ["x"],
-            analysis: [{ type: "filter", field: "x", op: "gt", value: 1 }],
-        });
-        expect(result.rows).toEqual([{ x: 2 }]);
-        expect(result.rowsMatched).toBe(2);
-        expect(result.truncated).toBe(false);
-    });
-
-    test("groups the full slice before limiting and snapshots its pipeline", async () => {
-        const { query, handle } = await setup(
-            Array.from({ length: 1500 }, (_, x) => ({
-                x,
-                group: x % 3,
-                value: 1500 - x,
-            }))
-        );
-        /** @type {import("../types/viewQueryApi.js").ViewSliceAnalysisStage[]} */
-        const analysis = [
-            {
-                type: "aggregate",
-                groupby: ["group"],
-                ops: ["count", "min", "max"],
-                fields: [null, "value", "value"],
-                as: ["count", "min(value)", "max(value)"],
-            },
-        ];
-        const pending = query.queryData(handle, {
-            ...request,
-            fields: ["group", "value"],
-            limit: 1,
-            analysis,
-        });
-        if (analysis[0].type === "aggregate") analysis[0].as[0] = "changed";
-        const result = await pending;
-        expect(result).toMatchObject({
-            rowsMatched: 1500,
-            outputRows: 3,
-            truncated: true,
-            rows: [
-                { group: 0, count: 500, "min(value)": 3, "max(value)": 1500 },
-            ],
-            scope: {
-                analysis: [{ as: ["count", "min(value)", "max(value)"] }],
-                sourceCoverage: "unknown",
-            },
-        });
-    });
-
-    test("numeric absolute filters reject invalid values without coercion", async () => {
-        const values = [
-            -3,
-            3,
-            -2,
-            2,
-            null,
-            undefined,
-            "4",
-            NaN,
-            Infinity,
-            -Infinity,
-        ];
-        const { query, handle } = await setup(
-            values.map((value, x) => ({ x, value }))
-        );
-        const result = await query.queryData(handle, {
-            ...request,
-            fields: ["value"],
-            limit: 20,
-            analysis: [
-                {
-                    type: "filter",
-                    field: "value",
-                    op: "gt",
-                    value: 2,
-                    absolute: true,
-                },
-            ],
-        });
-        expect(result).toMatchObject({
-            rowsMatched: 10,
-            outputRows: 2,
-            truncated: false,
-            rows: [{ value: -3 }, { value: 3 }],
-        });
-    });
-
-    test("window leads retain full group counts, stable ties and detached source rows", async () => {
-        const { query, handle } = await setup([
-            { x: 0, group: "a", p: 4, id: "first" },
-            { x: 1, group: "a", p: 1, id: "tie1" },
-            { x: 2, group: "a", p: 1, id: "tie2" },
-            { x: 3, group: "b", p: 2, id: "other" },
-        ]);
-        /** @type {import("../types/viewQueryApi.js").ViewSliceAnalysisStage[]} */
-        const analysis = [
-            {
-                type: "window",
-                groupby: ["group"],
-                sort: { field: "p" },
-                ops: ["row_number", "count"],
-                as: ["rank", "count"],
-                frame: [null, null],
-            },
-            { type: "filter", field: "rank", op: "eq", value: 1 },
-        ];
-        const result = await query.queryData(handle, {
-            ...request,
-            fields: ["group", "p", "id"],
-            limit: 10,
-            analysis,
-        });
-        expect(result.rows).toEqual([
-            { group: "a", p: 1, id: "tie1", rank: 1, count: 3 },
-            { group: "b", p: 2, id: "other", rank: 1, count: 1 },
-        ]);
-        expect(result).toMatchObject({
-            rowsMatched: 4,
-            outputRows: 2,
-            truncated: false,
-        });
-        result.rows[0].id = "mutated";
-        expect(
-            (await query.queryData(handle, { ...request, limit: 10 })).rows[1]
-        ).toMatchObject({ id: "tie1" });
-        expect(
-            (await query.queryData(handle, request)).rows[0]
-        ).not.toHaveProperty("rank");
-        if (analysis[0].type !== "window") throw new Error("Expected window");
-        analysis[0].sort = {
-            field: ["p", "id"],
-            order: ["ascending", "descending"],
-        };
-        expect(
-            (
-                await query.queryData(handle, {
-                    ...request,
-                    fields: ["group", "p", "id"],
-                    analysis,
-                })
-            ).rows[0].id
-        ).toBe("tie2");
-    });
-
-    test("projects field paths as literal columns and combines missing groups with null", async () => {
-        const { query, handle } = await setup([
-            { x: 0, nested: { value: 2 }, group: null },
-            { x: 1, nested: { value: 4 } },
-        ]);
-        const result = await query.queryData(handle, {
-            ...request,
-            fields: ["nested.value", "group"],
-            analysis: [
-                { type: "filter", field: "nested.value", op: "gte", value: 2 },
-                {
-                    type: "aggregate",
-                    groupby: ["group"],
-                    fields: [null, "nested.value"],
-                    ops: ["count", "min"],
-                    as: ["count", "min(nested.value)"],
-                },
-            ],
-        });
-        expect(result.rows).toEqual([
-            { group: null, count: 2, "min(nested.value)": 2 },
-        ]);
-    });
-
-    test("empty pipelines, populations and limit zero retain output counts", async () => {
-        const { query, handle } = await setup([{ x: 1, value: 4 }]);
-        expect(
-            (
-                await query.queryData(handle, {
-                    ...request,
-                    fields: ["value", "missing", "nested.missing"],
-                    analysis: [],
-                })
-            ).rows
-        ).toEqual([{ value: 4, missing: null, "nested.missing": null }]);
-        expect(
-            await query.queryData(handle, {
-                ...request,
-                fields: ["value"],
-                analysis: [],
-                limit: 0,
-            })
-        ).toMatchObject({
-            rows: [],
-            rowsMatched: 1,
-            outputRows: 1,
-            truncated: true,
-            scope: { analysis: [] },
-        });
-        expect(
-            await query.queryData(handle, {
-                ...request,
-                fields: ["value"],
-                analysis: [
-                    { type: "filter", field: "value", op: "lt", value: 0 },
-                    {
-                        type: "aggregate",
-                        fields: [null],
-                        ops: ["count"],
-                        as: ["count"],
-                    },
-                ],
-            })
-        ).toMatchObject({
-            rows: [],
-            rowsMatched: 1,
-            outputRows: 0,
-            truncated: false,
-        });
-    });
-
-    test("rejects undisclosed, colliding, private and unsupported operations", async () => {
-        const { query, handle } = await setup([{ x: 1, value: 4 }]);
-        /** @type {Record<string, unknown>[]} */
-        const invalid = [
-            { analysis: [] },
-            { fields: ["value"], aggregate: [], analysis: [] },
-            {
-                fields: ["value"],
-                analysis: [{ type: "filter", field: "x", op: "gt", value: 0 }],
-            },
-            {
-                fields: ["value"],
-                analysis: [
-                    {
-                        type: "filter",
-                        field: "value",
-                        op: "gt",
-                        value: 0,
-                        expr: "true",
-                    },
-                ],
-            },
-            {
-                fields: ["value"],
-                analysis: [
-                    {
-                        type: "aggregate",
-                        ops: ["count"],
-                        fields: [null],
-                        as: ["__proto__"],
-                    },
-                ],
-            },
-            {
-                fields: ["value"],
-                analysis: [
-                    {
-                        type: "window",
-                        ops: ["count"],
-                        as: ["value"],
-                        frame: [null, null],
-                    },
-                ],
-            },
-            {
-                fields: ["value"],
-                analysis: [
-                    {
-                        type: "window",
-                        ops: ["rank"],
-                        as: ["rank"],
-                        frame: [null, null],
-                    },
-                ],
-            },
-        ];
-        for (const options of invalid) {
-            await expect(
-                query.queryData(
-                    handle,
-                    /** @type {any} */ ({ ...request, ...options })
-                )
-            ).rejects.toThrow();
-        }
-    });
-
-    test("rechecks cancellation and revision between analysis passes", async () => {
-        const { query, handle } = await setup([{ x: 1, value: 4 }]);
-        const controller = new AbortController();
-        const pending = query.queryData(handle, {
-            ...request,
-            fields: ["value"],
-            signal: controller.signal,
-            analysis: [{ type: "filter", field: "value", op: "gt", value: 0 }],
-        });
-        controller.abort();
-        await expect(pending).rejects.toThrow();
-        const changed = query.queryData(handle, {
-            ...request,
-            fields: ["value"],
-            analysis: [{ type: "filter", field: "value", op: "gt", value: 0 }],
-        });
-        await handle.getScaleResolution("x").zoomTo([0, 100]);
-        await expect(changed).rejects.toThrow(/invalidated/);
     });
 });

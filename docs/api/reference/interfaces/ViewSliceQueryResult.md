@@ -4,14 +4,6 @@
 
 ## Properties
 
-### annotationTargets?
-
-> `optional` **annotationTargets?**: `string`[]
-
-References aligned with rows; valid until the next target-producing query.
-
-***
-
 ### rows
 
 > **rows**: `Record`<`string`, `unknown`\>[]
@@ -30,29 +22,13 @@ All loaded rows examined, before scope filtering.
 
 > **rowsMatched**: `number`
 
-All loaded rows matching the scope.
-
-***
-
-### outputRows?
-
-> `optional` **outputRows?**: `number`
-
-Analysis output population before limit; present only for analysis requests.
+All loaded rows matching the scope, before limiting returned rows.
 
 ***
 
 ### truncated
 
 > **truncated**: `boolean`
-
-***
-
-### aggregates
-
-> **aggregates**: `Record`<`string`, `unknown`\>
-
-Detached aggregate-transform values. Undefined results (for example empty mean) are null.
 
 ***
 
@@ -63,12 +39,6 @@ Detached aggregate-transform values. Undefined results (for example empty mean) 
 #### type
 
 > **type**: `"viewport"`
-
-#### analysis?
-
-> `optional` **analysis?**: [`ViewSliceAnalysisStage`](../type-aliases/ViewSliceAnalysisStage.md)[]
-
-Detached analysis pipeline, in execution order.
 
 #### domains
 

@@ -144,7 +144,6 @@ document.getElementById("reset").addEventListener("click", async () => {
 export function dispose() {
     cancelAnimationFrame(refreshFrame);
     stopLanes();
-    query.annotations.dispose();
     api.finalize();
 }
 window.addEventListener("pagehide", dispose, { once: true });

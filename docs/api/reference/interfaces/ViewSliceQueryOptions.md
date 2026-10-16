@@ -36,7 +36,7 @@ Named interval selection in this view's parameter scope. A wholly cleared select
 
 > `optional` **fields?**: `string`[]
 
-Returned fields, or required input columns for analysis. Omit for whole raw rows.
+Returned fields. Omit for whole rows.
 
 ***
 
@@ -44,31 +44,7 @@ Returned fields, or required input columns for analysis. Omit for whole raw rows
 
 > **limit**: `number` \| `null`
 
-Maximum returned rows (nonnegative safe integer), or null for all output rows. Does not limit scanning or aggregation.
-
-***
-
-### aggregate?
-
-> `optional` **aggregate?**: [`ViewSliceAggregate`](ViewSliceAggregate.md)[]
-
-Compute each operation over all matching loaded rows, even when rows are truncated.
-
-***
-
-### analysis?
-
-> `optional` **analysis?**: [`ViewSliceAnalysisStage`](../type-aliases/ViewSliceAnalysisStage.md)[]
-
-Transform all scoped rows before limiting. Requires fields; excludes aggregate.
-
-***
-
-### includeAnnotationTargets?
-
-> `optional` **includeAnnotationTargets?**: `boolean`
-
-Return temporary opaque references for row-preserving point queries.
+Maximum returned rows (nonnegative safe integer), or null for all matching rows. Does not limit scanning.
 
 ***
 

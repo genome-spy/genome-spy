@@ -38,7 +38,11 @@ for (const renderer of ["webgl", "canvas"]) {
             await expect(page.getByTestId("mean")).toHaveText("—");
 
             const bounds = await page.evaluate(async () => {
-                const { api } = await import("/regionSummary/index.js");
+                const { api } = await import(
+                    globalThis.document.querySelector(
+                        'script[type="module"][src*="/index.js"]'
+                    ).src
+                );
                 return api.views.getLayoutBounds({
                     scope: [],
                     view: "copyNumber",
@@ -65,7 +69,11 @@ for (const renderer of ["webgl", "canvas"]) {
             await page.getByRole("button", { name: "Reset example" }).click();
             await expect(page.getByTestId("count")).toHaveText("120");
             await page.evaluate(async () => {
-                const { api } = await import("/regionSummary/index.js");
+                const { api } = await import(
+                    globalThis.document.querySelector(
+                        'script[type="module"][src*="/index.js"]'
+                    ).src
+                );
                 const scale = api.views
                     .get({ scope: [], view: "copyNumber" })
                     .getScaleResolution("x");
@@ -83,42 +91,39 @@ for (const renderer of ["webgl", "canvas"]) {
             await checkNarrowLayout(page);
         });
 
-        test("summarizes pathways, labels representatives, and invalidates changed evidence", async ({
+        test("highlights every qualifying record and shares selection with interactive picking", async ({
             page,
         }) => {
             await page.goto(`/expressionFindings/?renderer=${renderer}`);
             const find = page.getByRole("button", {
-                name: "Find and label representatives",
+                name: "Highlight qualifying records",
             });
             await find.click();
-            await expect(page.locator("#annotation-status")).toHaveText(
-                "3 labeled findings."
+            await expect(page.locator("#selection-status")).toHaveText(
+                "6 selected records."
             );
-            await expect(page.locator("#results")).not.toContainText(
-                "Run a query to inspect"
-            );
-            await expect(page.locator("#representatives tbody tr")).toHaveCount(
-                3
-            );
-            for (const gene of ["IFN01", "CYC01", "MET01"]) {
-                await expect(page.locator("#representatives")).toContainText(
-                    gene
-                );
-            }
-            await expect(page.locator("#representatives")).not.toContainText(
-                "CYC02"
-            );
-            await expect(page.locator("#pathways tbody tr")).toHaveCount(3);
-            for (const count of await page
-                .locator("#pathways tbody tr td:nth-child(2)")
-                .allTextContents()) {
-                expect(count).toBe("2");
-            }
-            await expect(page.locator("#pathways")).toContainText("0.3");
+            await expect(page.locator("#results tbody tr")).toHaveCount(6);
+            for (const gene of [
+                "IFN01",
+                "IFN02",
+                "CYC01",
+                "CYC02",
+                "MET01",
+                "MET02",
+            ])
+                await expect(page.locator("#results")).toContainText(gene);
 
-            const svg = await exportExpressionSvg(page);
-            for (const gene of ["IFN01", "CYC01", "MET01"])
-                expect(svg).toContain(">" + gene + "<");
+            // Inspect the original marks' exported opacity, not a decorative overlay.
+            expect(await selectedExpressionMarks(page)).toBe(6);
+            await page.getByLabel("Minimum |log2 fold change|").fill("0");
+            await page.getByLabel("Minimum −log10").fill("0");
+            await find.click();
+            await expect(page.locator("#selection-status")).toHaveText(
+                "12 selected records."
+            );
+            await expect(page.locator("#results tbody tr")).toHaveCount(12);
+            expect(await selectedExpressionMarks(page)).toBe(12);
+
             const downloading = page.waitForEvent("download");
             await page.getByRole("button", { name: "Download SVG" }).click();
             const download = await downloading;
@@ -126,70 +131,69 @@ for (const renderer of ["webgl", "canvas"]) {
                 "expression-findings.svg"
             );
             expect(await download.failure()).toBeNull();
-            await page.evaluate(async () => {
-                const { api } = await import("/expressionFindings/index.js");
-                await api.views
-                    .get({ scope: [], view: "expression" })
-                    .getScaleResolution("x")
-                    .zoomTo([-2.5, 2.5]);
-            });
-            await expect(page.locator("#status")).toContainText(
-                "Scope or controls changed"
+            await page
+                .getByRole("button", { name: "Clear selection", exact: true })
+                .click();
+            await expect(page.locator("#selection-status")).toHaveText(
+                "0 selected records."
             );
-            await expect(page.locator("#annotation-status")).toHaveText(
-                "3 labeled findings."
-            );
-            await checkNarrowLayout(page);
-            // Labels at plot edges can clip; the interior target stays rendered.
-            expect(await exportExpressionSvg(page)).toContain(">MET01<");
 
+            const bounds = await page.evaluate(async () => {
+                const { api } = await import(
+                    globalThis.document.querySelector(
+                        'script[type="module"][src*="/index.js"]'
+                    ).src
+                );
+                return api.views.getLayoutBounds({
+                    scope: [],
+                    view: "expression",
+                });
+            });
+            const canvas = await page.locator("#plot canvas").boundingBox();
+            // IFN01 is at (2.4, 6), within [-3,3] × [0,7].
+            await page.mouse.click(
+                canvas.x + bounds.x + bounds.width * 0.9,
+                canvas.y + bounds.y + bounds.height / 7
+            );
+            await expect(page.locator("#selection-status")).toHaveText(
+                "1 selected records."
+            );
+            await expect(page.locator("#results tbody")).toContainText("IFN01");
             await page.getByLabel("Query scope").selectOption("brush");
             await find.click();
-            await expect(page.locator("#annotation-status")).toHaveText(
-                "0 labeled findings."
+            await expect(page.locator("#selection-status")).toHaveText(
+                "0 selected records."
             );
             await page.getByLabel("Query scope").selectOption("viewport");
             await find.click();
-            await expect(page.locator("#annotation-status")).toHaveText(
-                "3 labeled findings."
+            await expect(page.locator("#selection-status")).toHaveText(
+                "12 selected records."
             );
 
             await page.getByLabel("Toy contrast").selectOption("B");
-            await expect(page.locator("#annotation-status")).toHaveText(
-                "Findings cleared because the source data changed."
+            await expect(page.locator("#selection-status")).toHaveText(
+                "0 selected records."
             );
-            await expect(page.locator("#representatives")).toHaveCount(0);
+            await page.getByLabel("Minimum |log2 fold change|").fill("1");
+            await page.getByLabel("Minimum −log10").fill("2");
             await find.click();
-            await expect(page.locator("#representatives")).toContainText(
-                "IFN02"
+            await expect(page.locator("#selection-status")).toHaveText(
+                "5 selected records."
             );
-            await expect(page.locator("#representatives")).not.toContainText(
+            await expect(page.locator("#results tbody")).not.toContainText(
                 "IFN01"
             );
-            await page
-                .getByRole("button", { name: "Clear labels", exact: true })
-                .click();
-            await expect(page.locator("#annotation-status")).toHaveText(
-                "0 labeled findings."
-            );
-            await expect
-                .poll(() => exportExpressionSvg(page))
-                .not.toContain("IFN02");
-
             await page.getByLabel("Minimum −log10").fill("7");
             await find.click();
-            await expect(page.locator("#results")).toContainText(
-                "No genes meet the current criteria"
-            );
-            await expect(page.locator("#pathways tbody tr")).toHaveCount(0);
-            await expect(page.locator("#annotation-status")).toHaveText(
-                "0 labeled findings."
+            await expect(page.locator("#selection-status")).toHaveText(
+                "0 selected records."
             );
             await page.getByRole("button", { name: "Reset example" }).click();
             await find.click();
-            await expect(page.locator("#representatives")).toContainText(
-                "IFN01"
+            await expect(page.locator("#selection-status")).toHaveText(
+                "6 selected records."
             );
+            await checkNarrowLayout(page);
         });
 
         test("retains source genes while display filters change the transformed table", async ({
@@ -221,7 +225,11 @@ for (const renderer of ["webgl", "canvas"]) {
                 page.locator("#transformed-rows tbody tr")
             ).toHaveCount(8);
             await page.evaluate(async () => {
-                const { api } = await import("/retainedGeneData/index.js");
+                const { api } = await import(
+                    globalThis.document.querySelector(
+                        'script[type="module"][src*="/index.js"]'
+                    ).src
+                );
                 await api.views
                     .get({ scope: [], view: "genes" })
                     .getScaleResolution("x")
@@ -244,10 +252,20 @@ for (const renderer of ["webgl", "canvas"]) {
 }
 
 /** @param {import("playwright/test").Page} page */
-async function exportExpressionSvg(page) {
+async function selectedExpressionMarks(page) {
     return page.evaluate(async () => {
-        const { api } = await import("/expressionFindings/index.js");
-        return (await api.imageExport.svg()).blob.text();
+        const { api } = await import(
+            globalThis.document.querySelector(
+                'script[type="module"][src*="/index.js"]'
+            ).src
+        );
+        const svg = new globalThis.DOMParser().parseFromString(
+            await (await api.imageExport.svg()).blob.text(),
+            "image/svg+xml"
+        );
+        return svg.querySelectorAll(
+            '[data-name="expression"] [data-mark-type="point"] [fill-opacity="1"]'
+        ).length;
     });
 }
 

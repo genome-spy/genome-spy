@@ -20,8 +20,14 @@ const fixture = {
             height: 250,
             data: { name: "observations", retainForInspection: true },
             transform: [{ type: "filter", expr: "datum.x < 3" }],
+            params: [{ name: "selected", select: "point" }],
             mark: "point",
             encoding: {
+                key: { field: "name" },
+                opacity: {
+                    condition: { param: "selected", empty: false, value: 1 },
+                    value: 0.2,
+                },
                 x: {
                     field: "x",
                     type: "quantitative",
@@ -37,7 +43,7 @@ const fixture = {
     ],
 };
 
-test("queries retained source rows and renders point findings through the public API", async ({
+test("queries retained source rows and selects records through the public API", async ({
     page,
 }) => {
     const errors = [];
@@ -66,25 +72,10 @@ test("queries retained source rows and renders point findings through the public
             channels: ["x", "y"],
             fields: ["name", "x", "y"],
             limit: 1,
-            aggregate: [{ op: "count", as: "count" }],
         });
-        const targets = await query.queryData(track, {
-            channels: ["x", "y"],
-            fields: ["name"],
-            limit: 1,
-            includeAnnotationTargets: true,
-        });
-        await query.annotations.replace({
-            targets: [
-                {
-                    reference: targets.annotationTargets[0],
-                    text: "Agent finding",
-                },
-            ],
-            emphasis: "purple",
-            connectors: true,
-        });
-        const annotated = query.annotations.inspect();
+        const selection = track.params.getSelection("selected");
+        selection.setValue([["first"]]);
+        const selected = selection.getValue();
         const svg = await (await api.imageExport.svg()).blob.text();
         await track.getScaleResolution("x").zoomTo([0, 1.5]);
         const narrowed = await query.queryData(track, {
@@ -92,9 +83,10 @@ test("queries retained source rows and renders point findings through the public
             fields: ["name"],
             limit: null,
         });
-        // Publishing new source data must expire the previous visual evidence.
+        // The host explicitly clears membership before replacing its data.
+        selection.clear();
         api.datasets.set("observations", [{ x: 1, y: 1, name: "replacement" }]);
-        const invalidated = query.annotations.inspect();
+        const cleared = selection.getValue();
         const replacement = query.readSourceData(track, { limit: null });
         await api.views.remove(track);
         let staleError;
@@ -107,10 +99,10 @@ test("queries retained source rows and renders point findings through the public
             source,
             description,
             result,
-            annotated,
+            selected,
             svg,
             narrowed,
-            invalidated,
+            cleared,
             replacement,
             staleError,
         };
@@ -132,16 +124,12 @@ test("queries retained source rows and renders point findings through the public
     expect(observed.result).toMatchObject({
         rowsMatched: 2,
         truncated: true,
-        aggregates: { count: 2 },
         scope: { sourceCoverage: "unknown" },
     });
-    expect(observed.annotated.activeTargets).toBe(1);
-    expect(observed.svg).toContain("Agent finding");
+    expect(observed.selected.data).toEqual([{ x: 1, y: 2, name: "first" }]);
+    expect(observed.svg).toContain('fill-opacity="0.2"');
     expect(observed.narrowed.rows).toEqual([{ name: "first" }]);
-    expect(observed.invalidated).toMatchObject({
-        activeTargets: 0,
-        invalidated: true,
-    });
+    expect(observed.cleared).toMatchObject({ active: false, data: [] });
     expect(observed.replacement.rows).toEqual([
         { x: 1, y: 1, name: "replacement" },
     ]);

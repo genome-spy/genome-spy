@@ -308,6 +308,58 @@ package.
 
 To read a selection, use `api.params.getSelection(name)` or the corresponding
 `view.params` namespace. It provides detached point and interval snapshots,
-future-only subscriptions, interval containment, and `clear()`. See
+future-only subscriptions, interval containment, and `clear()`. Point selections
+also provide `setValue(keys)` through the source unit view's parameter namespace. See
 [Marks and scoped interaction](./views.md#marks-and-scoped-interaction) for the
 selection and lifecycle rules shared by these handles.
+
+### Setting point selections
+
+A point selection identifies individual records, whether they are drawn as
+points, text, rectangles, or another mark type. Declare `encoding.key` on the
+source unit view, and conditional encodings to show selected membership:
+
+```json
+{
+  "params": [{ "name": "chosen", "select": "point" }],
+  "encoding": {
+    "key": { "field": "gene" },
+    "opacity": {
+      "condition": { "param": "chosen", "empty": false, "value": 1 },
+      "value": 0.2
+    }
+  }
+}
+```
+
+Get the selection through that unit view, then replace membership by key:
+
+```js
+const track = api.views.get({ scope: [], view: "expression" });
+const selection = track.params.getSelection("chosen");
+if (selection.type === "point") {
+  selection.setValue([["IFN01"], ["CYC02"]]);
+  console.log(selection.getValue().data);
+  selection.setValue([]); // Same membership change as clear().
+}
+```
+
+Each key is a tuple, including a single-element tuple for one key field. With
+`encoding.key: [{field: "gene"}, {field: "sample"}]`, use tuples such as
+`["IFN01", "sampleA"]` in that field order. Keys must be unique non-null strings,
+numbers, or booleans; supplied numeric keys must be finite. `toggle: false`
+selections accept at most one tuple. A malformed, missing, or ambiguous key
+rejects the entire write without changing membership.
+
+Nonempty writes require ready loaded transformed records. They do not fetch
+records, read retained source rows, or require records to be inside the viewport.
+The unit view used to obtain the handle supplies the data, including when the
+selection declaration lives in an ancestor or writes through `push: "outer"`.
+Resolve container-owned selections through an appropriate source unit view.
+Empty input can clear membership without loaded data or an authored key.
+
+The setter publishes the same membership used by mouse picking, subscriptions,
+and conditional encodings. It binds records from the current publication; it
+does not keep a persistent key subscription across dataset updates. The host
+chooses when to clear or reapply membership after replacing data. Handles reject
+writes after their view is removed or the embed is finalized.

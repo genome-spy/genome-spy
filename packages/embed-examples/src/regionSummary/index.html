@@ -48,15 +48,16 @@
             <p>
                 <code>getScaleResolution("x")</code> accesses an unnamed scale
                 for navigation. <code>assessQuery()</code> checks the requested
-                scope, and <code>queryData()</code> calculates aggregates over
-                every matching loaded observation before limiting the row
-                preview to five.
+                scope. <code>queryData()</code> reads every matching loaded
+                observation with <code>limit: null</code>. The example computes
+                count, mean, minimum, and maximum in ordinary JavaScript, then
+                shows five rows.
             </p>
             <p>
-                The application formats the returned results. GenomeSpy performs
-                the viewport/brush filtering and aggregation in the browser. A
-                cleared brush in brush mode matches no rows. Superseded queries
-                are canceled.
+                GenomeSpy resolves viewport and brush membership. The
+                application chooses and computes the statistics from the
+                returned records. A cleared brush in brush mode matches no rows.
+                Superseded queries are canceled.
             </p>
             <p>
                 The 300–500 kb gain region has 20 observations with mean signal

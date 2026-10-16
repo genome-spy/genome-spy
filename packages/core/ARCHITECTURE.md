@@ -18,11 +18,11 @@ It coordinates four major systems:
   It owns detached metadata, bounded loaded-row previews and cooperative
   viewport/interval slice queries. Request-specific assessment and execution share
   preparation, including collector, scope and positional-accessor checks.
-  Assessment does not scan rows or guarantee later success. Scope filtering precedes row output limits;
-  exact loaded-data aggregates reuse the existing aggregate operations and yield
-  between passes. Restricted scoped analysis projects explicitly disclosed fields
-  and reuses filter, aggregate and full-partition window transforms on detached
-  rows before output limits; it records the pipeline and output population.
+  Assessment does not scan rows or guarantee later success. Scope filtering
+  precedes returned-row limits; analysis and presentation decisions belong to
+  consuming apps. Point selection writes use the normal parameter namespace,
+  resolve encoding keys against the source unit view's current collector, and
+  publish ordinary selection membership independently of mark geometry.
   A module-local WeakMap in `src/view/viewQueryAccess.js` connects
   it to the view API's existing checked address resolver; both entries must share
   one Core module instance.

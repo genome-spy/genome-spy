@@ -9,13 +9,7 @@ import {
 import { buildReadinessRequest } from "./dataReadiness.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import AGGREGATE_OPS from "../data/transforms/aggregateOps.js";
 import { field } from "../utils/field.js";
-import {
-    validateAnalysis,
-    projectAnalysisRow,
-    runAnalysisStage,
-} from "./viewSliceAnalysis.js";
 import { compileSelectionPredicateTree } from "../selection/selectionPredicateTree.js";
 
 /** @typedef {import("./unitView.js").default} UnitView */
@@ -25,35 +19,18 @@ import { compileSelectionPredicateTree } from "../selection/selectionPredicateTr
 /** @typedef {"x" | "y"} Channel */
 
 /**
- * Scans live transformed data cooperatively. Scalar aggregation buffers source
- * references; analysis projects and detaches inputs before transform passes.
+ * Reads the captured data-space scope cooperatively, without applying analysis.
  * @param {() => import("./view.js").default} resolve
  * @param {Options} options
- * @param {(view: UnitView, rows: Datum[]) => string[]} [captureTargets]
  * @returns {Promise<Result>}
  */
-export async function queryViewData(resolve, options, captureTargets) {
+export async function queryViewData(resolve, options) {
     validateOptions(options);
     const limit = options.limit ?? Infinity;
-    if (
-        options.includeAnnotationTargets &&
-        (!captureTargets ||
-            options.aggregate?.length ||
-            options.analysis?.some((stage) => stage.type === "aggregate"))
-    ) {
-        throw new Error(
-            "Annotation targets require a row-preserving query and an annotation controller."
-        );
-    }
     options = {
         ...options,
         channels: [...options.channels],
         fields: options.fields?.slice(),
-        aggregate: options.aggregate?.map((item) => ({ ...item })),
-        analysis:
-            options.analysis === undefined
-                ? undefined
-                : cloneDetached(options.analysis),
     };
     options.signal?.throwIfAborted();
 
@@ -64,58 +41,26 @@ export async function queryViewData(resolve, options, captureTargets) {
         name,
         accessor: field(name),
     }));
-    const operations = (options.aggregate ?? []).map(
-        ({ op, field: name, as }) => ({
-            op,
-            as,
-            accessor: name === undefined ? undefined : field(name),
-        })
-    );
-
-    /** @type {Datum[]} */
-    const matched = [];
     /** @type {Result} */
     const result = {
         rows: [],
         rowsExamined: 0,
         rowsMatched: 0,
         truncated: false,
-        aggregates: {},
         scope,
     };
 
-    /** @type {Datum[]} */
-    let analyzed = [];
-    // Row-preserving transforms retain detached object identity. Keep the
-    // source association out of the projected values and public table.
-    /** @type {WeakMap<Datum, Datum>} */
-    const origins = new WeakMap();
-
-    /** @type {Datum[]} */
-    const targetRows = [];
-
     for (const row of collector.getData()) {
         if (result.rowsExamined > 0 && result.rowsExamined % 1024 === 0) {
-            // Yield to cancellation, navigation and source publications, then
-            // reject changed scope rather than mixing observations or retrying.
+            // Yield to cancellation, navigation and publications, then reject a
+            // changed scope instead of mixing observations from different states.
             await new Promise((done) => setTimeout(done, 0));
             assertCurrent();
         }
         result.rowsExamined++;
-        if (!predicates.every((test) => test(row))) {
-            continue;
-        }
+        if (!predicates.every((test) => test(row))) continue;
         result.rowsMatched++;
-        if (operations.length) {
-            matched.push(row);
-        }
-        if (options.analysis !== undefined) {
-            const projected = cloneDetached(
-                projectAnalysisRow(row, options.fields)
-            );
-            analyzed.push(projected);
-            if (options.includeAnnotationTargets) origins.set(projected, row);
-        } else if (result.rows.length < limit) {
+        if (result.rows.length < limit) {
             const output = fields
                 ? Object.fromEntries(
                       fields.map(({ name, accessor }) => [name, accessor(row)])
@@ -124,41 +69,10 @@ export async function queryViewData(resolve, options, captureTargets) {
             const detached = cloneDetached(output);
             delete detached[UNIQUE_ID_KEY];
             result.rows.push(detached);
-            if (options.includeAnnotationTargets) targetRows.push(row);
         }
     }
-
-    for (const { op, as, accessor } of operations) {
-        // Aggregate operations reuse synchronous transform implementations.
-        // Yield between passes so cancellation and chart changes remain observable.
-        await new Promise((done) => setTimeout(done, 0));
-        assertCurrent();
-        Object.defineProperty(result.aggregates, as, {
-            value: AGGREGATE_OPS[op](matched, accessor) ?? null,
-            enumerable: true,
-        });
-    }
-    if (options.analysis !== undefined) {
-        for (const stage of options.analysis) {
-            await new Promise((done) => setTimeout(done, 0));
-            assertCurrent();
-            analyzed = runAnalysisStage(analyzed, stage);
-        }
-        result.outputRows = analyzed.length;
-        const preview = analyzed.slice(0, limit);
-        result.rows = cloneDetached(preview);
-        if (options.includeAnnotationTargets) {
-            for (const row of preview) targetRows.push(origins.get(row));
-        }
-        result.scope.analysis = options.analysis;
-    }
-    // min/max may return source objects; aggregation must detach them too.
-    result.aggregates = cloneDetached(result.aggregates);
-    result.truncated =
-        (result.outputRows ?? result.rowsMatched) > result.rows.length;
+    result.truncated = result.rowsMatched > result.rows.length;
     assertCurrent();
-    if (options.includeAnnotationTargets)
-        result.annotationTargets = captureTargets(view, targetRows);
     return result;
 
     function assertCurrent() {
@@ -187,11 +101,14 @@ function validateOptions(options) {
             "Slice query limit must be null or a nonnegative safe integer."
         );
     }
-    if (
-        options.includeAnnotationTargets !== undefined &&
-        typeof options.includeAnnotationTargets !== "boolean"
-    ) {
-        throw new Error("includeAnnotationTargets must be boolean.");
+    for (const name of Object.keys(options)) {
+        if (
+            !["channels", "selection", "fields", "limit", "signal"].includes(
+                name
+            )
+        ) {
+            throw new Error("Unknown slice query option: " + name);
+        }
     }
     validateScopeOptions(options);
     if (
@@ -199,42 +116,6 @@ function validateOptions(options) {
         (!Array.isArray(options.fields) || !options.fields.every(isPublicField))
     ) {
         throw new Error("Slice fields must be public field names.");
-    }
-    if (options.analysis !== undefined) {
-        if (options.aggregate !== undefined)
-            throw new Error("Analysis cannot be combined with aggregate.");
-        validateAnalysis(options.analysis, options.fields);
-    }
-    const names = new Set();
-    if (options.aggregate !== undefined && !Array.isArray(options.aggregate)) {
-        throw new Error("Slice aggregates must be an array.");
-    }
-    for (const item of options.aggregate ?? []) {
-        if (
-            !item ||
-            ![
-                "count",
-                "valid",
-                "sum",
-                "min",
-                "max",
-                "mean",
-                "variance",
-            ].includes(item.op) ||
-            typeof item.as !== "string" ||
-            !item.as.length ||
-            names.has(item.as) ||
-            (item.op !== "count" &&
-                (typeof item.field !== "string" || !item.field.length))
-        ) {
-            throw new Error(
-                "Invalid slice aggregate operation, field or result name."
-            );
-        }
-        if (item.field !== undefined && !isPublicField(item.field)) {
-            throw new Error("Aggregate fields must be public field names.");
-        }
-        names.add(item.as);
     }
 }
 

@@ -1,3 +1,6 @@
+import UnitView from "../view/unitView.js";
+import { getEncodingKeyFields } from "../encoder/metadataChannels.js";
+import { isDataReady } from "../data/dataReadiness.js";
 import {
     asSelectionConfig,
     createMultiPointSelection,
@@ -7,6 +10,7 @@ import {
     isMultiPointSelection,
     isPointSelectionConfig,
     isSinglePointSelection,
+    resolvePointSelectionFromKeyTuples,
 } from "../selection/selection.js";
 import { bindDisposer } from "../utils/bindDisposer.js";
 
@@ -81,6 +85,16 @@ export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
     return createParamApi(valueRuntime, name, lifecycle, (value) => {
         if (readOnly) {
             throw new Error('Cannot set computed parameter "' + name + '".');
+        }
+        if (
+            "select" in config &&
+            isPointSelectionConfig(asSelectionConfig(config.select))
+        ) {
+            throw new Error(
+                'Use getSelection("' +
+                    name +
+                    '").setValue() to set point selections by key.'
+            );
         }
         runtime.setValue(name, value);
     });
@@ -166,6 +180,18 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             }
         },
 
+        ...(isPointSelectionConfig(select)
+            ? {
+                  setValue(keys) {
+                      ensureParamApiIsLive(lifecycle);
+                      runtime.setValue(
+                          name,
+                          resolvePointSelectionKeys(view, select, keys)
+                      );
+                  },
+              }
+            : {}),
+
         ...(controller
             ? {
                   contains(point) {
@@ -175,6 +201,69 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
               }
             : {}),
     });
+}
+
+/**
+ * Resolve against one current publication before publishing any membership.
+ * @param {View} view
+ * @param {import("../spec/parameter.js").PointSelectionConfig} select
+ * @param {readonly (readonly import("../spec/channel.js").Scalar[])[]} keys
+ */
+function resolvePointSelectionKeys(view, select, keys) {
+    if (!Array.isArray(keys)) {
+        throw new Error("Point selection keys must be an array of key tuples.");
+    }
+    const type = select.toggle ? "multi" : "single";
+    if (!keys.length) {
+        return type === "multi"
+            ? createMultiPointSelection()
+            : createSinglePointSelection(null);
+    }
+    if (!(view instanceof UnitView)) {
+        throw new Error(
+            "Set point selections through a unit view's parameter scope."
+        );
+    }
+    const keyFields = getEncodingKeyFields(view.getEncoding());
+    if (!keyFields) {
+        throw new Error(
+            "Setting point selections requires encoding.key on the source view."
+        );
+    }
+    for (const tuple of keys) {
+        if (
+            !Array.isArray(tuple) ||
+            tuple.length !== keyFields.length ||
+            !tuple.every(
+                (value) =>
+                    typeof value === "string" ||
+                    typeof value === "boolean" ||
+                    (typeof value === "number" && Number.isFinite(value))
+            )
+        ) {
+            throw new Error(
+                "Each point selection key tuple must match encoding.key and contain finite numbers, strings or booleans."
+            );
+        }
+    }
+
+    const collector = view.getCollector();
+    if (!collector || !isDataReady(collector)) {
+        throw new Error("Point selection source data is not ready.");
+    }
+    const resolved = resolvePointSelectionFromKeyTuples(
+        type,
+        keyFields,
+        keys.map((tuple) => [...tuple]),
+        (fields, tuple) => collector.findDatumByKey(fields, tuple)
+    );
+    if (resolved.unresolved.length) {
+        throw new Error(
+            "Point selection keys were not found in the source view's loaded data: " +
+                JSON.stringify(resolved.unresolved)
+        );
+    }
+    return resolved.selection;
 }
 
 /**
@@ -324,7 +413,7 @@ function registerParamDisposer(lifecycle, unsubscribe) {
  *   throw an ambiguity error.
  * - Computed `expr` parameters are readable but cannot be written.
  * - Point selection parameters remain read-only through the legacy parameter
- *   API; use `getSelection()` for snapshots and clearing.
+ *   API; use `getSelection()` for snapshots and key-based writes.
  * - Projected selections are not supported.
  *
  * @param {View} root

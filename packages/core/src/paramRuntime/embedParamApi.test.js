@@ -9,6 +9,7 @@ import {
     resolveScopedEmbedParam,
 } from "./embedParamApi.js";
 import { intervalSelection } from "../selection/index.js";
+import { createViewMutationApi } from "../view/viewMutationApi.js";
 
 /** @typedef {import("../types/embedApi.js").IntervalSnapshot} IntervalSnapshot */
 
@@ -440,35 +441,189 @@ describe("embed param API", () => {
         );
     });
 
-    test("exposes row-backed point selection snapshots", async () => {
-        const { view: root } = await createHeadlessEngine(
-            makeUnit("root", [{ name: "selected", select: "point" }])
-        );
+    test.each(["point", "text", "rect"])(
+        "sets record membership and conditional encodings for %s marks through a view handle",
+        async (markType) => {
+            const { view } = await createHeadlessEngine({
+                params: [{ name: "selected", select: "point" }],
+                vconcat: [
+                    {
+                        ...makeUnit("records"),
+                        data: {
+                            values: [
+                                { gene: "A", x: 1, y: 2 },
+                                { gene: "B", x: 2, y: 3 },
+                            ],
+                        },
+                        mark: {
+                            type: /** @type {"point" | "text" | "rect"} */ (
+                                markType
+                            ),
+                            tooltip: null,
+                        },
+                        encoding: {
+                            key: { field: "gene" },
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            text: { field: "gene" },
+                            opacity: {
+                                condition: {
+                                    param: "selected",
+                                    empty: false,
+                                    value: 1,
+                                },
+                                value: 0.2,
+                            },
+                        },
+                    },
+                ],
+            });
+            const views = createViewMutationApi({ viewRoot: view });
+            const handle = views.get({ scope: [], view: "records" });
+            const selection = handle.params.getSelection("selected");
+            if (selection.type !== "point")
+                throw new Error("Expected point selection.");
+            const listener = vi.fn();
+            const stop = selection.subscribe(listener);
+            selection.setValue([["B"]]);
+            await view.paramRuntime.whenPropagated();
+            expect(selection.getValue()).toEqual({
+                type: "point",
+                active: true,
+                data: [{ gene: "B", x: 2, y: 3 }],
+            });
+            expect(listener).toHaveBeenCalledWith(selection.getValue());
+            const unit = /** @type {import("../view/unitView.js").default} */ (
+                view.getDescendants().find((child) => child.name === "records")
+            );
+            expect(
+                Array.from(unit.getCollector().getData(), (datum) =>
+                    (
+                        unit.mark.encoders.opacity ??
+                        unit.mark.encoders.fillOpacity
+                    )(datum)
+                )
+            ).toEqual([0.2, 1]);
+            expect(() =>
+                handle.params.get("selected").setValue(/** @type {any} */ ({}))
+            ).toThrow(/getSelection/);
+            selection.setValue([["A"], ["B"]]);
+            expect(selection.getValue().data).toHaveLength(2);
+            selection.setValue([]);
+            expect(selection.getValue().active).toBe(false);
+            stop();
+        }
+    );
 
-        const selection = resolveEmbedSelection(root, "selected");
-        expect(selection.getValue()).toEqual({
-            type: "point",
-            active: false,
-            data: [],
+    test("resolves composite keys atomically and reuses the current source publication", async () => {
+        const { view } = await createHeadlessEngine({
+            ...makeUnit("records", [{ name: "selected", select: "point" }]),
+            datasets: {
+                records: [
+                    { gene: "A", sample: 1, x: 1 },
+                    { gene: "A", sample: 2, x: 2 },
+                ],
+            },
+            data: { name: "records" },
+            encoding: {
+                key: [{ field: "gene" }, { field: "sample" }],
+                x: { field: "x", type: "quantitative" },
+            },
         });
-
-        const datum = /** @type {any} */ (root).getCollector().getData()[0];
-        /** @type {any} */ (resolveScopedEmbedParam(root, "selected")).setValue(
-            {
-                type: "single",
-                datum,
-                uniqueId: datum.__uniqueId,
-            }
-        );
-
-        expect(selection.getValue()).toEqual({
-            type: "point",
-            active: true,
-            data: [{ x: 1, y: 2 }],
-        });
-
+        const handle = createViewMutationApi({ viewRoot: view }).get("root");
+        const selection = handle.params.getSelection("selected");
+        if (selection.type !== "point")
+            throw new Error("Expected point selection.");
+        selection.setValue([
+            ["A", 2],
+            ["A", 2],
+            ["A", 1],
+        ]);
+        expect(selection.getValue().data.map((row) => row.sample)).toEqual([
+            2, 1,
+        ]);
+        const before = selection.getValue();
+        for (const keys of [
+            [
+                ["A", 1],
+                ["missing", 2],
+            ],
+            [["A"]],
+            [["A", null]],
+            [["A", Infinity]],
+            "A",
+        ]) {
+            expect(() =>
+                selection.setValue(/** @type {any} */ (keys))
+            ).toThrow();
+            expect(selection.getValue()).toEqual(before);
+        }
         selection.clear();
+        handle.datasets.set("records", [{ gene: "A", sample: 2, x: 4 }]);
+        selection.setValue([["A", 2]]);
+        expect(selection.getValue().data).toEqual([
+            { gene: "A", sample: 2, x: 4 },
+        ]);
+        expect(() => selection.setValue([["A", 1]])).toThrow(/not found/);
+        handle.datasets.set("records", [
+            { gene: "A", sample: 2, x: 4 },
+            { gene: "A", sample: 2, x: 5 },
+        ]);
+        expect(() => selection.setValue([["A", 2]])).toThrow(/Duplicate key/);
+        expect(selection.getValue().data).toEqual([
+            { gene: "A", sample: 2, x: 4 },
+        ]);
+    });
+
+    test("requires keyed ready unit data and respects single selection and outer aliases", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "selected" }],
+            vconcat: [
+                {
+                    ...makeUnit("records", [
+                        {
+                            name: "selected",
+                            select: { type: "point", toggle: false },
+                            push: "outer",
+                        },
+                    ]),
+                    data: {
+                        values: [
+                            { x: 1, y: 2 },
+                            { x: 2, y: 3 },
+                        ],
+                    },
+                    encoding: {
+                        key: { field: "x" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+                makeUnit("unkeyed", [{ name: "selected", select: "point" }]),
+            ],
+        });
+        const views = createViewMutationApi({ viewRoot: view });
+        const handle = views.get({ scope: [], view: "records" });
+        const selection = handle.params.getSelection("selected");
+        if (selection.type !== "point")
+            throw new Error("Expected point selection.");
+        selection.setValue([[1]]);
+        expect(selection.getValue().data).toEqual([{ x: 1, y: 2 }]);
+        expect(() => selection.setValue([[1], [2]])).toThrow(/at most one/);
+        const unkeyed = views
+            .get({ scope: [], view: "unkeyed" })
+            .params.getSelection("selected");
+        if (unkeyed.type !== "point")
+            throw new Error("Expected point selection.");
+        expect(() => unkeyed.setValue([[1]])).toThrow(/encoding.key/);
+        const unit = /** @type {import("../view/unitView.js").default} */ (
+            view.getDescendants().find((child) => child.name === "records")
+        );
+        unit.getCollector().reset();
+        expect(() => selection.setValue([[1]])).toThrow(/not ready/);
+        selection.setValue([]);
         expect(selection.getValue().active).toBe(false);
+        await views.remove(handle);
+        expect(() => selection.setValue([])).toThrow(/removed/);
     });
 
     test("invalidates handles and disposes subscriptions with their view", async () => {
@@ -503,6 +658,8 @@ describe("embed param API", () => {
         expect(() => param.subscribe(listener)).toThrow(/finalized/);
         expect(() => selection.getValue()).toThrow(/finalized/);
         expect(() => selection.clear()).toThrow(/finalized/);
+        if (selection.type === "point")
+            expect(() => selection.setValue([])).toThrow(/finalized/);
         expect(() => selection.subscribe(vi.fn())).toThrow(/finalized/);
 
         active = true;

@@ -16,8 +16,6 @@ export interface ViewQueryApi {
         options: ViewSourceDataReadOptions
     ) => ViewSourceDataReadResult;
 
-    assessAnnotations: (address: ViewAddress) => ViewAnnotationAssessment;
-    annotations: ViewAnnotations;
     /** Returns detached metadata. Throws for a removed view or finalized embed. */
     describe: (address: ViewAddress) => ViewDescription;
 
@@ -96,45 +94,6 @@ export interface ViewDataReadResult {
     scope: "loaded-transformed";
 }
 
-/** Exact operations reuse Core aggregate-transform numeric semantics. */
-export interface ViewSliceAggregate {
-    op: "count" | "valid" | "sum" | "min" | "max" | "mean" | "variance";
-    /** Required except for count. Supports the same field paths as aggregate transforms. */
-    field?: string;
-    /** Unique result property. */
-    as: string;
-}
-
-/** Restricted analysis over explicitly disclosed fields in a scoped query. */
-export type ViewSliceAnalysisStage =
-    | {
-          type: "filter";
-          field: string;
-          op: "gt" | "gte" | "lt" | "lte" | "eq" | "neq";
-          value: number;
-          absolute?: boolean;
-      }
-    | {
-          type: "aggregate";
-          groupby?: string[];
-          fields: (string | null)[];
-          ops: ViewSliceAggregate["op"][];
-          as: string[];
-      }
-    | {
-          type: "window";
-          groupby?: string[];
-          sort?: {
-              field: string | string[];
-              order?:
-                  "ascending" | "descending" | ("ascending" | "descending")[];
-          };
-          ops: ("row_number" | "count")[];
-          fields?: null[];
-          as: string[];
-          frame: [null, null];
-      };
-
 export interface ViewQueryScopeOptions {
     /** Numeric or locus viewport axes to intersect. No pixel visibility is implied. */
     channels: ("x" | "y")[];
@@ -160,36 +119,22 @@ export type ViewQueryAssessment =
       };
 
 export interface ViewSliceQueryOptions extends ViewQueryScopeOptions {
-    /** Returned fields, or required input columns for analysis. Omit for whole raw rows. */
+    /** Returned fields. Omit for whole rows. */
     fields?: string[];
-    /** Maximum returned rows (nonnegative safe integer), or null for all output rows. Does not limit scanning or aggregation. */
+    /** Maximum returned rows (nonnegative safe integer), or null for all matching rows. Does not limit scanning. */
     limit: number | null;
-    /** Compute each operation over all matching loaded rows, even when rows are truncated. */
-    aggregate?: ViewSliceAggregate[];
-    /** Transform all scoped rows before limiting. Requires fields; excludes aggregate. */
-    analysis?: ViewSliceAnalysisStage[];
-    /** Return temporary opaque references for row-preserving point queries. */
-    includeAnnotationTargets?: boolean;
     signal?: AbortSignal;
 }
 
 export interface ViewSliceQueryResult {
-    /** References aligned with rows; valid until the next target-producing query. */
-    annotationTargets?: string[];
     rows: Record<string, unknown>[];
     /** All loaded rows examined, before scope filtering. */
     rowsExamined: number;
-    /** All loaded rows matching the scope. */
+    /** All loaded rows matching the scope, before limiting returned rows. */
     rowsMatched: number;
-    /** Analysis output population before limit; present only for analysis requests. */
-    outputRows?: number;
     truncated: boolean;
-    /** Detached aggregate-transform values. Undefined results (for example empty mean) are null. */
-    aggregates: Record<string, unknown>;
     scope: {
         type: "viewport";
-        /** Detached analysis pipeline, in execution order. */
-        analysis?: ViewSliceAnalysisStage[];
         /** Captured numeric domains; locus coordinates use Core's linearized genome. */
         domains: Partial<Record<"x" | "y", number[]>>;
         selection?: {
@@ -202,35 +147,6 @@ export interface ViewSliceQueryResult {
         sourceCoverage: "unknown";
         primarySource: ViewSourceDescription | null;
     };
-}
-
-export type ViewAnnotationAssessment =
-    | { status: "ready" }
-    | {
-          status: "pending" | "unsupported";
-          reason: string;
-      };
-
-export interface ViewAnnotationSet {
-    targets: { reference: string; text?: string }[];
-    emphasis?: "purple" | "orange" | "blue";
-    connectors?: boolean;
-}
-
-export interface ViewAnnotationState {
-    activeTargets: number;
-    sourceRevision: number | null;
-    invalidated: boolean;
-}
-
-export interface ViewAnnotations {
-    replace: (
-        set: ViewAnnotationSet,
-        options?: { signal?: AbortSignal }
-    ) => Promise<void>;
-    clear: () => Promise<void>;
-    inspect: () => ViewAnnotationState;
-    dispose: () => void;
 }
 
 /** Explicit bound, or null for every retained loaded source row. */

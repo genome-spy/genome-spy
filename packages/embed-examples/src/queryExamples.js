@@ -11,7 +11,7 @@ export function formatValue(value) {
 /**
  * Formats returned rows; it does not filter or analyze the original dataset.
  * @param {[string, string][]} columns Field name and column heading pairs.
- * @param {Record<string, unknown>[]} rows
+ * @param {ReadonlyArray<Readonly<Record<string, unknown>>>} rows
  */
 export function dataTable(columns, rows) {
     return html`<table>
