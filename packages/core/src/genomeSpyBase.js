@@ -783,6 +783,7 @@ export default class GenomeSpy {
     /**
      * @param {{ x: number, y: number }} point
      * @param {import("./view/view.js").default} [scopeView]
+     * @returns {ReturnType<import("./genomeSpy/interactionController.js").default["pick"]>}
      */
     pick(point, scopeView) {
         return this.#interactionController.pick(point, scopeView);

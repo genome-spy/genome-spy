@@ -49,7 +49,8 @@
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json",
-    "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src && node scripts/removeDevelopmentOnlyArtifacts.mjs",
+    "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src && node scripts/removeDevelopmentOnlyArtifacts.mjs && npm run test:typings",
+    "test:typings": "tsc -p scripts/fixtures/tsconfig.publicApiTypes.json",
     "prepack": "node scripts/prepack.mjs",
     "postpack": "node scripts/postpack.mjs"
   },

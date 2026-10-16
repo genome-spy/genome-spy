@@ -11,6 +11,7 @@ import ContainerView from "../view/containerView.js";
 import { BroadcastEventType } from "../genomeSpy.js";
 import { AxisLabelClipPolicy } from "../view/axisView.js";
 import { PrimaryPositionalChannel } from "../spec/channel.js";
+import { GenomeSpyConfig } from "../spec/config.js";
 export interface MarkRenderingDebugState {
     ready: boolean;
     markUniformsAltered: boolean;

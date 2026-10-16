@@ -66,6 +66,8 @@ vegaScale("null", scaleNull, []);
 
 export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
 
+/** @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionApi} ScaleResolutionApi */
+
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
  *
@@ -96,7 +98,6 @@ export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
  */
 export default class ScaleResolution {
     /**
-     * @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionApi} ScaleResolutionApi
      * @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionEventType} ScaleResolutionEventType
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").ChannelWithScale} ChannelWithScale
