@@ -1,9 +1,9 @@
 # Transform outputs and dataflow branches
 
 Status: the authorized vertical prototype is implemented, independently reviewed, and verified
-on `codex/transform-value-outputs`. The hosted clustered-heatmap migration, named
-relations, lazy outputs, and output-driven flow scheduling remain deferred. The
-later milestones and full heatmap acceptance checklist describe that future work.
+on `codex/transform-value-outputs`. The hosted clustered-heatmap example is now
+migrated. Named relations, lazy outputs, and output-driven flow scheduling remain
+deferred; broader scheduler work and plan retirement require a later increment.
 
 ## Recommendation and scope
 
@@ -240,6 +240,21 @@ implementation, excluding tests, blank lines, and comments.
 
 ## Applying it to the clustered heatmap
 
+Implemented in `examples/docs/examples/generic/clustered-heatmap.json` with two
+root-owned `branch.data` pipelines. Both shared index scales bind the resulting
+outputs. Their root resolution is `excluded` so the title's implicit outer
+container cannot take ownership away from the producer scope; descendants still
+share the index scales.
+
+Validated against the original file using its hosted inputs in normal spec-file
+loading context. Both exact cut arrays match, all 4320 matrix cells and 72 gene
+labels remain, each annotation/label track retains 60 rows, and equivalent metadata
+sources are still shared (23 total data sources before and after). No summary
+fields leak into the main rows. Both outputs still load with gene labels and
+cell-line annotations hidden. WebGL PNG bytes and SVG geometry match at full
+view, zoomed/panned viewports, reset, and resized dimensions. Documentation and
+the existing feature Changeset now describe the derived boundaries.
+
 The hosted metadata already contains `column`/`cluster` and `row`/`cluster`.
 Their adjacent cluster changes reproduce the present cuts exactly:
 x `[29, 36, 41, 46, 53]`, y `[24, 42, 52]`.
@@ -447,17 +462,17 @@ Tentative commit: `feat(core): support side transform pipelines`
 
 ## Final integration and acceptance
 
-- [ ] The same value-output contract supports precomputed-file cuts and cuts
+- [x] The same value-output contract supports precomputed-file cuts and cuts
       derived from metadata; no new parameter kind or scale loader is required.
-- [ ] Rows on the main path remain complete and unmodified by the summary path.
+- [x] Rows on the main path remain complete and unmodified by the summary path.
       Only unit-view main collectors feed marks; side collectors are explicit.
-- [ ] Root scope and visibility placement are concrete for both axis producers.
+- [x] Root scope and visibility placement are concrete for both axis producers.
       The example yields x `[29, 36, 41, 46, 53]` and y `[24, 42, 52]`.
 - [ ] Pan, zoom, reset, reverse-y, resize, dendrogram offsets and viewport height
       fitting retain alignment; `scaleGroups` and pointer inversion follow gaps.
-- [ ] Source completion and cached replay share successful value publication;
+- [x] Source completion and cached replay share successful value publication;
       pending startup/failure cannot masquerade as successfully empty output.
-- [ ] Producer dependencies, unsupported flow-consumer diagnostics, indirect
+- [x] Producer dependencies, unsupported flow-consumer diagnostics, indirect
       feedback, writer ownership, rebinding and disposal are verified.
 - [ ] Run focused Vitest suites with `--reporter=agent`, applicable TypeScript,
       lint, schema/example and docs checks. Use `debug-genomespy-web` to exercise

@@ -10,3 +10,6 @@ The new `branch` declaration runs a side pipeline without filtering or mutating
 the main rows. Branches can tap the current input or use an independent eager
 source, and ordinary parameter changes can update their outputs through cached
 replay.
+
+The clustered heatmap example now derives both axes' group gaps from its gene
+and cell-line metadata instead of hardcoding boundary positions.
