@@ -2,6 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 import barAndLabelSpec from "../../../../../examples/docs/grammar/composition/layer/bar-and-label-layer.json" with { type: "json" };
+import annotatedMatrix from "../../../../../examples/docs/grammar/composition/surround/annotated-matrix.json" with { type: "json" };
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";
 import {
@@ -19,6 +20,49 @@ const baseConfig = resolveBaseConfig({
 });
 
 describe("SVG example exports", () => {
+    test("surround exports aligned summaries, metadata, labels, and corner axes", async () => {
+        const { view } = await createHeadlessEngine(
+            /** @type {import("../../spec/root.js").RootSpec} */ (
+                annotatedMatrix
+            ),
+            { contextOptions: { baseConfig } }
+        );
+        try {
+            renderToLayout(view);
+            const { svg, warnings } = createSvg({
+                viewRoot: view,
+                logicalWidth: 500,
+                logicalHeight: 400,
+            });
+            const cells = svg.querySelectorAll('[data-name="matrix"] rect');
+            const columns = svg.querySelectorAll(
+                '[data-name="columnTotals"] rect'
+            );
+            expect(cells).toHaveLength(9);
+            expect(columns).toHaveLength(3);
+            expect(
+                svg.querySelectorAll('[data-name="category"] rect')
+            ).toHaveLength(3);
+            expect(
+                svg.querySelectorAll('[data-name="columnLabels"] text')
+            ).toHaveLength(3);
+            expect(
+                svg.querySelector('[data-name="rowLabels"]').textContent
+            ).toContain("Alpha");
+            expect(svg.textContent).toContain("Column total");
+            expect(svg.textContent).toContain("Row total");
+            // SVG shares the layout path: column summaries have the same band centers.
+            const centerX = (/** @type {Element} */ element) =>
+                +element.getAttribute("x") + +element.getAttribute("width") / 2;
+            expect(Array.from(columns, centerX)).toEqual(
+                Array.from(new Set(Array.from(cells, centerX)))
+            );
+            expect(warnings).toEqual([]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test.each(["generated", "values", "extraValues"])(
         "keeps close-zoom locus ticks and grid lines at visible centers with %s ticks",
         async (mode) => {

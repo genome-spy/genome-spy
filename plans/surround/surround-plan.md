@@ -1,6 +1,6 @@
 # Flat surround composition
 
-Status: reviewed incremental plan; implementation in progress.
+Status: complete; all three milestones implemented, reviewed, and verified.
 
 ## Goal and evidence
 
@@ -148,7 +148,7 @@ bookmark/state mechanism is needed. Both examples are expected to work in App.
   coordinate participation and recursive central-anchor layout.
 - Surround-root axes and cross-region shared axes, including hoisting behavior. Reject positional axis
   resolutions caught by surround even when a child requests forced resolution.
-- Corners, spans, general grids, independent aligned scrolling, surround input
+- Authored corner plots, spans, general grids, independent aligned scrolling, surround input
   controllers, and dynamic structural mutation.
 - Moving heatmap gene labels out of their existing center layer is optional and
   not required for this migration.
@@ -218,15 +218,15 @@ UpSet and public clustered heatmap. Main commit:
 
 ### 3. Integration and simplification review
 
-- [ ] Browser-check local example, UpSet, and public clustered heatmap: loading errors,
+- [x] Browser-check local example, UpSet, and public clustered heatmap: loading errors,
       resize, zoom/pan, picking/hover linking, visibility restoration, and SVG.
-- [ ] Have a subagent inspect implementation and example diffs for KISS, smells,
+- [x] Have a subagent inspect implementation and example diffs for KISS, smells,
       downstream effects, needless machinery, and duplicated layout/spec setup.
       Apply worthwhile fixes and verify them with focused checks.
-- [ ] Review related tests for duplicate/internal-shape coverage. Run the full
+- [x] Review related tests for duplicate/internal-shape coverage. Run the full
       unit suite once for shared GridView changes, workspace TypeScript, lint,
       schema/docs synchronization, and release checks.
-- [ ] Record final outcomes; reconcile all tasks as completed or discarded and
+- [x] Record final outcomes; reconcile all tasks as completed or discarded and
       commit this record. Delete temporary plans in a later commit before any PR.
 
 Areas: cross-backend layout, SVG, browser interaction, existing concat/facet,
@@ -260,7 +260,11 @@ are committed on the feature branch, with unrelated user work untouched.
   Hoisting validation now checks actual surround-owned axes before guide sync.
   Actual UpSet and private NCI-60 conversions passed headless checks, including
   the heatmap at three canvas sizes. No core architecture blocker remains.
-- Final implementation/example KISS review: pending.
+- Final implementation/example KISS review on 2026-10-16 found no remaining
+  blockers. Fix group-level overhang suppression without changing nested plot
+  geometry; report the exact invalid group-size property; avoid cloning side
+  children twice. Keep the two resolution scopes and focused GridView seams.
+  Both public example migrations preserve authored data/interaction semantics.
 
 Core milestone verification: 15 surround subsystem tests and 111 existing focused
 concat/facet/layout/scale/legend regressions passed; 34 generated-schema tests
@@ -280,3 +284,45 @@ Corner tests cover limited borrowing, competing axes, hidden neighbors, padding,
 and plot/group explicit overrides. Review found a group-false geometry bug and
 inaccurate group-size error location; both are fixed and regression-tested.
 Cloning now copies group properties and each child once.
+
+## Final integration results
+
+- Commits: `a98d4b04a` Core composition; `923ca5e2f` App authoring, public
+  migrations, automatic corner overhang, and review fixes. Final SVG integration
+  and this reconciled record form the third milestone.
+- Full suite: 531 files passed, 5,019 tests passed, one skipped, two todo. After
+  review fixes, the focused shared-grid/concat/facet/App/SVG set passed 367 tests;
+  final surround/SVG checks passed 34 tests, including the additional group
+  override and exact diagnostic regressions.
+- All workspace TypeScript and lint passed. Core TypeScript and focused lint
+  also passed after the review fixes. Generated schema/docs synchronization,
+  production App bundle verification, docs preparation and a clean site build
+  passed. Release policy/status validate a minor release (fixed group: 1.2.0).
+- Browser: all six heatmap sources and the UpSet source completed. Verified
+  4,320 expression cells, 142 column-tree and 118 row-tree links, 60 annotation
+  rows, gap/reversal alignment, rotated labels, and collected legends. Resizing
+  to 900 by 650 retained alignment. Heatmap dendrogram wheel zoom changes only
+  its shared coordinate; central drag pans both coordinates. Cell picking
+  returned gene/cell-line metadata and hover selection. UpSet matrix hover
+  updated the shared setCursor ruler parameter. SVG exports had no warnings.
+- Hiding/restoring the heatmap row dendrogram collapses/restores the side and
+  gives the center its expected remaining space. Deterministic subsystem tests
+  also verify initial hidden-side data loading and restoration. App tests
+  verify authored group/track selectors and bookmark payloads.
+- The local documentation example renders and picks correctly with both WebGL
+  and Canvas2D, automatically borrowing empty corners; SVG checks assert matrix
+  and summary band centers plus emitted metadata, labels, and axes. Browser
+  consoles reported no runtime errors (only the usual Lit development warning).
+- Tests were reviewed for behavior coverage; no generated-wrapper snapshots or
+  temporary debugging tests remain. GridView grew from 1,918 to 1,939 lines,
+  using three focused hooks and one shared arrangement path. SurroundView is
+  592 lines including types, validation, guide policy, and fixed sparse topology.
+- Public heatmap is 594 lines (previously 612); UpSet is 403 (previously 416).
+  Comparison with original JSON confirms composition/scoping/sizing are the
+  only semantic changes. Private heatmap matches its original bytes and its
+  checkout is back on main; unrelated private edits remain intact.
+
+Nested layouts, authored corners/spans, shared root axes, scrolling, and
+surround-owned input controllers remain explicitly deferred. No PR or push was
+requested. This reconciled plan must be deleted in a later commit before a PR
+or merge preparation.
