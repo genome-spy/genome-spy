@@ -147,6 +147,10 @@ shared values and `push: "outer"` targets.
 
 SCHEMA SurroundSpec spec surround spacing
 
+### Sides
+
+SCHEMA SurroundSides top right bottom left
+
 ### Side groups
 
 SCHEMA SurroundSideSpec views spacing

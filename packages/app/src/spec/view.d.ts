@@ -132,6 +132,13 @@ export type AppSurroundSideSpec = Omit<
         views: (AppSurroundPlotSpec | AppSurroundSpec)[];
     };
 
+export type AppSurroundSides = Partial<
+    Record<
+        Side,
+        AppSurroundSideSpec | (AppSurroundPlotSpec | AppSurroundSpec)[]
+    >
+>;
+
 export type AppSurroundSpec = Omit<
     CoreSurroundSpec,
     "templates" | "spec" | "surround"
@@ -139,12 +146,7 @@ export type AppSurroundSpec = Omit<
     AppConfigurableVisibilitySpec & {
         templates?: Record<string, AppNestedViewSpec>;
         spec: AppSurroundPlotSpec;
-        surround: Partial<
-            Record<
-                Side,
-                AppSurroundSideSpec | (AppSurroundPlotSpec | AppSurroundSpec)[]
-            >
-        >;
+        surround: AppSurroundSides;
     };
 
 export type AppNestedViewSpec =

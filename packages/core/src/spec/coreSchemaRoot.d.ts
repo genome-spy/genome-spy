@@ -10,7 +10,6 @@ import {
     VConcatSpec as CoreVConcatSpec,
     SurroundSpec as CoreSurroundSpec,
     SurroundSideSpec as CoreSurroundSideSpec,
-    Side,
 } from "./view.js";
 
 interface SchemaViewConfig {
@@ -71,6 +70,22 @@ interface SurroundSideSpec
     views: (SurroundPlotSpec | SurroundSpec)[];
 }
 
+type SurroundSide = (SurroundPlotSpec | SurroundSpec)[] | SurroundSideSpec;
+
+interface SurroundSides {
+    /** Plots above the center, stacked top-to-bottom and sharing its x scale. */
+    top?: SurroundSide;
+
+    /** Plots to the right, stacked left-to-right and sharing the center's y scale. */
+    right?: SurroundSide;
+
+    /** Plots below the center, stacked top-to-bottom and sharing its x scale. */
+    bottom?: SurroundSide;
+
+    /** Plots to the left, stacked left-to-right and sharing the center's y scale. */
+    left?: SurroundSide;
+}
+
 interface SurroundSpec
     extends
         Omit<CoreSurroundSpec, "templates" | "spec" | "surround">,
@@ -86,9 +101,7 @@ interface SurroundSpec
      * plots or an object with `views` and shared view settings. Top/bottom plots
      * share the center's x scale; left/right plots share its y scale.
      */
-    surround: Partial<
-        Record<Side, SurroundSideSpec | (SurroundPlotSpec | SurroundSpec)[]>
-    >;
+    surround: SurroundSides;
 }
 
 type ViewSpec =

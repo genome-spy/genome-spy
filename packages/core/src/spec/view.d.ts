@@ -790,6 +790,21 @@ export interface SurroundSideSpec extends ViewSpecBase {
 export type SurroundSide =
     (SurroundPlotSpec | SurroundSpec)[] | SurroundSideSpec;
 
+/** Optional groups of plots surrounding the central plot. */
+export interface SurroundSides {
+    /** Plots above the center, stacked top-to-bottom and sharing its x scale. */
+    top?: SurroundSide;
+
+    /** Plots to the right, stacked left-to-right and sharing the center's y scale. */
+    right?: SurroundSide;
+
+    /** Plots below the center, stacked top-to-bottom and sharing its x scale. */
+    bottom?: SurroundSide;
+
+    /** Plots to the left, stacked left-to-right and sharing the center's y scale. */
+    left?: SurroundSide;
+}
+
 /** Aligns marginal tracks to a central plot's row and column coordinates. */
 export interface SurroundSpec extends ViewSpecBase {
     axes?: never;
@@ -810,7 +825,7 @@ export interface SurroundSpec extends ViewSpecBase {
      * aligned size. Their annotations extending along that dimension require
      * fixed or step-based thicknesses and may occupy free corners.
      */
-    surround: Partial<Record<Side, SurroundSide>>;
+    surround: SurroundSides;
 
     /** Gap between the center and each side, in pixels. __Default value:__ `10` */
     spacing?: number;

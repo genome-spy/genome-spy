@@ -929,9 +929,17 @@ See the [StyleConfig documentation](config.md#theme-config-and-style).
 
 SCHEMA SurroundPlotSpec
 
+## SurroundSide
+
+SCHEMA SurroundSide
+
 ## SurroundSideSpec
 
 See the [SurroundSideSpec documentation](composition/surround.md#side-groups).
+
+## SurroundSides
+
+See the [SurroundSides documentation](composition/surround.md#sides).
 
 ## SurroundSpec
 
