@@ -42,8 +42,9 @@ test("queries retained source rows and renders point findings through the public
 }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.route("**/query-fixture.json", (route) =>
-        route.fulfill({ json: fixture })
+    await page.route(
+        (url) => url.pathname === "/query-fixture.json",
+        (route) => route.fulfill({ json: fixture })
     );
     await page.goto("/?spec=/query-fixture.json");
     await expect
