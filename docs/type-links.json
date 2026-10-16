@@ -264,6 +264,7 @@
   "SortOrder": "/grammar/types/#sortorder",
   "StringDatumDef": "/grammar/types/#stringdatumdef",
   "StringFieldDef": "/grammar/types/#stringfielddef",
+  "SurroundPlotSpec": "/grammar/types/#surroundplotspec",
   "TextDef": "/grammar/types/#textdef",
   "TitleAnchor": "/grammar/types/#titleanchor",
   "TitleFrame": "/grammar/types/#titleframe",

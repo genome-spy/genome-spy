@@ -925,6 +925,10 @@ SCHEMA StringFieldDef
 
 See the [StyleConfig documentation](config.md#theme-config-and-style).
 
+## SurroundPlotSpec
+
+SCHEMA SurroundPlotSpec
+
 ## SurroundSideSpec
 
 See the [SurroundSideSpec documentation](composition/surround.md#side-groups).

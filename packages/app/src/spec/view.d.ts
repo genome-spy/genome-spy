@@ -120,13 +120,16 @@ export type AppConcatSpec = Omit<CoreConcatSpec, "templates" | "concat"> &
         concat: (AppViewSpec | ImportSpec)[];
     };
 
+export type AppSurroundPlotSpec =
+    AppUnitSpec | AppLayerSpec | AppMultiscaleSpec | ImportSpec;
+
 export type AppSurroundSideSpec = Omit<
     CoreSurroundSideSpec,
     "templates" | "views"
 > &
     AppConfigurableVisibilitySpec & {
         templates?: Record<string, AppNestedViewSpec>;
-        views: (AppNestedViewSpec | ImportSpec)[];
+        views: (AppSurroundPlotSpec | AppSurroundSpec)[];
     };
 
 export type AppSurroundSpec = Omit<
@@ -135,11 +138,11 @@ export type AppSurroundSpec = Omit<
 > &
     AppConfigurableVisibilitySpec & {
         templates?: Record<string, AppNestedViewSpec>;
-        spec: AppNestedViewSpec | ImportSpec;
+        spec: AppSurroundPlotSpec;
         surround: Partial<
             Record<
                 Side,
-                AppSurroundSideSpec | (AppNestedViewSpec | ImportSpec)[]
+                AppSurroundSideSpec | (AppSurroundPlotSpec | AppSurroundSpec)[]
             >
         >;
     };

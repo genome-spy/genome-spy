@@ -766,6 +766,10 @@ export interface ConcatSpec extends ConcatBase {
 
 export type AnyConcatSpec = VConcatSpec | HConcatSpec | ConcatSpec;
 
+/** Plots accepted at the center of a surround. */
+export type SurroundPlotSpec =
+    UnitSpec | LayerSpec | MultiscaleSpec | ImportSpec;
+
 /** A group of tracks sharing data, encodings, and other view settings. */
 export interface SurroundSideSpec extends ViewSpecBase {
     width?: never;
@@ -774,16 +778,17 @@ export interface SurroundSideSpec extends ViewSpecBase {
     viewportHeight?: never;
     /**
      * Tracks ordered top-to-bottom on top/bottom, or left-to-right on left/right.
-     * Tracks support unit/layer plots, nested surrounds, and imports resolving
-     * to these.
+     * Tracks support unit plots, layers, multiscale layers, nested surrounds,
+     * and imports resolving to these.
      */
-    views: (ViewSpec | ImportSpec)[];
+    views: (SurroundPlotSpec | SurroundSpec)[];
 
     /** Gap between tracks, in pixels. __Default value:__ `10` */
     spacing?: number;
 }
 
-export type SurroundSide = (ViewSpec | ImportSpec)[] | SurroundSideSpec;
+export type SurroundSide =
+    (SurroundPlotSpec | SurroundSpec)[] | SurroundSideSpec;
 
 /** Aligns marginal tracks to a central plot's row and column coordinates. */
 export interface SurroundSpec extends ViewSpecBase {
@@ -791,10 +796,10 @@ export interface SurroundSpec extends ViewSpecBase {
     viewportWidth?: never;
     viewportHeight?: never;
     /**
-     * Central plot. Currently accepts unit or layer specifications and imports
-     * resolving to them. Its width and height determine the aligned plot size.
+     * Central plot. Accepts unit plots, layers, multiscale layers, and imports
+     * resolving to these. Its width and height determine the aligned plot size.
      */
-    spec: ViewSpec | ImportSpec;
+    spec: SurroundPlotSpec;
 
     /**
      * Top/bottom tracks share the center's x scale and stack vertically.

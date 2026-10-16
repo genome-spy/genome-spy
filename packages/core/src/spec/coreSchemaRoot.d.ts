@@ -57,16 +57,18 @@ interface FacetSpec
     spec: LayerSpec | UnitSpec | ImportSpec;
 }
 
+type SurroundPlotSpec = UnitSpec | LayerSpec | MultiscaleSpec | ImportSpec;
+
 interface SurroundSideSpec
     extends
         Omit<CoreSurroundSideSpec, "templates" | "views">,
         SchemaViewConfig {
     /**
      * Plots on this side, ordered top-to-bottom on top/bottom or left-to-right
-     * on left/right. Accepts unit plots, layers, nested surrounds, and imports
-     * resolving to these.
+     * on left/right. Accepts unit plots, layers, multiscale layers, nested
+     * surrounds, and imports resolving to these.
      */
-    views: (ViewSpec | ImportSpec)[];
+    views: (SurroundPlotSpec | SurroundSpec)[];
 }
 
 interface SurroundSpec
@@ -77,7 +79,7 @@ interface SurroundSpec
      * Central plot. Accepts unit plots, layers, multiscale layers, and imports
      * resolving to these. Its width and height determine the aligned plot size.
      */
-    spec: ViewSpec | ImportSpec;
+    spec: SurroundPlotSpec;
 
     /**
      * Optional top, right, bottom, and left groups. Each accepts an array of
@@ -85,7 +87,7 @@ interface SurroundSpec
      * share the center's x scale; left/right plots share its y scale.
      */
     surround: Partial<
-        Record<Side, SurroundSideSpec | (ViewSpec | ImportSpec)[]>
+        Record<Side, SurroundSideSpec | (SurroundPlotSpec | SurroundSpec)[]>
     >;
 }
 

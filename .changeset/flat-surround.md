@@ -16,6 +16,7 @@ Side tracks can themselves use `surround`: their central plots stay aligned
 while their own annotations occupy free corners. Nested annotations extending
 along the outer aligned dimension require fixed or step-based thicknesses.
 Overlapping occupied panels report an error naming the conflicting views.
+Editor validation restricts centers and side tracks to supported plot kinds.
 
 Unit and layered plots, including imports, retain ordinary axes, titles,
 legends, hover interactions, and visibility. Nested centers, authored concats,

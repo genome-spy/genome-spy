@@ -28,7 +28,7 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
-    test("surround accepts scoped side groups and preserves extensible plot slots", () => {
+    test("surround restricts plot kinds while accepting scoped and nested sides", () => {
         const validate = createCoreValidator();
         const spec = {
             spec: { mark: "rect" },
@@ -44,9 +44,44 @@ describe("generated core schema", () => {
             templates: { annotation: { mark: "rect" } },
         };
         expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
-        // Slot types remain general; runtime enforces the flat first version.
-        expect(validate({ ...spec, spec: { hconcat: [] } })).toBe(true);
+
+        for (const plot of /** @type {import("./view.js").SurroundPlotSpec[]} */ ([
+            { mark: "rect" },
+            { layer: [{ mark: "point" }] },
+            { multiscale: [{ mark: "point" }], stops: [] },
+            // Imported plot kinds are checked after expansion at runtime.
+            { import: { template: "annotation" } },
+        ])) {
+            expect(validate({ ...spec, spec: plot })).toBe(true);
+            expect(validate({ ...spec, surround: { top: [plot] } })).toBe(true);
+            expect(
+                validate({ ...spec, surround: { right: { views: [plot] } } })
+            ).toBe(true);
+        }
+
+        const nested = { spec: { mark: "rect" }, surround: spec.surround };
+        expect(validate({ ...spec, surround: { right: [nested] } })).toBe(true);
+        expect(
+            validate({ ...spec, surround: { right: { views: [nested] } } })
+        ).toBe(true);
+
+        for (const plot of /** @type {import("./view.js").CoreViewSpec[]} */ ([
+            { hconcat: [] },
+            { vconcat: [] },
+            { concat: [], columns: 2 },
+            { facet: { field: "row" }, spec: { mark: "rect" } },
+        ])) {
+            expect(validate({ ...spec, spec: plot })).toBe(false);
+            expect(validate({ ...spec, surround: { top: [plot] } })).toBe(
+                false
+            );
+            expect(
+                validate({ ...spec, surround: { right: { views: [plot] } } })
+            ).toBe(false);
+        }
+
         for (const invalid of [
+            { ...spec, spec: nested },
             {
                 ...spec,
                 surround: { right: { data: { values: [{ row: 0 }] } } },
