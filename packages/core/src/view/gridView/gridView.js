@@ -877,7 +877,7 @@ export default class GridView extends ContainerView {
             indices
                 .map((index) => {
                     const child = this.visibleChildren[index];
-                    const overhang = child.getOverhangAndPadding();
+                    const overhang = this.getChildOverhangAndPadding(child);
 
                     return direction == "column"
                         ? side
@@ -931,6 +931,16 @@ export default class GridView extends ContainerView {
                 ),
             }))
         );
+    }
+
+    /**
+     * Measures space reserved around a child's plot slots. Arrangement still
+     * uses its full overhang, allowing specialized grids to reuse empty cells.
+     * @protected
+     * @param {GridChild} child
+     */
+    getChildOverhangAndPadding(child) {
+        return child.getOverhangAndPadding();
     }
 
     /**

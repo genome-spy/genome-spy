@@ -1,5 +1,7 @@
 import GridView from "./gridView/gridView.js";
 import Grid from "./layout/grid.js";
+import Padding, { applyOverhangConfig } from "./layout/padding.js";
+import { getSizeDefMinPx } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
 import ViewError from "./viewError.js";
 import { VISIT_SKIP } from "./view.js";
@@ -126,16 +128,17 @@ export default class SurroundView extends GridView {
                 originPath ?? ["views"]
             );
         }
-        if (
-            "width" in group ||
-            "height" in group ||
-            "viewportWidth" in group ||
-            "viewportHeight" in group
-        ) {
+        const invalidSize = [
+            "width",
+            "height",
+            "viewportWidth",
+            "viewportHeight",
+        ].find((property) => property in group);
+        if (invalidSize) {
             throw this.#error(
                 `Surround ${side} groups inherit their aligned size from the center; specify thickness on their plots.`,
                 source,
-                [dimension]
+                [invalidSize]
             );
         }
         validateInputHost(group, this);
@@ -173,7 +176,11 @@ export default class SurroundView extends GridView {
         );
         markViewAsNonAddressable(boundary);
 
-        const { views, ...props } = cloneWithSpecOrigin(group);
+        const { views, ...groupProps } = group;
+        const props = cloneWithSpecOrigin(groupProps);
+        // Group overhang controls the surround's reservation, not the nested
+        // concat's geometry: it must still compensate for its own decorations.
+        delete props.overhang;
         const childSpecs = views.map((spec) => this.#preparePlot(spec, side));
         const concatSpec = inheritSpecOrigin(
             source,
@@ -312,6 +319,68 @@ export default class SurroundView extends GridView {
     getPlotSizeChildren(direction, children) {
         const center = children.find(({ view }) => view === this.#center);
         return center ? [center] : children;
+    }
+
+    /**
+     * Side chrome can use the empty corners, up to the neighboring arm's
+     * guaranteed footprint. Keep full geometry for the normal arrangement path.
+     * @override
+     * @param {import("./gridView/gridChild.js").default} child
+     */
+    getChildOverhangAndPadding(child) {
+        const side = this.#sides.get(child.view);
+        if (!side) {
+            return child.getOverhangAndPadding();
+        }
+
+        const authored = this.spec.surround[side];
+        const policy = Array.isArray(authored) ? undefined : authored.overhang;
+        const measured = applyOverhangConfig(
+            child.getOverhangAndPadding(),
+            policy
+        );
+
+        const horizontal = getAlignedChannel(side) === "x";
+        const edges = horizontal
+            ? /** @type {const} */ (["left", "right"])
+            : /** @type {const} */ (["top", "bottom"]);
+        const reserved = { ...measured };
+        for (const edge of edges) {
+            const neighbor = this.visibleChildren.find(
+                ({ view }) => this.#sides.get(view) === edge
+            );
+            if (
+                !neighbor ||
+                policy?.[edge] === true ||
+                this.#preservesOverhang(child.view, edge) ||
+                // When two axes compete, top/bottom borrow horizontally and
+                // left/right retain their vertical reservation.
+                (!horizontal && neighbor.getOverhangAndPadding()[side] > 0)
+            ) {
+                continue;
+            }
+
+            const dimension = horizontal ? "width" : "height";
+            const budget =
+                getSizeDefMinPx(neighbor.view.getViewportSize()[dimension]) +
+                (this.spec.spacing ?? 10);
+            reserved[edge] = Math.max(0, reserved[edge] - budget);
+        }
+        return Padding.createFromRecord(reserved);
+    }
+
+    /** @param {View} boundary @param {Side} edge */
+    #preservesOverhang(boundary, edge) {
+        const group = /** @type {import("./concatView.js").default} */ (
+            /** @type {import("./concatView.js").default} */ (boundary)
+                .children[0]
+        );
+        return [group, ...group.children].some(
+            (view) =>
+                view.isConfiguredVisible() &&
+                (view.spec.overhang?.[edge] === true ||
+                    view.getPadding()[edge] > 0)
+        );
     }
 
     /**

@@ -17,7 +17,6 @@
   "spacing": 8,
 
   "resolve": {
-    "scale": { "x": "shared", "y": "shared" },
     "legend": { "color": "collected" }
   },
 
@@ -43,362 +42,184 @@
     }
   },
 
-  "columns": 3,
-
-  "concat": [
-    {
-      "name": "emptyCorner",
-      "width": 0,
-      "height": 0,
-      "data": { "values": [] },
-      "mark": "point"
-    },
-
-    {
-      "name": "columnDendrogram",
-      "height": { "grow": 0.2 },
-      "resolve": { "scale": { "y": "excluded" } },
-      "data": {
-        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/gene-tree.json"
-      },
-      "transform": [
-        {
-          "type": "lookup",
-          "from": {
-            "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
-            "format": { "parse": { "column": "number" } }
+  "surround": {
+    "top": [
+      {
+        "name": "columnDendrogram",
+        "height": { "grow": 0.2 },
+        "data": {
+          "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/gene-tree.json"
+        },
+        "transform": [
+          {
+            "type": "lookup",
+            "from": {
+              "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
+              "format": { "parse": { "column": "number" } }
+            },
+            "key": "feature",
+            "fields": "id",
+            "values": ["column"],
+            "description": "Join stable leaf IDs to the heatmap's precomputed column positions."
           },
-          "key": "feature",
-          "fields": "id",
-          "values": ["column"],
-          "description": "Join stable leaf IDs to the heatmap's precomputed column positions."
-        },
-        {
-          "type": "dendrogram",
-          "key": "id",
-          "parentKey": "parent",
-          "height": "height",
-          "leafIndex": "column",
-          "description": "Convert the supplied hierarchy into link endpoints while preserving merge heights and leaf order."
-        }
-      ],
-      "mark": {
-        "type": "link",
-        "linkShape": "orthogonal",
-        "orient": "vertical",
-        "size": 0.9,
-        "minPickingSize": 5,
-        "clip": true
-      },
-      "encoding": {
-        "x": {
-          "field": "sourceIndex",
-          "type": "index",
-          "band": 0.5,
-          "axis": null
-        },
-        "x2": { "field": "targetIndex", "band": 0.5 },
-        "xOffset": {
-          "field": "sourceOffset",
-          "type": "quantitative",
-          "scale": {
-            "domain": [0, 1],
-            "range": [0, { "expr": "width * bandstep('x', width)" }]
+          {
+            "type": "dendrogram",
+            "key": "id",
+            "parentKey": "parent",
+            "height": "height",
+            "leafIndex": "column",
+            "description": "Convert the supplied hierarchy into link endpoints while preserving merge heights and leaf order."
           }
+        ],
+        "mark": {
+          "type": "link",
+          "linkShape": "orthogonal",
+          "orient": "vertical",
+          "size": 0.9,
+          "minPickingSize": 5,
+          "clip": true
         },
-        "x2Offset": { "field": "targetOffset" },
-        "y": {
-          "field": "sourceHeight",
-          "type": "quantitative",
-          "scale": {
-            "domain": { "source": "viewport", "mode": "contain" },
-            "padding": 0.02,
-            "zero": true,
-            "nice": false,
-            "zoom": false
+        "encoding": {
+          "x": {
+            "field": "sourceIndex",
+            "type": "index",
+            "band": 0.5,
+            "axis": null
           },
-          "axis": null
-        },
-        "y2": { "field": "targetHeight" },
-        "color": {
-          "field": "cluster",
-          "type": "nominal",
-          "scale": {
-            "domain": ["C1", "C2", "C3", "C4", "C5", "C6", "Mixed"],
-            "range": [
-              "#7c3aed",
-              "#0ea5e9",
-              "#f59e0b",
-              "#e11d48",
-              "#10b981",
-              "#64748b",
-              "#334155"
-            ]
+          "x2": { "field": "targetIndex", "band": 0.5 },
+          "xOffset": {
+            "field": "sourceOffset",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 1],
+              "range": [0, { "expr": "width * bandstep('x', width)" }]
+            }
           },
-          "legend": null
+          "x2Offset": { "field": "targetOffset" },
+          "y": {
+            "field": "sourceHeight",
+            "type": "quantitative",
+            "scale": {
+              "domain": { "source": "viewport", "mode": "contain" },
+              "padding": 0.02,
+              "zero": true,
+              "nice": false,
+              "zoom": false
+            },
+            "axis": null
+          },
+          "y2": { "field": "targetHeight" },
+          "color": {
+            "field": "cluster",
+            "type": "nominal",
+            "scale": {
+              "domain": ["C1", "C2", "C3", "C4", "C5", "C6", "Mixed"],
+              "range": [
+                "#7c3aed",
+                "#0ea5e9",
+                "#f59e0b",
+                "#e11d48",
+                "#10b981",
+                "#64748b",
+                "#334155"
+              ]
+            },
+            "legend": null
+          }
         }
       }
-    },
+    ],
 
-    {
-      "name": "emptyAnnotationCorner",
-      "width": 0,
-      "height": 0,
-      "data": { "values": [] },
-      "mark": "point"
-    },
+    "left": [
+      {
+        "name": "rowDendrogram",
 
-    {
-      "name": "rowDendrogram",
+        "width": { "grow": 0.2 },
 
-      "width": { "grow": 0.2 },
-
-      "data": {
-        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-line-tree.json"
-      },
-
-      "transform": [
-        {
-          "type": "lookup",
-          "from": {
-            "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
-            "format": {
-              "parse": {
-                "row": "number"
-              }
-            }
-          },
-          "key": "sample",
-          "fields": "id",
-          "values": ["row"],
-          "description": "Join stable leaf IDs to the heatmap's precomputed row positions."
+        "data": {
+          "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-line-tree.json"
         },
-        {
-          "type": "dendrogram",
-          "key": "id",
-          "parentKey": "parent",
-          "height": "height",
-          "leafIndex": "row",
-          "description": "Convert the supplied hierarchy into link endpoints while preserving merge heights and leaf order."
-        }
-      ],
-      "mark": {
-        "type": "link",
-        "linkShape": "orthogonal",
-        "orient": "horizontal",
-        "size": 0.9,
-        "minPickingSize": 5,
-        "clip": true
-      },
-      "encoding": {
-        "x": {
-          "field": "sourceHeight",
-          "type": "quantitative",
-          "scale": {
-            "domain": { "source": "viewport", "mode": "contain" },
-            "padding": 0.02,
-            "reverse": true,
-            "zero": true,
-            "nice": false,
-            "zoom": false
-          },
-          "axis": null
-        },
-        "x2": { "field": "targetHeight" },
-        "y": {
-          "field": "sourceIndex",
-          "type": "index",
-          "band": 0.5,
-          "axis": null
-        },
-        "y2": { "field": "targetIndex", "band": 0.5 },
-        "yOffset": {
-          "field": "sourceOffset",
-          "type": "quantitative",
-          "scale": {
-            "domain": [0, 1],
-            "range": [0, { "expr": "-height * bandstep('y', height)" }]
-          }
-        },
-        "y2Offset": { "field": "targetOffset" },
-        "color": {
-          "field": "cluster",
-          "type": "nominal",
-          "scale": {
-            "domain": ["R1", "R2", "R3", "R4", "Mixed"],
-            "range": ["#3b82f6", "#ef4444", "#22a16d", "#a855f7", "#334155"]
-          },
-          "legend": null
-        }
-      },
-      "resolve": { "scale": { "x": "excluded" } }
-    },
 
-    {
-      "name": "heatmap",
-      "layer": [
-        {
-          "name": "cells",
-          "data": {
-            "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/expression-zscores.csv"
-          },
-          "transform": [
-            {
-              "type": "regexFold",
-              "columnRegex": "^(gene\\d+)$",
-              "asKey": "feature",
-              "asValue": "value",
-              "description": "Unfold gene columns into one expression value per cell line and gene."
-            },
-            {
-              "type": "lookup",
-              "from": {
-                "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
-                "format": { "parse": { "row": "number" } }
-              },
-              "key": "sample",
-              "values": ["row", "cellLine", "lineage", "subtype"],
-              "description": "Attach clustered row positions and cell-line annotations to each matrix cell."
-            },
-            {
-              "type": "lookup",
-              "from": {
-                "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
-                "format": {
-                  "parse": {
-                    "column": "number",
-                    "entrezId": "number",
-                    "meanLog2Tpm": "number",
-                    "sdLog2Tpm": "number"
-                  }
+        "transform": [
+          {
+            "type": "lookup",
+            "from": {
+              "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
+              "format": {
+                "parse": {
+                  "row": "number"
                 }
-              },
-              "key": "feature",
-              "values": [
-                "column",
-                "symbol",
-                "entrezId",
-                "cluster",
-                "meanLog2Tpm",
-                "sdLog2Tpm"
-              ],
-              "description": "Attach clustered column positions, gene metadata, and normalization statistics."
-            },
-            {
-              "type": "formula",
-              "expr": "datum.value * datum.sdLog2Tpm + datum.meanLog2Tpm",
-              "as": "log2Tpm",
-              "description": "Reconstruct log2(TPM + 1) expression from the z score and the gene's mean and standard deviation."
-            }
-          ],
-          "params": [
-            {
-              "name": "hovered",
-              "select": {
-                "type": "point",
-                "on": "mousemove",
-                "clear": "mouseleave",
-                "toggle": false
-              },
-              "persist": false
-            }
-          ],
-          "mark": { "type": "rect", "stroke": "#0f172a" },
-          "encoding": {
-            "x": {
-              "field": "column",
-              "type": "index",
-              "axis": null
-            },
-            "y": {
-              "field": "row",
-              "type": "index",
-              "axis": null
-            },
-            "color": {
-              "field": "value",
-              "type": "quantitative",
-              "scale": {
-                "domain": [-2.5, 0, 2.5],
-                "range": ["#2166ac", "#f7f7f7", "#b2182b"],
-                "clamp": true
-              },
-              "legend": {
-                "title": "Gene z score"
               }
             },
-            "strokeWidth": {
-              "condition": {
-                "param": "hovered",
-                "empty": false,
-                "value": 1.5
-              },
-              "value": 0
-            },
-            "order": {
-              "condition": {
-                "param": "hovered",
-                "empty": false,
-                "value": 1
-              },
-              "value": 0
-            },
-            "tooltip": [
-              { "field": "cellLine", "title": "Cell line" },
-              { "field": "sample", "title": "DepMap ModelID" },
-              { "field": "lineage", "title": "Cancer lineage" },
-              { "field": "subtype", "title": "Cancer subtype" },
-              { "field": "symbol", "title": "Gene" },
-              { "field": "entrezId", "title": "Entrez ID" },
-              { "field": "cluster", "title": "Gene cluster" },
-              {
-                "field": "value",
-                "type": "quantitative",
-                "title": "Gene z score",
-                "format": ".2f"
-              },
-              {
-                "field": "log2Tpm",
-                "type": "quantitative",
-                "title": "log2(TPM + 1)",
-                "format": ".3f"
-              }
-            ]
+            "key": "sample",
+            "fields": "id",
+            "values": ["row"],
+            "description": "Join stable leaf IDs to the heatmap's precomputed row positions."
+          },
+          {
+            "type": "dendrogram",
+            "key": "id",
+            "parentKey": "parent",
+            "height": "height",
+            "leafIndex": "row",
+            "description": "Convert the supplied hierarchy into link endpoints while preserving merge heights and leaf order."
           }
+        ],
+        "mark": {
+          "type": "link",
+          "linkShape": "orthogonal",
+          "orient": "horizontal",
+          "size": 0.9,
+          "minPickingSize": 5,
+          "clip": true
         },
-
-        {
-          "name": "featureLabels",
-          "data": {
-            "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
-            "format": { "parse": { "column": "number" } }
+        "encoding": {
+          "x": {
+            "field": "sourceHeight",
+            "type": "quantitative",
+            "scale": {
+              "domain": { "source": "viewport", "mode": "contain" },
+              "padding": 0.02,
+              "reverse": true,
+              "zero": true,
+              "nice": false,
+              "zoom": false
+            },
+            "axis": null
           },
-          "mark": {
-            "type": "text",
-            "align": "right",
-            "baseline": "middle",
-            "fitToBand": true,
-            "flushX": false,
-            "angle": -90,
-            "dx": -8,
-            "size": 8,
-            "color": "#334155",
-            "clip": "x",
-            "tooltip": null
+          "x2": { "field": "targetHeight" },
+          "y": {
+            "field": "sourceIndex",
+            "type": "index",
+            "band": 0.5,
+            "axis": null
           },
-          "encoding": {
-            "x": { "field": "column", "type": "index", "axis": null },
-            "y": { "value": 0 },
-            "text": { "field": "symbol" }
+          "y2": { "field": "targetIndex", "band": 0.5 },
+          "yOffset": {
+            "field": "sourceOffset",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 1],
+              "range": [0, { "expr": "-height * bandstep('y', height)" }]
+            }
+          },
+          "y2Offset": { "field": "targetOffset" },
+          "color": {
+            "field": "cluster",
+            "type": "nominal",
+            "scale": {
+              "domain": ["R1", "R2", "R3", "R4", "Mixed"],
+              "range": ["#3b82f6", "#ef4444", "#22a16d", "#a855f7", "#334155"]
+            },
+            "legend": null
           }
         }
-      ]
-    },
+      }
+    ],
 
-    {
+    "right": {
       "name": "cellLineAnnotations",
       "spacing": 4,
-      "resolve": { "scale": { "x": "excluded" } },
       "data": {
         "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
         "format": { "parse": { "row": "number" } }
@@ -436,7 +257,7 @@
           }
         ]
       },
-      "hconcat": [
+      "views": [
         {
           "name": "cancerAnnotation",
           "width": 16,
@@ -572,7 +393,168 @@
       ],
       "overhang": { "bottom": true }
     }
-  ],
+  },
+
+  "spec": {
+    "name": "heatmap",
+    "layer": [
+      {
+        "name": "cells",
+        "data": {
+          "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/expression-zscores.csv"
+        },
+        "transform": [
+          {
+            "type": "regexFold",
+            "columnRegex": "^(gene\\d+)$",
+            "asKey": "feature",
+            "asValue": "value",
+            "description": "Unfold gene columns into one expression value per cell line and gene."
+          },
+          {
+            "type": "lookup",
+            "from": {
+              "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
+              "format": { "parse": { "row": "number" } }
+            },
+            "key": "sample",
+            "values": ["row", "cellLine", "lineage", "subtype"],
+            "description": "Attach clustered row positions and cell-line annotations to each matrix cell."
+          },
+          {
+            "type": "lookup",
+            "from": {
+              "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
+              "format": {
+                "parse": {
+                  "column": "number",
+                  "entrezId": "number",
+                  "meanLog2Tpm": "number",
+                  "sdLog2Tpm": "number"
+                }
+              }
+            },
+            "key": "feature",
+            "values": [
+              "column",
+              "symbol",
+              "entrezId",
+              "cluster",
+              "meanLog2Tpm",
+              "sdLog2Tpm"
+            ],
+            "description": "Attach clustered column positions, gene metadata, and normalization statistics."
+          },
+          {
+            "type": "formula",
+            "expr": "datum.value * datum.sdLog2Tpm + datum.meanLog2Tpm",
+            "as": "log2Tpm",
+            "description": "Reconstruct log2(TPM + 1) expression from the z score and the gene's mean and standard deviation."
+          }
+        ],
+        "params": [
+          {
+            "name": "hovered",
+            "select": {
+              "type": "point",
+              "on": "mousemove",
+              "clear": "mouseleave",
+              "toggle": false
+            },
+            "persist": false
+          }
+        ],
+        "mark": { "type": "rect", "stroke": "#0f172a" },
+        "encoding": {
+          "x": {
+            "field": "column",
+            "type": "index",
+            "axis": null
+          },
+          "y": {
+            "field": "row",
+            "type": "index",
+            "axis": null
+          },
+          "color": {
+            "field": "value",
+            "type": "quantitative",
+            "scale": {
+              "domain": [-2.5, 0, 2.5],
+              "range": ["#2166ac", "#f7f7f7", "#b2182b"],
+              "clamp": true
+            },
+            "legend": {
+              "title": "Gene z score"
+            }
+          },
+          "strokeWidth": {
+            "condition": {
+              "param": "hovered",
+              "empty": false,
+              "value": 1.5
+            },
+            "value": 0
+          },
+          "order": {
+            "condition": {
+              "param": "hovered",
+              "empty": false,
+              "value": 1
+            },
+            "value": 0
+          },
+          "tooltip": [
+            { "field": "cellLine", "title": "Cell line" },
+            { "field": "sample", "title": "DepMap ModelID" },
+            { "field": "lineage", "title": "Cancer lineage" },
+            { "field": "subtype", "title": "Cancer subtype" },
+            { "field": "symbol", "title": "Gene" },
+            { "field": "entrezId", "title": "Entrez ID" },
+            { "field": "cluster", "title": "Gene cluster" },
+            {
+              "field": "value",
+              "type": "quantitative",
+              "title": "Gene z score",
+              "format": ".2f"
+            },
+            {
+              "field": "log2Tpm",
+              "type": "quantitative",
+              "title": "log2(TPM + 1)",
+              "format": ".3f"
+            }
+          ]
+        }
+      },
+
+      {
+        "name": "featureLabels",
+        "data": {
+          "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
+          "format": { "parse": { "column": "number" } }
+        },
+        "mark": {
+          "type": "text",
+          "align": "right",
+          "baseline": "middle",
+          "fitToBand": true,
+          "flushX": false,
+          "angle": -90,
+          "dx": -8,
+          "size": 8,
+          "color": "#334155",
+          "clip": "x",
+          "tooltip": null
+        },
+        "encoding": {
+          "x": { "field": "column", "type": "index", "axis": null },
+          "y": { "value": 0 },
+          "text": { "field": "symbol" }
+        }
+      }
+    ]
+  },
   "config": {
     "style": {
       "metadata-column-title": {

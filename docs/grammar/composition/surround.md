@@ -9,6 +9,8 @@ The central plot goes in `spec`. The optional `top`, `right`, `bottom`, and `lef
 groups go inside `surround`. Each group accepts an array of plots or an object
 with `views` and shared view settings.
 
+EXAMPLE examples/docs/grammar/composition/surround/annotated-matrix.json
+
 ```json
 {
   "data": { "values": [{ "column": 0, "row": 0, "total": 5 }] },
@@ -52,6 +54,13 @@ The surround's `spacing` separates the center from its sides. A side group's
 an empty or entirely hidden side also removes its gap. Hiding the center hides
 the composition.
 
+Track axes and other decorations can extend into empty corner cells when a
+visible neighboring side provides room. Any excess still reserves space, so
+decorations stay within the composition. If two sides compete for one corner,
+the top or bottom track takes priority. Explicit `overhang: { left: true }`
+(or another edge) keeps that edge's reservation; `false` removes it as usual.
+Automatic corner reuse preserves padding.
+
 ## Shared settings and scales
 
 Outer data, transforms, encodings, and parameters flow to the center and sides.
@@ -85,8 +94,8 @@ shared values and `push: "outer"` targets.
 
 ## Properties
 
-SCHEMA SurroundSpec
+SCHEMA SurroundSpec spec surround spacing
 
 ### Side groups
 
-SCHEMA SurroundSideSpec
+SCHEMA SurroundSideSpec views spacing

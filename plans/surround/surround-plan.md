@@ -4,15 +4,15 @@ Status: reviewed incremental plan; implementation in progress.
 
 ## Goal and evidence
 
-Replace the wrapping-concat ceremony in the UpSet mutation example and private
-NCI-60 heatmap with a center and four optional groups of aligned tracks. This
+Replace the wrapping-concat ceremony in the UpSet mutation example and public
+clustered heatmap with a center and four optional groups of aligned tracks. This
 first version supports a single plotting rectangle per authored child. It must
 leave the schema and internal alignment contract suitable for later nesting.
 
 - `examples/docs/examples/generic/upsetr-mutations.json` needs a layered center,
   layered top intersection bars, layered left set bars, shared outer transforms
   and the pushed `setCursor` parameter, step sizing, and local axes.
-- `private/genomespy-dataset-recipes/recipes/cellminer-nci60-rna-seq/specs/heatmap.json`
+- `examples/docs/examples/generic/clustered-heatmap.json`
   needs unit dendrograms, a layered center, right metadata tracks sharing one
   source/parsing/encoding scope, independent collected legends, rotated bottom
   titles, growing dendrogram thickness, and named/reversed/gapped index scales.
@@ -104,12 +104,17 @@ Use a small native `SurroundView` reusing GridView/GridChild guide measurement,
 flex allocation, and backend-neutral arrangement. Every child and generated
 scope is factory-created with ordinary lifecycle and origin mapping.
 
-Introduce only two focused GridView seams:
+Introduce three focused GridView seams:
 
 1. Active children and grid-compatible row/column membership plus occupied-cell
    lookup, used consistently in measurement, preparation, and arrangement.
 2. Per-row/column plot-size selection. Concat keeps largest-child sizing;
    surround selects the center for the central row and column.
+3. Reserved child overhang. Surround may lend the guaranteed minimum footprint
+   of an active perpendicular arm, plus spacing, to chrome in an empty corner.
+   Reserve any excess and retain full geometry during arrangement. Top/bottom
+   take priority when two edges compete; explicit true and padding keep their
+   reservations. Hidden arms lend no space. Growing arms lend only their minimum.
 
 Use fixed center/top/right/bottom/left cells without placeholder marks. Reuse the
 existing arrangement and decoration paths instead of copying `arrange()`.
@@ -162,9 +167,8 @@ from the original proposal. They are deliberately discarded from this delivery.
   focused before/after sizes and re-check growth for KISS.
 - Title/legend text can change plot allocation. Reuse bounded layout settling and
   inspect real output, especially rotated metadata titles and index gaps.
-- The private recipe has pre-existing unrelated edits and an untracked NCI-60
-  directory. Preserve them; stage only the requested heatmap specification if
-  committing its migration in its separate repository.
+- The user switched the migration to the public clustered heatmap. The private
+  heatmap was restored exactly; its repository and unrelated edits are excluded.
 
 ## Milestones
 
@@ -193,26 +197,28 @@ selectors and renderer-independent layout. Commit:
 
 ### 2. App authoring and example migrations
 
-- [ ] Integrate App types/visibility/schema recursion; regenerate both schemas
+- [x] Integrate App types/visibility/schema recursion; regenerate both schemas
       and applicable schema-derived docs/navigation.
-- [ ] Add a compact local-data docs example for deterministic schema/render tests.
-- [ ] Migrate UpSet without changing transforms, hover pushes/highlighting,
+- [x] Add a compact local-data docs example for deterministic schema/render tests.
+- [x] Migrate UpSet without changing transforms, hover pushes/highlighting,
       bar scales, labels, or local axes. Remove placeholders, exclusions, and
       duplicated aligned sizes.
-- [ ] Migrate only the private heatmap spec; preserve shared metadata source and
+- [x] Migrate the public clustered heatmap; preserve shared metadata source and
       encodings, titles, collected legends, dendrograms, scales/gaps/reversal, and
-      feature labels. Commit only this requested file on a private feature branch.
-- [ ] Verify schema acceptance, App visibility/name lookup, example layout/SVG,
+      feature labels. The private migration is discarded at the user's request.
+- [x] Verify schema acceptance, App visibility/name lookup, example layout/SVG,
       workspace TypeScript, applicable docs generation, lint, and release impact.
 
+- [x] Implement automatic corner overhang reuse, preserving explicit settings,
+      padding, outside bounds, and non-overlapping corner decorations.
+
 Areas: App types/schema and visibility consumers, docs/schema examples, public
-UpSet and private heatmap. Main commit:
-`feat(app): integrate surround authoring and examples`.
-Private commit: `refactor: express NCI-60 heatmap with surround`.
+UpSet and public clustered heatmap. Main commit:
+`feat: integrate surround examples and automatic corner overhang`.
 
 ### 3. Integration and simplification review
 
-- [ ] Browser-check local example, UpSet, and private heatmap: loading errors,
+- [ ] Browser-check local example, UpSet, and public clustered heatmap: loading errors,
       resize, zoom/pan, picking/hover linking, visibility restoration, and SVG.
 - [ ] Have a subagent inspect implementation and example diffs for KISS, smells,
       downstream effects, needless machinery, and duplicated layout/spec setup.
@@ -237,7 +243,7 @@ existing shared layout/rendering paths. Unsupported nesting fails clearly after
 imports, public types remain extensible, and concat/facet regressions pass.
 Schemas, docs, and one feature changeset describe the shipped scope. Private or
 remote data is not a dependency of deterministic CI. All requested milestones
-are committed on feature branches, with unrelated user work untouched.
+are committed on the feature branch, with unrelated user work untouched.
 
 ## Review and verification log
 
@@ -260,3 +266,17 @@ Core milestone verification: 15 surround subsystem tests and 111 existing focuse
 concat/facet/layout/scale/legend regressions passed; 34 generated-schema tests
 passed. Core TypeScript, targeted lint, schema generation, and release policy
 checks passed. The feature is a compatible minor release (fixed group: 1.2.0).
+
+The user requested automatic corner overhang on 2026-10-16. A subagent reviewed
+the bounded measurement policy above: no leaf-spec mutation, layout solver, or
+extra layout pass. The public clustered heatmap replaces the private migration.
+
+Milestone 2 verification: both public example migrations preserve every data,
+transform, mark, encoding, parameter, scale, and style setting outside the
+composition changes. App selectors/visibility pass; both generated schemas
+accept the examples. Workspace TypeScript, lint, release checks, production App
+bundle verification, docs preparation/generation and clean site build pass.
+Corner tests cover limited borrowing, competing axes, hidden neighbors, padding,
+and plot/group explicit overrides. Review found a group-false geometry bug and
+inaccurate group-size error location; both are fixed and regression-tested.
+Cloning now copies group properties and each child once.

@@ -12,6 +12,7 @@ import { getAddressableViews } from "./viewSelectors.js";
 import LegendView from "./legendView.js";
 import { getSpecErrorLocation } from "../utils/specError.js";
 import ConcatView from "./concatView.js";
+import annotatedMatrix from "../../../../examples/docs/grammar/composition/surround/annotated-matrix.json" with { type: "json" };
 
 /**
  * @param {string} field
@@ -159,6 +160,136 @@ function arrange(view) {
 }
 
 describe("flat surround", () => {
+    test("axes borrow empty corners while plot anchors remain aligned", async () => {
+        const { view } = await init(
+            /** @type {import("../spec/root.js").RootSpec} */ (annotatedMatrix)
+        );
+        arrange(view);
+        const center = plot(view, "matrix").coords;
+        const top = plot(view, "columnTotals").coords;
+        const left = plot(view, "rowTotals").coords;
+        const bottom = plot(view, "columnLabels").coords;
+        expect(center.x - left.x2).toBe(8);
+        expect(top.x).toBe(center.x);
+        expect(left.y).toBe(center.y);
+        // The bottom arm is thinner than the row axis: reserve only the excess.
+        expect(bottom.y - center.y2).toBe(12);
+    });
+
+    test.each(["plot", "group", "padding"])(
+        "explicit %s reservations override automatic corner reuse",
+        async (owner) => {
+            const track = annotatedMatrix.surround.top[0];
+            const spec = {
+                ...annotatedMatrix,
+                surround: {
+                    ...annotatedMatrix.surround,
+                    top:
+                        owner === "group"
+                            ? { views: [track], overhang: { left: true } }
+                            : [
+                                  {
+                                      ...track,
+                                      ...(owner === "plot"
+                                          ? { overhang: { left: true } }
+                                          : { padding: { left: 6 } }),
+                                  },
+                              ],
+                },
+            };
+            const { view } = await init(
+                /** @type {import("../spec/root.js").RootSpec} */ (spec)
+            );
+            arrange(view);
+            expect(
+                plot(view, "matrix").coords.x -
+                    plot(view, "rowTotals").coords.x2
+            ).toBeGreaterThan(8);
+        }
+    );
+
+    test("hidden neighbors restore outside reservation and can be shown again", async () => {
+        const hidden = new Set();
+        const { view, context } = await init(
+            /** @type {import("../spec/root.js").RootSpec} */ (annotatedMatrix),
+            {
+                contextOptions: {
+                    isViewConfiguredVisible: (view) =>
+                        !hidden.has(view.explicitName),
+                },
+            }
+        );
+        arrange(view);
+        hidden.add("rowTotals");
+        view.invalidateSizeCache();
+        arrange(view);
+        expect(plot(view, "matrix").coords.x).toBeGreaterThan(0);
+        hidden.clear();
+        view.invalidateSizeCache();
+        await initializeVisibleViewData(
+            view,
+            context.dataFlow,
+            context.textMetrics
+        );
+        arrange(view);
+        expect(
+            plot(view, "matrix").coords.x - plot(view, "rowTotals").coords.x2
+        ).toBe(8);
+    });
+
+    test.each(["plot", "group"])(
+        "explicit false on a %s removes reservation without shrinking its plot",
+        async (owner) => {
+            const track = annotatedMatrix.surround.top[0];
+            const spec = {
+                ...annotatedMatrix,
+                surround: {
+                    top:
+                        owner === "group"
+                            ? { views: [track], overhang: { left: false } }
+                            : [{ ...track, overhang: { left: false } }],
+                },
+            };
+            const { view: explicit } = await init(
+                /** @type {import("../spec/root.js").RootSpec} */ (spec)
+            );
+            arrange(explicit);
+            expect(plot(explicit, "matrix").coords.x).toBe(0);
+            expect(plot(explicit, "columnTotals").coords.width).toBe(180);
+        }
+    );
+
+    test("competing axes keep a reservation between their corner decorations", async () => {
+        const rowTotals = annotatedMatrix.surround.left[0];
+        const spec = {
+            ...annotatedMatrix,
+            surround: {
+                top: annotatedMatrix.surround.top,
+                left: [
+                    {
+                        ...rowTotals,
+                        encoding: {
+                            ...rowTotals.encoding,
+                            x: {
+                                ...rowTotals.encoding.x,
+                                axis: { orient: "top", title: "Row total" },
+                            },
+                        },
+                    },
+                ],
+            },
+        };
+        const { view } = await init(
+            /** @type {import("../spec/root.js").RootSpec} */ (spec)
+        );
+        arrange(view);
+        const center = plot(view, "matrix").coords;
+        expect(center.x - plot(view, "rowTotals").coords.x2).toBe(8);
+        expect(center.y - plot(view, "columnTotals").coords.y2).toBeGreaterThan(
+            8
+        );
+    });
+
     test("aligns four sides, layers, and independent local scales with shared data scopes", async () => {
         const spec = fixture();
         const original = structuredClone(spec);
@@ -514,19 +645,38 @@ describe("flat surround", () => {
         await expect(init(input)).rejects.toThrow("input controllers");
     });
 
-    test("reports the authored track for invalid aligned sizing", async () => {
-        const spec = fixture();
-        const invalid = { width: 100, mark: /** @type {const} */ ("point") };
-        spec.surround.top = [invalid];
-        const context = createTestViewContext();
-        context.getSpecOrigin = (source) =>
-            source === invalid ? "top-track" : undefined;
-        await expect(init(spec, { context })).rejects.toSatisfy(
-            (error) =>
-                JSON.stringify(getSpecErrorLocation(error)) ===
-                JSON.stringify({ origin: "top-track", path: ["width"] })
-        );
-    });
+    test.each(["plot", "group"])(
+        "reports the authored %s and exact invalid sizing property",
+        async (owner) => {
+            const spec = fixture();
+            const invalid =
+                owner === "plot"
+                    ? { width: 100, mark: /** @type {const} */ ("point") }
+                    : {
+                          width: 100,
+                          views: /** @type {import("../spec/view.js").ViewSpec[]} */ ([]),
+                      };
+            if (owner === "plot") {
+                spec.surround.top = [
+                    /** @type {import("../spec/view.js").UnitSpec} */ (invalid),
+                ];
+            } else {
+                // Groups reject both dimensions; report the authored width on a right group.
+                spec.surround.right =
+                    /** @type {import("../spec/view.js").SurroundSideSpec} */ (
+                        /** @type {unknown} */ (invalid)
+                    );
+            }
+            const context = createTestViewContext();
+            context.getSpecOrigin = (source) =>
+                source === invalid ? "invalid-size" : undefined;
+            await expect(init(spec, { context })).rejects.toSatisfy(
+                (error) =>
+                    JSON.stringify(getSpecErrorLocation(error)) ===
+                    JSON.stringify({ origin: "invalid-size", path: ["width"] })
+            );
+        }
+    );
 
     test("ordinary excluded concats retain their existing ancestor lookup", async () => {
         const { view } = await createHeadlessEngine({

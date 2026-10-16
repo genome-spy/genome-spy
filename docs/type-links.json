@@ -86,6 +86,8 @@
   "StackParams": "/grammar/transform/stack/#parameters",
   "Step": "/grammar/composition/concat/#step-sizing",
   "StyleConfig": "/grammar/config/#theme-config-and-style",
+  "SurroundSideSpec": "/grammar/composition/surround/#side-groups",
+  "SurroundSpec": "/grammar/composition/surround/#properties",
   "TabixTsvData": "/grammar/data/lazy/#parameters_3",
   "TemplateImport": "/grammar/import/#templateimport",
   "TextConfig": "/grammar/mark/text/#properties",

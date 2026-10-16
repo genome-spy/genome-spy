@@ -1,0 +1,163 @@
+{
+  "description": [
+    "Matrix with aligned summaries and annotations",
+    "Aligns column and row summaries, row metadata, and column labels around a central matrix."
+  ],
+
+  "data": {
+    "values": [
+      { "column": 0, "row": 0, "value": 2 },
+      { "column": 1, "row": 0, "value": 5 },
+      { "column": 2, "row": 0, "value": 8 },
+      { "column": 0, "row": 1, "value": 7 },
+      { "column": 1, "row": 1, "value": 3 },
+      { "column": 2, "row": 1, "value": 1 },
+      { "column": 0, "row": 2, "value": 4 },
+      { "column": 1, "row": 2, "value": 8 },
+      { "column": 2, "row": 2, "value": 6 }
+    ]
+  },
+
+  "scales": {
+    "x": { "type": "index", "domain": [0, 2], "paddingInner": 0.08 },
+    "y": {
+      "type": "index",
+      "domain": [0, 2],
+      "reverse": true,
+      "paddingInner": 0.08
+    }
+  },
+  "resolve": { "legend": { "color": "collected" } },
+  "spacing": 8,
+
+  "surround": {
+    "top": [
+      {
+        "name": "columnTotals",
+        "height": 60,
+        "transform": [
+          {
+            "type": "aggregate",
+            "groupby": ["column"],
+            "fields": ["value"],
+            "ops": ["sum"],
+            "as": ["total"]
+          }
+        ],
+        "mark": { "type": "rect", "color": "#64748b" },
+        "encoding": {
+          "x": { "field": "column", "type": "index", "axis": null },
+          "y": {
+            "field": "total",
+            "type": "quantitative",
+            "axis": { "title": "Column total", "tickCount": 3 }
+          }
+        }
+      }
+    ],
+
+    "left": [
+      {
+        "name": "rowTotals",
+        "width": 70,
+        "scales": { "x": { "reverse": true } },
+        "transform": [
+          {
+            "type": "aggregate",
+            "groupby": ["row"],
+            "fields": ["value"],
+            "ops": ["sum"],
+            "as": ["total"]
+          }
+        ],
+        "mark": { "type": "rect", "color": "#64748b" },
+        "encoding": {
+          "x": {
+            "field": "total",
+            "type": "quantitative",
+            "axis": { "title": "Row total", "tickCount": 3 }
+          },
+          "y": { "field": "row", "type": "index", "axis": null }
+        }
+      }
+    ],
+
+    "right": {
+      "name": "rowMetadata",
+      "data": {
+        "values": [
+          { "row": 0, "label": "Alpha", "category": "A" },
+          { "row": 1, "label": "Beta", "category": "B" },
+          { "row": 2, "label": "Gamma", "category": "A" }
+        ]
+      },
+      "encoding": { "y": { "field": "row", "type": "index", "axis": null } },
+      "spacing": 4,
+      "views": [
+        {
+          "name": "category",
+          "width": 14,
+          "mark": "rect",
+          "encoding": {
+            "color": {
+              "field": "category",
+              "type": "nominal",
+              "legend": { "title": "Category" }
+            }
+          }
+        },
+
+        {
+          "name": "rowLabels",
+          "width": 50,
+          "mark": { "type": "text", "align": "left", "dx": 3 },
+          "encoding": { "x": { "value": 0 }, "text": { "field": "label" } }
+        }
+      ]
+    },
+
+    "bottom": [
+      {
+        "name": "columnLabels",
+        "height": 20,
+        "data": {
+          "values": [
+            { "column": 0, "label": "One" },
+            { "column": 1, "label": "Two" },
+            { "column": 2, "label": "Three" }
+          ]
+        },
+        "mark": "text",
+        "encoding": {
+          "x": { "field": "column", "type": "index", "axis": null },
+          "text": { "field": "label" }
+        }
+      }
+    ]
+  },
+
+  "spec": {
+    "name": "matrix",
+    "width": 180,
+    "height": 120,
+    "mark": "rect",
+    "encoding": {
+      "x": { "field": "column", "type": "index", "axis": null },
+      "y": { "field": "row", "type": "index", "axis": null },
+      "color": {
+        "field": "value",
+        "type": "quantitative",
+        "legend": { "title": "Value" }
+      },
+      "tooltip": { "field": "value", "type": "quantitative" }
+    }
+  },
+
+  "config": {
+    "legend": {
+      "orient": "bottom",
+      "direction": "horizontal",
+      "gradientLength": 80
+    }
+  }
+}
