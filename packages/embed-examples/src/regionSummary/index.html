@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="../queryExamples.scss" />
+        <title>Summarize a copy number region</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <h1>Summarize a copy number region</h1>
+        <p>
+            Zoom to a region or Shift-drag to brush it. Read a signal summary
+            and a few observations from the visualization.
+        </p>
+        <div class="query-controls">
+            <button id="whole">Whole locus</button>
+            <button id="gain">Gain region</button>
+            <button id="loss">Loss region</button>
+            <label
+                >Summary scope<select id="scope">
+                    <option value="viewport">Viewport</option>
+                    <option value="brush">Viewport and brush</option>
+                </select></label
+            >
+            <button id="clear-brush">Clear brush</button>
+            <button id="reset">Reset example</button>
+        </div>
+        <p id="status" role="status" aria-live="polite">
+            Loading toy observations…
+        </p>
+        <main class="query-workspace">
+            <div
+                id="plot"
+                class="query-chart"
+                aria-label="Synthetic copy number signal"
+            ></div>
+            <section
+                id="results"
+                class="query-results"
+                aria-label="Region summary"
+            ></section>
+        </main>
+        <section id="track-info" class="query-about"></section>
+        <details>
+            <summary>How this example uses the API</summary>
+            <p>
+                <code>getScaleResolution("x")</code> accesses an unnamed scale
+                for navigation. <code>assessQuery()</code> checks the requested
+                scope, and <code>queryData()</code> calculates aggregates over
+                every matching loaded observation before limiting the row
+                preview to five.
+            </p>
+            <p>
+                The application formats the returned results. GenomeSpy performs
+                the viewport/brush filtering and aggregation in the browser. A
+                cleared brush in brush mode matches no rows. Superseded queries
+                are canceled.
+            </p>
+            <p>
+                The 300–500 kb gain region has 20 observations with mean signal
+                0.6. Source coverage in a transformed query remains unknown,
+                even though this toy eager source is completely loaded.
+            </p>
+            <p>
+                <a href="https://genomespy.app/docs/api/views/#choosing-a-hook"
+                    >View query API guide</a
+                >
+            </p>
+        </details>
+        <p class="provenance">
+            Synthetic data for demonstrating the embedding API. Signal values
+            are prepared in the local fixture.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

@@ -8,6 +8,7 @@
     "dev": "vite",
     "build:smoke": "vite build",
     "test": "vitest run",
+    "test:e2e": "playwright test --config playwright.config.js",
     "test:tsc": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

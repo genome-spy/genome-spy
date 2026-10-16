@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="../queryExamples.scss" />
+        <title>Inspect genes hidden by a display filter</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <h1>Inspect genes hidden by a display filter</h1>
+        <p>
+            Show fewer gene lanes, then compare the loaded source with the rows
+            kept by the display filter. Hidden lanes remain available for
+            inspection.
+        </p>
+        <div class="query-controls">
+            <label
+                >Displayed lanes<select id="lanes">
+                    <option value="1">One</option>
+                    <option value="2" selected>Two</option>
+                    <option value="3">Three</option>
+                </select></label
+            >
+            <button id="reset">Reset example</button>
+        </div>
+        <p id="status" role="status" aria-live="polite">Loading toy genes…</p>
+        <main class="query-workspace">
+            <div
+                id="plot"
+                class="query-chart"
+                aria-label="Synthetic genes in prepared display lanes"
+            ></div>
+            <section id="track-info" class="query-about"></section>
+        </main>
+        <section
+            id="results"
+            class="query-results"
+            aria-label="Source and transformed rows"
+        ></section>
+        <details>
+            <summary>How this example uses the API</summary>
+            <p>
+                <code>data.retainForInspection: true</code> retains loaded rows
+                before view transforms.
+                <code>readSourceData(track, {limit: null})</code> returns all
+                eight retained genes.
+                <code>readData(track, {limit: 1000})</code> reads the rows after
+                GenomeSpy applies the display filter.
+            </p>
+            <p>
+                The HTML control changes <code>shownLanes</code> through the
+                parameter API. GenomeSpy executes
+                <code>datum.lane &lt; shownLanes</code> in the browser. The
+                application compares identifiers from the two returned tables;
+                it does not reimplement the filter.
+            </p>
+            <p>
+                Scroll to zoom. Both tables inspect the whole loaded collection,
+                so zooming alone does not filter their rows. “After the display
+                filter” does not mean that every row currently produces visible
+                pixels.
+            </p>
+            <p>
+                Source metadata describes readiness and coverage independently
+                of retention. This complete eager fixture does not demonstrate
+                lazy-source publication bounds.
+            </p>
+            <p>
+                <a
+                    href="https://genomespy.app/docs/api/views/#reading-source-rows-before-display-filters"
+                    >Source inspection guide</a
+                >
+            </p>
+        </details>
+        <p class="provenance">
+            Synthetic data for demonstrating the embedding API. Gene names,
+            intervals, and lane assignments are prepared in the local fixture.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="../queryExamples.scss" />
+        <title>Find and label expression hits</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <h1>Find and label expression hits</h1>
+        <p>
+            Find the highest-scoring qualifying gene in each pathway. Compare
+            pathway summaries with individual findings, then follow their labels
+            while zooming.
+        </p>
+        <form id="controls" class="query-controls">
+            <label
+                >Minimum |log2 fold change|<input
+                    id="fold"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value="1"
+                    required
+            /></label>
+            <label
+                >Minimum −log10 adjusted p-value score<input
+                    id="score"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value="2"
+                    required
+            /></label>
+            <label
+                >Query scope<select id="scope">
+                    <option value="viewport">Viewport</option>
+                    <option value="brush">Viewport and brush</option>
+                </select></label
+            >
+            <label
+                >Toy contrast<select id="contrast">
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                </select></label
+            >
+            <button id="find" type="submit">
+                Find and label representatives
+            </button>
+            <button id="clear-labels" type="button">Clear labels</button>
+            <button id="clear-brush" type="button">Clear brush</button>
+            <button id="download" type="button">Download SVG</button>
+            <button id="reset-example" type="button">Reset example</button>
+        </form>
+        <p id="status" role="status" aria-live="polite">Preparing the plot…</p>
+        <p id="annotation-status" role="status"></p>
+        <main class="query-workspace">
+            <div
+                id="plot"
+                class="query-chart"
+                aria-label="Synthetic expression volcano plot"
+            ></div>
+            <section
+                id="results"
+                class="query-results"
+                aria-label="Expression findings"
+            ></section>
+        </main>
+        <section id="track-info" class="query-about"></section>
+        <details>
+            <summary>How this example uses the API</summary>
+            <p>
+                <code>assessQuery()</code> and
+                <code>assessAnnotations()</code> check whether this scope and
+                point geometry support the action.
+            </p>
+            <p>
+                Two <code>queryData()</code> calls use the same scope and
+                disclosed fields. The first filters by thresholds and aggregates
+                qualifying genes by pathway. The second uses a grouped
+                <code>window</code> with <code>row_number</code> and
+                <code>count</code>, then keeps rank one. Equal scores are
+                resolved by gene name. Window sorting controls rank, not
+                returned row order.
+            </p>
+            <p>
+                Only the row-preserving query requests annotation targets.
+                <code>annotations.replace()</code> applies labels, connectors,
+                and purple outlines while keeping pathway colors.
+                <code>inspect()</code> reports their count and invalidation,
+                <code>clear()</code> removes labels, and
+                <code>dispose()</code> releases resources on page exit.
+            </p>
+            <p>
+                Scroll to zoom, drag to pan, and Shift-drag to brush. Queries
+                inspect loaded data in data space. Labels follow navigation;
+                changing the data clears them. Switching to contrast B lowers
+                IFN01's prepared score so IFN02 becomes its pathway's
+                representative.
+            </p>
+            <p>
+                <a href="https://genomespy.app/docs/api/views/#choosing-a-hook"
+                    >View query API guide</a
+                >
+            </p>
+        </details>
+        <p class="provenance">
+            Synthetic data for demonstrating the embedding API. Gene names,
+            pathway assignments, fold changes, and significance scores are
+            illustrative fixture values.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

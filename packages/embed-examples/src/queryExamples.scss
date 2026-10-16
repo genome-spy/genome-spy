@@ -1,0 +1,102 @@
+.query-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(16rem, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.query-chart {
+    min-width: 0;
+    height: 340px;
+}
+
+.query-chart canvas {
+    display: block;
+}
+
+.query-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: end;
+    margin: 1rem 0;
+}
+
+.query-controls label {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.query-controls input {
+    width: 7rem;
+}
+
+.query-results,
+.query-about {
+    min-width: 0;
+    margin-bottom: 1.5rem;
+}
+
+.query-results {
+    overflow-x: auto;
+}
+
+.query-results table {
+    margin: 0.75rem 0 1.5rem;
+    font-size: 0.85rem;
+}
+
+.query-results td,
+.query-results th {
+    padding: 0.4rem;
+}
+
+.query-results h2,
+.query-about h2 {
+    margin-top: 0;
+}
+
+.track-info {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.4rem 1rem;
+    font-size: 0.9rem;
+}
+
+.track-info dt {
+    font-weight: bold;
+}
+
+.track-info dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.hint,
+.provenance {
+    color: var(--muted-text);
+    font-size: 0.9rem;
+}
+
+pre {
+    max-height: 22rem;
+    overflow: auto;
+    padding: 1rem;
+    background: var(--code-background);
+    font-size: 0.8rem;
+}
+
+button:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+@media (max-width: 780px) {
+    .query-workspace {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .track-info {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
