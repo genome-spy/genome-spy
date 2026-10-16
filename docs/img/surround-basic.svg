@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="340" viewBox="0 0 380 340" role="img" aria-labelledby="title description">
+  <title id="title">Basic surround composition</title>
+  <desc id="description">A central spec with top, right, bottom, and left plots. Two top plots stack vertically. Blue dashed guides align the top and bottom plots with the center's x interval; amber guides align the left and right plots with its y interval. The corners are empty.</desc>
+  <style>
+    text { font-family: system-ui, sans-serif; font-size: 16px; fill: #334155; text-anchor: middle; }
+    .heading { font-size: 20px; font-weight: 600; text-anchor: start; }
+    .slot { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 17px; }
+    .hint { font-size: 14px; }
+    .x { fill: #2d6aaa; }
+    .y { fill: #956018; }
+    .guide { fill: none; stroke-width: 1.5; stroke-dasharray: 4 4; }
+    .x-guide { stroke: #2d6aaa; }
+    .y-guide { stroke: #b37a26; }
+    rect { stroke-width: 1.5; }
+    .center { fill: #e9edf2; stroke: #64748b; }
+    .x-panel { fill: #e8f1fc; stroke: #2d6aaa; }
+    .y-panel { fill: #fff0dd; stroke: #b37a26; }
+  </style>
+
+  <rect width="380" height="340" fill="white" stroke="none"/>
+  <text class="heading" x="20" y="28">A  Basic surround</text>
+
+  <path class="guide x-guide" d="M104 60V310 M276 60V310"/>
+  <path class="guide y-guide" d="M24 136H356 M24 252H356"/>
+  <text class="hint x" x="190" y="54">shared x</text>
+  <text class="hint y" transform="translate(17 194) rotate(-90)">shared y</text>
+
+  <rect class="x-panel" x="104" y="68" width="172" height="22" rx="3"/>
+  <rect class="x-panel" x="104" y="98" width="172" height="22" rx="3"/>
+  <rect class="x-panel" x="104" y="268" width="172" height="34" rx="3"/>
+  <rect class="y-panel" x="40" y="136" width="48" height="116" rx="3"/>
+  <rect class="y-panel" x="292" y="136" width="48" height="116" rx="3"/>
+  <rect class="center" x="104" y="136" width="172" height="116" rx="3"/>
+
+  <text class="slot x" x="190" y="85">top[0]</text>
+  <text class="slot x" x="190" y="115">top[1]</text>
+  <text class="slot x" x="190" y="291">bottom</text>
+  <text class="slot y" transform="translate(70 194) rotate(-90)">left</text>
+  <text class="slot y" transform="translate(322 194) rotate(-90)">right</text>
+  <text class="slot" x="190" y="191">spec</text>
+  <text class="hint" x="190" y="212">center</text>
+</svg>

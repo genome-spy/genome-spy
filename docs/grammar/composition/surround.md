@@ -9,6 +9,14 @@ The layout is inspired by [Marsilea](https://marsilea.readthedocs.io/en/stable/)
 a Python library for composable visualizations
 ([Zheng et al., 2025](https://doi.org/10.1186/s13059-024-03469-3)).
 
+![Basic surround with two top tracks and shared x and y intervals.](../../img/surround-basic.svg)
+![Nested surround whose right panel shares y with the center and has its own x scale and top annotation.](../../img/surround-nested.svg)
+{ .surround-schematics }
+
+_Dashed guides mark aligned plotting intervals. Labels name `spec` and the
+groups inside `surround`. The nested right panel shares the outer y scale and
+uses its own x scale for the annotation above it._
+
 ## Example
 
 EXAMPLE examples/docs/grammar/composition/surround/annotated-matrix.json spechidden
