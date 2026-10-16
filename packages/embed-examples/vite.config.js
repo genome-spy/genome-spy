@@ -21,6 +21,7 @@ export default defineConfig({
                 "scaleApi/index": "scaleApi/index.html",
                 "paramApi/index": "paramApi/index.html",
                 "dataReadback/index": "dataReadback/index.html",
+                "transformAnalysis/index": "transformAnalysis/index.html",
                 "brushLinkingApi/index": "brushLinkingApi/index.html",
                 "viewMutationApi/index": "viewMutationApi/index.html",
                 "inspectorOverlay/index": "inspectorOverlay/index.html",

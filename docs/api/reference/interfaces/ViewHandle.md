@@ -124,6 +124,36 @@ spatial index. Limit must be a nonnegative safe integer and bounds row count.
 
 ***
 
+### transformData
+
+> **transformData**: (`options`) => `object`
+
+Runs a one-shot pipeline on a complete scoped snapshot of current transformed
+records. Rejects input overflow; truncated reports additional output rows.
+Uses an isolated flow without changing live data, parameters, or GPU buffers.
+Expressions do not inherit view parameters. Runs synchronously; row limits
+do not bound execution time. Does not fetch data or establish source coverage.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `options` | [`TransformDataOptions`](TransformDataOptions.md) |
+
+#### Returns
+
+`object`
+
+##### rows
+
+> **rows**: `Record`<`string`, `unknown`\>[]
+
+##### truncated
+
+> **truncated**: `boolean`
+
+***
+
 ### datasets
 
 > `readonly` **datasets**: [`DatasetApi`](DatasetApi.md)

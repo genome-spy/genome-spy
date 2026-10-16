@@ -136,6 +136,80 @@ behavior are unchanged. Named selection scopes accept interval selections only.
 See [Read and select records](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/dataReadback)
 for a small readback-to-selection example.
 
+## Calculating results from scoped records
+
+`view.transformData({scope, transform, inputLimit, limit})` runs an explicit
+pipeline over a complete snapshot captured with the same scope rules as
+`readData`. Region membership is applied **before** this additional pipeline.
+It uses the unit's current transformed records; it cannot recover observations
+already filtered out or aggregated away by the visualization.
+
+```js
+const result = track.transformData({
+  scope: { selection: "brush" },
+  transform: [
+    { type: "filter", expr: "datum.value >= 0" },
+    { type: "formula", expr: "datum.value * 2", as: "score" },
+    {
+      type: "aggregate",
+      groupby: ["group"],
+      fields: ["score", "score"],
+      ops: ["count", "mean"],
+      as: ["count", "meanScore"],
+    },
+  ],
+  inputLimit: 50000,
+  limit: 100,
+});
+```
+
+Supported transforms are `formula`, expression-based `filter`, `sample`,
+`aggregate`, and `window`, using their existing visualization grammar. Expressions
+have `datum` and built-in functions; they do not inherit live view parameters.
+Selection-parameter filters, reactive `debounce` settings, and other transform
+types are rejected. Sampling uses the existing default size of 500 and is not
+seeded; an explicit size must be a positive safe integer. The generated request
+schema ships as `@genome-spy/core/transform-data-schema.json` for agent/tool setup.
+
+For example, these pipelines calculate scores or retain the five highest-ranked
+records while preserving their keys:
+
+```js
+const scores = [
+  { type: "formula", expr: "datum.value * 2", as: "score" },
+  { type: "filter", expr: "datum.score >= 10" },
+];
+const topFive = [
+  {
+    type: "window",
+    sort: { field: "value", order: "descending" },
+    ops: ["row_number"],
+    as: ["rank"],
+  },
+  { type: "filter", expr: "datum.rank <= 5" },
+];
+```
+
+Both limits are required nonnegative safe integers. Exceeding `inputLimit`
+rejects **before** analysis starts, avoiding summaries calculated from an
+incomplete prefix. `limit` applies after the full pipeline finishes;
+`truncated` reports additional output rows. Zero input accepts only an empty
+scope; zero output still runs the calculation. Existing empty-input semantics
+apply: an aggregate emits no rows, including a whole-table count. Facets are
+flattened into one table; use explicit `groupby` fields for analysis partitions.
+
+The private flow owns the captured copies. It leaves live records, parameters,
+selections, view layout, and renderer resources unchanged. App code can display
+the results, update datasets, or send preserved keys to the selection setter.
+Aggregates that drop source keys do not automatically identify contributing
+records. Results retain readback's structured-clone/shared-memory semantics.
+Execution is synchronous; row limits do not bound time, object size, or all
+memory use. The restricted expression grammar is not a resource sandbox. Source
+readiness and coverage have the same requirements as record readback.
+
+See [Analyze brushed records](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/transformAnalysis)
+for one small example calculating group summaries from brushed raw measurements.
+
 ## Marks and scoped interaction
 
 Each handle exposes `marks` for interaction with marks in that view's subtree.
