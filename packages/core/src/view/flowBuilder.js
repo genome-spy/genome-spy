@@ -340,12 +340,7 @@ export function buildDataFlow(
             }
 
             if (
-                (view.mark.isPickingParticipant() ||
-                    view
-                        .getDataAncestors()
-                        .some((ancestor) =>
-                            ancestor.paramRuntime.hasPointSelections()
-                        )) &&
+                view.mark.requiresRecordIdentity() &&
                 !isInBranchWithIdentifier()
             ) {
                 // Programmatic selections need record identity even when the
