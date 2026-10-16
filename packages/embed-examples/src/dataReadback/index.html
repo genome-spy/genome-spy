@@ -10,8 +10,10 @@
         <a class="back-link" href="../">← All embedding examples</a>
         <h1>Read and select records</h1>
         <p>
-            Core loads four records and derives a score. Zoom or Shift-drag a
-            brush, then read and select the records inside that region.
+            GenomeSpy loads ten measurements and computes the count and mean for
+            each group using an aggregate transformation. Each point is a group
+            summary. Zoom or Shift-drag a brush, then read the summaries inside
+            that region into the app.
         </p>
         <label
             >Read scope
@@ -26,19 +28,21 @@
         <button id="clear" disabled>Clear selection</button>
         <div id="plot" class="visualization-surface"></div>
         <p id="selection" role="status">Loading…</p>
-        <h2>Records returned by Core</h2>
+        <h2>Analysis results received by the app</h2>
         <pre id="records"></pre>
         <p>
-            <code>view.readData({scope, limit})</code> tests viewport or
-            interval-brush membership before limiting results. Page code sends
-            the returned keys to <code>selection.setValue(keys)</code>;
-            conditional opacity displays native membership. Clicking points
-            updates the same selection through the existing API. A cleared brush
-            matches no records.
+            Input records contain <code>group</code> and <code>value</code>. The
+            app receives <code>group</code>, <code>count</code>, and
+            <code>mean</code> through
+            <code>view.readData({scope, limit})</code>; it never loads the input
+            or repeats the aggregation. Page code sends the returned group keys
+            to <code>selection.setValue(keys)</code> to highlight the results
+            using conditional opacity.
         </p>
         <p>
-            Synthetic generic data. Reads scan loaded records; this example adds
-            no spatial index or analysis API.
+            Zooming and brushing choose which summaries to read; they do not
+            recompute the groups. A cleared brush returns no summaries.
+            Synthetic generic data.
         </p>
         <script type="module" src="./index.js"></script>
     </body>
