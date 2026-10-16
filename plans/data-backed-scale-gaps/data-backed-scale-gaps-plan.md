@@ -1,7 +1,9 @@
 # Transform outputs and dataflow branches
 
-Status: implementation authorized. The first increment is the vertical prototype
-described below; named relations and lazy sources remain future work.
+Status: the authorized vertical prototype is implemented, independently reviewed, and verified
+on `codex/transform-value-outputs`. The hosted clustered-heatmap migration, named
+relations, lazy outputs, and output-driven flow scheduling remain deferred. The
+later milestones and full heatmap acceptance checklist describe that future work.
 
 ## Recommendation and scope
 
@@ -196,18 +198,45 @@ kind is authored in `params`.
 
 ## Authorized vertical prototype
 
-- [ ] Implement producer-owned `values` outputs and structural `branch`, including
+- [x] Implement producer-owned `values` outputs and structural `branch`, including
       an explicit optional `data` source for root-owned metadata pipelines.
-- [ ] Exercise metadata -> main rows and summary branch -> window/filter/sort ->
+- [x] Exercise metadata -> main rows and summary branch -> window/filter/sort ->
       published cuts -> index-scale gaps through the real headless view pipeline.
-- [ ] Support ordinary-parameter filter replay through an upstream collector;
+- [x] Support ordinary-parameter filter replay through an upstream collector;
       verify success, empty output, failure, unchanged values, and disposal.
-- [ ] Preserve source success and cached-replay publication boundaries. Reject
+- [x] Preserve source success and cached-replay publication boundaries. Reject
       unsupported output-dependent flow consumers and unsupported source paths.
-- [ ] Retain output identity and bound dependency information for future flow
+- [x] Retain output identity and bound dependency information for future flow
       prerequisites and relation outputs; do not implement those future consumers.
-- [ ] Add a small local example/docs, inspect actual production-code growth, obtain
+- [x] Add a small local example/docs, inspect actual production-code growth, obtain
       an independent code review, and commit the verified prototype.
+
+The prototype adds `FlowOutput` producer metadata and a successful completion/replay
+boundary, compiles branches into ordinary graph children, and records collector-free
+endpoints for loading and disposal. Source-result success is preserved separately
+from row completion, so failed cached input cannot later publish a successful empty
+array. Input guards follow bound identities and validation-only ancestry through
+computed, temporal, domain, zoom, authored size, and composition size inputs. They
+do not add a new scheduler or per-row dependency walks.
+
+The synthetic example is `examples/docs/grammar/transform/branch-values.json`.
+Headless tests verify 18 unchanged main cells while filter replay changes cuts
+from `[2, 4]` to `[4]` to `[]`, read-only embedding access, common-ancestor metadata,
+shared-source teardown, failed loads/replay, late completion failure, disposal,
+shadowing, and operation rebinding. The WebGL smoke check passes. Existing mocked
+placement tests now use the real parameter runtime and assert behavior.
+
+Final verification passes: 83 related files (742 tests, one skipped and two todo),
+layout/output integration (116 tests), workspace TypeScript, lint, schema builds,
+generated documentation consistency, release checks, and WebGL initialization.
+Full-suite attempts pass roughly 5000 tests but encounter varying schema timeouts
+and worker-startup failures; the affected schema and worker files pass separately.
+No timeout allowances or unrelated test infrastructure changes were added.
+
+Independent implementation review approved the prototype after shared-source
+teardown, failed-cache replay, and indirect sizing feedback were fixed. The
+final delivery reports the parser-based production-line delta for the runtime
+implementation, excluding tests, blank lines, and comments.
 
 ## Applying it to the clustered heatmap
 
@@ -310,8 +339,8 @@ These are the implementation review gates, not optional optimizations:
    is implemented and tested, reject such flow consumers rather than use the old
    value or silently reload the entire source. Reserve this dependency capability
    in the output handle; no new scheduler is required now.
-7. **Tie teardown to the producer and view owner.** Unsubscribe and release writer
-   claims before pruning owned endpoints, including unconsumed main paths.
+7. **Tie teardown to the producer and view owner.** Unsubscribe producer consumers
+   before pruning owned endpoints, including unconsumed main paths.
    Shared input sources survive
    while another branch needs them. A queued publisher or in-flight request must
    not update a disposed/replaced target. Rebinding must recheck dependency and
@@ -439,7 +468,7 @@ Tentative commit: `feat(core): support side transform pipelines`
 
 ## Remaining design questions
 
-- Final public names: `values`/`param` and `branch` are candidates, not existing API.
+- The prototype exposes `values`/`param` and `branch`; review the names before release.
 - What is the smallest output dependency representation that preserves semantic
   ancestry through existing temporal/domain mirrors and later relation handles?
   Inspect current binding metadata; do not import Vega's entire operator runtime.
@@ -458,8 +487,8 @@ rewritten proposal. Its material findings are incorporated:
 
 - Track collector-free main endpoints as well as side endpoints, starting in
   milestone 1, so a composition-level inline publisher cannot leak its source.
-- Claim writers at hierarchy finalization and revalidate existing consumers;
-  parent constructors can bind expressions before descendant publishers exist.
+- Reserve producer-owned declarations before local ordinary expressions bind;
+  revalidate bound consumers before mutable operation or mirror inputs change.
 - Root-owned `branch.data` sources settle heatmap scope and visibility ownership.
 - Explicitly bound initial source support; lazy completion has different success
   paths and cannot inherit the eager URL finishing contract automatically.
@@ -473,4 +502,5 @@ arrays matched for original and reversed input; repeated labels, nonzero starts,
 a single cluster, and empty input also passed. Also executed a real FlowNode fork
 with main-path formula and side-path window/filter/collect transforms through the
 existing optimizer: all main rows remained present, original input was unchanged,
-and both child orders produced the same A/B/A cuts. No new grammar is implemented.
+and both child orders produced the same A/B/A cuts. The prototype now implements
+the grammar and verifies the synthetic pipeline through headless and WebGL paths.

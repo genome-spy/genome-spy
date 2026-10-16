@@ -1,0 +1,95 @@
+{
+  "description": [
+    "Metadata-derived heatmap gaps",
+    "A branch publishes cluster boundaries without filtering heatmap cells. The slider selects boundaries by strength.",
+    "Data source: synthetic metadata and values."
+  ],
+
+  "params": [
+    {
+      "name": "minimumStrength",
+      "value": 0,
+      "bind": {
+        "name": "Minimum boundary strength",
+        "input": "range",
+        "min": 0,
+        "max": 1,
+        "step": 0.1
+      }
+    }
+  ],
+
+  "data": {
+    "values": [
+      { "column": 0, "cluster": "A", "strength": 0 },
+      { "column": 1, "cluster": "A", "strength": 0 },
+      { "column": 2, "cluster": "B", "strength": 0.4 },
+      { "column": 3, "cluster": "B", "strength": 0 },
+      { "column": 4, "cluster": "C", "strength": 0.9 },
+      { "column": 5, "cluster": "C", "strength": 0 }
+    ]
+  },
+
+  "transform": [
+    { "type": "collect", "sort": { "field": "column" } },
+    {
+      "type": "branch",
+      "transform": [
+        {
+          "type": "window",
+          "sort": { "field": "column" },
+          "ops": ["lag", "row_number"],
+          "fields": ["cluster", null],
+          "as": ["previousCluster", "rank"]
+        },
+        {
+          "type": "filter",
+          "expr": "datum.rank > 1 && datum.cluster !== datum.previousCluster && datum.strength >= minimumStrength"
+        },
+        { "type": "values", "field": "column", "param": "cuts" }
+      ]
+    },
+    {
+      "type": "cross",
+      "from": {
+        "data": { "values": [{ "row": 0 }, { "row": 1 }, { "row": 2 }] }
+      }
+    },
+    {
+      "type": "formula",
+      "expr": "sin(datum.column * 0.9 + datum.row)",
+      "as": "expression"
+    }
+  ],
+
+  "width": 360,
+  "height": 120,
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "column",
+      "type": "index",
+      "scale": {
+        "domain": [0, 5],
+        "gapPositions": { "expr": "cuts" },
+        "gapWidth": 10,
+        "paddingInner": 0.03
+      },
+      "axis": { "title": "Feature", "tickMinStep": 1 }
+    },
+    "y": {
+      "field": "row",
+      "type": "index",
+      "scale": { "domain": [0, 2], "reverse": true, "paddingInner": 0.03 },
+      "axis": { "title": "Sample", "tickMinStep": 1 }
+    },
+    "color": {
+      "field": "expression",
+      "type": "quantitative",
+      "scale": { "domain": [-1, 1], "scheme": "blueorange" },
+      "legend": null
+    }
+  }
+}

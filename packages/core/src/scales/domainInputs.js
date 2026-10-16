@@ -212,6 +212,20 @@ export default function createDomainInputs({
             { equals: (a, b) => deepEqual(a, b) }
         );
         disposers.push(configured.dispose);
+        runtime.setValidationDependencies(owner.stateRef, [
+            configured,
+            ...Array.from(accessors.values())
+                .flat()
+                .flatMap(
+                    (accessor) =>
+                        /** @type {Partial<import("../paramRuntime/types.js").ExprRefFunction>} */ (
+                            accessor
+                        ).dependencies ?? []
+                ),
+            ...Array.from(viewportDependencies, (resolution) =>
+                resolution.getDomainRef()
+            ),
+        ]);
 
         const readData = () => {
             if (viewport) {

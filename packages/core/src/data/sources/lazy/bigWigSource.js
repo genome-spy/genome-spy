@@ -40,7 +40,7 @@ export default class BigWigSource extends IntervalUrlSource {
         super(view, channel);
 
         this.params = activateExprRefProps(
-            view.paramRuntime,
+            this.expressionRuntime,
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {

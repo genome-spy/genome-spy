@@ -20,6 +20,7 @@ nav = [
             "grammar/transform/index.md",
             "grammar/transform/aggregate.md",
             "grammar/transform/alignment-mismatches.md",
+            "grammar/transform/branch.md",
             "grammar/transform/collect.md",
             "grammar/transform/coverage.md",
             "grammar/transform/cross.md",
@@ -46,6 +47,7 @@ nav = [
             "grammar/transform/sample.md",
             { "SetIntersection" = "grammar/transform/set-intersection.md" },
             "grammar/transform/stack.md",
+            "grammar/transform/values.md",
             "grammar/transform/window.md",
         ] },
         { "Graphical Marks" = [

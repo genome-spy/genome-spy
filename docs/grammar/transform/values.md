@@ -1,0 +1,67 @@
+# Values
+
+The `"values"` transform projects a field into an array parameter while passing
+all input rows onward. For example, it can load precomputed cluster boundaries
+from a file or publish boundaries calculated from metadata for an index scale's
+[`gapPositions`](../scale.md#grouping-gaps).
+
+## Parameters
+
+SCHEMA ValuesParams
+
+## Output parameters
+
+`param` declares a read-only parameter in the owning view's scope. Do not also
+declare it in `params`. Descendant views can read the output in expressions;
+ancestors and sibling views need the producer at their common ancestor.
+
+The output starts as an immutable `[]`. Each successfully completed input
+publishes an immutable array in input order, including duplicates. An empty
+result publishes `[]`, and unchanged arrays do not notify consumers again.
+Loading or processing failures retain the last successful value. Missing fields,
+non-scalar values, and non-finite numbers cause an error.
+
+Output parameters cannot be changed through the embedding API and are not saved
+in bookmarks. They can drive scale and visual expressions. Reading an output in
+another data source or transform expression is not supported yet.
+
+## Loading precomputed values
+
+A normal [eager source](../data/eager.md) can load a table of cuts:
+
+```json
+{
+  "data": {
+    "url": "cuts.csv",
+    "format": { "parse": { "cut": "number" } }
+  },
+  "transform": [{ "type": "values", "field": "cut", "param": "cuts" }],
+  "scales": {
+    "x": {
+      "type": "index",
+      "domain": [0, 5],
+      "gapPositions": { "expr": "cuts" },
+      "gapWidth": 10
+    }
+  }
+}
+```
+
+The input table could contain `cut` values `2` and `4`. The scale then inserts
+gaps before indices 2 and 4. Sorting and deduplication of gap positions are scale
+behavior; `"values"` itself preserves the prepared rows' order and duplicates.
+
+Inline and named inputs are also supported. Lazy-source outputs are not
+implemented.
+
+## Deriving cuts in a branch
+
+A [`"branch"`](branch.md) can filter or summarize metadata for the output while
+the main pipeline keeps all rows. In this synthetic heatmap, a slider controls
+which cluster boundaries become gaps. All 18 cells remain visible.
+
+EXAMPLE examples/docs/grammar/transform/branch-values.json height=170
+
+The branch uses `window` to compare adjacent cluster labels, then filters
+boundaries by strength. The upstream `collect` caches metadata so changing the
+ordinary `minimumStrength` parameter replays the branch without reloading data.
