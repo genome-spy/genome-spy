@@ -49,8 +49,8 @@ groups patients by exact membership profile.
 sizes and rank the profiles by frequency. The resulting table drives all three
 visible panels.
 
-The plot is a wrapped [`concat`](../../grammar/composition/concat.md) with two
-columns. Shared scales align the matrix with both bar charts, while selective
-scale exclusion keeps their quantitative axes independent. A shared ruler
-parameter links hover input from the set-size bars and matrix to the reactive
-highlighting.
+The plot uses [`surround`](../../grammar/composition/surround.md) to place the
+intersection-size bars above the matrix and the set-size bars to its left.
+Shared x and y scales align the bars with the matrix's columns and rows, while
+the bar charts retain independent quantitative scales. A shared ruler parameter
+links hover input from the set-size bars and matrix to the reactive highlighting.

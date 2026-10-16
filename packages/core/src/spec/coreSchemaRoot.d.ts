@@ -61,6 +61,11 @@ interface SurroundSideSpec
     extends
         Omit<CoreSurroundSideSpec, "templates" | "views">,
         SchemaViewConfig {
+    /**
+     * Plots on this side, ordered top-to-bottom on top/bottom or left-to-right
+     * on left/right. Accepts unit plots, layers, nested surrounds, and imports
+     * resolving to these.
+     */
     views: (ViewSpec | ImportSpec)[];
 }
 
@@ -68,7 +73,17 @@ interface SurroundSpec
     extends
         Omit<CoreSurroundSpec, "templates" | "spec" | "surround">,
         SchemaViewConfig {
+    /**
+     * Central plot. Accepts unit plots, layers, multiscale layers, and imports
+     * resolving to these. Its width and height determine the aligned plot size.
+     */
     spec: ViewSpec | ImportSpec;
+
+    /**
+     * Optional top, right, bottom, and left groups. Each accepts an array of
+     * plots or an object with `views` and shared view settings. Top/bottom plots
+     * share the center's x scale; left/right plots share its y scale.
+     */
     surround: Partial<
         Record<Side, SurroundSideSpec | (ViewSpec | ImportSpec)[]>
     >;

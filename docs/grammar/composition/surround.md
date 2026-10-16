@@ -1,15 +1,27 @@
 # Surround Composition
 
-The `surround` operator aligns marginal plots with a central plot. It is useful
-for annotated heatmaps, UpSet matrices, and plots with row or column summaries.
-Tracks share the center's coordinates while retaining their own measurement
-scales, data, and decorations.
+The `surround` operator places plots above, below, or beside a central plot.
+Shared x or y scales keep the surrounding plots aligned with the center. For
+example, a heatmap can have column summaries above it and row annotations
+beside it.
 
-The central plot goes in `spec`. The optional `top`, `right`, `bottom`, and `left`
-groups go inside `surround`. Each group accepts an array of plots or an object
-with `views` and shared view settings.
+The layout is inspired by [Marsilea](https://marsilea.readthedocs.io/en/stable/),
+a Python library for composable visualizations
+([Zheng et al., 2025](https://doi.org/10.1186/s13059-024-03469-3)).
 
-EXAMPLE examples/docs/grammar/composition/surround/annotated-matrix.json
+## Example
+
+EXAMPLE examples/docs/grammar/composition/surround/annotated-matrix.json spechidden
+
+## Specification
+
+Put the central plot in `spec` and the surrounding plots in `surround`. The
+optional `top`, `right`, `bottom`, and `left` properties each accept an array
+of plots. An object with `views` can provide shared data and other settings
+for one side.
+
+This minimal specification places a plot to the right of the center. Both
+plots use the same y scale:
 
 ```json
 {
@@ -116,6 +128,11 @@ concats, and facets remain unsupported. Scrollable viewports, surround-level
 axes, and axes shared across regions are also unsupported. Input-owning selections and
 rulers belong on the individual plots; ordinary outer parameters remain valid
 shared values and `push: "outer"` targets.
+
+## More examples
+
+- [Set intersections with an UpSet plot](../../examples/generic/upsetr-mutations.md)
+- [Clustered heatmap with dendrograms](../../examples/generic/clustered-heatmap.md)
 
 ## Properties
 
