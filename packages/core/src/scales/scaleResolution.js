@@ -1065,6 +1065,11 @@ export default class ScaleResolution {
             );
         }
         this.#domainInputs = inputs;
+        if (this.#zoomLevelRef) {
+            this.#runtime.setValidationDependencies(this.#zoomLevelRef, [
+                this.#domainRuntime.stateRef,
+            ]);
+        }
     }
 
     /**
@@ -1726,6 +1731,11 @@ export default class ScaleResolution {
                 [this.#zoomRevisionRef, this.getConfigurationRef()],
                 () => this.getZoomLevel()
             );
+            if (this.#domainRuntime) {
+                this.#runtime.setValidationDependencies(this.#zoomLevelRef, [
+                    this.#domainRuntime.stateRef,
+                ]);
+            }
         }
         return this.#zoomLevelRef;
     }

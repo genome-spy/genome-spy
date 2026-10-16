@@ -1,6 +1,7 @@
 import { InternMap } from "internmap";
 import { bisector } from "d3-array";
 import { compare, splitAccessPath } from "vega-util";
+import { runFlowPublication } from "./flowOutput.js";
 import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
 import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
@@ -257,9 +258,11 @@ export default class Collector extends FlowNode {
         }
         // Batch the full downstream replay and observer fan-out so reactive
         // effects cannot run between sibling branches completing.
-        if (this.parent)
-            this.paramRuntime.runInTransaction(() => this.#replay());
-        else this.#replay();
+        runFlowPublication(
+            this,
+            () => this.#replay(),
+            this.parent ? this.paramRuntime : undefined
+        );
     }
 
     /**

@@ -30,6 +30,7 @@ import FlattenSequenceTransform from "./flattenSequence.js";
 import AggregateTransform from "./aggregate.js";
 import IdentifierTransform from "./identifier.js";
 import TruncateTextTransform from "./truncateText.js";
+import ValuesTransform from "./values.js";
 import WindowTransform from "./window.js";
 
 /**
@@ -66,6 +67,7 @@ export const transforms = {
     setIntersection: SetIntersectionTransform,
     truncateText: TruncateTextTransform,
     window: WindowTransform,
+    values: ValuesTransform,
     stack: StackTransform,
 };
 

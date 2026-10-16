@@ -29,7 +29,9 @@ import {
 import { isInChromeSubtree, setChromeOverride } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
+import { getOutputDeclarations } from "../data/flowOutput.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
+import { annotateSpecError } from "../utils/specError.js";
 import { warnOnce } from "../utils/warning.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
@@ -278,6 +280,17 @@ export default class View {
                         'The automatic zoomLevel parameter is deprecated. Use zoomLevel() or an explicit channel such as zoomLevel("x") instead.'
                     )
             );
+        }
+
+        for (const output of getOutputDeclarations(spec.transform ?? [])) {
+            try {
+                this.paramRuntime.registerOutput(output.param);
+            } catch (error) {
+                throw annotateSpecError(
+                    error,
+                    this.paramRuntime.getSpecLocation(output, ["param"])
+                );
+            }
         }
 
         const params = [
@@ -729,6 +742,45 @@ export default class View {
         this.#registerSizeExprRefInvalidationFor("height");
         this.#registerSizeExprRefInvalidationFor("viewportWidth");
         this.#registerSizeExprRefInvalidationFor("viewportHeight");
+
+        for (const dimension of /** @type {const} */ (["width", "height"])) {
+            if (
+                !(dimension === "width"
+                    ? this.#widthSetter
+                    : this.#heightSetter)
+            ) {
+                continue;
+            }
+            this.paramRuntime.setValidationDependencies(
+                this.paramRuntime.getParamRef(dimension),
+                this.getSizeDependencies(dimension)
+            );
+        }
+    }
+
+    /**
+     * Semantic inputs of layout-owned size mirrors, used only for flow validation.
+     * @param {"width" | "height"} dimension
+     * @returns {import("../paramRuntime/types.js").ParamRef<any>[]}
+     */
+    getSizeDependencies(dimension) {
+        const { value } = this.#getDimensionValue(dimension);
+        const reader = this.#sizeExprRefReaders.get(
+            dimension + (isStepSize(value) ? ".step" : "")
+        );
+        const dependencies = [...(reader?.dependencies ?? [])];
+        if (isStepSize(value)) {
+            const channel = dimension === "width" ? "x" : "y";
+            const resolution = this.getScaleResolution(channel);
+            if (resolution) dependencies.push(resolution.getDomainRef());
+            if (value.for !== "position") {
+                const offset = this.getScaleResolution(
+                    dimension === "width" ? "xOffset" : "yOffset"
+                );
+                if (offset) dependencies.push(offset.getDomainRef());
+            }
+        }
+        return dependencies;
     }
 
     /**
@@ -1136,6 +1188,13 @@ export default class View {
         this.#disposers.length = 0;
 
         const handle = this.flowHandle;
+
+        for (const terminal of handle?.terminals ?? []) {
+            // Descendants may still use this endpoint, including merged sources.
+            if (terminal.children.length === 0) {
+                this.context.dataFlow.pruneBranch(terminal);
+            }
+        }
 
         if (handle?.collector) {
             this.context.dataFlow.pruneCollectorBranch(handle.collector);

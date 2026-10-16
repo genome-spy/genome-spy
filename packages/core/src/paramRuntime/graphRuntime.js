@@ -11,7 +11,8 @@ const PRIORITY_STRIDE = 1000000;
  *   rank: number,
  *   disposed: boolean,
  *   listeners: Set<() => void>,
- *   subscribe: SubscribeFn
+ *   subscribe: SubscribeFn,
+ *   validationDependencies?: import("./types.js").ParamRef<any>[]
  * }} RuntimeNodeBase
  */
 
@@ -217,6 +218,62 @@ export default class GraphRuntime {
 
     /** @type {((error: unknown) => void) | undefined} */
     #onError;
+
+    /** @type {Set<(changed?: RuntimeNodeBase, inputs?: import("./types.js").ParamRef<any>[]) => void>} */
+    #flowGuards = new Set();
+
+    /**
+     * Preserve inputs of imperative mirrors for validation, without changing scheduling.
+     * @param {import("./types.js").ParamRef<any>} ref
+     * @param {import("./types.js").ParamRef<any>[]} dependencies
+     */
+    setValidationDependencies(ref, dependencies) {
+        const node = getNode(ref);
+        const inputs =
+            /** @type {Partial<ComputedNode<any>>} */ (node).dependencies ?? [];
+        for (const guard of this.#flowGuards)
+            guard(node, [...inputs, ...dependencies]);
+        node.validationDependencies = dependencies;
+    }
+
+    /**
+     * Flow consumers need explicit producer prerequisites before reading outputs.
+     * Validate bound identities now and before operations replace their inputs.
+     * @param {import("./types.js").ParamRef<any>[]} dependencies
+     */
+    guardFlowDependencies(dependencies) {
+        if (dependencies.length === 0) return () => {};
+        /** @param {RuntimeNodeBase | undefined} changed @param {import("./types.js").ParamRef<any>[] | undefined} inputs */
+        const validate = (changed, inputs) => {
+            const visited = new Set();
+            /** @param {import("./types.js").ParamRef<any>} ref */
+            const visit = (ref) => {
+                if (visited.has(ref)) return;
+                visited.add(ref);
+                if (ref.flowOutput)
+                    throw new Error(
+                        'Dataflow expressions cannot consume transform output parameter "' +
+                            ref.name +
+                            '".'
+                    );
+                const node = /** @type {ComputedNode<any> | undefined} */ (
+                    /** @type {any} */ (ref)[RUNTIME_NODE]
+                );
+                const upstream =
+                    node === changed && changed
+                        ? inputs
+                        : [
+                              ...(node?.dependencies ?? []),
+                              ...(node?.validationDependencies ?? []),
+                          ];
+                for (const input of upstream ?? []) visit(input);
+            };
+            for (const ref of dependencies) visit(ref);
+        };
+        validate(undefined, undefined);
+        this.#flowGuards.add(validate);
+        return () => this.#flowGuards.delete(validate);
+    }
 
     /**
      * Creates a graph runtime.
@@ -467,6 +524,11 @@ export default class GraphRuntime {
                             visit(dep);
                     };
                     dependencies.forEach(visit);
+                    for (const guard of this.#flowGuards)
+                        guard(node, [
+                            ...dependencies,
+                            ...(node.validationDependencies ?? []),
+                        ]);
                     unsubscribers.forEach((unsubscribe) => unsubscribe());
                     node.dependencies = dependencies;
                     node.fn = evaluate;

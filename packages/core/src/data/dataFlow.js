@@ -84,12 +84,24 @@ export default class DataFlow {
      * @param {import("./collector.js").default} collector
      */
     pruneCollectorBranch(collector) {
-        let parent = collector.parent;
+        this.pruneBranch(collector);
+    }
+
+    /**
+     * Remove an owned endpoint and orphaned ancestors, preserving shared inputs.
+     * @param {import("./flowNode.js").default} endpoint
+     */
+    pruneBranch(endpoint) {
+        if (endpoint instanceof DataSource) {
+            this.removeDataSource(endpoint);
+            return;
+        }
+        let parent = endpoint.parent;
         if (parent) {
-            parent.removeChild(collector);
+            parent.removeChild(endpoint);
         }
 
-        collector.disposeSubtree();
+        endpoint.disposeSubtree();
 
         while (parent && parent.children.length === 0) {
             const current = parent;
