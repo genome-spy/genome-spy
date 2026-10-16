@@ -2,10 +2,10 @@
 
 # Interface: PointSelectionApi
 
-Capability for reading and clearing a row-backed point selection.
+Capability for reading, replacing, and clearing a row-backed point selection.
 
-Point selections are exposed as detached snapshots. Use `clear()` to empty
-the selection; writes through this capability are not supported.
+Point selections identify records independently of their mark type. Obtain
+this capability through a source unit view to replace membership by key.
 
 `"commit"` is accepted for future gesture-based point selections, such as a
 lasso. For the current point-selection implementation, it has the same
@@ -53,6 +53,28 @@ normal update delivery.
 #### Returns
 
 () => `void`
+
+***
+
+### setValue
+
+> **setValue**: (`keys`) => `void`
+
+Replaces membership using tuples in the source unit's encoding.key order.
+Requires ready loaded records and unique keys. Invalid, missing, or
+ambiguous keys reject the whole write; single selections accept at most
+one tuple. Empty input clears without requiring data or encoding.key.
+Membership refers to the current publication; clear/reapply after updates.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `keys` | readonly readonly `Scalar`[][] |
+
+#### Returns
+
+`void`
 
 ***
 

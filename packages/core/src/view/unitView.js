@@ -18,7 +18,6 @@ import {
     updateMultiPointSelection,
 } from "../selection/selection.js";
 import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
-import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
     createEventPredicate,
     getEventFilterLocation,
@@ -129,9 +128,6 @@ export default class UnitView extends View {
             if (isPointSelectionConfig(select)) {
                 // Handle projection-free point selections
 
-                const none = 0;
-                let lastId = none;
-
                 const setter = (
                     /** @type {any} */
                     selection
@@ -150,7 +146,6 @@ export default class UnitView extends View {
                 );
 
                 const clearSelection = () => {
-                    lastId = none;
                     const selection = select.toggle
                         ? createMultiPointSelection()
                         : createSinglePointSelection(null);
@@ -164,7 +159,6 @@ export default class UnitView extends View {
                         return;
                     }
                     const datum = getHoveredDatum();
-                    const id = datum ? datum[UNIQUE_ID_KEY] : none;
 
                     /** @type {any} */
                     let selection;
@@ -189,8 +183,11 @@ export default class UnitView extends View {
                             );
                         }
                     } else {
-                        if (id != lastId) {
-                            lastId = id;
+                        // Compare with current membership: an API write may
+                        // have replaced or cleared the last interactive choice.
+                        const previousSelection =
+                            this.paramRuntime.getValue(name);
+                        if (datum !== previousSelection.datum) {
                             selection = createSinglePointSelection(datum);
                         }
                     }

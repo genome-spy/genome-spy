@@ -283,7 +283,7 @@ export default class Mark {
             );
 
             const encoding = this.fixEncoding({
-                ...(this.isPickingParticipant()
+                ...(this.requiresRecordIdentity()
                     ? { uniqueId: { field: UNIQUE_ID_KEY } }
                     : {}),
                 ...propertyValues,
@@ -603,6 +603,20 @@ export default class Mark {
      */
     getEncodedDataRevision() {
         return this.#encodedDataRevision;
+    }
+
+    /**
+     * Picking and point-selection predicates both require record identifiers.
+     * Dataflow and encoding preparation must agree even when picking is off.
+     * @returns {boolean}
+     */
+    requiresRecordIdentity() {
+        return (
+            this.isPickingParticipant() ||
+            this.unitView
+                .getDataAncestors()
+                .some((ancestor) => ancestor.paramRuntime.hasPointSelections())
+        );
     }
 
     /**

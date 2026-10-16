@@ -240,10 +240,10 @@ export interface PointSnapshot {
 export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
 
 /**
- * Capability for reading and clearing a row-backed point selection.
+ * Capability for reading, replacing, and clearing a row-backed point selection.
  *
- * Point selections are exposed as detached snapshots. Use `clear()` to empty
- * the selection; writes through this capability are not supported.
+ * Point selections identify records independently of their mark type. Obtain
+ * this capability through a source unit view to replace membership by key.
  *
  * `"commit"` is accepted for future gesture-based point selections, such as a
  * lasso. For the current point-selection implementation, it has the same
@@ -266,6 +266,15 @@ export interface PointSelectionApi {
         listener: (value: PointSnapshot) => void,
         options?: { delivery?: "change" | "commit" }
     ) => () => void;
+
+    /**
+     * Replaces membership using tuples in the source unit's encoding.key order.
+     * Requires ready loaded records and unique keys. Invalid, missing, or
+     * ambiguous keys reject the whole write; single selections accept at most
+     * one tuple. Empty input clears without requiring data or encoding.key.
+     * Membership refers to the current publication; clear/reapply after updates.
+     */
+    setValue: (keys: readonly (readonly Scalar[])[]) => void;
 
     /** Clears the selection and publishes the cleared state when it changed. */
     clear: () => void;
@@ -645,6 +654,18 @@ export interface ViewHandle {
      * Returns handles for the current layout child views in spec order.
      */
     children: () => ViewHandle[];
+
+    /**
+     * Copies loaded transformed records in collector order using structuredClone
+     * semantics, omitting internal picking identifiers. Does not fetch data or
+     * filter by viewport/brush. Throws for unready data, containers, or stale
+     * handles. The explicit limit must be a nonnegative safe integer and bounds
+     * row count, not nested value size. Zero checks whether any records exist.
+     */
+    readData: (options: { limit: number }) => {
+        rows: Record<string, unknown>[];
+        truncated: boolean;
+    };
 
     /**
      * Updates datasets declared by this exact view.

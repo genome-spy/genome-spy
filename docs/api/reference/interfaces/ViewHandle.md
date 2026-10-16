@@ -88,6 +88,37 @@ Returns handles for the current layout child views in spec order.
 
 ***
 
+### readData
+
+> **readData**: (`options`) => `object`
+
+Copies loaded transformed records in collector order using structuredClone
+semantics, omitting internal picking identifiers. Does not fetch data or
+filter by viewport/brush. Throws for unready data, containers, or stale
+handles. The explicit limit must be a nonnegative safe integer and bounds
+row count, not nested value size. Zero checks whether any records exist.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `options` | \{ `limit`: `number`; \} |
+| `options.limit` | `number` |
+
+#### Returns
+
+`object`
+
+##### rows
+
+> **rows**: `Record`<`string`, `unknown`\>[]
+
+##### truncated
+
+> **truncated**: `boolean`
+
+***
+
 ### datasets
 
 > `readonly` **datasets**: [`DatasetApi`](DatasetApi.md)

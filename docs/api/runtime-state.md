@@ -308,6 +308,28 @@ package.
 
 To read a selection, use `api.params.getSelection(name)` or the corresponding
 `view.params` namespace. It provides detached point and interval snapshots,
-future-only subscriptions, interval containment, and `clear()`. See
+future-only subscriptions, interval containment, keyed point-selection writes,
+and `clear()`. See
 [Marks and scoped interaction](./views.md#marks-and-scoped-interaction) for the
 selection and lifecycle rules shared by these handles.
+
+### Setting point selections
+
+Obtain a point selection through the unit view supplying its records, including
+when the parameter is declared in an ancestor. `setValue(keys)` replaces native
+membership and drives the same subscriptions and conditional encodings as picking:
+
+```js
+const track = api.views.get({ scope: [], view: "observations" });
+const selected = track.params.getSelection("selected");
+if (selected.type === "point") selected.setValue([["B"], ["D"]]);
+```
+
+Tuples follow `encoding.key` order: `{field: "id"}` takes `["B"]`; a composite
+`[{field: "chrom"}, {field: "pos"}]` takes `["chr1", 123]`. Keys must be unique,
+non-null strings, booleans, or finite numbers in ready loaded transformed records.
+Invalid, missing, or ambiguous keys reject the entire write without changing
+membership. Single selections (`toggle: false`) accept at most one tuple; `[]`
+clears without requiring data or a key. The setter works across mark types,
+including text and rectangles. Membership binds the current publication; apps
+clear or reapply it after replacing datasets.

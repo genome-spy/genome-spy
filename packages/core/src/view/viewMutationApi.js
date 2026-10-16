@@ -1,3 +1,4 @@
+import { isDataReady } from "../data/dataReadiness.js";
 import ConcatView from "./concatView.js";
 import GridView from "./gridView/gridView.js";
 import LayerView from "./layerView.js";
@@ -330,6 +331,36 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 }
 
                 return children.map((child) => getHandle(child));
+            },
+
+            readData(options) {
+                ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
+                if (
+                    !Number.isSafeInteger(options?.limit) ||
+                    options.limit < 0
+                ) {
+                    throw new Error(
+                        "Data reads require a nonnegative safe integer limit."
+                    );
+                }
+                if (!(view instanceof UnitView)) {
+                    throw new Error("Data reads require a unit view.");
+                }
+                const collector = view.getCollector();
+                if (!collector || !isDataReady(collector)) {
+                    throw new Error("View data is not ready.");
+                }
+
+                const rows = [];
+                for (const datum of collector.getData()) {
+                    if (rows.length === options.limit)
+                        return { rows, truncated: true };
+                    const row = structuredClone(datum);
+                    delete row[UNIQUE_ID_KEY];
+                    rows.push(row);
+                }
+                return { rows, truncated: false };
             },
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),

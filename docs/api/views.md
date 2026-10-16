@@ -93,6 +93,34 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Reading loaded records
+
+`view.readData({limit})` returns `{rows, truncated}` from a unit view's current
+transformed data. It includes derived fields and excludes rows removed by filters.
+Records use `structuredClone` semantics and omit internal picking identifiers.
+Uncloneable values throw; shared-memory values retain the platform's sharing
+semantics. The required limit is a nonnegative safe integer that bounds row count,
+not nested value size. A zero limit checks whether any records exist.
+
+```js
+const track = api.views.get({ scope: [], view: "observations" });
+await api.awaitVisibleLazyData(signal);
+const { rows, truncated } = track.readData({ limit: 10000 });
+if (truncated)
+  throw new Error("Increase the limit before analyzing all records.");
+```
+
+Readback does not fetch data, apply viewport/brush bounds, or establish regional
+coverage or pixel visibility. Apps interpret their own fields using existing
+named scales and interval snapshots, and verify completeness before analysis.
+`awaitVisibleLazyData()` waits for current visible lazy requests; existing loading
+observations can track URL-backed updates. Reads throw while data is unready and
+for containers or stale handles. Source records removed by transforms remain the
+app's responsibility.
+
+See [Read and select records](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/dataReadback)
+for a small readback-to-selection example.
+
 ## Marks and scoped interaction
 
 Each handle exposes `marks` for interaction with marks in that view's subtree.

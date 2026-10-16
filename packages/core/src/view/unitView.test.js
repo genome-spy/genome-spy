@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import InteractionDispatcher from "../genomeSpy/interactionDispatcher.js";
 import ConcatView from "./concatView.js";
+import { createViewMutationApi } from "./viewMutationApi.js";
 import Point from "./layout/point.js";
 import Rectangle from "./layout/rectangle.js";
 import { createAndInitialize, renderToLayout } from "./testUtils.js";
@@ -31,6 +32,66 @@ describe("UnitView point selections", () => {
         } else {
             delete globalThis.MouseEvent;
         }
+    });
+
+    test("single selection picking observes membership replaced or cleared through the API", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpec("records"),
+                        params: [
+                            {
+                                name: "selected",
+                                select: {
+                                    type: "point",
+                                    toggle: false,
+                                    on: "click",
+                                },
+                            },
+                        ],
+                        data: {
+                            values: [
+                                { name: "A", x: 1, y: 1 },
+                                { name: "B", x: 2, y: 2 },
+                            ],
+                        },
+                        encoding: {
+                            key: { field: "name" },
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+        renderToLayout(view, Rectangle.create(0, 0, 300, 240));
+        const unit = /** @type {import("./unitView.js").default} */ (
+            view.children[0]
+        );
+        const [datum] = unit.getCollector().getData();
+        view.context.getCurrentHover = () => ({ mark: unit.mark, datum });
+        const dispatcher = new InteractionDispatcher({ viewRoot: view });
+        const click = () =>
+            dispatcher.dispatch(
+                center(unit),
+                /** @type {MouseEvent} */ (new FakeMouseEvent("click"))
+            );
+        const selected = createViewMutationApi({ viewRoot: view })
+            .get({ scope: [], view: "records" })
+            .params.getSelection("selected");
+        if (selected.type !== "point")
+            throw new Error("Expected point selection.");
+
+        click();
+        expect(selected.getValue().data[0].name).toBe("A");
+        selected.setValue([["B"]]);
+        click();
+        expect(selected.getValue().data[0].name).toBe("A");
+        selected.clear();
+        click();
+        expect(selected.getValue().data[0].name).toBe("A");
     });
 
     test("clears a hover selection when the pointer enters a sibling view", async () => {
