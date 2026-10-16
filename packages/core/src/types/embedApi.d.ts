@@ -6,6 +6,12 @@ import { Scalar } from "../spec/channel.js";
 import { IntervalSelection } from "./selectionTypes.js";
 import { ImportSpec, ViewSpec } from "../spec/view.js";
 import { ViewSelector } from "../view/viewUtilTypes.js";
+import { TransformDataOptions } from "./transformData.js";
+export type {
+    AnalysisTransformParams,
+    AnalysisSampleParams,
+    TransformDataOptions,
+} from "./transformData.js";
 
 /**
  * Embeds GenomeSpy into the DOM
@@ -670,6 +676,18 @@ export interface ViewHandle {
         scope: "all" | "viewport" | { selection: string };
         limit: number;
     }) => {
+        rows: Record<string, unknown>[];
+        truncated: boolean;
+    };
+
+    /**
+     * Runs a one-shot pipeline on a complete scoped snapshot of current transformed
+     * records. Rejects input overflow; truncated reports additional output rows.
+     * Uses an isolated flow without changing live data, parameters, or GPU buffers.
+     * Expressions do not inherit view parameters. Runs synchronously; row limits
+     * do not bound execution time. Does not fetch data or establish source coverage.
+     */
+    transformData: (options: TransformDataOptions) => {
         rows: Record<string, unknown>[];
         truncated: boolean;
     };
