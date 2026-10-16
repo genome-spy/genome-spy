@@ -45,20 +45,21 @@ code, not a reusable orchestration layer.
 
 ## Three examples
 
-1. **Copy number region summary:** read every scoped toy bin, compute count,
-   mean, minimum, and maximum in the page's JavaScript, show five preview rows.
-   Demonstrate scale navigation, viewport/brush scope, and cancellation.
-2. **Expression record selection:** read the scoped expression records, apply
-   both thresholds in page code, and select every qualifying gene by key.
-   Conditional size and opacity highlight the original records while retaining
-   pathway colors. The table subscribes to the same selection as mouse picking.
-   Both thresholds zero in the whole viewport must select all 12 toy records.
-3. **Retained gene data:** compare retained source rows with transformed display
-   rows while an ordinary parameter changes a display filter. Explain source
-   retention and coverage without confusing loaded source rows with all data.
+1. **Read records in a range** (`regionSummary/`): read a generic toy signal,
+   compute count, mean, minimum, and maximum in page code, and show five rows.
+   Demonstrate data coming out of the visualization, scoped by zoom or brush.
+2. **Select records by key** (`recordSelection/`): read generic x/y records,
+   apply two thresholds in page code, and send every qualifying record key back
+   into the selection. Conditional size/opacity and the subscribed table show
+   the same membership. Replacing dataset A with B demonstrates new data entering
+   the visualization through the existing dataset API. Zero thresholds select
+   all 12 toy records in the whole viewport.
+3. **Source rows and filtered rows** (`sourceData/`): compare retained input
+   records with transformed output while a parameter changes a display filter.
+   Source retention is opt-in and both reads concern loaded rows.
 
-The fixtures are explicitly synthetic. No biological inference or server/model
-integration is part of these examples.
+The fixtures are generic synthetic records. The examples demonstrate data
+flowing into and out of the visualization without requiring genomic concepts.
 
 ## Alternatives and scope changes
 
@@ -80,11 +81,11 @@ capability rather than forcing agents to inspect private view/dataflow objects.
       limits, subscriptions, lifecycle, and source updates through public handles.
       Update public types, optional bundle guards, docs and the minor changeset.
       Tentative commit: `feat(core): simplify data access and add keyed selection writes`.
-- [x] **Examples:** revise region summary and expression selection; retain the
+- [x] **Examples:** revise range summary and record selection; retain the
       source-data example. Remove obsolete callout lifecycle code and explanation.
       Verify zero thresholds select all 12 records, manual membership shares the
       table, brush scoping, navigation, replacement, clearing, and SVG styling.
-      Tentative commit: `feat(embed-examples): highlight every qualifying expression record`.
+      Tentative commit: `feat(embed-examples): highlight every qualifying record`.
 - [x] **Integration:** run focused Core suites, type/public API and bundle checks,
       docs generation, lint/format, example builds, and WebGL/Canvas interaction tests.
       Inspect the diff for duplicate paths and measure size before/after.
@@ -110,18 +111,36 @@ verification and remove it in a later commit before merge.
 - 530 unit-test files passed: 5,039 tests passed, two skipped, two todo.
 - All six example interaction tests passed across WebGL and Canvas. Verified all
   12 records at zero thresholds, mouse picking, SVG styling/export, clearing,
-  brush scope, contrast replacement, and narrow layouts.
-- The playground public-API integration passed with its generated schema.
+  brush scope, dataset replacement, and narrow layouts.
+- All three playground public-API integrations passed with their generated schema
+  (point, text, and rectangle marks with inherited selection and picking disabled).
 - Workspace TypeScript checks, lint, Core build/emitted consumer typings,
   all-example smoke build, API-reference generation, and optional/minimal bundle
   checks passed. Release policy/status confirm a minor Core change, propagated
   through the fixed release group (1.1.1 → 1.2.0).
-- Desktop and narrow screenshots were inspected. The expression table and the
+- Desktop and narrow screenshots were inspected. The record table and the
   original conditional marks agree on all 12 selected records.
-- Relative to the previous example implementation, Core production source is
-  reduced by 967 physical lines (+137 / −1,104). Obsolete analysis/annotation
+- The initial simplification reduced Core production source relative to the
+  previous example implementation by 967 physical lines (+137 / −1,104). Obsolete analysis/annotation
   tests and generated API pages were removed with their implementations.
 
 The earlier annotation and analysis milestones are discarded as described above;
 the three revised implementation milestones are complete. Plan retirement remains
 part of preparing the existing PR for merge, outside this update request.
+
+## Three-reviewer follow-up
+
+Three independent Sol reviewers covered data access, selection/dataflow/rendering,
+and examples/documentation. Data access and the existing example contracts had
+no actionable findings. The selection review confirmed a WebGL bug: inherited
+point selections with `tooltip: null` had identifier data but no GPU identifier
+encoding. Dataflow and normalized encoding now share `requiresRecordIdentity()`;
+picking eligibility stays independent. WebGL texture setup and updates also read
+the same resolved parameter reference, including inherited selection values. The public browser workflow covers point,
+text, and rectangle marks with inherited selection and picking disabled.
+
+Generic-data conversion replaces the expression/gene routes with `recordSelection`
+and `sourceData`, retaining the existing generic `regionSummary` route. Example links and the PR overview follow these routes; the requested API-table
+comment links the same sources. All six generic example browser workflows,
+three inherited-selection WebGL workflows, 5,039 unit tests, workspace types,
+lint, example builds, and release checks pass.

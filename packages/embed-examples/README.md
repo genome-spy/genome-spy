@@ -18,15 +18,15 @@ The examples rely directly on the `@genome-spy/core` ESM package, but can be ada
 
 ## Inspect visualization data
 
-These browser-only examples use fixed synthetic omics data and the optional
+These browser-only examples use small generic toy datasets and the optional
 `@genome-spy/core/view-query` entry from the same Core module instance as `embed`.
 
-- [Copy number region summary](src/regionSummary/): zoom or brush to compute
+- [Read records in a range](src/regionSummary/): zoom or brush to compute
   regional statistics over all matches while showing a five-row preview.
-- [Expression records](src/expressionFindings/): apply thresholds in the host,
+- [Select records by key](src/recordSelection/): apply thresholds in the host,
   select every qualifying record by key, and highlight membership through
   conditional encodings. Clicking records updates the same selection.
-- [Retained gene data](src/retainedGeneData/): compare loaded source rows with
+- [Source rows and filtered rows](src/sourceData/): compare loaded source rows with
   rows kept by a display filter, using opt-in source retention.
 
 Each page explains the hooks it uses and shows readable track/source information

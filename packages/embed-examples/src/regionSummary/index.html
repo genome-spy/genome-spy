@@ -5,19 +5,19 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="stylesheet" href="../style.scss" />
         <link rel="stylesheet" href="../queryExamples.scss" />
-        <title>Summarize a copy number region</title>
+        <title>Read records in a range</title>
     </head>
     <body>
         <a class="back-link" href="../">← All embedding examples</a>
-        <h1>Summarize a copy number region</h1>
+        <h1>Read records in a range</h1>
         <p>
-            Zoom to a region or Shift-drag to brush it. Read a signal summary
-            and a few observations from the visualization.
+            Zoom to a range or Shift-drag to brush it. Read a summary and a few
+            observations from the visualization.
         </p>
         <div class="query-controls">
-            <button id="whole">Whole locus</button>
-            <button id="gain">Gain region</button>
-            <button id="loss">Loss region</button>
+            <button id="whole">Whole range</button>
+            <button id="high">High range</button>
+            <button id="low">Low range</button>
             <label
                 >Summary scope<select id="scope">
                     <option value="viewport">Viewport</option>
@@ -34,12 +34,12 @@
             <div
                 id="plot"
                 class="query-chart"
-                aria-label="Synthetic copy number signal"
+                aria-label="Generic toy signal"
             ></div>
             <section
                 id="results"
                 class="query-results"
-                aria-label="Region summary"
+                aria-label="Range summary"
             ></section>
         </main>
         <section id="track-info" class="query-about"></section>
@@ -60,9 +60,9 @@
                 Superseded queries are canceled.
             </p>
             <p>
-                The 300–500 kb gain region has 20 observations with mean signal
-                0.6. Source coverage in a transformed query remains unknown,
-                even though this toy eager source is completely loaded.
+                The 300–500 range has 20 observations with mean signal 0.6.
+                Source coverage in a transformed query remains unknown, even
+                though this toy eager source is completely loaded.
             </p>
             <p>
                 <a href="https://genomespy.app/docs/api/views/#choosing-a-hook"

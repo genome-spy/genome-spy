@@ -128,9 +128,9 @@ agent tools using the returned data and existing visualization controls.
 | `view.getScaleResolution(channel)`                                 | Access a resolved scale, including unnamed scales, for domain inspection and navigation. |
 
 For example, a host can read records inside a brush, apply its own thresholds,
-and set selection membership for all qualifying records. A gene-track inspector
-can use retained source rows to include genes omitted by display-only lane
-filters. Neither result proves that the backing biological dataset is complete.
+and set selection membership for all qualifying records. A source-data inspector
+can use retained source rows to include records omitted by display-only category
+filters. Neither result proves that the backing dataset is complete.
 
 ### Missing values and explicit limits
 
@@ -235,7 +235,7 @@ data readiness, then query the relevant axes:
 const result = await query.queryData(track, {
   channels: ["x"],
   limit: 10,
-  fields: ["gene", "logR"],
+  fields: ["id", "value"],
   signal: controller.signal,
 });
 console.log(result.rows, result.rowsMatched, result.scope);
@@ -298,19 +298,19 @@ matching rows, filter them in ordinary JavaScript, and set a point selection:
 ```js
 const result = await query.queryData(track, {
   channels: ["x", "y"],
-  fields: ["gene", "score"],
+  fields: ["id", "y"],
   limit: null,
 });
 const keys = result.rows
-  .filter((row) => row.score >= 2)
-  .map((row) => [row.gene]);
+  .filter((row) => Number(row.y) >= 2)
+  .map((row) => [String(row.id)]);
 const selection = track.params.getSelection("chosen");
 if (selection.type === "point") selection.setValue(keys);
 ```
 
-This requires `encoding.key: {field: "gene"}` on the source unit view. See
+This requires `encoding.key: {field: "id"}` on the source unit view. See
 [point selection writes](runtime-state.md#setting-point-selections) for key and
-lifecycle rules, and the region/expression pages in
+lifecycle rules, and the range and record-selection pages in
 [embed examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 for complete host-side threshold and summary controllers.
 

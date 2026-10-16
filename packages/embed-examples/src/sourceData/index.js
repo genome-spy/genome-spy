@@ -4,33 +4,33 @@ import "@genome-spy/core/rendering/canvas.js";
 import { createViewQuery } from "@genome-spy/core/view-query";
 import { html, render } from "lit";
 import { dataTable, renderTrackInfo } from "../queryExamples.js";
-import { genes } from "./data.js";
+import { records } from "./data.js";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
-    name: "genes",
-    title: "Toy genes in prepared lanes",
+    name: "records",
+    title: "Source rows and filtered rows",
     description:
-        "A display filter hides lanes without removing loaded source rows.",
+        "A display filter hides categories without removing loaded source rows.",
     width: "container",
     height: "container",
     padding: 8,
-    params: [{ name: "shownLanes", value: 2 }],
-    data: { values: genes, retainForInspection: true },
-    transform: [{ type: "filter", expr: "datum.lane < shownLanes" }],
+    params: [{ name: "categoryCount", value: 2 }],
+    data: { values: records, retainForInspection: true },
+    transform: [{ type: "filter", expr: "datum.category < categoryCount" }],
     mark: { type: "rule", size: 10 },
     encoding: {
         x: {
-            field: "startKb",
+            field: "start",
             type: "quantitative",
-            title: "Toy locus position (kb)",
+            title: "X coordinate",
             scale: { domain: [0, 1200], zoom: true },
         },
-        x2: { field: "endKb" },
+        x2: { field: "end" },
         y: {
-            field: "lane",
+            field: "category",
             type: "quantitative",
-            title: "Prepared lane",
+            title: "Category",
             axis: { values: [0, 1, 2] },
             scale: { domain: [-0.5, 2.5] },
         },
@@ -46,11 +46,11 @@ export const api = await embed(document.getElementById("plot"), spec, {
     renderer,
 });
 const query = createViewQuery(api.views);
-const track = api.views.get({ scope: [], view: "genes" });
-const lanes = /** @type {HTMLSelectElement} */ (
-    document.getElementById("lanes")
+const track = api.views.get({ scope: [], view: "records" });
+const categories = /** @type {HTMLSelectElement} */ (
+    document.getElementById("categories")
 );
-const shownLanes = api.params.get("shownLanes");
+const categoryCount = api.params.get("categoryCount");
 const status = document.getElementById("status");
 const results = document.getElementById("results");
 let refreshFrame = 0;
@@ -65,12 +65,10 @@ function refresh() {
             throw new Error(
                 "This comparison requires complete inspection tables."
             );
-        const kept = new Set(transformed.rows.map((row) => row.gene));
+        const kept = new Set(transformed.rows.map((row) => row.id));
         const compared = source.rows.map((row) => ({
             ...row,
-            display: kept.has(row.gene)
-                ? "Kept by filter"
-                : "Removed by filter",
+            display: kept.has(row.id) ? "Kept by filter" : "Removed by filter",
         }));
         render(
             html`
@@ -78,12 +76,12 @@ function refresh() {
                     <div id="source-rows">
                         <h2>Loaded before the display filter</h2>
                         <p data-testid="source-count">
-                            ${source.rows.length} retained genes
+                            ${source.rows.length} retained records
                         </p>
                         ${dataTable(
                             [
-                                ["gene", "Gene"],
-                                ["lane", "Lane"],
+                                ["id", "Record"],
+                                ["category", "Category"],
                                 ["display", "Display filter"],
                             ],
                             compared
@@ -92,13 +90,14 @@ function refresh() {
                     <div id="transformed-rows">
                         <h2>After the display filter</h2>
                         <p data-testid="transformed-count">
-                            ${transformed.rows.length} genes kept by the filter
+                            ${transformed.rows.length} records kept by the
+                            filter
                         </p>
                         ${dataTable(
                             [
-                                ["gene", "Gene"],
-                                ["startKb", "Start (kb)"],
-                                ["endKb", "End (kb)"],
+                                ["id", "Record"],
+                                ["start", "Start"],
+                                ["end", "End"],
                             ],
                             transformed.rows
                         )}
@@ -129,13 +128,13 @@ function scheduleRefresh() {
     refreshFrame = requestAnimationFrame(refresh);
 }
 
-lanes.addEventListener("change", () =>
-    shownLanes.setValue(Number(lanes.value))
+categories.addEventListener("change", () =>
+    categoryCount.setValue(Number(categories.value))
 );
-const stopLanes = shownLanes.subscribe(scheduleRefresh);
+const stopCategories = categoryCount.subscribe(scheduleRefresh);
 document.getElementById("reset").addEventListener("click", async () => {
-    lanes.value = "2";
-    shownLanes.setValue(2);
+    categories.value = "2";
+    categoryCount.setValue(2);
     await track.getScaleResolution("x").zoomTo([0, 1200]);
     scheduleRefresh();
 });
@@ -143,7 +142,7 @@ document.getElementById("reset").addEventListener("click", async () => {
 /** Release the retained-data embed and all example-owned subscriptions. */
 export function dispose() {
     cancelAnimationFrame(refreshFrame);
-    stopLanes();
+    stopCategories();
     api.finalize();
 }
 window.addEventListener("pagehide", dispose, { once: true });

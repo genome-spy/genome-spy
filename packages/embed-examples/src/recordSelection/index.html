@@ -5,20 +5,20 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="stylesheet" href="../style.scss" />
         <link rel="stylesheet" href="../queryExamples.scss" />
-        <title>Highlight expression records</title>
+        <title>Select records by key</title>
     </head>
     <body>
         <a class="back-link" href="../">← All embedding examples</a>
-        <h1>Highlight expression records</h1>
+        <h1>Select records by key</h1>
         <p>
-            Highlight every gene that meets both thresholds in the current
+            Highlight every record that meets both thresholds in the current
             region. The application chooses the records; the visualization
             displays their selection through conditional size and opacity.
         </p>
         <form id="controls" class="query-controls">
             <label
-                >Minimum |log2 fold change|<input
-                    id="fold"
+                >Minimum x<input
+                    id="minimum-x"
                     type="number"
                     min="0"
                     step="0.1"
@@ -26,8 +26,8 @@
                     required
             /></label>
             <label
-                >Minimum −log10 adjusted p-value score<input
-                    id="score"
+                >Minimum y<input
+                    id="minimum-y"
                     type="number"
                     min="0"
                     step="0.1"
@@ -41,7 +41,7 @@
                 </select></label
             >
             <label
-                >Toy contrast<select id="contrast">
+                >Dataset<select id="dataset">
                     <option value="A">A</option>
                     <option value="B">B</option>
                 </select></label
@@ -60,12 +60,12 @@
             <div
                 id="plot"
                 class="query-chart"
-                aria-label="Synthetic expression volcano plot"
+                aria-label="Toy records with x and y coordinates"
             ></div>
             <section
                 id="results"
                 class="query-results"
-                aria-label="Expression findings"
+                aria-label="Record findings"
             ></section>
         </main>
         <section id="track-info" class="query-about"></section>
@@ -76,7 +76,7 @@
                 optionally intersected with the brush. This example applies both
                 thresholds in ordinary JavaScript, then calls
                 <code>getSelection("chosen").setValue(keys)</code> with every
-                qualifying gene's key. It does not rank or sample the matches.
+                qualifying record's key. It does not rank or sample the matches.
             </p>
             <p>
                 The spec declares <code>encoding.key</code> and conditional size
@@ -87,7 +87,7 @@
             <p>
                 Scroll to zoom, drag to pan, and Shift-drag to brush. Apply
                 thresholds again after changing the scope. The host clears
-                membership before replacing the contrast; it can then select
+                membership before replacing the dataset; it can then select
                 records from the new publication. A cleared brush in brush mode
                 matches no rows. Download SVG preserves the same styling.
             </p>
@@ -98,9 +98,8 @@
             </p>
         </details>
         <p class="provenance">
-            Synthetic data for demonstrating the embedding API. Gene names,
-            pathway assignments, fold changes, and significance scores are
-            illustrative fixture values.
+            Synthetic data for demonstrating the embedding API. Coordinates and
+            groups have no domain-specific meaning.
         </p>
         <script type="module" src="./index.js"></script>
     </body>

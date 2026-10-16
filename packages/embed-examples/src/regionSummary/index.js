@@ -8,9 +8,9 @@ import { observations } from "./data.js";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
-    name: "copyNumber",
-    title: "Toy copy number signal",
-    description: "A synthetic locus with gain, loss, and neutral regions.",
+    name: "signal",
+    title: "Read records in a range",
+    description: "A toy signal with high, low, and baseline ranges.",
     width: "container",
     height: "container",
     padding: 8,
@@ -21,22 +21,22 @@ const spec = {
     mark: { type: "point", size: 55 },
     encoding: {
         x: {
-            field: "positionKb",
+            field: "x",
             type: "quantitative",
-            title: "Toy locus position (kb)",
+            title: "X coordinate",
             scale: { domain: [0, 1200], zoom: true },
         },
         y: {
-            field: "log2Ratio",
+            field: "value",
             type: "quantitative",
-            title: "Log2 ratio",
+            title: "Value",
             scale: { domain: [-1, 1] },
         },
         color: {
             field: "state",
             type: "nominal",
             scale: {
-                domain: ["gain", "loss", "neutral"],
+                domain: ["high", "low", "baseline"],
                 range: ["#bd5b35", "#426fa4", "#858585"],
             },
         },
@@ -51,7 +51,7 @@ export const api = await embed(document.getElementById("plot"), spec, {
     renderer,
 });
 const query = createViewQuery(api.views);
-const track = api.views.get({ scope: [], view: "copyNumber" });
+const track = api.views.get({ scope: [], view: "signal" });
 const scale = track.getScaleResolution("x");
 const brush = api.params.getSelection("region");
 const scopeControl = /** @type {HTMLSelectElement} */ (
@@ -83,13 +83,13 @@ async function refresh() {
     try {
         const result = await query.queryData(track, {
             ...scope,
-            fields: ["id", "positionKb", "log2Ratio"],
+            fields: ["id", "x", "value"],
             limit: null,
             signal,
         });
         signal.throwIfAborted();
         // Analysis belongs to this example. Core only reads the scoped records.
-        const values = result.rows.map((row) => Number(row.log2Ratio));
+        const values = result.rows.map((row) => Number(row.value));
         const count = values.length;
         const mean = count
             ? values.reduce((sum, value) => sum + value, 0) / count
@@ -100,29 +100,29 @@ async function refresh() {
         status.textContent = "Summary current.";
         render(
             html`
-                <h2>Region summary</h2>
+                <h2>Range summary</h2>
                 <p>
                     Viewport:
                     ${result.scope.domains.x.map(formatValue).join("–")}
-                    kb${result.scope.selection ? html`; brush: ${result.scope.selection.value.intervals.x ? result.scope.selection.value.intervals.x.map(formatValue).join("–") + " kb" : "cleared"}` : ""}
+                    ${result.scope.selection ? html`; brush: ${result.scope.selection.value.intervals.x ? result.scope.selection.value.intervals.x.map(formatValue).join("–") : "cleared"}` : ""}
                 </p>
                 <dl>
-                    <dt>Matching bins</dt>
+                    <dt>Matching records</dt>
                     <dd data-testid="count">${count}</dd>
-                    <dt>Mean log2 ratio</dt>
+                    <dt>Mean value</dt>
                     <dd data-testid="mean">${formatValue(mean)}</dd>
                     <dt>Minimum / maximum</dt>
                     <dd>${formatValue(min)} / ${formatValue(max)}</dd>
                 </dl>
                 <p data-testid="preview-count">
                     Showing ${preview.length} of ${result.rowsMatched} matching
-                    bins.
+                    records.
                 </p>
                 ${dataTable(
                     [
-                        ["id", "Bin"],
-                        ["positionKb", "Position (kb)"],
-                        ["log2Ratio", "Log2 ratio"],
+                        ["id", "Record"],
+                        ["x", "X coordinate"],
+                        ["value", "Value"],
                     ],
                     preview
                 )}
@@ -151,10 +151,10 @@ document
     .getElementById("whole")
     .addEventListener("click", () => void navigate([0, 1200]));
 document
-    .getElementById("gain")
+    .getElementById("high")
     .addEventListener("click", () => void navigate([300, 500]));
 document
-    .getElementById("loss")
+    .getElementById("low")
     .addEventListener("click", () => void navigate([800, 950]));
 document
     .getElementById("clear-brush")

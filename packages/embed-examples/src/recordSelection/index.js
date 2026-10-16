@@ -5,26 +5,25 @@ import "@genome-spy/core/rendering/svg.js";
 import { createViewQuery } from "@genome-spy/core/view-query";
 import { html, render } from "lit";
 import { dataTable, formatValue, renderTrackInfo } from "../queryExamples.js";
-import { contrastA, contrastB } from "./data.js";
+import { datasetA, datasetB } from "./data.js";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
-    name: "expression",
-    title: "Toy expression contrast",
-    description:
-        "Prepared toy fold changes and significance scores for three pathways.",
+    name: "records",
+    title: "Select records by key",
+    description: "Twelve toy records with x/y coordinates and three groups.",
     width: "container",
     height: "container",
     padding: 8,
-    datasets: { expression: contrastA },
-    data: { name: "expression" },
+    datasets: { records: datasetA },
+    data: { name: "records" },
     params: [
         { name: "chosen", select: "point" },
         { name: "region", select: { type: "interval", encodings: ["x", "y"] } },
     ],
     mark: { type: "point", size: 85 },
     encoding: {
-        key: { field: "gene" },
+        key: { field: "id" },
         opacity: {
             condition: { param: "chosen", empty: false, value: 1 },
             value: 0.2,
@@ -34,22 +33,22 @@ const spec = {
             value: 55,
         },
         x: {
-            field: "log2FoldChange",
+            field: "x",
             type: "quantitative",
-            title: "Log2 fold change",
-            scale: { domain: [-3, 3], zoom: true },
+            title: "X value",
+            scale: { domain: [0, 3], zoom: true },
         },
         y: {
-            field: "negLog10Padj",
+            field: "y",
             type: "quantitative",
-            title: "−log10 adjusted p-value score",
+            title: "Y value",
             scale: { domain: [0, 7], zoom: true },
         },
         color: {
-            field: "pathway",
+            field: "group",
             type: "nominal",
             scale: {
-                domain: ["Interferon", "Cell cycle", "Metabolism"],
+                domain: ["Group A", "Group B", "Group C"],
                 range: ["#be6042", "#4777a8", "#549579"],
             },
         },
@@ -64,7 +63,7 @@ export const api = await embed(document.getElementById("plot"), spec, {
     renderer,
 });
 const query = createViewQuery(api.views);
-const track = api.views.get({ scope: [], view: "expression" });
+const track = api.views.get({ scope: [], view: "records" });
 const scales = [track.getScaleResolution("x"), track.getScaleResolution("y")];
 const brush = track.params.getSelection("region");
 const selection = track.params.getSelection("chosen");
@@ -73,15 +72,17 @@ const chosen = selection;
 const form = /** @type {HTMLFormElement} */ (
     document.getElementById("controls")
 );
-const fold = /** @type {HTMLInputElement} */ (document.getElementById("fold"));
-const score = /** @type {HTMLInputElement} */ (
-    document.getElementById("score")
+const minimumXInput = /** @type {HTMLInputElement} */ (
+    document.getElementById("minimum-x")
+);
+const minimumYInput = /** @type {HTMLInputElement} */ (
+    document.getElementById("minimum-y")
 );
 const scopeControl = /** @type {HTMLSelectElement} */ (
     document.getElementById("scope")
 );
-const contrast = /** @type {HTMLSelectElement} */ (
-    document.getElementById("contrast")
+const dataset = /** @type {HTMLSelectElement} */ (
+    document.getElementById("dataset")
 );
 const find = /** @type {HTMLButtonElement} */ (document.getElementById("find"));
 const status = document.getElementById("status");
@@ -104,17 +105,17 @@ function showSelection() {
         data.length + " selected records.";
     render(
         html`
-            <h2>Selected expression records</h2>
+            <h2>Selected records</h2>
             <p>
                 These are the records highlighted by the plot's conditional
                 encodings.
             </p>
             ${dataTable(
                 [
-                    ["gene", "Gene"],
-                    ["pathway", "Pathway"],
-                    ["log2FoldChange", "Log2 fold change"],
-                    ["negLog10Padj", "Score"],
+                    ["id", "Record"],
+                    ["group", "Group"],
+                    ["x", "X value"],
+                    ["y", "Y value"],
                 ],
                 data
             )}
@@ -139,23 +140,21 @@ async function highlightQualifying() {
     controller.abort();
     controller = new AbortController();
     const { signal } = controller;
-    const minimumFold = fold.valueAsNumber;
-    const minimumScore = score.valueAsNumber;
+    const minimumX = minimumXInput.valueAsNumber;
+    const minimumY = minimumYInput.valueAsNumber;
     status.textContent = "Reading the captured region…";
     try {
         const result = await query.queryData(track, {
             ...getScope(),
-            fields: ["gene", "pathway", "log2FoldChange", "negLog10Padj"],
+            fields: ["id", "group", "x", "y"],
             limit: null,
             signal,
         });
         signal.throwIfAborted();
         const qualifying = result.rows.filter(
-            (row) =>
-                Math.abs(Number(row.log2FoldChange)) >= minimumFold &&
-                Number(row.negLog10Padj) >= minimumScore
+            (row) => Number(row.x) >= minimumX && Number(row.y) >= minimumY
         );
-        chosen.setValue(qualifying.map((row) => [String(row.gene)]));
+        chosen.setValue(qualifying.map((row) => [String(row.id)]));
         status.textContent = `${qualifying.length} of ${result.rowsMatched} records qualify in the captured region. Viewport x: ${result.scope.domains.x.map(formatValue).join("–")}; y: ${result.scope.domains.y.map(formatValue).join("–")}.${result.scope.selection ? " Also constrained by the brush." : ""}`;
         renderTrackInfo(query, track, info);
     } catch (error) {
@@ -169,18 +168,15 @@ form.addEventListener("submit", (event) => {
     event.preventDefault();
     void highlightQualifying();
 });
-fold.addEventListener("input", invalidate);
-score.addEventListener("input", invalidate);
+minimumXInput.addEventListener("input", invalidate);
+minimumYInput.addEventListener("input", invalidate);
 scopeControl.addEventListener("change", invalidate);
-contrast.addEventListener("change", () => {
+dataset.addEventListener("change", () => {
     controller.abort();
     // Membership refers to the current publication. The host decides when to
     // clear or reapply it after replacing data.
     chosen.clear();
-    api.datasets.set(
-        "expression",
-        contrast.value === "A" ? contrastA : contrastB
-    );
+    api.datasets.set("records", dataset.value === "A" ? datasetA : datasetB);
     invalidate();
     renderTrackInfo(query, track, info);
 });
@@ -198,7 +194,7 @@ document.getElementById("download").addEventListener("click", async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "expression-findings.svg";
+    link.download = "selected-records.svg";
     link.click();
     URL.revokeObjectURL(url);
 });
@@ -207,8 +203,8 @@ document.getElementById("reset-example").addEventListener("click", async () => {
     form.reset();
     brush.clear();
     chosen.clear();
-    api.datasets.set("expression", contrastA);
-    await Promise.all([scales[0].zoomTo([-3, 3]), scales[1].zoomTo([0, 7])]);
+    api.datasets.set("records", datasetA);
+    await Promise.all([scales[0].zoomTo([0, 3]), scales[1].zoomTo([0, 7])]);
     invalidate();
     renderTrackInfo(query, track, info);
 });

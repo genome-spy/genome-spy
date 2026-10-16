@@ -323,7 +323,7 @@ source unit view, and conditional encodings to show selected membership:
 {
   "params": [{ "name": "chosen", "select": "point" }],
   "encoding": {
-    "key": { "field": "gene" },
+    "key": { "field": "id" },
     "opacity": {
       "condition": { "param": "chosen", "empty": false, "value": 1 },
       "value": 0.2
@@ -335,18 +335,18 @@ source unit view, and conditional encodings to show selected membership:
 Get the selection through that unit view, then replace membership by key:
 
 ```js
-const track = api.views.get({ scope: [], view: "expression" });
+const track = api.views.get({ scope: [], view: "records" });
 const selection = track.params.getSelection("chosen");
 if (selection.type === "point") {
-  selection.setValue([["IFN01"], ["CYC02"]]);
+  selection.setValue([["item01"], ["item06"]]);
   console.log(selection.getValue().data);
   selection.setValue([]); // Same membership change as clear().
 }
 ```
 
 Each key is a tuple, including a single-element tuple for one key field. With
-`encoding.key: [{field: "gene"}, {field: "sample"}]`, use tuples such as
-`["IFN01", "sampleA"]` in that field order. Keys must be unique non-null strings,
+`encoding.key: [{field: "id"}, {field: "group"}]`, use tuples such as
+`["item01", "Group A"]` in that field order. Keys must be unique non-null strings,
 numbers, or booleans; supplied numeric keys must be finite. `toggle: false`
 selections accept at most one tuple. A malformed, missing, or ambiguous key
 rejects the entire write without changing membership.
