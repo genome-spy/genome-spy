@@ -1317,9 +1317,21 @@ export default class View {
                 getPrimaryChannel(channel)
             );
 
-        return this.getDataAncestors()
-            .map((view) => view.resolutions.scale[primaryChannel])
-            .find((resolution) => resolution);
+        for (const view of this.getDataAncestors()) {
+            const resolution = view.resolutions.scale[primaryChannel];
+            if (resolution) {
+                return resolution;
+            }
+            if (
+                view.options.scaleLookupBoundaryChannels?.includes(
+                    /** @type {import("../spec/channel.js").PrimaryPositionalChannel} */ (
+                        primaryChannel
+                    )
+                )
+            ) {
+                return undefined;
+            }
+        }
     }
 
     /**
@@ -1331,9 +1343,19 @@ export default class View {
                 getPrimaryChannel(channel)
             );
 
-        return this.getDataAncestors()
-            .map((view) => view.resolutions.axis[primaryChannel])
-            .find((resolution) => resolution);
+        for (const view of this.getDataAncestors()) {
+            const resolution = view.resolutions.axis[primaryChannel];
+            if (resolution) {
+                return resolution;
+            }
+            if (
+                view.options.scaleLookupBoundaryChannels?.includes(
+                    primaryChannel
+                )
+            ) {
+                return undefined;
+            }
+        }
     }
 
     /**

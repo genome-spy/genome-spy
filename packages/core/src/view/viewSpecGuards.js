@@ -67,3 +67,11 @@ export function isHConcatSpec(spec) {
 export function isConcatSpec(spec) {
     return "concat" in spec && isArray(spec.concat);
 }
+
+/**
+ * @param {import("../spec/view.js").ViewSpec} spec
+ * @returns {spec is import("../spec/view.js").SurroundSpec}
+ */
+export function isSurroundSpec(spec) {
+    return "surround" in spec && isObject(spec.surround) && "spec" in spec;
+}

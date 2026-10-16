@@ -28,6 +28,41 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("surround accepts scoped side groups and preserves extensible plot slots", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            spec: { mark: "rect" },
+            surround: {
+                top: [{ layer: [{ mark: "point" }] }],
+                right: {
+                    data: { values: [{ row: 0 }] },
+                    encoding: { y: { field: "row", type: "index" } },
+                    spacing: 4,
+                    views: [{ import: { template: "annotation" } }],
+                },
+            },
+            templates: { annotation: { mark: "rect" } },
+        };
+        expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        // Slot types remain general; runtime enforces the flat first version.
+        expect(validate({ ...spec, spec: { hconcat: [] } })).toBe(true);
+        for (const invalid of [
+            {
+                ...spec,
+                surround: { right: { data: { values: [{ row: 0 }] } } },
+            },
+            { ...spec, surround: { top: { mark: "point" } } },
+            {
+                ...spec,
+                surround: { right: { width: 20, views: [{ mark: "point" }] } },
+            },
+            { ...spec, axes: { x: {} } },
+            { ...spec, viewportWidth: 100 },
+        ]) {
+            expect(validate(invalid)).toBe(false);
+        }
+    });
+
     test("facet options accept supported forms and reject unsupported forms", () => {
         const validate = createCoreValidator();
         const spec = {

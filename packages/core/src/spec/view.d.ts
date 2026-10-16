@@ -637,7 +637,8 @@ export type CoreViewSpec =
     | FacetSpec
     | VConcatSpec
     | HConcatSpec
-    | ConcatSpec;
+    | ConcatSpec
+    | SurroundSpec;
 
 export type ContainerSpec = (CoreViewSpec | ViewSpecExtension) & ResolveSpec;
 
@@ -764,3 +765,46 @@ export interface ConcatSpec extends ConcatBase {
 }
 
 export type AnyConcatSpec = VConcatSpec | HConcatSpec | ConcatSpec;
+
+/** A group of tracks sharing data, encodings, and other view settings. */
+export interface SurroundSideSpec extends ViewSpecBase {
+    width?: never;
+    height?: never;
+    viewportWidth?: never;
+    viewportHeight?: never;
+    /**
+     * Tracks ordered top-to-bottom on top/bottom, or left-to-right on left/right.
+     * Currently each track must resolve to a unit or layer specification.
+     */
+    views: (ViewSpec | ImportSpec)[];
+
+    /** Gap between tracks, in pixels. __Default value:__ `10` */
+    spacing?: number;
+}
+
+export type SurroundSide = (ViewSpec | ImportSpec)[] | SurroundSideSpec;
+
+/** Aligns marginal tracks to a central plot's row and column coordinates. */
+export interface SurroundSpec extends ViewSpecBase {
+    axes?: never;
+    viewportWidth?: never;
+    viewportHeight?: never;
+    /**
+     * Central plot. Currently accepts unit or layer specifications and imports
+     * resolving to them. Its width and height determine the aligned plot size.
+     */
+    spec: ViewSpec | ImportSpec;
+
+    /**
+     * Top/bottom tracks share the center's x scale and stack vertically.
+     * Left/right tracks share its y scale and stack horizontally. Tracks have
+     * independent perpendicular scales by default. Specify only their thickness:
+     * height on top/bottom, or width on left/right.
+     */
+    surround: Partial<Record<Side, SurroundSide>>;
+
+    /** Gap between the center and each side, in pixels. __Default value:__ `10` */
+    spacing?: number;
+}
+
+export type GridSpec = AnyConcatSpec | SurroundSpec;

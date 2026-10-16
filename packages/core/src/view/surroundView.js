@@ -1,0 +1,523 @@
+import GridView from "./gridView/gridView.js";
+import Grid from "./layout/grid.js";
+import UnitView from "./unitView.js";
+import ViewError from "./viewError.js";
+import { VISIT_SKIP } from "./view.js";
+import { isInChromeSubtree } from "./viewChrome.js";
+import { markViewAsNonAddressable } from "./viewSelectors.js";
+import { isImportSpec, isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
+import { isMultiscaleSpec } from "./multiscale.js";
+import { cloneWithSpecOrigin, inheritSpecOrigin } from "../utils/specOrigin.js";
+import {
+    findChannelDefWithScale,
+    getPrimaryChannel,
+    isChannelWithScale,
+} from "../encoder/encoder.js";
+import {
+    isRulerParameter,
+    isSelectionParameter,
+} from "../paramRuntime/paramUtils.js";
+import { asSelectionConfig } from "../selection/selection.js";
+import { annotateSpecError } from "../utils/specError.js";
+
+/**
+ * @typedef {import("../spec/view.js").Side} Side
+ * @typedef {Side | "center"} Region
+ * @typedef {import("../spec/channel.js").PrimaryPositionalChannel} Channel
+ * @typedef {import("./view.js").default} View
+ */
+
+const SIDES = /** @type {const} */ (["top", "right", "bottom", "left"]);
+
+/**
+ * Aligns flat marginal plots with one central plot.
+ * @extends {GridView<import("../spec/view.js").SurroundSpec>}
+ */
+export default class SurroundView extends GridView {
+    /** @type {View} */
+    #center;
+
+    /** @type {Map<View, Side>} */
+    #sides = new Map();
+
+    /**
+     * @param {import("../spec/view.js").SurroundSpec} spec
+     * @param {import("../types/viewContext.js").default} context
+     * @param {import("./containerView.js").default} layoutParent
+     * @param {View} dataParent
+     * @param {string} name
+     * @param {import("./view.js").ViewOptions} [options]
+     */
+    constructor(spec, context, layoutParent, dataParent, name, options) {
+        super(spec, context, layoutParent, dataParent, name, 3, options);
+        this.spec = spec;
+
+        for (const side of Object.keys(spec.surround)) {
+            if (!SIDES.includes(/** @type {Side} */ (side))) {
+                throw this.#error(`Unknown surround side "${side}".`, spec, [
+                    "surround",
+                    side,
+                ]);
+            }
+        }
+        if (
+            "axes" in spec ||
+            "viewportWidth" in spec ||
+            "viewportHeight" in spec
+        ) {
+            throw this.#error(
+                "Surround axes and viewports must be configured on its plots.",
+                spec
+            );
+        }
+        validateInputHost(spec, this);
+        for (const channel of /** @type {const} */ (["x", "y"])) {
+            if (
+                this.getConfiguredOrDefaultResolution(channel, "axis") !==
+                "independent"
+            ) {
+                throw this.#error(
+                    "Surround does not support cross-region shared axes.",
+                    spec,
+                    ["resolve", "axis", channel]
+                );
+            }
+        }
+    }
+
+    /** @override */
+    async initializeChildren() {
+        this.#center = await this.context.createOrImportView(
+            this.#preparePlot(this.spec.spec),
+            this,
+            this,
+            "center",
+            (spec) => this.#validatePlot(spec),
+            { inheritEncoding: true }
+        );
+
+        const sides = await Promise.all(
+            SIDES.flatMap((side) => {
+                const spec = this.spec.surround[side];
+                return spec === undefined ? [] : [this.#createSide(side, spec)];
+            })
+        );
+        this.setChildren([this.#center, ...sides]);
+        await this.syncGuideViews();
+    }
+
+    /**
+     * @param {Side} side
+     * @param {import("../spec/view.js").SurroundSide} authored
+     */
+    async #createSide(side, authored) {
+        const aligned = getAlignedChannel(side);
+        const perpendicular = aligned === "x" ? "y" : "x";
+        const dimension = aligned === "x" ? "width" : "height";
+        const source = Array.isArray(authored) ? this.spec : authored;
+        const originPath = Array.isArray(authored)
+            ? ["surround", side]
+            : undefined;
+        const group = Array.isArray(authored) ? { views: authored } : authored;
+        if (!Array.isArray(group.views)) {
+            throw this.#error(
+                `Surround ${side} requires a views array.`,
+                source,
+                originPath ?? ["views"]
+            );
+        }
+        if (
+            "width" in group ||
+            "height" in group ||
+            "viewportWidth" in group ||
+            "viewportHeight" in group
+        ) {
+            throw this.#error(
+                `Surround ${side} groups inherit their aligned size from the center; specify thickness on their plots.`,
+                source,
+                [dimension]
+            );
+        }
+        validateInputHost(group, this);
+
+        // Exclusion stops membership ascent; the lookup boundary also prevents
+        // scaleless tracks from falling through to the center's perpendicular scale.
+        const boundary = /** @type {import("./concatView.js").default} */ (
+            await this.context.createOrImportView(
+                inheritSpecOrigin(
+                    source,
+                    {
+                        concat: [],
+                        columns: 1,
+                        spacing: 0,
+                        resolve: {
+                            scale: {
+                                [aligned]: "shared",
+                                [perpendicular]: "excluded",
+                            },
+                            axis: { [perpendicular]: "excluded" },
+                        },
+                    },
+                    originPath
+                ),
+                this,
+                this,
+                side + "Boundary",
+                undefined,
+                {
+                    inheritEncoding: true,
+                    collapseWhenEmpty: true,
+                    scaleLookupBoundaryChannels: [perpendicular],
+                }
+            )
+        );
+        markViewAsNonAddressable(boundary);
+
+        const { views, ...props } = cloneWithSpecOrigin(group);
+        const childSpecs = views.map((spec) => this.#preparePlot(spec, side));
+        const concatSpec = inheritSpecOrigin(
+            source,
+            {
+                ...props,
+                [dimension]: "container",
+                ...(aligned === "x"
+                    ? { vconcat: childSpecs }
+                    : { hconcat: childSpecs }),
+            },
+            originPath
+        );
+        const tracks = /** @type {import("./concatView.js").default} */ (
+            await this.context.createOrImportView(
+                concatSpec,
+                boundary,
+                boundary,
+                side,
+                undefined,
+                {
+                    inheritEncoding: true,
+                    collapseWhenEmpty: true,
+                    childSpecValidator: (spec) =>
+                        this.#validatePlot(spec, side),
+                }
+            )
+        );
+        if (Array.isArray(authored)) {
+            markViewAsNonAddressable(tracks);
+        }
+        boundary.setChildren([tracks]);
+        await boundary.syncGuideViews();
+        this.#sides.set(boundary, side);
+        return boundary;
+    }
+
+    /**
+     * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} spec
+     * @param {Side} [side]
+     */
+    #preparePlot(spec, side) {
+        const copy = cloneWithSpecOrigin(spec);
+        if (!isImportSpec(copy)) {
+            this.#validatePlot(copy, side);
+        }
+        return copy;
+    }
+
+    /**
+     * Validates imported specs before construction and overrides implicit theme
+     * sizing only on the aligned dimension. Authored input is never mutated.
+     * @param {import("../spec/view.js").ViewSpec} spec
+     * @param {Side} [side]
+     */
+    #validatePlot(spec, side) {
+        if (
+            !isUnitSpec(spec) &&
+            !isLayerSpec(spec) &&
+            !isMultiscaleSpec(spec)
+        ) {
+            throw this.#error(
+                `Surround ${side ?? "center"} currently accepts only unit or layer plots.`,
+                spec
+            );
+        }
+        if (side) {
+            const dimension =
+                getAlignedChannel(side) === "x" ? "width" : "height";
+            if (spec[dimension] !== undefined) {
+                throw this.#error(
+                    `Surround ${side} plots inherit ${dimension} from the center; specify only their thickness.`,
+                    spec,
+                    [dimension]
+                );
+            }
+            spec[dimension] = "container";
+        }
+        if ("viewportWidth" in spec || "viewportHeight" in spec) {
+            throw this.#error(
+                "Surround plots do not support scrollable viewports.",
+                spec
+            );
+        }
+    }
+
+    /**
+     * @param {string} message
+     * @param {object} source
+     * @param {(string | number)[]} [path]
+     */
+    #error(message, source, path = []) {
+        return annotateSpecError(
+            new ViewError(message, this),
+            this.paramRuntime.getSpecLocation(source, path)
+        );
+    }
+
+    /** @override */
+    isConfiguredVisible() {
+        return (
+            super.isConfiguredVisible() &&
+            (this.#center?.isConfiguredVisible() ?? false)
+        );
+    }
+
+    /**
+     * @override
+     * @param {import("../spec/channel.js").Channel} channel
+     * @param {import("../spec/view.js").ResolutionTarget} type
+     */
+    getDefaultResolution(channel, type) {
+        return type === "scale" && (channel === "x" || channel === "y")
+            ? "shared"
+            : "independent";
+    }
+
+    /** @override */
+    get visibleChildren() {
+        return this.isConfiguredVisible() ? super.visibleChildren : [];
+    }
+
+    /** @override */
+    get layoutGrid() {
+        return new SurroundGrid(
+            this.visibleChildren.map(({ view }) =>
+                view === this.#center ? "center" : this.#sides.get(view)
+            )
+        );
+    }
+
+    /**
+     * @override
+     * @param {"row" | "column"} direction
+     * @param {import("./gridView/gridChild.js").default[]} children
+     */
+    getPlotSizeChildren(direction, children) {
+        const center = children.find(({ view }) => view === this.#center);
+        return center ? [center] : children;
+    }
+
+    /**
+     * The central plot is the alignment anchor; this view's own bounds include
+     * all side tracks and decorations. Future nested support can reuse this seam.
+     * @override
+     */
+    getTrackPlotGeometry() {
+        const coords = this.#center.coords;
+        return coords ? { content: coords, viewport: coords } : undefined;
+    }
+
+    /**
+     * @override
+     * @param {Parameters<GridView["syncGuideViews"]>[0]} [options]
+     */
+    async syncGuideViews(options) {
+        this.#validateResolutions();
+        await super.syncGuideViews(options);
+    }
+
+    #validateResolutions() {
+        if (this.resolutions.axis.x || this.resolutions.axis.y) {
+            throw this.#error(
+                "Surround does not support axes hoisted from its plots.",
+                this.spec
+            );
+        }
+
+        const exported = new Set(
+            Array.from(this.#sides.values(), getAlignedChannel)
+        );
+        for (const channel of exported) {
+            this.#validateAlignedScale(this.#center, channel, "center");
+        }
+        for (const [boundary, side] of this.#sides) {
+            this.#validateAlignedScale(boundary, getAlignedChannel(side), side);
+        }
+    }
+
+    /** @param {View} root @param {Channel} channel @param {Region} region */
+    #validateAlignedScale(root, channel, region) {
+        for (const view of root.getDescendants()) {
+            if (!(view instanceof UnitView) || isInChromeSubtree(view)) {
+                continue;
+            }
+            for (const encoded of /** @type {const} */ ([
+                channel,
+                channel === "x" ? "x2" : "y2",
+            ])) {
+                const def = findChannelDefWithScale(
+                    view.mark.encoding[encoded]
+                );
+                if (!def || def.scale === null) {
+                    continue;
+                }
+                const target = getPrimaryChannel(
+                    def.resolutionChannel ?? encoded
+                );
+                if (
+                    !isChannelWithScale(target) ||
+                    view.getScaleResolution(target) !==
+                        this.#center.getScaleResolution(channel)
+                ) {
+                    throw annotateSpecError(
+                        new ViewError(
+                            `Surround ${region} plot "${view.name}" must share the center's ${channel} scale.`,
+                            view
+                        ),
+                        view.paramRuntime.getSpecLocation(view.spec, [
+                            "encoding",
+                            encoded,
+                        ])
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * @override
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("./layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
+     */
+    arrange(context, coords, options = {}) {
+        super.arrange(context, coords, options);
+        if (!this.isConfiguredVisible()) {
+            return;
+        }
+
+        this.#validateResolutions();
+        const center = this.#center.coords;
+        const tolerance = 0.5 / context.getDevicePixelRatio();
+        for (const [boundary, side] of this.#sides) {
+            const channel = getAlignedChannel(side);
+            const dimension = channel === "x" ? "width" : "height";
+            boundary.visit((view) => {
+                if (!view.isConfiguredVisible() || isInChromeSubtree(view)) {
+                    return VISIT_SKIP;
+                }
+                if (view instanceof UnitView) {
+                    const plot = view.coords;
+                    if (
+                        Math.abs(plot[channel] - center[channel]) > tolerance ||
+                        Math.abs(plot[dimension] - center[dimension]) >
+                            tolerance
+                    ) {
+                        throw new ViewError(
+                            `Surround ${side} plot "${view.name}" has an incompatible ${channel} plotting span.`,
+                            view
+                        );
+                    }
+                }
+            });
+        }
+    }
+}
+
+/** @param {Side} side @returns {Channel} */
+function getAlignedChannel(side) {
+    return side === "top" || side === "bottom" ? "x" : "y";
+}
+
+/**
+ * @param {Pick<import("../spec/view.js").ViewSpecBase, "params">} spec
+ * @param {View} owner
+ */
+function validateInputHost(spec, owner) {
+    if (
+        spec.params?.some(
+            (param) =>
+                isRulerParameter(param) ||
+                (isSelectionParameter(param) &&
+                    asSelectionConfig(param.select).type === "interval")
+        )
+    ) {
+        throw new ViewError(
+            "Surround input controllers must be configured on its plots.",
+            owner
+        );
+    }
+}
+
+/** Fixed cross cells, with absent rows/columns removed and no placeholder views. */
+class SurroundGrid extends Grid {
+    /** @type {[number, number][]} */
+    #cells;
+
+    /** @param {Region[]} regions */
+    constructor(regions) {
+        super(regions.length, 3);
+        const column = Number(regions.includes("left"));
+        const row = Number(regions.includes("top"));
+        this.#cells = regions.map((region) => {
+            switch (region) {
+                case "center":
+                    return [column, row];
+                case "top":
+                    return [column, 0];
+                case "right":
+                    return [column + 1, row];
+                case "bottom":
+                    return [column, row + 1];
+                case "left":
+                    return [0, row];
+                default:
+                    throw new Error(`Unknown surround region: ${region}`);
+            }
+        });
+    }
+
+    get nCols() {
+        return this.#cells.length
+            ? Math.max(...this.#cells.map(([column]) => column)) + 1
+            : 0;
+    }
+
+    get nRows() {
+        return this.#cells.length
+            ? Math.max(...this.#cells.map(([, row]) => row)) + 1
+            : 0;
+    }
+
+    get colIndices() {
+        return Array.from({ length: this.nCols }, (_, column) =>
+            this.#cells.flatMap(([col], i) => (col === column ? [i] : []))
+        );
+    }
+
+    get rowIndices() {
+        return Array.from({ length: this.nRows }, (_, row) =>
+            this.#cells.flatMap(([, r], i) => (r === row ? [i] : []))
+        );
+    }
+
+    /** @param {number} index @returns {[number, number]} */
+    getCellCoords(index) {
+        return this.#cells[index];
+    }
+
+    /** @param {number} column @param {number} row */
+    getCellIndex(column, row) {
+        const index = this.#cells.findIndex(
+            ([col, r]) => col === column && r === row
+        );
+        return index < 0 ? undefined : index;
+    }
+}

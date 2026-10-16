@@ -143,7 +143,7 @@ function combinePreferredAndContentSize(preferred, content) {
  * - Scrollable viewports (with scrollbars)
  * - And later on, brushing, legend(?)
  *
- * @template {import("../../spec/view.js").AnyConcatSpec} [TSpec=import("../../spec/view.js").AnyConcatSpec]
+ * @template {import("../../spec/view.js").GridSpec} [TSpec=import("../../spec/view.js").GridSpec]
  * @extends {ContainerView<TSpec>}
  */
 export default class GridView extends ContainerView {
@@ -225,9 +225,13 @@ export default class GridView extends ContainerView {
         this.#spacing = spec.spacing ?? 10;
         this.#columns = columns;
 
-        const separatorProps = resolveSeparatorProps(spec.separator);
+        const separatorProps = resolveSeparatorProps(
+            "separator" in spec ? spec.separator : undefined
+        );
         if (separatorProps) {
-            for (const direction of getSeparatorDirections(spec)) {
+            for (const direction of getSeparatorDirections(
+                /** @type {import("../../spec/view.js").AnyConcatSpec} */ (spec)
+            )) {
                 this.#separatorViews[direction] = new SeparatorView({
                     direction,
                     props: separatorProps,
@@ -325,17 +329,14 @@ export default class GridView extends ContainerView {
         this.invalidateSizeCache();
     }
 
-    get #visibleChildren() {
+    get visibleChildren() {
         return this.#children.filter((gridChild) =>
             gridChild.view.isConfiguredVisible()
         );
     }
 
-    get #grid() {
-        return new Grid(
-            this.#visibleChildren.length,
-            this.#columns ?? Infinity
-        );
+    get layoutGrid() {
+        return new Grid(this.visibleChildren.length, this.#columns ?? Infinity);
     }
 
     /**
@@ -398,7 +399,7 @@ export default class GridView extends ContainerView {
      * @param {import("../layout/point.js").default} point
      */
     ownsInteraction(name, point) {
-        const pointedChild = this.#visibleChildren.find((gridChild) =>
+        const pointedChild = this.visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(point.x, point.y)
         );
         if (!pointedChild) {
@@ -428,7 +429,7 @@ export default class GridView extends ContainerView {
         const channel = this.#getConcatSharedChannel();
         return channel
             ? getCrossTrackBounds(
-                  this.#visibleChildren,
+                  this.visibleChildren,
                   this.#sharedAxes,
                   channel
               )
@@ -459,7 +460,7 @@ export default class GridView extends ContainerView {
         /** @type {{ content: Rectangle, viewport: Rectangle, views: UnitView[] }[]} */
         const placements = [];
 
-        for (const gridChild of this.#visibleChildren) {
+        for (const gridChild of this.visibleChildren) {
             if (gridChild.view instanceof GridView) {
                 placements.push(...gridChild.view.getTrackPlotPlacements());
                 continue;
@@ -564,7 +565,7 @@ export default class GridView extends ContainerView {
             const viewports = placements.map(({ viewport }) => viewport);
             const viewport = channel
                 ? getCrossTrackBounds(
-                      this.#visibleChildren,
+                      this.visibleChildren,
                       this.#sharedAxes,
                       channel
                   )
@@ -875,7 +876,7 @@ export default class GridView extends ContainerView {
         const getMaxAxisSize = (indices, side) =>
             indices
                 .map((index) => {
-                    const child = this.#visibleChildren[index];
+                    const child = this.visibleChildren[index];
                     const overhang = child.getOverhangAndPadding();
 
                     return direction == "column"
@@ -917,18 +918,31 @@ export default class GridView extends ContainerView {
         };
 
         return this._cache(`size/directionSizes/${direction}`, () =>
-            this.#grid[direction == "column" ? "colIndices" : "rowIndices"].map(
-                (col) => ({
-                    axisBefore: getMaxAxisSize(col, 0),
-                    axisAfter: getMaxAxisSize(col, 1),
-                    view: getLargestSize(
-                        col.map((rowIndex) =>
-                            getPlotSize(this.#visibleChildren[rowIndex])
-                        )
-                    ),
-                })
-            )
+            this.layoutGrid[
+                direction == "column" ? "colIndices" : "rowIndices"
+            ].map((col) => ({
+                axisBefore: getMaxAxisSize(col, 0),
+                axisAfter: getMaxAxisSize(col, 1),
+                view: getLargestSize(
+                    this.getPlotSizeChildren(
+                        direction,
+                        col.map((index) => this.visibleChildren[index])
+                    ).map(getPlotSize)
+                ),
+            }))
         );
+    }
+
+    /**
+     * Selects the children contributing to a row or column's plot size.
+     * Decorations from all children remain part of the measured overhang.
+     * @protected
+     * @param {Direction} direction
+     * @param {GridChild[]} children
+     * @returns {GridChild[]}
+     */
+    getPlotSizeChildren(direction, children) {
+        return children;
     }
 
     /**
@@ -1111,15 +1125,12 @@ export default class GridView extends ContainerView {
             flexOpts
         );
 
-        const grid = new Grid(
-            this.#visibleChildren.length,
-            this.#columns ?? Infinity
-        );
+        const grid = this.layoutGrid;
 
         let remainingLayoutPasses = MAX_CONSTRAINT_LAYOUT_PASSES;
         while (true) {
             let layoutChanged = false;
-            for (const [i, gridChild] of this.#visibleChildren.entries()) {
+            for (const [i, gridChild] of this.visibleChildren.entries()) {
                 const [col, row] = grid.getCellCoords(i);
                 const colLocSize = columnFlexCoords[this.#getViewSlot(col)];
                 const rowLocSize = rowFlexCoords[this.#getViewSlot(row)];
@@ -1177,7 +1188,7 @@ export default class GridView extends ContainerView {
         // arrangement pass without recomputing per-child coordinates.
         const layoutItems = [];
 
-        for (const [i, gridChild] of this.#visibleChildren.entries()) {
+        for (const [i, gridChild] of this.visibleChildren.entries()) {
             const { view } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
@@ -1424,7 +1435,7 @@ export default class GridView extends ContainerView {
      */
     propagateInteraction(event) {
         propagateInteraction(this, event, () => {
-            const pointedChild = this.#visibleChildren.find((gridChild) =>
+            const pointedChild = this.visibleChildren.find((gridChild) =>
                 gridChild.coords.containsPoint(event.point.x, event.point.y)
             );
             const pointedView = pointedChild?.view;
@@ -1575,7 +1586,7 @@ export default class GridView extends ContainerView {
         }
 
         const coords = getCrossTrackBounds(
-            this.#visibleChildren,
+            this.visibleChildren,
             this.#sharedAxes,
             channel
         );

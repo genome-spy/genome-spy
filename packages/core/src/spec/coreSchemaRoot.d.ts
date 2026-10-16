@@ -8,6 +8,9 @@ import {
     MultiscaleSpec as CoreMultiscaleSpec,
     UnitSpec as CoreUnitSpec,
     VConcatSpec as CoreVConcatSpec,
+    SurroundSpec as CoreSurroundSpec,
+    SurroundSideSpec as CoreSurroundSideSpec,
+    Side,
 } from "./view.js";
 
 interface SchemaViewConfig {
@@ -54,6 +57,23 @@ interface FacetSpec
     spec: LayerSpec | UnitSpec | ImportSpec;
 }
 
+interface SurroundSideSpec
+    extends
+        Omit<CoreSurroundSideSpec, "templates" | "views">,
+        SchemaViewConfig {
+    views: (ViewSpec | ImportSpec)[];
+}
+
+interface SurroundSpec
+    extends
+        Omit<CoreSurroundSpec, "templates" | "spec" | "surround">,
+        SchemaViewConfig {
+    spec: ViewSpec | ImportSpec;
+    surround: Partial<
+        Record<Side, SurroundSideSpec | (ViewSpec | ImportSpec)[]>
+    >;
+}
+
 type ViewSpec =
     | UnitSpec
     | LayerSpec
@@ -61,6 +81,7 @@ type ViewSpec =
     | FacetSpec
     | VConcatSpec
     | HConcatSpec
-    | ConcatSpec;
+    | ConcatSpec
+    | SurroundSpec;
 
 export type CoreRootSpec = ViewSpec & RootConfig;

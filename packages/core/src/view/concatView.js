@@ -79,7 +79,7 @@ export default class ConcatView extends GridView {
                         this,
                         this,
                         this.getNextAutoName("grid"),
-                        undefined,
+                        this.options.childSpecValidator,
                         childOptions
                     )
                 )
@@ -204,6 +204,15 @@ export default class ConcatView extends GridView {
         } else {
             return "independent";
         }
+    }
+
+    /** @override */
+    isConfiguredVisible() {
+        return (
+            super.isConfiguredVisible() &&
+            (!this.options.collapseWhenEmpty ||
+                this.children.some((child) => child.isConfiguredVisible()))
+        );
     }
 
     /**
