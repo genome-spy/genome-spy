@@ -1345,39 +1345,29 @@ export default class View {
      * @param {import("../spec/channel.js").ChannelWithScale} channel
      */
     getScaleResolution(channel) {
-        const primaryChannel =
-            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
-                getPrimaryChannel(channel)
-            );
+        return this.#getResolution(channel, "scale");
+    }
 
-        for (const view of this.getDataAncestors()) {
-            const resolution = view.resolutions.scale[primaryChannel];
-            if (resolution) {
-                return resolution;
-            }
-            if (view.isResolutionBoundary(primaryChannel)) {
-                return undefined;
-            }
-        }
+    /** @param {import("../spec/channel.js").PositionalChannel} channel */
+    getAxisResolution(channel) {
+        return this.#getResolution(channel, "axis");
     }
 
     /**
-     * @param {import("../spec/channel.js").PositionalChannel} channel
+     * @template {"scale" | "axis"} T
+     * @param {import("../spec/channel.js").ChannelWithScale} channel
+     * @param {T} type
+     * @returns {View["resolutions"][T][keyof View["resolutions"][T]]}
      */
-    getAxisResolution(channel) {
-        const primaryChannel =
-            /** @type {import("../spec/channel.js").PrimaryPositionalChannel} */ (
-                getPrimaryChannel(channel)
-            );
-
+    #getResolution(channel, type) {
+        const primary = getPrimaryChannel(channel);
         for (const view of this.getDataAncestors()) {
-            const resolution = view.resolutions.axis[primaryChannel];
-            if (resolution) {
+            const resolution =
+                view.resolutions[type][
+                    /** @type {keyof View["resolutions"][T]} */ (primary)
+                ];
+            if (resolution || view.isResolutionBoundary(primary))
                 return resolution;
-            }
-            if (view.isResolutionBoundary(primaryChannel)) {
-                return undefined;
-            }
         }
     }
 

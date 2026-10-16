@@ -23,7 +23,6 @@ import {
     isSelectionParameter,
 } from "../paramRuntime/paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
-import { annotateSpecError } from "../utils/specError.js";
 
 /**
  * @typedef {import("../spec/view.js").Side} Side
@@ -245,10 +244,7 @@ export default class SurroundView extends GridView {
      * @param {(string | number)[]} [path]
      */
     #error(message, source, path = []) {
-        return annotateSpecError(
-            new ViewError(message, this),
-            this.paramRuntime.getSpecLocation(source, path)
-        );
+        return new ViewError(message, this).withSpecLocation(source, path);
     }
 
     /** @override */
@@ -312,47 +308,53 @@ export default class SurroundView extends GridView {
      * @override
      * @param {Channel} channel
      * @param {import("./gridView/gridChild.js").default[]} children
+     * @param {import("./layout/flexLayout.js").SizeDef} size
      * @param {{ before: number, after: number }} insets
      */
-    getStructuralReservation(channel, children, insets) {
-        const edges =
-            channel === "x"
-                ? /** @type {const} */ (["left", "right"])
-                : /** @type {const} */ (["top", "bottom"]);
+    getTrackSizeAndInsets(channel, children, size, insets) {
         const reserved = { ...insets };
-        const centerTrack = children.some(
-            (child) => child.view === this.#center
-        );
-        for (const [i, side] of edges.entries()) {
-            const edge = i === 0 ? "before" : "after";
-            const arm = this.visibleChildren.find(
-                (child) => this.#sides.get(child.view) === side
-            );
-            if (!arm) continue;
-            if (centerTrack) {
-                // Keep each arm adjacent to the center. Any extra headroom
-                // belongs outside that arm, rather than in the center's gap.
-                reserved[edge] = 0;
-            } else if (children.includes(arm)) {
-                const dimension = channel === "x" ? "width" : "height";
-                const size = this.constrainTrackSize(
-                    channel,
-                    [arm],
-                    arm.view
-                        .getViewportSize()
-                        .subtractPadding(arm.getViewOverhang())[dimension]
-                );
-                const budget =
-                    getSizeDefMinPx(size) +
-                    this.getChildOverhangAndPadding(arm)[dimension] +
-                    (this.spec.spacing ?? 10);
-                reserved[edge] = Math.max(
-                    0,
-                    this.#getRequiredInset(channel, edge) - budget
-                );
+        const dimension = channel === "x" ? "width" : "height";
+
+        if (children.some((child) => child.view === this.#center)) {
+            const sides =
+                channel === "x" ? ["left", "right"] : ["top", "bottom"];
+            for (const [i, side] of sides.entries()) {
+                if (
+                    this.visibleChildren.some(
+                        (child) => this.#sides.get(child.view) === side
+                    )
+                ) {
+                    reserved[i === 0 ? "before" : "after"] = 0;
+                }
             }
+        } else {
+            // Every other row or column holds one perpendicular arm.
+            const arm = children[0];
+            const side = this.#sides.get(arm.view);
+            const edge = side === "left" || side === "top" ? "before" : "after";
+            const decoration =
+                this.getChildOverhangAndPadding(arm)[dimension] +
+                (this.spec.spacing ?? 10);
+            const required = this.#getRequiredInset(channel, edge);
+
+            if (size.grow) {
+                // Flexible arms absorb headroom inside their existing flex slot.
+                const minimum = Math.min(
+                    size.maxPx ?? Infinity,
+                    required - decoration
+                );
+                if (minimum > getSizeDefMinPx(size)) {
+                    size = { ...size, minPx: minimum };
+                }
+            }
+
+            reserved[edge] = Math.max(
+                0,
+                required - getSizeDefMinPx(size) - decoration
+            );
         }
-        return reserved;
+
+        return { size, ...reserved };
     }
 
     /** @param {Channel} channel @param {"before" | "after"} edge */
@@ -363,34 +365,6 @@ export default class SurroundView extends GridView {
                 .filter((child) => this.alignsChild(child.view, channel))
                 .map((child) => child.view.getAlignment(channel)[edge])
         );
-    }
-
-    /**
-     * A growing arm can absorb neighboring structural headroom in its existing
-     * flex slot. Give it a minimum instead of reserving the same space twice.
-     * @override
-     * @param {Channel} channel
-     * @param {import("./gridView/gridChild.js").default[]} children
-     * @param {import("./layout/flexLayout.js").SizeDef} size
-     */
-    constrainTrackSize(channel, children, size) {
-        const side =
-            children.length === 1
-                ? this.#sides.get(children[0].view)
-                : undefined;
-        if (!side || !size.grow || getAlignedChannel(side) === channel)
-            return size;
-        const dimension = channel === "x" ? "width" : "height";
-        const edge = side === "left" || side === "top" ? "before" : "after";
-        const minimum = Math.min(
-            size.maxPx ?? Infinity,
-            this.#getRequiredInset(channel, edge) -
-                (this.spec.spacing ?? 10) -
-                this.getChildOverhangAndPadding(children[0])[dimension]
-        );
-        return minimum > getSizeDefMinPx(size)
-            ? { ...size, minPx: minimum }
-            : size;
     }
 
     /**
@@ -536,16 +510,10 @@ export default class SurroundView extends GridView {
                     view.getScaleResolution(target) !==
                         this.#center.getScaleResolution(channel)
                 ) {
-                    throw annotateSpecError(
-                        new ViewError(
-                            `Surround ${region} plot "${view.name}" must share the center's ${channel} scale.`,
-                            view
-                        ),
-                        view.paramRuntime.getSpecLocation(view.spec, [
-                            "encoding",
-                            encoded,
-                        ])
-                    );
+                    throw new ViewError(
+                        `Surround ${region} plot "${view.name}" must share the center's ${channel} scale.`,
+                        view
+                    ).withSpecLocation(view.spec, ["encoding", encoded]);
                 }
             }
         });
@@ -612,16 +580,10 @@ export default class SurroundView extends GridView {
                                 Math.min(a.y2, b.y2) - Math.max(a.y, b.y) >
                                     tolerance
                             ) {
-                                throw annotateSpecError(
-                                    new ViewError(
-                                        `Surround panels "${one.view.name}" and "${two.view.name}" overlap.`,
-                                        two.view
-                                    ),
-                                    two.view.paramRuntime.getSpecLocation(
-                                        two.view.spec,
-                                        []
-                                    )
-                                );
+                                throw new ViewError(
+                                    `Surround panels "${one.view.name}" and "${two.view.name}" overlap.`,
+                                    two.view
+                                ).withSpecLocation();
                             }
                         }
                     }

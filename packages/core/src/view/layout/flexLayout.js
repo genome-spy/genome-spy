@@ -610,7 +610,7 @@ function hasSizeConstraints(sizeDef) {
  * @param {number} px
  * @returns {SizeDef}
  */
-function addPxToSizeDef(sizeDef, px) {
+export function addPxToSizeDef(sizeDef, px) {
     return createSizeDef({
         px: (sizeDef.px ?? 0) + px,
         grow: sizeDef.grow,

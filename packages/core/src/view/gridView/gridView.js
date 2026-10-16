@@ -1,6 +1,7 @@
 import { primaryPositionalChannels } from "../../encoder/encoder.js";
 import {
     FlexDimensions,
+    addPxToSizeDef,
     getLargestSize,
     getSizeDefMaxPx,
     getSizeDefMinPx,
@@ -14,7 +15,6 @@ import Rectangle from "../layout/rectangle.js";
 import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
 import ContainerView from "../containerView.js";
 import ViewError from "../viewError.js";
-import { annotateSpecError } from "../../utils/specError.js";
 import { VISIT_SKIP } from "../view.js";
 import {
     propagateInteraction,
@@ -893,6 +893,16 @@ export default class GridView extends ContainerView {
     #getSizes(direction) {
         const dim = direction == "column" ? "width" : "height";
         const channel = direction === "column" ? "x" : "y";
+        const edges =
+            channel === "x"
+                ? /** @type {const} */ ([
+                      ["before", "left"],
+                      ["after", "right"],
+                  ])
+                : /** @type {const} */ ([
+                      ["before", "top"],
+                      ["after", "bottom"],
+                  ]);
 
         /**
          * @param {GridChild} child
@@ -902,27 +912,11 @@ export default class GridView extends ContainerView {
             if (this.alignsChild(child.view, channel)) {
                 return child.view.getAlignment(channel).size;
             }
-            // External overhang is represented by axis/padding slots. The
-            // growable view slot should contain only the child's plot area.
-            const size = child.view.getViewportSize()[dim];
-            const overhang = child.getViewOverhang();
-            const overhangSize =
-                direction == "column" ? overhang.width : overhang.height;
-
-            const plotSize = {
-                px: Math.max((size.px ?? 0) - overhangSize, 0),
-                grow: size.grow,
-                minPx:
-                    size.minPx === undefined
-                        ? undefined
-                        : Math.max(size.minPx - overhangSize, 0),
-                maxPx:
-                    size.maxPx === undefined
-                        ? undefined
-                        : Math.max(size.maxPx - overhangSize, 0),
-            };
-
-            return plotSize;
+            // External overhang lives in separate slots.
+            return addPxToSizeDef(
+                child.view.getViewportSize()[dim],
+                -child.getViewOverhang()[dim]
+            );
         };
 
         return this._cache(`size/directionSizes/${direction}`, () =>
@@ -932,59 +926,40 @@ export default class GridView extends ContainerView {
                 const children = col.map(
                     (index) => this.visibleChildren[index]
                 );
-                const alignments = children.map((child) =>
-                    this.alignsChild(child.view, channel)
+                const insets = { before: 0, after: 0 };
+                const totals = { before: 0, after: 0 };
+
+                for (const child of children) {
+                    const alignment = this.alignsChild(child.view, channel)
                         ? child.view.getAlignment(channel)
-                        : { before: 0, after: 0 }
-                );
-                const before = Math.max(
-                    0,
-                    ...alignments.map((alignment) => alignment.before)
-                );
-                const after = Math.max(
-                    0,
-                    ...alignments.map((alignment) => alignment.after)
-                );
-                /** @param {"before" | "after"} edge */
-                const total = (edge) =>
-                    Math.max(
-                        0,
-                        ...children.map((child, i) => {
-                            const overhang =
-                                this.getChildOverhangAndPadding(child);
-                            return (
-                                alignments[i][edge] +
-                                overhang[
-                                    channel === "x"
-                                        ? edge === "before"
-                                            ? "left"
-                                            : "right"
-                                        : edge === "before"
-                                          ? "top"
-                                          : "bottom"
-                                ]
-                            );
-                        })
-                    );
-                const structural = this.getStructuralReservation(
+                        : { before: 0, after: 0 };
+                    const overhang = this.getChildOverhangAndPadding(child);
+                    for (const [edge, side] of edges) {
+                        insets[edge] = Math.max(insets[edge], alignment[edge]);
+                        totals[edge] = Math.max(
+                            totals[edge],
+                            alignment[edge] + overhang[side]
+                        );
+                    }
+                }
+
+                const structural = this.getTrackSizeAndInsets(
                     channel,
                     children,
-                    { before, after }
-                );
-                return {
-                    axisBefore: total("before") - before,
-                    axisAfter: total("after") - after,
-                    structuralBefore: structural.before,
-                    structuralAfter: structural.after,
-                    view: this.constrainTrackSize(
-                        channel,
-                        children,
-                        getLargestSize(
-                            this.getPlotSizeChildren(direction, children).map(
-                                getPlotSize
-                            )
+                    getLargestSize(
+                        this.getPlotSizeChildren(direction, children).map(
+                            getPlotSize
                         )
                     ),
+                    insets
+                );
+
+                return {
+                    axisBefore: totals.before - insets.before,
+                    axisAfter: totals.after - insets.after,
+                    structuralBefore: structural.before,
+                    structuralAfter: structural.after,
+                    view: structural.size,
                 };
             })
         );
@@ -1003,21 +978,14 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} _channel
-     * @param {GridChild[]} _children
-     * @param {{ before: number, after: number }} insets
-     */
-    getStructuralReservation(_channel, _children, insets) {
-        return insets;
-    }
-
-    /**
+     * Returns the plot size and structural space reserved before and after it.
      * @param {import("../../spec/channel.js").PrimaryPositionalChannel} _channel
      * @param {GridChild[]} _children
      * @param {import("../layout/flexLayout.js").SizeDef} size
+     * @param {{ before: number, after: number }} insets
      */
-    constrainTrackSize(_channel, _children, size) {
-        return size;
+    getTrackSizeAndInsets(_channel, _children, size, insets) {
+        return { size, ...insets };
     }
 
     /** @override @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
@@ -1059,15 +1027,10 @@ export default class GridView extends ContainerView {
                     growingViews.find(
                         (view) => view.spec[dimension] !== undefined
                     ) ?? growingViews.at(-1);
-                throw annotateSpecError(
-                    new ViewError(
-                        "Nested aligned structural panels require fixed or step sizes.",
-                        offender
-                    ),
-                    offender.paramRuntime.getSpecLocation(offender.spec, [
-                        dimension,
-                    ])
-                );
+                throw new ViewError(
+                    "Nested aligned structural panels require fixed or step sizes.",
+                    offender
+                ).withSpecLocation(offender.spec, [dimension]);
             }
             const chrome = this.#getGridOverhang();
             return {
@@ -1138,6 +1101,10 @@ export default class GridView extends ContainerView {
         return this._cache("layoutFootprints", () => {
             /** @type {ReturnType<View["getLayoutFootprints"]>} */
             const footprints = [];
+            /** @param {View} view @param {Rectangle} coords @param {boolean} [chrome] */
+            const addFootprint = (view, coords, chrome = true) =>
+                footprints.push({ view, coords, chrome });
+
             const grid = this.layoutGrid;
             for (const [i, child] of this.visibleChildren.entries()) {
                 footprints.push(...child.view.getLayoutFootprints());
@@ -1157,56 +1124,36 @@ export default class GridView extends ContainerView {
                         child.getAxisCoords(axis),
                         chrome
                     )) {
-                        footprints.push({
-                            view: child.view,
-                            coords,
-                            chrome: true,
-                        });
+                        addFootprint(child.view, coords);
                     }
                 }
                 for (const coords of edgeBands(
                     child.coords.shrink(child.getViewOverhang()),
                     child.view.getPadding()
                 )) {
-                    footprints.push({ view: child.view, coords, chrome: true });
+                    addFootprint(child.view, coords);
                 }
                 for (const { legendView: legend } of Object.values(
                     child.legends
                 ).filter(isActiveLegendRegion)) {
-                    footprints.push({
-                        view: child.view,
-                        coords: legend.coords,
-                        chrome: true,
-                    });
+                    addFootprint(child.view, legend.coords);
                 }
                 if (child.title) {
                     for (const coords of edgeBands(
                         child.title.coords,
                         child.title.getOverhang()
                     )) {
-                        footprints.push({
-                            view: child.view,
-                            coords,
-                            chrome: true,
-                        });
+                        addFootprint(child.view, coords);
                     }
                 }
                 if (child.background) {
-                    footprints.push({
-                        view: child.view,
-                        coords: child.background.coords,
-                        chrome: false,
-                    });
+                    addFootprint(child.view, child.background.coords, false);
                 }
             }
             for (const { legendView: legend } of Object.values(
                 this.#sharedLegends
             ).filter(isActiveLegendRegion)) {
-                footprints.push({
-                    view: this,
-                    coords: legend.coords,
-                    chrome: true,
-                });
+                addFootprint(this, legend.coords);
             }
             return footprints;
         });
