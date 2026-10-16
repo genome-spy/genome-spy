@@ -656,13 +656,20 @@ export interface ViewHandle {
     children: () => ViewHandle[];
 
     /**
-     * Copies loaded transformed records in collector order using structuredClone
-     * semantics, omitting internal picking identifiers. Does not fetch data or
-     * filter by viewport/brush. Throws for unready data, containers, or stale
-     * handles. The explicit limit must be a nonnegative safe integer and bounds
-     * row count, not nested value size. Zero checks whether any records exist.
+     * Copies loaded transformed records inside the viewport or a named interval
+     * brush, using structuredClone semantics and omitting picking identifiers.
+     * Membership is tested before the limit; truncated means more matches exist.
+     * Viewport membership uses encoded data positions, before pixel offsets or
+     * occlusion. Brush membership follows existing interval-selection predicates.
+     * Requires unconditional positional encodings and, for viewport reads,
+     * continuous scales. Does not fetch data. Throws for unready data, containers,
+     * unsupported projections, or stale handles. Scans synchronously without a
+     * spatial index. Limit must be a nonnegative safe integer and bounds row count.
      */
-    readData: (options: { limit: number }) => {
+    readData: (options: {
+        scope: "viewport" | { selection: string };
+        limit: number;
+    }) => {
         rows: Record<string, unknown>[];
         truncated: boolean;
     };

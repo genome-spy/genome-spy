@@ -10,31 +10,35 @@
         <a class="back-link" href="../">← All embedding examples</a>
         <h1>Read and select records</h1>
         <p>
-            Core loads four records and computes a score. Read that output,
-            choose matches in page code, and highlight them through native
-            selection.
+            Core loads four records and derives a score. Zoom or Shift-drag a
+            brush, then read and select the records inside that region.
         </p>
         <label
-            >Minimum score
-            <input id="threshold" type="number" value="6" required
-        /></label>
+            >Read scope
+            <select id="scope">
+                <option value="viewport">Viewport</option>
+                <option value="brush">Brush</option>
+            </select></label
+        >
         <button id="select" disabled>Read and select</button>
+        <button id="zoom">Zoom to B and D</button>
+        <button id="reset">Whole range</button>
         <button id="clear" disabled>Clear selection</button>
         <div id="plot" class="visualization-surface"></div>
         <p id="selection" role="status">Loading…</p>
         <h2>Records returned by Core</h2>
         <pre id="records"></pre>
         <p>
-            <code>view.readData({limit})</code> returns transformed records the
-            old controls could not enumerate. Page code applies the threshold,
-            then <code>selection.setValue(keys)</code> writes native membership
-            that previously could only be read or cleared. Clicking points
-            updates the same selection. Ordinary parameter-driven custom
-            highlighting was already possible.
+            <code>view.readData({scope, limit})</code> tests viewport or
+            interval-brush membership before limiting results. Page code sends
+            the returned keys to <code>selection.setValue(keys)</code>;
+            conditional opacity displays native membership. Clicking points
+            updates the same selection through the existing API. A cleared brush
+            matches no records.
         </p>
         <p>
-            Synthetic generic data. Analysis stays in page code; Core's existing
-            conditional opacity displays membership.
+            Synthetic generic data. Reads scan loaded records; this example adds
+            no spatial index or analysis API.
         </p>
         <script type="module" src="./index.js"></script>
     </body>

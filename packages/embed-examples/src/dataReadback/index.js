@@ -8,12 +8,23 @@ const spec = {
     height: 220,
     data: { url: new URL("./data.json", import.meta.url).href },
     transform: [{ type: "formula", expr: "datum.value * 2", as: "score" }],
-    params: [{ name: "selected", select: "point" }],
+    params: [
+        { name: "selected", select: "point" },
+        { name: "brush", select: { type: "interval", encodings: ["x", "y"] } },
+    ],
     mark: { type: "point", size: 180 },
     encoding: {
         key: { field: "id" },
-        x: { field: "value", type: "quantitative", scale: { domain: [0, 6] } },
-        y: { field: "score", type: "quantitative", scale: { domain: [0, 12] } },
+        x: {
+            field: "value",
+            type: "quantitative",
+            scale: { name: "position", domain: [0, 6], zoom: true },
+        },
+        y: {
+            field: "score",
+            type: "quantitative",
+            scale: { domain: [0, 12], zoom: true },
+        },
         opacity: {
             condition: { param: "selected", empty: false, value: 1 },
             value: 0.2,
@@ -26,8 +37,8 @@ const view = api.views.get({ scope: [], view: "observations" });
 const capability = view.params.getSelection("selected");
 if (capability.type !== "point") throw new Error("Expected a point selection.");
 const selected = capability;
-const threshold = /** @type {HTMLInputElement} */ (
-    document.getElementById("threshold")
+const scope = /** @type {HTMLSelectElement} */ (
+    document.getElementById("scope")
 );
 const selectButton = /** @type {HTMLButtonElement} */ (
     document.getElementById("select")
@@ -38,8 +49,10 @@ const clearButton = /** @type {HTMLButtonElement} */ (
 
 /** Read Core's derived values; the page never loads or repeats the input pipeline. */
 function selectMatches() {
-    if (!threshold.reportValidity()) return;
-    const { rows, truncated } = view.readData({ limit: 100 });
+    const { rows, truncated } = view.readData({
+        scope: scope.value === "brush" ? { selection: "brush" } : "viewport",
+        limit: 100,
+    });
     if (truncated)
         throw new Error("Increase the limit before selecting all matches.");
     document.getElementById("records").textContent = JSON.stringify(
@@ -47,9 +60,7 @@ function selectMatches() {
         null,
         2
     );
-    const keys = rows
-        .filter((row) => Number(row.score) >= threshold.valueAsNumber)
-        .map((row) => [String(row.id)]);
+    const keys = rows.map((row) => [String(row.id)]);
     selected.setValue(keys);
 }
 
@@ -62,6 +73,16 @@ function showSelection() {
 
 selectButton.addEventListener("click", selectMatches);
 clearButton.addEventListener("click", () => selected.clear());
+document
+    .getElementById("zoom")
+    .addEventListener("click", () =>
+        api.getScaleResolutionByName("position").zoomTo([3, 5])
+    );
+document
+    .getElementById("reset")
+    .addEventListener("click", () =>
+        api.getScaleResolutionByName("position").zoomTo([0, 6])
+    );
 const stop = selected.subscribe(showSelection);
 selectButton.disabled = clearButton.disabled = false;
 selectMatches();

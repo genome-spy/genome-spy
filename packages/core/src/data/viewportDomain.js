@@ -381,7 +381,7 @@ function normalizeConstraint(constraint) {
  * @param {import("./flowNode.js").Datum} datum
  * @param {ViewportConstraint} constraint
  */
-function matchesViewport(datum, constraint) {
+export function matchesViewport(datum, constraint) {
     const interval = readInterval(
         datum,
         constraint.accessor,
