@@ -1,13 +1,15 @@
 # Surround: resolution boundaries and nested alignment
 
-Status: implemented and verified. Resolution/alignment contracts, the revised
-categorical/corner design, and both implementation milestones have passed
-independent review.
+Status: implemented, verified, and reconciled for retirement on 2026-10-16.
+Resolution/alignment contracts, the categorical/corner design, and both
+implementation milestones have passed independent review. The public example
+now uses synthetic expression and mutation data; the continuous-scale worked
+fixture below remains the independent navigation/alignment regression.
 
 ## Goal and scope
 
-Extend the categorical annotated matrix with a stacked A/B distribution above
-its right metadata strip and a percentage axis on the distribution's right.
+The categorical annotated matrix has a two-gene mutation matrix on its right
+and normalized WT/Mutated distributions above it, with a right percentage axis.
 [The acceptance design](surround-annotated-matrix.md) specifies its data,
 schema, guide placement, compact corner geometry, and verification. Use this
 case to replace wrapper plumbing with a coherent resolution boundary
@@ -368,11 +370,13 @@ not an incidental getter change and has no promised SLOC saving.
 
 ## Validation and regression gates
 
-- Extend the categorical annotated matrix as specified in
-  [its acceptance design](surround-annotated-matrix.md): two normalized A/B
-  segments, a right percentage axis, shared category colors/legend, a shared
-  metadata source, and free upper-right corner occupancy. Verify absent encoded
-  x participation without leaking the matrix's column scale.
+- Verify the categorical annotated matrix as specified in
+  [its acceptance record](surround-annotated-matrix.md): four normalized
+  WT/Mutated segments across two mutation genes, a right percentage axis,
+  shared category colors/legend, one metadata source, and free upper-right
+  corner occupancy. Verify that local mutation x is shared with its summary
+  while remaining distinct from expression-gene x. Retain flat no-x probes
+  for absent positional participation and perpendicular lookup isolation.
 - Verify maximum outward extents for compatible neighboring panels and a located
   rejection when structural panels collide. Keep guide reservations separate
   and preserve the existing flat corner policy.
@@ -421,8 +425,8 @@ selectors, surround construction. Tentative commit:
 
 - [x] Introduce the internal alignment description and fixed-inset allocation;
       support nested surrounds in side slots without broad descendant checks.
-- [x] Extend `annotated-matrix.json` with the nested A/B distribution and right
-      percentage axis; add representative regression tests and retain the
+- [x] Extend `annotated-matrix.json` with the nested mutation distributions and
+      right percentage axis; add regression tests and retain the
       continuous-x resolution/navigation case.
       Retain scale/geometry validation and reject growing aligned insets clearly.
 - [x] Implement maximum outward extents for free corners and located rejection
@@ -577,3 +581,13 @@ navigation gaps, and ordinary concats retain bounding-box routing.
 
 Deferred extensions listed above remain outside this increment. No solver,
 automatic relocation, public named ports, or dynamic surround API was added.
+
+## Delivery reconciliation
+
+All milestone 4/5 tasks are complete. The final biological example, production
+line measurements, subsequent documentation/SVG work, and PISA migration are
+recorded in [the main plan](surround-plan.md). The fixed numerical geometry
+above belongs to the dedicated continuous-scale fixture; it does not impose
+explicit dimensions on the growing public expression matrix. Scrolling and
+the other listed extensions remain explicitly deferred. Commit the reconciled
+records, then retire the plan directory before opening the PR.

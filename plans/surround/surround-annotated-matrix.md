@@ -1,180 +1,81 @@
-# Nested category distribution in the annotated matrix
+# Nested mutation distributions in the annotated matrix
 
-Status: implemented and verified. The categorical example now includes the
-nested distribution. See [the nesting design](surround-nesting.md) for the
-implementation contract, completed milestones, and final verification.
+Status: implemented, verified, and reconciled for retirement on 2026-10-16.
+The canonical specification is
+`examples/docs/grammar/composition/surround/annotated-matrix.json`.
 
-## Required result
+## Final result
 
-Extend `examples/docs/grammar/composition/surround/annotated-matrix.json` with
-one vertical stacked bar above the right metadata strip. It summarizes the
-three metadata rows: Alpha = A, Beta = B, Gamma = A. A occupies two thirds of
-the bar (66.7%) and B one third (33.3%). An axis on the bar's right shows
-0%, 50%, and 100%.
+The center is a growing categorical expression matrix with three genes
+(ESR1, ERBB2, MKI67) and three samples (Tumor 1, Tumor 2, Tumor 3).
+It has nine cells and no explicit width or height. Top and left summaries show
+mean expression by gene and sample. The title is "Expression and Mutations in
+Synthetic Tumors"; the short description continues to explain the layout.
 
-The metadata strip retains its right-hand Alpha/Beta/Gamma axis and the matrix's
-row coordinates. The distribution has its own quantitative percentage y scale.
-Both use one category color scale and one Category legend; the matrix's
-quantitative Value scale and legend remain separate. The distribution and
-column totals fit beside each other above the matrix, without stacking their
-headroom reservations.
+The right track is a nested surround containing a mutation matrix for TP53
+and PIK3CA. Its six records use `gene`, `sample`, and `category`, with statuses
+WT and Mutated. Its center has `width: { step: 35 }` and inherits the outer
+sample interval. Its top track draws one normalized stacked distribution per
+gene, with a right percentage axis titled Fraction and ticks at 0%, 50%, 100%.
+Axes have a 10px offset and explicit gene/sample/measurement titles. Legends
+are collected to the right.
 
-## Implemented specification
+The data are synthetic. The biological labels replace the earlier Alpha/Beta/
+Gamma, One/Two/Three, Q/W, and A/B sketches while preserving their layout roles.
+The original single-column metadata-strip sketch is superseded by two mutation
+columns; its fixed 14px width and no-x-scale assertions are discarded.
 
-The example's `surround.right[0]` uses the following nested surround. The rest
-of the example retains explicit band domains, the matrix bottom axis, and
-outer collected legends.
+## Data and scale contracts
 
-```json
-{
-  "name": "rowMetadata",
-  "spacing": 8,
-  "data": {
-    "values": [
-      { "row": "Alpha", "category": "A" },
-      { "row": "Beta", "category": "B" },
-      { "row": "Gamma", "category": "A" }
-    ]
-  },
-  "resolve": { "scale": { "color": "shared" } },
-  "scales": { "color": { "type": "ordinal", "domain": ["A", "B"] } },
-  "encoding": {
-    "color": {
-      "field": "category",
-      "type": "nominal",
-      "legend": { "title": "Category" }
-    }
-  },
-  "spec": {
-    "name": "category",
-    "width": 14,
-    "mark": "rect",
-    "encoding": {
-      "y": {
-        "field": "row",
-        "type": "nominal",
-        "axis": { "orient": "right", "title": null }
-      }
-    }
-  },
-  "surround": {
-    "top": {
-      "resolve": { "scale": { "color": "shared" } },
-      "views": [
-        {
-          "name": "categoryDistribution",
-          "height": 60,
-          "transform": [
-            {
-              "type": "aggregate",
-              "groupby": ["category"],
-              "fields": ["row"],
-              "ops": ["count"],
-              "as": ["count"]
-            },
-            {
-              "type": "stack",
-              "field": "count",
-              "groupby": [],
-              "sort": { "field": "category", "order": "ascending" },
-              "offset": "normalize",
-              "as": ["start", "end"]
-            }
-          ],
-          "mark": "rect",
-          "encoding": {
-            "y": {
-              "field": "start",
-              "type": "quantitative",
-              "scale": { "domain": [0, 1], "zoom": false },
-              "axis": {
-                "orient": "right",
-                "title": null,
-                "format": ".0%",
-                "values": [0, 0.5, 1]
-              }
-            },
-            "y2": { "field": "end" }
-          }
-        }
-      ]
-    }
-  }
-}
-```
+There are two primary sources: nine expression records and six mutation
+records. Mutation data are declared once on the nested surround. Only its
+top branch aggregates by gene/status and normalizes stacks by gene.
+Descending category sort puts WT before Mutated in each stack.
 
-Declare metadata once on the nested surround. Its center consumes the original
-three rows; only the top branch aggregates and normalizes them. Count metadata
-rows rather than the nine matrix cells, and derive proportions through the
-existing aggregate/stack transforms rather than hardcoding them. Explicit
-category sorting puts A at the bottom and B at the top of the stack.
+| Gene | Status | Count | Normalized interval |
+| --- | --- | ---: | --- |
+| TP53 | WT | 2 | [0, 2/3] |
+| TP53 | Mutated | 1 | [2/3, 1] |
+| PIK3CA | WT | 1 | [0, 1/3] |
+| PIK3CA | Mutated | 2 | [1/3, 1] |
 
-Color sharing is configured on both the nested surround and its implicit top
-concat. Under the proposed one-container side construction, resolution can
-ascend through that concat to the nested category scale. Positional boundaries
-must not block color or legend sharing. Verify actual resolution identity,
-rather than accepting two independent scales with coincidentally equal colors.
+Outer categorical x/y domains are authoritative. The mutation center exports
+the shared sample y scale while its top chart owns a distinct, non-zoomable
+percentage y scale. Mutation columns and stacks share their local TP53/PIK3CA
+x scale, distinct from the expression-gene scale. Both mutation plots share
+one category color resolution and Mutation status legend; expression color
+and its log2(TPM + 1) legend remain independent. Shared scales live at the
+owning scope, while unshared scale settings live on the encoding.
 
-Neither metadata nor distribution encodes x: each rectangle uses the 14-pixel
-plot width. They align geometrically without inventing an x scale, and must not
-inherit the matrix's One/Two/Three scale as a navigation target. Outer row y
-participation is exported by the nested center only; the top chart's percentage
-y remains local, including its secondary `y2` encoding and right axis.
+## Geometry, occupancy, and visibility
 
-## Geometry and corner occupancy
+Top summaries each have 60px thickness and an 8px gap to their center.
+Both upper panels fit beside each other, so structural headroom is 68px,
+not 136px. Actual axes, offsets, legends, and padding add ordinary chrome.
+Matrix/sample intervals stay equal as the center grows; mutation columns and
+stacked bars have matching x intervals and band centers.
 
-Ignoring external axes, legends, and padding, the current plot dimensions give
-the following target rectangles. Coordinates use a top-left origin; actual
-guide measurement may add enclosing chrome while preserving plot alignment.
+Hiding either upper summary retains the headroom required by the other.
+Hiding both collapses structural headroom. Hiding the nested center hides
+its complete surround. Collision checks reject intersecting occupied panels
+with a located error and preserve harmless overlap between empty corners of
+composite bounds. No automatic rearrangement is introduced.
 
-| Plot/content footprint      |   x |   y | Width | Height |
-| --------------------------- | --: | --: | ----: | -----: |
-| Complete composition        |   0 |   0 |   280 |    188 |
-| Matrix                      |  78 |  68 |   180 |    120 |
-| Column totals               |  78 |   0 |   180 |     60 |
-| Row totals                  |   0 |  68 |    70 |    120 |
-| Metadata strip              | 266 |  68 |    14 |    120 |
-| Category distribution       | 266 |   0 |    14 |     60 |
-| Nested metadata composition | 266 |   0 |    14 |    188 |
+## Completed acceptance and verification
 
-Both upper plots need 60 + 8 pixels above the shared row anchor, so headroom is
-`max(68, 68) = 68`, not 136. Matrix and metadata share the same 120-pixel row
-interval. The two top plots are horizontally separated by the existing
-8-pixel surround gap. The percentage axis uses the distribution's own vertical
-interval and its right edge; the row axis uses the metadata strip's interval.
-Reserve each guide normally and keep 0%/100% labels inside the enclosing bounds.
+- [x] Verify the two sources, nine expression cells, six mutation cells, and
+      four derived stacked segments with the counts/proportions above.
+- [x] Verify shared sample y, separate expression/mutation x, local percentage
+      y, shared mutation colors, and independent expression color.
+- [x] Verify axis labels/titles, normalized segment geometry, column band
+      centers, local guide spans, collected legends, and 10px axis offsets.
+- [x] Verify growing central layout, maximum headroom, visibility collapse/
+      restoration, and located structural collision errors.
+- [x] Inspect browser WebGL/Canvas rendering, clipping, matrix picking, and
+      resizing. Retain the separate continuous-x fixture for local wheel/pan
+      navigation isolation; categorical bands do not replace that probe.
 
-Use the compact layout as the positive corner-occupancy case. For a negative
-case, give the outer column-summary board its own right-hand structural panel
-whose footprint intersects the category distribution. Reject the collision
-with a located error naming the views. Do not move panels automatically or
-reject harmless overlap between composite bounding boxes containing empty space.
-
-## Acceptance and verification
-
-- Collector output has A count 2, B count 1, and normalized intervals
-  `[0, 2/3]` and `[2/3, 1]`. The metadata strip still renders three rows and the
-  central matrix nine cells. There are two primary data sources in total.
-- Matrix and strip share one row resolution and pixel interval. The percentage
-  resolution is distinct from matrix rows and column-total measurements. Its
-  right axis references that local scale and shows 0%, 50%, and 100%.
-- Category marks share one color resolution and Category legend, with matching
-  colors in the stack and strip. The Value legend remains independent.
-- Assert plot alignment and maximum headroom in headless layout. Check stack
-  proportions, categorical labels, percentage labels, local axis spans, and
-  collected legends in structured SVG; inspect browser WebGL/Canvas output
-  for clipping, picking/hover, and resizing.
-- Hiding the distribution retains headroom required by column totals. Hiding
-  column totals retains headroom required by the distribution. Hiding both
-  collapses their structural headroom. Hiding the nested center hides its whole
-  surround. These assertions exclude remaining guide/padding reservations.
-- Interacting above the strip must not navigate matrix rows or columns; the
-  percentage scale is not zoomable. Keep the separate continuous-x fixture in
-  the nesting design to verify legitimate local measurement navigation.
-- Verify clear rejection of colliding structural panels, and preserve the flat
-  example's categorical axes and existing explicit overhang behavior.
-
-The headless collector/layout and SVG assertions pass, including local guide
-positions, categorical labels, color identity, proportions, and visibility.
-Browser WebGL/Canvas checks pass; matrix picking and resizing were inspected.
-The separate continuous-x probe confirms local wheel zoom and pan isolation.
+Behavior is covered in `surroundView.nested.test.js` and structured SVG
+assertions in `rendering/svg/examples.test.js`. No obsolete strip-only
+acceptance condition remains pending. See [the nesting contract](
+surround-nesting.md) for implementation and deferred scrolling details.

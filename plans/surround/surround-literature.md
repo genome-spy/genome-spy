@@ -2,7 +2,9 @@
 
 Researched 2026-10-15; Marsilea comparison added 2026-10-16. Focus: a central plot with aligned marginal plots, and
 recursive compositions in which a marginal plot has marginal plots of its own.
-The remembered Python package has not been identified conclusively.
+Status: survey complete and reconciled for retirement on 2026-10-16.
+The remembered Python package has not been identified conclusively; this does
+not block the selected layout contract or delivery.
 
 ## Most useful precedents
 
@@ -208,11 +210,14 @@ These are design deductions from the survey, not claims made by the sources.
    Use maximum outward extents for enclosing bounds and validate actual occupied
    panels separately. Avoid adding headroom for panels that fit beside each other.
 
-The existing plan covers the first center-and-sides composition and ordinary
-unit/layer children; authored concat children are deferred. A general nested-surround promise needs the anchor,
-participation, and local-coordinate contracts above; it is not established by
-adding SurroundSpec to the recursive union. Record that design gap explicitly
-before widening the first-version guarantee. The first implementation deliberately keeps those nested layouts out of scope.
+The delivered implementation supports unit/layer centers and nested surrounds
+in side slots. It implements the anchor, exported participation, local scale,
+maximum outward extent, and occupied-panel validation contracts above, with
+fixed or step-based structural insets along externally aligned dimensions.
+Authored concat/facet children, composite centers, growing aligned insets,
+scrolling, arbitrary grids, and automatic relocation remain explicit future
+extensions. The Marsilea citation and original schematic SVGs live in the
+public surround documentation; this survey can be retired with the plans.
 
 No external implementation code was copied. Any future code adaptation needs a
 separate license/provenance check.
