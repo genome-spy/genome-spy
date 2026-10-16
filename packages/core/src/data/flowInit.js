@@ -77,6 +77,18 @@ export function syncFlowHandles(root, canonicalBySource) {
         if (dataSource) {
             handle.dataSource = canonicalBySource.get(dataSource) ?? dataSource;
         }
+        if (handle.node instanceof DataSource) {
+            handle.node = canonicalBySource.get(handle.node) ?? handle.node;
+        }
+        if (handle.terminals) {
+            handle.terminals = new Set(
+                Array.from(handle.terminals, (node) =>
+                    node instanceof DataSource
+                        ? (canonicalBySource.get(node) ?? node)
+                        : node
+                )
+            );
+        }
     }
 }
 
@@ -256,6 +268,7 @@ export function collectViewSubtreeDataSources(subtreeRoot, viewFilter) {
             dataSources.add(current.flowHandle.dataSource);
         }
         addAuxiliaryDataSources(view, dataSources);
+        addTerminalDataSources(view, dataSources);
     }
     return dataSources;
 }
@@ -272,6 +285,8 @@ export function collectNearestViewSubtreeDataSources(subtreeRoot, viewFilter) {
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
     addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter);
+    for (const view of collectSubtreeViews(subtreeRoot, viewFilter))
+        addTerminalDataSources(view, dataSources);
     subtreeRoot.visit((view) => {
         if (viewFilter && !viewFilter(view)) {
             return VISIT_SKIP;
@@ -305,6 +320,14 @@ function addAuxiliaryDataSources(view, dataSources) {
         if (dataSource) {
             dataSources.add(dataSource);
         }
+    }
+}
+
+/** @param {import("../view/view.js").default} view @param {Set<DataSource>} sources */
+function addTerminalDataSources(view, sources) {
+    for (const terminal of view.flowHandle?.terminals ?? []) {
+        const source = findAncestorDataSource(terminal);
+        if (source) sources.add(source);
     }
 }
 

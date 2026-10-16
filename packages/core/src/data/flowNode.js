@@ -46,6 +46,9 @@ export const BEHAVIOR_COLLECTS = 1 << 2;
  * @typedef {Datum[]} Data
  */
 export default class FlowNode {
+    /** @type {import("./flowOutput.js").default | undefined} */
+    output;
+
     stats = {
         count: 0,
         /** @type {Datum} */
@@ -455,6 +458,38 @@ export default class FlowNode {
         for (const child of this.children) {
             child.beginBatch(flowBatch);
         }
+    }
+
+    /**
+     * Compile and guard a flow input once. No dependency walks occur per row.
+     * @param {string | import("../spec/parameter.js").ExprRef} expr
+     */
+    createFlowExpression(expr) {
+        const expression = this.paramRuntime.createExpression(expr);
+        this.registerDisposer(
+            this.paramRuntime.guardFlowDependencies(expression.dependencies)
+        );
+        return expression;
+    }
+
+    /** @param {string | import("../spec/parameter.js").ExprRef} expr @param {() => void} listener */
+    watchFlowExpression(expr, listener) {
+        const expression = this.createFlowExpression(expr);
+        this.registerDisposer(expression.subscribe(listener));
+        return expression;
+    }
+
+    /**
+     * Expression-property activation uses the same owner and flow guard.
+     * @returns {import("../paramRuntime/paramUtils.js").ExprRefRuntime}
+     */
+    get expressionRuntime() {
+        const runtime = this.paramRuntime;
+        return {
+            createExpression: (expr) => this.createFlowExpression(expr),
+            computed: runtime.computed.bind(runtime),
+            effect: runtime.effect.bind(runtime),
+        };
     }
 
     /**

@@ -5,6 +5,55 @@
     "Data source: Broad DepMap (2024), DepMap 24Q4 Public, https://doi.org/10.25452/figshare.plus.27993248.v1. CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Processed subset of 60 cell lines and 72 genes; expression standardized per gene and clustered with Ward linkage."
   ],
 
+  "transform": [
+    {
+      "type": "branch",
+      "description": "Derive gene-group boundaries from the ordered gene metadata.",
+      "data": {
+        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
+        "format": { "parse": { "column": "number" } }
+      },
+      "transform": [
+        {
+          "type": "window",
+          "sort": { "field": "column" },
+          "ops": ["lag", "row_number"],
+          "fields": ["cluster", null],
+          "as": ["previousCluster", "leafRank"]
+        },
+        {
+          "type": "filter",
+          "expr": "datum.leafRank > 1 && datum.cluster !== datum.previousCluster"
+        },
+        { "type": "collect", "sort": { "field": "column" } },
+        { "type": "values", "field": "column", "param": "columnCuts" }
+      ]
+    },
+    {
+      "type": "branch",
+      "description": "Derive cell-line-group boundaries from the ordered cell-line metadata.",
+      "data": {
+        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
+        "format": { "parse": { "row": "number" } }
+      },
+      "transform": [
+        {
+          "type": "window",
+          "sort": { "field": "row" },
+          "ops": ["lag", "row_number"],
+          "fields": ["cluster", null],
+          "as": ["previousCluster", "leafRank"]
+        },
+        {
+          "type": "filter",
+          "expr": "datum.leafRank > 1 && datum.cluster !== datum.previousCluster"
+        },
+        { "type": "collect", "sort": { "field": "row" } },
+        { "type": "values", "field": "row", "param": "rowCuts" }
+      ]
+    }
+  ],
+
   "title": {
     "text": "DepMap cancer cell-line expression",
     "subtitle": "60 cell lines / 72 variable genes - Ward clustering - DepMap 24Q4",
@@ -17,7 +66,7 @@
   "spacing": 8,
 
   "resolve": {
-    "scale": { "x": "shared", "y": "shared" },
+    "scale": { "x": "excluded", "y": "excluded" },
     "legend": { "color": "collected" }
   },
 
@@ -28,7 +77,7 @@
       "domain": [0, 71],
       "paddingInner": 0.03,
       "paddingOuter": 0.08,
-      "gapPositions": [29, 36, 41, 46, 53],
+      "gapPositions": { "expr": "columnCuts" },
       "gapWidth": 5
     },
     "y": {
@@ -38,7 +87,7 @@
       "reverse": true,
       "paddingInner": 0.03,
       "paddingOuter": 0.08,
-      "gapPositions": [24, 42, 52],
+      "gapPositions": { "expr": "rowCuts" },
       "gapWidth": 5
     }
   },

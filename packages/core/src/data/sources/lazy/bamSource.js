@@ -32,7 +32,7 @@ export default class BamSource extends IntervalUrlSource {
         super(view, channel);
 
         this.params = activateExprRefProps(
-            view.paramRuntime,
+            this.expressionRuntime,
             paramsWithDefaults,
             (props) => {
                 if (props.has("url") || props.has("indexUrl")) {

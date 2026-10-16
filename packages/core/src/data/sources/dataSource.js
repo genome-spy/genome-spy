@@ -1,6 +1,10 @@
+import { runFlowPublication } from "../flowOutput.js";
 import FlowNode from "../flowNode.js";
 
 export default class DataSource extends FlowNode {
+    /** Whether the current rows came from a successful completion fan-out. */
+    resultSuccessful = false;
+
     /**
      * @type {import("../../view/view.js").default}
      */
@@ -72,12 +76,26 @@ export default class DataSource extends FlowNode {
         // override
     }
 
-    complete() {
+    /** @param {boolean} [successful] */
+    complete(successful = true) {
         const runtime = this.view?.paramRuntime;
         // Standalone dataflow tests can omit a view runtime. A live source's
         // entire completion fan-out publishes in one synchronous boundary.
-        if (runtime) runtime.runInTransaction(() => super.complete());
-        else super.complete();
+        this.resultSuccessful = false;
+        runFlowPublication(
+            this,
+            () => {
+                super.complete();
+                this.resultSuccessful = successful;
+            },
+            runtime,
+            successful
+        );
+    }
+
+    reset() {
+        this.resultSuccessful = false;
+        super.reset();
     }
 
     /**

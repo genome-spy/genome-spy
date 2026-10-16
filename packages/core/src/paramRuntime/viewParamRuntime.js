@@ -2,6 +2,7 @@ import { isString } from "vega-util";
 import { getSpecLocation } from "../utils/specOrigin.js";
 import { annotateSpecError } from "../utils/specError.js";
 import ParamRuntime from "./paramRuntime.js";
+import FlowOutput from "../data/flowOutput.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 import {
     getDefaultParamValue,
@@ -86,6 +87,9 @@ export default class ViewParamRuntime {
 
     /** @type {Map<string, (value: any, options?: SetValueOptions) => void>} */
     #allocatedSetters = new Map();
+
+    /** @type {Map<string, FlowOutput>} */
+    #outputs = new Map();
 
     /** @type {Map<string, import("./types.js").ParamRef<any>>} */
     #localRefs = new Map();
@@ -262,16 +266,52 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * Registers a parameter definition into this runtime scope.
+     * Reserves a producer-owned, read-only parameter in this lexical scope.
      *
-     * Returns a writable setter for writable parameters (`value`, `select`,
-     * `push: "outer"`). For derived (`expr`) parameters, the returned setter
-     * throws.
-     *
-     * A parameter name can be registered only once per runtime scope.
-     *
+     * @param {string} name
+     */
+    registerOutput(name) {
+        validateParameterName(name);
+        const output = new FlowOutput(this, name);
+        const ref = this.computed(name, [output.value], () =>
+            output.value.get()
+        );
+        ref.flowOutput = output;
+        this.#runtime.registerRef(this.#scopeId, name, ref);
+        this.#localRefs.set(name, ref);
+        this.#outputs.set(name, output);
+        this.#paramConfigs.set(name, { name, persist: false });
+        return output;
+    }
+
+    /** @param {import("./types.js").ParamRef<any>} ref @param {import("./types.js").ParamRef<any>[]} deps */
+    setValidationDependencies(ref, deps) {
+        this.#runtime.setValidationDependencies(ref, deps);
+    }
+
+    /** @param {import("./types.js").ParamRef<any>[]} deps */
+    guardFlowDependencies(deps) {
+        return this.#runtime.guardFlowDependencies(deps);
+    }
+
+    /** @param {string} name */
+    getOutput(name) {
+        const output = this.#outputs.get(name);
+        if (!output)
+            throw new Error('Output parameter "' + name + '" is not declared.');
+        return output;
+    }
+
+    /** @param {string} name */
+    isWritable(name) {
+        return this.#allocatedSetters.has(name);
+    }
+
+    /**
+     * Registers a parameter once per scope. Writable declarations return a setter;
+     * derived expressions return a setter that throws. Expressions may bind lazily.
      * @param {Parameter} param
-     * @param {{ defer?: boolean }} [options] Defer expression binding until first use.
+     * @param {{ defer?: boolean }} [options]
      * @returns {ParameterSetter}
      */
     registerParam(param, options = {}) {
@@ -402,7 +442,8 @@ export default class ViewParamRuntime {
             if (
                 "expr" in outerProps ||
                 "select" in outerProps ||
-                "ruler" in outerProps
+                "ruler" in outerProps ||
+                !outerRuntime.isWritable(name)
             ) {
                 throw new Error(
                     `The outer parameter "${name}" must not have expr, select, or ruler properties!`
@@ -978,6 +1019,10 @@ export default class ViewParamRuntime {
             expression(null),
             transition
         );
+        this.setValidationDependencies(
+            this.#localRefs.get(name),
+            expression.dependencies
+        );
         const unsubscribe = expression.subscribe(() => {
             this.#setTransitionTarget(name, state, expression(null), {
                 animate: !this.#settleTemporalUpdatesImmediately,
@@ -1000,6 +1045,7 @@ export default class ViewParamRuntime {
             initialValue
         );
         this.#localRefs.set(name, ref);
+        this.setValidationDependencies(ref, expression.dependencies);
 
         /** @type {DebounceState} */
         const state = {
@@ -1149,6 +1195,7 @@ export default class ViewParamRuntime {
         this.#runtime.disposeScope(this.#scopeId);
         this.#allocatedSetters.clear();
         this.#localRefs.clear();
+        this.#outputs.clear();
         this.#paramConfigs.clear();
         this.#lazyExpressionNames.clear();
         this.#selectionControllers.clear();

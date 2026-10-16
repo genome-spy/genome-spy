@@ -22,7 +22,7 @@ export default class SequenceSource extends DataSource {
         super(view);
 
         this.sequence = activateExprRefProps(
-            view.paramRuntime,
+            this.expressionRuntime,
             params.sequence,
             () => this.loadSynchronously(),
             (disposer) => this.registerDisposer(disposer)
