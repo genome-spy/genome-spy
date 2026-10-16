@@ -52,6 +52,8 @@ export function assessAnnotations(view) {
         }
     }
     for (const channel of /** @type {const} */ ([
+        "x",
+        "y",
         "size",
         "shape",
         "angle",
@@ -60,7 +62,15 @@ export function assessAnnotations(view) {
     ])) {
         const definition = encoding[channel];
         const property = point.properties[channel];
-        if (hasDynamicValue(definition) || hasDynamicValue(property)) {
+        const scale =
+            channel === "semanticScore"
+                ? undefined
+                : view.getScaleResolution(channel)?.getScale();
+        if (
+            hasDynamicValue(definition) ||
+            hasDynamicValue(property) ||
+            hasDynamicValue(scale?.props)
+        ) {
             return {
                 status: "unsupported",
                 reason: "Parameter-dependent point geometry is not supported.",
@@ -83,8 +93,8 @@ function hasDynamicValue(value) {
     return (
         isExprRef(value) ||
         "condition" in definition ||
-        isExprRef(definition.value) ||
-        isExprRef(definition.datum)
+        "param" in definition ||
+        Object.values(definition).some(hasDynamicValue)
     );
 }
 
@@ -322,6 +332,10 @@ export default class ViewAnnotations {
         const overlay = await createAnnotationOverlay(view);
         try {
             this.#assertLive();
+            // The source track may disappear while the overlay waits for fonts.
+            if (!this.#resolve("root").getDescendants().includes(view)) {
+                throw new Error("Annotation source view was removed.");
+            }
             this.#overlays.set(view, overlay);
             view.registerDisposer(() => {
                 if (this.#active.some(({ target }) => target.view === view)) {

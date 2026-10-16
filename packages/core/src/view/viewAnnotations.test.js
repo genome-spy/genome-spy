@@ -137,6 +137,100 @@ test("clear and dispose prevent pending replacements from publishing", async () 
     }
 });
 
+test("removing a source track during font loading releases its pending annotation overlay", async () => {
+    const { view } = await createHeadlessEngine({
+        vconcat: [
+            {
+                name: "points",
+                data: { values: [{ x: 1, y: 2, name: "First" }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { domain: [0, 4] },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 4] },
+                    },
+                },
+            },
+        ],
+    });
+    const views = createViewMutationApi({ viewRoot: view });
+    const query = createViewQuery(views);
+    const track = views.get({ scope: [], view: "points" });
+    const result = await query.queryData(track, options);
+    /** @type {PromiseWithResolvers<void>} */
+    const waiting = Promise.withResolvers();
+    /** @type {PromiseWithResolvers<void>} */
+    const font = Promise.withResolvers();
+    // Hold the real overlay initialization at its asynchronous font boundary.
+    vi.spyOn(view.context.textMetrics, "waitUntilReady").mockImplementation(
+        () => {
+            waiting.resolve();
+            return font.promise;
+        }
+    );
+    const replacement = query.annotations.replace({
+        targets: [{ reference: result.annotationTargets[0], text: "First" }],
+        emphasis: "blue",
+    });
+    await waiting.promise;
+    await views.remove(track);
+    font.resolve();
+    await expect(replacement).rejects.toThrow();
+    expect(view.context.dataFlow.collectors).toHaveLength(0);
+    expect(view.context.dataFlow.dataSources).toHaveLength(0);
+    expect(query.annotations.inspect().activeTargets).toBe(0);
+});
+
+test.each(["encoding", "view"])(
+    "rejects parameter-driven geometry scales defined on the %s",
+    async (owner) => {
+        const scale = { domain: [0, 4], range: [0, { expr: "end * 100" }] };
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "end", value: 1 }],
+            scales:
+                owner === "view"
+                    ? { size: { type: "linear", ...scale } }
+                    : undefined,
+            data: { values: [{ x: 1, y: 2 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 4] },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { domain: [0, 4] },
+                },
+                size: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: owner === "encoding" ? scale : undefined,
+                    legend: null,
+                },
+            },
+        });
+        const query = createViewQuery(
+            createViewMutationApi({ viewRoot: view })
+        );
+        expect(query.assessAnnotations("root")).toEqual({
+            status: "unsupported",
+            reason: "Parameter-dependent point geometry is not supported.",
+        });
+        await expect(
+            query.queryData("root", { ...options, fields: ["x", "y"] })
+        ).rejects.toThrow("Parameter-dependent");
+    }
+);
+
 test("abort preserves a previously applied valid set", async () => {
     const { query } = await setup();
     const result = await query.queryData("root", options);

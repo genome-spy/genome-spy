@@ -375,8 +375,9 @@ synchronous, with no hard real-time or constant-memory guarantee.
 
 `query.assessAnnotations(track)` reports whether a point track supports temporary
 visual annotations. The initial contract accepts one facet with unconditional
-numeric or locus positions. Ranged, displaced, conditional and parameter-dependent
-point geometry and expression-driven mark properties are unsupported. An annotation adds a text label, optional connector
+numeric or locus positions. Ranged, displaced or conditional positions,
+parameter-dependent geometry (including scale configuration), and expression-driven
+mark properties are unsupported. An annotation adds a text label, optional connector
 and/or colored outline; it preserves the original mark colors and data.
 
 ```js
