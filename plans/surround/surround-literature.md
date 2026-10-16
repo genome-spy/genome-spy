@@ -1,28 +1,53 @@
 # Surround composition: literature and system survey
 
-Researched 2026-10-15. Focus: a central plot with aligned marginal plots, and
+Researched 2026-10-15; Marsilea comparison added 2026-10-16. Focus: a central plot with aligned marginal plots, and
 recursive compositions in which a marginal plot has marginal plots of its own.
 The remembered Python package has not been identified conclusively.
 
 ## Most useful precedents
 
-| System                                      | What is demonstrated                                                                                                                          | Recursive/coordinate caveat                                                                                                                    | Relevance                                                                                     |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| patchworklib (Python)                       | Nested Matplotlib plot assemblies; attach another assembly beside a named subpanel using `target`/label indexing                              | Its layout API documents geometric placement and sizing. That alone does not establish automatic shared data domains or coordinated navigation | Strong candidate for the remembered visual impression; explicit inner-panel alignment targets |
-| cowpatch (Python)                           | Nested plotnine/SVG assemblies, layout matrices/strings, unequal rows/columns and empty regions                                               | Nested figure arrangement is demonstrated; automatic shared scales are not established by the reviewed layout guide                            | Another plausible remembered package, especially for irregular publication figures            |
-| PyComplexHeatmap (Python)                   | Compose independently annotated heatmaps horizontally or vertically; coordinate row/column ordering through a designated main heatmap         | This is demonstrated composition of annotated matrices; arbitrary recursive side-panel support was not verified                                | Strong candidate if the remembered figures were biological heatmap assemblies                 |
-| HoloViews (Python)                          | Marginal plots through `AdjointLayout`, plus layouts/overlays and dimension-based linked axes in the Bokeh backend                            | `AdjointLayout` has main/top/right slots, not an unrestricted recursive four-sided grammar                                                     | Separates semantic coordinate linking from physical figure layout                             |
-| CoolBox (Python)                            | `JointView(center, top=..., right=..., bottom=..., left=...)`, with composite genomic-track frames around a contact matrix                    | Reviewed joint-view examples show one central contact matrix; arbitrary recursive JointViews were not verified                                 | Direct Python precedent for the five-region API                                               |
-| HiGlass (JavaScript, with Python authoring) | A view contains center/top/right/bottom/left track lists, coordinated positional scales, and separate inter-view navigation locks/projections | Multiple coordinated views are not the same as recursive side-region nesting                                                                   | Closest existing interactive genomic precedent                                                |
-| ggalign (R)                                 | Data-aware quad/stack layouts, nested annotated heatmaps, common observation ordering, and continuous/discrete alignment modes                | Its nesting guide explicitly restricts a stack containing a quad inside another quad's annotation                                              | Most instructive documented nesting contract, including its limitations                       |
-| codaplot (Python)                           | General cross plots with multiple central plots, marginal annotations, group spacers, and configurable plotting callbacks                     | Source examples demonstrate data/coordinate preparation; recursive marginal nesting was not verified                                           | Supports a generic composition concept instead of a heatmap-only API                          |
-| Matplotlib axes_grid1 (Python toolkit)      | `AxesDivider.append_axes` attaches axes to any of four sides; `sharex`/`sharey` links coordinates; drawing-time sizing                        | It is a low-level host/attachment mechanism, not evidence that an arbitrary recursive arrangement is automatically correct                     | Useful model for distinguishing attachment geometry and shared scales                         |
+| System                                      | What is demonstrated                                                                                                                          | Recursive/coordinate caveat                                                                                                                                                                 | Relevance                                                                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Marsilea (Python)                           | Compose annotated cross-layout boards around a main board, aligning their main rectangles and measuring outward side extents                  | The reviewed `CompositeCrossLayout.append` accepts ordinary cross-layouts and rejects another composite cross-layout; figure composition does not establish unlimited recursive API support | Direct precedent for the user's figure, separate main anchors, and free-corner occupancy      |
+| patchworklib (Python)                       | Nested Matplotlib plot assemblies; attach another assembly beside a named subpanel using `target`/label indexing                              | Its layout API documents geometric placement and sizing. That alone does not establish automatic shared data domains or coordinated navigation                                              | Strong candidate for the remembered visual impression; explicit inner-panel alignment targets |
+| cowpatch (Python)                           | Nested plotnine/SVG assemblies, layout matrices/strings, unequal rows/columns and empty regions                                               | Nested figure arrangement is demonstrated; automatic shared scales are not established by the reviewed layout guide                                                                         | Another plausible remembered package, especially for irregular publication figures            |
+| PyComplexHeatmap (Python)                   | Compose independently annotated heatmaps horizontally or vertically; coordinate row/column ordering through a designated main heatmap         | This is demonstrated composition of annotated matrices; arbitrary recursive side-panel support was not verified                                                                             | Strong candidate if the remembered figures were biological heatmap assemblies                 |
+| HoloViews (Python)                          | Marginal plots through `AdjointLayout`, plus layouts/overlays and dimension-based linked axes in the Bokeh backend                            | `AdjointLayout` has main/top/right slots, not an unrestricted recursive four-sided grammar                                                                                                  | Separates semantic coordinate linking from physical figure layout                             |
+| CoolBox (Python)                            | `JointView(center, top=..., right=..., bottom=..., left=...)`, with composite genomic-track frames around a contact matrix                    | Reviewed joint-view examples show one central contact matrix; arbitrary recursive JointViews were not verified                                                                              | Direct Python precedent for the five-region API                                               |
+| HiGlass (JavaScript, with Python authoring) | A view contains center/top/right/bottom/left track lists, coordinated positional scales, and separate inter-view navigation locks/projections | Multiple coordinated views are not the same as recursive side-region nesting                                                                                                                | Closest existing interactive genomic precedent                                                |
+| ggalign (R)                                 | Data-aware quad/stack layouts, nested annotated heatmaps, common observation ordering, and continuous/discrete alignment modes                | Its nesting guide explicitly restricts a stack containing a quad inside another quad's annotation                                                                                           | Most instructive documented nesting contract, including its limitations                       |
+| codaplot (Python)                           | General cross plots with multiple central plots, marginal annotations, group spacers, and configurable plotting callbacks                     | Source examples demonstrate data/coordinate preparation; recursive marginal nesting was not verified                                                                                        | Supports a generic composition concept instead of a heatmap-only API                          |
+| Matplotlib axes_grid1 (Python toolkit)      | `AxesDivider.append_axes` attaches axes to any of four sides; `sharex`/`sharey` links coordinates; drawing-time sizing                        | It is a low-level host/attachment mechanism, not evidence that an arbitrary recursive arrangement is automatically correct                                                                  | Useful model for distinguishing attachment geometry and shared scales                         |
 
 Capability statements above are limited to the primary documentation/source
 reviewed. Appearance in a static figure is not evidence of common domains,
 matching pixel projections, or linked pan/zoom.
 
 ## Primary documentation and source
+
+### Marsilea
+
+[Concatenation tutorial](https://marsilea.readthedocs.io/en/stable/tutorial/concatenation.html),
+[layout implementation](https://github.com/Marsilea-viz/marsilea/blob/main/src/marsilea/layout.py),
+and [paper, Figure 1d](https://doi.org/10.1186/s13059-024-03469-3).
+
+`CompositeBoard` composes boards that already have their own side annotations.
+With default `align_main=True`, the appended main plot's height is adjusted for
+left/right attachment, or its width for top/bottom attachment. Geometry is
+anchored to the main plotting rectangle, not the complete decorated footprint.
+
+`CompositeCrossLayout.get_side_size` takes the maximum of the extent built
+outward on that side and the annotations extending there from perpendicular
+boards. This lets panels occupy free corners. The reviewed placement code
+computes bounds and anchors; it does not establish a general collision solver.
+Maximum extents alone therefore do not prove arbitrary combinations collision-free.
+The paper discusses recursion conceptually, while the reviewed concatenation
+method rejects appending a composite cross-layout. Record that API limit
+separately from its support for composing individually annotated boards.
+
+For GenomeSpy, this supports maximum outward extents plus explicit structural
+collision validation, while preserving local scale ownership and navigation as
+separate contracts. No Marsilea implementation code is copied.
 
 ### patchworklib
 
@@ -119,6 +144,11 @@ distinguishes fixed physical padding from scale-dependent plot dimensions.
 
 ## Papers to retain in the design bibliography
 
+- Zheng et al. (2025), **Marsilea: an intuitive generalized paradigm for
+  composable visualizations**, Genome Biology 26:5.
+  [Paper](https://doi.org/10.1186/s13059-024-03469-3).
+  Figure 1d is the user's concrete precedent for attaching independently
+  annotated main plots around a central board and occupying free corners.
 - Javed and Elmqvist (2012), **Exploring the Design Space of Composite
   Visualization**, IEEE PacificVis, pp. 1–8.
   [Author manuscript](https://www.cs.au.dk/~elm/pdf/compvis.pdf),
@@ -174,6 +204,9 @@ These are design deductions from the survey, not claims made by the sources.
 6. Keep static layout assembly, common row/column ordering, shared domains,
    matching screen projections, and linked interaction separate in the API and
    acceptance criteria. Existing systems offer different subsets of these.
+7. Let nested structural panels occupy free corners, as illustrated by Marsilea.
+   Use maximum outward extents for enclosing bounds and validate actual occupied
+   panels separately. Avoid adding headroom for panels that fit beside each other.
 
 The existing plan covers the first center-and-sides composition and ordinary
 unit/layer children; authored concat children are deferred. A general nested-surround promise needs the anchor,

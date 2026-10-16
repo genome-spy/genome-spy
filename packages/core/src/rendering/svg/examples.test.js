@@ -20,6 +20,102 @@ const baseConfig = resolveBaseConfig({
 });
 
 describe("SVG example exports", () => {
+    test.each(/** @type {const} */ (["shared", "forced"]))(
+        "surround keeps %s side axes local and projects each track's own span",
+        async (behavior) => {
+            /** @type {import("../../spec/view.js").SurroundSpec} */
+            const spec = {
+                .../** @type {import("../../spec/view.js").SurroundSpec} */ (
+                    annotatedMatrix
+                ),
+                spec: {
+                    ...annotatedMatrix.spec,
+                    mark: "rect",
+                    encoding: {
+                        x: { field: "column", type: "nominal", axis: null },
+                        y: { field: "row", type: "nominal", axis: null },
+                    },
+                },
+                surround: {
+                    right: {
+                        name: "measurements",
+                        scales: { x: { type: "linear", domain: [0, 10] } },
+                        axes: { x: { title: "Local", values: [5] } },
+                        resolve: {
+                            scale: { x: "shared" },
+                            axis: { x: "shared" },
+                        },
+                        views: [30, 40].map(
+                            (width, i) =>
+                                /** @type {import("../../spec/view.js").UnitSpec} */ ({
+                                    name: "track" + i,
+                                    width,
+                                    resolve: {
+                                        scale: { x: behavior },
+                                        axis: { x: behavior },
+                                    },
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "value",
+                                            type: "quantitative",
+                                        },
+                                        y: {
+                                            field: "row",
+                                            type: "nominal",
+                                            axis: null,
+                                        },
+                                    },
+                                })
+                        ),
+                    },
+                },
+            };
+            const { view } = await createHeadlessEngine(
+                /** @type {import("../../spec/root.js").RootSpec} */ (spec),
+                { contextOptions: { baseConfig } }
+            );
+            try {
+                renderToLayout(view);
+                // Quantitative label layout uses the completed physical spans.
+                view.visit((child) =>
+                    child.handleBroadcast({ type: "layoutComputed" })
+                );
+                const { svg, warnings } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 500,
+                    logicalHeight: 400,
+                });
+                const one = view
+                    .getDescendants()
+                    .find((child) => child.explicitName === "track0");
+                const two = view
+                    .getDescendants()
+                    .find((child) => child.explicitName === "track1");
+                expect(one.getScaleResolution("x")).toBe(
+                    two.getScaleResolution("x")
+                );
+                expect(one.getScaleResolution("x")).not.toBe(
+                    view.getScaleResolution("x")
+                );
+                expect(one.getAxisResolution("x").hostView.explicitName).toBe(
+                    "measurements"
+                );
+                const ticks = Array.from(
+                    svg.querySelectorAll('[data-name="labels_main"] text'),
+                    getTranslateX
+                );
+                expect(ticks).toEqual([
+                    one.coords.x + one.coords.width / 2,
+                    two.coords.x + two.coords.width / 2,
+                ]);
+                expect(warnings).toEqual([]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
     test("surround exports aligned summaries, metadata, labels, and corner axes", async () => {
         const { view } = await createHeadlessEngine(
             /** @type {import("../../spec/root.js").RootSpec} */ (
@@ -43,12 +139,20 @@ describe("SVG example exports", () => {
             expect(
                 svg.querySelectorAll('[data-name="category"] rect')
             ).toHaveLength(3);
-            expect(
-                svg.querySelectorAll('[data-name="columnLabels"] text')
-            ).toHaveLength(3);
-            expect(
-                svg.querySelector('[data-name="rowLabels"]').textContent
-            ).toContain("Alpha");
+            const axisLabels = Array.from(
+                svg.querySelectorAll('[data-name="labels_main"] text'),
+                (element) => element.textContent
+            );
+            expect(axisLabels).toEqual(
+                expect.arrayContaining([
+                    "Alpha",
+                    "Beta",
+                    "Gamma",
+                    "One",
+                    "Two",
+                    "Three",
+                ])
+            );
             expect(svg.textContent).toContain("Column total");
             expect(svg.textContent).toContain("Row total");
             // SVG shares the layout path: column summaries have the same band centers.

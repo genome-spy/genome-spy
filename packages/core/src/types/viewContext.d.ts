@@ -41,8 +41,8 @@ export interface ViewOptions {
     axisLabelClipPolicy?: Partial<
         Record<PrimaryPositionalChannel, AxisLabelClipPolicy>
     >;
-    /** Stops positional scale/axis lookup at generated surround side scopes. */
-    scaleLookupBoundaryChannels?: readonly PrimaryPositionalChannel[];
+    /** Keeps positional scale/axis ownership and lookup inside a side scope. */
+    resolutionBoundaryChannels?: readonly PrimaryPositionalChannel[];
     /** Collapses generated concat scopes when all their tracks are hidden. */
     collapseWhenEmpty?: boolean;
     /** Validates imported children of an implicit surround side concat. */

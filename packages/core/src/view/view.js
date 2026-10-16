@@ -1322,13 +1322,7 @@ export default class View {
             if (resolution) {
                 return resolution;
             }
-            if (
-                view.options.scaleLookupBoundaryChannels?.includes(
-                    /** @type {import("../spec/channel.js").PrimaryPositionalChannel} */ (
-                        primaryChannel
-                    )
-                )
-            ) {
+            if (view.isResolutionBoundary(primaryChannel)) {
                 return undefined;
             }
         }
@@ -1348,14 +1342,19 @@ export default class View {
             if (resolution) {
                 return resolution;
             }
-            if (
-                view.options.scaleLookupBoundaryChannels?.includes(
-                    primaryChannel
-                )
-            ) {
+            if (view.isResolutionBoundary(primaryChannel)) {
                 return undefined;
             }
         }
+    }
+
+    /** @param {import("../spec/channel.js").Channel} channel */
+    isResolutionBoundary(channel) {
+        return (
+            this.options.resolutionBoundaryChannels?.some(
+                (boundary) => boundary === getPrimaryChannel(channel)
+            ) ?? false
+        );
     }
 
     /**

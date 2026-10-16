@@ -194,10 +194,13 @@ function collectVisibleGuideResolutions(view, guide, channel) {
     visitNonChromeViews(view, (descendant) => {
         if (
             descendant !== view &&
-            descendant.getConfiguredOrDefaultResolution(
-                /** @type {ChannelWithScale} */ (channel),
-                guide.resolutionType
-            ) === "excluded"
+            (descendant.isResolutionBoundary(
+                /** @type {ChannelWithScale} */ (channel)
+            ) ||
+                descendant.getConfiguredOrDefaultResolution(
+                    /** @type {ChannelWithScale} */ (channel),
+                    guide.resolutionType
+                ) === "excluded")
         ) {
             return VISIT_SKIP;
         }

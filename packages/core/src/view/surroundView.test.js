@@ -161,14 +161,36 @@ function arrange(view) {
 
 describe("flat surround", () => {
     test("axes borrow empty corners while plot anchors remain aligned", async () => {
+        // A thin bottom track exercises partial reuse of the row axis's corner.
+        const spec = {
+            ...annotatedMatrix,
+            spec: {
+                ...annotatedMatrix.spec,
+                encoding: {
+                    ...annotatedMatrix.spec.encoding,
+                    x: field("column", "nominal"),
+                },
+            },
+            surround: {
+                ...annotatedMatrix.surround,
+                bottom: [
+                    {
+                        name: "bottom",
+                        height: 20,
+                        mark: "point",
+                        encoding: { x: field("column", "nominal") },
+                    },
+                ],
+            },
+        };
         const { view } = await init(
-            /** @type {import("../spec/root.js").RootSpec} */ (annotatedMatrix)
+            /** @type {import("../spec/root.js").RootSpec} */ (spec)
         );
         arrange(view);
         const center = plot(view, "matrix").coords;
         const top = plot(view, "columnTotals").coords;
         const left = plot(view, "rowTotals").coords;
-        const bottom = plot(view, "columnLabels").coords;
+        const bottom = plot(view, "bottom").coords;
         expect(center.x - left.x2).toBe(8);
         expect(top.x).toBe(center.x);
         expect(left.y).toBe(center.y);

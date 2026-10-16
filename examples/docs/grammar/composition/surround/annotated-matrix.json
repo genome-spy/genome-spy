@@ -6,23 +6,27 @@
 
   "data": {
     "values": [
-      { "column": 0, "row": 0, "value": 2 },
-      { "column": 1, "row": 0, "value": 5 },
-      { "column": 2, "row": 0, "value": 8 },
-      { "column": 0, "row": 1, "value": 7 },
-      { "column": 1, "row": 1, "value": 3 },
-      { "column": 2, "row": 1, "value": 1 },
-      { "column": 0, "row": 2, "value": 4 },
-      { "column": 1, "row": 2, "value": 8 },
-      { "column": 2, "row": 2, "value": 6 }
+      { "column": "One", "row": "Alpha", "value": 2 },
+      { "column": "Two", "row": "Alpha", "value": 5 },
+      { "column": "Three", "row": "Alpha", "value": 8 },
+      { "column": "One", "row": "Beta", "value": 7 },
+      { "column": "Two", "row": "Beta", "value": 3 },
+      { "column": "Three", "row": "Beta", "value": 1 },
+      { "column": "One", "row": "Gamma", "value": 4 },
+      { "column": "Two", "row": "Gamma", "value": 8 },
+      { "column": "Three", "row": "Gamma", "value": 6 }
     ]
   },
 
   "scales": {
-    "x": { "type": "index", "domain": [0, 2], "paddingInner": 0.08 },
+    "x": {
+      "type": "band",
+      "domain": ["One", "Two", "Three"],
+      "paddingInner": 0.08
+    },
     "y": {
-      "type": "index",
-      "domain": [0, 2],
+      "type": "band",
+      "domain": ["Alpha", "Beta", "Gamma"],
       "reverse": true,
       "paddingInner": 0.08
     }
@@ -46,7 +50,7 @@
         ],
         "mark": { "type": "rect", "color": "#64748b" },
         "encoding": {
-          "x": { "field": "column", "type": "index", "axis": null },
+          "x": { "field": "column", "type": "nominal", "axis": null },
           "y": {
             "field": "total",
             "type": "quantitative",
@@ -77,60 +81,34 @@
             "type": "quantitative",
             "axis": { "title": "Row total", "tickCount": 3 }
           },
-          "y": { "field": "row", "type": "index", "axis": null }
+          "y": { "field": "row", "type": "nominal", "axis": null }
         }
       }
     ],
 
-    "right": {
-      "name": "rowMetadata",
-      "data": {
-        "values": [
-          { "row": 0, "label": "Alpha", "category": "A" },
-          { "row": 1, "label": "Beta", "category": "B" },
-          { "row": 2, "label": "Gamma", "category": "A" }
-        ]
-      },
-      "encoding": { "y": { "field": "row", "type": "index", "axis": null } },
-      "spacing": 4,
-      "views": [
-        {
-          "name": "category",
-          "width": 14,
-          "mark": "rect",
-          "encoding": {
-            "color": {
-              "field": "category",
-              "type": "nominal",
-              "legend": { "title": "Category" }
-            }
-          }
-        },
-
-        {
-          "name": "rowLabels",
-          "width": 50,
-          "mark": { "type": "text", "align": "left", "dx": 3 },
-          "encoding": { "x": { "value": 0 }, "text": { "field": "label" } }
-        }
-      ]
-    },
-
-    "bottom": [
+    "right": [
       {
-        "name": "columnLabels",
-        "height": 20,
+        "name": "category",
+        "width": 14,
         "data": {
           "values": [
-            { "column": 0, "label": "One" },
-            { "column": 1, "label": "Two" },
-            { "column": 2, "label": "Three" }
+            { "row": "Alpha", "category": "A" },
+            { "row": "Beta", "category": "B" },
+            { "row": "Gamma", "category": "A" }
           ]
         },
-        "mark": "text",
+        "mark": "rect",
         "encoding": {
-          "x": { "field": "column", "type": "index", "axis": null },
-          "text": { "field": "label" }
+          "y": {
+            "field": "row",
+            "type": "nominal",
+            "axis": { "orient": "right", "title": null }
+          },
+          "color": {
+            "field": "category",
+            "type": "nominal",
+            "legend": { "title": "Category" }
+          }
         }
       }
     ]
@@ -142,8 +120,12 @@
     "height": 120,
     "mark": "rect",
     "encoding": {
-      "x": { "field": "column", "type": "index", "axis": null },
-      "y": { "field": "row", "type": "index", "axis": null },
+      "x": {
+        "field": "column",
+        "type": "nominal",
+        "axis": { "title": null, "labelAngle": 0 }
+      },
+      "y": { "field": "row", "type": "nominal", "axis": null },
       "color": {
         "field": "value",
         "type": "quantitative",

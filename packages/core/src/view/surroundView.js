@@ -142,39 +142,6 @@ export default class SurroundView extends GridView {
         }
         validateInputHost(group, this);
 
-        // Exclusion stops membership ascent; the lookup boundary also prevents
-        // scaleless tracks from falling through to the center's perpendicular scale.
-        const boundary = /** @type {import("./concatView.js").default} */ (
-            await this.context.createOrImportView(
-                inheritSpecOrigin(
-                    source,
-                    {
-                        concat: [],
-                        columns: 1,
-                        spacing: 0,
-                        resolve: {
-                            scale: {
-                                [aligned]: "shared",
-                                [perpendicular]: "excluded",
-                            },
-                            axis: { [perpendicular]: "excluded" },
-                        },
-                    },
-                    originPath
-                ),
-                this,
-                this,
-                side + "Boundary",
-                undefined,
-                {
-                    inheritEncoding: true,
-                    collapseWhenEmpty: true,
-                    scaleLookupBoundaryChannels: [perpendicular],
-                }
-            )
-        );
-        markViewAsNonAddressable(boundary);
-
         const { views, ...groupProps } = group;
         const props = cloneWithSpecOrigin(groupProps);
         // Group overhang controls the surround's reservation, not the nested
@@ -195,13 +162,14 @@ export default class SurroundView extends GridView {
         const tracks = /** @type {import("./concatView.js").default} */ (
             await this.context.createOrImportView(
                 concatSpec,
-                boundary,
-                boundary,
+                this,
+                this,
                 side,
                 undefined,
                 {
                     inheritEncoding: true,
                     collapseWhenEmpty: true,
+                    resolutionBoundaryChannels: [perpendicular],
                     childSpecValidator: (spec) =>
                         this.#validatePlot(spec, side),
                 }
@@ -210,10 +178,8 @@ export default class SurroundView extends GridView {
         if (Array.isArray(authored)) {
             markViewAsNonAddressable(tracks);
         }
-        boundary.setChildren([tracks]);
-        await boundary.syncGuideViews();
-        this.#sides.set(boundary, side);
-        return boundary;
+        this.#sides.set(tracks, side);
+        return tracks;
     }
 
     /**
@@ -364,13 +330,10 @@ export default class SurroundView extends GridView {
         return Padding.createFromRecord(reserved);
     }
 
-    /** @param {View} boundary @param {Side} edge */
-    #preservesOverhang(boundary, edge) {
-        const group = /** @type {import("./concatView.js").default} */ (
-            /** @type {import("./concatView.js").default} */ (boundary)
-                .children[0]
-        );
-        return [group, ...group.children].some(
+    /** @param {View} group @param {Side} edge */
+    #preservesOverhang(group, edge) {
+        const tracks = /** @type {import("./concatView.js").default} */ (group);
+        return [group, ...tracks.children].some(
             (view) =>
                 view.isConfiguredVisible() &&
                 (view.spec.overhang?.[edge] === true ||

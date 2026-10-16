@@ -1,6 +1,30 @@
-# Flat surround composition
+# Surround composition
 
-Status: complete; all three milestones implemented, reviewed, and verified.
+Status: flat implementation complete and verified. Recursive implementation is
+authorized and in progress. The revised geometry contract has been reviewed;
+the one-container side-resolution milestone is implemented and verified.
+
+## Current revision
+
+The user requested a design-only reassessment after the flat implementation and
+its small cleanup. The worked nested example, proposed one-container resolution
+boundary, alignment/footprint contract, scope limits, and next milestones are in
+[the nesting design](surround-nesting.md). That document governs proposed future
+work. The completed flat contract and verification below describe the baseline;
+they do not imply that nested layouts already work.
+
+The primary recursive acceptance case extends the categorical
+`annotated-matrix.json` with a stacked A/B distribution above its right metadata
+strip and a percentage axis on the distribution's right. See
+[the annotated-matrix design](surround-annotated-matrix.md). The nested strip
+retains the matrix's row coordinates, while the distribution owns percentage y
+and shares category colors. Structural panels may occupy free corners; outward
+extent is measured with a maximum, and overlapping structural panels are rejected.
+
+The cleanup commit `47e6282cf` reduced runtime impact to +485 SLOC against
+`origin/master` at `74bbd7e13`, excluding comments, blanks, tests and declarations.
+It shares the plot-kind guard and sparse-grid grouping logic. Type declarations
+add another 67 net SLOC. Future design changes have no promised net SLOC saving.
 
 ## Goal and evidence
 
