@@ -443,6 +443,77 @@ both scale identity and one interval. Split-axis compositions cannot claim that
 contract merely because they reference the same scale. No unrestricted nesting
 or arbitrary grid support is promised by the broad recursive schema.
 
+## Future extension: synchronized scrolling (deferred)
+
+Scrolling remains unsupported in this branch. Retain the viewport guards and
+the current schema restrictions; this section records the intended extension.
+
+### Grammar and behavior
+
+Reuse `viewportWidth` and `viewportHeight` on the central `spec`, alongside its
+existing content `width` and `height`. For example, with existing plot specs:
+
+```js
+{
+  spec: {
+    ...matrix,
+    width: { step: 12 },
+    height: { step: 16 },
+    viewportWidth: 600,
+    viewportHeight: 400
+  },
+  surround: {
+    top: [columnSummary],
+    right: [rowLabels]
+  }
+}
+```
+
+The matrix has a 600-by-400-pixel visible plotting area; its full content size
+comes from the step sizes and scale domains. Top/bottom tracks inherit its
+horizontal content extent, viewport extent, and scroll offset. Left/right
+tracks inherit the vertical equivalents. Aligned tracks cannot independently
+declare those sizes or offsets. The surround's own dimensions continue to
+describe the complete composition, including side panels and guide space.
+
+The center defines the scroll range and owns one shared scroll state and
+scrollbar per enabled dimension. Scrolling through a participating margin
+updates the same state, subject to the existing zoom/scroll input policy.
+Synchronization follows the existing alignment relationships without adding
+named scroll groups or a separate resolution setting.
+
+A nested right-hand board inherits vertical scrolling through its central
+plot. Its top distribution stays fixed vertically because it has a local y
+scale. The nested center may declare a local `viewportWidth`; its top/bottom
+annotations then share that local horizontal scrolling. Nested centers must
+continue to omit viewport sizing on the externally aligned dimension.
+
+### Implementation and verification
+
+Extend the alignment contract with separate content and viewport intervals and
+a shared offset along the aligned channel. `SurroundView.getTrackPlotGeometry`
+and the implicit side concat's `GridView.getTrackPlotGeometry` currently return
+the same rectangle for both intervals; both paths must preserve the distinction.
+Reuse `GridChild` content/viewport placement, clipping, and `Scrollbar` input,
+moving offset ownership out of individual scrollbar instances into the aligned
+layout group. Synchronize content translations rather than moving entire nested
+boards, so unrelated annotations remain stationary.
+
+Each plot clips to its own viewport. Axes keep their viewport-edge baselines
+while ticks follow the scrolled content projection. Picking, rulers, selection
+overlays, gap navigation, and collision footprints must use the appropriate
+content or viewport geometry. Resize, visibility, and content-size changes must
+clamp the shared offset once and preserve synchronization.
+
+A future implementation milestone should update the viewport schema/JSDoc and
+grammar documentation, add a scrollable annotated-matrix example, and verify
+both directions, nested local scrolling, fixed headers, offset clamping, and
+input ownership. Exercise the real headless layout/projection path and browser
+WebGL/Canvas rendering, clipping, picking, and scrollbar/drag interaction; retain
+ordinary concat/facet scrolling and SVG export coverage. Review the shared
+scroll-state and projection contract before committing. Tentative commit:
+`feat(core): synchronize scrolling in surround layouts`.
+
 ## Review questions and decision criteria
 
 The reviewer should challenge the boundary semantics (especially declaration

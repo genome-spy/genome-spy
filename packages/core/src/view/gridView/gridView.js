@@ -518,6 +518,8 @@ export default class GridView extends ContainerView {
                 [channel]: interval[channel],
                 [dimension]: interval[dimension],
             });
+            // Future scrollable side groups must preserve distinct content and
+            // viewport intervals here, sharing the alignment anchor's offset.
             return { content: coords, viewport: coords };
         }
         return this._cache("trackPlotGeometry/" + channel, () => {

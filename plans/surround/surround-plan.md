@@ -12,6 +12,11 @@ are in [the nesting design](surround-nesting.md). The flat contract and
 verification below record the earlier baseline; the nesting design describes
 the implemented extension.
 
+[Synchronized scrolling](surround-nesting.md#future-extension-synchronized-scrolling-deferred)
+is a deferred extension: central `spec.viewportWidth` / `viewportHeight` would
+define the visible plotting area and share scroll state with aligned margins.
+Scrolling remains unsupported in this branch.
+
 The primary recursive acceptance case extends the categorical
 `annotated-matrix.json` with a stacked A/B distribution above its right metadata
 strip and a percentage axis on the distribution's right. See

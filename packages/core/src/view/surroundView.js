@@ -229,6 +229,8 @@ export default class SurroundView extends GridView {
                 spec[dimension] = "container";
             }
         }
+        // Future: viewportWidth/viewportHeight on the center define scrolling;
+        // aligned tracks inherit its content/viewport spans and scroll offsets.
         if ("viewportWidth" in spec || "viewportHeight" in spec) {
             throw this.#error(
                 "Surround plots do not support scrollable viewports.",
@@ -460,6 +462,8 @@ export default class SurroundView extends GridView {
      */
     getTrackPlotGeometry() {
         const coords = this.#center.coords;
+        // Future scrolling must separate the center's content and viewport
+        // intervals, translating aligned content while keeping headers fixed.
         return coords ? { content: coords, viewport: coords } : undefined;
     }
 
