@@ -87,13 +87,15 @@ independent legends around the complete surround.
 
 Side tracks can themselves use `surround`. The parent aligns a nested track's
 central plotting interval, leaving room for its own annotations. In the example
-above, the metadata strip shares the matrix's rows, while its stacked summary
-uses a separate percentage scale and a right-hand axis.
+above, the mutation matrix shares the expression matrix's sample rows. Its
+stacked summaries share its TP53/PIK3CA column scale and use a separate percentage
+scale and a right-hand axis. The tumor expression and mutation data are synthetic.
 
-Declare shared data on the nested surround so the strip and summary use the
-same metadata source. To share category colors and a legend, set
+Declare shared data on the nested surround so the matrix and summaries use the
+same metadata source. To share mutation-status colors and a legend, set
 `resolve.scale.color` to `"shared"` on both the nested surround and its top group.
-The example counts metadata categories and normalizes their stacked counts.
+The example counts mutation statuses per gene and normalizes their stacked
+counts.
 
 Omit the externally aligned size from the nested center: `height` on left/right,
 or `width` on top/bottom. The outer center supplies that plotting length. Nested

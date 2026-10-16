@@ -168,7 +168,7 @@ describe("flat surround", () => {
                 ...annotatedMatrix.spec,
                 encoding: {
                     ...annotatedMatrix.spec.encoding,
-                    x: field("column", "nominal"),
+                    x: field("gene", "nominal"),
                 },
             },
             surround: {
@@ -178,7 +178,7 @@ describe("flat surround", () => {
                         name: "bottom",
                         height: 20,
                         mark: "point",
-                        encoding: { x: field("column", "nominal") },
+                        encoding: { x: field("gene", "nominal") },
                     },
                 ],
             },
@@ -188,14 +188,14 @@ describe("flat surround", () => {
         );
         arrange(view);
         const center = plot(view, "matrix").coords;
-        const top = plot(view, "columnTotals").coords;
-        const left = plot(view, "rowTotals").coords;
+        const top = plot(view, "columnMeans").coords;
+        const left = plot(view, "rowMeans").coords;
         const bottom = plot(view, "bottom").coords;
         expect(center.x - left.x2).toBe(8);
         expect(top.x).toBe(center.x);
         expect(left.y).toBe(center.y);
         // The bottom arm is thinner than the row axis: reserve only the excess.
-        expect(bottom.y - center.y2).toBe(12);
+        expect(bottom.y - center.y2).toBe(22);
     });
 
     test.each(["plot", "group", "padding"])(
@@ -224,8 +224,7 @@ describe("flat surround", () => {
             );
             arrange(view);
             expect(
-                plot(view, "matrix").coords.x -
-                    plot(view, "rowTotals").coords.x2
+                plot(view, "matrix").coords.x - plot(view, "rowMeans").coords.x2
             ).toBeGreaterThan(8);
         }
     );
@@ -242,7 +241,7 @@ describe("flat surround", () => {
             }
         );
         arrange(view);
-        hidden.add("rowTotals");
+        hidden.add("rowMeans");
         view.invalidateSizeCache();
         arrange(view);
         expect(plot(view, "matrix").coords.x).toBeGreaterThan(0);
@@ -255,7 +254,7 @@ describe("flat surround", () => {
         );
         arrange(view);
         expect(
-            plot(view, "matrix").coords.x - plot(view, "rowTotals").coords.x2
+            plot(view, "matrix").coords.x - plot(view, "rowMeans").coords.x2
         ).toBe(8);
     });
 
@@ -277,23 +276,25 @@ describe("flat surround", () => {
             );
             arrange(explicit);
             expect(plot(explicit, "matrix").coords.x).toBe(0);
-            expect(plot(explicit, "columnTotals").coords.width).toBe(180);
+            expect(plot(explicit, "columnMeans").coords.width).toBe(
+                plot(explicit, "matrix").coords.width
+            );
         }
     );
 
     test("competing axes keep a reservation between their corner decorations", async () => {
-        const rowTotals = annotatedMatrix.surround.left[0];
+        const rowMeans = annotatedMatrix.surround.left[0];
         const spec = {
             ...annotatedMatrix,
             surround: {
                 top: annotatedMatrix.surround.top,
                 left: [
                     {
-                        ...rowTotals,
+                        ...rowMeans,
                         encoding: {
-                            ...rowTotals.encoding,
+                            ...rowMeans.encoding,
                             x: {
-                                ...rowTotals.encoding.x,
+                                ...rowMeans.encoding.x,
                                 axis: { orient: "top", title: "Row total" },
                             },
                         },
@@ -306,8 +307,8 @@ describe("flat surround", () => {
         );
         arrange(view);
         const center = plot(view, "matrix").coords;
-        expect(center.x - plot(view, "rowTotals").coords.x2).toBe(8);
-        expect(center.y - plot(view, "columnTotals").coords.y2).toBeGreaterThan(
+        expect(center.x - plot(view, "rowMeans").coords.x2).toBe(8);
+        expect(center.y - plot(view, "columnMeans").coords.y2).toBeGreaterThan(
             8
         );
     });

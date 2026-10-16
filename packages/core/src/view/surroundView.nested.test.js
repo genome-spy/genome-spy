@@ -181,11 +181,11 @@ describe("nested surround", () => {
             /** @type {import("../spec/root.js").RootSpec} */ (annotatedMatrix)
         );
         try {
-            renderToLayout(view);
+            renderToLayout(view, Rectangle.create(0, 0, 640, 480));
             const matrix = plot(view, "matrix");
             const category = plot(view, "category");
             const distribution = plot(view, "categoryDistribution");
-            const columns = plot(view, "columnTotals");
+            const columns = plot(view, "columnMeans");
             expect(category.getScaleResolution("y")).toBe(
                 matrix.getScaleResolution("y")
             );
@@ -195,8 +195,15 @@ describe("nested surround", () => {
             expect(distribution.getScaleResolution("y")).not.toBe(
                 columns.getScaleResolution("y")
             );
-            expect(distribution.getScaleResolution("x")).toBeUndefined();
-            expect(category.getScaleResolution("x")).toBeUndefined();
+            expect(distribution.getScaleResolution("x")).toBe(
+                category.getScaleResolution("x")
+            );
+            expect(category.getScaleResolution("x")).not.toBe(
+                matrix.getScaleResolution("x")
+            );
+            expect(
+                category.getScaleResolution("x").getScale().domain()
+            ).toEqual(["TP53", "PIK3CA"]);
             expect(distribution.getScaleResolution("color")).toBe(
                 category.getScaleResolution("color")
             );
@@ -206,21 +213,33 @@ describe("nested surround", () => {
             expect(distribution.coords.y).toBe(columns.coords.y);
             expect(matrix.coords.y - distribution.coords.y).toBe(68);
             expect(category.coords.y).toBe(matrix.coords.y);
-            expect(category.coords.height).toBe(120);
+            expect(category.coords.height).toBe(matrix.coords.height);
             expect(distribution.coords.width).toBe(category.coords.width);
+            expect(
+                Array.from(columns.getCollector().getData(), (row) => row.mean)
+            ).toEqual([13 / 3, 16 / 3, 5]);
+            expect(
+                Array.from(
+                    plot(view, "rowMeans").getCollector().getData(),
+                    (row) => row.mean
+                )
+            ).toEqual([5, 11 / 3, 6]);
             const values = Array.from(distribution.getCollector().getData());
             expect(
                 values.map((row) => [
+                    row.gene,
                     row.category,
                     row.count,
                     row.start,
                     row.end,
                 ])
             ).toEqual([
-                ["A", 2, 0, 2 / 3],
-                ["B", 1, 2 / 3, 1],
+                ["TP53", "WT", 2, 0, 2 / 3],
+                ["TP53", "Mutated", 1, 2 / 3, 1],
+                ["PIK3CA", "WT", 1, 0, 1 / 3],
+                ["PIK3CA", "Mutated", 2, 1 / 3, 1],
             ]);
-            expect(category.getCollector().getItemCount()).toBe(3);
+            expect(category.getCollector().getItemCount()).toBe(6);
             expect(
                 context.dataFlow.dataSources.filter(
                     (source) => !isInChromeSubtree(source.view)
@@ -229,6 +248,14 @@ describe("nested surround", () => {
             expect(distribution.getAxisResolution("y").hostView).toBe(
                 distribution
             );
+            const initialWidth = matrix.coords.width;
+            const initialHeight = matrix.coords.height;
+            renderToLayout(view, Rectangle.create(0, 0, 780, 560));
+            expect(matrix.coords.width).toBeGreaterThan(initialWidth);
+            expect(matrix.coords.height).toBeGreaterThan(initialHeight);
+            expect(category.coords.height).toBe(matrix.coords.height);
+            expect(category.coords.y).toBe(matrix.coords.y);
+            expect(distribution.coords.x).toBe(category.coords.x);
         } finally {
             view.disposeSubtree();
         }
@@ -391,8 +418,8 @@ describe("nested surround", () => {
             const cases = /** @type {[string[], number][]} */ ([
                 [[], 68],
                 [["categoryDistribution"], 68],
-                [["columnTotals"], 68],
-                [["columnTotals", "categoryDistribution"], 0],
+                [["columnMeans"], 68],
+                [["columnMeans", "categoryDistribution"], 0],
                 [[], 68],
             ]);
             for (const [names, expected] of cases) {
@@ -401,7 +428,9 @@ describe("nested surround", () => {
                 view._invalidateCacheByPrefix("size", "progeny");
                 renderToLayout(view);
                 expect(plot(view, "matrix").coords.y).toBe(expected);
-                expect(plot(view, "category").coords.height).toBe(120);
+                expect(plot(view, "category").coords.height).toBe(
+                    plot(view, "matrix").coords.height
+                );
             }
         } finally {
             view.disposeSubtree();
@@ -555,7 +584,7 @@ describe("nested surround", () => {
                         Rectangle.create(0, 0, 400, canvasHeight)
                     );
                     const matrix = plot(view, "matrix");
-                    const top = plot(view, "columnTotals");
+                    const top = plot(view, "columnMeans");
                     const summary = plot(view, "categoryDistribution");
                     expect(top.coords.height).toBe(20);
                     expect(matrix.coords.y - top.coords.y2).toBe(8);

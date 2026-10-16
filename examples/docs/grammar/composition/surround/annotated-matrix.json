@@ -1,32 +1,37 @@
 {
   "description": [
     "Matrix with aligned summaries and annotations",
-    "Aligns row and column summaries with a categorical matrix and a nested metadata distribution."
+    "Aligns row and column summaries with a growing categorical matrix and a nested metadata matrix."
   ],
+
+  "title": {
+    "text": "Expression and Mutations in Synthetic Tumors",
+    "fontSize": 16
+  },
 
   "data": {
     "values": [
-      { "column": "One", "row": "Alpha", "value": 2 },
-      { "column": "Two", "row": "Alpha", "value": 5 },
-      { "column": "Three", "row": "Alpha", "value": 8 },
-      { "column": "One", "row": "Beta", "value": 7 },
-      { "column": "Two", "row": "Beta", "value": 3 },
-      { "column": "Three", "row": "Beta", "value": 1 },
-      { "column": "One", "row": "Gamma", "value": 4 },
-      { "column": "Two", "row": "Gamma", "value": 8 },
-      { "column": "Three", "row": "Gamma", "value": 6 }
+      { "gene": "ESR1", "sample": "Tumor 1", "value": 2 },
+      { "gene": "ERBB2", "sample": "Tumor 1", "value": 5 },
+      { "gene": "MKI67", "sample": "Tumor 1", "value": 8 },
+      { "gene": "ESR1", "sample": "Tumor 2", "value": 7 },
+      { "gene": "ERBB2", "sample": "Tumor 2", "value": 3 },
+      { "gene": "MKI67", "sample": "Tumor 2", "value": 1 },
+      { "gene": "ESR1", "sample": "Tumor 3", "value": 4 },
+      { "gene": "ERBB2", "sample": "Tumor 3", "value": 8 },
+      { "gene": "MKI67", "sample": "Tumor 3", "value": 6 }
     ]
   },
 
   "scales": {
     "x": {
       "type": "band",
-      "domain": ["One", "Two", "Three"],
+      "domain": ["ESR1", "ERBB2", "MKI67"],
       "paddingInner": 0.08
     },
     "y": {
       "type": "band",
-      "domain": ["Alpha", "Beta", "Gamma"],
+      "domain": ["Tumor 1", "Tumor 2", "Tumor 3"],
       "reverse": true,
       "paddingInner": 0.08
     }
@@ -37,24 +42,24 @@
   "surround": {
     "top": [
       {
-        "name": "columnTotals",
+        "name": "columnMeans",
         "height": 60,
         "transform": [
           {
             "type": "aggregate",
-            "groupby": ["column"],
+            "groupby": ["gene"],
             "fields": ["value"],
-            "ops": ["sum"],
-            "as": ["total"]
+            "ops": ["mean"],
+            "as": ["mean"]
           }
         ],
         "mark": { "type": "rect", "color": "#64748b" },
         "encoding": {
-          "x": { "field": "column", "type": "nominal", "axis": null },
+          "x": { "field": "gene", "type": "nominal", "axis": null },
           "y": {
-            "field": "total",
+            "field": "mean",
             "type": "quantitative",
-            "axis": { "title": "Column total", "tickCount": 3 }
+            "axis": { "title": "Mean expr.", "tickCount": 3 }
           }
         }
       }
@@ -62,26 +67,26 @@
 
     "left": [
       {
-        "name": "rowTotals",
+        "name": "rowMeans",
         "width": 70,
-        "scales": { "x": { "reverse": true } },
         "transform": [
           {
             "type": "aggregate",
-            "groupby": ["row"],
+            "groupby": ["sample"],
             "fields": ["value"],
-            "ops": ["sum"],
-            "as": ["total"]
+            "ops": ["mean"],
+            "as": ["mean"]
           }
         ],
         "mark": { "type": "rect", "color": "#64748b" },
         "encoding": {
           "x": {
-            "field": "total",
+            "field": "mean",
             "type": "quantitative",
-            "axis": { "title": "Row total", "tickCount": 3 }
+            "scale": { "reverse": true },
+            "axis": { "title": "Mean expr.", "tickCount": 3 }
           },
-          "y": { "field": "row", "type": "nominal", "axis": null }
+          "y": { "field": "sample", "type": "nominal", "axis": null }
         }
       }
     ],
@@ -92,29 +97,45 @@
         "spacing": 8,
         "data": {
           "values": [
-            { "row": "Alpha", "category": "A" },
-            { "row": "Beta", "category": "B" },
-            { "row": "Gamma", "category": "A" }
+            { "gene": "TP53", "sample": "Tumor 1", "category": "WT" },
+            { "gene": "TP53", "sample": "Tumor 2", "category": "Mutated" },
+            { "gene": "TP53", "sample": "Tumor 3", "category": "WT" },
+            { "gene": "PIK3CA", "sample": "Tumor 1", "category": "Mutated" },
+            { "gene": "PIK3CA", "sample": "Tumor 2", "category": "WT" },
+            { "gene": "PIK3CA", "sample": "Tumor 3", "category": "Mutated" }
           ]
         },
         "resolve": { "scale": { "color": "shared" } },
-        "scales": { "color": { "type": "ordinal", "domain": ["A", "B"] } },
+        "scales": {
+          "x": {
+            "type": "band",
+            "domain": ["TP53", "PIK3CA"],
+            "paddingInner": 0.08
+          },
+          "color": { "type": "ordinal", "domain": ["WT", "Mutated"] }
+        },
         "encoding": {
+          "x": { "field": "gene", "type": "nominal", "axis": null },
           "color": {
             "field": "category",
             "type": "nominal",
-            "legend": { "title": "Category" }
+            "legend": { "title": "Mutation status" }
           }
         },
         "spec": {
           "name": "category",
-          "width": 14,
+          "width": { "step": 35 },
           "mark": "rect",
           "encoding": {
-            "y": {
-              "field": "row",
+            "x": {
+              "field": "gene",
               "type": "nominal",
-              "axis": { "orient": "right", "title": null }
+              "axis": { "title": "Mutation genes", "labelAngle": 0 }
+            },
+            "y": {
+              "field": "sample",
+              "type": "nominal",
+              "axis": { "orient": "right", "title": "Samples" }
             }
           }
         },
@@ -128,16 +149,16 @@
                 "transform": [
                   {
                     "type": "aggregate",
-                    "groupby": ["category"],
-                    "fields": ["row"],
+                    "groupby": ["gene", "category"],
+                    "fields": ["sample"],
                     "ops": ["count"],
                     "as": ["count"]
                   },
                   {
                     "type": "stack",
                     "field": "count",
-                    "groupby": [],
-                    "sort": { "field": "category", "order": "ascending" },
+                    "groupby": ["gene"],
+                    "sort": { "field": "category", "order": "descending" },
                     "offset": "normalize",
                     "as": ["start", "end"]
                   }
@@ -150,7 +171,7 @@
                     "scale": { "domain": [0, 1], "zoom": false },
                     "axis": {
                       "orient": "right",
-                      "title": null,
+                      "title": "Fraction",
                       "format": ".0%",
                       "values": [0, 0.5, 1]
                     }
@@ -167,29 +188,28 @@
 
   "spec": {
     "name": "matrix",
-    "width": 180,
-    "height": 120,
     "mark": "rect",
     "encoding": {
       "x": {
-        "field": "column",
+        "field": "gene",
         "type": "nominal",
-        "axis": { "title": null, "labelAngle": 0 }
+        "axis": { "title": "Expression genes", "labelAngle": 0 }
       },
-      "y": { "field": "row", "type": "nominal", "axis": null },
+      "y": { "field": "sample", "type": "nominal", "axis": null },
       "color": {
         "field": "value",
         "type": "quantitative",
-        "legend": { "title": "Value" }
+        "legend": { "title": "Expression: log2(TPM + 1)" }
       },
       "tooltip": { "field": "value", "type": "quantitative" }
     }
   },
 
   "config": {
+    "axis": { "offset": 10 },
     "legend": {
-      "orient": "bottom",
-      "direction": "horizontal",
+      "orient": "right",
+      "direction": "vertical",
       "gradientLength": 80
     }
   }

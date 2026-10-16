@@ -12,6 +12,7 @@ import {
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import Genome from "../../genome/genome.js";
 import { renderToLayout } from "../../view/testUtils.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import { createSvg } from "./index.js";
 
 const baseConfig = resolveBaseConfig({
@@ -32,8 +33,8 @@ describe("SVG example exports", () => {
                     ...annotatedMatrix.spec,
                     mark: "rect",
                     encoding: {
-                        x: { field: "column", type: "nominal", axis: null },
-                        y: { field: "row", type: "nominal", axis: null },
+                        x: { field: "gene", type: "nominal", axis: null },
+                        y: { field: "sample", type: "nominal", axis: null },
                     },
                 },
                 surround: {
@@ -61,7 +62,7 @@ describe("SVG example exports", () => {
                                             type: "quantitative",
                                         },
                                         y: {
-                                            field: "row",
+                                            field: "sample",
                                             type: "nominal",
                                             axis: null,
                                         },
@@ -76,7 +77,7 @@ describe("SVG example exports", () => {
                 { contextOptions: { baseConfig } }
             );
             try {
-                renderToLayout(view);
+                renderToLayout(view, Rectangle.create(0, 0, 500, 400));
                 // Quantitative label layout uses the completed physical spans.
                 view.visit((child) =>
                     child.handleBroadcast({ type: "layoutComputed" })
@@ -124,7 +125,7 @@ describe("SVG example exports", () => {
             { contextOptions: { baseConfig } }
         );
         try {
-            renderToLayout(view);
+            renderToLayout(view, Rectangle.create(0, 0, 500, 400));
             view.visit((child) =>
                 child.handleBroadcast({ type: "layoutComputed" })
             );
@@ -135,33 +136,39 @@ describe("SVG example exports", () => {
             });
             const cells = svg.querySelectorAll('[data-name="matrix"] rect');
             const columns = svg.querySelectorAll(
-                '[data-name="columnTotals"] rect'
+                '[data-name="columnMeans"] rect'
             );
             expect(cells).toHaveLength(9);
             expect(columns).toHaveLength(3);
             expect(
                 svg.querySelectorAll('[data-name="category"] rect')
-            ).toHaveLength(3);
+            ).toHaveLength(6);
             const axisLabels = Array.from(
                 svg.querySelectorAll('[data-name="labels_main"] text'),
                 (element) => element.textContent
             );
             expect(axisLabels).toEqual(
                 expect.arrayContaining([
-                    "Alpha",
-                    "Beta",
-                    "Gamma",
-                    "One",
-                    "Two",
-                    "Three",
+                    "Tumor 1",
+                    "Tumor 2",
+                    "Tumor 3",
+                    "ESR1",
+                    "ERBB2",
+                    "MKI67",
+                    "TP53",
+                    "PIK3CA",
                 ])
             );
-            expect(svg.textContent).toContain("Column total");
-            expect(svg.textContent).toContain("Row total");
+            expect(svg.textContent).toContain("Mean expr.");
+            expect(svg.textContent).toContain("Expression genes");
+            expect(svg.textContent).toContain("Mutation genes");
+            expect(svg.textContent).toContain("Samples");
+            expect(svg.textContent).toContain("Fraction");
             const distribution = svg.querySelectorAll(
                 '[data-name="categoryDistribution"] rect'
             );
-            for (const [i, height] of [40, 20].entries()) {
+            expect(distribution).toHaveLength(4);
+            for (const [i, height] of [40, 20, 20, 40].entries()) {
                 expect(+distribution[i].getAttribute("height")).toBeCloseTo(
                     height,
                     0
@@ -178,7 +185,7 @@ describe("SVG example exports", () => {
             );
             const text = Array.from(svg.querySelectorAll("text"));
             expect(
-                text.filter((label) => label.textContent === "Category")
+                text.filter((label) => label.textContent === "Mutation status")
             ).toHaveLength(1);
             expect(text.map((label) => label.textContent)).toEqual(
                 expect.arrayContaining(["0%", "50%", "100%"])
@@ -207,6 +214,9 @@ describe("SVG example exports", () => {
                 +element.getAttribute("x") + +element.getAttribute("width") / 2;
             expect(Array.from(columns, centerX)).toEqual(
                 Array.from(new Set(Array.from(cells, centerX)))
+            );
+            expect(new Set(Array.from(distribution, centerX))).toEqual(
+                new Set(Array.from(metadata, centerX))
             );
             expect(warnings).toEqual([]);
         } finally {
