@@ -1,8 +1,8 @@
 # Surround: resolution boundaries and nested alignment
 
-Status: authorized and in progress. Resolution/alignment contracts and the
-revised categorical/corner design have been reviewed. The one-container side
-scope is implemented and verified; nested alignment follows in milestone 5.
+Status: implemented and verified. Resolution/alignment contracts, the revised
+categorical/corner design, and both implementation milestones have passed
+independent review.
 
 ## Goal and scope
 
@@ -14,7 +14,7 @@ case to replace wrapper plumbing with a coherent resolution boundary
 and define the alignment contract needed for recursive composition. Retain the
 existing public `spec` / `surround` / `views` schema and both migrated examples.
 
-The next implementation increment should support nested surrounds in side
+The recursive increment supports nested surrounds in side
 slots, with fixed or step-based structural insets along the externally aligned
 axis. Growth of the outer center and ordinary perpendicular track thicknesses
 remains supported. Growing structural insets, nested centers, compatible
@@ -33,8 +33,8 @@ above. It has constant x coordinates in the right region. Retain the following
 continuous-x case to verify a nested local measurement scale and navigation;
 the distribution example alone cannot protect that contract.
 
-This specification describes proposed support. The current surround flat-slot
-guard deliberately rejects it. `height` is omitted from the nested row bars:
+This continuous-x specification is supported by the recursive increment.
+`height` is omitted from the nested row bars:
 their plotting height is imposed by the outer matrix, not by a total-footprint
 height on the nested surround.
 
@@ -174,8 +174,8 @@ All four scale relationships above were correct. However, the matrix occupied
 `(0, 0, 180, 168)` and the row bars occupied `(188, 48, 80, 120)`.
 Ordinary concat aligned the complete footprints and stretched the matrix.
 Correct scale identity therefore does not establish correct pixel projection.
-The proposed geometry above is a design calculation, not a successful nested
-surround render on the current implementation.
+The recursive implementation now verifies the geometry above in headless tests;
+the ordinary-concat probe records the original limitation.
 
 ## One side container and one resolution boundary
 
@@ -419,18 +419,18 @@ selectors, surround construction. Tentative commit:
 
 ### 5. Nested side alignment with fixed structural insets
 
-- [ ] Introduce the internal alignment description and fixed-inset allocation;
+- [x] Introduce the internal alignment description and fixed-inset allocation;
       support nested surrounds in side slots without broad descendant checks.
-- [ ] Extend `annotated-matrix.json` with the nested A/B distribution and right
+- [x] Extend `annotated-matrix.json` with the nested A/B distribution and right
       percentage axis; add representative regression tests and retain the
       continuous-x resolution/navigation case.
       Retain scale/geometry validation and reject growing aligned insets clearly.
-- [ ] Implement maximum outward extents for free corners and located rejection
+- [x] Implement maximum outward extents for free corners and located rejection
       of colliding structural panels. Review the revised geometry contract
       before adopting it; do not introduce automatic rearrangement.
-- [ ] Update grammar documentation and the existing feature note. Review KISS,
+- [x] Update grammar documentation and the existing feature note. Review KISS,
       renderer/input implications, and actual complexity before committing.
-- [ ] Run final integration gates above, appropriate shared layout suites,
+- [x] Run final integration gates above, appropriate shared layout suites,
       workspace TypeScript/lint, schema/docs, and release checks. Reconcile tasks.
 
 Areas: SurroundView/GridView measurement and placement, Unit/Layer alignment
@@ -476,7 +476,33 @@ surround, concat/grid, and SVG suite passed 517 tests. Shared/forced side axes
 on unequal-width tracks project midpoint ticks to each track's own midpoint.
 The SVG suite also covers the categorical axes replacing the old text tracks.
 
-These remain implementation gates for nesting, not claims of implemented
-recursive support. The continuous-x future specification also
-passes the current generated Core and App schemas; their broad recursion does
-not establish runtime support. Plan formatting and whitespace checks pass.
+Milestone 5 implementation review by `review_nested_contract` found no remaining
+blockers. Corrections cover capped outer-arm attachment, stacked guide occupancy,
+inactive legends, ordinary concat input boundaries, descendant gap navigation,
+mutation validation, located collisions, and zero-width tracks. The scalar
+alignment hooks reuse the existing flex allocation and one arrangement path;
+footprints remain derived from arranged state. The example uses one metadata
+source and ordinary aggregate/stack transforms.
+
+Final verification on 2026-10-16:
+
+- Full suite: 532 files, 5,043 passed, one skipped and two todo.
+- Focused view/scale/SVG suite: 109 files, 1,468 passed before the final
+  zero-width regression addition; all 20 nested cases pass in the full suite.
+- Workspace TypeScript, repository lint, Core/App schemas, generated docs, and
+  the complete documentation build pass.
+- Annotated matrix, UpSet, and public clustered heatmap pass WebGL and Canvas
+  browser smoke checks. Browser picking returns the matrix datum; resizing
+  preserves matrix/strip intervals. Wheel zoom and drag on the continuous
+  summary change only its local measurement scale.
+- Release policy/status pass. The existing minor feature fragment covers both
+  increments and retains the fixed release group.
+
+Outward residual space around a short or capped outer arm sits beyond that arm,
+so its center-facing spacing is preserved. Active legends use their arranged
+rectangles; titles and shared-axis occurrences use their actual frame/track
+geometry. Input chooses occupied panels before recursively testing descendant
+navigation gaps, and ordinary concats retain bounding-box routing.
+
+Deferred extensions listed above remain outside this increment. No solver,
+automatic relocation, public named ports, or dynamic surround API was added.

@@ -603,7 +603,6 @@ describe("flat surround", () => {
     test.each([
         { hconcat: [] },
         { facet: { field: "row" }, spec: { mark: "point" } },
-        { surround: {}, spec: { mark: "point" } },
     ])(
         "rejects unsupported flat slots after import expansion: %j",
         async (unsupported) => {
@@ -615,7 +614,7 @@ describe("flat surround", () => {
             };
             spec.surround.top = [{ import: { template: "unsupported" } }];
             await expect(init(spec)).rejects.toThrow(
-                "currently accepts only unit or layer"
+                "accepts unit or layer plots and nested surrounds"
             );
         }
     );

@@ -12,6 +12,11 @@ explicit overhang settings.
 Shared side-local axes use each track's plotting span, including when tracks
 have different widths or heights.
 
-The first version supports unit and layered plots, including imports, with
-ordinary axes, titles, legends, hover interactions, and visibility. Nested
-concat, facet, and surround plots are deferred.
+Side tracks can themselves use `surround`: their central plots stay aligned
+while their own annotations occupy free corners. Nested annotations extending
+along the outer aligned dimension require fixed or step-based thicknesses.
+Overlapping occupied panels report an error naming the conflicting views.
+
+Unit and layered plots, including imports, retain ordinary axes, titles,
+legends, hover interactions, and visibility. Nested centers, authored concats,
+facets, scrolling, and cross-region axes remain unsupported.

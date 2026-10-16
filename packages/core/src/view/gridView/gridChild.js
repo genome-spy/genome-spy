@@ -887,6 +887,22 @@ export default class GridChild {
         );
     }
 
+    /** @param {AxisView} axis @param {Rectangle} [viewport] */
+    getAxisCoords(axis, viewport = this.coords) {
+        const channel =
+            axis.axisProps.orient === "left" ||
+            axis.axisProps.orient === "right"
+                ? "y"
+                : "x";
+        const dimension = channel === "x" ? "width" : "height";
+        const alignment = this.view.getAlignment(channel);
+        const host = viewport.shrink(this.getViewOverhang());
+        return host.modify({
+            [channel]: host[channel] + alignment.before,
+            [dimension]: host[dimension] - alignment.before - alignment.after,
+        });
+    }
+
     getTitleZindex() {
         return this.title?.titleSpec.zindex ?? 1;
     }

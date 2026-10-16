@@ -774,7 +774,8 @@ export interface SurroundSideSpec extends ViewSpecBase {
     viewportHeight?: never;
     /**
      * Tracks ordered top-to-bottom on top/bottom, or left-to-right on left/right.
-     * Currently each track must resolve to a unit or layer specification.
+     * Tracks support unit/layer plots, nested surrounds, and imports resolving
+     * to these.
      */
     views: (ViewSpec | ImportSpec)[];
 
@@ -800,6 +801,9 @@ export interface SurroundSpec extends ViewSpecBase {
      * Left/right tracks share its y scale and stack horizontally. Tracks have
      * independent perpendicular scales by default. Specify only their thickness:
      * height on top/bottom, or width on left/right.
+     * Nested surrounds align by their central plotting interval; omit its
+     * aligned size. Their annotations extending along that dimension require
+     * fixed or step-based thicknesses and may occupy free corners.
      */
     surround: Partial<Record<Side, SurroundSide>>;
 

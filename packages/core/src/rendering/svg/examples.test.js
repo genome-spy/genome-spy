@@ -125,6 +125,9 @@ describe("SVG example exports", () => {
         );
         try {
             renderToLayout(view);
+            view.visit((child) =>
+                child.handleBroadcast({ type: "layoutComputed" })
+            );
             const { svg, warnings } = createSvg({
                 viewRoot: view,
                 logicalWidth: 500,
@@ -155,6 +158,50 @@ describe("SVG example exports", () => {
             );
             expect(svg.textContent).toContain("Column total");
             expect(svg.textContent).toContain("Row total");
+            const distribution = svg.querySelectorAll(
+                '[data-name="categoryDistribution"] rect'
+            );
+            for (const [i, height] of [40, 20].entries()) {
+                expect(+distribution[i].getAttribute("height")).toBeCloseTo(
+                    height,
+                    0
+                );
+            }
+            const metadata = svg.querySelectorAll(
+                '[data-name="category"] rect'
+            );
+            expect(distribution[0].getAttribute("fill")).toBe(
+                metadata[0].getAttribute("fill")
+            );
+            expect(distribution[1].getAttribute("fill")).toBe(
+                metadata[1].getAttribute("fill")
+            );
+            const text = Array.from(svg.querySelectorAll("text"));
+            expect(
+                text.filter((label) => label.textContent === "Category")
+            ).toHaveLength(1);
+            expect(text.map((label) => label.textContent)).toEqual(
+                expect.arrayContaining(["0%", "50%", "100%"])
+            );
+            const body = view
+                .getDescendants()
+                .find(
+                    (child) => child.explicitName === "categoryDistribution"
+                ).coords;
+            for (const [label, y] of /** @type {[string, number][]} */ ([
+                ["0%", body.y2],
+                ["100%", body.y],
+            ])) {
+                const tick = text.find(
+                    (element) => element.textContent === label
+                );
+                expect(getTranslateX(tick)).toBeGreaterThan(body.x2);
+                expect(
+                    +tick
+                        .getAttribute("transform")
+                        .match(/^translate\([\d.-]+ ([\d.-]+)\)/)[1]
+                ).toBeCloseTo(y, 1);
+            }
             // SVG shares the layout path: column summaries have the same band centers.
             const centerX = (/** @type {Element} */ element) =>
                 +element.getAttribute("x") + +element.getAttribute("width") / 2;

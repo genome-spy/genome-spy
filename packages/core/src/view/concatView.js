@@ -66,6 +66,7 @@ export default class ConcatView extends GridView {
         /** @type {import("./view.js").ViewOptions} */
         const childOptions = {
             inheritEncoding: true,
+            imposedAlignmentChannel: this.options.alignedChannel,
         };
         if (this.options.layoutSizeParams == "force") {
             childOptions.layoutSizeParams = "force";
@@ -252,6 +253,7 @@ export default class ConcatView extends GridView {
         /** @type {import("./view.js").ViewOptions} */
         const createViewOptions = {
             inheritEncoding: true,
+            imposedAlignmentChannel: this.options.alignedChannel,
         };
         if (this.options.layoutSizeParams == "force") {
             createViewOptions.layoutSizeParams = "force";
@@ -265,6 +267,7 @@ export default class ConcatView extends GridView {
                 this.#syncMutationGuideViews(gridChild ? [gridChild] : []),
             defaultName: () => this.getNextAutoName("grid"),
             createViewOptions,
+            specValidator: this.options.childSpecValidator,
         });
     }
 

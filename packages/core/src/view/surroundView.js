@@ -7,7 +7,11 @@ import ViewError from "./viewError.js";
 import { VISIT_SKIP } from "./view.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
-import { isImportSpec, isLayerableSpec } from "./viewSpecGuards.js";
+import {
+    isImportSpec,
+    isLayerableSpec,
+    isSurroundSpec,
+} from "./viewSpecGuards.js";
 import { cloneWithSpecOrigin, inheritSpecOrigin } from "../utils/specOrigin.js";
 import {
     findChannelDefWithScale,
@@ -31,7 +35,7 @@ import { annotateSpecError } from "../utils/specError.js";
 const SIDES = /** @type {const} */ (["top", "right", "bottom", "left"]);
 
 /**
- * Aligns flat marginal plots with one central plot.
+ * Aligns marginal plots by their central plotting intervals.
  * @extends {GridView<import("../spec/view.js").SurroundSpec>}
  */
 export default class SurroundView extends GridView {
@@ -169,6 +173,7 @@ export default class SurroundView extends GridView {
                 {
                     inheritEncoding: true,
                     collapseWhenEmpty: true,
+                    alignedChannel: aligned,
                     resolutionBoundaryChannels: [perpendicular],
                     childSpecValidator: (spec) =>
                         this.#validatePlot(spec, side),
@@ -201,23 +206,28 @@ export default class SurroundView extends GridView {
      * @param {Side} [side]
      */
     #validatePlot(spec, side) {
-        if (!isLayerableSpec(spec)) {
+        const nested = side && isSurroundSpec(spec);
+        if (!isLayerableSpec(spec) && !nested) {
             throw this.#error(
-                `Surround ${side ?? "center"} currently accepts only unit or layer plots.`,
+                `Surround ${side ?? "center"} accepts unit or layer plots${side ? " and nested surrounds" : ""}.`,
                 spec
             );
         }
-        if (side) {
-            const dimension =
-                getAlignedChannel(side) === "x" ? "width" : "height";
+        const channel = side
+            ? getAlignedChannel(side)
+            : this.options.imposedAlignmentChannel;
+        if (channel) {
+            const dimension = channel === "x" ? "width" : "height";
             if (spec[dimension] !== undefined) {
                 throw this.#error(
-                    `Surround ${side} plots inherit ${dimension} from the center; specify only their thickness.`,
+                    `Surround ${side ?? "center"} plots inherit ${dimension} from the center; specify only their thickness.`,
                     spec,
                     [dimension]
                 );
             }
-            spec[dimension] = "container";
+            if (!nested) {
+                spec[dimension] = "container";
+            }
         }
         if ("viewportWidth" in spec || "viewportHeight" in spec) {
             throw this.#error(
@@ -282,6 +292,105 @@ export default class SurroundView extends GridView {
         return center ? [center] : children;
     }
 
+    /** @override @param {View} view @param {Channel} channel */
+    alignsChild(view, channel) {
+        const side = this.#sides.get(view);
+        return (
+            view === this.#center ||
+            (side !== undefined && getAlignedChannel(side) === channel)
+        );
+    }
+
+    /** @override @param {Channel} _channel */
+    getAlignmentAnchor(_channel) {
+        return this.#center;
+    }
+
+    /**
+     * @override
+     * @param {Channel} channel
+     * @param {import("./gridView/gridChild.js").default[]} children
+     * @param {{ before: number, after: number }} insets
+     */
+    getStructuralReservation(channel, children, insets) {
+        const edges =
+            channel === "x"
+                ? /** @type {const} */ (["left", "right"])
+                : /** @type {const} */ (["top", "bottom"]);
+        const reserved = { ...insets };
+        const centerTrack = children.some(
+            (child) => child.view === this.#center
+        );
+        for (const [i, side] of edges.entries()) {
+            const edge = i === 0 ? "before" : "after";
+            const arm = this.visibleChildren.find(
+                (child) => this.#sides.get(child.view) === side
+            );
+            if (!arm) continue;
+            if (centerTrack) {
+                // Keep each arm adjacent to the center. Any extra headroom
+                // belongs outside that arm, rather than in the center's gap.
+                reserved[edge] = 0;
+            } else if (children.includes(arm)) {
+                const dimension = channel === "x" ? "width" : "height";
+                const size = this.constrainTrackSize(
+                    channel,
+                    [arm],
+                    arm.view
+                        .getViewportSize()
+                        .subtractPadding(arm.getViewOverhang())[dimension]
+                );
+                const budget =
+                    getSizeDefMinPx(size) +
+                    this.getChildOverhangAndPadding(arm)[dimension] +
+                    (this.spec.spacing ?? 10);
+                reserved[edge] = Math.max(
+                    0,
+                    this.#getRequiredInset(channel, edge) - budget
+                );
+            }
+        }
+        return reserved;
+    }
+
+    /** @param {Channel} channel @param {"before" | "after"} edge */
+    #getRequiredInset(channel, edge) {
+        return Math.max(
+            0,
+            ...this.visibleChildren
+                .filter((child) => this.alignsChild(child.view, channel))
+                .map((child) => child.view.getAlignment(channel)[edge])
+        );
+    }
+
+    /**
+     * A growing arm can absorb neighboring structural headroom in its existing
+     * flex slot. Give it a minimum instead of reserving the same space twice.
+     * @override
+     * @param {Channel} channel
+     * @param {import("./gridView/gridChild.js").default[]} children
+     * @param {import("./layout/flexLayout.js").SizeDef} size
+     */
+    constrainTrackSize(channel, children, size) {
+        const side =
+            children.length === 1
+                ? this.#sides.get(children[0].view)
+                : undefined;
+        if (!side || !size.grow || getAlignedChannel(side) === channel)
+            return size;
+        const dimension = channel === "x" ? "width" : "height";
+        const edge = side === "left" || side === "top" ? "before" : "after";
+        const minimum = Math.min(
+            size.maxPx ?? Infinity,
+            this.#getRequiredInset(channel, edge) -
+                (this.spec.spacing ?? 10) -
+                this.getChildOverhangAndPadding(children[0])[dimension]
+        );
+        return minimum > getSizeDefMinPx(size)
+            ? { ...size, minPx: minimum }
+            : size;
+    }
+
     /**
      * Side chrome can use the empty corners, up to the neighboring arm's
      * guaranteed footprint. Keep full geometry for the normal arrangement path.
@@ -312,6 +421,9 @@ export default class SurroundView extends GridView {
             );
             if (
                 !neighbor ||
+                neighbor.view.getAlignment(getAlignedChannel(edge))[
+                    side === "top" || side === "left" ? "before" : "after"
+                ] > 0 ||
                 policy?.[edge] === true ||
                 this.#preservesOverhang(child.view, edge) ||
                 // When two axes compete, top/bottom borrow horizontally and
@@ -343,7 +455,7 @@ export default class SurroundView extends GridView {
 
     /**
      * The central plot is the alignment anchor; this view's own bounds include
-     * all side tracks and decorations. Future nested support can reuse this seam.
+     * all side tracks and decorations. Nested surrounds export this interval to their parent.
      * @override
      */
     getTrackPlotGeometry() {
@@ -377,13 +489,30 @@ export default class SurroundView extends GridView {
         for (const [boundary, side] of this.#sides) {
             this.#validateAlignedScale(boundary, getAlignedChannel(side), side);
         }
+        for (const view of this.getDescendants()) {
+            if (!(view instanceof UnitView) || isInChromeSubtree(view))
+                continue;
+            for (const channel of /** @type {const} */ (["x", "y"])) {
+                const axis = view.getAxisResolution(channel);
+                if (axis && this.getDataAncestors().includes(axis.hostView)) {
+                    throw new ViewError(
+                        "Surround does not support axes hoisted from its plots.",
+                        view
+                    );
+                }
+            }
+        }
     }
 
     /** @param {View} root @param {Channel} channel @param {Region} region */
     #validateAlignedScale(root, channel, region) {
-        for (const view of root.getDescendants()) {
+        root.visit((view) => {
+            if (view instanceof SurroundView) {
+                this.#validateAlignedScale(view.#center, channel, region);
+                return VISIT_SKIP;
+            }
             if (!(view instanceof UnitView) || isInChromeSubtree(view)) {
-                continue;
+                return;
             }
             for (const encoded of /** @type {const} */ ([
                 channel,
@@ -415,7 +544,7 @@ export default class SurroundView extends GridView {
                     );
                 }
             }
-        }
+        });
     }
 
     /**
@@ -440,8 +569,8 @@ export default class SurroundView extends GridView {
                 if (!view.isConfiguredVisible() || isInChromeSubtree(view)) {
                     return VISIT_SKIP;
                 }
-                if (view instanceof UnitView) {
-                    const plot = view.coords;
+                if (view instanceof UnitView || view instanceof SurroundView) {
+                    const plot = view.getAlignmentCoords(channel);
                     if (
                         Math.abs(plot[channel] - center[channel]) > tolerance ||
                         Math.abs(plot[dimension] - center[dimension]) >
@@ -452,8 +581,48 @@ export default class SurroundView extends GridView {
                             view
                         );
                     }
+                    if (view instanceof SurroundView) return VISIT_SKIP;
                 }
             });
+        }
+        if (
+            this.children.some(
+                (view) =>
+                    view instanceof GridView &&
+                    view.children.some((child) => child instanceof SurroundView)
+            )
+        ) {
+            const regions = this.visibleChildren.map((child) =>
+                child.view.getLayoutFootprints()
+            );
+            for (let i = 0; i < regions.length; i++) {
+                for (let j = i + 1; j < regions.length; j++) {
+                    for (const one of regions[i]) {
+                        for (const two of regions[j]) {
+                            if (one.chrome && two.chrome) continue;
+                            const a = one.coords;
+                            const b = two.coords;
+                            if (
+                                Math.min(a.x2, b.x2) - Math.max(a.x, b.x) >
+                                    tolerance &&
+                                Math.min(a.y2, b.y2) - Math.max(a.y, b.y) >
+                                    tolerance
+                            ) {
+                                throw annotateSpecError(
+                                    new ViewError(
+                                        `Surround panels "${one.view.name}" and "${two.view.name}" overlap.`,
+                                        two.view
+                                    ),
+                                    two.view.paramRuntime.getSpecLocation(
+                                        two.view.spec,
+                                        []
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -421,6 +421,39 @@ export default class View {
     }
 
     /**
+     * Plotting interval exported to an alignment-aware parent. Structural
+     * insets belong to content; external chrome remains in getOverhang().
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @returns {{ size: import("./layout/flexLayout.js").SizeDef, before: number, after: number }}
+     */
+    getAlignment(channel) {
+        const dimension = channel === "x" ? "width" : "height";
+        return {
+            size: this.getViewportSize().subtractPadding(this.getOverhang())[
+                dimension
+            ],
+            before: 0,
+            after: 0,
+        };
+    }
+
+    /** @param {import("../spec/channel.js").PrimaryPositionalChannel} _channel */
+    getAlignmentCoords(_channel) {
+        return this.coords.shrink(this.getOverhang());
+    }
+
+    /** @returns {{ view: View, coords: import("./layout/rectangle.js").default, chrome: boolean }[]} */
+    getLayoutFootprints() {
+        return [
+            {
+                view: this,
+                coords: this.coords.shrink(this.getOverhang()),
+                chrome: false,
+            },
+        ];
+    }
+
+    /**
      * Returns true if the view has explicit viewport size specified and should be
      * scrollable.
      *

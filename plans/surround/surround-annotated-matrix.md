@@ -1,9 +1,8 @@
 # Nested category distribution in the annotated matrix
 
-Status: acceptance example for the authorized recursive surround increment.
-Implementation is in progress. The existing flat categorical example will be
-migrated in the nested-alignment milestone. See [the nesting design](surround-nesting.md) for
-the implementation contract and milestones.
+Status: implemented and verified. The categorical example now includes the
+nested distribution. See [the nesting design](surround-nesting.md) for the
+implementation contract, completed milestones, and final verification.
 
 ## Required result
 
@@ -20,13 +19,11 @@ quantitative Value scale and legend remain separate. The distribution and
 column totals fit beside each other above the matrix, without stacking their
 headroom reservations.
 
-## Proposed specification
+## Implemented specification
 
-Replace the current `surround.right[0]` with the following nested surround when
-runtime nesting is implemented. Keep the rest of the categorical example,
-including its explicit band domains, matrix bottom axis, and outer collected
-legends. This is a future specification, not an example accepted by the current
-flat-slot runtime guard.
+The example's `surround.right[0]` uses the following nested surround. The rest
+of the example retains explicit band domains, the matrix bottom axis, and
+outer collected legends.
 
 ```json
 {
@@ -177,5 +174,7 @@ reject harmless overlap between composite bounding boxes containing empty space.
 - Verify clear rejection of colliding structural panels, and preserve the flat
   example's categorical axes and existing explicit overhang behavior.
 
-These are future acceptance criteria. Schema validation alone does not establish
-runtime support or successful rendering of the nested specification.
+The headless collector/layout and SVG assertions pass, including local guide
+positions, categorical labels, color identity, proportions, and visibility.
+Browser WebGL/Canvas checks pass; matrix picking and resizing were inspected.
+The separate continuous-x probe confirms local wheel zoom and pan isolation.

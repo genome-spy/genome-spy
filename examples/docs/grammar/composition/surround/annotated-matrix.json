@@ -1,7 +1,7 @@
 {
   "description": [
     "Matrix with aligned summaries and annotations",
-    "Aligns column and row summaries, row metadata, and column labels around a central matrix."
+    "Aligns row and column summaries with a categorical matrix and a nested metadata distribution."
   ],
 
   "data": {
@@ -88,8 +88,8 @@
 
     "right": [
       {
-        "name": "category",
-        "width": 14,
+        "name": "rowMetadata",
+        "spacing": 8,
         "data": {
           "values": [
             { "row": "Alpha", "category": "A" },
@@ -97,17 +97,68 @@
             { "row": "Gamma", "category": "A" }
           ]
         },
-        "mark": "rect",
+        "resolve": { "scale": { "color": "shared" } },
+        "scales": { "color": { "type": "ordinal", "domain": ["A", "B"] } },
         "encoding": {
-          "y": {
-            "field": "row",
-            "type": "nominal",
-            "axis": { "orient": "right", "title": null }
-          },
           "color": {
             "field": "category",
             "type": "nominal",
             "legend": { "title": "Category" }
+          }
+        },
+        "spec": {
+          "name": "category",
+          "width": 14,
+          "mark": "rect",
+          "encoding": {
+            "y": {
+              "field": "row",
+              "type": "nominal",
+              "axis": { "orient": "right", "title": null }
+            }
+          }
+        },
+        "surround": {
+          "top": {
+            "resolve": { "scale": { "color": "shared" } },
+            "views": [
+              {
+                "name": "categoryDistribution",
+                "height": 60,
+                "transform": [
+                  {
+                    "type": "aggregate",
+                    "groupby": ["category"],
+                    "fields": ["row"],
+                    "ops": ["count"],
+                    "as": ["count"]
+                  },
+                  {
+                    "type": "stack",
+                    "field": "count",
+                    "groupby": [],
+                    "sort": { "field": "category", "order": "ascending" },
+                    "offset": "normalize",
+                    "as": ["start", "end"]
+                  }
+                ],
+                "mark": "rect",
+                "encoding": {
+                  "y": {
+                    "field": "start",
+                    "type": "quantitative",
+                    "scale": { "domain": [0, 1], "zoom": false },
+                    "axis": {
+                      "orient": "right",
+                      "title": null,
+                      "format": ".0%",
+                      "values": [0, 0.5, 1]
+                    }
+                  },
+                  "y2": { "field": "end" }
+                }
+              }
+            ]
           }
         }
       }

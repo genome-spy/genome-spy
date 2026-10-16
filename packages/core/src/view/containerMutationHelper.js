@@ -11,6 +11,8 @@ import {
 } from "../scales/viewLevelGuideProps.js";
 import { configureViewsAfterScaleResolution } from "../genomeSpy/viewHierarchyConfig.js";
 import { isChromeView } from "./viewSelectors.js";
+import { isImportSpec } from "./viewSpecGuards.js";
+import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
 
 /**
  * @param {unknown} value
@@ -55,6 +57,7 @@ export default class ContainerMutationHelper {
      *   ) => Promise<Iterable<View> | undefined>,
      *   defaultName?: (index: number, spec: ViewSpec | ImportSpec) => string,
      *   createViewOptions?: import("../types/viewContext.js").CreateViewOptions,
+     *   specValidator?: (spec: ViewSpec) => void,
      *   requestLayout?: boolean
      * }} MutationOptions
      */
@@ -84,12 +87,18 @@ export default class ContainerMutationHelper {
 
         let specInserted = false;
         let viewInserted = false;
+        const preparedSpec = this.options.specValidator
+            ? cloneWithSpecOrigin(childSpec)
+            : childSpec;
+        if (!isImportSpec(preparedSpec)) {
+            this.options.specValidator?.(preparedSpec);
+        }
         const childView = await this.container.context.createOrImportView(
-            childSpec,
+            preparedSpec,
             this.container,
             this.container,
             name,
-            undefined,
+            this.options.specValidator,
             this.options.createViewOptions
         );
 

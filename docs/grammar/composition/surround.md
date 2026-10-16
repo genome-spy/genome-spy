@@ -83,12 +83,35 @@ be suppressed with `axis: null`. Titles, padding, clipping, and legends use thei
 ordinary settings. [Collected legends](index.md#collected-legends) can combine
 independent legends around the complete surround.
 
+## Nested annotations
+
+Side tracks can themselves use `surround`. The parent aligns a nested track's
+central plotting interval, leaving room for its own annotations. In the example
+above, the metadata strip shares the matrix's rows, while its stacked summary
+uses a separate percentage scale and a right-hand axis.
+
+Declare shared data on the nested surround so the strip and summary use the
+same metadata source. To share category colors and a legend, set
+`resolve.scale.color` to `"shared"` on both the nested surround and its top group.
+The example counts metadata categories and normalizes their stacked counts.
+
+Omit the externally aligned size from the nested center: `height` on left/right,
+or `width` on top/bottom. The outer center supplies that plotting length. Nested
+annotations extending along that dimension need fixed or step-based thicknesses.
+The outer center and ordinary perpendicular track thicknesses can still grow.
+
+Nested panels can occupy free corner space beside other regions. The layout
+reserves their maximum outward extent, rather than adding the heights or widths
+of panels that fit beside each other. Overlapping occupied panels cause an error
+naming the conflicting views; adjust spacing or composition to separate them.
+Suppressing chrome overhang does not remove space occupied by nested panels.
+
 ## Supported plots
 
-The center and tracks currently accept unit plots, layers, multiscale layers,
-and imports resolving to these. Nested concats, facets, and surrounds are not
-yet supported in these slots. Scrollable viewports, surround-level axes, and
-axes shared across regions are also unsupported. Input-owning selections and
+The center accepts unit plots, layers, multiscale layers, and imports resolving
+to these. Side tracks also accept nested surrounds. Nested centers, authored
+concats, and facets remain unsupported. Scrollable viewports, surround-level
+axes, and axes shared across regions are also unsupported. Input-owning selections and
 rulers belong on the individual plots; ordinary outer parameters remain valid
 shared values and `push: "outer"` targets.
 

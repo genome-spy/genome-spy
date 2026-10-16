@@ -43,6 +43,10 @@ export interface ViewOptions {
     >;
     /** Keeps positional scale/axis ownership and lookup inside a side scope. */
     resolutionBoundaryChannels?: readonly PrimaryPositionalChannel[];
+    /** Aligns exported plotting intervals within an implicit surround concat. */
+    alignedChannel?: PrimaryPositionalChannel;
+    /** Imposes an outer plotting interval on a nested surround's center. */
+    imposedAlignmentChannel?: PrimaryPositionalChannel;
     /** Collapses generated concat scopes when all their tracks are hidden. */
     collapseWhenEmpty?: boolean;
     /** Validates imported children of an implicit surround side concat. */

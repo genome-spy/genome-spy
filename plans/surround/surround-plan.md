@@ -1,17 +1,16 @@
 # Surround composition
 
-Status: flat implementation complete and verified. Recursive implementation is
-authorized and in progress. The revised geometry contract has been reviewed;
-the one-container side-resolution milestone is implemented and verified.
+Status: flat and recursive side implementations complete and verified. The
+one-container resolution boundary and fixed-inset nested alignment have passed
+independent design and implementation reviews.
 
 ## Current revision
 
-The user requested a design-only reassessment after the flat implementation and
-its small cleanup. The worked nested example, proposed one-container resolution
-boundary, alignment/footprint contract, scope limits, and next milestones are in
-[the nesting design](surround-nesting.md). That document governs proposed future
-work. The completed flat contract and verification below describe the baseline;
-they do not imply that nested layouts already work.
+The worked nested example, one-container resolution boundary,
+alignment/footprint contract, scope limits, and completed recursive milestones
+are in [the nesting design](surround-nesting.md). The flat contract and
+verification below record the earlier baseline; the nesting design describes
+the implemented extension.
 
 The primary recursive acceptance case extends the categorical
 `annotated-matrix.json` with a stacked A/B distribution above its right metadata
@@ -29,9 +28,10 @@ add another 67 net SLOC. Future design changes have no promised net SLOC saving.
 ## Goal and evidence
 
 Replace the wrapping-concat ceremony in the UpSet mutation example and public
-clustered heatmap with a center and four optional groups of aligned tracks. This
-first version supports a single plotting rectangle per authored child. It must
-leave the schema and internal alignment contract suitable for later nesting.
+clustered heatmap with a center and four optional groups of aligned tracks. The
+flat baseline supports a single plotting rectangle per authored child. The
+recursive increment exports nested side centers through an alignment interval
+while retaining the same public schema.
 
 - `examples/docs/examples/generic/upsetr-mutations.json` needs a layered center,
   layered top intersection bars, layered left set bars, shared outer transforms

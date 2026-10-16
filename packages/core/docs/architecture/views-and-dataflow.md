@@ -27,6 +27,16 @@ Layout sizing uses `View.getSize()` and `getViewportSize()` with a cached
 - Size invalidation clears the view's size cache and those of its layout
   ancestors.
 
+Surrounds and their implicit side concats align exported plotting intervals.
+`getAlignment(channel)` measures an anchor `SizeDef` and fixed before/after
+structural insets; `getAlignmentCoords(channel)` exposes the arranged interval.
+Nested panels and internal spacing are content, while `getOverhang()` remains
+external chrome. Ordinary concat sizing still uses full child footprints.
+Guide spans derive from allocated rectangles and measured insets, so guide
+arrangement does not depend on whether child content has already been arranged.
+Nested bounds may overlap in empty corners; derived plot/guide footprints
+support collision validation and input routing without a retained scene graph.
+
 `View.arrange()` performs a full depth-first traversal. Views update their
 layout-owned state and emit ordered placements into a private recorder. A
 successful traversal produces a completed `LayoutResult`, which a rendering
