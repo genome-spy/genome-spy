@@ -352,7 +352,7 @@ selections accept at most one tuple. A malformed, missing, or ambiguous key
 rejects the entire write without changing membership.
 
 Nonempty writes require ready loaded transformed records. They do not fetch
-records, read retained source rows, or require records to be inside the viewport.
+records or require records to be inside the viewport.
 The unit view used to obtain the handle supplies the data, including when the
 selection declaration lives in an ancestor or writes through `push: "outer"`.
 Resolve container-owned selections through an appropriate source unit view.

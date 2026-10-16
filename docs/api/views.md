@@ -93,239 +93,50 @@ if (tracks.isAlive()) {
 }
 ```
 
-## Describing and reading a track
+## Reading loaded records
 
-Load the optional query module when an application needs track metadata or
-bounded row inspection. Create it with the embedded instance's view API:
-
-```js
-const { createViewQuery } = await import("@genome-spy/core/view-query");
-const query = createViewQuery(api.views);
-```
-
-Core and the query module must come from the same installed Core module instance.
-This works with the default, minimal and full module entry points. Mixing a
-standalone `@genome-spy/core/browser` bundle with a separately bundled query
-module is not supported. Core does not load or include the query module unless
-the application imports it.
-
-### Choosing a hook
-
-These hooks let applications and agents inspect the records behind a plot.
-The host chooses thresholds, computes summaries, and composes any higher-level
-agent tools using the returned data and existing visualization controls.
-
-| Hook                                                               | Use                                                                                      |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `createViewQuery(api.views)`                                       | Load optional data inspection for this embed.                                            |
-| `query.describe(view)`                                             | Read track encoding, readiness, revision and visibility/opacity metadata.                |
-| `query.describeSource(view)`                                       | Check source loading, readiness and known publication bounds.                            |
-| `query.readData(view, {limit})`                                    | Preview up to 1,000 loaded transformed rows.                                             |
-| `data.retainForInspection` + `query.readSourceData(view, {limit})` | Read retained loaded source rows before display transforms hide or reshape them.         |
-| `query.assessQuery(view, scope)`                                   | Check whether a viewport/interval read is ready, pending or unsupported.                 |
-| `query.queryData(view, options)`                                   | Read loaded records in a captured viewport/brush scope.                                  |
-| `view.params.getSelection(name).setValue(keys)`                    | Set point selection membership by record keys; style it with conditional encodings.      |
-| `view.getScaleResolution(channel)`                                 | Access a resolved scale, including unnamed scales, for domain inspection and navigation. |
-
-For example, a host can read records inside a brush, apply its own thresholds,
-and set selection membership for all qualifying records. A source-data inspector
-can use retained source rows to include records omitted by display-only category
-filters. Neither result proves that the backing dataset is complete.
-
-### Missing values and explicit limits
-
-`undefined` marks an absent JavaScript lookup, such as a view with no scale for
-the requested channel. The new metadata records use `null` for explicitly absent
-or unknown values: no title, collector revision or primary source, unavailable
-loading status, or an opacity that cannot yet be evaluated to a finite number.
-These cases are distinct from readiness (`false`) and a valid empty result (`rows: []`).
-
-`limit: null` is an explicit request for every output row in `queryData` or every
-retained row in `readSourceData`. It is not an omitted/default limit. `readData`
-always requires a numeric limit.
-Raw row reads otherwise preserve source values.
-
-The generated reference includes `null` and `undefined` where the declared API
-allows them. Strict null checking keeps those cases visible; it does not add
-nullable values to methods that always return a value or throw.
-
-### Reading transformed rows
-
-`query.describe(address)` returns detached title, description, authored and inherited encoding,
-data readiness and collector `dataRevision` metadata (null without a collector). Encoding excludes mark defaults and runtime
-adjustments. `dataReady` reports unit-view data readiness for the current viewport;
-it is false for containers. A unit view also supports bounded reads of its loaded,
-transformed rows:
+`ViewHandle.readData({limit})` copies the currently loaded, transformed records
+from a unit view. This lets an application inspect the results of Core's dataflow
+without retaining another copy of the source or repeating its transforms.
+Existing scale, parameter, and dataset APIs control the visualization; this
+method supplies records coming out of it.
 
 ```js
-const track = api.views.get({ scope: [], view: "track" });
-console.log(query.describe(track));
-const result = query.readData(track, { limit: 100 });
-console.log(result.rows, result.truncated, result.rowsExamined);
+const track = api.views.get({ scope: [], view: "observations" });
+await api.awaitVisibleLazyData(signal);
+const result = track.readData({ limit: 10000 });
+if (result.truncated) throw new Error("Choose a larger limit before analysis.");
+
+// This application knows that x contains numeric point coordinates.
+const [start, end] = api.getScaleResolutionByName("position").getDomain();
+const inRange = result.rows.filter((row) => row.x >= start && row.x <= end);
 ```
 
-Query methods accept a handle from this embed, a scoped selector, or
-`"root"`. A selector resolves the current view on each call; a handle continues
-to refer to its original view and becomes stale when that view is removed.
+The response contains only `rows` and `truncated`. `limit` must be a nonnegative
+safe integer; `0` checks whether any rows exist. A record limit does not bound the
+size of nested values. Reads preserve collector order, include derived fields,
+and omit internal picking identifiers. Returned values are detached from Core's
+data; non-cloneable values and shared memory are rejected.
 
-The limit must be an integer from 0 to 1000. A read examines at most `limit + 1`
-rows, including lookahead for truncation. Rows follow the current data collector
-order and include derived fields, excluding Core picking identifiers. Nested
-values are detached using structured cloning; non-cloneable values and
-shared-memory buffers throw. This also applies to buffers nested in maps, sets,
-or typed arrays. Metadata rejects shared memory as well. Source getters run during
-cloning; reads expect trusted data. The row limit does not bound an individual
-row's byte size or the time spent cloning it.
+Readback does not fetch data, apply viewport or brush bounds, recover rows removed
+by transforms, or prove that every returned record produces visible pixels.
+Applications interpret their own fields and encodings and use existing named
+scales and interval selection values to determine a region. Interval/range marks
+require an application-specific overlap rule. Faceted data is returned in
+collector order across its batches.
 
-The returned scope is `loaded-transformed`. Navigation does not filter eager
-loaded rows by the viewport. A non-truncated result means all currently loaded
-transformed rows were returned; it does not establish full source coverage for
-lazy data. Reads reject unready data, containers, stale handles, and multiple
-facet batches, including empty batches. Readiness concerns data, not completion
-of a rendered frame.
-Query operations reject a finalized embed with `staleEmbed` and a removed
-handle with `staleHandle`. A successful read has no separate `ready` flag.
-Bounded reads serve inspection and small examples; repeated reads are not an
-API for computing statistics over a large collection.
+Reads throw for containers, unready data, removed views, or finalized embeds.
+`awaitVisibleLazyData()` waits for the current visible lazy requests; it does not
+load off-screen data or guarantee complete regional coverage. An application
+must verify coverage for an analysis requiring every base or observation.
+For original source records, retain or retrieve them in the application.
 
-`describe()` also reports host-configured visibility, ancestor visibility and
-inherited view opacity (`null` if not yet finite). These describe view state,
-not pixel visibility, clipping, mark opacity or whether a particular row is drawn.
-
-`query.describeSource(address)` reports the nearest primary source independently
-of retention: readiness for the current viewport, loading status, retained revision
-and coverage. `complete-source` means the declared eager source loaded successfully;
-failed URL requests or parsing report `unknown` coverage. It does not undo parsing
-or view filters. `published-domain` gives a lazy source's last published linearized
-bounds and channel, not proof of full-resolution records.
-Other or unpublished sources report `unknown`. Side-input coverage is not included.
-Scoped queries capture this metadata in `scope.primarySource`; their overall
-`sourceCoverage` remains `unknown` for loaded transformed results.
-
-### Reading source rows before display filters
-
-Set `data.retainForInspection: true` on the data owner to retain its loaded rows
-before view transforms. `query.readSourceData()` reads that source from the owner
-or an inheriting descendant, including rows omitted by display filters:
-
-```js
-const source = query.readSourceData(track, { limit: 100 });
-console.log(source.rows, source.dataRevision, source.truncated);
-```
-
-Use an explicit nonnegative safe-integer limit, or `null` for all retained rows.
-The returned scope is `loaded-source`; reads neither navigate nor fetch data.
-The result includes source metadata. After navigation it may describe a previous
-publication whose `ready` is false for the new viewport; inspect its coverage
-before interpreting those rows.
-An overriding data declaration requires its own retention setting. Retention
-uses additional memory proportional to loaded data and is disabled by default.
-Unready sources, stale handles, non-cloneable values and shared memory reject.
-Returned rows are detached and exclude Core picking identifiers. A non-truncated
-read includes all retained rows, not necessarily the whole lazy backing file.
-
-## Querying the current slice
-
-`query.queryData()` reads loaded transformed records in the current data-space
-viewport, optionally intersected with an interval selection. Scope filtering
-precedes the returned-row limit. Navigate or set an interval selection, wait for
-data readiness, then query the relevant axes:
-
-```js
-const result = await query.queryData(track, {
-  channels: ["x"],
-  limit: 10,
-  fields: ["id", "value"],
-  signal: controller.signal,
-});
-console.log(result.rows, result.rowsMatched, result.scope);
-```
-
-Before offering a query control, assess its exact axes and optional selection:
-
-```js
-const scope = { channels: ["y"], selection: "region" };
-const assessment = query.assessQuery(track, scope);
-if (assessment.status === "ready") {
-  const result = await query.queryData(track, { ...scope, limit: 10 });
-}
-```
-
-Assessment shares query preparation without scanning rows or triggering loading.
-`pending` means data is not ready and support is not yet established; `unsupported`
-includes a reason such as `multiple-facets` or `unsupported-position`. Support is
-specific to this scope, including axes added by a selection. Invalid requests,
-stale handles and unexpected errors throw normally. Assessment does not validate
-returned fields or guarantee row cloneability. Execution checks again because
-chart state may change.
-
-A numeric `limit` is a nonnegative safe integer bounding returned rows. Use
-`limit: null` to return every matching loaded record. Complete results consume
-memory proportional to their size, so callers choose their read budgets.
-`rowsExamined` counts all visited loaded rows; `rowsMatched` counts all matches;
-`truncated` indicates that some matches were omitted from `rows`. Setting
-`limit: 0` counts matches without returning records. No option fetches more data.
-
-Each requested axis uses its captured numeric or locus scale domain. Points use
-half-open containment; ranged positions overlap the half-open slice. Equal
-endpoints use point containment, including the scalar axis of a rule. Locus values
-are already linearized by Core, including encoding offsets. Optional
-`selection: "region"` also requires each row to match the named interval selection
-in the queried view's scope, using Core's shared selection predicate (half-open
-point containment and the mark's range hit-test policy). A ranged
-row can overlap the viewport and selection in different places; the two regions
-do not need to overlap each other.
-Active selection axes must also have continuous numeric or locus scales.
-A partially or wholly cleared selection matches no rows. Selection axes
-not listed in `channels` still constrain the result. This is a data-space query;
-it does not account for pixel occlusion, clipping or mark size.
-
-The result records domains, selection state, collector revision and the
-`loaded-transformed` data scope. Source coverage remains `unknown`: readiness for
-the viewport does not prove full source coverage. The query rejects unready data,
-multiple facet batches and positions expressed with dynamic expressions or
-conditional encodings. Ordinary field and numeric datum positions use Core's
-normalized mark accessors; categorical and pixel-valued positions are unsupported.
-
-Scanning yields cooperatively and rejects cancellation, removed views, data
-publications, readiness changes or changed scope. Individual cloning work is
-synchronous; the API does not promise hard real-time execution. It never reports
-a partial scan as an exact answer.
-
-The host applies analysis explicitly. For a small dataset, it can request all
-matching rows, filter them in ordinary JavaScript, and set a point selection:
-
-```js
-const result = await query.queryData(track, {
-  channels: ["x", "y"],
-  fields: ["id", "y"],
-  limit: null,
-});
-const keys = result.rows
-  .filter((row) => Number(row.y) >= 2)
-  .map((row) => [String(row.id)]);
-const selection = track.params.getSelection("chosen");
-if (selection.type === "point") selection.setValue(keys);
-```
-
-This requires `encoding.key: {field: "id"}` on the source unit view. See
-[point selection writes](runtime-state.md#setting-point-selections) for key and
-lifecycle rules, and the range and record-selection pages in
-[embed examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-for complete host-side threshold and summary controllers.
-
-## Accessing a view's scales
-
-`track.getScaleResolution(channel)` returns the view's resolved scale, including
-unnamed scales, or `undefined` if absent. It accepts scale-backed encoding
-channels such as `x`, `y`, `color` and `size`; secondary channels such as `x2`
-resolve the primary scale. Invalid channels, including the internal `sample`
-channel, throw. This accessor stays on the handle and does not require the query
-module. It rejects removed handles and finalized embeds. Check `isZoomable()`
-before using a scale for navigation. This is the same
-[scale API](runtime-state.md#named-scales) used for named scales. Its locus `zoomTo()`
-input has an inclusive upper endpoint; `getDomain()` reports the internal
-half-open domain. For example, `zoomTo([100, 299])` displays `[100, 300)`.
+Analysis, thresholding, asynchronous cancellation, and result presentation stay
+in application code. Existing dataset APIs send analysis results back into a
+track; [keyed point selection](runtime-state.md#setting-point-selections) can set
+native membership and drive conditional encodings.
+The [embedding examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+demonstrate transformed readback, region summaries, and selection writes.
 
 ## Marks and scoped interaction
 

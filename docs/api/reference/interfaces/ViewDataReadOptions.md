@@ -2,10 +2,12 @@
 
 # Interface: ViewDataReadOptions
 
+Bounds the number of returned records, not the size of nested values.
+
 ## Properties
 
 ### limit
 
 > **limit**: `number`
 
-Maximum returned rows, from 0 to 1000. Examines at most limit + 1 rows.
+Nonnegative safe integer. Zero only checks whether any records exist.

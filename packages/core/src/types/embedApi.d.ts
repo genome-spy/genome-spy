@@ -621,13 +621,13 @@ export interface DatasetApi {
  */
 export interface ViewHandle {
     /**
-     * Returns the resolved scale, including unnamed scales, or undefined if absent.
-     * Secondary channels such as x2 use their primary channel's scale.
-     * Throws for invalid channels, removed views, or finalized embeds.
+     * Copies loaded transformed records from this unit view, in collector order.
+     * Does not fetch data, apply viewport/brush filtering, or return source rows
+     * removed by transforms. Throws while data is unready or for container,
+     * removed, or finalized views. Returned values are detached and omit picking
+     * identifiers; non-cloneable values and shared memory are rejected.
      */
-    getScaleResolution: (
-        channel: import("../spec/channel.js").ChannelWithScale
-    ) => ScaleResolutionApi | undefined;
+    readData: (options: ViewDataReadOptions) => ViewDataReadResult;
 
     /**
      * Runtime-stable id for this handle.
@@ -677,6 +677,19 @@ export interface ViewHandle {
 
     /** Mark interaction and picking scoped to this view's subtree. */
     readonly marks: MarksApi;
+}
+
+/** Bounds the number of returned records, not the size of nested values. */
+export interface ViewDataReadOptions {
+    /** Nonnegative safe integer. Zero only checks whether any records exist. */
+    limit: number;
+}
+
+/** Detached records from the currently loaded transformed data publication. */
+export interface ViewDataReadResult {
+    rows: Record<string, unknown>[];
+    /** More loaded records exist beyond the returned rows. */
+    truncated: boolean;
 }
 
 /**

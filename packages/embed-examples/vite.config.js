@@ -37,7 +37,7 @@ export default defineConfig({
                 "selectionForm/index": "selectionForm/index.html",
                 "regionSummary/index": "regionSummary/index.html",
                 "recordSelection/index": "recordSelection/index.html",
-                "sourceData/index": "sourceData/index.html",
+                "transformedData/index": "transformedData/index.html",
             },
         },
     },

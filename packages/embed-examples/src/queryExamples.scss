@@ -31,8 +31,7 @@
     width: 7rem;
 }
 
-.query-results,
-.query-about {
+.query-results {
     min-width: 0;
     margin-bottom: 1.5rem;
 }
@@ -51,28 +50,10 @@
     padding: 0.4rem;
 }
 
-.query-results h2,
-.query-about h2 {
+.query-results h2 {
     margin-top: 0;
 }
 
-.track-info {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: 0.4rem 1rem;
-    font-size: 0.9rem;
-}
-
-.track-info dt {
-    font-weight: bold;
-}
-
-.track-info dd {
-    margin: 0;
-    overflow-wrap: anywhere;
-}
-
-.hint,
 .provenance {
     color: var(--muted-text);
     font-size: 0.9rem;
@@ -93,10 +74,6 @@ button:disabled {
 
 @media (max-width: 780px) {
     .query-workspace {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .track-info {
         grid-template-columns: minmax(0, 1fr);
     }
 }

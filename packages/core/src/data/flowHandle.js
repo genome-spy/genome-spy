@@ -2,7 +2,6 @@
  * @typedef {object} FlowHandle
  * @prop {import("./sources/dataSource.js").default} [dataSource]
  * @prop {import("./collector.js").default} [collector]
- * @prop {import("./collector.js").default} [sourceCollector]
  * @prop {Set<import("./collector.js").default>} [auxiliaryCollectors]
  * @prop {import("./flowNode.js").default} [node]
  */

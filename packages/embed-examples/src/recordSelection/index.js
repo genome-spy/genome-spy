@@ -2,10 +2,8 @@ import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
 import "@genome-spy/core/rendering/canvas.js";
 import "@genome-spy/core/rendering/svg.js";
-import { createViewQuery } from "@genome-spy/core/view-query";
 import { html, render } from "lit";
-import { dataTable, formatValue, renderTrackInfo } from "../queryExamples.js";
-import { datasetA, datasetB } from "./data.js";
+import { dataTable, formatValue } from "../queryExamples.js";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
@@ -15,8 +13,7 @@ const spec = {
     width: "container",
     height: "container",
     padding: 8,
-    datasets: { records: datasetA },
-    data: { name: "records" },
+    data: { url: new URL("./data.json", import.meta.url).href },
     params: [
         { name: "chosen", select: "point" },
         { name: "region", select: { type: "interval", encodings: ["x", "y"] } },
@@ -36,13 +33,13 @@ const spec = {
             field: "x",
             type: "quantitative",
             title: "X value",
-            scale: { domain: [0, 3], zoom: true },
+            scale: { name: "x", domain: [0, 3], zoom: true },
         },
         y: {
             field: "y",
             type: "quantitative",
             title: "Y value",
-            scale: { domain: [0, 7], zoom: true },
+            scale: { name: "y", domain: [0, 7], zoom: true },
         },
         color: {
             field: "group",
@@ -62,10 +59,15 @@ const renderer =
 export const api = await embed(document.getElementById("plot"), spec, {
     renderer,
 });
-const query = createViewQuery(api.views);
 const track = api.views.get({ scope: [], view: "records" });
-const scales = [track.getScaleResolution("x"), track.getScaleResolution("y")];
-const brush = track.params.getSelection("region");
+const scales = [
+    api.getScaleResolutionByName("x"),
+    api.getScaleResolutionByName("y"),
+];
+const region = track.params.getSelection("region");
+if (region.type !== "interval")
+    throw new Error("Expected an interval selection.");
+const brush = region;
 const selection = track.params.getSelection("chosen");
 if (selection.type !== "point") throw new Error("Expected a point selection.");
 const chosen = selection;
@@ -81,22 +83,10 @@ const minimumYInput = /** @type {HTMLInputElement} */ (
 const scopeControl = /** @type {HTMLSelectElement} */ (
     document.getElementById("scope")
 );
-const dataset = /** @type {HTMLSelectElement} */ (
-    document.getElementById("dataset")
-);
 const find = /** @type {HTMLButtonElement} */ (document.getElementById("find"));
 const status = document.getElementById("status");
 const results = document.getElementById("results");
-const info = document.getElementById("track-info");
 let controller = new AbortController();
-
-/** @returns {import("@genome-spy/core/view-query").ViewQueryScopeOptions} */
-function getScope() {
-    return {
-        channels: ["x", "y"],
-        ...(scopeControl.value === "brush" ? { selection: "region" } : {}),
-    };
-}
 
 /** Show the same membership used by conditional encodings, including clicks. */
 function showSelection() {
@@ -127,12 +117,9 @@ function showSelection() {
 /** Cancel a previous read when its controls or captured scope change. */
 function invalidate() {
     controller.abort();
-    const scope = query.assessQuery(track, getScope());
-    find.disabled = !form.checkValidity() || scope.status !== "ready";
+    find.disabled = !form.checkValidity();
     status.textContent =
-        scope.status !== "ready"
-            ? scope.status + ": " + scope.reason
-            : "Scope or controls changed. Apply thresholds to update the selection.";
+        "Scope or controls changed. Apply thresholds to update the selection.";
 }
 
 /** The host owns the thresholds; Core reads records and sets membership. */
@@ -144,19 +131,35 @@ async function highlightQualifying() {
     const minimumY = minimumYInput.valueAsNumber;
     status.textContent = "Reading the captured region…";
     try {
-        const result = await query.queryData(track, {
-            ...getScope(),
-            fields: ["id", "group", "x", "y"],
-            limit: null,
-            signal,
-        });
+        await api.awaitVisibleLazyData(signal);
         signal.throwIfAborted();
-        const qualifying = result.rows.filter(
+        const result = track.readData({ limit: 10000 });
+        if (result.truncated)
+            throw new Error(
+                "Increase the read limit before selecting all matches."
+            );
+        const domains = scales.map((scale) => scale.getDomain());
+        const intervals = brush.getValue().intervals;
+        const rows = result.rows.filter((row) =>
+            /** @type {("x" | "y")[]} */ (["x", "y"]).every((field, i) => {
+                const value = Number(row[field]);
+                const domain = domains[i];
+                const interval = intervals[field];
+                return (
+                    value >= domain[0] &&
+                    value <= domain[1] &&
+                    (scopeControl.value !== "brush" ||
+                        (interval &&
+                            value >= interval[0] &&
+                            value <= interval[1]))
+                );
+            })
+        );
+        const qualifying = rows.filter(
             (row) => Number(row.x) >= minimumX && Number(row.y) >= minimumY
         );
         chosen.setValue(qualifying.map((row) => [String(row.id)]));
-        status.textContent = `${qualifying.length} of ${result.rowsMatched} records qualify in the captured region. Viewport x: ${result.scope.domains.x.map(formatValue).join("–")}; y: ${result.scope.domains.y.map(formatValue).join("–")}.${result.scope.selection ? " Also constrained by the brush." : ""}`;
-        renderTrackInfo(query, track, info);
+        status.textContent = `${qualifying.length} of ${rows.length} records qualify. Viewport x: ${domains[0].map(formatValue).join("–")}; y: ${domains[1].map(formatValue).join("–")}.`;
     } catch (error) {
         if (signal.aborted) return;
         status.textContent = String(error);
@@ -171,15 +174,6 @@ form.addEventListener("submit", (event) => {
 minimumXInput.addEventListener("input", invalidate);
 minimumYInput.addEventListener("input", invalidate);
 scopeControl.addEventListener("change", invalidate);
-dataset.addEventListener("change", () => {
-    controller.abort();
-    // Membership refers to the current publication. The host decides when to
-    // clear or reapply it after replacing data.
-    chosen.clear();
-    api.datasets.set("records", dataset.value === "A" ? datasetA : datasetB);
-    invalidate();
-    renderTrackInfo(query, track, info);
-});
 document
     .getElementById("clear-brush")
     .addEventListener("click", () => brush.clear());
@@ -203,10 +197,8 @@ document.getElementById("reset-example").addEventListener("click", async () => {
     form.reset();
     brush.clear();
     chosen.clear();
-    api.datasets.set("records", datasetA);
     await Promise.all([scales[0].zoomTo([0, 3]), scales[1].zoomTo([0, 7])]);
     invalidate();
-    renderTrackInfo(query, track, info);
 });
 scales.forEach((scale) => scale.addEventListener("domain", invalidate));
 const stopBrush = brush.subscribe(invalidate, { delivery: "commit" });
@@ -224,5 +216,4 @@ window.addEventListener("pagehide", dispose, { once: true });
 invalidate();
 status.textContent =
     "Ready. Apply thresholds to highlight every qualifying record.";
-renderTrackInfo(query, track, info);
 showSelection();

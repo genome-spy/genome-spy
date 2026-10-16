@@ -59,7 +59,6 @@ export function createViewContext(options) {
     /** @type {(keyof ViewContext)[]} */
     const methodNames = [
         "requestLayoutReflow",
-        "computeLayout",
         "renderImmediately",
         "updateTooltip",
         "getNamedDataFromProvider",

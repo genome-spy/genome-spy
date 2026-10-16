@@ -1,217 +1,34 @@
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import UnitView from "./unitView.js";
-import InlineSource from "../data/sources/inlineSource.js";
-import NamedSource from "../data/sources/namedSource.js";
-import UrlSource from "../data/sources/urlSource.js";
-import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import { isDataReady } from "../data/dataReadiness.js";
-import { buildReadinessRequest } from "./dataReadiness.js";
 
 /**
- * Detached metadata with authored and inherited encoding, not runtime mark adjustments.
+ * Copies currently loaded transformed rows without filtering by viewport.
+ * The one lookahead row establishes truncation without cloning excess rows.
  * @param {import("./view.js").default} view
- * @returns {import("../types/viewQueryApi.js").ViewDescription}
- */
-export function describeView(view) {
-    const collector =
-        view instanceof UnitView ? view.getCollector() : undefined;
-
-    const opacity = view.getEffectiveOpacity();
-    return cloneDetached({
-        title: view.getTitleText() ?? null,
-        description: view.spec.description ?? null,
-        encoding: view.getEncoding(),
-        visibility: {
-            configured: view.isConfiguredVisible(),
-            ancestorsVisible: view.isVisible(),
-            opacity: Number.isFinite(opacity) ? opacity : null,
-        },
-        source: describeSourceData(view),
-        dataRevision: collector?.dataRevision ?? null,
-        dataReady: Boolean(
-            collector &&
-            isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
-        ),
-    });
-}
-
-/**
- * Reads at most limit + 1 rows; the extra row establishes truncation.
- * This does not filter by viewport or claim complete source coverage.
- * @param {import("./view.js").default} view
- * @param {import("../types/viewQueryApi.js").ViewDataReadOptions} options
- * @returns {import("../types/viewQueryApi.js").ViewDataReadResult}
+ * @param {import("../types/embedApi.js").ViewDataReadOptions} options
+ * @returns {import("../types/embedApi.js").ViewDataReadResult}
  */
 export function readViewData(view, options) {
-    if (!options || typeof options !== "object" || Array.isArray(options)) {
-        throw new Error("Data read options with a limit are required.");
+    if (!options || !Number.isSafeInteger(options.limit) || options.limit < 0) {
+        throw new Error("Data reads require a nonnegative safe integer limit.");
     }
-
-    const { limit } = options;
-    if (!Number.isInteger(limit) || limit < 0 || limit > 1000) {
-        throw new Error("Data read limit must be an integer from 0 to 1000.");
-    }
-
-    const collector = getReadyCollector(view);
-
-    const rows = [];
-    let rowsExamined = 0;
-    let truncated = false;
-
-    for (const row of collector.getData()) {
-        rowsExamined++;
-        if (rows.length === limit) {
-            truncated = true;
-            break;
-        }
-        const datum = cloneDetached(row);
-        // Match public mark-hit data: picking identifiers belong to Core.
-        delete datum[UNIQUE_ID_KEY];
-        rows.push(datum);
-    }
-
-    return {
-        rows,
-        rowsExamined,
-        truncated,
-        scope: "loaded-transformed",
-    };
-}
-
-/**
- * Reads the nearest authored source retained before view transforms.
- * @param {import("./view.js").default} view
- * @param {import("../types/viewQueryApi.js").ViewSourceDataReadOptions} options
- * @returns {import("../types/viewQueryApi.js").ViewSourceDataReadResult}
- */
-export function readSourceData(view, options) {
-    if (!options || typeof options !== "object" || Array.isArray(options)) {
-        throw new Error("Source read options with a limit are required.");
-    }
-    const limit = options.limit;
-    if (limit !== null && (!Number.isSafeInteger(limit) || limit < 0)) {
-        throw new Error(
-            "Source read limit must be a nonnegative safe integer or null."
-        );
-    }
-
-    const owner = sourceOwner(view);
-    if (!owner?.spec.data.retainForInspection) {
-        throw new Error(
-            "Source inspection requires data.retainForInspection: true."
-        );
-    }
-    const collector = owner.flowHandle?.sourceCollector;
-    if (!collector || !isDataReady(collector)) {
-        throw new QuerySupportError(
-            "data-not-ready",
-            "Source data is not ready."
-        );
-    }
-
-    const rows = [];
-    let rowsExamined = 0;
-    let truncated = false;
-    for (const row of collector.getData()) {
-        rowsExamined++;
-        if (limit !== null && rows.length === limit) {
-            truncated = true;
-            break;
-        }
-        const datum = cloneDetached(row);
-        delete datum[UNIQUE_ID_KEY];
-        rows.push(datum);
-    }
-    return {
-        rows,
-        rowsExamined,
-        truncated,
-        dataRevision: collector.dataRevision,
-        scope: "loaded-source",
-        source: describeSourceData(view),
-    };
-}
-
-/**
- * Describes publication and source coverage without fetching or retaining data.
- * Published lazy bounds do not certify raw/full-resolution records.
- * @param {import("./view.js").default} view
- * @returns {import("../types/viewQueryApi.js").ViewSourceDescription | null}
- */
-export function describeSourceData(view) {
-    const owner = sourceOwner(view);
-    if (!owner) return null;
-    const collector = owner.flowHandle?.sourceCollector;
-    const source = owner.flowHandle?.dataSource;
-    const request = buildReadinessRequest(view, ["x", "y"]);
-    const ready = Boolean(source && isDataReady(source, request));
-    const status = source
-        ? source.view.context.dataFlow.loadingStatusRegistry.getSource(source)
-              ?.status
-        : undefined;
-    const completeSource =
-        ready &&
-        (source instanceof InlineSource ||
-            source instanceof NamedSource ||
-            (source instanceof UrlSource && status === "complete"));
-    const domain =
-        source instanceof SingleAxisLazySource
-            ? source.getLoadedDomain()
-            : undefined;
-    return {
-        retentionEnabled: Boolean(owner.spec.data.retainForInspection),
-        dataRevision: collector?.dataRevision ?? null,
-        ready,
-        loadingStatus: status ?? null,
-        coverage: completeSource
-            ? { type: "complete-source" }
-            : source instanceof SingleAxisLazySource && domain
-              ? {
-                    type: "published-domain",
-                    channel: source.channel,
-                    domain: Array.from(domain),
-                }
-              : { type: "unknown" },
-    };
-}
-
-/** @param {import("./view.js").default} view */
-function sourceOwner(view) {
-    let owner = view;
-    while (owner && !owner.spec.data) owner = owner.dataParent;
-    return owner;
-}
-
-/**
- * Shared readiness and facet contract for previews and scoped queries.
- * @param {import("./view.js").default} view
- */
-export function getReadyCollector(view) {
     if (!(view instanceof UnitView)) {
-        throw new QuerySupportError(
-            "non-unit",
-            "Data reads require a unit view."
-        );
+        throw new Error("Data reads require a unit view.");
     }
-
     const collector = view.getCollector();
-    if (
-        !collector ||
-        !isDataReady(collector, buildReadinessRequest(view, ["x", "y"]))
-    ) {
-        throw new QuerySupportError(
-            "data-not-ready",
-            "View data is not ready."
-        );
-    }
-    if (collector.facetBatches.size > 1) {
-        throw new QuerySupportError(
-            "multiple-facets",
-            "Faceted data reads are not supported."
-        );
+    if (!collector || !isDataReady(collector)) {
+        throw new Error("View data is not ready.");
     }
 
-    return collector;
+    const rows = [];
+    for (const row of collector.getData()) {
+        if (rows.length === options.limit) return { rows, truncated: true };
+        const copy = cloneDetached(row);
+        delete copy[UNIQUE_ID_KEY];
+        rows.push(copy);
+    }
+    return { rows, truncated: false };
 }
 
 /**
@@ -221,7 +38,7 @@ export function getReadyCollector(view) {
  * @param {T} value
  * @returns {T}
  */
-export function cloneDetached(value) {
+function cloneDetached(value) {
     const clone = structuredClone(value);
     /** @type {unknown[]} */
     const pending = [clone];
@@ -266,15 +83,4 @@ export function cloneDetached(value) {
     }
 
     return clone;
-}
-
-/** Expected query restrictions; unexpected failures must still propagate. */
-export class QuerySupportError extends Error {
-    /** @param {import("../types/viewQueryApi.js").QuerySupportReason} reason
-     * @param {string} message
-     */
-    constructor(reason, message) {
-        super(message);
-        this.reason = reason;
-    }
 }

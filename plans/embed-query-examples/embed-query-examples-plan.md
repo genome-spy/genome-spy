@@ -1,146 +1,148 @@
-# Embed data access and selection examples
+# Minimal embed data readback and selection writes
 
 ## Goal and boundary
 
-Simplify PR #537 so consuming GenomeSpy apps, including apps with agents, can
-inspect the visualization and change record membership through small primitives.
-Core does not expose a second API that chains its existing controls together.
+PR #537 adds only two primitives: `ViewHandle.readData({limit})` and
+`PointSelectionApi.setValue(keys)`. Existing named scales, parameters, datasets,
+view operations, loading observations, and exports supply the other controls.
+Application code owns analysis and may compose those controls into agent tools.
+Core does not gain an orchestration or combined analysis API.
 
-Existing scale navigation, parameters, dataset updates, view operations, and
-exports remain direct controls. The new optional query entry returns detached
-metadata and loaded records. A point selection setter resolves record keys
-against a unit view's loaded transformed data, independently of its mark type.
+## Decisions and alternatives
 
-Thresholds, summaries, rankings, representative selection, and callout composition
-belong in the consuming app. Apps may expose their own agent tools that combine
-these primitives and implement application policy. That composition is outside
-the GenomeSpy package API. Example controllers demonstrate ordinary application
-code, not a reusable orchestration layer.
+- Read only the unit view's current transformed collector. Return `{rows,
+truncated}` synchronously, with an explicit nonnegative safe integer limit.
+  Values are detached and omit internal picking identifiers. No source retention,
+  extra metadata model, factory/module, query assessment, field projection,
+  revisions, or viewport/brush querying is needed for this boundary.
+- Apps already know their authored specs and may read existing named scale domains
+  and interval parameters. They interpret their own coordinates, overlap rules,
+  thresholds, coverage requirements, and analysis. Readback does not fetch data,
+  recover filtered-out input, or establish pixel visibility or source coverage.
+- Keep native key-based point-selection writes. Keys resolve atomically through
+  the source unit's `encoding.key` against its ready current collector, including
+  inherited selections. Missing/ambiguous keys reject the write. Empty input
+  clears; single selections accept at most one key. Existing conditional encodings
+  render the same selection across point, text, and rectangle marks.
+- Membership follows the current publication. Apps clear/reapply when replacing
+  a dataset; Core does not add persistent key rebinding.
+- Ordinary parameter-driven custom highlighting was already possible. The setter
+  is needed for assigning native selection membership, with its existing reads,
+  subscriptions, and condition semantics, rather than for every highlight effect.
+- Discard the earlier analysis/ranking and annotation controller, optional query
+  module, source retention, metadata/assessment APIs, scoped query engine, and
+  per-view scale accessor. Existing public controls plus these two additions cover
+  the intended examples with a much smaller Core surface.
 
-## Decisions
+This follows GenomeSpy's existing dataset-write and parameter-write separation:
+read records, make an explicit app decision, then write data or membership. It
+introduces no dependency on another project's query framework or renderer geometry.
 
-- Keep `createViewQuery(api.views)`, `describe`, `describeSource`, `readData`,
-  `readSourceData`, `assessQuery`, and `queryData` in the optional `view-query`
-  entry. The entry stays outside the default/minimal bundles.
-- Scope queries retain viewport/interval membership, field projection, output
-  limits, cancellation, and captured data/scope revisions. These depend on Core's
-  actual scales, encoded positions, interval hit policies, and publication state.
-  They read loaded records; they neither fetch missing records nor promise pixel
-  visibility or complete lazy-source coverage.
-- Remove query aggregation, analysis pipelines, ranks, annotation references,
-  annotation assessments, and the specialized point annotation controller.
-- Add `PointSelectionApi.setValue(keys)` alongside `getValue`, `subscribe`, and
-  `clear`. Each key is a tuple in the source unit view's `encoding.key` order.
-  Empty input clears membership. Nonempty writes require ready loaded records,
-  unique scalar keys, and complete resolution; invalid input leaves membership
-  unchanged. Single selections accept at most one key.
-- Obtain the setter through the source unit view's parameter namespace, including
-  when the declaration lives in an ancestor or uses `push: "outer"`. The view
-  determines which records supply membership. No mark geometry is involved.
-- Membership uses the current data publication, just like interactive picking.
-  There is no persistent key subscription or automatic rebinding after updates.
-  Apps explicitly clear or reapply their selection when replacing data.
-- Styling stays in the spec's conditional encodings. Additional labels/callouts
-  can be authored as ordinary application-controlled data/layers if needed.
+## Why the additions are needed
 
-## Three examples
+Old scale/brush APIs return bounds, not all records in a region. Old dataset APIs
+accept input, not the output of Core's filters/formulas/lazy publications. Picking
+returns individual hits and point snapshots contain selected rows; neither
+enumerates arbitrary loaded transformed records. Debug view access could expose
+internal collectors but is not a detached, bounded public record contract.
+Apps owning all input and reproducing every transform can avoid readback, but that
+duplicates Core's pipeline and cannot generally inspect its current publication.
 
-1. **Read records in a range** (`regionSummary/`): read a generic toy signal,
-   compute count, mean, minimum, and maximum in page code, and show five rows.
-   Demonstrate data coming out of the visualization, scoped by zoom or brush.
-2. **Select records by key** (`recordSelection/`): read generic x/y records,
-   apply two thresholds in page code, and send every qualifying record key back
-   into the selection. Conditional size/opacity and the subscribed table show
-   the same membership. Replacing dataset A with B demonstrates new data entering
-   the visualization through the existing dataset API. Zero thresholds select
-   all 12 toy records in the whole viewport.
-3. **Source rows and filtered rows** (`sourceData/`): compare retained input
-   records with transformed output while a parameter changes a display filter.
-   Source retention is opt-in and both reads concern loaded rows.
+Old point selections could be read, observed, and cleared, but not assigned by
+key. Custom variable parameters could reproduce highlighting appearances without
+changing native point-selection membership. The new setter fills that specific gap.
 
-The fixtures are generic synthetic records. The examples demonstrate data
-flowing into and out of the visualization without requiring genomic concepts.
+## Examples
 
-## Alternatives and scope changes
+All three use tiny generic JSON files loaded by Core, not arrays imported into
+the page controller. The page explains the old API's gap and each addition's role.
 
-The earlier grouped query/ranking pipeline and point-only callout controller are
-discarded. They combined analysis and presentation decisions that consuming apps
-can make explicitly, and introduced renderer-specific annotation geometry.
-Reusing existing key resolution and conditional encodings provides the needed
-selection behavior across mark types without those extra concepts.
+1. `transformedData/`: existing parameter writes change a filter; readback shows
+   the resulting records and a Core-derived length without repeating the pipeline.
+2. `regionSummary/`: read transformed records, use existing named scales/brush
+   snapshots to filter numeric point coordinates in app code, calculate statistics
+   over every match, and show a five-row preview. Reject truncation first.
+3. `recordSelection/`: app thresholds and range filtering choose every qualifying
+   key; the setter publishes native membership and conditional size/opacity render
+   it. Clicking records and the subscribed table share that membership. Both
+   thresholds at zero select all 12 records in the whole viewport.
 
-Data access was missing before this PR; the old controls could change the view
-but could not enumerate its loaded transformed/source observations. Keep that
-capability rather than forcing agents to inspect private view/dataflow objects.
+## Genome browser workflow
+
+An app resolves a gene through its annotation index and navigates the existing
+named locus scale. A brush is read through the interval-selection snapshot, or
+written through the existing parameter API using linear assembly coordinates.
+Chromosome-to-linear conversion requires the app's assembly metadata; the embed
+API has no public genome-coordinate converter or gene-name resolver.
+
+After awaiting current visible lazy requests, read a reference unit that actually
+contains loaded sequence bases. The app filters to its chosen half-open brush,
+sorts and verifies complete base coverage, analyzes the sequence, and writes
+`{chrom,pos,base,score}` rows into an existing empty named dataset. A predeclared
+text track with `logoLetters`, `fitToBand`, `y=0`, and `y2=score` displays dynseq
+heights. The app can alternatively insert such a track through the existing view
+API. Composite `[chrom,pos]` keys set membership in that track and conditional
+encodings highlight its original letters.
+
+These primitives cover the workflow for an app-authored browser with reference
+data and gene/assembly metadata. Missing bases must be fetched by the app's
+reference provider or loaded by the configured source; readback does not fetch
+them. Analysis execution, cancellation/stale-result policy, and agent tools remain
+app responsibilities. A browser integration exercises a second contig to verify
+linear brush coordinates, exact sequence extraction, an initially empty logo
+dataset, score updates, and native selection on the resulting text marks.
 
 ## Milestones and acceptance
 
-- [x] **Core boundary:** remove combined analysis and annotations; add the key
-      setter using existing selection/key infrastructure. Verify point, text and
-      rectangle membership, composite keys, missing/ambiguous keys, single-selection
-      limits, subscriptions, lifecycle, and source updates through public handles.
-      Update public types, optional bundle guards, docs and the minor changeset.
-      Tentative commit: `feat(core): simplify data access and add keyed selection writes`.
-- [x] **Examples:** revise range summary and record selection; retain the
-      source-data example. Remove obsolete callout lifecycle code and explanation.
-      Verify zero thresholds select all 12 records, manual membership shares the
-      table, brush scoping, navigation, replacement, clearing, and SVG styling.
-      Tentative commit: `feat(embed-examples): highlight every qualifying record`.
-- [x] **Integration:** run focused Core suites, type/public API and bundle checks,
-      docs generation, lint/format, example builds, and WebGL/Canvas interaction tests.
-      Inspect the diff for duplicate paths and measure size before/after.
-      Deliver through the existing PR without rewriting its history.
+- [x] **Minimal Core contract:** remove the broader query/retention paths; keep
+      detached loaded-record reads and mark-independent keyed selection writes.
+      Verify limits/truncation, transforms, facet batches, cloning, readiness,
+      lifecycle, selection errors, inheritance, and source updates. Update types,
+      API docs and the minor changeset.
+      Tentative commit: `refactor(core): narrow embed additions to readback and selection`.
+- [x] **Focused examples:** convert fixtures to Core-loaded URLs, use existing
+      named scales and parameters, make app filtering/analysis explicit, and explain
+      why readback/native selection writes fill gaps. Remove the retained-source demo.
+      Tentative commit: `refactor(embed-examples): demonstrate minimal data primitives`.
+- [x] **Integration and delivery:** verify Core suites, workspace types, emitted
+      consumer types, bundle checks, API generation, lint/format, all-example build,
+      WebGL/Canvas workflows, and reference-to-logo analysis integration. Measure the
+      reduction, update the existing PR body/API table, and deliver without rewriting
+      history. Tentative commit: `refactor(core): keep minimal embed data primitives`.
 
 ## Risks and non-goals
 
-`limit: null` returns all matching loaded records and can be large. The examples
-use tiny fixed fixtures; consuming apps choose read limits deliberately. Reads
-can become invalid when scope/data changes and callers must handle cancellation.
-Keys must be authored, unique, and non-null. Record identity follows the current
-publication rather than a persistent cross-publication selection contract.
+Limits bound record count, not nested value size or analysis runtime. Apps must
+reject truncation when completeness matters. Loaded data need not cover a whole
+region; hidden/filtered-out records cannot be recovered from transformed readback.
+Reads throw while data is unready. For asynchronous work, apps capture the relevant
+scope and cancel or discard stale results. Keys are explicit, unique scalars and
+membership is tied to a publication.
 
-There is no Core agent toolkit, tool-call chaining, arbitrary analysis execution,
-automatic representative selection, callout geometry extension, or new renderer
-overlay. No unresolved design questions remain for this scope.
-
-This temporary plan records the PR's revised scope. Reconcile it after
-verification and remove it in a later commit before merge.
+No genomic query service, gene resolver, reference fetch API, generic coordinate
+converter, rendering annotation API, or native agent toolkit is added. No design
+questions remain for this scope. This temporary plan is retained while updating
+the existing PR and must be reconciled and deleted in a later commit before merge.
 
 ## Verification record
 
-- 530 unit-test files passed: 5,039 tests passed, two skipped, two todo.
-- All six example interaction tests passed across WebGL and Canvas. Verified all
-  12 records at zero thresholds, mouse picking, SVG styling/export, clearing,
-  brush scope, dataset replacement, and narrow layouts.
-- All three playground public-API integrations passed with their generated schema
-  (point, text, and rectangle marks with inherited selection and picking disabled).
-- Workspace TypeScript checks, lint, Core build/emitted consumer typings,
-  all-example smoke build, API-reference generation, and optional/minimal bundle
-  checks passed. Release policy/status confirm a minor Core change, propagated
-  through the fixed release group (1.1.1 → 1.2.0).
-- Desktop and narrow screenshots were inspected. The record table and the
-  original conditional marks agree on all 12 selected records.
-- The initial simplification reduced Core production source relative to the
-  previous example implementation by 967 physical lines (+137 / −1,104). Obsolete analysis/annotation
-  tests and generated API pages were removed with their implementations.
+- Full unit suite: 527 files, 4,983 passed, two skipped and two todo. The final
+  publication-only readiness simplification also passes the focused read suite.
+- All six example workflows pass across WebGL and Canvas, including zero
+  thresholds selecting all 12 records, manual picking, SVG styling/export,
+  viewport/brush filtering, reactive URL-backed filtering and narrow layouts.
+- All four playground browser integrations pass: point/text/rectangle selection
+  with picking disabled, and the reference-brush-analysis-logo-selection flow.
+- Workspace types, lint, Core build and strict emitted consumer types, all-example
+  smoke build, API reference generation, bundle boundaries, and minor release
+  policy/status pass.
+- Core production source shrank by 887 physical lines versus the previous PR
+  version (41 added, 928 removed), excluding test files. The optional query
+  types/engine and source-retention branch were deleted with their tests/docs.
+- The three previously requested Sol reviews completed; the inherited WebGL
+  selection fix and its cross-mark browser coverage remain in scope. The revised
+  PR overview and existing API-table comment describe only the two additions.
 
-The earlier annotation and analysis milestones are discarded as described above;
-the three revised implementation milestones are complete. Plan retirement remains
-part of preparing the existing PR for merge, outside this update request.
-
-## Three-reviewer follow-up
-
-Three independent Sol reviewers covered data access, selection/dataflow/rendering,
-and examples/documentation. Data access and the existing example contracts had
-no actionable findings. The selection review confirmed a WebGL bug: inherited
-point selections with `tooltip: null` had identifier data but no GPU identifier
-encoding. Dataflow and normalized encoding now share `requiresRecordIdentity()`;
-picking eligibility stays independent. WebGL texture setup and updates also read
-the same resolved parameter reference, including inherited selection values. The public browser workflow covers point,
-text, and rectangle marks with inherited selection and picking disabled.
-
-Generic-data conversion replaces the expression/gene routes with `recordSelection`
-and `sourceData`, retaining the existing generic `regionSummary` route. Example links and the PR overview follow these routes; the requested API-table
-comment links the same sources. All six generic example browser workflows,
-three inherited-selection WebGL workflows, 5,039 unit tests, workspace types,
-lint, example builds, and release checks pass.
+The earlier verification of the discarded query/source-retention surface is
+superseded by this revision. Temporary plan retirement is required before merge;
+no merge is requested here.

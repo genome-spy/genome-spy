@@ -18,25 +18,29 @@ The examples rely directly on the `@genome-spy/core` ESM package, but can be ada
 
 ## Inspect visualization data
 
-These browser-only examples use small generic toy datasets and the optional
-`@genome-spy/core/view-query` entry from the same Core module instance as `embed`.
+Three small generic examples show the two additions: `ViewHandle.readData({limit})`
+and `PointSelectionApi.setValue(keys)`. Core loads the JSON fixtures; page code
+does not keep a second input array or reimplement Core's transforms.
 
-- [Read records in a range](src/regionSummary/): zoom or brush to compute
-  regional statistics over all matches while showing a five-row preview.
-- [Select records by key](src/recordSelection/): apply thresholds in the host,
-  select every qualifying record by key, and highlight membership through
-  conditional encodings. Clicking records updates the same selection.
-- [Source rows and filtered rows](src/sourceData/): compare loaded source rows with
-  rows kept by a display filter, using opt-in source retention.
+- [Read records in a range](src/regionSummary/): read loaded records, use existing
+  named scales and brush parameters to filter them in page code, then compute
+  statistics and preview five rows.
+- [Select records by key](src/recordSelection/): apply thresholds in the page,
+  write every qualifying key into the native selection, and highlight through
+  conditional encodings. Mouse picking updates the same subscribed table.
+- [Read transformed records](src/transformedData/): change a filter through the
+  existing parameter API and read Core's filtered records and derived lengths.
 
-Each page explains the hooks it uses and shows readable track/source information
-with expandable API responses. GenomeSpy reads the scoped visualization records and sets selection membership.
-The example code computes summaries and thresholds; no combined analysis API is
-added to Core.
-Queries inspect currently loaded data rather than fetching off-screen records.
-The examples use eager fixtures; lazy-source coverage is outside their scope.
-See the [view query guide](https://genomespy.app/docs/api/views/#choosing-a-hook).
+Previously, scales and parameters could control the plot but could not enumerate
+its transformed records. Point selections could be read and cleared but could
+not be assigned membership. Custom parameter-driven highlighting was already
+possible; the setter adds writes to native selection state.
 
-Run the focused interaction tests with
-`npm -w @genome-spy/embed-examples run test:e2e`. They exercise WebGL and Canvas;
-append `?renderer=canvas` to an example URL to try Canvas manually.
+Reads are bounded, detached, synchronous, and report truncation. They inspect
+loaded transformed records; they do not fetch data or filter by viewport/brush.
+The examples reject truncated reads before calculating whole-range statistics.
+They use eager fixtures, so they do not demonstrate lazy-source coverage.
+See the [readback guide](https://genomespy.app/docs/api/views/#reading-loaded-records).
+
+Run `npm -w @genome-spy/embed-examples run test:e2e` for focused WebGL and Canvas
+interaction tests. Append `?renderer=canvas` to try Canvas manually.

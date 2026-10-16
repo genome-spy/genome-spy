@@ -1,10 +1,6 @@
 # GenomeSpy Core API
 
-Public TypeScript API for GenomeSpy Core and its optional entry points.
-
-Import `ViewQueryApi`, `ViewDescription`, `ViewDataReadOptions`, and
-`ViewDataReadResult` from `@genome-spy/core/view-query`.
-These query types are not exported by the root `@genome-spy/core` entry.
+Public TypeScript API for GenomeSpy Core.
 
 ## Interfaces
 
@@ -29,6 +25,8 @@ These query types are not exported by the root `@genome-spy/core` entry.
 - [BinaryDatasetFormat](interfaces/BinaryDatasetFormat.md)
 - [DatasetApi](interfaces/DatasetApi.md)
 - [ViewHandle](interfaces/ViewHandle.md)
+- [ViewDataReadOptions](interfaces/ViewDataReadOptions.md)
+- [ViewDataReadResult](interfaces/ViewDataReadResult.md)
 - [ViewApi](interfaces/ViewApi.md)
 - [EmbedDebugApi](interfaces/EmbedDebugApi.md)
 - [ImageExportOptions](interfaces/ImageExportOptions.md)
@@ -49,16 +47,6 @@ These query types are not exported by the root `@genome-spy/core` entry.
 - [ScaleResolutionEvent](interfaces/ScaleResolutionEvent.md)
 - [ZoomToOptions](interfaces/ZoomToOptions.md)
 - [ScaleResolutionApi](interfaces/ScaleResolutionApi.md)
-- [ViewQueryApi](interfaces/ViewQueryApi.md)
-- [ViewDescription](interfaces/ViewDescription.md)
-- [ViewDataReadOptions](interfaces/ViewDataReadOptions.md)
-- [ViewDataReadResult](interfaces/ViewDataReadResult.md)
-- [ViewQueryScopeOptions](interfaces/ViewQueryScopeOptions.md)
-- [ViewSliceQueryOptions](interfaces/ViewSliceQueryOptions.md)
-- [ViewSliceQueryResult](interfaces/ViewSliceQueryResult.md)
-- [ViewSourceDataReadOptions](interfaces/ViewSourceDataReadOptions.md)
-- [ViewSourceDataReadResult](interfaces/ViewSourceDataReadResult.md)
-- [ViewSourceDescription](interfaces/ViewSourceDescription.md)
 
 ## Type Aliases
 
@@ -76,5 +64,3 @@ These query types are not exported by the root `@genome-spy/core` entry.
 - [DataLoadingChange](type-aliases/DataLoadingChange.md)
 - [ScaleResolutionEventType](type-aliases/ScaleResolutionEventType.md)
 - [ScaleResolutionListener](type-aliases/ScaleResolutionListener.md)
-- [QuerySupportReason](type-aliases/QuerySupportReason.md)
-- [ViewQueryAssessment](type-aliases/ViewQueryAssessment.md)

@@ -37,6 +37,23 @@ for (const renderer of ["webgl", "canvas"]) {
             await expect(page.getByTestId("count")).toHaveText("0");
             await expect(page.getByTestId("mean")).toHaveText("—");
 
+            // Count can reach 20 during a zoom animation. Brush only after
+            // the named scale reaches its final domain.
+            await expect
+                .poll(() =>
+                    page.evaluate(async () => {
+                        const { api } = await import(
+                            globalThis.document.querySelector(
+                                'script[type="module"][src*="/index.js"]'
+                            ).src
+                        );
+                        return api
+                            .getScaleResolutionByName("position")
+                            .getDomain();
+                    })
+                )
+                .toEqual([300, 500]);
+
             const bounds = await page.evaluate(async () => {
                 const { api } = await import(
                     globalThis.document.querySelector(
@@ -49,7 +66,7 @@ for (const renderer of ["webgl", "canvas"]) {
                 });
             });
             const canvas = await page.locator("#plot canvas").boundingBox();
-            // A real Shift-drag selects 350–450 inside the 300–500 viewport.
+            // A real Shift-drag brushes roughly the middle half of the viewport.
             const y = canvas.y + bounds.y + bounds.height / 2;
             await page.keyboard.down("Shift");
             await page.mouse.move(canvas.x + bounds.x + bounds.width * 0.25, y);
@@ -61,7 +78,25 @@ for (const renderer of ["webgl", "canvas"]) {
             );
             await page.mouse.up();
             await page.keyboard.up("Shift");
-            await expect(page.getByTestId("count")).toHaveText("10");
+            const interval = await page.evaluate(async () => {
+                const { api } = await import(
+                    globalThis.document.querySelector(
+                        'script[type="module"][src*="/index.js"]'
+                    ).src
+                );
+                return api.params.getSelection("region").getValue().intervals.x;
+            });
+            // Fonts/layout can shift a few pixels during dragging. Check the
+            // summary against the actual brush and the known toy coordinates.
+            const expectedCount = Array.from(
+                { length: 20 },
+                (_, i) => 305 + i * 10
+            ).filter((x) => x >= interval[0] && x <= interval[1]).length;
+            expect(expectedCount).toBeGreaterThan(5);
+            expect(expectedCount).toBeLessThan(15);
+            await expect(page.getByTestId("count")).toHaveText(
+                String(expectedCount)
+            );
             await page
                 .getByRole("button", { name: "Clear brush", exact: true })
                 .click();
@@ -74,9 +109,7 @@ for (const renderer of ["webgl", "canvas"]) {
                         'script[type="module"][src*="/index.js"]'
                     ).src
                 );
-                const scale = api.views
-                    .get({ scope: [], view: "signal" })
-                    .getScaleResolution("x");
+                const scale = api.getScaleResolutionByName("position");
                 await Promise.all([
                     scale.zoomTo([800, 950]),
                     scale.zoomTo([0, 1200]),
@@ -85,9 +118,6 @@ for (const renderer of ["webgl", "canvas"]) {
             });
             await expect(page.getByTestId("count")).toHaveText("20");
             await expect(page.getByTestId("mean")).toHaveText("0.6");
-            await expect(page.locator("#track-info")).toContainText(
-                "Complete declared toy source loaded"
-            );
             await checkNarrowLayout(page);
         });
 
@@ -170,19 +200,6 @@ for (const renderer of ["webgl", "canvas"]) {
                 "12 selected records."
             );
 
-            await page.getByLabel("Dataset").selectOption("B");
-            await expect(page.locator("#selection-status")).toHaveText(
-                "0 selected records."
-            );
-            await page.getByLabel("Minimum x").fill("1");
-            await page.getByLabel("Minimum y").fill("2");
-            await find.click();
-            await expect(page.locator("#selection-status")).toHaveText(
-                "5 selected records."
-            );
-            await expect(page.locator("#results tbody")).not.toContainText(
-                "item01"
-            );
             await page.getByLabel("Minimum y").fill("7");
             await find.click();
             await expect(page.locator("#selection-status")).toHaveText(
@@ -196,56 +213,36 @@ for (const renderer of ["webgl", "canvas"]) {
             await checkNarrowLayout(page);
         });
 
-        test("retains source records while display filters change the transformed table", async ({
+        test("reads Core's filtered and derived records without retaining source input", async ({
             page,
         }) => {
-            await page.goto(`/sourceData/?renderer=${renderer}`);
-            await expect(page.getByTestId("source-count")).toHaveText(
-                "8 retained records"
-            );
+            await page.goto(`/transformedData/?renderer=${renderer}`);
             await expect(page.getByTestId("transformed-count")).toHaveText(
                 "6 records kept by the filter"
             );
-            for (const record of ["recordC", "recordF"]) {
-                await expect(
-                    page
-                        .locator("#source-rows tbody tr")
-                        .filter({ hasText: record })
-                ).toContainText("Removed by filter");
-                await expect(
-                    page.locator("#transformed-rows tbody")
-                ).not.toContainText(record);
-            }
+            await expect(page.locator("#results tbody")).not.toContainText(
+                "recordC"
+            );
+            await expect(
+                page.locator("#results tbody tr").first()
+            ).toContainText("180");
             await page.getByLabel("Displayed categories").selectOption("1");
-            await expect(
-                page.locator("#transformed-rows tbody tr")
-            ).toHaveCount(3);
+            await expect(page.locator("#results tbody tr")).toHaveCount(3);
             await page.getByLabel("Displayed categories").selectOption("3");
-            await expect(
-                page.locator("#transformed-rows tbody tr")
-            ).toHaveCount(8);
+            await expect(page.locator("#results tbody tr")).toHaveCount(8);
             await page.evaluate(async () => {
                 const { api } = await import(
                     globalThis.document.querySelector(
                         'script[type="module"][src*="/index.js"]'
                     ).src
                 );
-                await api.views
-                    .get({ scope: [], view: "records" })
-                    .getScaleResolution("x")
+                await api
+                    .getScaleResolutionByName("position")
                     .zoomTo([300, 500]);
             });
-            await expect(page.locator("#source-rows tbody tr")).toHaveCount(8);
-            await expect(
-                page.locator("#transformed-rows tbody tr")
-            ).toHaveCount(8);
-            await expect(page.locator("#track-info")).toContainText(
-                "retention enabled"
-            );
+            await expect(page.locator("#results tbody tr")).toHaveCount(8);
             await page.getByRole("button", { name: "Reset example" }).click();
-            await expect(
-                page.locator("#transformed-rows tbody tr")
-            ).toHaveCount(6);
+            await expect(page.locator("#results tbody tr")).toHaveCount(6);
             await checkNarrowLayout(page);
         });
     });

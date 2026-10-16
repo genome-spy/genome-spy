@@ -146,18 +146,7 @@ export type Data = DataSource | Generator;
 export type InlineDataset =
     number[] | string[] | boolean[] | object[] | string | object;
 
-export interface DataInspection {
-    /**
-     * Retain loaded source rows for public inspection before view transforms.
-     * Uses additional memory proportional to the loaded data. Reads do not fetch
-     * additional data or bypass lazy-source loading limits.
-     *
-     * __Default value:__ `false`
-     */
-    retainForInspection?: boolean;
-}
-
-export interface DataBase extends DataInspection {
+export interface DataBase {
     /**
      * A description of the data source. Can be used for documentation and to
      * explain the role of the data in the visualization.
@@ -295,7 +284,7 @@ export interface DynamicCallbackData extends DataBase {
 
 export type Generator = SequenceGenerator;
 
-export interface GeneratorBase extends DataInspection {
+export interface GeneratorBase {
     /**
      * A description of the data source. Can be used for documentation and to
      * explain the role of the generated data in the visualization.
@@ -339,7 +328,7 @@ export interface SequenceParams {
     as?: FieldName | ExprRef;
 }
 
-export interface LazyData extends DataInspection {
+export interface LazyData {
     /**
      * A description of the data source. Can be used for documentation and to
      * explain the role of the lazy data in the visualization.

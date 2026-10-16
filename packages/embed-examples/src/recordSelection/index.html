@@ -40,13 +40,7 @@
                     <option value="brush">Viewport and brush</option>
                 </select></label
             >
-            <label
-                >Dataset<select id="dataset">
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                </select></label
-            >
-            <button id="find" type="submit">
+            <button id="find" type="submit" disabled>
                 Highlight qualifying records
             </button>
             <button id="clear-selection" type="button">Clear selection</button>
@@ -68,32 +62,39 @@
                 aria-label="Record findings"
             ></section>
         </main>
-        <section id="track-info" class="query-about"></section>
         <details>
-            <summary>How this example uses the API</summary>
+            <summary>Why these API additions are needed</summary>
             <p>
-                <code>queryData()</code> reads the loaded viewport records,
-                optionally intersected with the brush. This example applies both
-                thresholds in ordinary JavaScript, then calls
-                <code>getSelection("chosen").setValue(keys)</code> with every
-                qualifying record's key. It does not rank or sample the matches.
+                GenomeSpy loads the JSON file. The page reads its records with
+                <code>view.readData({limit: 10000})</code>, uses existing named
+                scales and brush values to filter the range, then applies both
+                thresholds in JavaScript. It sends every qualifying key to
+                <code>getSelection("chosen").setValue(keys)</code>.
             </p>
             <p>
-                The spec declares <code>encoding.key</code> and conditional size
-                and opacity encodings. The same selection can be changed by
-                clicking records or by the API. Point selections refer to
-                records and also work with text, rectangles, and other marks.
+                The spec declares <code>encoding.key</code> and conditional
+                size/opacity. Clicking records and setting keys update the same
+                native selection and subscribed table. Zero thresholds select
+                all 12 records in the whole viewport. There is no ranking or
+                sampling.
+            </p>
+            <p>
+                The old API could read or clear a point selection, but could not
+                set its membership. Ordinary variable parameters could already
+                drive custom highlighting; this setter is needed when an app
+                wants native selection state, events, and conditional encodings.
+                “Point” means individual records, including records drawn as
+                text or rectangles.
             </p>
             <p>
                 Scroll to zoom, drag to pan, and Shift-drag to brush. Apply
-                thresholds again after changing the scope. The host clears
-                membership before replacing the dataset; it can then select
-                records from the new publication. A cleared brush in brush mode
-                matches no rows. Download SVG preserves the same styling.
+                thresholds again after changing the scope. Download SVG uses the
+                same selected styling.
             </p>
             <p>
-                <a href="https://genomespy.app/docs/api/views/#choosing-a-hook"
-                    >View query API guide</a
+                <a
+                    href="https://genomespy.app/docs/api/views/#reading-loaded-records"
+                    >Data readback guide</a
                 >
             </p>
         </details>

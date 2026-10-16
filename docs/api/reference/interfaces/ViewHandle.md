@@ -17,23 +17,25 @@ on a stale handle also fail rather than silently operating on another view.
 
 ## Properties
 
-### getScaleResolution
+### readData
 
-> **getScaleResolution**: (`channel`) => [`ScaleResolutionApi`](ScaleResolutionApi.md) \| `undefined`
+> **readData**: (`options`) => [`ViewDataReadResult`](ViewDataReadResult.md)
 
-Returns the resolved scale, including unnamed scales, or undefined if absent.
-Secondary channels such as x2 use their primary channel's scale.
-Throws for invalid channels, removed views, or finalized embeds.
+Copies loaded transformed records from this unit view, in collector order.
+Does not fetch data, apply viewport/brush filtering, or return source rows
+removed by transforms. Throws while data is unready or for container,
+removed, or finalized views. Returned values are detached and omit picking
+identifiers; non-cloneable values and shared memory are rejected.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `channel` | `ChannelWithScale` |
+| `options` | [`ViewDataReadOptions`](ViewDataReadOptions.md) |
 
 #### Returns
 
-[`ScaleResolutionApi`](ScaleResolutionApi.md) \| `undefined`
+[`ViewDataReadResult`](ViewDataReadResult.md)
 
 ***
 
