@@ -269,7 +269,7 @@ export function queueGridChild(
                             width: viewCoords.width,
                         }
               )
-            : gridChild.getAxisCoords(axisView, viewportCoords);
+            : gridChild.getAxisCoords(viewportCoords);
 
         const translatedCoords = translateAxisCoords(coords, orient, axisView);
 

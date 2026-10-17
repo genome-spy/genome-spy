@@ -858,7 +858,8 @@ export default class GridChild {
             getGuideOverhang(axes, this.legends)
                 .add(this.title?.getOverhang() ?? Padding.zero())
                 .add(this.view.getOverhang()),
-            this.view.spec.overhang
+            this.view.spec.overhang,
+            this.view.getStructuralOverhang()
         );
     }
 
@@ -883,24 +884,14 @@ export default class GridChild {
     getViewOverhang() {
         return applyOverhangConfig(
             this.view.getOverhang(),
-            this.view.spec.overhang
+            this.view.spec.overhang,
+            this.view.getStructuralOverhang()
         );
     }
 
-    /** @param {AxisView} axis @param {Rectangle} [viewport] */
-    getAxisCoords(axis, viewport = this.coords) {
-        const channel =
-            axis.axisProps.orient === "left" ||
-            axis.axisProps.orient === "right"
-                ? "y"
-                : "x";
-        const dimension = channel === "x" ? "width" : "height";
-        const alignment = this.view.getAlignment(channel);
-        const host = viewport.shrink(this.getViewOverhang());
-        return host.modify({
-            [channel]: host[channel] + alignment.before,
-            [dimension]: host[dimension] - alignment.before - alignment.after,
-        });
+    /** @param {Rectangle} [viewport] */
+    getAxisCoords(viewport = this.coords) {
+        return viewport.shrink(this.getViewOverhang());
     }
 
     getTitleZindex() {

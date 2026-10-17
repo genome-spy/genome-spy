@@ -1745,9 +1745,6 @@ export default class ScaleResolution {
             );
         }
 
-        // Here's a problem: if the view has been hidden, it may have stale coords.
-        // TODO: They should be cleared when the layout is invalidated.
-        // Alternatively, scale ranges could be set in pixels.
         const lengths = Array.from(this.#members)
             .map(
                 (m) =>

@@ -412,7 +412,7 @@ export default class View {
     }
 
     /**
-     * Returns a padding that indicates how much axes and titles extend over the plot area.
+     * Returns the extent of guides and surrounding panels beyond the plot area.
      *
      * @returns {Padding}
      */
@@ -421,8 +421,30 @@ export default class View {
     }
 
     /**
+     * Occupied panels included in overhang, whose reservation cannot be
+     * suppressed by the chrome-only `overhang` configuration.
+     * @returns {Padding}
+     */
+    getStructuralOverhang() {
+        return Padding.zero();
+    }
+
+    /**
+     * Flex reservations outside the central plot, allocated in separate slots.
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @returns {{ before: import("./layout/flexLayout.js").SizeDef, after: import("./layout/flexLayout.js").SizeDef }}
+     */
+    getStructuralSizeDefs(channel) {
+        const overhang = this.getStructuralOverhang();
+        return {
+            before: { px: overhang[channel === "x" ? "left" : "top"] },
+            after: { px: overhang[channel === "x" ? "right" : "bottom"] },
+        };
+    }
+
+    /**
      * Plotting interval exported to an alignment-aware parent. Structural
-     * insets belong to content; external chrome remains in getOverhang().
+     * insets are included in getOverhang() alongside external chrome.
      * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
      * @returns {{ size: import("./layout/flexLayout.js").SizeDef, before: number, after: number }}
      */
@@ -1222,6 +1244,13 @@ export default class View {
      * @type {import("../types/rendering.js").ArrangeMethod}
      */
     arrange(context, coords, options = {}) {
+        if (!this.layoutParent) {
+            // Clear the whole tree once: hidden views are skipped below and
+            // would retain stale dimensions in shared-scale axis-length queries.
+            this.visit((view) => {
+                view.layoutCoords = undefined;
+            });
+        }
         this.layoutCoords = coords;
 
         // TODO: When using sample faceting, all facets have the same coords.

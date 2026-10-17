@@ -133,7 +133,158 @@ function fixture(side = "right") {
     };
 }
 
+/**
+ * @param {"hconcat" | "vconcat"} composition
+ * @param {import("../spec/view.js").UnitSpec["height"]} [centerHeight]
+ * @param {import("../spec/view.js").UnitSpec["height"][]} [topHeights]
+ * @returns {import("../spec/root.js").RootSpec}
+ */
+function growingFixture(
+    composition,
+    centerHeight = "container",
+    topHeights = [{ grow: 2 }, { grow: 3 }]
+) {
+    const children = topHeights.map(
+        /** @returns {import("../spec/view.js").SurroundSpec} */
+        (height, i) => ({
+            spacing: 0,
+            spec: {
+                name: "center" + i,
+                width: "container",
+                height: centerHeight,
+                mark: "point",
+            },
+            surround: {
+                top: [{ name: "top" + i, height, mark: "point" }],
+            },
+        })
+    );
+    return {
+        data: { values: [{}] },
+        padding: 0,
+        spacing: 0,
+        ...(composition === "hconcat"
+            ? { hconcat: children }
+            : { vconcat: children }),
+    };
+}
+
 describe("nested surround", () => {
+    test.each(/** @type {const} */ (["hconcat", "vconcat"]))(
+        "%s aligns centers with differently growing margins across resizing",
+        async (composition) => {
+            // Uncapped arms expose feedback hidden by the acid test's max sizes.
+            const { view } = await createHeadlessEngine(
+                growingFixture(composition)
+            );
+            try {
+                for (const [width, height] of [
+                    [800, 800],
+                    [960, 720],
+                    [800, 800],
+                ]) {
+                    renderToLayout(view, Rectangle.create(0, 0, width, height));
+                    const centers = [
+                        plot(view, "center0"),
+                        plot(view, "center1"),
+                    ];
+                    expect(centers[0].coords.height).toBeCloseTo(
+                        centers[1].coords.height
+                    );
+                    for (const [i, center] of centers.entries()) {
+                        const top = plot(view, "top" + i);
+                        expect(top.coords.y2).toBeCloseTo(center.coords.y);
+                        expect(top.coords.x).toBeCloseTo(center.coords.x);
+                        expect(top.coords.width).toBeCloseTo(
+                            center.coords.width
+                        );
+                        expect(top.coords.height).toBe(
+                            Math.round(
+                                (height * (i + 2)) /
+                                    (composition === "hconcat" ? 4 : 7)
+                            )
+                        );
+                        expect(center.coords.y2).toBeLessThanOrEqual(
+                            height + 0.5
+                        );
+                    }
+                }
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
+    test("shared growing margins retain constraints when the center reaches its maximum", async () => {
+        const { view } = await createHeadlessEngine(
+            growingFixture("hconcat", { grow: 1, maxPx: 100 }, [
+                { grow: 2, maxPx: 250 },
+                { grow: 3, minPx: 200, maxPx: 400 },
+            ])
+        );
+        try {
+            for (const [height, centerHeight, top0, top1] of [
+                [300, 75, 150, 225],
+                [800, 100, 250, 400],
+                [300, 75, 150, 225],
+            ]) {
+                renderToLayout(view, Rectangle.create(0, 0, 800, height));
+                for (const [i, topHeight] of [top0, top1].entries()) {
+                    const center = plot(view, "center" + i);
+                    const top = plot(view, "top" + i);
+                    expect(center.coords.height).toBe(centerHeight);
+                    expect(top.coords.height).toBe(topHeight);
+                    expect(top.coords.y2).toBe(center.coords.y);
+                }
+            }
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test.each([180, { step: 12 }])(
+        "ordinary concat aligns a plain plot with a surround center sized %j",
+        async (width) => {
+            const board = fixture();
+            /** @type {import("../spec/view.js").UnitSpec} */ (
+                board.spec
+            ).width = width;
+            const { x, ...otherScales } = board.scales;
+            board.scales = otherScales;
+            // Chrome suppression cannot remove the occupied metadata panels.
+            board.overhang = { right: false, top: false };
+            const { view } = await createHeadlessEngine({
+                scales: { x },
+                resolve: { scale: { x: "shared" } },
+                vconcat: [
+                    board,
+                    {
+                        name: "plain",
+                        width,
+                        height: 30,
+                        data: { values: [{ column: 0 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "column", type: "index", axis: null },
+                        },
+                    },
+                ],
+            });
+            try {
+                renderToLayout(view);
+                const matrix = plot(view, "matrix");
+                const plain = plot(view, "plain");
+                const expectedWidth = typeof width === "number" ? width : 36;
+                expect(matrix.coords.width).toBe(expectedWidth);
+                expect(plain.coords.x).toBe(matrix.coords.x);
+                expect(plain.coords.width).toBe(expectedWidth);
+                expect(view.getOverhang().right).toBeGreaterThanOrEqual(80);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
     test.each(/** @type {const} */ (["top", "right", "bottom", "left"]))(
         "aligns exported centers on %s while retaining a local summary scale",
         async (side) => {

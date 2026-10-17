@@ -69,6 +69,10 @@ track's thickness: `height` on top/bottom, or `width` on left/right. Fixed,
 growing, and step-based center sizes use the existing [sizing rules](concat.md#child-sizing).
 The surround's own width and height describe the complete composition.
 
+Inside a concat, surrounding panels reserve overhang around the center. Central
+plots align within each row and column even when their annotations differ in
+size. Growing side tracks receive their thickness before the centers are placed.
+
 The surround's `spacing` separates the center from its sides. A side group's
 `spacing` separates its tracks. Both default to 10 pixels. Hidden tracks collapse;
 an empty or entirely hidden side also removes its gap. Hiding the center hides

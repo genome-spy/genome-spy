@@ -30,8 +30,11 @@ Layout sizing uses `View.getSize()` and `getViewportSize()` with a cached
 Surrounds and their implicit side concats align exported plotting intervals.
 `getAlignment(channel)` measures an anchor `SizeDef` and fixed before/after
 structural insets; `getAlignmentCoords(channel)` exposes the arranged interval.
-Nested panels and internal spacing are content, while `getOverhang()` remains
-external chrome. Ordinary concat sizing still uses full child footprints.
+Nested panels and internal spacing are included in `getOverhang()`, so ordinary
+concats size and align the exported central plots. Structural overhang retains
+its reservation when chrome overhang is suppressed. Growing outer arms resolve
+their thickness using the parent's flex growth allocation. Their growth weights
+remain in separate margin slots, leaving the center's plot weight unchanged.
 Guide spans derive from allocated rectangles and measured insets, so guide
 arrangement does not depend on whether child content has already been arranged.
 Nested bounds may overlap in empty corners; derived plot/guide footprints

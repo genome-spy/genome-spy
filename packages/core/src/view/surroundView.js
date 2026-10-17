@@ -1,7 +1,13 @@
 import GridView from "./gridView/gridView.js";
 import Grid from "./layout/grid.js";
 import Padding, { applyOverhangConfig } from "./layout/padding.js";
-import { getSizeDefMinPx } from "./layout/flexLayout.js";
+import {
+    addPxToSizeDef,
+    clampSize,
+    getSizeDefMinPx,
+    resolveItemSizes,
+    sumSizeDefs,
+} from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
 import ViewError from "./viewError.js";
 import { VISIT_SKIP } from "./view.js";
@@ -43,6 +49,9 @@ export default class SurroundView extends GridView {
 
     /** @type {Map<View, Side>} */
     #sides = new Map();
+
+    // Growing arms are allocated before their thickness is exposed as overhang.
+    #preparedGrowth = { x: 0, y: 0 };
 
     /**
      * @param {import("../spec/view.js").SurroundSpec} spec
@@ -304,6 +313,82 @@ export default class SurroundView extends GridView {
         return this.#center;
     }
 
+    /** @override @param {"row" | "column"} direction */
+    getFlexItems(direction) {
+        const items = super.getFlexItems(direction);
+        const channel = direction === "column" ? "x" : "y";
+        if (this.options.imposedAlignmentChannel === channel || !items.length) {
+            return items;
+        }
+
+        const track = this.layoutGrid.getCellCoords(0)[channel === "x" ? 0 : 1];
+        const centerSlot = this.getViewSlot(track);
+        if (!items.some((size, i) => i !== centerSlot && size.grow)) {
+            return items;
+        }
+        // Allocated arms become fixed overhang. The center keeps its growth
+        // weight so parent concats size and align the central plots.
+        return items.map((size, i) =>
+            i !== centerSlot && size.grow
+                ? {
+                      px: clampSize(
+                          (size.px ?? 0) +
+                              size.grow * this.#preparedGrowth[channel],
+                          size
+                      ),
+                  }
+                : size
+        );
+    }
+
+    /** @override @param {Channel} channel */
+    getStructuralSizeDefs(channel) {
+        const direction = channel === "x" ? "column" : "row";
+        // Parents need the original arm weights for their margin slots,
+        // independently of the last prepared pixel thicknesses.
+        const items = super.getFlexItems(direction);
+        if (!items.length || this.options.imposedAlignmentChannel === channel) {
+            return super.getStructuralSizeDefs(channel);
+        }
+        const track = this.layoutGrid.getCellCoords(0)[channel === "x" ? 0 : 1];
+        const slot = this.getViewSlot(track);
+        const chrome = this.getGridOverhang();
+        return {
+            before: addPxToSizeDef(
+                sumSizeDefs(items.slice(0, slot)),
+                -chrome[channel === "x" ? "left" : "top"]
+            ),
+            after: addPxToSizeDef(
+                sumSizeDefs(items.slice(slot + 1)),
+                -chrome[channel === "x" ? "right" : "bottom"]
+            ),
+        };
+    }
+
+    /**
+     * Freezes arm thicknesses using the same growth unit as the parent's plots.
+     * @param {number} _width
+     * @param {number} _height
+     * @param {number} columnGrowth
+     * @param {number} rowGrowth
+     * @returns {boolean}
+     */
+    prepareLayoutSize(_width, _height, columnGrowth, rowGrowth) {
+        if (
+            columnGrowth === this.#preparedGrowth.x &&
+            rowGrowth === this.#preparedGrowth.y
+        ) {
+            return false;
+        }
+        const previous = this.getOverhang();
+        this.#preparedGrowth = { x: columnGrowth, y: rowGrowth };
+        // Remeasure locally. The parent repeats its allocation only when the
+        // reported overhang changes, and handles ancestor invalidation itself.
+        this._invalidateCacheByPrefix("size");
+        const overhang = this.getOverhang();
+        return SIDES.some((side) => previous[side] !== overhang[side]);
+    }
+
     /**
      * @override
      * @param {Channel} channel
@@ -348,8 +433,9 @@ export default class SurroundView extends GridView {
                 }
             }
 
+            // The arm's own nested panels remain reserved alongside headroom.
             reserved[edge] = Math.max(
-                0,
+                insets[edge],
                 required - getSizeDefMinPx(size) - decoration
             );
         }
@@ -381,9 +467,11 @@ export default class SurroundView extends GridView {
 
         const authored = this.spec.surround[side];
         const policy = Array.isArray(authored) ? undefined : authored.overhang;
+        const structural = child.view.getStructuralOverhang();
         const measured = applyOverhangConfig(
             child.getOverhangAndPadding(),
-            policy
+            policy,
+            structural
         );
 
         const horizontal = getAlignedChannel(side) === "x";
@@ -413,7 +501,10 @@ export default class SurroundView extends GridView {
             const budget =
                 getSizeDefMinPx(neighbor.view.getViewportSize()[dimension]) +
                 (this.spec.spacing ?? 10);
-            reserved[edge] = Math.max(0, reserved[edge] - budget);
+            reserved[edge] = Math.max(
+                structural[edge],
+                reserved[edge] - budget
+            );
         }
         return Padding.createFromRecord(reserved);
     }
@@ -526,6 +617,25 @@ export default class SurroundView extends GridView {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     arrange(context, coords, options = {}) {
+        if (!this.layoutParent) {
+            // A root surround has no parent grid to prepare its margin growth.
+            // Resolve it against the canvas content box before arrangement.
+            // super.getFlexItems() retains the original arm weights; this
+            // override would freeze them using the previous allocation.
+            const padding = this.getPadding();
+            this.prepareLayoutSize(
+                coords.width,
+                coords.height,
+                resolveItemSizes(
+                    super.getFlexItems("column"),
+                    coords.width - padding.width
+                ).growth,
+                resolveItemSizes(
+                    super.getFlexItems("row"),
+                    coords.height - padding.height
+                ).growth
+            );
+        }
         super.arrange(context, coords, options);
         if (!this.isConfiguredVisible()) {
             return;
