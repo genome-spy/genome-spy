@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { fileURLToPath } from "node:url";
 import { createGenerator } from "ts-json-schema-generator";
-import Ajv from "ajv";
+import { Ajv } from "ajv";
 
 test("generated request schema matches the supported analysis grammar and budgets", () => {
     // Derive the agent contract from the shipped public types, not a second schema.
