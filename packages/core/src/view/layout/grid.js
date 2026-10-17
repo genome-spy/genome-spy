@@ -37,18 +37,28 @@ export default class Grid {
 
     /** @param {0 | 1} dimension @param {number} count */
     #getIndices(dimension, count) {
-        const tracks = Array.from(
-            { length: count },
-            () => /** @type {number[]} */ ([])
-        );
-        const nCols = this.nCols;
-        for (let index = 0; index < this.n; index++) {
-            const track = this.#cells
-                ? this.#cells[index][dimension]
-                : dimension === 0
-                  ? index % nCols
-                  : Math.floor(index / nCols);
-            tracks[track].push(index);
+        /** @type {number[][]} */
+        const tracks = [];
+        if (this.#cells) {
+            for (let track = 0; track < count; track++) {
+                tracks.push([]);
+            }
+            for (let index = 0; index < this.n; index++) {
+                tracks[this.#cells[index][dimension]].push(index);
+            }
+        } else {
+            const nCols = this.nCols;
+            const step = dimension === 0 ? nCols : 1;
+            for (let track = 0; track < count; track++) {
+                const first = dimension === 0 ? track : track * nCols;
+                const end =
+                    dimension === 0 ? this.n : Math.min(this.n, first + nCols);
+                const indices = [];
+                for (let index = first; index < end; index += step) {
+                    indices.push(index);
+                }
+                tracks.push(indices);
+            }
         }
         return tracks;
     }

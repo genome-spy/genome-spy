@@ -614,3 +614,56 @@ saving 237 / 46 / 115 B. Whole-branch savings are 490 SLOC (5.08%) / 746 physica
 lines, and 5,774 / 1,105 / 956 shipped minified/gzip/Brotli bytes. The 15% target
 remains unmet. This internal cleanup reuses the accurate legend fix changeset;
 unrelated pending fragments keep the aggregate release plan minor.
+
+## Whole-branch behavior and performance review
+
+Three independent reviewers compared `f886172e4..e13f2221c`, dividing mutation /
+guide lifecycle and App consumers, legend ownership / rendering / measurement,
+and grid / facet / surround geometry. No unintended behavioral findings remain.
+The configured legend fill, outline and padding correction is the intentional
+behavior change already described by the branch changeset.
+
+Fresh verification passes all 536 files / 5,055 unit tests, with one skipped and
+two todo. Reviewer checks include 176 lifecycle/App tests, 131 legend/rendering
+tests, 2,688 exact sizing/font-request comparisons, and 3,000 seeded facet size /
+placement comparisons. The latter cover empty factors, wrapping, constrained
+and growing sizes, headers, overhang, spacing and fractional device pixel ratio.
+
+Review found one small performance regression: sharing regular and sparse Grid
+indexing introduced callback allocation and per-cell branches/arithmetic. An
+array-content benchmark, consuming every returned index, measured regular getter
+pairs at about 0.52 us baseline versus 1.27 us on this branch for 100 children.
+Regular traversal now computes stride and bounds once per track and uses simple
+array allocation loops; sparse filling retains child order and linear work.
+The fixed result is about 0.51 us. Ten- and 1,000-child cases also return to
+baseline speed. A second reviewer verified empty/incomplete/sparse semantics,
+unchanged allocation counts and O(children + tracks) work.
+
+The correction adds nine production SLOC / ten physical lines, without adding
+tests that repeat the implementation. Existing grid/facet/surround suites pass
+149 tests and all 3,000 geometry comparisons remain identical.
+
+After the correction, the full 536-file / 5,055-test suite and workspace type
+checks pass again. Formatting, lint for the changed module and release policy
+checks pass. Another index-content check matches the original baseline across
+909 regular configurations and the pre-fix branch across 1,000 sparse grids.
+
+The fixed source scope is now 9,162 SLOC / 12,996 physical lines, a reduction of
+481 SLOC (4.99%) / 736 physical lines from the original baseline. Total runtime
+production changes across the branch are -527 SLOC, excluding tests/utilities
+and declarations. The fixed-scope attribution proxy is 122,892 B / gzip 39,161 B /
+Brotli 33,958 B. The shipped bundle is 1,428,520 B / gzip 516,908 B / Brotli
+415,512 B. This correction costs 125 minified / 55 gzip bytes and saves 61 Brotli
+bytes relative to `e13f2221c`; restoring measured indexing performance justifies
+the modest growth. Whole-branch shipped savings remain 5,649 / 1,050 / 1,017 B.
+No additional changeset is needed for correcting this unreleased refactor.
+
+CPU integration timing used fresh Node processes with the same installed
+dependencies, three alternating-order runs per revision, warmup, and medians.
+Fixtures cover 100 regular plots, 36 plots with axes, 64 facet cells, responsive
+legend wrapping, and the surround acid test. Steady arrangement medians were
+similar or lower for every fixture. Startup was unchanged for undecorated grids
+and about 24-33% lower for the decorated/facet/legend/surround fixtures. With size
+caches invalidated, facet arrangement measured 0.105 ms baseline / 0.107 ms fixed;
+other fixtures were unchanged or faster. No material end-to-end slowdown was
+observed. These timings cover CPU initialization/layout, not GPU throughput.
