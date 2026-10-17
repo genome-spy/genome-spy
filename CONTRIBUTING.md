@@ -1,6 +1,187 @@
 # Contributing to GenomeSpy
 
-Thank you for considering contributing GenomeSpy.
+Thank you for considering contributing to GenomeSpy.
+
+- [Set up and develop](#how-to-contribute)
+- [Coding and testing](#coding-practices)
+- [Commit guidelines](#commit-guidelines)
+- [Release notes for your contribution](#release-notes-for-contributions)
+- [Submit a pull request](#submitting-pull-requests)
+- [Maintainer release procedures](#releases)
+
+## How to Contribute
+
+Start with a local development environment, then review the coding, testing,
+and submission guidelines below. For questions or help choosing a contribution,
+see [Community and Communication](#community-and-communication).
+
+### Setting Up Your Development Environment
+
+Any editor with JavaScript and TypeScript support can be used. VSCode provides
+the shared workspace settings described under
+[Editing examples with local schemas](#editing-examples-with-local-schemas).
+
+Use Node.js 24 (as CI does) and npm 10.9 or newer.
+
+JSON Schemas describe the structure of GenomeSpy visualization specifications.
+Your editor uses them for property and value completion, inline documentation,
+and validation that catches typos and invalid options before running an example.
+Generating schemas from the current checkout keeps that feedback aligned with
+the code on your branch, including unreleased changes. Building them is strongly
+recommended when creating or editing specifications.
+
+Install dependencies and generate the JSON Schemas used for editing GenomeSpy
+examples:
+
+```sh
+npm ci
+npm run build:schemas
+```
+
+### Development Server
+
+Start the App development server from the repository root:
+
+```sh
+npm start
+```
+
+See [Bootstrapping and running](README.md#bootstrapping-and-running) for example
+URLs and instructions for developing Core on its own.
+
+### Editing examples with local schemas
+
+Open `genome-spy.code-workspace` in VSCode and trust the workspace. Its
+committed settings associate Core examples under `examples/core/` and
+`examples/docs/` with `packages/core/dist/schema.json`. App examples under
+`examples/app/` use `packages/app/dist/schema.json`. You can also regenerate
+both schemas with **Tasks: Run Task → Build JSON schemas** from the Command
+Palette. No extension is required for JSON Schema support, and your personal
+`.vscode/` settings remain separate.
+
+Regenerate the schemas after changing specification types in
+`packages/core/src/spec/` or `packages/app/src/spec/`. VSCode normally notices
+the changed schema files automatically. If completion or validation remains
+stale, run the build task and then use **Developer: Reload Window**.
+
+If VSCode reports that a schema cannot be resolved, check that both
+`dist/schema.json` files exist and rerun `npm run build:schemas`. Maintained
+examples should not declare `$schema`, because it takes precedence over the
+workspace association. Check the example's directory if it receives the App
+schema instead of Core, or vice versa.
+
+Other editors can use the same generated schema files. Configure the editor to
+associate the Core and App example paths with their respective files, or add an
+explicit `$schema` to private specifications. For example, a file directly
+under `private/` can use `../packages/core/dist/schema.json` for the current
+checkout.
+
+### Debugging
+
+The following entry (with a correct `pathMapping`) in VSCode's `launch.json` can
+be used to debug the GenomeSpy app:
+
+```json
+{
+  "type": "chrome",
+  "request": "launch",
+  "name": "GenomeSpy App",
+  "url": "http://localhost:8080/",
+  "sourceMaps": false,
+  "webRoot": "${workspaceFolder}/packages/app/src",
+  "pathMapping": {
+    "/@fs/Users/klavikka/genome-spy/packages/core/src": "${workspaceFolder}/packages/core/src"
+  },
+  "enableContentValidation": false
+}
+```
+
+The `enableContentValidation` property is essential, as we don't use source maps
+during development. However, vite rewrites the imports, making the content
+validation fail.
+
+### Documentation
+
+If new features are introduced in your pull request, please also update the
+documentation in the [`docs/`](docs/) directory. If the changes alter the
+visualization grammar, the typings and their documentation in the
+[`packages/core/src/spec/`](packages/core/src/spec/) directory should also be
+updated.
+
+The docs build uses a repo-local Python virtual environment managed by `uv`.
+From the repo root, run:
+
+```sh
+npm run docs:install
+npm run docs:serve
+```
+
+Use `npm run build:docs` when you want the same one-shot docs build that CI runs.
+If CairoSVG cannot find `cairo`, install the native libraries first:
+`brew install cairo` on macOS, or
+`apt-get install libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev`
+on Ubuntu/Debian.
+
+## Coding Practices
+
+### Language and Typings
+
+Our codebase is primarily JavaScript, utilizing
+[JSDoc](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
+for type annotations. The TypeScript language server in VSCode uses the JSDoc
+comments for type checking. Before pushing your changes, ensure that your code
+is correctly typed and passes the type checking. You can run the type checking with:
+
+```sh
+npm -ws --if-present run test:tsc
+```
+
+### Code Formatting with Prettier
+
+To ensure code consistency and readability, all contributions must adhere to our
+formatting standards, enforced by [Prettier](https://prettier.io/). We recommend
+running Prettier before submitting your contributions to avoid
+formatting-related revisions. The Prettier
+[extension](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+for VSCode is recommended for automatic formatting.
+
+### Editor Configuration
+
+We provide an `.editorconfig` file to help maintain consistent coding styles for
+various editors and IDEs. VSCode users need an
+[extension](https://marketplace.visualstudio.com/items?itemName=EditorConfig.EditorConfig)
+to leverage these settings automatically.
+
+### Ensure High Performance in Hot Paths
+
+GenomeSpy is a high-performance visualization toolkit, and we strive to maintain
+this standard in all aspects of the project. When making changes, especially in
+hot paths of GenomeSpy's data flow, ensure that the performance is not
+compromised. Particularly, avoid creating large numbers of objects in loops, if
+the objects are to be discarded soon after.
+
+However, premature optimization is discouraged and code readability is preferred
+over unnecessary performance hacks. Instead, use the performance tools provided
+by the browser to identify bottlenecks and optimize accordingly.
+
+### Testing
+
+GenomeSpy uses [Vitest](https://vitest.dev/) for unit and integration tests. Run
+the focused suite for the code you changed during development:
+
+```sh
+npx vitest run path/to/file.test.js --reporter=agent
+```
+
+The full test suite and lint checks are available with:
+
+```sh
+npm test -- --reporter=agent
+npm run lint
+```
+
+Run the type checks described under [Language and Typings](#language-and-typings)
+as well.
 
 ## Commit Guidelines
 
@@ -28,8 +209,8 @@ generate release notes after `v1.0.0`; Changesets records those decisions.
 
 ## Release notes for contributions
 
-Include a `.changeset/*.md` fragment with each user-visible change, whether it
-arrives through a PR or a direct commit to `master` or `main`:
+Include a `.changeset/*.md` fragment in your pull request for each user-visible
+change:
 
 ```sh
 npm run changeset
@@ -41,10 +222,6 @@ Select the directly affected packages and describe the benefit or corrected
 behavior in language GenomeSpy users understand. Use `patch` for compatible
 fixes, `minor` for compatible functionality, and `major` for breaking API or
 specification changes. Every breaking note must explain the required migration.
-The eight release packages share one fixed version, so selecting a single
-affected package propagates the bump to the group. Private applications are
-versioned but never published or tagged. The private WebGPU prototype remains
-outside the group, at its own development version.
 
 Start the fragment body with `<!-- category: feature -->`,
 `<!-- category: improvement -->`, or `<!-- category: fix -->`, followed by a blank
@@ -52,22 +229,50 @@ line and a concise changelog entry. Categories control presentation independentl
 of version bumps; any major bump appears under **Breaking changes**. Empty
 no-release markers do not need a category.
 
-Update an existing fragment when further commits change the same unreleased
-feature. Use separate fragments for independent changes. For changes with no
-release impact, such as tests, CI, pure refactoring, or internal documentation,
-record the decision with an empty fragment:
+Reuse the feature's existing fragment as the implementation evolves, keeping
+its entry concise. Supporting tests, documentation, and refactoring need no
+additional empty fragments. Use separate notes for independent user-visible
+changes. When the whole contribution has no release impact, such as tests, CI,
+pure refactoring, or internal documentation, record the decision once with an
+empty fragment:
 
 ```sh
 npm run changeset -- --empty
 ```
 
-CI checks PRs and pushes to `master`/`main` for a new or updated fragment. It
-validates package names, release plans, and the publication boundary; reviewers
-still assess the bump and prose. Version commits consume fragments and do not
-need another no-release marker. See [.changeset/README.md](.changeset/README.md)
-for the complete contribution contract.
+CI checks that the contribution includes a new or updated fragment and validates
+its category, package names, and release plan. Reviewers assess the bump and
+prose. See [.changeset/README.md](.changeset/README.md) for the complete note
+format and examples.
+
+## Submitting Pull Requests
+
+Submit changes through a pull request with a description of the problem,
+motivation, and resulting behavior. Include the relevant tests, documentation,
+and [release-note fragment](#release-notes-for-contributions). Review your diff
+and commits before opening the PR. Maintainers will review the contribution and
+may request changes.
+
+## Community and Communication
+
+We encourage open and respectful communication within our community. If you have
+questions, suggestions, or need clarification on any aspect of the project,
+please feel free to reach out through GitHub
+[discussions](https://github.com/genome-spy/genome-spy/discussions) or
+[issues](https://github.com/genome-spy/genome-spy/issues).
 
 ## Releases
+
+This section is for maintainers preparing and publishing releases. Direct commits
+to `master` or `main` follow the same changeset/no-release convention as pull
+requests. Version commits consume fragments and need no additional empty marker.
+
+The eight release packages share one fixed version, so selecting a single
+affected package propagates the bump to the group. Private applications are
+versioned but never published or tagged. The private WebGPU prototype remains
+outside the group, at its own development version.
+
+### Prepare a stable release
 
 `v1.0.0` was the final release calculated with Lerna Lite and Conventional
 Commits. Preserve the existing versions and changelog history as the baseline;
@@ -90,10 +295,8 @@ improvements, and fixes, with readable labels for directly affected packages.
 Each logical fragment appears once in the root entry, even when several fixed
 packages are affected. The shared formatter removes category metadata and puts
 descriptions before PR/commit links and contributor attribution. Package
-changelogs retain Changesets' version-bump headings.
-The GitHub changelog formatter supplies PR/commit links
-and contributor attribution; release preparation needs a `GITHUB_TOKEN` with
-the formatter's documented read permissions. See the
+changelogs retain Changesets' version-bump headings. Release preparation needs a
+`GITHUB_TOKEN` with the GitHub formatter's documented read permissions. See the
 [formatter documentation](https://changesets.dev/packages/changelog-github).
 Empty fragments alone do not create a release. This command supports stable
 releases. The deferred branch policy and required prerelease work are recorded
@@ -113,18 +316,28 @@ Both offline and GitHub release-note output preserve this prose; individual
 changeset entries remain concise.
 
 Review and commit all generated changes using Conventional Commits, then run the
-normal lint, type, build, and test checks and `npm run smoke:examples` before
-publication. Inspect the npm publication candidates with:
+normal lint, type, build, and test checks before publication.
+
+Before a release, smoke-test all curated examples in headless Chromium:
+
+```sh
+npm run smoke:examples
+```
+
+The check resolves imports, loads data, and waits for rendering to settle. It
+does not write screenshots. Network access is required by examples that use
+remote data.
+
+Inspect the npm publication candidates with:
 
 ```sh
 npm run release:plan
 ```
 
-Only App, Core, Inspector, and the React component are published. All eight
-release packages share Core's manifest version; the private WebGPU prototype
-keeps its independent version. npm workspaces builds packages in the explicit
-order in the root `build` script, with Core and the plugins before App and the
-frontends. Update that order when introducing a new build dependency.
+Only App, Core, Inspector, and the React component are published. npm workspaces
+builds packages in the explicit order in the root `build` script, with Core and
+the plugins before App and the frontends. Update that order when introducing a
+new build dependency.
 
 ### Set up npm trusted publishing once
 
@@ -221,6 +434,35 @@ Packing runs the actual `prepack`/`postpack` lifecycle and writes only the four
 public tarballs. Inspect their manifests and entry files before release. Never
 run publication, tag pushes, or GitHub-release creation during rehearsal.
 
+### Publishing versioned schemas
+
+The documentation deployment publishes Core and App schemas only for a stable
+GitHub release. It writes immutable exact files and updates the matching minor
+and major aliases under `https://genomespy.app/schema/`. Manual documentation
+deployments and prereleases do not change the public schema tree.
+Manual deployments stop before updating the site if the current Core or App
+major has no published alias yet.
+
+Before advancing a major alias, the release job validates compatible examples
+from the currently deployed documentation against the new schema. A failure
+means the schema or specification types must be corrected, or the change must
+move to a new major version. The late-v0 corpus is also checked for the first v1
+release because that transition is intentionally compatible.
+
+To exercise publication without touching the live site, build both schemas and
+run the publisher against a temporary copy or empty directory:
+
+```sh
+npm run build:schemas
+node scripts/publish-schemas.mjs --site-dir /path/to/site-copy
+```
+
+Inspect `schema/core/` and `schema/app/` in that directory. Each contains exact,
+minor, and major files plus a manifest that records alias targets. Reusing an
+exact version with different content fails, rerunning the same release is
+idempotent, and publishing an older release cannot move aliases backward. Core
+and App package versions are handled independently.
+
 ### Future major release lines
 
 This policy is deferred. Continue compatible 1.x development on `master`, using
@@ -293,209 +535,3 @@ Before activating this policy, complete the following work:
 
 The current scripts reject prerelease state and the publisher accepts stable
 versions from `master` only. Keep those restrictions until this work is ready.
-
-## Coding Practices
-
-### Language and Typings
-
-Our codebase is primarily JavaScript, utilizing
-[JSDoc](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
-for type annotations. The TypeScript language server in VSCode uses the JSDoc
-comments for type checking. Before pushing your changes, ensure that your code
-is correctly typed and passes the type checking. You can run the type checking with:
-
-```sh
-npm -ws --if-present run test:tsc
-```
-
-### Code Formatting with Prettier
-
-To ensure code consistency and readability, all contributions must adhere to our
-formatting standards, enforced by [Prettier](https://prettier.io/). We recommend
-running Prettier before submitting your contributions to avoid
-formatting-related revisions. The Prettier
-[extension](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
-for VSCode is recommended for automatic formatting.
-
-### Editor Configuration
-
-We provide an `.editorconfig` file to help maintain consistent coding styles for
-various editors and IDEs. VSCode users need an
-[extension](https://marketplace.visualstudio.com/items?itemName=EditorConfig.EditorConfig)
-to leverage these settings automatically.
-
-### Ensure High Performance in Hot Paths
-
-GenomeSpy is a high-performance visualization toolkit, and we strive to maintain
-this standard in all aspects of the project. When making changes, especially in
-hot paths of GenomeSpy's data flow, ensure that the performance is not
-compromised. Particularly, avoid creating large numbers of objects in loops, if
-the objects are to be discarded soon after.
-
-However, premature optimization is discouraged and code readability is preferred
-over unnecessary performance hacks. Instead, use the performance tools provided
-by the browser to identify bottlenecks and optimize accordingly.
-
-### Testing
-
-GenomeSpy uses [vitest](https://vitest.dev/) for both unit and integration
-testing. While our unit tests are thorough, we recognize a need for stronger
-integration testing. Contributions aimed at enhancing our integration test suite
-are especially welcome and needed. Tests can be run with:
-
-```sh
-npm run test
-```
-
-Before a release, smoke-test all curated examples in headless Chromium:
-
-```sh
-npm run smoke:examples
-```
-
-The check resolves imports, loads data, and waits for rendering to settle. It
-does not write screenshots. Network access is required by examples that use
-remote data.
-
-### Publishing versioned schemas
-
-The documentation deployment publishes Core and App schemas only for a stable
-GitHub release. It writes immutable exact files and updates the matching minor
-and major aliases under `https://genomespy.app/schema/`. Manual documentation
-deployments and prereleases do not change the public schema tree.
-Manual deployments stop before updating the site if the current Core or App
-major has no published alias yet.
-
-Before advancing a major alias, the release job validates compatible examples
-from the currently deployed documentation against the new schema. A failure
-means the schema or specification types must be corrected, or the change must
-move to a new major version. The late-v0 corpus is also checked for the first v1
-release because that transition is intentionally compatible.
-
-To exercise publication without touching the live site, build both schemas and
-run the publisher against a temporary copy or empty directory:
-
-```sh
-npm run build:schemas
-node scripts/publish-schemas.mjs --site-dir /path/to/site-copy
-```
-
-Inspect `schema/core/` and `schema/app/` in that directory. Each contains exact,
-minor, and major files plus a manifest that records alias targets. Reusing an
-exact version with different content fails, rerunning the same release is
-idempotent, and publishing an older release cannot move aliases backward. Core
-and App package versions are handled independently.
-
-## How to Contribute
-
-Before making contributions, please familiarize yourself with the following
-processes to ensure a smooth and efficient collaboration.
-
-### Setting Up Your Development Environment
-
-Setting up a local development environment is the first step. VSCode is the
-recommended IDE for GenomeSpy development, as it provides a seamless development
-experience with integrated tools and extensions. However, any IDE that supports
-JavaScript and TypeScript can be used.
-
-Use Node.js 24 (as CI does) and npm 10.9 or newer for the development and release
-tools.
-
-After installing dependencies, generate the JSON Schemas used for editing
-GenomeSpy examples:
-
-```sh
-npm ci
-npm run build:schemas
-```
-
-Open `genome-spy.code-workspace` in VSCode and trust the workspace. Its
-committed settings associate Core examples under `examples/core/` and
-`examples/docs/` with `packages/core/dist/schema.json`. App examples under
-`examples/app/` use `packages/app/dist/schema.json`. You can also regenerate
-both schemas with **Tasks: Run Task → Build JSON schemas** from the Command
-Palette. No extension is required for JSON Schema support, and your personal
-`.vscode/` settings remain separate.
-
-Regenerate the schemas after changing specification types in
-`packages/core/src/spec/` or `packages/app/src/spec/`. VSCode normally notices
-the changed schema files automatically. If completion or validation remains
-stale, run the build task and then use **Developer: Reload Window**.
-
-If VSCode reports that a schema cannot be resolved, check that both
-`dist/schema.json` files exist and rerun `npm run build:schemas`. Maintained
-examples should not declare `$schema`, because it takes precedence over the
-workspace association. Check the example's directory if it receives the App
-schema instead of Core, or vice versa.
-
-Other editors can use the same generated schema files. Configure the editor to
-associate the Core and App example paths with their respective files, or add an
-explicit `$schema` to private specifications. For example, a file directly
-under `private/` can use `../packages/core/dist/schema.json` for the current
-checkout.
-
-### Debugging
-
-The following entry (with a correct `pathMapping`) in VSCode's `launch.json` can
-be used to debug the GenomeSpy app:
-
-```json
-{
-  "type": "chrome",
-  "request": "launch",
-  "name": "GenomeSpy App",
-  "url": "http://localhost:8080/",
-  "sourceMaps": false,
-  "webRoot": "${workspaceFolder}/packages/app/src",
-  "pathMapping": {
-    "/@fs/Users/klavikka/genome-spy/packages/core/src": "${workspaceFolder}/packages/core/src"
-  },
-  "enableContentValidation": false
-}
-```
-
-The `enableContentValidation` property is essential, as we don't use source maps
-during development. However, vite rewrites the imports, making the content
-validation fail.
-
-### Development Server
-
-See the [`README.md`](./README.md) for instructions on how to start the development server.
-
-### Submitting Pull Requests
-
-Prefer submitting changes through pull requests (PRs). Direct maintainer commits
-to `master` or `main` follow the same changeset/no-release convention. Please provide a
-clear and detailed description of your changes, including the motivation and
-context behind them. PRs undergo a review process, and constructive feedback
-should be expected and welcomed.
-
-### Documentation
-
-If new features are introduced in your pull request, please also update the
-documentation in the [`docs/`](docs/) directory. If the changes alter the
-visualization grammar, the typings and their documentation in the
-[`packages/core/src/spec/`](packages/core/src/spec/) directory should also be
-updated.
-
-The docs build uses a repo-local Python virtual environment managed by `uv`.
-From the repo root, run:
-
-```sh
-npm run docs:install
-npm run docs:serve
-```
-
-Use `npm run build:docs` when you want the same one-shot docs build that CI runs.
-If CairoSVG cannot find `cairo`, install the native libraries first:
-`brew install cairo` on macOS, or
-`apt-get install libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev`
-on Ubuntu/Debian.
-
-## Community and Communication
-
-We encourage open and respectful communication within our community. If you have
-questions, suggestions, or need clarification on any aspect of the project,
-please feel free to reach out through GitHub
-[discussions](https://github.com/genome-spy/genome-spy/discussions) or
-[issues](https://github.com/genome-spy/genome-spy/issues).
