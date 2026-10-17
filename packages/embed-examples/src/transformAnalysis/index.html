@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <title>Analyze brushed records</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <h1>Analyze brushed records</h1>
+        <p>
+            GenomeSpy loads ten generic measurements. Shift-drag across the plot
+            to choose input records, then calculate each group's count and mean.
+        </p>
+        <button id="analyze" disabled>Analyze brush</button>
+        <button id="clear" disabled>Clear brush</button>
+        <div id="plot" class="visualization-surface"></div>
+        <h2>Analysis results received by the app</h2>
+        <pre id="results"></pre>
+        <p>
+            <code
+                >view.transformData({scope, transform, inputLimit, limit})</code
+            >
+            captures brushed records first, then runs an aggregate
+            transformation in a separate dataflow. The plot keeps its original
+            measurements. The app receives summaries without repeating the
+            calculation.
+        </p>
+        <p>
+            Results update when you click Analyze brush. A cleared brush returns
+            no summaries. Unlike <a href="../dataReadback/">record readback</a>,
+            the calculation here runs after choosing the input region. Synthetic
+            generic data shared with that example.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

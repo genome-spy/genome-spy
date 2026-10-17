@@ -1,3 +1,4 @@
+import runDataTransforms from "../data/runDataTransforms.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import { matchesViewport } from "../data/viewportDomain.js";
 import { createSelectionPredicate } from "../encoder/encoder.js";
@@ -366,6 +367,34 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                     rows.push(row);
                 }
                 return { rows, truncated: false };
+            },
+
+            transformData(options) {
+                for (const name of /** @type {const} */ ([
+                    "inputLimit",
+                    "limit",
+                ])) {
+                    if (
+                        !Number.isSafeInteger(options?.[name]) ||
+                        options[name] < 0
+                    )
+                        throw new Error(
+                            name + " must be a nonnegative safe integer."
+                        );
+                }
+                const input = handle.readData({
+                    scope: options.scope,
+                    limit: options.inputLimit,
+                });
+                if (input.truncated)
+                    throw new Error(
+                        "Analysis input exceeds inputLimit. Narrow the scope or raise inputLimit."
+                    );
+                return runDataTransforms(
+                    input.rows,
+                    options.transform,
+                    options.limit
+                );
             },
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
