@@ -1,13 +1,17 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import View from "../../view/view.js";
 import UnitView from "../../view/unitView.js";
 import { createAndInitialize } from "../../view/testUtils.js";
 import { createWebGLMark } from "./rendererResources.js";
 import { replaceOrderGuard } from "./marks/webGlMark.js";
+import { fetchExample } from "../../spec/exampleTestUtils.js";
 
 const VERTEX_SHADER = 0x8b31;
 const FRAGMENT_SHADER = 0x8b30;
+
+beforeEach(() => vi.stubGlobal("fetch", fetchExample));
+afterEach(() => vi.unstubAllGlobals());
 
 /**
  * @param {string} relativePath
@@ -161,15 +165,24 @@ function findUnitView(root, name) {
  */
 async function captureShaderSources(spec, unitName) {
     const root = await createAndInitialize(spec, View);
-    const unitView = findUnitView(root, unitName);
-    const glHelper = createFakeGlHelper();
+    try {
+        expect(
+            root.context.dataFlow.loadingStatusRegistry
+                .getSnapshot()
+                .filter((entry) => entry.status !== "complete")
+        ).toEqual([]);
+        const unitView = findUnitView(root, unitName);
+        const glHelper = createFakeGlHelper();
 
-    createWebGLMark(
-        unitView.mark,
-        /** @type {any} */ (glHelper)
-    ).initializeGraphics();
+        createWebGLMark(
+            unitView.mark,
+            /** @type {any} */ (glHelper)
+        ).initializeGraphics();
 
-    return glHelper.getCapturedSources();
+        return glHelper.getCapturedSources();
+    } finally {
+        root.disposeSubtree();
+    }
 }
 
 describe("generated shader snapshots", () => {
@@ -385,11 +398,12 @@ describe("generated shader snapshots", () => {
     });
 
     test("interval selection example", async () => {
-        const sources = await captureShaderSources(
-            loadSpec(
+        const sources = await captureShaderSources({
+            ...loadSpec(
                 "../../../../../examples/docs/grammar/parameters/interval-selection.json"
-            )
-        );
+            ),
+            baseUrl: "examples/",
+        });
 
         expect(sources).toMatchSnapshot();
     });
@@ -649,9 +663,12 @@ describe("generated shader snapshots", () => {
 
     test("penguins scatter plot example", async () => {
         const sources = await captureShaderSources(
-            loadSpec(
-                "../../../../../examples/docs/grammar/parameters/penguins.json"
-            ),
+            {
+                ...loadSpec(
+                    "../../../../../examples/docs/grammar/parameters/penguins.json"
+                ),
+                baseUrl: "examples/",
+            },
             "scatterPlot"
         );
 

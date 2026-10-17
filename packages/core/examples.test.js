@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import GenomeStore from "./src/genome/genomeStore.js";
 import { resolveRootGenomeConfig } from "./src/genome/rootGenomeConfig.js";
@@ -9,12 +9,22 @@ import {
     collectSharedExamplePaths,
     loadSharedExampleSpec,
 } from "./src/spec/exampleFiles.js";
+import { fetchExample } from "./src/spec/exampleTestUtils.js";
 
 const curatedBaseUrl = "examples/";
 
 const examplePaths = collectSharedExamplePaths().filter((examplePath) => {
     const spec = loadSharedExampleSpec(examplePath);
     return !requiresExternalLoading(spec);
+});
+
+/** @type {import("./src/view/view.js").default[]} */
+const views = [];
+
+beforeEach(() => vi.stubGlobal("fetch", fetchExample));
+afterEach(() => {
+    for (const view of views.splice(0)) view.disposeSubtree();
+    vi.unstubAllGlobals();
 });
 
 describe("shared examples", () => {
@@ -38,7 +48,9 @@ describe("shared examples", () => {
     });
 
     test("resolves relative data URLs from the curated base URL", async () => {
-        const { context } = await initializeExample("examples/core/first.json");
+        const { view, context } = await initializeExample(
+            "examples/core/first.json"
+        );
 
         expect(
             context.dataFlow.dataSources.some(
@@ -48,6 +60,10 @@ describe("shared examples", () => {
                     source.baseUrl === curatedBaseUrl
             )
         ).toBe(true);
+        const unit = /** @type {UnitView} */ (
+            view.getDescendants().find((child) => child instanceof UnitView)
+        );
+        expect(unit.getCollector().getItemCount()).toBeGreaterThan(0);
     });
 });
 
@@ -63,7 +79,7 @@ async function initializeExample(examplePath) {
     genomeStore.configureGenomes(genomesByName, defaultAssembly);
     await ensureAssembliesForSpec(spec, genomeStore);
 
-    return createHeadlessEngine(spec, {
+    const engine = await createHeadlessEngine(spec, {
         contextOptions: {
             genomeStore,
             viewFactoryOptions: {
@@ -72,6 +88,13 @@ async function initializeExample(examplePath) {
             },
         },
     });
+    views.push(engine.view);
+    expect(
+        engine.context.dataFlow.loadingStatusRegistry
+            .getSnapshot()
+            .filter((entry) => entry.status !== "complete")
+    ).toEqual([]);
+    return engine;
 }
 
 /**
@@ -129,8 +152,8 @@ function visitSpec(node, visitor) {
 }
 
 /**
- * Exclude examples that require network access or URL imports from the offline
- * initialization suite, which deliberately disables external view loading.
+ * Exclude network access, URL imports, and URL expressions whose offline
+ * availability cannot be determined statically.
  *
  * @param {any} node
  */
@@ -148,6 +171,7 @@ function requiresExternalLoading(node) {
 
         if (
             isAbsoluteHttpUrl(currentNode.url) ||
+            typeof currentNode.url?.expr === "string" ||
             typeof currentNode.import?.url === "string"
         ) {
             foundExternalLoading = true;

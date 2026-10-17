@@ -405,6 +405,9 @@ test("locates scored-label fields when layout makes the labels visible", async (
 });
 
 test("reports transform field locations through source loading status", async () => {
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     const fetch = vi
         .spyOn(globalThis, "fetch")
         .mockResolvedValue(new Response("value\n1\n"));
@@ -435,6 +438,12 @@ test("reports transform field locations through source loading status", async ()
                 message: expect.stringContaining('Invalid field "missing"'),
             }),
         ]);
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            'Specification: "/transform/0", property: ["fields",1]',
+            expect.objectContaining({
+                message: expect.stringContaining('Invalid field "missing"'),
+            })
+        );
         view.disposeSubtree();
     } finally {
         fetch.mockRestore();

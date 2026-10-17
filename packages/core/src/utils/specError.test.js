@@ -8,7 +8,10 @@ import { getEncoderAccessors } from "../encoder/encoder.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import createTransform from "../data/transforms/transformFactory.js";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
 
 test("preserves the responsible error through wrappers and handles unrelated causes", () => {
     const location = { origin: "encoding", path: ["field"] };
@@ -49,6 +52,7 @@ test.each(
 )(
     "locates $declaration.type construction errors with sideInput=$sideInput",
     async ({ declaration, sideInput }) => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
             data: { values: [{ present: 1 }] },
             // A nested failure must identify its own declaration, not the outer join.
@@ -75,6 +79,7 @@ test.each(
             });
             if (declaration.type === "regexExtract")
                 expect(error.cause).toBeInstanceOf(SyntaxError);
+            expect(warn).toHaveBeenCalledExactlyOnceWith(error.cause);
             return true;
         });
     }
@@ -475,6 +480,9 @@ test.each(
 test.each([false, true])(
     "reports separate field and URL origins with template=%s",
     async (template) => {
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
         vi.stubGlobal("fetch", async () => new Response("present\n1\n"));
         const declaration = {
             field: "missing",
@@ -513,6 +521,12 @@ test.each([false, true])(
             errorPhase: "processing",
             errorLocation: { origin: "encoding", path: ["field"] },
         });
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            'Specification: "encoding", property: ["field"]',
+            expect.objectContaining({
+                message: expect.stringContaining('Invalid field "missing"'),
+            })
+        );
         // Public snapshots and events must not let one observer alter another's location.
         /** @type {string[]} */ (entry.errorLocation.path)[0] = "url";
         expect(
@@ -598,6 +612,9 @@ test("permits present undefined datum fields without an origin hook", async () =
 });
 
 test("reports missing formula fields through source loading status", async () => {
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     vi.stubGlobal("fetch", async () => new Response("present\n1\n"));
     const declaration = {
         type: /** @type {const} */ ("formula"),
@@ -626,5 +643,11 @@ test("reports missing formula fields through source loading status", async () =>
             message: expect.stringContaining('Invalid field "labelWidth"'),
         }),
     ]);
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        'Specification: "formula", property: ["expr"]',
+        expect.objectContaining({
+            message: expect.stringContaining('Invalid field "labelWidth"'),
+        })
+    );
     view.disposeSubtree();
 });

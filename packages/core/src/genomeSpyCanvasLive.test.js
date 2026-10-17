@@ -64,6 +64,9 @@ afterEach(() => {
 });
 
 test("keeps a shared data-loading error visible after launch", async () => {
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     vi.stubGlobal(
         "fetch",
         vi.fn(
@@ -92,6 +95,12 @@ test("keeps a shared data-loading error visible after launch", async () => {
         expect(
             container.querySelector(".loading-indicators .error")?.textContent
         ).toContain("Could not load data: missing.csv. Reason: 404 Not Found");
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({
+                message:
+                    "Could not load data: missing.csv. Reason: 404 Not Found",
+            })
+        );
     } finally {
         genomeSpy.destroy();
         container.remove();
@@ -99,6 +108,9 @@ test("keeps a shared data-loading error visible after launch", async () => {
 });
 
 test("reports canonical source outcomes through the embed API until final disposal", async () => {
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     const fetchData = vi.fn(
         async () => new Response("", { status: 404, statusText: "Not Found" })
     );
@@ -135,6 +147,12 @@ test("reports canonical source outcomes through the embed API until final dispos
             errorPhase: "request",
         });
         expect(fetchData).toHaveBeenCalledOnce();
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({
+                message:
+                    "Could not load data: missing.csv. Reason: 404 Not Found",
+            })
+        );
         expect(
             container.querySelectorAll(".loading-indicators .error")
         ).toHaveLength(2);
@@ -167,6 +185,9 @@ test("reports canonical source outcomes through the embed API until final dispos
 });
 
 test("keeps main and lookup outcomes independent and replaces errors after a new load", async () => {
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     vi.stubGlobal(
         "fetch",
         vi.fn(async (url) =>
@@ -206,6 +227,11 @@ test("keeps main and lookup outcomes independent and replaces errors after a new
         expect(
             container.querySelector(".loading-indicators .error").textContent
         ).toContain("side.csv");
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({
+                message: "Could not load data: side.csv. Reason: 404 Not Found",
+            })
+        );
         const changed = vi.fn();
         api.dataLoading.subscribe(changed);
         const subscriberError = new Error("Host listener failed");

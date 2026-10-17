@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import IntervalUrlSource from "./intervalUrlSource.js";
 import { annotateSpecError } from "../../../utils/specError.js";
+import { makeParamRuntimeProvider } from "../../flowTestUtils.js";
 
 /** @extends {IntervalUrlSource<object, import("../../flowNode.js").Datum[][]>} */
 class TestSource extends IntervalUrlSource {
@@ -53,7 +54,7 @@ function createViewStub() {
     };
     return {
         loadingStatuses,
-        paramRuntime: {},
+        ...makeParamRuntimeProvider(),
         getBaseUrl: () => "",
         getScaleResolution: () => ({
             getDomain: () => [0, 10],
@@ -121,7 +122,8 @@ describe("IntervalUrlSource", () => {
         vi.useFakeTimers();
         vi.stubGlobal("window", { setTimeout, clearTimeout });
         const calls = createCalls();
-        const source = new TestSource("window", calls, createViewStub());
+        const view = createViewStub();
+        const source = new TestSource("window", calls, view);
 
         expect(calls.modules).not.toHaveBeenCalled();
         source.onDomainChanged([0, 10]);
@@ -130,9 +132,15 @@ describe("IntervalUrlSource", () => {
         expect(calls.modules).toHaveBeenCalledOnce();
         expect(calls.handles).toHaveBeenCalledOnce();
         expect(calls.loads).toHaveBeenCalledWith([0, 20]);
+        expect(view.loadingStatuses).toEqual(["loading", "complete"]);
+        expect(source.isDataReadyForDomain({ x: [0, 10] })).toBe(true);
+        source.dispose();
     });
 
     it("rejects multiple descriptors from a single-file source", async () => {
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
         const calls = createCalls();
         const view = createViewStub();
         const source = new TestSource("domain", calls, view);
@@ -142,6 +150,14 @@ describe("IntervalUrlSource", () => {
 
         expect(view.loadingStatuses.at(-1)).toBe("error");
         expect(calls.modules).not.toHaveBeenCalled();
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({
+                message: expect.stringContaining(
+                    "supports exactly one resolved URL"
+                ),
+            })
+        );
+        source.dispose();
     });
 
     it.each(/** @type {const} */ (["domain", "window"]))(
