@@ -412,12 +412,67 @@ export default class View {
     }
 
     /**
-     * Returns a padding that indicates how much axes and titles extend over the plot area.
+     * Returns the extent of guides and surrounding panels beyond the plot area.
      *
      * @returns {Padding}
      */
     getOverhang() {
         return Padding.zero();
+    }
+
+    /**
+     * Occupied panels included in overhang, whose reservation cannot be
+     * suppressed by the chrome-only `overhang` configuration.
+     * @returns {Padding}
+     */
+    getStructuralOverhang() {
+        return Padding.zero();
+    }
+
+    /**
+     * Flex reservations outside the central plot, allocated in separate slots.
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @returns {{ before: import("./layout/flexLayout.js").SizeDef, after: import("./layout/flexLayout.js").SizeDef }}
+     */
+    getStructuralSizeDefs(channel) {
+        const overhang = this.getStructuralOverhang();
+        return {
+            before: { px: overhang[channel === "x" ? "left" : "top"] },
+            after: { px: overhang[channel === "x" ? "right" : "bottom"] },
+        };
+    }
+
+    /**
+     * Plotting interval exported to an alignment-aware parent. Structural
+     * insets are included in getOverhang() alongside external chrome.
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @returns {{ size: import("./layout/flexLayout.js").SizeDef, before: number, after: number }}
+     */
+    getAlignment(channel) {
+        const dimension = channel === "x" ? "width" : "height";
+        return {
+            size: this.getViewportSize().subtractPadding(this.getOverhang())[
+                dimension
+            ],
+            before: 0,
+            after: 0,
+        };
+    }
+
+    /** @param {import("../spec/channel.js").PrimaryPositionalChannel} _channel */
+    getAlignmentCoords(_channel) {
+        return this.coords.shrink(this.getOverhang());
+    }
+
+    /** @returns {{ view: View, coords: import("./layout/rectangle.js").default, chrome: boolean }[]} */
+    getLayoutFootprints() {
+        return [
+            {
+                view: this,
+                coords: this.coords.shrink(this.getOverhang()),
+                chrome: false,
+            },
+        ];
     }
 
     /**
@@ -1189,6 +1244,13 @@ export default class View {
      * @type {import("../types/rendering.js").ArrangeMethod}
      */
     arrange(context, coords, options = {}) {
+        if (!this.layoutParent) {
+            // Clear the whole tree once: hidden views are skipped below and
+            // would retain stale dimensions in shared-scale axis-length queries.
+            this.visit((view) => {
+                view.layoutCoords = undefined;
+            });
+        }
         this.layoutCoords = coords;
 
         // TODO: When using sample faceting, all facets have the same coords.
@@ -1312,28 +1374,39 @@ export default class View {
      * @param {import("../spec/channel.js").ChannelWithScale} channel
      */
     getScaleResolution(channel) {
-        const primaryChannel =
-            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
-                getPrimaryChannel(channel)
-            );
+        return this.#getResolution(channel, "scale");
+    }
 
-        return this.getDataAncestors()
-            .map((view) => view.resolutions.scale[primaryChannel])
-            .find((resolution) => resolution);
+    /** @param {import("../spec/channel.js").PositionalChannel} channel */
+    getAxisResolution(channel) {
+        return this.#getResolution(channel, "axis");
     }
 
     /**
-     * @param {import("../spec/channel.js").PositionalChannel} channel
+     * @template {"scale" | "axis"} T
+     * @param {import("../spec/channel.js").ChannelWithScale} channel
+     * @param {T} type
+     * @returns {View["resolutions"][T][keyof View["resolutions"][T]]}
      */
-    getAxisResolution(channel) {
-        const primaryChannel =
-            /** @type {import("../spec/channel.js").PrimaryPositionalChannel} */ (
-                getPrimaryChannel(channel)
-            );
+    #getResolution(channel, type) {
+        const primary = getPrimaryChannel(channel);
+        for (const view of this.getDataAncestors()) {
+            const resolution =
+                view.resolutions[type][
+                    /** @type {keyof View["resolutions"][T]} */ (primary)
+                ];
+            if (resolution || view.isResolutionBoundary(primary))
+                return resolution;
+        }
+    }
 
-        return this.getDataAncestors()
-            .map((view) => view.resolutions.axis[primaryChannel])
-            .find((resolution) => resolution);
+    /** @param {import("../spec/channel.js").Channel} channel */
+    isResolutionBoundary(channel) {
+        return (
+            this.options.resolutionBoundaryChannels?.some(
+                (boundary) => boundary === getPrimaryChannel(channel)
+            ) ?? false
+        );
     }
 
     /**

@@ -1,0 +1,854 @@
+{
+  "description": [
+    "Surround acid test",
+    "Four linked matrices stress all four sides, three-level nesting, shared and local scales, mixed sizing, and collected legends.",
+    "Pan or zoom any matrix to move all four. Zoom teal and yellow summaries independently. In the App, hide and restore tracks using View settings."
+  ],
+
+  "title": {
+    "text": "Surround acid test",
+    "subtitle": "Shared matrix x/y | local summary scales | nested annotations",
+    "anchor": "start",
+    "fontSize": 18
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 120, "as": "i" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.i % 12", "as": "column" },
+    { "type": "formula", "expr": "floor(datum.i / 12)", "as": "row" }
+  ],
+
+  "scales": {
+    "x": {
+      "name": "acidColumns",
+      "type": "index",
+      "domain": [0, 11],
+      "paddingInner": 0.04,
+      "gapPositions": [3, 7],
+      "gapWidth": 4
+    },
+    "y": {
+      "name": "acidRows",
+      "type": "index",
+      "domain": [0, 9],
+      "reverse": true,
+      "paddingInner": 0.04,
+      "gapPositions": [4],
+      "gapWidth": 4
+    },
+    "color": { "type": "linear", "domain": [0, 10], "scheme": "viridis" }
+  },
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "shared", "color": "shared" },
+    "axis": { "x": "independent", "y": "independent" },
+    "legend": { "color": "collected" }
+  },
+
+  "templates": {
+    "matrix": {
+      "name": "matrix",
+      "width": { "grow": 1, "minPx": 100 },
+      "height": { "grow": 1, "minPx": 70 },
+      "view": { "stroke": "#334155" },
+      "params": [
+        {
+          "name": "cursor",
+          "ruler": {
+            "encodings": ["x", "y"],
+            "extent": "view",
+            "mark": { "stroke": "#111827", "opacity": 0.5, "strokeDash": [3, 3] }
+          }
+        }
+      ],
+      "encoding": {
+        "x": {
+          "field": "column",
+          "type": "index",
+          "axis": { "title": "Shared columns", "values": [0, 3, 6, 9, 11] }
+        },
+        "y": {
+          "field": "row",
+          "type": "index",
+          "axis": { "title": "Shared rows", "values": [0, 3, 6, 9] }
+        }
+      },
+      "layer": [
+        {
+          "name": "cells",
+          "mark": "rect",
+          "encoding": {
+            "color": {
+              "field": "signal",
+              "type": "quantitative",
+              "legend": { "title": "Signal" }
+            },
+            "tooltip": [
+              { "field": "column" },
+              { "field": "row" },
+              { "field": "signal", "format": ".2f" }
+            ]
+          }
+        },
+
+        {
+          "name": "diagonal",
+          "transform": [
+            { "type": "filter", "expr": "datum.column == datum.row" }
+          ],
+          "mark": {
+            "type": "point",
+            "shape": "diamond",
+            "color": "#ffffff",
+            "stroke": "#111827",
+            "strokeWidth": 1,
+            "size": 14,
+            "tooltip": null
+          }
+        },
+
+        {
+          "name": "cellLabels",
+          "mark": {
+            "type": "text",
+            "size": 9,
+            "fitToBand": true,
+            "paddingX": 2,
+            "paddingY": 2,
+            "color": "white",
+            "opacity": {
+              "expr": "width / span(domain('x')) > 18 && height / span(domain('y')) > 13 ? 0.9 : 0"
+            },
+            "tooltip": null
+          },
+          "encoding": {
+            "text": { "field": "signal", "format": ".1f" }
+          }
+        }
+      ]
+    },
+
+    "columnMean": {
+      "name": "columnMeans",
+      "height": { "grow": 0.2, "minPx": 20, "maxPx": 48 },
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["column"],
+          "fields": ["signal"],
+          "ops": ["mean"],
+          "as": ["mean"]
+        }
+      ],
+      "mark": { "type": "rect", "color": "#64748b" },
+      "encoding": {
+        "x": { "field": "column", "type": "index", "axis": null },
+        "y": {
+          "field": "mean",
+          "type": "quantitative",
+          "scale": { "domain": [0, 10], "zoom": false },
+          "axis": { "title": "Mean", "orient": "right", "tickCount": 3 }
+        },
+        "tooltip": [
+          { "field": "column" },
+          { "field": "mean", "format": ".2f" }
+        ]
+      }
+    },
+
+    "rowMean": {
+      "name": "rowMeans",
+      "width": 38,
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["row"],
+          "fields": ["signal"],
+          "ops": ["mean"],
+          "as": ["mean"]
+        }
+      ],
+      "mark": { "type": "rect", "color": "#64748b" },
+      "encoding": {
+        "y": { "field": "row", "type": "index", "axis": null },
+        "x": {
+          "field": "mean",
+          "type": "quantitative",
+          "scale": { "domain": [0, 10], "zoom": false, "reverse": true },
+          "axis": { "title": "Mean", "tickCount": 3 }
+        },
+        "tooltip": [
+          { "field": "row" },
+          { "field": "mean", "format": ".2f" }
+        ]
+      }
+    },
+
+    "columnMax": {
+      "name": "columnMaxima",
+      "height": 22,
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["column"],
+          "fields": ["signal"],
+          "ops": ["max"],
+          "as": ["mean"]
+        }
+      ],
+      "mark": { "type": "rect", "color": "#64748b" },
+      "encoding": {
+        "x": { "field": "column", "type": "index", "axis": null },
+        "y": {
+          "field": "mean",
+          "type": "quantitative",
+          "scale": { "domain": [0, 10], "zoom": false },
+          "axis": { "title": "Max", "orient": "right", "tickCount": 2 }
+        },
+        "tooltip": [
+          { "field": "column" },
+          { "field": "mean", "format": ".2f" }
+        ]
+      }
+    },
+
+    "rowMax": {
+      "name": "rightMaxima",
+      "width": 36,
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["row"],
+          "fields": ["signal"],
+          "ops": ["max"],
+          "as": ["mean"]
+        }
+      ],
+      "mark": { "type": "rect", "color": "#64748b" },
+      "encoding": {
+        "y": { "field": "row", "type": "index", "axis": null },
+        "x": {
+          "field": "mean",
+          "type": "quantitative",
+          "scale": { "domain": [0, 10], "zoom": false },
+          "axis": { "title": "Max", "tickCount": 2 }
+        },
+        "tooltip": [
+          { "field": "row" },
+          { "field": "mean", "format": ".2f" }
+        ]
+      }
+    },
+
+    "panel1": {
+      "name": "east",
+      "title": { "text": "A: right / top / right", "anchor": "start", "fontSize": 12 },
+      "spacing": 6,
+      "params": [
+        { "name": "phase", "value": 0 }
+      ],
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "5 + 3 * sin(datum.column * 0.5 + phase) * cos(datum.row * 0.4 - phase) + 1.5 * cos((datum.column - datum.row) * 0.7)",
+          "as": "signal"
+        }
+      ],
+      "resolve": {
+        "scale": { "color": "shared" }
+      },
+      "spec": {
+        "name": "matrix",
+        "import": { "template": "matrix" }
+      },
+      "surround": {
+        "top": [
+          {
+            "name": "topMeans",
+            "import": { "template": "columnMean" }
+          }
+        ],
+        "left": [
+          {
+            "name": "leftMeans",
+            "import": { "template": "rowMean" }
+          }
+        ],
+        "bottom": [
+          {
+            "name": "bottomMaxima",
+            "import": { "template": "columnMax" }
+          }
+        ],
+        "right": {
+          "name": "rowData",
+          "spacing": 6,
+          "transform": [
+            {
+              "type": "aggregate",
+              "groupby": ["row"],
+              "fields": ["signal"],
+              "ops": ["mean"],
+              "as": ["mean"]
+            },
+
+            { "type": "formula", "expr": "datum.row % 3", "as": "group" }
+          ],
+          "views": [
+            {
+              "name": "rowBoard",
+              "spacing": 6,
+              "scales": {
+                "x": { "type": "linear", "domain": [0, 10], "zoom": true, "name": "rowMeasurement" }
+              },
+              "spec": {
+                "name": "rowValues",
+                "width": 58,
+                "mark": { "type": "rect", "color": "#0f766e" },
+                "encoding": {
+                  "x": {
+                    "field": "mean",
+                    "type": "quantitative",
+                    "axis": { "title": "Local x", "tickCount": 3 }
+                  },
+                  "y": { "field": "row", "type": "index", "axis": null },
+                  "tooltip": [
+                    { "field": "row" },
+                    { "field": "mean", "format": ".2f" }
+                  ]
+                }
+              },
+              "surround": {
+                "top": [
+                  {
+                    "name": "histogramBoard",
+                    "spacing": 4,
+                    "transform": [
+                      { "type": "formula", "expr": "floor(datum.mean)", "as": "bin" },
+
+                      {
+                        "type": "aggregate",
+                        "groupby": ["bin"],
+                        "fields": ["row"],
+                        "ops": ["count"],
+                        "as": ["count"]
+                      }
+                    ],
+                    "spec": {
+                      "name": "rowHistogram",
+                      "height": 42,
+                      "mark": { "type": "rect", "color": "#14b8a6" },
+                      "encoding": {
+                        "x": { "field": "bin", "type": "quantitative", "axis": null },
+                        "x2": { "expr": "datum.bin + 0.85" },
+                        "y": {
+                          "field": "count",
+                          "type": "quantitative",
+                          "axis": { "orient": "right", "title": "n", "tickCount": 2 }
+                        }
+                      }
+                    },
+                    "surround": {
+                      "right": [
+                        {
+                          "name": "histogramLabels",
+                          "width": 24,
+                          "mark": { "type": "text", "size": 9, "color": "#0f766e" },
+                          "encoding": {
+                            "y": { "field": "count", "type": "quantitative", "axis": null },
+                            "text": { "field": "count" }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "right": {
+                  "spacing": 6,
+                  "views": [
+                    {
+                      "name": "rowGroups",
+                      "width": 10,
+                      "resolve": {
+                        "scale": { "color": "excluded" }
+                      },
+                      "mark": "rect",
+                      "encoding": {
+                        "y": { "field": "row", "type": "index", "axis": null },
+                        "color": {
+                          "field": "group",
+                          "type": "nominal",
+                          "scale": { "domain": [0, 1, 2], "range": ["#f59e0b", "#8b5cf6", "#06b6d4"] },
+                          "legend": { "title": "Row group" }
+                        }
+                      }
+                    },
+
+                    {
+                      "name": "rowLabels",
+                      "width": 24,
+                      "mark": { "type": "text", "size": 9 },
+                      "encoding": {
+                        "y": { "field": "row", "type": "index", "axis": null },
+                        "text": { "expr": "'R' + datum.row" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    "panel2": {
+      "name": "north",
+      "title": { "text": "B: top / left / bottom", "anchor": "start", "fontSize": 12 },
+      "spacing": 6,
+      "params": [
+        { "name": "phase", "value": 0.8 }
+      ],
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "5 + 3 * sin(datum.column * 0.5 + phase) * cos(datum.row * 0.4 - phase) + 1.5 * cos((datum.column - datum.row) * 0.7)",
+          "as": "signal"
+        }
+      ],
+      "resolve": {
+        "scale": { "color": "shared" }
+      },
+      "spec": {
+        "name": "matrix",
+        "import": { "template": "matrix" }
+      },
+      "surround": {
+        "top": [
+          {
+            "name": "columnBoard",
+            "spacing": 6,
+            "transform": [
+              {
+                "type": "aggregate",
+                "groupby": ["column"],
+                "fields": ["signal"],
+                "ops": ["mean"],
+                "as": ["mean"]
+              }
+            ],
+            "scales": {
+              "y": { "type": "linear", "domain": [0, 10], "zoom": true, "name": "columnMeasurement" }
+            },
+            "spec": {
+              "name": "columnValues",
+              "height": 42,
+              "mark": { "type": "rect", "color": "#a16207" },
+              "encoding": {
+                "x": { "field": "column", "type": "index", "axis": null },
+                "y": {
+                  "field": "mean",
+                  "type": "quantitative",
+                  "axis": { "title": "Local y", "orient": "right", "tickCount": 3 }
+                }
+              }
+            },
+            "surround": {
+              "left": [
+                {
+                  "name": "columnHistogramBoard",
+                  "spacing": 4,
+                  "transform": [
+                    { "type": "formula", "expr": "floor(datum.mean)", "as": "bin" },
+
+                    {
+                      "type": "aggregate",
+                      "groupby": ["bin"],
+                      "fields": ["column"],
+                      "ops": ["count"],
+                      "as": ["count"]
+                    }
+                  ],
+                  "spec": {
+                    "name": "columnHistogram",
+                    "width": 36,
+                    "mark": { "type": "rect", "color": "#eab308" },
+                    "encoding": {
+                      "y": { "field": "bin", "type": "quantitative", "axis": null },
+                      "y2": { "expr": "datum.bin + 0.85" },
+                      "x": {
+                        "field": "count",
+                        "type": "quantitative",
+                        "axis": { "title": "n", "tickCount": 2 }
+                      }
+                    }
+                  },
+                  "surround": {
+                    "bottom": [
+                      {
+                        "name": "columnCounts",
+                        "height": 14,
+                        "mark": { "type": "text", "size": 8 },
+                        "encoding": {
+                          "x": { "field": "count", "type": "quantitative", "axis": null },
+                          "text": { "field": "count" }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "left": [
+          {
+            "name": "leftMeans",
+            "import": { "template": "rowMean" }
+          }
+        ],
+        "right": [
+          {
+            "name": "rightMaxima",
+            "import": { "template": "rowMax" }
+          }
+        ],
+        "bottom": [
+          {
+            "name": "bottomMaxima",
+            "import": { "template": "columnMax" }
+          }
+        ]
+      }
+    },
+
+    "panel3": {
+      "name": "south",
+      "title": { "text": "C: bottom nesting / shared local axes", "anchor": "start", "fontSize": 12 },
+      "spacing": 6,
+      "params": [
+        { "name": "phase", "value": 1.6 }
+      ],
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "5 + 3 * sin(datum.column * 0.5 + phase) * cos(datum.row * 0.4 - phase) + 1.5 * cos((datum.column - datum.row) * 0.7)",
+          "as": "signal"
+        }
+      ],
+      "resolve": {
+        "scale": { "color": "shared" }
+      },
+      "spec": {
+        "name": "matrix",
+        "import": { "template": "matrix" }
+      },
+      "surround": {
+        "top": [
+          {
+            "name": "topMeans",
+            "import": { "template": "columnMean" }
+          }
+        ],
+        "left": [
+          {
+            "name": "leftMeans",
+            "import": { "template": "rowMean" }
+          }
+        ],
+        "right": {
+          "name": "sharedRowMeasurements",
+          "spacing": 7,
+          "resolve": {
+            "scale": { "x": "shared" },
+            "axis": { "x": "shared" }
+          },
+          "scales": {
+            "x": { "type": "linear", "domain": [0, 10], "zoom": false }
+          },
+          "encoding": {
+            "y": { "field": "row", "type": "index", "axis": null },
+            "x": {
+              "field": "mean",
+              "type": "quantitative",
+              "axis": { "title": "Min/max", "tickCount": 3 }
+            },
+            "tooltip": [
+              { "field": "row" },
+              { "field": "mean", "format": ".2f" }
+            ]
+          },
+          "views": [
+            {
+              "name": "rowMinima",
+              "width": 26,
+              "transform": [
+                {
+                  "type": "aggregate",
+                  "groupby": ["row"],
+                  "fields": ["signal"],
+                  "ops": ["min"],
+                  "as": ["mean"]
+                }
+              ],
+              "mark": { "type": "rect", "color": "#64748b" }
+            },
+
+            {
+              "name": "rowMaxima",
+              "width": 51,
+              "transform": [
+                {
+                  "type": "aggregate",
+                  "groupby": ["row"],
+                  "fields": ["signal"],
+                  "ops": ["max"],
+                  "as": ["mean"]
+                }
+              ],
+              "mark": { "type": "rect", "color": "#64748b" }
+            }
+          ]
+        },
+        "bottom": [
+          {
+            "name": "bottomBoard",
+            "spacing": 6,
+            "transform": [
+              {
+                "type": "aggregate",
+                "groupby": ["column"],
+                "fields": ["signal"],
+                "ops": ["max"],
+                "as": ["mean"]
+              }
+            ],
+            "scales": {
+              "y": { "type": "linear", "domain": [0, 10], "zoom": false }
+            },
+            "spec": {
+              "name": "bottomValues",
+              "height": 34,
+              "mark": { "type": "rect", "color": "#7c3aed" },
+              "encoding": {
+                "x": { "field": "column", "type": "index", "axis": null },
+                "y": {
+                  "field": "mean",
+                  "type": "quantitative",
+                  "axis": { "title": "Max", "tickCount": 2 }
+                }
+              }
+            },
+            "surround": {
+              "right": [
+                {
+                  "name": "bottomPoints",
+                  "width": 26,
+                  "mark": { "type": "point", "color": "#7c3aed", "size": 10 },
+                  "encoding": {
+                    "y": { "field": "mean", "type": "quantitative", "axis": null }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "panel4": {
+      "name": "west",
+      "title": { "text": "D: left metadata / local band scale", "anchor": "start", "fontSize": 12 },
+      "spacing": 6,
+      "params": [
+        { "name": "phase", "value": 2.4 }
+      ],
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "5 + 3 * sin(datum.column * 0.5 + phase) * cos(datum.row * 0.4 - phase) + 1.5 * cos((datum.column - datum.row) * 0.7)",
+          "as": "signal"
+        }
+      ],
+      "resolve": {
+        "scale": { "color": "shared" }
+      },
+      "spec": {
+        "name": "matrix",
+        "import": { "template": "matrix" }
+      },
+      "surround": {
+        "top": [
+          {
+            "name": "topMeans",
+            "import": { "template": "columnMean" }
+          }
+        ],
+        "left": [
+          {
+            "name": "metadataBoard",
+            "spacing": 6,
+            "data": {
+              "sequence": { "start": 0, "stop": 20, "as": "i" }
+            },
+            "transform": [
+              { "type": "formula", "expr": "floor(datum.i / 2)", "as": "row" },
+
+              { "type": "formula", "expr": "datum.i % 2 == 0 ? 'Q' : 'W'", "as": "assay" },
+
+              {
+                "type": "formula",
+                "expr": "(datum.row + datum.i % 2) % 3 == 0 ? 1 : 0",
+                "as": "status"
+              }
+            ],
+            "scales": {
+              "x": { "type": "band", "domain": ["Q", "W"], "paddingInner": 0.08 },
+              "color": { "type": "ordinal", "domain": [0, 1], "range": ["#cbd5e1", "#e11d48"] }
+            },
+            "resolve": {
+              "scale": { "color": "excluded" }
+            },
+            "encoding": {
+              "x": { "field": "assay", "type": "nominal", "axis": null },
+              "color": {
+                "field": "status",
+                "type": "nominal",
+                "legend": { "title": "Metadata status" }
+              }
+            },
+            "spec": {
+              "name": "metadataCells",
+              "width": { "step": 22 },
+              "mark": "rect",
+              "encoding": {
+                "x": {
+                  "field": "assay",
+                  "type": "nominal",
+                  "axis": { "title": "Assay", "labelAngle": 0 }
+                },
+                "y": { "field": "row", "type": "index", "axis": null },
+                "tooltip": [
+                  { "field": "row" },
+                  { "field": "assay" },
+                  { "field": "status" }
+                ]
+              }
+            },
+            "surround": {
+              "top": {
+                "name": "metadataSummaries",
+                "resolve": {
+                  "scale": { "color": "shared" }
+                },
+                "views": [
+                  {
+                    "name": "metadataDistribution",
+                    "height": 46,
+                    "transform": [
+                      {
+                        "type": "aggregate",
+                        "groupby": ["assay", "status"],
+                        "fields": ["row"],
+                        "ops": ["count"],
+                        "as": ["count"]
+                      },
+
+                      {
+                        "type": "stack",
+                        "groupby": ["assay"],
+                        "field": "count",
+                        "sort": { "field": "status", "order": "ascending" },
+                        "offset": "normalize",
+                        "as": ["start", "end"]
+                      }
+                    ],
+                    "mark": "rect",
+                    "encoding": {
+                      "y": {
+                        "field": "start",
+                        "type": "quantitative",
+                        "scale": { "domain": [0, 1], "zoom": false },
+                        "axis": {
+                          "title": "Fraction",
+                          "format": ".0%",
+                          "values": [0, 0.5, 1],
+                          "orient": "left"
+                        }
+                      },
+                      "y2": { "field": "end" }
+                    }
+                  }
+                ]
+              },
+              "left": [
+                {
+                  "name": "metadataLabels",
+                  "width": 24,
+                  "transform": [
+                    { "type": "aggregate", "groupby": ["row"] }
+                  ],
+                  "mark": { "type": "text", "size": 9 },
+                  "encoding": {
+                    "x": null,
+                    "color": { "value": "#334155" },
+                    "y": { "field": "row", "type": "index", "axis": null },
+                    "text": { "expr": "'R' + datum.row" }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "right": [
+          {
+            "name": "rightMaxima",
+            "import": { "template": "rowMax" }
+          }
+        ],
+        "bottom": [
+          {
+            "name": "bottomMaxima",
+            "import": { "template": "columnMax" }
+          }
+        ]
+      }
+    }
+  },
+
+  "spacing": 24,
+
+  "columns": 2,
+
+  "concat": [
+    {
+      "name": "east",
+      "import": { "template": "panel1" }
+    },
+
+    {
+      "name": "north",
+      "import": { "template": "panel2" }
+    },
+
+    {
+      "name": "south",
+      "import": { "template": "panel3" }
+    },
+
+    {
+      "name": "west",
+      "import": { "template": "panel4" }
+    }
+  ],
+
+  "config": {
+    "axis": { "grid": false, "domain": false, "labelFontSize": 9, "titleFontSize": 10, "offset": 4 },
+    "legend": { "orient": "bottom", "direction": "horizontal", "gradientLength": 160 },
+    "view": { "stroke": "#cbd5e1" },
+    "title": { "fontSize": 11, "offset": 8 }
+  }
+}

@@ -6,6 +6,7 @@ import UnitView from "./unitView.js";
 import LayerView from "./layerView.js";
 import ConcatView from "./concatView.js";
 import FacetView from "./facetView.js";
+import SurroundView from "./surroundView.js";
 import { isArray, isObject } from "vega-util";
 import { loadExternalViewSpec } from "./viewUtils.js";
 import ContainerView from "./containerView.js";
@@ -26,6 +27,7 @@ import {
     isLayerSpec,
     isUnitSpec,
     isVConcatSpec,
+    isSurroundSpec,
 } from "./viewSpecGuards.js";
 
 export const VIEW_ROOT_NAME = "viewRoot";
@@ -140,6 +142,7 @@ export class ViewFactory {
         this.addViewType(isHConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isFacetSpec, makeDefaultFactory(FacetView));
+        this.addViewType(isSurroundSpec, makeDefaultFactory(SurroundView));
     }
 
     /**
@@ -269,7 +272,8 @@ export class ViewFactory {
         const isGridSpec =
             isVConcatSpec(viewSpec) ||
             isHConcatSpec(viewSpec) ||
-            isConcatSpec(viewSpec);
+            isConcatSpec(viewSpec) ||
+            isSurroundSpec(viewSpec);
 
         // A non-grid root needs a grid parent to host layout chrome such as
         // axes and legends. A titled grid root also needs a parent because

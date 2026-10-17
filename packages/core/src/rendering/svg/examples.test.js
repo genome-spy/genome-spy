@@ -2,6 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 import barAndLabelSpec from "../../../../../examples/docs/grammar/composition/layer/bar-and-label-layer.json" with { type: "json" };
+import annotatedMatrix from "../../../../../examples/docs/grammar/composition/surround/annotated-matrix.json" with { type: "json" };
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";
 import {
@@ -11,6 +12,7 @@ import {
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import Genome from "../../genome/genome.js";
 import { renderToLayout } from "../../view/testUtils.js";
+import Rectangle from "../../view/layout/rectangle.js";
 import { createSvg } from "./index.js";
 
 const baseConfig = resolveBaseConfig({
@@ -19,6 +21,209 @@ const baseConfig = resolveBaseConfig({
 });
 
 describe("SVG example exports", () => {
+    test.each(/** @type {const} */ (["shared", "forced"]))(
+        "surround keeps %s side axes local and projects each track's own span",
+        async (behavior) => {
+            /** @type {import("../../spec/view.js").SurroundSpec} */
+            const spec = {
+                .../** @type {import("../../spec/view.js").SurroundSpec} */ (
+                    annotatedMatrix
+                ),
+                spec: {
+                    ...annotatedMatrix.spec,
+                    mark: "rect",
+                    encoding: {
+                        x: { field: "gene", type: "nominal", axis: null },
+                        y: { field: "sample", type: "nominal", axis: null },
+                    },
+                },
+                surround: {
+                    right: {
+                        name: "measurements",
+                        scales: { x: { type: "linear", domain: [0, 10] } },
+                        axes: { x: { title: "Local", values: [5] } },
+                        resolve: {
+                            scale: { x: "shared" },
+                            axis: { x: "shared" },
+                        },
+                        views: [30, 40].map(
+                            (width, i) =>
+                                /** @type {import("../../spec/view.js").UnitSpec} */ ({
+                                    name: "track" + i,
+                                    width,
+                                    resolve: {
+                                        scale: { x: behavior },
+                                        axis: { x: behavior },
+                                    },
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "value",
+                                            type: "quantitative",
+                                        },
+                                        y: {
+                                            field: "sample",
+                                            type: "nominal",
+                                            axis: null,
+                                        },
+                                    },
+                                })
+                        ),
+                    },
+                },
+            };
+            const { view } = await createHeadlessEngine(
+                /** @type {import("../../spec/root.js").RootSpec} */ (spec),
+                { contextOptions: { baseConfig } }
+            );
+            try {
+                renderToLayout(view, Rectangle.create(0, 0, 500, 400));
+                // Quantitative label layout uses the completed physical spans.
+                view.visit((child) =>
+                    child.handleBroadcast({ type: "layoutComputed" })
+                );
+                const { svg, warnings } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 500,
+                    logicalHeight: 400,
+                });
+                const one = view
+                    .getDescendants()
+                    .find((child) => child.explicitName === "track0");
+                const two = view
+                    .getDescendants()
+                    .find((child) => child.explicitName === "track1");
+                expect(one.getScaleResolution("x")).toBe(
+                    two.getScaleResolution("x")
+                );
+                expect(one.getScaleResolution("x")).not.toBe(
+                    view.getScaleResolution("x")
+                );
+                expect(one.getAxisResolution("x").hostView.explicitName).toBe(
+                    "measurements"
+                );
+                const ticks = Array.from(
+                    svg.querySelectorAll('[data-name="labels_main"] text'),
+                    getTranslateX
+                );
+                expect(ticks).toEqual([
+                    one.coords.x + one.coords.width / 2,
+                    two.coords.x + two.coords.width / 2,
+                ]);
+                expect(warnings).toEqual([]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
+    test("surround exports aligned summaries, metadata, labels, and corner axes", async () => {
+        const { view } = await createHeadlessEngine(
+            /** @type {import("../../spec/root.js").RootSpec} */ (
+                annotatedMatrix
+            ),
+            { contextOptions: { baseConfig } }
+        );
+        try {
+            renderToLayout(view, Rectangle.create(0, 0, 500, 400));
+            view.visit((child) =>
+                child.handleBroadcast({ type: "layoutComputed" })
+            );
+            const { svg, warnings } = createSvg({
+                viewRoot: view,
+                logicalWidth: 500,
+                logicalHeight: 400,
+            });
+            const cells = svg.querySelectorAll('[data-name="matrix"] rect');
+            const columns = svg.querySelectorAll(
+                '[data-name="columnMeans"] rect'
+            );
+            expect(cells).toHaveLength(9);
+            expect(columns).toHaveLength(3);
+            expect(
+                svg.querySelectorAll('[data-name="category"] rect')
+            ).toHaveLength(6);
+            const axisLabels = Array.from(
+                svg.querySelectorAll('[data-name="labels_main"] text'),
+                (element) => element.textContent
+            );
+            expect(axisLabels).toEqual(
+                expect.arrayContaining([
+                    "Tumor 1",
+                    "Tumor 2",
+                    "Tumor 3",
+                    "ESR1",
+                    "ERBB2",
+                    "MKI67",
+                    "TP53",
+                    "PIK3CA",
+                ])
+            );
+            expect(svg.textContent).toContain("Mean expr.");
+            expect(svg.textContent).toContain("Expression genes");
+            expect(svg.textContent).toContain("Mutation genes");
+            expect(svg.textContent).toContain("Samples");
+            expect(svg.textContent).toContain("Fraction");
+            const distribution = svg.querySelectorAll(
+                '[data-name="categoryDistribution"] rect'
+            );
+            expect(distribution).toHaveLength(4);
+            for (const [i, height] of [40, 20, 20, 40].entries()) {
+                expect(+distribution[i].getAttribute("height")).toBeCloseTo(
+                    height,
+                    0
+                );
+            }
+            const metadata = svg.querySelectorAll(
+                '[data-name="category"] rect'
+            );
+            expect(distribution[0].getAttribute("fill")).toBe(
+                metadata[0].getAttribute("fill")
+            );
+            expect(distribution[1].getAttribute("fill")).toBe(
+                metadata[1].getAttribute("fill")
+            );
+            const text = Array.from(svg.querySelectorAll("text"));
+            expect(
+                text.filter((label) => label.textContent === "Mutation status")
+            ).toHaveLength(1);
+            expect(text.map((label) => label.textContent)).toEqual(
+                expect.arrayContaining(["0%", "50%", "100%"])
+            );
+            const body = view
+                .getDescendants()
+                .find(
+                    (child) => child.explicitName === "categoryDistribution"
+                ).coords;
+            for (const [label, y] of /** @type {[string, number][]} */ ([
+                ["0%", body.y2],
+                ["100%", body.y],
+            ])) {
+                const tick = text.find(
+                    (element) => element.textContent === label
+                );
+                expect(getTranslateX(tick)).toBeGreaterThan(body.x2);
+                expect(
+                    +tick
+                        .getAttribute("transform")
+                        .match(/^translate\([\d.-]+ ([\d.-]+)\)/)[1]
+                ).toBeCloseTo(y, 1);
+            }
+            // SVG shares the layout path: column summaries have the same band centers.
+            const centerX = (/** @type {Element} */ element) =>
+                +element.getAttribute("x") + +element.getAttribute("width") / 2;
+            expect(Array.from(columns, centerX)).toEqual(
+                Array.from(new Set(Array.from(cells, centerX)))
+            );
+            expect(new Set(Array.from(distribution, centerX))).toEqual(
+                new Set(Array.from(metadata, centerX))
+            );
+            expect(warnings).toEqual([]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test.each(["generated", "values", "extraValues"])(
         "keeps close-zoom locus ticks and grid lines at visible centers with %s ticks",
         async (mode) => {

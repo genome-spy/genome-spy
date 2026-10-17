@@ -52,7 +52,8 @@ This example combines:
   whose opacity reacts to the zoom-dependent label state.
 - Reactive parameters and transforms that materialize text labels by visible
   matrix tile only when the cells are readable.
-- Synchronized accessibility and contribution-score margin tracks.
+- [Surround composition](../../grammar/composition/surround.md) aligns
+  accessibility and contribution-score margin tracks with the matrix.
 - A multiscale contribution track that changes from bars to a Dynseq logo.
 - Eager [Parquet](../../grammar/data/eager.md#parquet) loading for the matrix,
   tracks, and motif intervals.

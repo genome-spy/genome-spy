@@ -28,6 +28,76 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("surround restricts plot kinds while accepting scoped and nested sides", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            spec: { mark: "rect" },
+            surround: {
+                top: [{ layer: [{ mark: "point" }] }],
+                right: {
+                    data: { values: [{ row: 0 }] },
+                    encoding: { y: { field: "row", type: "index" } },
+                    spacing: 4,
+                    views: [{ import: { template: "annotation" } }],
+                },
+            },
+            templates: { annotation: { mark: "rect" } },
+        };
+        expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+
+        for (const plot of /** @type {import("./view.js").SurroundPlotSpec[]} */ ([
+            { mark: "rect" },
+            { layer: [{ mark: "point" }] },
+            { multiscale: [{ mark: "point" }], stops: [] },
+            // Imported plot kinds are checked after expansion at runtime.
+            { import: { template: "annotation" } },
+        ])) {
+            expect(validate({ ...spec, spec: plot })).toBe(true);
+            expect(validate({ ...spec, surround: { top: [plot] } })).toBe(true);
+            expect(
+                validate({ ...spec, surround: { right: { views: [plot] } } })
+            ).toBe(true);
+        }
+
+        const nested = { spec: { mark: "rect" }, surround: spec.surround };
+        expect(validate({ ...spec, surround: { right: [nested] } })).toBe(true);
+        expect(
+            validate({ ...spec, surround: { right: { views: [nested] } } })
+        ).toBe(true);
+
+        for (const plot of /** @type {import("./view.js").CoreViewSpec[]} */ ([
+            { hconcat: [] },
+            { vconcat: [] },
+            { concat: [], columns: 2 },
+            { facet: { field: "row" }, spec: { mark: "rect" } },
+        ])) {
+            expect(validate({ ...spec, spec: plot })).toBe(false);
+            expect(validate({ ...spec, surround: { top: [plot] } })).toBe(
+                false
+            );
+            expect(
+                validate({ ...spec, surround: { right: { views: [plot] } } })
+            ).toBe(false);
+        }
+
+        for (const invalid of [
+            { ...spec, spec: nested },
+            {
+                ...spec,
+                surround: { right: { data: { values: [{ row: 0 }] } } },
+            },
+            { ...spec, surround: { top: { mark: "point" } } },
+            {
+                ...spec,
+                surround: { right: { width: 20, views: [{ mark: "point" }] } },
+            },
+            { ...spec, axes: { x: {} } },
+            { ...spec, viewportWidth: 100 },
+        ]) {
+            expect(validate(invalid)).toBe(false);
+        }
+    });
+
     test("facet options accept supported forms and reject unsupported forms", () => {
         const validate = createCoreValidator();
         const spec = {

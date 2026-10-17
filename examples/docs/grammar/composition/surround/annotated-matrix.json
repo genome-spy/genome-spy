@@ -1,0 +1,216 @@
+{
+  "description": [
+    "Matrix with aligned summaries and annotations",
+    "Aligns row and column summaries with a growing categorical matrix and a nested metadata matrix."
+  ],
+
+  "title": {
+    "text": "Expression and Mutations in Synthetic Tumors",
+    "fontSize": 16
+  },
+
+  "data": {
+    "values": [
+      { "gene": "ESR1", "sample": "Tumor 1", "value": 2 },
+      { "gene": "ERBB2", "sample": "Tumor 1", "value": 5 },
+      { "gene": "MKI67", "sample": "Tumor 1", "value": 8 },
+      { "gene": "ESR1", "sample": "Tumor 2", "value": 7 },
+      { "gene": "ERBB2", "sample": "Tumor 2", "value": 3 },
+      { "gene": "MKI67", "sample": "Tumor 2", "value": 1 },
+      { "gene": "ESR1", "sample": "Tumor 3", "value": 4 },
+      { "gene": "ERBB2", "sample": "Tumor 3", "value": 8 },
+      { "gene": "MKI67", "sample": "Tumor 3", "value": 6 }
+    ]
+  },
+
+  "scales": {
+    "x": {
+      "type": "band",
+      "domain": ["ESR1", "ERBB2", "MKI67"],
+      "paddingInner": 0.08
+    },
+    "y": {
+      "type": "band",
+      "domain": ["Tumor 1", "Tumor 2", "Tumor 3"],
+      "reverse": true,
+      "paddingInner": 0.08
+    }
+  },
+  "resolve": { "legend": { "color": "collected" } },
+  "spacing": 8,
+
+  "surround": {
+    "top": [
+      {
+        "name": "columnMeans",
+        "height": 60,
+        "transform": [
+          {
+            "type": "aggregate",
+            "groupby": ["gene"],
+            "fields": ["value"],
+            "ops": ["mean"],
+            "as": ["mean"]
+          }
+        ],
+        "mark": { "type": "rect", "color": "#64748b" },
+        "encoding": {
+          "x": { "field": "gene", "type": "nominal", "axis": null },
+          "y": {
+            "field": "mean",
+            "type": "quantitative",
+            "axis": { "title": "Mean expr.", "tickCount": 3 }
+          }
+        }
+      }
+    ],
+
+    "left": [
+      {
+        "name": "rowMeans",
+        "width": 70,
+        "transform": [
+          {
+            "type": "aggregate",
+            "groupby": ["sample"],
+            "fields": ["value"],
+            "ops": ["mean"],
+            "as": ["mean"]
+          }
+        ],
+        "mark": { "type": "rect", "color": "#64748b" },
+        "encoding": {
+          "x": {
+            "field": "mean",
+            "type": "quantitative",
+            "scale": { "reverse": true },
+            "axis": { "title": "Mean expr.", "tickCount": 3 }
+          },
+          "y": { "field": "sample", "type": "nominal", "axis": null }
+        }
+      }
+    ],
+
+    "right": [
+      {
+        "name": "rowMetadata",
+        "spacing": 8,
+        "data": {
+          "values": [
+            { "gene": "TP53", "sample": "Tumor 1", "category": "WT" },
+            { "gene": "TP53", "sample": "Tumor 2", "category": "Mutated" },
+            { "gene": "TP53", "sample": "Tumor 3", "category": "WT" },
+            { "gene": "PIK3CA", "sample": "Tumor 1", "category": "Mutated" },
+            { "gene": "PIK3CA", "sample": "Tumor 2", "category": "WT" },
+            { "gene": "PIK3CA", "sample": "Tumor 3", "category": "Mutated" }
+          ]
+        },
+        "resolve": { "scale": { "color": "shared" } },
+        "scales": {
+          "x": {
+            "type": "band",
+            "domain": ["TP53", "PIK3CA"],
+            "paddingInner": 0.08
+          },
+          "color": { "type": "ordinal", "domain": ["WT", "Mutated"] }
+        },
+        "encoding": {
+          "x": { "field": "gene", "type": "nominal", "axis": null },
+          "color": {
+            "field": "category",
+            "type": "nominal",
+            "legend": { "title": "Mutation status" }
+          }
+        },
+        "spec": {
+          "name": "category",
+          "width": { "step": 35 },
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "field": "gene",
+              "type": "nominal",
+              "axis": { "title": "Mutation genes", "labelAngle": 0 }
+            },
+            "y": {
+              "field": "sample",
+              "type": "nominal",
+              "axis": { "orient": "right", "title": "Samples" }
+            }
+          }
+        },
+        "surround": {
+          "top": {
+            "resolve": { "scale": { "color": "shared" } },
+            "views": [
+              {
+                "name": "categoryDistribution",
+                "height": 60,
+                "transform": [
+                  {
+                    "type": "aggregate",
+                    "groupby": ["gene", "category"],
+                    "fields": ["sample"],
+                    "ops": ["count"],
+                    "as": ["count"]
+                  },
+                  {
+                    "type": "stack",
+                    "field": "count",
+                    "groupby": ["gene"],
+                    "sort": { "field": "category", "order": "descending" },
+                    "offset": "normalize",
+                    "as": ["start", "end"]
+                  }
+                ],
+                "mark": "rect",
+                "encoding": {
+                  "y": {
+                    "field": "start",
+                    "type": "quantitative",
+                    "scale": { "domain": [0, 1], "zoom": false },
+                    "axis": {
+                      "orient": "right",
+                      "title": "Fraction",
+                      "format": ".0%",
+                      "values": [0, 0.5, 1]
+                    }
+                  },
+                  "y2": { "field": "end" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+
+  "spec": {
+    "name": "matrix",
+    "mark": "rect",
+    "encoding": {
+      "x": {
+        "field": "gene",
+        "type": "nominal",
+        "axis": { "title": "Expression genes", "labelAngle": 0 }
+      },
+      "y": { "field": "sample", "type": "nominal", "axis": null },
+      "color": {
+        "field": "value",
+        "type": "quantitative",
+        "legend": { "title": "Expression: log2(TPM + 1)" }
+      },
+      "tooltip": { "field": "value", "type": "quantitative" }
+    }
+  },
+
+  "config": {
+    "axis": { "offset": 10 },
+    "legend": {
+      "orient": "right",
+      "direction": "vertical",
+      "gradientLength": 80
+    }
+  }
+}

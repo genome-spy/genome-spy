@@ -399,6 +399,10 @@ class MyPreprocessor(Preprocessor):
         return ref
 
     def propTypeToString(self, prop_type, schema):
+        any_of = prop_type.get('anyOf')
+        if any_of:
+            return self.propTypesToString(any_of, schema)
+
         const = prop_type.get('const')
         type = prop_type.get('type')
         ref = prop_type.get('$ref')

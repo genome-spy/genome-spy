@@ -66,12 +66,13 @@ The [`dendrogram`](../../grammar/transform/dendrogram.md) transform converts the
 precomputed hierarchy into edges for orthogonal
 [`link` marks](../../grammar/mark/link.md).
 
-A three-column [`concat`](../../grammar/composition/concat.md) grid places the
-gene tree above the heatmap and the cell-line tree to its left. The matrix and
-gene tree share an x [`index` scale](../../grammar/scale.md#index-scale); the
-matrix, cell-line tree, labels, and annotation strips share the y scale. Each
-tree excludes its quantitative merge-height axis from this scale sharing.
-Its height domain uses viewport autoscaling with `mode: "contain"`.
+The [`surround`](../../grammar/composition/surround.md) operator places the gene
+tree above the heatmap, the cell-line tree to its left, and the annotations and
+labels to its right. The matrix and gene tree share an x
+[`index` scale](../../grammar/scale.md#index-scale); the matrix, cell-line tree,
+labels, and annotation strips share the y scale. Each tree retains an independent
+quantitative merge-height scale. Its height domain uses viewport autoscaling
+with `mode: "contain"`.
 The dendrogram's fractional offsets are converted to pixels with
 [`bandstep()`](../../grammar/expressions.md#bandstep), keeping branches connected
 as the view changes size or zoom level. Explicit `gapPositions` on the index

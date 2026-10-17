@@ -1,0 +1,149 @@
+# Surround Composition
+
+The `surround` operator places plots above, below, or beside a central plot.
+Shared x or y scales keep the surrounding plots aligned with the center. For
+example, a heatmap can have column summaries above it and row annotations
+beside it.
+
+The layout is inspired by [Marsilea](https://marsilea.readthedocs.io/en/stable/),
+a Python library for composable visualizations
+([Zheng et al., 2025](https://doi.org/10.1186/s13059-024-03469-3)).
+
+![Basic surround with two top tracks and shared x and y intervals.](../../img/surround-basic.svg)
+![Nested surround whose right panel shares y with the center and has its own x scale and top annotation.](../../img/surround-nested.svg)
+{ .surround-schematics }
+
+_Dashed guides mark aligned plotting intervals. Labels name `spec` and the
+groups inside `surround`. The nested right panel shares the outer y scale and
+uses its own x scale for the annotation above it._
+
+## Example
+
+EXAMPLE examples/docs/grammar/composition/surround/annotated-matrix.json spechidden
+
+## Specification
+
+Put the central plot in `spec` and the surrounding plots in `surround`. The
+optional `top`, `right`, `bottom`, and `left` properties each accept an array
+of plots. An object with `views` can provide shared data and other settings
+for one side.
+
+This minimal specification places a plot to the right of the center. Both
+plots use the same y scale:
+
+```json
+{
+  "data": { "values": [{ "column": 0, "row": 0, "total": 5 }] },
+  "spec": {
+    "width": 160,
+    "height": 100,
+    "mark": "rect",
+    "encoding": {
+      "x": { "field": "column", "type": "index", "axis": null },
+      "y": { "field": "row", "type": "index", "axis": null }
+    }
+  },
+  "surround": {
+    "right": [
+      {
+        "width": 80,
+        "mark": "rect",
+        "encoding": {
+          "x": { "field": "total", "type": "quantitative" },
+          "y": { "field": "row", "type": "index", "axis": null }
+        }
+      }
+    ]
+  }
+}
+```
+
+## Alignment and sizing
+
+Top and bottom tracks share the center's x scale and stack vertically. Left and
+right tracks share its y scale and stack horizontally. Tracks are ordered
+top-to-bottom or left-to-right, including on the top and left sides.
+
+The center determines the aligned plotting width and height. Set only a side
+track's thickness: `height` on top/bottom, or `width` on left/right. Fixed,
+growing, and step-based center sizes use the existing [sizing rules](concat.md#child-sizing).
+The surround's own width and height describe the complete composition.
+
+Inside a concat, surrounding panels reserve overhang around the center. Central
+plots align within each row and column even when their annotations differ in
+size.
+
+The surround's `spacing` separates the center from its sides. A side group's
+`spacing` separates its tracks. Both default to 10 pixels. Hidden tracks collapse;
+an empty or entirely hidden side also removes its gap. Hiding the center hides
+the composition.
+
+Track axes and other decorations can extend into empty corner cells. The
+[`overhang`](concat.md#collapsed-overhang) setting controls their space
+reservation; space occupied by nested panels always remains reserved.
+
+## Shared settings and scales
+
+Outer data, transforms, encodings, and parameters flow to the center and sides.
+A side object can declare these settings once for its `views`, such as a shared
+metadata table for several annotation columns.
+
+Each track has an independent perpendicular scale by default. A group's `resolve`
+can share those local scales among its tracks. They remain separate from the
+center and the opposite side. Non-positional scales also remain independent
+by default.
+
+Shared coordinate domains include contributions from the participating plots.
+Outer `scales.x` and `scales.y` can set authoritative domains, order, reversal,
+grouping gaps, and zoom settings. An aligned scale cannot be disconnected with
+an independent or excluded resolution.
+
+Configure axes on the center or individual tracks. Redundant aligned axes can
+be suppressed with `axis: null`. Titles, padding, clipping, and legends use their
+ordinary settings. [Collected legends](index.md#collected-legends) can combine
+independent legends around the complete surround.
+
+## Nested annotations
+
+Side tracks can themselves use `surround`. The parent aligns a nested track's
+central plotting interval, leaving room for its own annotations. In the example
+above, the mutation matrix shares sample rows with the expression matrix, and
+its top summaries share its gene columns. Both datasets are synthetic.
+
+To share colors and a legend between the nested center and its top annotations, set
+`resolve.scale.color` to `"shared"` on both the nested surround and its top group.
+
+Omit the externally aligned size from the nested center: `height` on left/right,
+or `width` on top/bottom. The outer center supplies that plotting length. Nested
+annotations extending along that dimension need fixed or step-based thicknesses.
+The outer center and ordinary perpendicular track thicknesses can still grow.
+
+Nested panels can occupy free corners but cannot overlap other panels. If an
+overlap causes an error, adjust spacing or composition to separate them.
+
+## Supported plots
+
+The center accepts unit plots, layers, multiscale layers, and imports resolving
+to these. Side tracks also accept nested surrounds. Nested centers, authored
+concats, and facets remain unsupported. Scrollable viewports, surround-level
+axes, and axes shared across regions are also unsupported. Input-owning selections and
+rulers belong on the individual plots; ordinary outer parameters remain valid
+shared values and `push: "outer"` targets.
+
+## More examples
+
+- [Set intersections with an UpSet plot](../../examples/generic/upsetr-mutations.md)
+- [Clustered heatmap with dendrograms](../../examples/generic/clustered-heatmap.md)
+- [PISA interaction matrix with genomic margin tracks](../../examples/genomic-data/bpreveal-pisa-matrix.md)
+
+## Properties
+
+SCHEMA SurroundSpec spec surround spacing
+
+### Sides
+
+SCHEMA SurroundSides top right bottom left
+
+### Side groups
+
+SCHEMA SurroundSideSpec views spacing
