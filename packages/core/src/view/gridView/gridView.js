@@ -38,8 +38,6 @@ import { arrangeLocalLegends, getGuideOverhang } from "./legendLayout.js";
 import {
     createLegendViews,
     disposeLegendViews,
-    iterateLegendViews,
-    isActiveLegendRegion,
     prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
 import {
@@ -871,7 +869,7 @@ export default class GridView extends ContainerView {
             yield axisView;
         }
 
-        yield* iterateLegendViews(this.#sharedLegends);
+        yield* Object.values(this.#sharedLegends);
     }
 
     /**
@@ -1135,9 +1133,9 @@ export default class GridView extends ContainerView {
                 )) {
                     addFootprint(child.view, coords);
                 }
-                for (const { legendView: legend } of Object.values(
-                    child.legends
-                ).filter(isActiveLegendRegion)) {
+                for (const legend of Object.values(child.legends).filter(
+                    (legend) => legend.isActive()
+                )) {
                     addFootprint(child.view, legend.coords);
                 }
                 if (child.title) {
@@ -1152,9 +1150,9 @@ export default class GridView extends ContainerView {
                     addFootprint(child.view, child.background.coords, false);
                 }
             }
-            for (const { legendView: legend } of Object.values(
-                this.#sharedLegends
-            ).filter(isActiveLegendRegion)) {
+            for (const legend of Object.values(this.#sharedLegends).filter(
+                (legend) => legend.isActive()
+            )) {
                 addFootprint(this, legend.coords);
             }
             return footprints;

@@ -1361,7 +1361,7 @@ export default class SampleView extends ContainerView {
 
         const releases = Object.values(this.#gridChild.legends).flatMap(
             (region) =>
-                region.entries.map(({ legendView }) =>
+                Array.from(region, (legendView) =>
                     legendView.suspendLayoutDataUpdates()
                 )
         );

@@ -3,7 +3,6 @@ import Padding from "../layout/padding.js";
 import {
     getLegendOverhang,
     INSIDE_LEGEND_ORIENTS,
-    isActiveLegendRegion,
 } from "./gridChildLegends.js";
 
 const LEGEND_ZINDEX = 1;
@@ -33,7 +32,7 @@ export function getGuideOverhang(axes, legends) {
  *
  * @param {import("../../spec/legend.js").LegendRegionAnchor} anchor
  */
-function getAnchorFactor(anchor) {
+export function getLegendAnchorFactor(anchor) {
     if (anchor == "start") {
         return 0;
     } else if (anchor == "middle") {
@@ -72,7 +71,7 @@ export function translateLegendCoords(
         legendView.getParallelSize?.() ?? availableParallelSize;
     const anchor = legendView.getAnchor?.() ?? "start";
     const parallelOffset =
-        getAnchorFactor(anchor) * (availableParallelSize - parallelSize);
+        getLegendAnchorFactor(anchor) * (availableParallelSize - parallelSize);
     const cornerParallelSize =
         legendView.getParallelSize?.() ?? coords.height - 2 * offset;
     const cornerWidth = legendView.getWidth?.() ?? ps;
@@ -127,8 +126,8 @@ export function arrangeLocalLegends(
     queueDecoration,
     order
 ) {
-    for (const [orient, legendViews] of Object.entries(legends)) {
-        if (!isActiveLegendRegion(legendViews)) {
+    for (const [orient, legendView] of Object.entries(legends)) {
+        if (!legendView.isActive()) {
             continue;
         }
 
@@ -138,7 +137,6 @@ export function arrangeLocalLegends(
             ]
         );
 
-        const legendView = legendViews.legendView;
         const legendCoords = translateLegendCoords(
             viewportCoords,
             /** @type {import("../../spec/legend.js").LegendOrient} */ (orient),

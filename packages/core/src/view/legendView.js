@@ -30,6 +30,13 @@ import {
 } from "./layout/flexLayout.js";
 import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
+import {
+    createBackground,
+    createBackgroundStroke,
+} from "./gridView/viewBackground.js";
+import { getConfiguredViewBackground } from "../config/viewConfig.js";
+import { propagateInteraction } from "./interactionRouting.js";
+import { getLegendAnchorFactor } from "./gridView/legendLayout.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
 import { measureText, requestFont } from "../fonts/textMetrics.js";
@@ -104,9 +111,7 @@ function excludeLegendGuideResolutions(spec) {
 /**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
  * @typedef {import("./legend/legendEntries.js").LegendEntry} LegendEntry
- * @typedef {(import("../spec/view.js").VConcatSpec | import("../spec/view.js").HConcatSpec) & {
- *     view: import("../spec/view.js").ViewBackground
- * }} LegendRootSpec
+ * @typedef {import("../spec/view.js").VConcatSpec | import("../spec/view.js").HConcatSpec} LegendRootSpec
  * @typedef {{
  *     mark?: Partial<import("../spec/mark.js").PointProps>,
  *     encoding?: Partial<import("../spec/channel.js").Encoding>
@@ -218,7 +223,6 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
     return excludeLegendGuideResolutions({
         name: "legend_" + (legend.orient ?? "right"),
         padding: legend.padding,
-        view: createLegendViewBackground(legend),
         resolve: {
             scale: Object.fromEntries(
                 forcedScaleChannels.map((channel) => [channel, "forced"])
@@ -908,35 +912,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     );
 }
 
-/**
- * @param {{
- *     getPerpendicularSize: () => number,
- *     getOffset: () => number
- * } | undefined} legendView
- * @returns {number}
- */
-export function getExternalLegendOverhang(legendView) {
-    return legendView
-        ? legendView.getPerpendicularSize() + legendView.getOffset()
-        : 0;
-}
-
-/**
- * @param {string} name
- * @param {number} spacing
- * @param {import("../spec/legend.js").LegendDirection} direction
- * @returns {import("../spec/view.js").ContainerSpec}
- */
-function createLegendRegionSpec(name, spacing, direction) {
-    return direction == "horizontal"
-        ? { name, spacing, hconcat: [] }
-        : { name, spacing, vconcat: [] };
-}
-
 export class LegendRegionView extends ContainerView {
-    /** @type {import("./view.js").default | undefined} */
-    #child;
-
     /** @type {LegendView[]} */
     #legendViews = [];
 
@@ -974,11 +950,7 @@ export class LegendRegionView extends ContainerView {
         dataParent
     ) {
         super(
-            createLegendRegionSpec(
-                "legend_region_" + orient,
-                stackSpacing,
-                direction
-            ),
+            { layer: [] },
             context,
             layoutParent,
             dataParent,
@@ -996,34 +968,12 @@ export class LegendRegionView extends ContainerView {
         markViewAsChrome(this, { skipSubtree: true });
     }
 
-    async initializeChildren() {
-        this.#child = await this.context.createOrImportView(
-            createLegendRegionSpec(
-                "legendStack",
-                this.#stackSpacing,
-                this.#direction
-            ),
-            this,
-            this,
-            this.getNextAutoName("legendStack")
-        );
-
-        markViewAsNonAddressable(this.#child, { skipSubtree: true });
-        markViewAsChrome(this.#child, { skipSubtree: true });
-    }
-
     /**
      * @param {LegendView} legendView
      */
     addLegendView(legendView) {
-        if (!this.#child) {
-            throw new Error("Legend region has not been initialized!");
-        }
-
-        legendView.layoutParent =
-            /** @type {import("./containerView.js").default} */ (this.#child);
+        legendView.layoutParent = this;
         this.#legendViews.push(legendView);
-        /** @type {any} */ (this.#child).appendChildView(legendView);
     }
 
     /**
@@ -1060,41 +1010,32 @@ export class LegendRegionView extends ContainerView {
     }
 
     /**
-     * @returns {IterableIterator<import("./view.js").default>}
+     * @returns {ArrayIterator<LegendView>}
      */
-    *[Symbol.iterator]() {
-        if (this.#child) {
-            yield this.#child;
-        }
+    [Symbol.iterator]() {
+        return this.#legendViews.values();
+    }
+
+    isActive() {
+        return this.#legendViews.some((view) => view.isActive());
     }
 
     getSize() {
-        const { width, height } = this.#getPhysicalSizeDefs();
-        return new FlexDimensions(width, height);
-    }
-
-    /**
-     * @returns {{
-     *     width: import("./layout/flexLayout.js").SizeDef,
-     *     height: import("./layout/flexLayout.js").SizeDef
-     * }}
-     */
-    #getPhysicalSizeDefs() {
-        // Legend disable is reactive and separate from configured view
-        // visibility, so the internal legendStack concat cannot be used
-        // directly for region sizing.
+        // Reactive legend disable is separate from configured view visibility.
         const legendViews = this.#getVisibleLegendViews();
 
         if (!legendViews.length) {
             const empty = { px: 0, grow: 0 };
-            return { width: empty, height: empty };
+            return new FlexDimensions(empty, empty);
         }
 
-        const widths = legendViews.map(
-            (legendView) => legendView.getSize().width
+        const horizontal = this.#direction == "horizontal";
+        const sizes = legendViews.map((view) => view.getSize());
+        const main = sizes.map((size) =>
+            horizontal ? size.width : size.height
         );
-        const heights = legendViews.map(
-            (legendView) => legendView.getSize().height
+        const cross = sizes.map((size) =>
+            horizontal ? size.height : size.width
         );
         const sumWithSpacing = (
             /** @type {import("./layout/flexLayout.js").SizeDef[]} */ sizes
@@ -1107,32 +1048,19 @@ export class LegendRegionView extends ContainerView {
                 },
             ]);
 
-        if (this.#wrap && this.#lines && this.#lines.length > 1) {
-            const lineCrossSizes = this.#lines.map((line) =>
-                getLargestSize(
-                    line.map((index) =>
-                        this.#direction == "horizontal"
-                            ? heights[index]
-                            : widths[index]
-                    )
-                )
-            );
-            const crossSize = sumWithSpacing(lineCrossSizes);
-            const parallelSize = { grow: 1, minPx: 0 };
-            return this.#direction == "horizontal"
-                ? { width: parallelSize, height: crossSize }
-                : { width: crossSize, height: parallelSize };
-        }
+        const wrapped = this.#wrap && this.#lines && this.#lines.length > 1;
+        const mainSize = wrapped ? { grow: 1, minPx: 0 } : sumWithSpacing(main);
+        const crossSize = wrapped
+            ? sumWithSpacing(
+                  this.#lines.map((line) =>
+                      getLargestSize(line.map((index) => cross[index]))
+                  )
+              )
+            : getLargestSize(cross);
 
-        return this.#direction == "horizontal"
-            ? {
-                  width: sumWithSpacing(widths),
-                  height: getLargestSize(heights),
-              }
-            : {
-                  width: getLargestSize(widths),
-                  height: sumWithSpacing(heights),
-              };
+        return horizontal
+            ? new FlexDimensions(mainSize, crossSize)
+            : new FlexDimensions(crossSize, mainSize);
     }
 
     getPerpendicularSize() {
@@ -1277,9 +1205,12 @@ export class LegendRegionView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
-        this.handleInteraction(event, true);
-        this.#child?.propagateInteraction(event);
-        this.handleInteraction(event, false);
+        propagateInteraction(this, event, () => {
+            const legend = this.#getVisibleLegendViews().find((view) =>
+                view.coords.containsPoint(event.point.x, event.point.y)
+            );
+            legend?.propagateInteraction(event);
+        });
     }
 }
 
@@ -1298,24 +1229,15 @@ function sameLines(a, b) {
     );
 }
 
-/** @param {import("../spec/legend.js").LegendRegionAnchor} anchor */
-function getLegendAnchorFactor(anchor) {
-    if (anchor == "start") {
-        return 0;
-    } else if (anchor == "middle") {
-        return 0.5;
-    } else if (anchor == "end") {
-        return 1;
-    } else {
-        throw new Error(`Invalid legend region anchor: ${anchor}`);
-    }
-}
-
+/** @extends {ContainerView<LegendRootSpec>} */
 export default class LegendView extends ContainerView {
     #effectiveExtent;
 
     /** @type {import("./view.js").default | undefined} */
     #child;
+
+    /** @type {UnitView[]} */
+    #backgroundViews = [];
 
     /** @type {"symbol" | "gradient"} */
     #type;
@@ -1414,6 +1336,27 @@ export default class LegendView extends ContainerView {
         const childSpec = { ...this.spec };
         delete childSpec.name;
 
+        const background = getConfiguredViewBackground(
+            this.getConfigScopes(),
+            createLegendViewBackground(this.legendProps)
+        );
+        for (const [name, spec] of Object.entries({
+            background: createBackground(background),
+            backgroundStroke: createBackgroundStroke(background),
+        })) {
+            if (spec) {
+                this.#backgroundViews.push(
+                    new UnitView(
+                        excludeLegendGuideResolutions(spec),
+                        this.context,
+                        this,
+                        this,
+                        name
+                    )
+                );
+            }
+        }
+
         this.#child = await this.context.createOrImportView(
             childSpec,
             this,
@@ -1460,6 +1403,7 @@ export default class LegendView extends ContainerView {
      * @returns {IterableIterator<import("./view.js").default>}
      */
     *[Symbol.iterator]() {
+        yield* this.#backgroundViews;
         if (this.#child) {
             yield this.#child;
         }
@@ -1476,11 +1420,11 @@ export default class LegendView extends ContainerView {
             ? this.#getFlexibleStackedParallelSize()
             : { px: this.getStackedParallelSize() };
 
-        if (contentHorizontal) {
-            return new FlexDimensions(parallelSize, perpendicularSize);
-        } else {
-            return new FlexDimensions(perpendicularSize, parallelSize);
-        }
+        return (
+            contentHorizontal
+                ? new FlexDimensions(parallelSize, perpendicularSize)
+                : new FlexDimensions(perpendicularSize, parallelSize)
+        ).addPadding(this.getPadding());
     }
 
     /**
@@ -1491,8 +1435,8 @@ export default class LegendView extends ContainerView {
             return { grow: 1, minPx: MIN_GRADIENT_LEGEND_LENGTH };
         }
 
-        // The generated child concat includes title, padding, and the gradient
-        // body minimum, so use it as the public stacked parallel contract.
+        // The generated content includes the title and gradient body minimum.
+        // This view adds its own padding to the resulting size.
         const childSize = this.#child.getSize();
         return isHorizontalLegend(this.legendProps)
             ? childSize.width
@@ -1656,6 +1600,11 @@ export default class LegendView extends ContainerView {
         return false;
     }
 
+    /** Legend chrome is owned and painted here rather than by a parent grid. */
+    getParentGridChromePolicy() {
+        return { axes: false, background: false };
+    }
+
     /**
      * @param {import("./renderingContext/viewRenderingContext.js").default} context
      * @param {import("./layout/rectangle.js").default} coords
@@ -1669,7 +1618,14 @@ export default class LegendView extends ContainerView {
         }
 
         context.pushView(this, coords);
-        this.#child?.arrange(context, coords, options);
+        for (const background of this.#backgroundViews) {
+            background.arrange(context, coords, options);
+        }
+        this.#child?.arrange(
+            context,
+            coords.shrink(this.getPadding()),
+            options
+        );
         context.popView(this);
     }
 
@@ -1677,9 +1633,9 @@ export default class LegendView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
-        this.handleInteraction(event, true);
-        this.#child?.propagateInteraction(event);
-        this.handleInteraction(event, false);
+        propagateInteraction(this, event, () =>
+            this.#child?.propagateInteraction(event)
+        );
     }
 }
 

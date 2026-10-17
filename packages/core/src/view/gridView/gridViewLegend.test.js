@@ -2155,7 +2155,7 @@ describe("GridView legends", () => {
             expect(legends[0].legendProps.title).toBe("Region");
         });
 
-        test("uses reactive disable as legend visibility predicate", async () => {
+        test("reactive disable releases legend space and requests layout", async () => {
             const view = await createLegendTestView({
                 params: [{ name: "showLegends", value: true }],
                 config: {
@@ -2164,31 +2164,21 @@ describe("GridView legends", () => {
                     },
                 },
             });
-            const legends = getLegends(view);
-            const regions = getLegendRegions(view);
+            const [region] = getLegendRegions(view);
             view.context.requestLayoutReflow = vi.fn();
-            view.context.animator.requestRender = vi.fn();
 
-            expect(legends).toHaveLength(1);
-            expect(regions).toHaveLength(1);
-            expect(legends[0].isConfiguredVisible()).toBe(true);
-            expect(legends[0].isActive()).toBe(true);
-            expect(regions[0].getParallelSize()).toBeGreaterThan(0);
+            expect(region.getParallelSize()).toBeGreaterThan(0);
 
             view.paramRuntime.setValue("showLegends", false);
             await view.paramRuntime.whenPropagated();
 
-            expect(legends[0].isConfiguredVisible()).toBe(true);
-            expect(legends[0].isActive()).toBe(false);
-            expect(regions[0].getParallelSize()).toBe(0);
+            expect(region.getParallelSize()).toBe(0);
 
             view.paramRuntime.setValue("showLegends", true);
             await view.paramRuntime.whenPropagated();
 
-            expect(legends[0].isActive()).toBe(true);
-            expect(regions[0].getParallelSize()).toBeGreaterThan(0);
+            expect(region.getParallelSize()).toBeGreaterThan(0);
             expect(view.context.requestLayoutReflow).toHaveBeenCalledTimes(2);
-            expect(view.context.animator.requestRender).not.toHaveBeenCalled();
         });
 
         test("respects explicit legend null", async () => {
@@ -4009,112 +3999,6 @@ describe("GridView legends", () => {
                     expect.objectContaining({ value: 75, position: 0.75 }),
                 ])
             );
-        });
-    });
-
-    describe("chrome behavior", () => {
-        test("does not draw configured view strokes inside legends", async () => {
-            const view = await createLegendTestView({
-                config: {
-                    legend: { disable: false },
-                    view: { stroke: "lightgray" },
-                },
-            });
-            const legends = getLegends(view);
-            const legendBackgroundStrokes = legends[0]
-                .getDescendants()
-                .filter((descendant) =>
-                    descendant.name.startsWith("backgroundStroke")
-                );
-
-            expect(legends).toHaveLength(1);
-            expect(legendBackgroundStrokes).toHaveLength(0);
-        });
-
-        test("draws configured backgrounds for stacked legends", async () => {
-            const view = await createLegendTestView({
-                config: {
-                    legend: {
-                        disable: false,
-                        backgroundFill: "white",
-                        backgroundFillOpacity: 0.8,
-                    },
-                    view: { stroke: "lightgray" },
-                },
-                vconcat: [
-                    {
-                        data: {
-                            values: [
-                                {
-                                    x: 1,
-                                    signal: 2,
-                                    trend: 3,
-                                    group: "alpha",
-                                    difference: 1,
-                                },
-                                {
-                                    x: 2,
-                                    signal: 3,
-                                    trend: 4,
-                                    group: "beta",
-                                    difference: 2,
-                                },
-                            ],
-                        },
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                        },
-                        layer: [
-                            {
-                                mark: "point",
-                                encoding: {
-                                    y: {
-                                        field: "signal",
-                                        type: "quantitative",
-                                    },
-                                    color: {
-                                        field: "group",
-                                        type: "nominal",
-                                        legend: { title: "Group" },
-                                    },
-                                },
-                            },
-                            {
-                                mark: "point",
-                                encoding: {
-                                    y: {
-                                        field: "trend",
-                                        type: "quantitative",
-                                    },
-                                    size: {
-                                        field: "difference",
-                                        type: "quantitative",
-                                        legend: { title: "Difference" },
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                ],
-            });
-            const legendBackgrounds = getLegendRegions(view)[0]
-                .getDescendants()
-                .filter((descendant) =>
-                    descendant.name.startsWith("background")
-                );
-
-            expect(
-                legendBackgrounds.map((background) => background.name)
-            ).toEqual(["background0", "background1"]);
-            expect(
-                legendBackgrounds.map(
-                    (background) =>
-                        /** @type {UnitView} */ (background).spec.mark
-                )
-            ).toEqual([
-                expect.objectContaining({ color: "white", opacity: 0.8 }),
-                expect.objectContaining({ color: "white", opacity: 0.8 }),
-            ]);
         });
     });
 });

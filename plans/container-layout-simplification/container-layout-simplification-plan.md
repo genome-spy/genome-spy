@@ -13,7 +13,7 @@ compressing formatting or moving code outside the measured scope.
 
 Scope: `containerView.js`, `layerView.js`, `concatView.js`, `facetView.js`,
 `facetLayout.js`, `facetHeaderView.js`, `surroundView.js`,
-`containerMutationHelper.js`, and all runtime `.js` files in `gridView/` and
+`containerMutationHelper.js`, `legendView.js`, and all runtime `.js` files in `gridView/` and
 `layout/`. Exclude tests, declarations, and test utilities. Changes to shared
 files outside this scope must be reported separately.
 
@@ -108,7 +108,7 @@ passed smoke checks. Browser interaction checks confirmed wheel zoom and drag
 pan change domains, resizing changes the allocated center width, and hiding then
 restoring a surround track collapses then restores its reservation.
 
-### Size results
+### First-pass size results (original scope)
 
 The 15% production-SLOC target was **not reached**. The fixed scope decreased
 from 8,208 to 7,903 non-comment lines: 305 fewer (3.72%). Physical production
@@ -157,11 +157,11 @@ different compression defaults and should not be mixed with the table above.
 
 ### Further simplification proposals
 
-The remaining bulk is concentrated in GridView (1,579 non-comment lines),
-GridChild (671), and SurroundView (569). Most of their branches implement active
-geometry, chrome, or interaction contracts. Reaching 15% in this scope requires
-removing about 927 more production lines. The following are design candidates,
-not promised savings or unfinished work in this branch.
+At the end of the first pass, the remaining bulk was concentrated in GridView
+(1,579 non-comment lines), GridChild (671), and SurroundView (569). Most of their
+branches implement active geometry, chrome, or interaction contracts. The
+following candidates informed the continuation; only legend ownership was
+subsequently authorized and completed.
 
 1. **Make resolved-spec validation one factory boundary.**
    `ViewFactory.createOrImportView()` currently invokes its validator only for
@@ -173,15 +173,11 @@ not promised savings or unfinished work in this branch.
    `ViewError` source locations and child-type restrictions. This is a modest
    opportunity; it cannot close the target gap by itself.
 
-2. **Give legend regions one physical layout owner.**
-   `LegendRegionView` retains both `#legendViews` and an internal concat, then
-   measures and arranges legends manually. Its concat still supplies GridChild
-   chrome and layout ancestry. A direct region that owns decorated legend
-   placements could remove the unused concat layout role and duplicate
-   membership. Define the decoration/lifecycle contract first; verify actual
-   SVG background/stroke output, reactive disable, wrapping, collected legends,
-   inherited config/parameters, and mutation disposal. The attempted immediate
-   child-only deletion was discarded because it lost background wrappers.
+2. **Give legend regions one physical layout owner — completed.**
+   Regions now own legend children directly, and legends own their chrome.
+   Actual SVG output, reactive disable, wrapping, collected legends, inherited
+   config/parameters, and mutation disposal were verified. Merely deleting the
+   concat without replacing its chrome ownership would lose those decorations.
 
 3. **Share measured track geometry between facet and grid.**
    Facet's repeated-child topology is distinct from GridView's child ownership,
@@ -213,6 +209,89 @@ not promised savings or unfinished work in this branch.
 - Do not shorten by centralizing property tables or generic callbacks unless
   the result improves readability and compressed bytes on the real bundle.
 
-All planned milestones are complete. The larger proposals above are explicitly
-deferred from this branch. The empty changeset records no new release impact;
-existing unrelated fragments still plan a minor release of the fixed group.
+The first pass is complete. The user authorized a second pass on legend-region
+ownership and added `legendView.js` to the measurement scope. Recalculate the
+same original baseline with the expanded scope; keep first-pass results above
+as historical measurements of the original scope.
+
+## Legend ownership milestone
+
+- [x] Give the region one list of LegendView children and make LegendView own
+  its background/stroke views around its generated content. Reuse background
+  specification builders with GridChild; any extracted helper stays inside the
+  measured `gridView/` scope. Preserve the semantic data parent and forced local
+  layout parameters. Include inactive legends in hierarchy/lifecycle traversal.
+  Route interactions to the active pointed legend, respecting capture/bubble.
+- [x] Replace hierarchy-shape chrome tests with emitted SVG assertions for
+  stacked fills/strokes, dimensions, paint order and reactive visibility. Verify
+  wrapping, gradients, collected legends, dynamic mutation/disposal, and App
+  sample parameter isolation. Run browser legend examples and independent
+  downstream review before committing.
+- [x] Recalculate the 33-file original baseline plus extracted helpers, compare
+  the same minified UMD/gzip/Brotli build with the first pass and original base,
+  and retain this milestone only if the ownership becomes simpler and size
+  improves. Commit: `refactor(core): let legends own their chrome`.
+
+Baseline SVG inspection confirmed that configured legend fill/stroke views are
+constructed but not painted because the region bypasses its internal concat's
+arrangement. The refactor must draw these views explicitly. This is a visible
+bug fix, so replace the existing empty fragment with a Core patch note. No
+grammar migration or documentation changes are needed.
+
+Other larger proposals remain deferred from this branch.
+
+### Legend ownership results
+
+The region directly owns all LegendView children, including inactive ones. Each
+legend owns and paints its fill/stroke views and applies its padding around the
+generated content. Hosts now store regions directly; the former external
+`{ legendView, entries }` wrapper and repeated member list are gone. App's peek
+packing suspension iterates each region's actual legends. Shared background
+builders moved to `gridView/viewBackground.js` and remain counted; GridChild
+re-exports them for the existing App consumer. Region size calculation now uses
+main/cross dimensions, and parent/child legend placement share anchor handling.
+
+Review caught and addressed propagation after stopped capture/child events by
+using the existing interaction frame in both legend containers. Independent
+review found no remaining regressions in semantic ancestry, App consumers,
+dynamic visibility, constrained gradients, clipping, or lifecycle cleanup.
+
+The new SVG test proves actual fill/outline output, paint order, internal
+padding, hide/show restoration, and exactly-once subtree/subscription disposal.
+It replaces generated-view existence assertions. Test files grew by 17 lines
+for these stronger contracts. Verification: full suite 536 files / 5,050 tests
+passed (one skipped, two todo); after the last membership/helper cleanup, 322
+focused Core/App tests, workspace type checks, and lint pass. Eight WebGL legend
+and surround examples passed smoke checks. A browser fixture visibly paints
+two padded legend boxes and collapses/restores their space when disabled.
+
+The baseline now includes `legendView.js`: 9,643 production SLOC across the
+original 33 files. The final scope has 34 files because the shared background
+builders were extracted; their code remains included. Compared with the first
+pass, this milestone removes 38 production SLOC and 86 physical production
+lines. Across the branch, it removes 343 SLOC (3.56%) and 529 physical lines.
+The one App consumer changes one line with zero net production-line change;
+it is outside the Core source-size table.
+
+| Measurement | Original baseline | First pass | With legend ownership |
+| --- | ---: | ---: | ---: |
+| Production SLOC | 9,643 | 9,338 | 9,300 |
+| Scoped minified source bytes | 127,864 | 124,624 | 124,144 |
+| Scoped source, gzip bytes | 40,299 | 39,561 | 39,438 |
+| Scoped source, Brotli bytes | 34,806 | 34,247 | 34,161 |
+| Shipped UMD minified bytes | 1,434,169 | 1,430,898 | 1,430,257 |
+| Shipped UMD gzip bytes | 517,958 | 517,270 | 517,198 |
+| Shipped UMD Brotli bytes | 416,529 | 416,033 | 415,937 |
+
+Use the same token/minifier/compression methods described above. Skip modules
+that do not exist at an earlier revision rather than counting an empty module
+separator. The shipped bundle improves by another 641 minified bytes, 72 gzip
+bytes and 96 Brotli bytes in this milestone. The total branch reductions are
+3,912 minified bytes, 760 gzip bytes and 592 Brotli bytes. Compression gains
+remain modest and the 15% SLOC target remains unmet. The milestone is retained
+for simpler ownership, fewer generated view/wrapper objects, the rendering fix,
+and improvements in all three shipped-size measurements.
+
+All authorized milestones are complete. The existing changeset is now a Core
+patch note for the rendering/padding fix; unrelated pending fragments still
+make the aggregate release plan minor.
