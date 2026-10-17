@@ -73,16 +73,15 @@ export function getOuterAxes(axes, column, row, grid) {
 
 /** Orders local and container decorations around their content placements. */
 export function createGridArrangement() {
-    /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */
+    /** @type {{ zindex: number, order: number, arrange: () => void }[]} */
     const underlays = [];
-    /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */
+    /** @type {typeof underlays} */
     const overlays = [];
     /** @type {{ zindex: number, arrange: () => void }[]} */
     const contents = [];
     // Repeated facet cells share mark semantics within this arrangement.
     /** @type {WeakMap<View, ReturnType<typeof getViewClipFlags>>} */
     const clipFlags = new WeakMap();
-    let sequence = 0;
 
     const queueDecoration = (
         /** @type {number} */ zindex,
@@ -90,23 +89,12 @@ export function createGridArrangement() {
         /** @type {() => void} */ arrange
     ) => {
         const target = zindex > 0 ? overlays : underlays;
-        target.push({
-            zindex,
-            order,
-            sequence: sequence++,
-            arrange,
-        });
+        target.push({ zindex, order, arrange });
     };
 
-    const arrangeDecorations = (
-        /** @type {{ zindex: number, order: number, sequence: number, arrange: () => void }[]} */ items
-    ) => {
-        items.sort(
-            (a, b) =>
-                a.zindex - b.zindex ||
-                a.order - b.order ||
-                a.sequence - b.sequence
-        );
+    const arrangeDecorations = (/** @type {typeof underlays} */ items) => {
+        // Stable sorting preserves declaration order within each phase.
+        items.sort((a, b) => a.zindex - b.zindex || a.order - b.order);
 
         for (const item of items) {
             item.arrange();
@@ -131,7 +119,7 @@ export function createGridArrangement() {
         arrange() {
             arrangeDecorations(underlays);
 
-            for (const content of contents.toSorted(
+            for (const content of contents.sort(
                 (a, b) => a.zindex - b.zindex
             )) {
                 content.arrange();
@@ -395,27 +383,17 @@ export function translateAxisCoords(coords, orient, axisView) {
     const inside = props.placement === "inside";
     const offset = props.offset ?? 0;
 
-    if (orient == "bottom") {
-        return inside
-            ? coords.translate(0, coords.height - ps - offset).modify({
-                  height: ps,
-              })
-            : coords.translate(0, coords.height + offset).modify({
-                  height: ps,
-              });
-    } else if (orient == "top") {
-        return inside
-            ? coords.translate(0, offset).modify({ height: ps })
-            : coords.translate(0, -ps - offset).modify({ height: ps });
-    } else if (orient == "left") {
-        return inside
-            ? coords.translate(offset, 0).modify({ width: ps })
-            : coords.translate(-ps - offset, 0).modify({ width: ps });
-    } else if (orient == "right") {
-        return inside
-            ? coords.translate(coords.width - ps - offset, 0).modify({
-                  width: ps,
-              })
-            : coords.translate(coords.width + offset, 0).modify({ width: ps });
+    const channel = ORIENT_CHANNELS[orient];
+    if (!channel) {
+        throw new Error("Unknown axis orientation: " + orient);
     }
+    const horizontal = channel === "x";
+    const dimension = horizontal ? "height" : "width";
+    const farEdge = orient === "bottom" || orient === "right";
+    const outset = inside ? -ps - offset : offset;
+    const position = farEdge ? coords[dimension] + outset : -ps - outset;
+
+    return coords
+        .translate(horizontal ? 0 : position, horizontal ? position : 0)
+        .modify({ [dimension]: ps });
 }

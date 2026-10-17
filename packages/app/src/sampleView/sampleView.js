@@ -78,12 +78,7 @@ import {
     resolveParamSelector,
     markViewAsChrome,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { attachViewLevelScaleProps } from "@genome-spy/core/scales/viewLevelScaleProps.js";
 import { createClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
-import {
-    attachViewLevelAxisProps,
-    attachViewLevelLegendProps,
-} from "@genome-spy/core/scales/viewLevelGuideProps.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import {
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
@@ -729,18 +724,7 @@ export default class SampleView extends ContainerView {
             );
         };
 
-        attachViewLevelScaleProps(this);
-        attachViewLevelAxisProps(this);
-        attachViewLevelLegendProps(this);
-
-        await this.#gridChild.syncGuideViews();
         await this.#createSummaryViews();
-        attachViewLevelScaleProps(this);
-        attachViewLevelAxisProps(this);
-        attachViewLevelLegendProps(this);
-        await this.#gridChild.summaryViews.syncGuideViews();
-        await this.#gridChild.syncGuideViews();
-
         await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
 
@@ -748,6 +732,16 @@ export default class SampleView extends ContainerView {
             "contextmenu",
             this.#handleContextMenu.bind(this)
         );
+    }
+
+    /**
+     * Creates guides for the repeated sample pane after all resolutions are ready.
+     *
+     * @returns {Promise<void>}
+     * @override
+     */
+    syncGuideViews() {
+        return this.#gridChild.syncGuideViews();
     }
 
     /**
@@ -1361,7 +1355,7 @@ export default class SampleView extends ContainerView {
 
         const releases = Object.values(this.#gridChild.legends).flatMap(
             (region) =>
-                region.entries.map(({ legendView }) =>
+                Array.from(region, (legendView) =>
                     legendView.suspendLayoutDataUpdates()
                 )
         );
@@ -1996,9 +1990,9 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-" + serial
+                "sample-group-background-" + serial,
+                { chrome: true }
             );
-            markViewAsChrome(this.groupBackground, { skipSubtree: true });
         }
 
         const backgroundStrokeSpec = createBackgroundStroke(viewBackgroundSpec);
@@ -2008,11 +2002,9 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-stroke-" + serial
+                "sample-group-background-stroke-" + serial,
+                { chrome: true }
             );
-            markViewAsChrome(this.groupBackgroundStroke, {
-                skipSubtree: true,
-            });
         }
 
         this.summaryViews = summaryViews;

@@ -1,8 +1,5 @@
 import UnitView from "../unitView.js";
-import {
-    markViewAsChrome,
-    markViewAsNonAddressable,
-} from "../viewSelectors.js";
+import { markViewAsNonAddressable } from "../viewSelectors.js";
 
 /**
  * @typedef {"horizontal" | "vertical"} SeparatorDirection
@@ -35,15 +32,6 @@ export default class SeparatorView {
     /** @type {import("../../data/flowNode.js").Datum[]} */
     #data = [];
 
-    /** @type {number[]} */
-    #positions = [];
-
-    /** @type {{ x: number[]; y: number[] }} */
-    #domains = {
-        x: [0, 0],
-        y: [0, 0],
-    };
-
     /**
      * @param {{
      *   direction: SeparatorDirection,
@@ -68,13 +56,19 @@ export default class SeparatorView {
         const markProps = { ...props };
         delete markProps.includePlotMargin;
         delete markProps.zindex;
-        this.#view = this.#createView(
-            markProps,
+        this.#view = new UnitView(
+            createSeparatorSpec(markProps),
             context,
             layoutParent,
             dataParent,
-            getName
+            getName(
+                direction === "horizontal"
+                    ? "separatorHorizontal"
+                    : "separatorVertical"
+            ),
+            { chrome: true }
         );
+        markViewAsNonAddressable(this.#view, { skipSubtree: true });
     }
 
     /**
@@ -96,8 +90,36 @@ export default class SeparatorView {
      * @param {import("../layout/padding.js").default} overhang
      */
     update(flexCoords, count, coords, getViewSlot, overhang) {
-        this.#collectPositions(flexCoords, count, getViewSlot);
-        this.#updateDirection(coords, overhang);
+        const xStart = this.#includePlotMargin ? 0 : overhang.left;
+        const xEnd = this.#includePlotMargin
+            ? coords.width
+            : coords.width - overhang.right;
+        const yStart = this.#includePlotMargin ? 0 : overhang.bottom;
+        const yEnd = this.#includePlotMargin
+            ? coords.height
+            : coords.height - overhang.top;
+        // A collapsed canvas has no visible span, but normalized data must stay finite.
+        const width = coords.width || 1;
+        const height = coords.height || 1;
+        const vertical = this.#direction === "vertical";
+        this.#data.length = Math.max(0, count - 1);
+
+        for (let index = 1; index < count; index++) {
+            const spacing = flexCoords[getViewSlot(index) - 2];
+            const position = spacing.location + spacing.size / 2;
+            const entry = this.#data[index - 1] ?? {};
+            entry.x = (vertical ? position : xStart) / width;
+            entry.x2 = (vertical ? position : xEnd) / width;
+            entry.y = (vertical ? yStart : coords.height - position) / height;
+            entry.y2 = (vertical ? yEnd : coords.height - position) / height;
+            this.#data[index - 1] = entry;
+        }
+
+        const dataSource =
+            /** @type {import("../../data/sources/inlineSource.js").default} */ (
+                this.#view.flowHandle?.dataSource
+            );
+        dataSource?.updateDynamicData(this.#data);
     }
 
     /**
@@ -107,118 +129,6 @@ export default class SeparatorView {
      */
     arrange(context, coords, options) {
         this.#view.arrange(context, coords, options);
-    }
-
-    /**
-     * @param {import("../layout/flexLayout.js").LocSize[]} flexCoords
-     * @param {number} count
-     * @param {(index: number) => number} getViewSlot
-     */
-    #collectPositions(flexCoords, count, getViewSlot) {
-        this.#positions.length = 0;
-
-        if (count < 2) {
-            return;
-        }
-
-        for (let index = 1; index < count; index++) {
-            const viewSlot = getViewSlot(index);
-            const spacingSlot = viewSlot - 2;
-            const spacing = flexCoords[spacingSlot];
-            const location = spacing ? spacing.location : 0;
-            const size = spacing ? spacing.size : 0;
-            this.#positions.push(location + size / 2);
-        }
-    }
-
-    /**
-     * @param {import("../layout/rectangle.js").default} coords
-     * @param {import("../layout/padding.js").default} overhang
-     */
-    #updateDirection(coords, overhang) {
-        const xStart = this.#includePlotMargin ? 0 : overhang.left;
-        const xEnd = this.#includePlotMargin
-            ? coords.width
-            : coords.width - overhang.right;
-        const yStart = this.#includePlotMargin ? 0 : overhang.bottom;
-        const yEnd = this.#includePlotMargin
-            ? coords.height
-            : coords.height - overhang.top;
-
-        this.#data.length = this.#positions.length;
-
-        for (let i = 0; i < this.#positions.length; i++) {
-            const pos = this.#positions[i];
-            const entry = this.#data[i] ?? {};
-
-            if (this.#direction === "vertical") {
-                entry.x = pos;
-                entry.x2 = pos;
-                entry.y = yStart;
-                entry.y2 = yEnd;
-            } else {
-                const y = coords.height - pos;
-                entry.x = xStart;
-                entry.x2 = xEnd;
-                entry.y = y;
-                entry.y2 = y;
-            }
-
-            this.#data[i] = entry;
-        }
-
-        const dataSource =
-            /** @type {import("../../data/sources/inlineSource.js").default} */ (
-                this.#view.flowHandle?.dataSource
-            );
-
-        if (!dataSource) {
-            return;
-        }
-
-        dataSource.updateDynamicData(this.#data);
-
-        this.#domains.x[1] = coords.width;
-        this.#domains.y[1] = coords.height;
-
-        const xScale = this.#view.getScaleResolution("x")?.getScale();
-        if (xScale) {
-            xScale.domain(this.#domains.x);
-        }
-
-        const yScale = this.#view.getScaleResolution("y")?.getScale();
-        if (yScale) {
-            yScale.domain(this.#domains.y);
-        }
-    }
-
-    /**
-     * @param {Omit<import("../../spec/view.js").SeparatorProps, "includePlotMargin">} props
-     * @param {import("../../types/viewContext.js").default} context
-     * @param {import("../containerView.js").default} layoutParent
-     * @param {import("../view.js").default} dataParent
-     * @param {(prefix: string) => string} getName
-     * @returns {UnitView}
-     */
-    #createView(props, context, layoutParent, dataParent, getName) {
-        const spec = createSeparatorSpec(props);
-        const name =
-            this.#direction === "horizontal"
-                ? getName("separatorHorizontal")
-                : getName("separatorVertical");
-
-        const view = new UnitView(
-            spec,
-            context,
-            layoutParent,
-            dataParent,
-            name
-        );
-
-        markViewAsNonAddressable(view, { skipSubtree: true });
-        markViewAsChrome(view, { skipSubtree: true });
-
-        return view;
     }
 }
 
@@ -253,7 +163,6 @@ function createSeparatorSpec(props) {
         data: { values: [] },
         resolve: {
             scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
         },
         mark: {
             ...props,
@@ -265,12 +174,12 @@ function createSeparatorSpec(props) {
             x: {
                 field: "x",
                 type: "quantitative",
-                scale: { nice: false, zero: false },
+                scale: null,
             },
             y: {
                 field: "y",
                 type: "quantitative",
-                scale: { nice: false, zero: false },
+                scale: null,
             },
             x2: { field: "x2" },
             y2: { field: "y2" },

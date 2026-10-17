@@ -1,6 +1,9 @@
 import { getExternalAxisOverhang } from "../axisView.js";
 import Padding from "../layout/padding.js";
-import { getLegendOverhang, isActiveLegendRegion } from "./gridChildLegends.js";
+import {
+    getLegendOverhang,
+    INSIDE_LEGEND_ORIENTS,
+} from "./gridChildLegends.js";
 
 const LEGEND_ZINDEX = 1;
 
@@ -29,7 +32,7 @@ export function getGuideOverhang(axes, legends) {
  *
  * @param {import("../../spec/legend.js").LegendRegionAnchor} anchor
  */
-function getAnchorFactor(anchor) {
+export function getLegendAnchorFactor(anchor) {
     if (anchor == "start") {
         return 0;
     } else if (anchor == "middle") {
@@ -68,49 +71,37 @@ export function translateLegendCoords(
         legendView.getParallelSize?.() ?? availableParallelSize;
     const anchor = legendView.getAnchor?.() ?? "start";
     const parallelOffset =
-        getAnchorFactor(anchor) * (availableParallelSize - parallelSize);
+        getLegendAnchorFactor(anchor) * (availableParallelSize - parallelSize);
     const cornerParallelSize =
         legendView.getParallelSize?.() ?? coords.height - 2 * offset;
     const cornerWidth = legendView.getWidth?.() ?? ps;
     const cornerHeight = legendView.getHeight?.() ?? cornerParallelSize;
 
-    if (orient == "bottom") {
+    if (orient == "bottom" || orient == "top") {
+        const y =
+            orient == "bottom"
+                ? coords.height + axisOffset + offset
+                : -ps - axisOffset - offset;
         return coords
-            .translate(parallelOffset, coords.height + axisOffset + offset)
+            .translate(parallelOffset, y)
             .modify({ width: parallelSize, height: ps });
-    } else if (orient == "top") {
+    } else if (orient == "left" || orient == "right") {
+        const x =
+            orient == "right"
+                ? coords.width + axisOffset + offset
+                : -ps - axisOffset - offset;
         return coords
-            .translate(parallelOffset, -ps - axisOffset - offset)
-            .modify({ width: parallelSize, height: ps });
-    } else if (orient == "left") {
-        return coords
-            .translate(-ps - axisOffset - offset, parallelOffset)
+            .translate(x, parallelOffset)
             .modify({ width: ps, height: parallelSize });
-    } else if (orient == "right") {
+    } else if (INSIDE_LEGEND_ORIENTS.has(orient)) {
+        const x = orient.endsWith("right")
+            ? coords.width - cornerWidth - axisOffset - offset
+            : axisOffset + offset;
+        const y = orient.startsWith("bottom")
+            ? coords.height - cornerHeight - offset
+            : offset;
         return coords
-            .translate(coords.width + axisOffset + offset, parallelOffset)
-            .modify({ width: ps, height: parallelSize });
-    } else if (orient == "top-left") {
-        return coords
-            .translate(axisOffset + offset, offset)
-            .modify({ width: cornerWidth, height: cornerHeight });
-    } else if (orient == "top-right") {
-        return coords
-            .translate(coords.width - cornerWidth - axisOffset - offset, offset)
-            .modify({ width: cornerWidth, height: cornerHeight });
-    } else if (orient == "bottom-left") {
-        return coords
-            .translate(
-                axisOffset + offset,
-                coords.height - cornerHeight - offset
-            )
-            .modify({ width: cornerWidth, height: cornerHeight });
-    } else if (orient == "bottom-right") {
-        return coords
-            .translate(
-                coords.width - cornerWidth - axisOffset - offset,
-                coords.height - cornerHeight - offset
-            )
+            .translate(x, y)
             .modify({ width: cornerWidth, height: cornerHeight });
     } else {
         throw new Error(`Invalid legend orientation: ${orient}`);
@@ -135,8 +126,8 @@ export function arrangeLocalLegends(
     queueDecoration,
     order
 ) {
-    for (const [orient, legendViews] of Object.entries(legends)) {
-        if (!isActiveLegendRegion(legendViews)) {
+    for (const [orient, legendView] of Object.entries(legends)) {
+        if (!legendView.isActive()) {
             continue;
         }
 
@@ -146,7 +137,6 @@ export function arrangeLocalLegends(
             ]
         );
 
-        const legendView = legendViews.legendView;
         const legendCoords = translateLegendCoords(
             viewportCoords,
             /** @type {import("../../spec/legend.js").LegendOrient} */ (orient),

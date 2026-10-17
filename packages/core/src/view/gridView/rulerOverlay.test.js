@@ -20,10 +20,6 @@ describe("createRulerOverlaySpec", () => {
                     x: "forced",
                     y: "forced",
                 },
-                axis: {
-                    x: "excluded",
-                    y: "excluded",
-                },
             },
             data: { values: [{}] },
             transform: [
@@ -37,7 +33,6 @@ describe("createRulerOverlaySpec", () => {
                     datum: {
                         expr: "linearize('x', cursor.values.x)",
                     },
-                    axis: null,
                     type: null,
                     title: null,
                 },
@@ -76,7 +71,6 @@ describe("createRulerOverlaySpec", () => {
                     datum: {
                         expr: "linearize('x', crosshair.values.x)",
                     },
-                    axis: null,
                     type: null,
                     title: null,
                 },
@@ -88,7 +82,6 @@ describe("createRulerOverlaySpec", () => {
                     datum: {
                         expr: "linearize('y', crosshair.values.y)",
                     },
-                    axis: null,
                     type: null,
                     title: null,
                 },
@@ -127,7 +120,6 @@ describe("createRulerOverlaySpec", () => {
                 datum: {
                     expr: "linearize('x', cursor.values.x)",
                 },
-                axis: null,
                 type: null,
                 title: null,
             },
@@ -135,7 +127,6 @@ describe("createRulerOverlaySpec", () => {
                 datum: {
                     expr: "linearize('x', cursor.values.x) + 1",
                 },
-                axis: null,
                 type: null,
                 title: null,
             },

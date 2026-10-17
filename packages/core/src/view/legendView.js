@@ -30,6 +30,13 @@ import {
 } from "./layout/flexLayout.js";
 import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
+import {
+    createBackground,
+    createBackgroundStroke,
+} from "./gridView/viewBackground.js";
+import { getConfiguredViewBackground } from "../config/viewConfig.js";
+import { propagateInteraction } from "./interactionRouting.js";
+import { getLegendAnchorFactor } from "./gridView/legendLayout.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
 import { measureText, requestFont } from "../fonts/textMetrics.js";
@@ -55,58 +62,9 @@ const LEGEND_VIEW_BACKGROUND = {
 };
 
 /**
- * Legend internals use scale-backed helper marks but must not create their own
- * axes or legends from inherited configuration.
- *
- * This must be applied to every generated child spec, not just the LegendView
- * root. The generated subtree contains ordinary unit views, including text
- * views and helper marks with internal x/y placement channels. Those channels
- * are implementation details of the legend, even when they are value-backed and
- * not semantically scale-backed data encodings.
- *
- * Without this exclusion, a generated child can still end up with an axis
- * resolution and inherit axis defaults such as `grid: true`, creating an
- * AxisGridView inside the legend. This has been observed with the title view:
- * the authored title encoding only had `text`, but the unexcluded generated
- * title still received an x-axis resolution through the normal guide machinery.
- *
- * The legend may still force the represented source scale, e.g. color/size, but
- * generated helper x/y channels and nested legend channels must stay out of the
- * normal guide resolution machinery.
- *
- * See:
- * - https://github.com/genome-spy/genome-spy/issues/412
- * - https://github.com/genome-spy/genome-spy/issues/413
- *
- * @template {import("../spec/view.js").ViewSpec & {
- *     resolve?: any,
- *     layer?: any[],
- *     vconcat?: any[],
- *     hconcat?: any[]
- * }} T
- * @param {T} spec
- * @returns {T}
- */
-function excludeLegendGuideResolutions(spec) {
-    spec.resolve = {
-        ...spec.resolve,
-        axis: { default: "excluded", ...spec.resolve?.axis },
-        legend: { default: "excluded", ...spec.resolve?.legend },
-    };
-
-    for (const children of [spec.layer, spec.vconcat, spec.hconcat]) {
-        children?.forEach(excludeLegendGuideResolutions);
-    }
-
-    return spec;
-}
-
-/**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
  * @typedef {import("./legend/legendEntries.js").LegendEntry} LegendEntry
- * @typedef {(import("../spec/view.js").VConcatSpec | import("../spec/view.js").HConcatSpec) & {
- *     view: import("../spec/view.js").ViewBackground
- * }} LegendRootSpec
+ * @typedef {import("../spec/view.js").VConcatSpec | import("../spec/view.js").HConcatSpec} LegendRootSpec
  * @typedef {{
  *     mark?: Partial<import("../spec/mark.js").PointProps>,
  *     encoding?: Partial<import("../spec/channel.js").Encoding>
@@ -215,10 +173,9 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
         children = { vconcat: [title, body] };
     }
 
-    return excludeLegendGuideResolutions({
+    return {
         name: "legend_" + (legend.orient ?? "right"),
         padding: legend.padding,
-        view: createLegendViewBackground(legend),
         resolve: {
             scale: Object.fromEntries(
                 forcedScaleChannels.map((channel) => [channel, "forced"])
@@ -226,7 +183,7 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
         },
         spacing: 0,
         ...children,
-    });
+    };
 }
 
 /**
@@ -331,26 +288,22 @@ function createStrokeSymbolLayer({
                 field: "symbolX",
                 type: "quantitative",
                 scale: horizontalPixelScale,
-                axis: null,
                 buildIndex: false,
             },
             x2: {
                 field: "symbolX2",
                 type: "quantitative",
                 scale: horizontalPixelScale,
-                axis: null,
             },
             y: {
                 field: "labelY2",
                 type: "quantitative",
                 scale: verticalPixelScale,
-                axis: null,
             },
             y2: {
                 field: "labelY2",
                 type: "quantitative",
                 scale: verticalPixelScale,
-                axis: null,
             },
             [channel]: {
                 field: "value",
@@ -496,14 +449,12 @@ export function createSymbolLegendSpec({
                           field: "entryX",
                           type: "quantitative",
                           scale: horizontalPixelScale,
-                          axis: null,
                           buildIndex: false,
                       },
                       y: {
                           field: "labelY2",
                           type: "quantitative",
                           scale: verticalPixelScale,
-                          axis: null,
                       },
                       [channel]: {
                           field: "value",
@@ -545,14 +496,12 @@ export function createSymbolLegendSpec({
                 field: "labelX",
                 type: "quantitative",
                 scale: horizontalPixelScale,
-                axis: null,
                 buildIndex: false,
             },
             y: {
                 field: "labelY2",
                 type: "quantitative",
                 scale: verticalPixelScale,
-                axis: null,
             },
             text: { field: "label" },
         },
@@ -566,7 +515,6 @@ export function createSymbolLegendSpec({
             view: LEGEND_VIEW_BACKGROUND,
             resolve: {
                 scale: { x: "excluded", y: "excluded" },
-                axis: { x: "excluded", y: "excluded" },
             },
             data: entries
                 ? { values: entries }
@@ -655,13 +603,8 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     const labelBaseline = h ? "top" : (legend.labelBaseline ?? "middle");
     const labelFontSize = legend.labelFontSize ?? 10;
     const labelOffset = legend.labelOffset ?? 4;
-    const xs = {
-        domain: [0, { expr: "width" }],
-        zero: false,
-        nice: false,
-    };
-    const ys = {
-        domain: [0, { expr: "height" }],
+    const qs = {
+        domain: [0, { expr: h ? "height" : "width" }],
         zero: false,
         nice: false,
     };
@@ -684,26 +627,22 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     const p2 = /** @type {"x2" | "y2"} */ (p + "2");
     const q = h ? "y" : "x";
     const q2 = /** @type {"x2" | "y2"} */ (q + "2");
-    const qs = h ? ys : xs;
-    const band0 = "_legendGradientBandStart";
-    const band1 = "_legendGradientBandStop";
-    const tick0 = "_legendGradientTickStart";
-    const tick1 = "_legendGradientTickStop";
-    const label = "_legendGradientLabelPosition";
+    const bandStart = h ? gradientY : 0;
+    const bandStop = h ? gradientY2 : gradientThickness;
     /**
-     * @param {string} field
+     * @param {string | number} position
      * @param {import("../spec/scale.js").Scale} scale
-     * @param {boolean} indexed
-     * @returns {import("../spec/channel.js").PositionFieldDef}
+     * @param {boolean} [disableIndex]
+     * @returns {import("../spec/channel.js").PositionFieldDef | import("../spec/channel.js").PositionDatumDef}
      */
-    const enc = (field, scale, indexed) =>
-        /** @type {import("../spec/channel.js").PositionFieldDef} */ ({
-            field,
-            type: "quantitative",
-            scale,
-            axis: null,
-            ...(indexed ? { buildIndex: false } : {}),
-        });
+    const enc = (position, scale, disableIndex = false) => ({
+        ...(typeof position === "string"
+            ? { field: position }
+            : { datum: position }),
+        type: "quantitative",
+        scale,
+        ...(disableIndex ? { buildIndex: false } : {}),
+    });
     /** @type {import("../spec/data.js").Data} */
     const tickData = {
         lazy: {
@@ -714,43 +653,10 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             values: legend.values,
         },
     };
-    /** @type {import("../spec/transform.js").FormulaParams[]} */
-    const tickTransform = [
-        {
-            type: "formula",
-            expr: "" + (h ? tickY : tickX),
-            as: tick0,
-        },
-        {
-            type: "formula",
-            expr: "" + (h ? tickY2 : tickX2),
-            as: tick1,
-        },
-        {
-            type: "formula",
-            expr: "" + (h ? labelY : labelX),
-            as: label,
-        },
-    ];
-    /** @type {import("../spec/transform.js").FormulaParams[]} */
-    const bandTransform = [
-        {
-            type: "formula",
-            expr: "" + (h ? gradientY : 0),
-            as: band0,
-        },
-        {
-            type: "formula",
-            expr: "" + (h ? gradientY2 : gradientThickness),
-            as: band1,
-        },
-    ];
-
     /** @type {(import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec)[]} */
     const bodyLayer = [
         {
             name: "gradientRamp",
-            transform: bandTransform,
             mark: {
                 type: "rect",
                 clip: false,
@@ -758,17 +664,9 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             },
             encoding: {
                 [p]: enc(h ? "position0" : "position1", ps, p == "x"),
-                [p2]: {
-                    field: h ? "position1" : "position0",
-                    type: "quantitative",
-                    scale: ps,
-                },
-                [q]: enc(band0, qs, q == "x"),
-                [q2]: {
-                    field: band1,
-                    type: "quantitative",
-                    scale: qs,
-                },
+                [p2]: enc(h ? "position1" : "position0", ps),
+                [q]: enc(bandStart, qs, q == "x"),
+                [q2]: enc(bandStop, qs),
                 [channel]: {
                     field: "value",
                     type: "quantitative",
@@ -779,7 +677,6 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         {
             name: "gradientGuide",
             data: tickData,
-            transform: tickTransform,
             layer: [
                 {
                     name: "gradientTicks",
@@ -789,17 +686,9 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
                     },
                     encoding: {
                         [p]: enc("position", ps, p == "x"),
-                        [p2]: {
-                            field: "position",
-                            type: "quantitative",
-                            scale: ps,
-                        },
-                        [q]: enc(tick0, qs, q == "x"),
-                        [q2]: {
-                            field: tick1,
-                            type: "quantitative",
-                            scale: qs,
-                        },
+                        [p2]: enc("position", ps),
+                        [q]: enc(h ? tickY : tickX, qs, q == "x"),
+                        [q2]: enc(h ? tickY2 : tickX2, qs),
                     },
                 },
                 {
@@ -837,7 +726,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
                     },
                     encoding: {
                         [p]: enc("position", ps, p == "x"),
-                        [q]: enc(label, qs, q == "x"),
+                        [q]: enc(h ? labelY : labelX, qs, q == "x"),
                         text: { field: "label" },
                     },
                 },
@@ -849,14 +738,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         bodyLayer.push({
             name: "gradientBorder",
             data: {
-                values: [
-                    {
-                        position0: 0,
-                        position1: 1,
-                        [band0]: h ? gradientY : 0,
-                        [band1]: h ? gradientY2 : gradientThickness,
-                    },
-                ],
+                values: [{}],
             },
             mark: {
                 type: "rect",
@@ -866,18 +748,10 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
                 strokeWidth: gradientStrokeWidth,
             },
             encoding: {
-                [p]: enc("position0", ps, p == "x"),
-                [p2]: {
-                    field: "position1",
-                    type: "quantitative",
-                    scale: ps,
-                },
-                [q]: enc(band0, qs, q == "x"),
-                [q2]: {
-                    field: band1,
-                    type: "quantitative",
-                    scale: qs,
-                },
+                [p]: enc(0, ps, p == "x"),
+                [p2]: enc(1, ps),
+                [q]: enc(bandStart, qs, q == "x"),
+                [q2]: enc(bandStop, qs),
             },
         });
     }
@@ -892,7 +766,6 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             view: LEGEND_VIEW_BACKGROUND,
             resolve: {
                 scale: { x: "excluded", y: "excluded" },
-                axis: { x: "excluded", y: "excluded" },
             },
             data: {
                 lazy: {
@@ -908,35 +781,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     );
 }
 
-/**
- * @param {{
- *     getPerpendicularSize: () => number,
- *     getOffset: () => number
- * } | undefined} legendView
- * @returns {number}
- */
-export function getExternalLegendOverhang(legendView) {
-    return legendView
-        ? legendView.getPerpendicularSize() + legendView.getOffset()
-        : 0;
-}
-
-/**
- * @param {string} name
- * @param {number} spacing
- * @param {import("../spec/legend.js").LegendDirection} direction
- * @returns {import("../spec/view.js").ContainerSpec}
- */
-function createLegendRegionSpec(name, spacing, direction) {
-    return direction == "horizontal"
-        ? { name, spacing, hconcat: [] }
-        : { name, spacing, vconcat: [] };
-}
-
 export class LegendRegionView extends ContainerView {
-    /** @type {import("./view.js").default | undefined} */
-    #child;
-
     /** @type {LegendView[]} */
     #legendViews = [];
 
@@ -974,11 +819,7 @@ export class LegendRegionView extends ContainerView {
         dataParent
     ) {
         super(
-            createLegendRegionSpec(
-                "legend_region_" + orient,
-                stackSpacing,
-                direction
-            ),
+            { layer: [] },
             context,
             layoutParent,
             dataParent,
@@ -996,34 +837,12 @@ export class LegendRegionView extends ContainerView {
         markViewAsChrome(this, { skipSubtree: true });
     }
 
-    async initializeChildren() {
-        this.#child = await this.context.createOrImportView(
-            createLegendRegionSpec(
-                "legendStack",
-                this.#stackSpacing,
-                this.#direction
-            ),
-            this,
-            this,
-            this.getNextAutoName("legendStack")
-        );
-
-        markViewAsNonAddressable(this.#child, { skipSubtree: true });
-        markViewAsChrome(this.#child, { skipSubtree: true });
-    }
-
     /**
      * @param {LegendView} legendView
      */
     addLegendView(legendView) {
-        if (!this.#child) {
-            throw new Error("Legend region has not been initialized!");
-        }
-
-        legendView.layoutParent =
-            /** @type {import("./containerView.js").default} */ (this.#child);
+        legendView.layoutParent = this;
         this.#legendViews.push(legendView);
-        /** @type {any} */ (this.#child).appendChildView(legendView);
     }
 
     /**
@@ -1060,41 +879,32 @@ export class LegendRegionView extends ContainerView {
     }
 
     /**
-     * @returns {IterableIterator<import("./view.js").default>}
+     * @returns {ArrayIterator<LegendView>}
      */
-    *[Symbol.iterator]() {
-        if (this.#child) {
-            yield this.#child;
-        }
+    [Symbol.iterator]() {
+        return this.#legendViews.values();
+    }
+
+    isActive() {
+        return this.#legendViews.some((view) => view.isActive());
     }
 
     getSize() {
-        const { width, height } = this.#getPhysicalSizeDefs();
-        return new FlexDimensions(width, height);
-    }
-
-    /**
-     * @returns {{
-     *     width: import("./layout/flexLayout.js").SizeDef,
-     *     height: import("./layout/flexLayout.js").SizeDef
-     * }}
-     */
-    #getPhysicalSizeDefs() {
-        // Legend disable is reactive and separate from configured view
-        // visibility, so the internal legendStack concat cannot be used
-        // directly for region sizing.
+        // Reactive legend disable is separate from configured view visibility.
         const legendViews = this.#getVisibleLegendViews();
 
         if (!legendViews.length) {
             const empty = { px: 0, grow: 0 };
-            return { width: empty, height: empty };
+            return new FlexDimensions(empty, empty);
         }
 
-        const widths = legendViews.map(
-            (legendView) => legendView.getSize().width
+        const horizontal = this.#direction == "horizontal";
+        const sizes = legendViews.map((view) => view.getSize());
+        const main = sizes.map((size) =>
+            horizontal ? size.width : size.height
         );
-        const heights = legendViews.map(
-            (legendView) => legendView.getSize().height
+        const cross = sizes.map((size) =>
+            horizontal ? size.height : size.width
         );
         const sumWithSpacing = (
             /** @type {import("./layout/flexLayout.js").SizeDef[]} */ sizes
@@ -1107,32 +917,19 @@ export class LegendRegionView extends ContainerView {
                 },
             ]);
 
-        if (this.#wrap && this.#lines && this.#lines.length > 1) {
-            const lineCrossSizes = this.#lines.map((line) =>
-                getLargestSize(
-                    line.map((index) =>
-                        this.#direction == "horizontal"
-                            ? heights[index]
-                            : widths[index]
-                    )
-                )
-            );
-            const crossSize = sumWithSpacing(lineCrossSizes);
-            const parallelSize = { grow: 1, minPx: 0 };
-            return this.#direction == "horizontal"
-                ? { width: parallelSize, height: crossSize }
-                : { width: crossSize, height: parallelSize };
-        }
+        const wrapped = this.#wrap && this.#lines && this.#lines.length > 1;
+        const mainSize = wrapped ? { grow: 1, minPx: 0 } : sumWithSpacing(main);
+        const crossSize = wrapped
+            ? sumWithSpacing(
+                  this.#lines.map((line) =>
+                      getLargestSize(line.map((index) => cross[index]))
+                  )
+              )
+            : getLargestSize(cross);
 
-        return this.#direction == "horizontal"
-            ? {
-                  width: sumWithSpacing(widths),
-                  height: getLargestSize(heights),
-              }
-            : {
-                  width: getLargestSize(widths),
-                  height: sumWithSpacing(heights),
-              };
+        return horizontal
+            ? new FlexDimensions(mainSize, crossSize)
+            : new FlexDimensions(crossSize, mainSize);
     }
 
     getPerpendicularSize() {
@@ -1277,9 +1074,12 @@ export class LegendRegionView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
-        this.handleInteraction(event, true);
-        this.#child?.propagateInteraction(event);
-        this.handleInteraction(event, false);
+        propagateInteraction(this, event, () => {
+            const legend = this.#getVisibleLegendViews().find((view) =>
+                view.coords.containsPoint(event.point.x, event.point.y)
+            );
+            legend?.propagateInteraction(event);
+        });
     }
 }
 
@@ -1298,24 +1098,15 @@ function sameLines(a, b) {
     );
 }
 
-/** @param {import("../spec/legend.js").LegendRegionAnchor} anchor */
-function getLegendAnchorFactor(anchor) {
-    if (anchor == "start") {
-        return 0;
-    } else if (anchor == "middle") {
-        return 0.5;
-    } else if (anchor == "end") {
-        return 1;
-    } else {
-        throw new Error(`Invalid legend region anchor: ${anchor}`);
-    }
-}
-
+/** @extends {ContainerView<LegendRootSpec>} */
 export default class LegendView extends ContainerView {
     #effectiveExtent;
 
     /** @type {import("./view.js").default | undefined} */
     #child;
+
+    /** @type {UnitView[]} */
+    #backgroundViews = [];
 
     /** @type {"symbol" | "gradient"} */
     #type;
@@ -1414,6 +1205,21 @@ export default class LegendView extends ContainerView {
         const childSpec = { ...this.spec };
         delete childSpec.name;
 
+        const background = getConfiguredViewBackground(
+            this.getConfigScopes(),
+            createLegendViewBackground(this.legendProps)
+        );
+        for (const [name, spec] of Object.entries({
+            background: createBackground(background),
+            backgroundStroke: createBackgroundStroke(background),
+        })) {
+            if (spec) {
+                this.#backgroundViews.push(
+                    new UnitView(spec, this.context, this, this, name)
+                );
+            }
+        }
+
         this.#child = await this.context.createOrImportView(
             childSpec,
             this,
@@ -1460,6 +1266,7 @@ export default class LegendView extends ContainerView {
      * @returns {IterableIterator<import("./view.js").default>}
      */
     *[Symbol.iterator]() {
+        yield* this.#backgroundViews;
         if (this.#child) {
             yield this.#child;
         }
@@ -1476,11 +1283,11 @@ export default class LegendView extends ContainerView {
             ? this.#getFlexibleStackedParallelSize()
             : { px: this.getStackedParallelSize() };
 
-        if (contentHorizontal) {
-            return new FlexDimensions(parallelSize, perpendicularSize);
-        } else {
-            return new FlexDimensions(perpendicularSize, parallelSize);
-        }
+        return (
+            contentHorizontal
+                ? new FlexDimensions(parallelSize, perpendicularSize)
+                : new FlexDimensions(perpendicularSize, parallelSize)
+        ).addPadding(this.getPadding());
     }
 
     /**
@@ -1491,8 +1298,8 @@ export default class LegendView extends ContainerView {
             return { grow: 1, minPx: MIN_GRADIENT_LEGEND_LENGTH };
         }
 
-        // The generated child concat includes title, padding, and the gradient
-        // body minimum, so use it as the public stacked parallel contract.
+        // The generated content includes the title and gradient body minimum.
+        // This view adds its own padding to the resulting size.
         const childSize = this.#child.getSize();
         return isHorizontalLegend(this.legendProps)
             ? childSize.width
@@ -1656,6 +1463,11 @@ export default class LegendView extends ContainerView {
         return false;
     }
 
+    /** Legend chrome is owned and painted here rather than by a parent grid. */
+    getParentGridChromePolicy() {
+        return { axes: false, background: false };
+    }
+
     /**
      * @param {import("./renderingContext/viewRenderingContext.js").default} context
      * @param {import("./layout/rectangle.js").default} coords
@@ -1669,7 +1481,14 @@ export default class LegendView extends ContainerView {
         }
 
         context.pushView(this, coords);
-        this.#child?.arrange(context, coords, options);
+        for (const background of this.#backgroundViews) {
+            background.arrange(context, coords, options);
+        }
+        this.#child?.arrange(
+            context,
+            coords.shrink(this.getPadding()),
+            options
+        );
         context.popView(this);
     }
 
@@ -1677,9 +1496,9 @@ export default class LegendView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
-        this.handleInteraction(event, true);
-        this.#child?.propagateInteraction(event);
-        this.handleInteraction(event, false);
+        propagateInteraction(this, event, () =>
+            this.#child?.propagateInteraction(event)
+        );
     }
 }
 
@@ -1744,33 +1563,41 @@ function getMeasuredLabels(labelViews) {
  * @param {import("../types/viewContext.js").default} context
  */
 function getLegendExtent(legend, type, measuredLabels, context) {
-    if (isHorizontalLegend(legend)) {
-        return getHorizontalLegendExtent(legend, type, measuredLabels);
-    }
-
-    const titleWidth = isSideTitle(legend)
-        ? getTitleWidthWithPadding(legend, context)
-        : getTitleWidth(legend, context);
+    const horizontal = isHorizontalLegend(legend);
+    const sideTitle = isSideTitle(legend);
+    const minimum = getMinimumLegendExtent(type, legend);
     const labelOffset = legend.labelOffset ?? 4;
-    const labelExtent =
-        type == "gradient"
-            ? (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
-              getGradientBorderOutset(legend) +
-              DEFAULT_GRADIENT_TICK_SIZE +
-              labelOffset +
-              measuredLabels.maxWidth
-            : measuredLabels.maxEntryWidth ||
-              Math.sqrt(legend.symbolSize ?? 100) +
-                  (legend.symbolStrokeWidth ?? 1.5) +
-                  labelOffset +
-                  measuredLabels.maxWidth;
+    const bodyExtent = horizontal
+        ? type == "gradient"
+            ? minimum
+            : measuredLabels.maxY + (legend.labelFontSize ?? 10) / 2
+        : type == "gradient"
+          ? (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
+            getGradientBorderOutset(legend) +
+            DEFAULT_GRADIENT_TICK_SIZE +
+            labelOffset +
+            measuredLabels.maxWidth
+          : measuredLabels.maxEntryWidth ||
+            Math.sqrt(legend.symbolSize ?? 100) +
+                (legend.symbolStrokeWidth ?? 1.5) +
+                labelOffset +
+                measuredLabels.maxWidth;
+    const titleExtent = legend.title
+        ? horizontal
+            ? (legend.titleFontSize ?? 11) +
+              (sideTitle ? 0 : (legend.titlePadding ?? 5))
+            : getTitleWidth(legend, context) +
+              (sideTitle ? (legend.titlePadding ?? 5) : 0)
+        : 0;
+    const combined =
+        horizontal !== sideTitle
+            ? bodyExtent + titleExtent
+            : Math.max(bodyExtent, titleExtent);
 
     return Math.ceil(
-        Math.max(
-            getMinimumLegendExtent(type, legend),
-            isSideTitle(legend) ? labelExtent + titleWidth : labelExtent,
-            titleWidth
-        )
+        horizontal
+            ? Math.max(minimum, combined)
+            : Math.max(minimum, combined, titleExtent)
     );
 }
 
@@ -1779,18 +1606,14 @@ function getLegendExtent(legend, type, measuredLabels, context) {
  * @param {LegendConfig} legend
  */
 function getMinimumLegendExtent(type, legend) {
-    if (isHorizontalLegend(legend)) {
-        return type == "gradient"
-            ? (legend.labelFontSize ?? 10) +
-                  (legend.labelOffset ?? 4) +
-                  DEFAULT_GRADIENT_TICK_SIZE +
-                  (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
-                  getGradientBorderOutset(legend) +
-                  2
-            : 0;
-    } else {
-        return 0;
-    }
+    return type == "gradient" && isHorizontalLegend(legend)
+        ? (legend.labelFontSize ?? 10) +
+              (legend.labelOffset ?? 4) +
+              DEFAULT_GRADIENT_TICK_SIZE +
+              (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
+              getGradientBorderOutset(legend) +
+              2
+        : 0;
 }
 
 /**
@@ -1800,10 +1623,14 @@ function getMinimumLegendExtent(type, legend) {
  * @param {import("../types/viewContext.js").default} context
  */
 function getStackedLegendParallelSize(legend, type, measuredLabels, context) {
-    const titleExtent = getParallelTitleExtent(legend, context);
-    const titleSideBySide = isSideTitle(legend);
+    const sideTitle = isSideTitle(legend);
+    const titleExtent = legend.title
+        ? (sideTitle
+              ? getTitleWidth(legend, context)
+              : (legend.titleFontSize ?? 11)) + (legend.titlePadding ?? 5)
+        : 0;
     const combine = (/** @type {number} */ bodyExtent) =>
-        isHorizontalLegend(legend) == titleSideBySide
+        isHorizontalLegend(legend) == sideTitle
             ? Math.ceil(titleExtent + bodyExtent)
             : Math.ceil(Math.max(titleExtent, bodyExtent));
 
@@ -1825,72 +1652,6 @@ function getStackedLegendParallelSize(legend, type, measuredLabels, context) {
                 (legend.symbolStrokeWidth ?? 1.5)
         );
     }
-}
-
-/**
- * @param {LegendConfig} legend
- * @param {"symbol" | "gradient"} type
- * @param {MeasuredLabels} measuredLabels
- */
-function getHorizontalLegendExtent(legend, type, measuredLabels) {
-    const labelFontSize = legend.labelFontSize ?? 10;
-    const labelOffset = legend.labelOffset ?? 4;
-    const titleExtent = getPerpendicularTitleExtent(legend);
-    const bodyExtent =
-        type == "gradient"
-            ? labelFontSize +
-              labelOffset +
-              DEFAULT_GRADIENT_TICK_SIZE +
-              (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
-              getGradientBorderOutset(legend) +
-              2
-            : measuredLabels.maxY + labelFontSize / 2;
-
-    return Math.ceil(
-        Math.max(
-            getMinimumLegendExtent(type, legend),
-            isSideTitle(legend)
-                ? Math.max(titleExtent, bodyExtent)
-                : titleExtent + bodyExtent
-        )
-    );
-}
-
-/**
- * @param {LegendConfig} legend
- */
-function getTitleHeight(legend) {
-    return legend.title ? (legend.titleFontSize ?? 11) : 0;
-}
-
-/**
- * @param {LegendConfig} legend
- */
-function getPerpendicularTitleExtent(legend) {
-    return legend.title
-        ? getTitleHeight(legend) +
-              (isSideTitle(legend) ? 0 : (legend.titlePadding ?? 5))
-        : 0;
-}
-
-/**
- * @param {LegendConfig} legend
- * @param {import("../types/viewContext.js").default} context
- */
-function getParallelTitleExtent(legend, context) {
-    return isSideTitle(legend)
-        ? getTitleWidthWithPadding(legend, context)
-        : getPerpendicularTitleExtent(legend);
-}
-
-/**
- * @param {LegendConfig} legend
- * @param {import("../types/viewContext.js").default} context
- */
-function getTitleWidthWithPadding(legend, context) {
-    return legend.title
-        ? getTitleWidth(legend, context) + (legend.titlePadding ?? 5)
-        : 0;
 }
 
 /**

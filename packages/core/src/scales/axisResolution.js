@@ -11,7 +11,6 @@ import coalesce from "../utils/coalesce.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
-import { isChromeView } from "../view/viewSelectors.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 import { getResolutionOwnerPrecedence } from "./resolutionOwnerPrecedence.js";
 
@@ -64,7 +63,7 @@ export default class AxisResolution {
      * @returns {boolean} True when at least one non-chrome axis-contributing view is visible.
      */
     hasVisibleNonChromeMember() {
-        for (const member of this.#getNonChromeMembers()) {
+        for (const member of this.#members) {
             if (member.view.isVisible()) {
                 return true;
             }
@@ -115,7 +114,7 @@ export default class AxisResolution {
             if (this.#viewLevelAxisProps) {
                 propArray = [this.#viewLevelAxisProps.props];
             } else {
-                const members = this.#getNonChromeMembers();
+                const members = orderResolutionMembers(this.#members);
                 if (!members.length) {
                     return this.scaleResolution.isExplicitlyOwned() ? {} : null;
                 }
@@ -179,7 +178,7 @@ export default class AxisResolution {
             };
         };
 
-        const titles = this.#getNonChromeMembers().map(computeTitle);
+        const titles = orderResolutionMembers(this.#members).map(computeTitle);
         const explicitAxisTitle = titles
             .map((title) => title.axisTitle)
             .find((title) => title !== undefined);
@@ -239,7 +238,7 @@ export default class AxisResolution {
             }
         }
 
-        for (const member of this.#getNonChromeMembers()) {
+        for (const member of orderResolutionMembers(this.#members)) {
             const channelDef = member.view.mark.encoding[member.channel];
             if ("axis" in channelDef && channelDef.axis !== undefined) {
                 throw new Error(
@@ -267,30 +266,10 @@ export default class AxisResolution {
     }
 
     /**
-     * @returns {AxisResolutionMember[]}
-     */
-    #getNonChromeMembers() {
-        return orderResolutionMembers(this.#members).filter(
-            (member) => !this.#isChromeMember(member)
-        );
-    }
-
-    /**
-     * @param {AxisResolutionMember} member
-     */
-    #isChromeMember(member) {
-        return member.view.getLayoutAncestors().some(isChromeView);
-    }
-
-    /**
      * @param {AxisResolutionMember} member
      */
     #assertNoMixing(member) {
         if (!this.#viewLevelAxisProps) {
-            return;
-        }
-
-        if (this.#isChromeMember(member)) {
             return;
         }
 

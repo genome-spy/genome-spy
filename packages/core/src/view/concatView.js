@@ -7,6 +7,7 @@ import {
 import GridView from "./gridView/gridView.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
 import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
+import { syncViewGuideViews } from "./gridView/guideViewSync.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
@@ -49,25 +50,17 @@ export default class ConcatView extends GridView {
                   : Infinity,
             options
         );
-
-        this.spec = spec;
     }
 
     /**
      * @override
      */
     async initializeChildren() {
-        const spec = this.spec;
-        const childSpecs = isConcatSpec(spec)
-            ? spec.concat
-            : isVConcatSpec(spec)
-              ? spec.vconcat
-              : spec.hconcat;
         const childOptions = this.#getChildOptions();
 
         this.setChildren(
             await Promise.all(
-                childSpecs.map((childSpec) =>
+                this.#getChildSpecs().map((childSpec) =>
                     this.context.createOrImportView(
                         childSpec,
                         this,
@@ -81,8 +74,6 @@ export default class ConcatView extends GridView {
         );
 
         await this.#initializeAnnotationLayer();
-
-        await this.syncGuideViews();
     }
 
     /** @override */
@@ -165,8 +156,7 @@ export default class ConcatView extends GridView {
      */
     async moveChildAt(fromIndex, index) {
         const mutationHelper = this.#getMutationHelper();
-        const { specs } = this.#getChildSpecs();
-        moveArrayItem(specs, fromIndex, index);
+        moveArrayItem(this.#getChildSpecs(), fromIndex, index);
         super.moveChildAt(fromIndex, index);
         // Reordering can move shared guide ownership without changing existing
         // child-local guides.
@@ -210,33 +200,15 @@ export default class ConcatView extends GridView {
     }
 
     /**
-     * @returns {{
-     *   specs: (import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec)[],
-     *   insertAt: (index: number, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec) => void,
-     *   removeAt: (index: number) => void
-     * }}
+     * @returns {(import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec)[]}
      */
     #getChildSpecs() {
         const spec = this.spec;
-        let specs;
-
-        if (isConcatSpec(spec)) {
-            specs = spec.concat;
-        } else if (isVConcatSpec(spec)) {
-            specs = spec.vconcat;
-        } else {
-            specs = spec.hconcat;
-        }
-
-        return {
-            specs,
-            insertAt: (index, childSpec) => {
-                specs.splice(index, 0, childSpec);
-            },
-            removeAt: (index) => {
-                specs.splice(index, 1);
-            },
-        };
+        return isConcatSpec(spec)
+            ? spec.concat
+            : isVConcatSpec(spec)
+              ? spec.vconcat
+              : spec.hconcat;
     }
 
     /** @returns {import("./view.js").ViewOptions} */
@@ -257,12 +229,12 @@ export default class ConcatView extends GridView {
      */
     #getMutationHelper() {
         return new ContainerMutationHelper(this, {
-            getChildSpecs: this.#getChildSpecs.bind(this),
+            specs: this.#getChildSpecs(),
             insertView: (view, index) => this.insertChildViewAt(view, index),
             removeView: (index) => super.removeChildAt(index),
-            syncMutationGuideViews: (_view, _index, gridChild) =>
+            syncMutationGuideViews: (gridChild) =>
                 this.#syncMutationGuideViews(gridChild ? [gridChild] : []),
-            defaultName: () => this.getNextAutoName("grid"),
+            namePrefix: "grid",
             createViewOptions: this.#getChildOptions(),
             specValidator: this.options.childSpecValidator,
         });
@@ -276,6 +248,9 @@ export default class ConcatView extends GridView {
      * @returns {Promise<Set<GridView>>}
      */
     async #syncMutationGuideViews(gridChildren) {
+        for (const child of gridChildren) {
+            await syncViewGuideViews(child.view);
+        }
         await this.syncGuideViews({
             gridChildren,
             legendOwners: getLegendResolutionOwners(this),

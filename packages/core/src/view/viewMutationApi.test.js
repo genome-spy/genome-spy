@@ -1203,6 +1203,42 @@ describe("ViewMutationApi", () => {
         ).not.toContain("none");
     });
 
+    test("initializes and renders guides inside inserted nested containers", async () => {
+        const { view } = await createHeadlessEngine({
+            config: { legend: { disable: false } },
+            vconcat: [],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+
+        // The inserted concat needs its own guide preparation before data setup.
+        await api.insert("root", {
+            name: "nested",
+            hconcat: [makeVariantsTrackSpec()],
+        });
+
+        expect(countBottomAxes(view)).toBe(1);
+        const layout = renderToLayout(view);
+        expect(countRenderedViews(layout, "axis_bottom")).toBe(1);
+        expect(getRenderedLegendRegions(layout)).toHaveLength(1);
+        const guides = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant instanceof AxisView ||
+                    descendant instanceof LegendView
+            );
+        expect(
+            guides.flatMap((guide) =>
+                guide
+                    .getDescendants()
+                    .map((descendant) =>
+                        descendant.getDataInitializationState()
+                    )
+            )
+        ).not.toContain("none");
+        view.disposeSubtree();
+    });
+
     test("measures legends for inserted concat children", async () => {
         const { view } = await createHeadlessEngine({
             vconcat: [

@@ -3115,6 +3115,11 @@ describe("GridView ruler interactions", () => {
             renderToLayout(view);
 
             const owner = /** @type {ConcatView} */ (view.children[0]);
+            expect(
+                owner
+                    .getDescendants()
+                    .filter((view) => view.name === "rulerOverlay_cursor")
+            ).toHaveLength(1);
             const firstPlot = owner.children[0];
             const secondPlot = owner.children[1];
             const gapPoint = new Point(

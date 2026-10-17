@@ -48,28 +48,24 @@ describe("createSelectionRectSpec", () => {
                     expr: "(brush.intervals.x != null ? brush.intervals.x[0] : 0)",
                 },
                 type: "linear",
-                axis: null,
             },
             x2: {
                 datum: {
                     expr: "(brush.intervals.x != null ? brush.intervals.x[1] : 0)",
                 },
                 type: "linear",
-                axis: null,
             },
             y: {
                 datum: {
                     expr: "(brush.intervals.y != null ? brush.intervals.y[0] : 0)",
                 },
                 type: "linear",
-                axis: null,
             },
             y2: {
                 datum: {
                     expr: "(brush.intervals.y != null ? brush.intervals.y[1] : 0)",
                 },
                 type: "linear",
-                axis: null,
             },
         });
         expect(spec.params).toEqual([

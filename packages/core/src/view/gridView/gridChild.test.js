@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
-import { iterateLegendViews } from "./gridChildLegends.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
@@ -124,40 +123,6 @@ function createFontManager() {
         }),
         waitUntilReady,
     });
-}
-
-function createLegendEntry(
-    /** @type {number} */ size,
-    /** @type {boolean} */ visible
-) {
-    return {
-        legendView: {
-            legendProps: { orient: "right" },
-            getPerpendicularSize: () => size,
-            getOffset: () => 8,
-        },
-        resolution: {
-            hasVisibleNonChromeMember: () => visible,
-        },
-    };
-}
-
-function createLegendRegion(
-    /** @type {ReturnType<typeof createLegendEntry>[]} */ entries
-) {
-    return {
-        legendView: {
-            getPerpendicularSize: () =>
-                Math.max(
-                    0,
-                    ...entries.map((entry) =>
-                        entry.legendView.getPerpendicularSize()
-                    )
-                ),
-            getOffset: () => 8,
-        },
-        entries,
-    };
 }
 
 function createRulerGridChildView(
@@ -317,45 +282,6 @@ function createInheritedRulerGridChildView(
 
     return { view, layoutParent };
 }
-
-describe("GridChild legend layout", () => {
-    test("right legend contributes to right overhang", () => {
-        const child = createMinimalGridChild();
-        child.legends.right = /** @type {any} */ (
-            createLegendRegion([
-                createLegendEntry(42, true),
-                createLegendEntry(20, true),
-            ])
-        );
-
-        expect(child.getOverhang().right).toBe(50);
-    });
-
-    test("hidden legend participants do not contribute overhang", () => {
-        const child = createMinimalGridChild();
-        child.legends.right = /** @type {any} */ (
-            createLegendRegion([
-                createLegendEntry(42, true),
-                createLegendEntry(20, false),
-            ])
-        );
-
-        expect(child.getOverhang().right).toBe(50);
-    });
-
-    test("hidden legend participants keep their legend views", () => {
-        const child = createMinimalGridChild();
-        child.legends.right = /** @type {any} */ (
-            createLegendRegion([
-                createLegendEntry(42, true),
-                createLegendEntry(20, false),
-            ])
-        );
-
-        expect(child.legends.right.entries).toHaveLength(2);
-        expect(Array.from(iterateLegendViews(child.legends))).toHaveLength(1);
-    });
-});
 
 describe("GridChild parent chrome policy", () => {
     test("keeps parent chrome enabled by default", () => {

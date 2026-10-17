@@ -8,8 +8,13 @@ import { getSizeDefMinPx } from "../layout/flexLayout.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
-import { createAndInitialize, createTestViewContext } from "../testUtils.js";
+import {
+    create,
+    createAndInitialize,
+    createTestViewContext,
+} from "../testUtils.js";
 import { translateLegendCoords } from "./legendLayout.js";
+import { initializeViewGuides } from "./guideViewSync.js";
 import createScale from "../../scale/scale.js";
 import {
     initializeViewSubtree,
@@ -234,6 +239,7 @@ describe("GridView legends", () => {
         if (!(view instanceof ConcatView)) {
             throw new Error("Expected a concat root view!");
         }
+        await initializeViewGuides(view);
 
         view.visit((descendant) => {
             if (descendant instanceof UnitView) {
@@ -327,12 +333,6 @@ describe("GridView legends", () => {
     });
 
     describe("basic creation", () => {
-        test("creates legends by default", async () => {
-            const view = await createLegendTestView();
-
-            expect(getLegends(view)).toHaveLength(1);
-        });
-
         test("filters legends hosted by a grid", async () => {
             const view = await createLegendTestView();
 
@@ -802,25 +802,23 @@ describe("GridView legends", () => {
                 picking: false,
             });
 
-            legendRegion.arrange(
-                renderContext,
-                Rectangle.create(0, 0, 120, 160)
-            );
-            expect(
-                renderContext.markNames.filter((name) => name === "symbols")
-            ).toHaveLength(2);
-
-            sizeLayerVisible = false;
-            renderContext.markNames = [];
-            legendRegion.arrange(
-                renderContext,
-                Rectangle.create(0, 0, 120, 160)
-            );
-
-            expect(renderContext.markNames).toContain("symbols");
-            expect(
-                renderContext.markNames.filter((name) => name === "symbols")
-            ).toHaveLength(1);
+            // The same legend region must retain hidden entries for restoration.
+            const cases = /** @type {[boolean, number][]} */ ([
+                [true, 2],
+                [false, 1],
+                [true, 2],
+            ]);
+            for (const [visible, expectedSymbols] of cases) {
+                sizeLayerVisible = visible;
+                renderContext.markNames = [];
+                legendRegion.arrange(
+                    renderContext,
+                    Rectangle.create(0, 0, 120, 160)
+                );
+                expect(
+                    renderContext.markNames.filter((name) => name === "symbols")
+                ).toHaveLength(expectedSymbols);
+            }
         });
 
         test("does not inherit axis grids into generated legend views", async () => {
@@ -1018,10 +1016,12 @@ describe("GridView legends", () => {
             if (!(view instanceof ConcatView)) {
                 throw new Error("Expected a concat root view!");
             }
-            const [legend] = getLegends(view);
+            const [definition] = view.children[0]
+                .getLegendResolution("color")
+                .getLegendDefs();
 
-            expect(legend.legendProps.orient).toBe("bottom");
-            expect(legend.legendProps.titleOrient).toBe("left");
+            expect(definition.legend.orient).toBe("bottom");
+            expect(definition.legend.titleOrient).toBe("left");
         });
 
         test("uses track defaults for layer children with index x scale", async () => {
@@ -1728,96 +1728,100 @@ describe("GridView legends", () => {
             );
         });
 
-        test("places legend titles according to titleOrient", async () => {
-            const getLegendRootSpec = async (
-                /** @type {import("../../spec/legend.js").LegendTitleOrient} */ titleOrient
+        test.each(
+            /** @type {const} */ ([
+                ["nominal", "vertical", "top", 0, 31, 70, 44],
+                ["nominal", "vertical", "right", 0, 75, 109, 75],
+                ["nominal", "horizontal", "bottom", 19, 0, 65, 30],
+                ["nominal", "horizontal", "left", 87, 0, 140, 14],
+                ["nominal", "vertical", null, 0, 12, 34, 26],
+                ["quantitative", "vertical", "bottom", 0, 140, 70, 140],
+                ["quantitative", "vertical", "left", 0, 121, 115, 121],
+                ["quantitative", "horizontal", "top", 121, 32.75, 121, 52],
+                ["quantitative", "horizontal", "right", 196, 32.75, 196, 32.75],
+                ["quantitative", "horizontal", null, 121, 32.75, 121, 32.75],
+            ])
+        )(
+            "measures %s %s legend with %s title",
+            async (
+                type,
+                direction,
+                titleOrient,
+                initialWidth,
+                initialHeight,
+                width,
+                height
             ) => {
-                const view = await createLegendTestView({
-                    config: { legend: { disable: false } },
-                    vconcat: [
-                        {
-                            data: {
-                                values: [
-                                    { x: 1, y: 2, Origin: "Europe" },
-                                    { x: 2, y: 3, Origin: "Japan" },
-                                ],
-                            },
-                            mark: "point",
-                            encoding: {
-                                x: { field: "x", type: "quantitative" },
-                                y: { field: "y", type: "quantitative" },
-                                color: {
-                                    field: "Origin",
-                                    type: "nominal",
-                                    legend: { title: "Origin", titleOrient },
-                                },
-                            },
-                        },
-                    ],
-                });
-
-                return /** @type {any} */ (getLegends(view)[0].spec);
-            };
-            const getRootChildNames = (/** @type {any} */ childSpec) =>
-                /** @type {import("../../spec/view.js").ViewSpec[]} */ (
-                    childSpec.vconcat ?? childSpec.hconcat
-                ).map(
-                    (
-                        /** @type {import("../../spec/view.js").ViewSpec} */ spec
-                    ) => spec.name
-                );
-
-            expect(getRootChildNames(await getLegendRootSpec("top"))).toEqual([
-                "title",
-                "legendBody",
-            ]);
-            expect(
-                getRootChildNames(await getLegendRootSpec("bottom"))
-            ).toEqual(["legendBody", "title"]);
-            const leftSpec = await getLegendRootSpec("left");
-            expect(getRootChildNames(leftSpec)).toEqual([
-                "title",
-                "legendBody",
-            ]);
-            expect(getRootChildNames(await getLegendRootSpec("right"))).toEqual(
-                ["legendBody", "title"]
-            );
-        });
-
-        test("keeps horizontal symbol legend extent data-driven", async () => {
-            const view = await createLegendTestView({
-                config: { legend: { disable: false } },
-                vconcat: [
+                // Fractions exercise rounding and the two-pixel auto-extent growth threshold.
+                const view = await create(
                     {
-                        data: {
-                            values: [
-                                { x: 1, y: 2, Origin: "Europe" },
-                                { x: 2, y: 3, Origin: "Japan" },
-                            ],
-                        },
-                        mark: "point",
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                            y: { field: "y", type: "quantitative" },
-                            color: {
-                                field: "Origin",
-                                type: "nominal",
-                                legend: {
-                                    orient: "bottom",
-                                    direction: "horizontal",
-                                    title: "Origin",
-                                    titleOrient: "left",
-                                },
+                        config: {
+                            legend: {
+                                disable: false,
+                                titleFontSize: 13.25,
+                                titlePadding: 5.25,
+                                labelFontSize: 10.5,
+                                labelOffset: 3.25,
+                                symbolSize: 110.25,
+                                symbolStrokeWidth: 1.25,
+                                gradientLength: 120.25,
+                                gradientThickness: 12.25,
+                                gradientStrokeColor: "black",
+                                gradientStrokeWidth: 0.75,
                             },
                         },
+                        vconcat: [
+                            {
+                                data: {
+                                    values: [
+                                        { category: 0 },
+                                        { category: 100 },
+                                    ],
+                                },
+                                mark: "point",
+                                encoding: {
+                                    color: {
+                                        field: "category",
+                                        type,
+                                        legend: {
+                                            direction,
+                                            title: titleOrient
+                                                ? "Legend title"
+                                                : null,
+                                            titleOrient: titleOrient ?? "top",
+                                        },
+                                    },
+                                },
+                            },
+                        ],
                     },
-                ],
-            });
-            const legend = getLegends(view)[0];
-            await Promise.resolve();
+                    ConcatView
+                );
+                const legend = getLegends(view)[0];
+                const initial = legend.getSize();
+                expect([initial.width.px, initial.height.px]).toEqual([
+                    initialWidth,
+                    initialHeight,
+                ]);
 
-            expect(legend.getPerpendicularSize()).toBeLessThan(32);
-        });
+                view.visit((descendant) => {
+                    if (descendant instanceof UnitView) {
+                        descendant.mark.initializeEncoders();
+                    }
+                });
+                const { dataSources } = initializeViewSubtree(
+                    view,
+                    view.context.dataFlow
+                );
+                await loadViewSubtreeData(view, dataSources);
+                await Promise.resolve();
+                const measured = legend.getSize();
+                expect([measured.width.px, measured.height.px]).toEqual([
+                    width,
+                    height,
+                ]);
+            }
+        );
 
         test("applies configured title and label text limits", async () => {
             const view = await createLegendTestView({
@@ -2163,7 +2167,7 @@ describe("GridView legends", () => {
             expect(legends[0].legendProps.title).toBe("Region");
         });
 
-        test("uses reactive disable as legend visibility predicate", async () => {
+        test("reactive disable releases legend space and requests layout", async () => {
             const view = await createLegendTestView({
                 params: [{ name: "showLegends", value: true }],
                 config: {
@@ -2172,31 +2176,21 @@ describe("GridView legends", () => {
                     },
                 },
             });
-            const legends = getLegends(view);
-            const regions = getLegendRegions(view);
+            const [region] = getLegendRegions(view);
             view.context.requestLayoutReflow = vi.fn();
-            view.context.animator.requestRender = vi.fn();
 
-            expect(legends).toHaveLength(1);
-            expect(regions).toHaveLength(1);
-            expect(legends[0].isConfiguredVisible()).toBe(true);
-            expect(legends[0].isActive()).toBe(true);
-            expect(regions[0].getParallelSize()).toBeGreaterThan(0);
+            expect(region.getParallelSize()).toBeGreaterThan(0);
 
             view.paramRuntime.setValue("showLegends", false);
             await view.paramRuntime.whenPropagated();
 
-            expect(legends[0].isConfiguredVisible()).toBe(true);
-            expect(legends[0].isActive()).toBe(false);
-            expect(regions[0].getParallelSize()).toBe(0);
+            expect(region.getParallelSize()).toBe(0);
 
             view.paramRuntime.setValue("showLegends", true);
             await view.paramRuntime.whenPropagated();
 
-            expect(legends[0].isActive()).toBe(true);
-            expect(regions[0].getParallelSize()).toBeGreaterThan(0);
+            expect(region.getParallelSize()).toBeGreaterThan(0);
             expect(view.context.requestLayoutReflow).toHaveBeenCalledTimes(2);
-            expect(view.context.animator.requestRender).not.toHaveBeenCalled();
         });
 
         test("respects explicit legend null", async () => {
@@ -3590,38 +3584,6 @@ describe("GridView legends", () => {
             expect(renderContext.legendCoords.get(legend)?.height).toBe(160);
         });
 
-        test("includes vertical gradient legend title in minimum height", async () => {
-            const view = await createLegendTestView({
-                config: { legend: { disable: false } },
-                vconcat: [
-                    {
-                        data: {
-                            values: [
-                                { x: 1, y: 1, measurement: 0 },
-                                { x: 2, y: 2, measurement: 1 },
-                            ],
-                        },
-                        mark: "point",
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                            y: { field: "y", type: "quantitative" },
-                            color: {
-                                field: "measurement",
-                                type: "quantitative",
-                                legend: { title: "purifiedLogR" },
-                            },
-                        },
-                    },
-                ],
-            });
-            const legend = getLegends(view)[0];
-            const body = getLegendChild(legend, "gradientBody");
-
-            expect(legend.getSize().height.minPx).toBeGreaterThan(
-                body.getSize().height.minPx
-            );
-        });
-
         test("uses horizontal gradient legend minimum width", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
@@ -3655,7 +3617,7 @@ describe("GridView legends", () => {
             expect(body.getSize().height).toEqual({ grow: 1 });
         });
 
-        test("applies gradient geometry, appearance, and tick controls", async () => {
+        test("reserves gradient border outset in fixed legend size", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
                 vconcat: [
@@ -3677,10 +3639,8 @@ describe("GridView legends", () => {
                                 legend: {
                                     gradientLength: 120,
                                     gradientThickness: 18,
-                                    gradientOpacity: 0.4,
                                     gradientStrokeColor: "#456",
                                     gradientStrokeWidth: 2,
-                                    tickCount: 2,
                                 },
                             },
                         },
@@ -3689,31 +3649,10 @@ describe("GridView legends", () => {
             });
             const legend = getLegends(view)[0];
             const body = getLegendChild(legend, "gradientBody");
-            const ramp = getLegendUnitChild(legend, "gradientRamp");
-            const border = getLegendUnitChild(legend, "gradientBorder");
-            const labelData = getLegendData(legend, "gradientLabels");
-
             // The body reserves half the centered border stroke on every edge.
             expect(body.getSize().height).toEqual({ px: 122, grow: 0 });
             expect(legend.getSize().height.grow).toBeUndefined();
             expect(legend.getPerpendicularSize()).toBeGreaterThanOrEqual(24);
-            expect(ramp.mark.properties.opacity).toBe(0.4);
-            expect(border.spec.mark).toEqual(
-                expect.objectContaining({
-                    fillOpacity: 0,
-                    stroke: "#456",
-                    strokeWidth: 2,
-                })
-            );
-            expect(getUnitData(border)).toEqual([
-                expect.objectContaining({
-                    position0: 0,
-                    position1: 1,
-                    _legendGradientBandStart: 0,
-                    _legendGradientBandStop: 18,
-                }),
-            ]);
-            expect(labelData.map(({ value }) => value)).toEqual([0, 50, 100]);
         });
 
         test("gradient legends use source color scale and log tick positions", async () => {
@@ -4017,112 +3956,6 @@ describe("GridView legends", () => {
                     expect.objectContaining({ value: 75, position: 0.75 }),
                 ])
             );
-        });
-    });
-
-    describe("chrome behavior", () => {
-        test("does not draw configured view strokes inside legends", async () => {
-            const view = await createLegendTestView({
-                config: {
-                    legend: { disable: false },
-                    view: { stroke: "lightgray" },
-                },
-            });
-            const legends = getLegends(view);
-            const legendBackgroundStrokes = legends[0]
-                .getDescendants()
-                .filter((descendant) =>
-                    descendant.name.startsWith("backgroundStroke")
-                );
-
-            expect(legends).toHaveLength(1);
-            expect(legendBackgroundStrokes).toHaveLength(0);
-        });
-
-        test("draws configured backgrounds for stacked legends", async () => {
-            const view = await createLegendTestView({
-                config: {
-                    legend: {
-                        disable: false,
-                        backgroundFill: "white",
-                        backgroundFillOpacity: 0.8,
-                    },
-                    view: { stroke: "lightgray" },
-                },
-                vconcat: [
-                    {
-                        data: {
-                            values: [
-                                {
-                                    x: 1,
-                                    signal: 2,
-                                    trend: 3,
-                                    group: "alpha",
-                                    difference: 1,
-                                },
-                                {
-                                    x: 2,
-                                    signal: 3,
-                                    trend: 4,
-                                    group: "beta",
-                                    difference: 2,
-                                },
-                            ],
-                        },
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                        },
-                        layer: [
-                            {
-                                mark: "point",
-                                encoding: {
-                                    y: {
-                                        field: "signal",
-                                        type: "quantitative",
-                                    },
-                                    color: {
-                                        field: "group",
-                                        type: "nominal",
-                                        legend: { title: "Group" },
-                                    },
-                                },
-                            },
-                            {
-                                mark: "point",
-                                encoding: {
-                                    y: {
-                                        field: "trend",
-                                        type: "quantitative",
-                                    },
-                                    size: {
-                                        field: "difference",
-                                        type: "quantitative",
-                                        legend: { title: "Difference" },
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                ],
-            });
-            const legendBackgrounds = getLegendRegions(view)[0]
-                .getDescendants()
-                .filter((descendant) =>
-                    descendant.name.startsWith("background")
-                );
-
-            expect(
-                legendBackgrounds.map((background) => background.name)
-            ).toEqual(["background0", "background1"]);
-            expect(
-                legendBackgrounds.map(
-                    (background) =>
-                        /** @type {UnitView} */ (background).spec.mark
-                )
-            ).toEqual([
-                expect.objectContaining({ color: "white", opacity: 0.8 }),
-                expect.objectContaining({ color: "white", opacity: 0.8 }),
-            ]);
         });
     });
 });

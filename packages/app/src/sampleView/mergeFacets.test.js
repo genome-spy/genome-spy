@@ -4,6 +4,7 @@ import {
     initializeVisibleViewData,
 } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
+import { initializeViewGuides } from "@genome-spy/core/view/gridView/guideViewSync.js";
 import SampleView from "./sampleView.js";
 import MergeSampleFacets from "./mergeFacets.js";
 import { createAppTestContext } from "../testUtils/appTestUtils.js";
@@ -63,6 +64,7 @@ describe("MergeSampleFacets visibility", () => {
         );
 
         await view.initializeChildren();
+        await initializeViewGuides(view);
         view.sampleGroupView.updateGroups = () => undefined;
         await initializeViewData(
             view,

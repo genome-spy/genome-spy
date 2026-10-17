@@ -36,12 +36,8 @@ export { translateAxisCoords } from "./gridChildArrangement.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
 import { arrangeLocalLegends, getGuideOverhang } from "./legendLayout.js";
 import {
-    addLegendView,
-    createGridChildLegend,
+    createLegendViews,
     disposeLegendViews,
-    getOrderedLegendEntries,
-    iterateLegendViews,
-    isActiveLegendRegion,
     prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
 import {
@@ -705,26 +701,14 @@ export default class GridView extends ContainerView {
     async #syncSharedLegends(owners) {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
-        const legendOwners = owners ?? getLegendResolutionOwners(this);
-
-        for (const { definition, resolution, owner } of getOrderedLegendEntries(
-            legendOwners
-        )) {
-            const collectionTarget = getLegendLayoutHost(
-                owner,
-                resolution.channel
-            );
-            if (collectionTarget !== this) {
-                continue;
-            }
-
-            const legend = await createGridChildLegend(definition, this);
-            if (this.#legendFilter && !this.#legendFilter(legend, owner)) {
-                legend.disposeSubtree();
-                continue;
-            }
-            await addLegendView(this.#sharedLegends, legend, resolution);
-        }
+        await createLegendViews(
+            this.#sharedLegends,
+            owners ?? getLegendResolutionOwners(this),
+            this,
+            (owner, resolution) =>
+                getLegendLayoutHost(owner, resolution.channel) === this,
+            this.#legendFilter
+        );
     }
 
     async #syncContainerOverlays() {
@@ -885,7 +869,7 @@ export default class GridView extends ContainerView {
             yield axisView;
         }
 
-        yield* iterateLegendViews(this.#sharedLegends);
+        yield* Object.values(this.#sharedLegends);
     }
 
     /**
@@ -1149,9 +1133,9 @@ export default class GridView extends ContainerView {
                 )) {
                     addFootprint(child.view, coords);
                 }
-                for (const { legendView: legend } of Object.values(
-                    child.legends
-                ).filter(isActiveLegendRegion)) {
+                for (const legend of Object.values(child.legends).filter(
+                    (legend) => legend.isActive()
+                )) {
                     addFootprint(child.view, legend.coords);
                 }
                 if (child.title) {
@@ -1166,9 +1150,9 @@ export default class GridView extends ContainerView {
                     addFootprint(child.view, child.background.coords, false);
                 }
             }
-            for (const { legendView: legend } of Object.values(
-                this.#sharedLegends
-            ).filter(isActiveLegendRegion)) {
+            for (const legend of Object.values(this.#sharedLegends).filter(
+                (legend) => legend.isActive()
+            )) {
                 addFootprint(this, legend.coords);
             }
             return footprints;
@@ -1858,14 +1842,7 @@ export default class GridView extends ContainerView {
             return;
         }
 
-        const coords =
-            this.options.alignedChannel === channel
-                ? this.getTrackPlotGeometry(channel)?.viewport
-                : getCrossTrackBounds(
-                      this.visibleChildren,
-                      this.#sharedAxes,
-                      channel
-                  );
+        const coords = this.getInteractionCoords();
         if (!coords?.containsPoint(point.x, point.y)) {
             return;
         }

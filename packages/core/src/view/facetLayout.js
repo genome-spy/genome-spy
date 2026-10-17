@@ -96,12 +96,16 @@ export function getFacetGridSize(
         spacing,
         headers
     );
-    const width = getAxisSize(
-        tracks.columns,
+    const width = sumSizeDefs(
+        tracks.column.sizes,
         spacing.column,
         childSize.width.grow
     );
-    const height = getAxisSize(tracks.rows, spacing.row, childSize.height.grow);
+    const height = sumSizeDefs(
+        tracks.row.sizes,
+        spacing.row,
+        childSize.height.grow
+    );
 
     return new FlexDimensions(width, height);
 }
@@ -132,12 +136,12 @@ export function getFacetCellLayouts(
         spacing,
         headers
     );
-    const columns = mapToPixelCoords(tracks.columns, coords.width, {
+    const columns = mapToPixelCoords(tracks.column.sizes, coords.width, {
         devicePixelRatio,
         offset: coords.x,
         spacing: spacing.column,
     });
-    const rows = mapToPixelCoords(tracks.rows, coords.height, {
+    const rows = mapToPixelCoords(tracks.row.sizes, coords.height, {
         devicePixelRatio,
         offset: coords.y,
         spacing: spacing.row,
@@ -145,10 +149,10 @@ export function getFacetCellLayouts(
     return grid.cells.map((cell) => {
         const column = columns[cell.column];
         const row = rows[cell.row];
-        const columnOverhang = tracks.columnOverhangs[cell.column];
-        const rowOverhang = tracks.rowOverhangs[cell.row];
-        const columnHeader = tracks.columnHeaders[cell.column];
-        const rowHeader = tracks.rowHeaders[cell.row];
+        const columnOverhang = tracks.column.paddings[cell.column];
+        const rowOverhang = tracks.row.paddings[cell.row];
+        const columnHeader = tracks.column.headers[cell.column];
+        const rowHeader = tracks.row.headers[cell.row];
         const viewportCoords = Rectangle.create(
             column.location,
             row.location,
@@ -216,48 +220,27 @@ function getFacetTracks(grid, childSize, getCellOverhang, spacing, headers) {
             (padding, index) => padding.union(paddings[index]),
             Padding.zero()
         );
-    const columnOverhangs = columns.map((indices) =>
-        mergeOverhangs(overhangs, indices)
-    );
-    const rowOverhangs = rows.map((indices) =>
-        mergeOverhangs(overhangs, indices)
-    );
-    const columnHeaders = columns.map((indices) =>
-        mergeOverhangs(headerOverhangs, indices)
-    );
-    const rowHeaders = rows.map((indices) =>
-        mergeOverhangs(headerOverhangs, indices)
-    );
-
-    return {
-        columnOverhangs,
-        rowOverhangs,
-        columnHeaders,
-        rowHeaders,
-        columns: columnOverhangs.map(
-            (padding, index) =>
-                childSize.addPadding(padding.add(columnHeaders[index])).width
-        ),
-        rows: rowOverhangs.map(
-            (padding, index) =>
-                childSize.addPadding(padding.add(rowHeaders[index])).height
-        ),
+    const getTracks = (
+        /** @type {number[][]} */ tracks,
+        /** @type {"width" | "height"} */ dimension
+    ) => {
+        const paddings = tracks.map((indices) =>
+            mergeOverhangs(overhangs, indices)
+        );
+        const headers = tracks.map((indices) =>
+            mergeOverhangs(headerOverhangs, indices)
+        );
+        return {
+            paddings,
+            headers,
+            sizes: paddings.map(
+                (padding, index) =>
+                    childSize.addPadding(padding.add(headers[index]))[dimension]
+            ),
+        };
     };
-}
-
-/**
- * @param {import("./layout/flexLayout.js").SizeDef[]} items
- * @param {number} spacing
- * @param {number | undefined} grow
- * @returns {import("./layout/flexLayout.js").SizeDef}
- */
-function getAxisSize(items, spacing, grow) {
-    // Container growth and resize observation are decided before data loads.
-    if (items.length === 0) {
-        return { px: 0, grow: grow ?? 0 };
-    }
-
-    const totalSpacing = Math.max(0, items.length - 1) * spacing;
-    items.push({ px: totalSpacing });
-    return sumSizeDefs(items);
+    return {
+        column: getTracks(columns, "width"),
+        row: getTracks(rows, "height"),
+    };
 }

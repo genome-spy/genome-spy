@@ -218,7 +218,6 @@ function createIntervalBoundEncoding(
         },
         type: scaleResolutionSource.getScaleResolution(channel).type,
         title: null,
-        axis: null,
     });
 }
 

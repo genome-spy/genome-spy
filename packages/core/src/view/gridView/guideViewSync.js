@@ -1,20 +1,34 @@
-import GridView, { getLegendLayoutHost } from "./gridView.js";
+import { getLegendLayoutHost } from "./gridView.js";
 import { filterLegendResolutionOwners } from "./legendCollection.js";
-import FacetView from "../facetView.js";
+import ContainerView from "../containerView.js";
+import { attachViewLevelScaleProps } from "../../scales/viewLevelScaleProps.js";
+import {
+    attachViewLevelAxisProps,
+    attachViewLevelLegendProps,
+} from "../../scales/viewLevelGuideProps.js";
+import { ensureAssembliesForView } from "../../genome/assemblyPreflight.js";
 
 /**
- * Recreates guide views after resolution-level properties have been attached.
+ * Completes startup guide preparation after constructing the authored hierarchy.
+ * Properties and assemblies must be ready before generated views can read scales.
  *
- * Concat views initially materialize guides while their child hierarchies are
- * being created. View-level axis and legend properties can only be mapped after
- * the full resolution hierarchy exists, so every grid view must refresh its
- * guides once mapping is complete.
- *
+ * @param {import("../view.js").default} viewRoot
+ */
+export async function initializeViewGuides(viewRoot) {
+    attachViewLevelScaleProps(viewRoot);
+    attachViewLevelAxisProps(viewRoot);
+    attachViewLevelLegendProps(viewRoot);
+    await ensureAssembliesForView(viewRoot, viewRoot.context.genomeStore);
+    await syncViewGuideViews(viewRoot);
+}
+
+/**
+ * Creates or refreshes guide hosts whose properties and assemblies are ready.
  * @param {import("../view.js").default} viewRoot
  */
 export async function syncViewGuideViews(viewRoot) {
     const descendants = viewRoot.getDescendants();
-    /** @type {Map<GridView, import("../view.js").default[]>} */
+    /** @type {Map<ContainerView, import("../view.js").default[]>} */
     const legendOwnersByHost = new Map();
 
     // Validate collection declarations even when an internal caller has
@@ -34,17 +48,11 @@ export async function syncViewGuideViews(viewRoot) {
         }
     }
 
-    const gridViews = descendants.filter((view) => view instanceof GridView);
-
-    for (const gridView of gridViews) {
-        await gridView.syncGuideViews({
-            legendOwners: legendOwnersByHost.get(gridView) ?? [],
-        });
-    }
-
-    for (const facetView of descendants.filter(
-        (view) => view instanceof FacetView
-    )) {
-        await facetView.syncGuideViews();
+    for (const view of descendants) {
+        if (view instanceof ContainerView) {
+            await view.syncGuideViews({
+                legendOwners: legendOwnersByHost.get(view) ?? [],
+            });
+        }
     }
 }

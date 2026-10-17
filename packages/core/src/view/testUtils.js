@@ -37,6 +37,7 @@ import { mergeConfigScopes } from "../config/mergeConfig.js";
 import { resolveBaseConfig } from "../config/resolveConfig.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "../config/themes.js";
 import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
+import { initializeViewGuides } from "./gridView/guideViewSync.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
@@ -110,6 +111,7 @@ export async function create(
         throw new Error("ViewClass and the spec do not match!");
     }
 
+    await initializeViewGuides(view);
     return view;
 }
 

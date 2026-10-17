@@ -28,8 +28,6 @@ export default class LayerView extends ContainerView {
     constructor(spec, context, layoutParent, dataParent, name, options) {
         super(spec, context, layoutParent, dataParent, name, options);
 
-        this.spec = spec;
-
         this.needsAxes = { x: true, y: true };
     }
 
@@ -106,21 +104,7 @@ export default class LayerView extends ContainerView {
      */
     #getMutationHelper() {
         return new ContainerMutationHelper(this, {
-            getChildSpecs: () => ({
-                specs: this.spec.layer,
-                insertAt: (index, spec) => {
-                    this.spec.layer.splice(
-                        index,
-                        0,
-                        /** @type {import("../spec/view.js").LayerSpec | import("../spec/view.js").UnitSpec | import("../spec/view.js").ImportSpec} */ (
-                            spec
-                        )
-                    );
-                },
-                removeAt: (index) => {
-                    this.spec.layer.splice(index, 1);
-                },
-            }),
+            specs: this.spec.layer,
             insertView: (view, index) => {
                 view.layoutParent ??= this;
                 this.#children.splice(
@@ -130,7 +114,6 @@ export default class LayerView extends ContainerView {
                         view
                     )
                 );
-                return view;
             },
             removeView: (index) => {
                 const view = this.#children[index];
@@ -140,7 +123,7 @@ export default class LayerView extends ContainerView {
                 view.disposeSubtree();
                 this.#children.splice(index, 1);
             },
-            defaultName: () => this.getNextAutoName("layer"),
+            namePrefix: "layer",
             createViewOptions: {
                 inheritEncoding: true,
                 layoutSizeParams: "inherit",
@@ -165,10 +148,8 @@ export default class LayerView extends ContainerView {
     /**
      * @returns {IterableIterator<View>}
      */
-    *[Symbol.iterator]() {
-        for (const child of this.#children) {
-            yield child;
-        }
+    [Symbol.iterator]() {
+        return this.#children.values();
     }
 
     /**

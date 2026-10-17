@@ -12,18 +12,14 @@ import TitleView, { getTitleCoords } from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
     hasChromeAncestor,
-    markViewAsChrome,
     markViewAsNonAddressable,
 } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 import {
-    addLegendView,
-    createGridChildLegend,
+    createLegendViews,
     disposeLegendViews,
-    getOrderedLegendEntries,
-    iterateLegendViews,
     prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
 import { getGuideOverhang } from "./legendLayout.js";
@@ -41,6 +37,9 @@ import {
 } from "../viewSpecGuards.js";
 import { isRulerGapChannel } from "../scaleProjection.js";
 import { primaryPositionalChannels } from "../../encoder/encoder.js";
+import { createBackground, createBackgroundStroke } from "./viewBackground.js";
+
+export { createBackground, createBackgroundStroke };
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -114,10 +113,10 @@ function createChromeView(spec, layoutParent, dataParent, name) {
         layoutParent.context,
         layoutParent,
         dataParent,
-        name
+        name,
+        { chrome: true }
     );
     markViewAsNonAddressable(view, { skipSubtree: true });
-    markViewAsChrome(view, { skipSubtree: true });
     return view;
 }
 
@@ -130,14 +129,8 @@ export default class GridChild {
      *   dataflow are kept in sync.
      */
 
-    /** @type {IntervalSelectionController[]} */
-    #intervalSelectionControllers = [];
-
-    /** @type {RulerMouseEventController[]} */
-    #rulerMouseEventControllers = [];
-
-    /** @type {RulerViewportController[]} */
-    #rulerViewportControllers = [];
+    /** @type {{ dispose: () => void }[]} */
+    #controllers = [];
 
     /** @type {number} */
     #serial;
@@ -285,7 +278,7 @@ export default class GridChild {
             );
 
             if (ruler.source === "viewport") {
-                this.#rulerViewportControllers.push(
+                this.#controllers.push(
                     new RulerViewportController(
                         this,
                         paramName,
@@ -296,7 +289,7 @@ export default class GridChild {
                     )
                 );
             } else {
-                this.#rulerMouseEventControllers.push(
+                this.#controllers.push(
                     new RulerMouseEventController(
                         this,
                         paramName,
@@ -446,7 +439,7 @@ export default class GridChild {
                 continue;
             }
 
-            this.#intervalSelectionControllers.push(
+            this.#controllers.push(
                 new IntervalSelectionController(
                     this,
                     paramName,
@@ -504,7 +497,7 @@ export default class GridChild {
         for (const candidate of this.axisCandidates) {
             yield candidate.axisView;
         }
-        yield* iterateLegendViews(this.legends);
+        yield* Object.values(this.legends);
         yield* Object.values(this.gridLines);
         yield this.view;
         yield* Object.values(this.scrollbars);
@@ -540,28 +533,22 @@ export default class GridChild {
                 return;
             }
 
-            const props = propsWithoutDefaults
-                ? { ...propsWithoutDefaults }
-                : {};
+            const props = { ...propsWithoutDefaults };
+            if (props.title === undefined) {
+                props.title = r.getTitle();
+            }
 
             // Pick a default orient based on what is available.
             // This logic is needed for layer views that have independent axes.
             if (!props.orient) {
-                for (const orient of CHANNEL_ORIENTS[channel]) {
-                    if (!axes[orient]) {
-                        props.orient = orient;
-                        break;
-                    }
-                }
+                props.orient = CHANNEL_ORIENTS[channel].find(
+                    (orient) => !axes[orient]
+                );
                 if (!props.orient) {
                     throw new Error(
                         "No slots available for an axis! Perhaps a LayerView has more than two children?"
                     );
                 }
-            }
-
-            if (props.title === undefined) {
-                props.title = r.getTitle();
             }
 
             if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
@@ -653,59 +640,40 @@ export default class GridChild {
         };
 
         if (parentChromePolicy.axes) {
-            // Handle children that have caught axis resolutions. Create axes for them.
             for (const channel of primaryPositionalChannels) {
-                if (view.needsAxes[channel]) {
-                    const r = this.getAxisResolutionForAxis(channel);
-                    if (!r) {
-                        continue;
-                    }
-
-                    await createAxis(r, channel, view);
+                if (!view.needsAxes[channel]) {
+                    continue;
                 }
-            }
 
-            // Handle gridlines of children. Note: children's axis resolution may be caught by
-            // this view or some of this view's ancestors.
-            for (const channel of primaryPositionalChannels) {
+                const axisResolution = this.getAxisResolutionForAxis(channel);
+                if (axisResolution) {
+                    await createAxis(axisResolution, channel, view);
+                }
+
+                // Gridlines also follow axis resolutions caught by ancestors.
                 if (
-                    view.needsAxes[channel] &&
-                    // Handle a special case where the child view has an excluded resolution
-                    // but no scale or axis, e.g., when only values are used on a channel.
                     view.getConfiguredOrDefaultResolution(channel, "axis") !=
-                        "excluded"
+                    "excluded"
                 ) {
                     const r = view.getAxisResolution(channel);
-                    if (!r) {
-                        continue;
+                    if (r) {
+                        await createAxisGrid(r, channel, view);
                     }
-
-                    await createAxisGrid(r, channel, view);
                 }
             }
 
             // Handle LayerView's possible independent axes
             if (view instanceof LayerView) {
-                // First create axes that have an orient preference
-                for (const layerChild of view) {
-                    for (const [channel, r] of Object.entries(
-                        layerChild.resolutions.axis
-                    )) {
-                        const props = r.getAxisProps();
-                        if (props && props.orient) {
-                            await createAxis(r, channel, layerChild);
-                        }
-                    }
-                }
-
-                // Then create axes in a priority order
-                for (const layerChild of view) {
-                    for (const [channel, r] of Object.entries(
-                        layerChild.resolutions.axis
-                    )) {
-                        const props = r.getAxisProps();
-                        if (props && !props.orient) {
-                            await createAxis(r, channel, layerChild);
+                // Reserve explicit orientations before assigning free slots.
+                for (const preferred of [true, false]) {
+                    for (const layerChild of view) {
+                        for (const [channel, r] of Object.entries(
+                            layerChild.resolutions.axis
+                        )) {
+                            const props = r.getAxisProps();
+                            if (props && Boolean(props.orient) === preferred) {
+                                await createAxis(r, channel, layerChild);
+                            }
                         }
                     }
                 }
@@ -714,38 +682,14 @@ export default class GridChild {
             }
         }
 
-        for (const { definition, resolution, owner } of getOrderedLegendEntries(
-            options.legendOwners ?? getLegendOwners(view)
-        )) {
-            if (
-                findLegendCollectionDeclaration(owner, resolution.channel) !==
-                undefined
-            ) {
-                continue;
-            }
-
-            const legend = await createGridChildLegend(
-                definition,
-                this.layoutParent
-            );
-            if (options.legendFilter && !options.legendFilter(legend, owner)) {
-                legend.disposeSubtree();
-                continue;
-            }
-            await addLegendView(this.legends, legend, resolution);
-        }
-
-        // Axes are created after scales are resolved, so we need to resolve possible new scales here
-        [
-            ...this.axisCandidates.map((candidate) => candidate.axisView),
-            ...Object.values(gridLines),
-            ...iterateLegendViews(this.legends),
-        ].forEach((v) =>
-            v.visit((view) => {
-                if (view instanceof UnitView) {
-                    view.resolve("scale");
-                }
-            })
+        await createLegendViews(
+            this.legends,
+            options.legendOwners ?? getLegendOwners(view),
+            this.layoutParent,
+            (owner, resolution) =>
+                findLegendCollectionDeclaration(owner, resolution.channel) ===
+                undefined,
+            options.legendFilter
         );
     }
 
@@ -796,18 +740,10 @@ export default class GridChild {
     }
 
     #disposeControllers() {
-        for (const controllers of [
-            this.#intervalSelectionControllers,
-            this.#rulerViewportControllers,
-            this.#rulerMouseEventControllers,
-        ]) {
-            for (const controller of controllers) {
-                controller.dispose();
-            }
+        for (const controller of this.#controllers) {
+            controller.dispose();
         }
-        this.#intervalSelectionControllers = [];
-        this.#rulerViewportControllers = [];
-        this.#rulerMouseEventControllers = [];
+        this.#controllers = [];
     }
 
     /**
@@ -922,85 +858,4 @@ export default class GridChild {
     getOverhangAndPadding(axes = this.axes) {
         return this.getOverhang(axes).add(this.view.getPadding());
     }
-}
-
-/**
- * @param {import("../../spec/view.js").ViewBackground} viewBackground
- * @returns {import("../../spec/view.js").UnitSpec}
- */
-export function createBackground(viewBackground) {
-    const fillOpacity =
-        viewBackground?.fillOpacity ?? (viewBackground?.fill ? 1.0 : 0.0);
-    const shadowOpacity = viewBackground?.shadowOpacity ?? 0.0;
-    const required =
-        (viewBackground?.fill && fillOpacity !== 0) || shadowOpacity !== 0;
-    if (!required) {
-        return;
-    }
-
-    return {
-        data: { values: [{}] },
-        mark: {
-            color: viewBackground.fill,
-            opacity: fillOpacity,
-            type: "rect",
-            clip: false, // Shouldn't be needed
-            tooltip: null,
-            minHeight: 1,
-            minOpacity: 0,
-            shadowBlur: viewBackground.shadowBlur,
-            shadowColor: viewBackground.shadowColor,
-            shadowOffsetX: viewBackground.shadowOffsetX,
-            shadowOffsetY: viewBackground.shadowOffsetY,
-            shadowOpacity: viewBackground.shadowOpacity,
-        },
-    };
-}
-
-/**
- * @param {import("../../spec/view.js").ViewBackground} viewBackground
- * @returns {import("../../spec/view.js").UnitSpec}
- */
-export function createBackgroundStroke(viewBackground) {
-    if (
-        !viewBackground ||
-        !viewBackground.stroke ||
-        viewBackground.strokeWidth === 0 ||
-        viewBackground.strokeOpacity === 0
-    ) {
-        return;
-    }
-
-    // Using rules to draw a non-filled rectangle.
-    // We are not using a rect mark because it is not optimized for outlines.
-    // TODO: Implement "hollow" mesh for non-filled rectangles
-    return {
-        resolve: {
-            scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
-        },
-        data: {
-            values: [
-                { x: 0, y: 0, x2: 1, y2: 0 },
-                { x: 1, y: 0, x2: 1, y2: 1 },
-                { x: 1, y: 1, x2: 0, y2: 1 },
-                { x: 0, y: 1, x2: 0, y2: 0 },
-            ],
-        },
-        mark: {
-            size: viewBackground.strokeWidth ?? 1.0,
-            color: viewBackground.stroke ?? "lightgray",
-            strokeCap: "square",
-            opacity: viewBackground.strokeOpacity ?? 1.0,
-            type: "rule",
-            clip: "never",
-            tooltip: null,
-        },
-        encoding: {
-            x: { field: "x", type: "quantitative", scale: null },
-            y: { field: "y", type: "quantitative", scale: null },
-            x2: { field: "x2" },
-            y2: { field: "y2" },
-        },
-    };
 }

@@ -10,29 +10,16 @@ import {
     activateExprRefProps,
     resolveInitOnlyExprRef,
 } from "../../paramRuntime/paramUtils.js";
-import LegendView, {
-    LegendRegionView,
-    getExternalLegendOverhang,
-} from "../legendView.js";
+import LegendView, { LegendRegionView } from "../legendView.js";
 
 /**
- * @typedef {{
- *     legendView: LegendView,
- *     resolution: import("../../scales/legendResolution.js").default,
- * }} GridChildLegendEntry
- *
  * @typedef {{
  *     definition: import("../../scales/legendResolution.js").LegendDefinition,
  *     resolution: import("../../scales/legendResolution.js").default,
  *     owner: import("../view.js").default,
  * }} OrderedLegendEntry
  *
- * @typedef {{
- *     legendView: LegendRegionView,
- *     entries: GridChildLegendEntry[],
- * }} GridChildLegendRegion
- *
- * @typedef {Partial<Record<import("../../spec/legend.js").LegendOrient, GridChildLegendRegion>>} GridChildLegends
+ * @typedef {Partial<Record<import("../../spec/legend.js").LegendOrient, LegendRegionView>>} GridChildLegends
  * @typedef {Omit<import("../../spec/legend.js").LegendConfig, "orient"> & {
  *     orient?: import("../../spec/legend.js").LegendOrient
  * }} ResolvedLegendConfig
@@ -49,7 +36,7 @@ const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
     "shape",
 ]);
 
-const INSIDE_LEGEND_ORIENTS = new Set(
+export const INSIDE_LEGEND_ORIENTS = new Set(
     /** @type {import("../../spec/legend.js").LegendOrient[]} */ ([
         "top-left",
         "top-right",
@@ -125,21 +112,14 @@ export function getOrderedLegendEntries(legendOwners) {
     }
 
     entries.sort((a, b) => {
-        const viewDiff =
+        return (
             (viewOrder.get(a.definition.view) ?? Number.MAX_SAFE_INTEGER) -
-            (viewOrder.get(b.definition.view) ?? Number.MAX_SAFE_INTEGER);
-        if (viewDiff != 0) {
-            return viewDiff;
-        }
-
-        const labelDiff = getLegendSortLabel(a.definition).localeCompare(
-            getLegendSortLabel(b.definition)
+                (viewOrder.get(b.definition.view) ?? Number.MAX_SAFE_INTEGER) ||
+            getLegendSortLabel(a.definition).localeCompare(
+                getLegendSortLabel(b.definition)
+            ) ||
+            a.definition.channel.localeCompare(b.definition.channel)
         );
-        if (labelDiff != 0) {
-            return labelDiff;
-        }
-
-        return a.definition.channel.localeCompare(b.definition.channel);
     });
 
     return entries;
@@ -298,24 +278,19 @@ function createInheritedSymbolStyle(
             style.mark
         );
 
-    if (sourceProps.filled !== undefined) {
-        styleMark.filled = sourceProps.filled;
+    for (const key of /** @type {const} */ ([
+        "filled",
+        "opacity",
+        "fillOpacity",
+        "strokeOpacity",
+        "strokeWidth",
+        "shape",
+    ])) {
+        if (sourceProps[key] !== undefined) {
+            Object.assign(styleMark, { [key]: sourceProps[key] });
+        }
     }
-    if (sourceProps.opacity !== undefined) {
-        styleMark.opacity = sourceProps.opacity;
-    }
-    if (sourceProps.fillOpacity !== undefined) {
-        styleMark.fillOpacity = sourceProps.fillOpacity;
-    }
-    if (sourceProps.strokeOpacity !== undefined) {
-        styleMark.strokeOpacity = sourceProps.strokeOpacity;
-    }
-    if (sourceProps.strokeWidth !== undefined) {
-        styleMark.strokeWidth = sourceProps.strokeWidth;
-    }
-    if (sourceProps.shape !== undefined) {
-        styleMark.shape = sourceProps.shape;
-    } else if (sourceView.getMarkType() == "rect") {
+    if (styleMark.shape === undefined && sourceView.getMarkType() == "rect") {
         styleMark.shape = "square";
     }
 
@@ -487,11 +462,43 @@ export async function createGridChildLegend(definition, layoutParent) {
 }
 
 /**
+ * Creates the selected guides at a layout host and groups them into regions.
+ *
+ * @param {GridChildLegends} legends
+ * @param {import("../view.js").default[]} owners
+ * @param {import("../containerView.js").default} layoutParent
+ * @param {(owner: import("../view.js").default, resolution: import("../../scales/legendResolution.js").default) => boolean} includeOwner
+ * @param {(legend: LegendView, owner: import("../view.js").default) => boolean} [filter]
+ */
+export async function createLegendViews(
+    legends,
+    owners,
+    layoutParent,
+    includeOwner,
+    filter
+) {
+    for (const { definition, resolution, owner } of getOrderedLegendEntries(
+        owners
+    )) {
+        if (!includeOwner(owner, resolution)) {
+            continue;
+        }
+
+        const legend = await createGridChildLegend(definition, layoutParent);
+        if (filter && !filter(legend, owner)) {
+            legend.disposeSubtree();
+        } else {
+            addLegendView(legends, legend, resolution);
+        }
+    }
+}
+
+/**
  * @param {GridChildLegends} legends
  * @param {LegendView} legend
  * @param {import("../../scales/legendResolution.js").default} resolution
  */
-export async function addLegendView(legends, legend, resolution) {
+export function addLegendView(legends, legend, resolution) {
     const orient = /** @type {import("../../spec/legend.js").LegendOrient} */ (
         legend.legendProps.orient ?? "right"
     );
@@ -502,7 +509,7 @@ export async function addLegendView(legends, legend, resolution) {
             legend.layoutParent.getConfigScopes(),
             orient
         );
-        const regionView = new LegendRegionView(
+        region = new LegendRegionView(
             orient,
             anchor,
             direction,
@@ -512,8 +519,6 @@ export async function addLegendView(legends, legend, resolution) {
             legend.layoutParent,
             legend.dataParent
         );
-        await regionView.initializeChildren();
-        region = { legendView: regionView, entries: [] };
         legends[orient] = region;
     }
 
@@ -522,17 +527,7 @@ export async function addLegendView(legends, legend, resolution) {
             !legend.legendProps.disable &&
             resolution.hasVisibleNonChromeMember()
     );
-    region.legendView.addLegendView(legend);
-    region.entries.push({ legendView: legend, resolution });
-}
-
-/**
- * @param {GridChildLegends} legends
- */
-export function* iterateLegendViews(legends) {
-    for (const region of Object.values(legends)) {
-        yield region.legendView;
-    }
+    region.addLegendView(legend);
 }
 
 /**
@@ -542,7 +537,7 @@ export function* iterateLegendViews(legends) {
  */
 export function prepareLegendLayoutSize(legends, width, height) {
     let changed = false;
-    for (const regionView of iterateLegendViews(legends)) {
+    for (const regionView of Object.values(legends)) {
         const regionChanged = regionView.prepareLayoutSize(width, height);
         changed ||= regionChanged;
     }
@@ -553,7 +548,7 @@ export function prepareLegendLayoutSize(legends, width, height) {
  * @param {GridChildLegends} legends
  */
 export function disposeLegendViews(legends) {
-    for (const legendView of iterateLegendViews(legends)) {
+    for (const legendView of Object.values(legends)) {
         legendView.disposeSubtree();
     }
 }
@@ -564,21 +559,7 @@ export function disposeLegendViews(legends) {
  */
 export function getLegendOverhang(legends, orient) {
     const region = legends[orient];
-    return region && isActiveLegendRegion(region)
-        ? getExternalLegendOverhang(region.legendView)
+    return region?.isActive()
+        ? region.getPerpendicularSize() + region.getOffset()
         : 0;
-}
-
-/**
- * @param {GridChildLegendEntry} entry
- */
-export function isActiveLegendEntry(entry) {
-    return entry.resolution.hasVisibleNonChromeMember();
-}
-
-/**
- * @param {GridChildLegendRegion} region
- */
-export function isActiveLegendRegion(region) {
-    return region.entries.some(isActiveLegendEntry);
 }

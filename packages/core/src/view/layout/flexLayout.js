@@ -243,12 +243,20 @@ export function isStretching(items) {
 }
 
 /**
- *
+ * Sums base sizes and bounds, including fixed spacing between items.
  * @param {SizeDef[]} sizeDefs
+ * @param {number} [spacing] Fixed spacing between adjacent tracks.
+ * @param {number} [emptyGrow] Growth retained before track members are available.
  */
-export function sumSizeDefs(sizeDefs) {
-    const sum = { px: 0, grow: 0, minPx: 0, maxPx: 0 };
-    let hasMaxPx = true;
+export function sumSizeDefs(sizeDefs, spacing = 0, emptyGrow = 0) {
+    const gaps = Math.max(0, sizeDefs.length - 1) * spacing;
+    const sum = {
+        px: gaps,
+        grow: sizeDefs.length ? 0 : emptyGrow,
+        minPx: gaps,
+        maxPx: gaps,
+    };
+    let hasMaxPx = sizeDefs.length > 0;
     for (const size of sizeDefs) {
         sum.px += z(size.px);
         sum.grow += z(size.grow);

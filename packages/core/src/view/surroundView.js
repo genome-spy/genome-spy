@@ -116,7 +116,6 @@ export default class SurroundView extends GridView {
             })
         );
         this.setChildren([this.#center, ...sides]);
-        await this.syncGuideViews();
     }
 
     /**
@@ -282,11 +281,20 @@ export default class SurroundView extends GridView {
 
     /** @override */
     get layoutGrid() {
-        return new SurroundGrid(
-            this.visibleChildren.map(({ view }) =>
-                view === this.#center ? "center" : this.#sides.get(view)
-            )
+        const regions = this.visibleChildren.map(({ view }) =>
+            view === this.#center ? "center" : this.#sides.get(view)
         );
+        const column = Number(regions.includes("left"));
+        const row = Number(regions.includes("top"));
+        /** @type {Record<Region, [number, number]>} */
+        const positions = {
+            center: [column, row],
+            top: [column, 0],
+            right: [column + 1, row],
+            bottom: [column, row + 1],
+            left: [0, row],
+        };
+        return new Grid(regions.map((region) => positions[region]));
     }
 
     /**
@@ -725,72 +733,5 @@ function validateInputHost(spec, owner) {
             "Surround input controllers must be configured on its plots.",
             owner
         );
-    }
-}
-
-/** Fixed cross cells, with absent rows/columns removed and no placeholder views. */
-class SurroundGrid extends Grid {
-    /** @type {[number, number][]} */
-    #cells;
-
-    /** @param {Region[]} regions */
-    constructor(regions) {
-        super(regions.length, 3);
-        const column = Number(regions.includes("left"));
-        const row = Number(regions.includes("top"));
-
-        /** @type {Record<Region, [number, number]>} */
-        const positions = {
-            center: [column, row],
-            top: [column, 0],
-            right: [column + 1, row],
-            bottom: [column, row + 1],
-            left: [0, row],
-        };
-
-        this.#cells = regions.map((region) => {
-            if (!Object.hasOwn(positions, region)) {
-                throw new Error(`Unknown surround region: ${region}`);
-            }
-            return positions[region];
-        });
-    }
-
-    get nCols() {
-        return Math.max(-1, ...this.#cells.map(([column]) => column)) + 1;
-    }
-
-    get nRows() {
-        return Math.max(-1, ...this.#cells.map(([, row]) => row)) + 1;
-    }
-
-    get colIndices() {
-        return this.#getIndices(0, this.nCols);
-    }
-
-    get rowIndices() {
-        return this.#getIndices(1, this.nRows);
-    }
-
-    /** @param {0 | 1} dimension @param {number} count */
-    #getIndices(dimension, count) {
-        return Array.from({ length: count }, (_, index) =>
-            this.#cells.flatMap((cell, i) =>
-                cell[dimension] === index ? [i] : []
-            )
-        );
-    }
-
-    /** @param {number} index @returns {[number, number]} */
-    getCellCoords(index) {
-        return this.#cells[index];
-    }
-
-    /** @param {number} column @param {number} row */
-    getCellIndex(column, row) {
-        const index = this.#cells.findIndex(
-            ([col, r]) => col === column && r === row
-        );
-        return index < 0 ? undefined : index;
     }
 }

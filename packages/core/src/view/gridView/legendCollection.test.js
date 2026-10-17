@@ -4,7 +4,6 @@ import ConcatView from "../concatView.js";
 import UnitView from "../unitView.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
 import { findLegendCollectionDeclaration } from "./legendCollection.js";
-import { syncViewGuideViews } from "./guideViewSync.js";
 import Rectangle from "../layout/rectangle.js";
 
 /**
@@ -318,16 +317,16 @@ describe("collected legend routing", () => {
     });
 
     test("fails clearly when collection has no grid layout host", async () => {
-        const unit = await create(
-            {
-                ...makeColorUnit("root", "Root"),
-                resolve: { legend: { color: "collected" } },
-            },
-            UnitView,
-            { wrapRoot: false }
-        );
-
-        await expect(syncViewGuideViews(unit)).rejects.toThrow(
+        await expect(
+            create(
+                {
+                    ...makeColorUnit("root", "Root"),
+                    resolve: { legend: { color: "collected" } },
+                },
+                UnitView,
+                { wrapRoot: false }
+            )
+        ).rejects.toThrow(
             'Legend collection for channel "color" declared at view "root" requires a GridView layout host.'
         );
     });
