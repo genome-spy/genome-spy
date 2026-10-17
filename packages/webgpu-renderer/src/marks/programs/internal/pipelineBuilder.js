@@ -16,6 +16,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @property {import("../../shaders/channelIR.js").CompiledMarkChannels} compiledChannels
  * @property {Array<{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
  * @property {string} shaderBody
+ * @property {boolean} [usesPickingEnabledOverride] Whether the mark shader uses the pickingEnabled WGSL override.
  * @property {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @property {Array<{ name: string, type: import("../../../index.d.ts").SelectionType, targets?: Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints", scalarType?: import("../../../types.js").ScalarType, secondaryScalarType?: import("../../../types.js").ScalarType }> }>} [selectionDefs]
  * @property {import("../../../index.d.ts").VisibilityPredicate} [visibleWhen]
@@ -42,6 +43,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @param {GPUTextureFormat} pickFormat
  * @param {GPUPrimitiveTopology} primitiveTopology
  * @param {boolean} usesPlacementLayout
+ * @param {boolean} usesPickingEnabledOverride
  * @returns {string}
  */
 function createDescriptorKey(
@@ -49,7 +51,8 @@ function createDescriptorKey(
     format,
     pickFormat,
     primitiveTopology,
-    usesPlacementLayout
+    usesPlacementLayout,
+    usesPickingEnabledOverride
 ) {
     return JSON.stringify([
         resourceBindings,
@@ -57,6 +60,7 @@ function createDescriptorKey(
         pickFormat,
         primitiveTopology,
         usesPlacementLayout,
+        usesPickingEnabledOverride,
     ]);
 }
 
@@ -75,6 +79,7 @@ export function buildPipelines({
     compiledChannels,
     uniformLayout,
     shaderBody,
+    usesPickingEnabledOverride = false,
     packedSeriesLayout,
     selectionDefs,
     visibleWhen,
@@ -138,7 +143,8 @@ export function buildPipelines({
         format,
         pickFormat,
         primitiveTopology,
-        usesPlacementLayout
+        usesPlacementLayout,
+        usesPickingEnabledOverride
     );
 
     const template = cache.getOrCreate(shaderCode, descriptorKey, (id) => {
@@ -224,13 +230,18 @@ export function buildPipelines({
         /** @type {GPURenderPipeline | undefined} */
         let pickPipeline;
         const getPickPipeline = () => {
+            // Safari fails native compilation when a stage receives an unused
+            // specialization constant. Only link geometry needs this override.
+            const constants = usesPickingEnabledOverride
+                ? { pickingEnabled: 1 }
+                : undefined;
             pickPipeline ??= device.createRenderPipeline({
                 label: gpuLabel(labelOwner, "picking pipeline"),
                 ...common,
-                vertex: { ...common.vertex, constants: { pickingEnabled: 1 } },
+                vertex: { ...common.vertex, constants },
                 fragment: {
                     module,
-                    constants: { pickingEnabled: 1 },
+                    constants,
                     entryPoint: "fs_pick",
                     targets: [
                         {

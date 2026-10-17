@@ -227,6 +227,8 @@ describe("buildPipelines", () => {
         });
         expect(layout.bindGroupLayouts[0]).toBe(harness.globalBindGroupLayout);
         expect(pickPipelineArgs.fragment.entryPoint).toBe("fs_pick");
+        expect(pickPipelineArgs.vertex.constants).toBeUndefined();
+        expect(pickPipelineArgs.fragment.constants).toBeUndefined();
         expect(pickPipelineArgs.layout).toBe(pipelineArgs.layout);
         expect(pickPipelineArgs.vertex.module).toBe(pipelineArgs.vertex.module);
         expect(template.getPickPipeline()).toBe(pickPipeline);
@@ -265,11 +267,25 @@ describe("buildPipelines", () => {
         );
     });
 
+    it("sets pickingEnabled for shaders that use the override", () => {
+        const harness = createHarness();
+        const template = harness.build({ usesPickingEnabledOverride: true });
+        template.getPickPipeline();
+
+        expect(harness.renderPipelineArgs[0].vertex.constants).toEqual({
+            pickingEnabled: 1,
+        });
+        expect(harness.renderPipelineArgs[0].fragment.constants).toEqual({
+            pickingEnabled: 1,
+        });
+    });
+
     it.each([
         ["WGSL", { shaderBody: "let cacheMiss = 1.0;" }],
         ["render format", { format: "bgra8unorm" }],
         ["picking format", { pickFormat: "r32uint" }],
         ["topology", { primitiveTopology: "line-list" }],
+        ["pickingEnabled override", { usesPickingEnabledOverride: true }],
         ["placement layout", { placementIndex: { source: "draw" } }],
     ])("does not share when %s differs", (_name, overrides) => {
         const harness = createHarness();
