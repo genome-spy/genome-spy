@@ -49,7 +49,7 @@ const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
     "shape",
 ]);
 
-const INSIDE_LEGEND_ORIENTS = new Set(
+export const INSIDE_LEGEND_ORIENTS = new Set(
     /** @type {import("../../spec/legend.js").LegendOrient[]} */ ([
         "top-left",
         "top-right",
@@ -125,21 +125,14 @@ export function getOrderedLegendEntries(legendOwners) {
     }
 
     entries.sort((a, b) => {
-        const viewDiff =
+        return (
             (viewOrder.get(a.definition.view) ?? Number.MAX_SAFE_INTEGER) -
-            (viewOrder.get(b.definition.view) ?? Number.MAX_SAFE_INTEGER);
-        if (viewDiff != 0) {
-            return viewDiff;
-        }
-
-        const labelDiff = getLegendSortLabel(a.definition).localeCompare(
-            getLegendSortLabel(b.definition)
+                (viewOrder.get(b.definition.view) ?? Number.MAX_SAFE_INTEGER) ||
+            getLegendSortLabel(a.definition).localeCompare(
+                getLegendSortLabel(b.definition)
+            ) ||
+            a.definition.channel.localeCompare(b.definition.channel)
         );
-        if (labelDiff != 0) {
-            return labelDiff;
-        }
-
-        return a.definition.channel.localeCompare(b.definition.channel);
     });
 
     return entries;
@@ -298,24 +291,19 @@ function createInheritedSymbolStyle(
             style.mark
         );
 
-    if (sourceProps.filled !== undefined) {
-        styleMark.filled = sourceProps.filled;
+    for (const key of /** @type {const} */ ([
+        "filled",
+        "opacity",
+        "fillOpacity",
+        "strokeOpacity",
+        "strokeWidth",
+        "shape",
+    ])) {
+        if (sourceProps[key] !== undefined) {
+            Object.assign(styleMark, { [key]: sourceProps[key] });
+        }
     }
-    if (sourceProps.opacity !== undefined) {
-        styleMark.opacity = sourceProps.opacity;
-    }
-    if (sourceProps.fillOpacity !== undefined) {
-        styleMark.fillOpacity = sourceProps.fillOpacity;
-    }
-    if (sourceProps.strokeOpacity !== undefined) {
-        styleMark.strokeOpacity = sourceProps.strokeOpacity;
-    }
-    if (sourceProps.strokeWidth !== undefined) {
-        styleMark.strokeWidth = sourceProps.strokeWidth;
-    }
-    if (sourceProps.shape !== undefined) {
-        styleMark.shape = sourceProps.shape;
-    } else if (sourceView.getMarkType() == "rect") {
+    if (styleMark.shape === undefined && sourceView.getMarkType() == "rect") {
         styleMark.shape = "square";
     }
 
@@ -484,6 +472,38 @@ export async function createGridChildLegend(definition, layoutParent) {
 
     await legend.initializeChildren();
     return legend;
+}
+
+/**
+ * Creates the selected guides at a layout host and groups them into regions.
+ *
+ * @param {GridChildLegends} legends
+ * @param {import("../view.js").default[]} owners
+ * @param {import("../containerView.js").default} layoutParent
+ * @param {(owner: import("../view.js").default, resolution: import("../../scales/legendResolution.js").default) => boolean} includeOwner
+ * @param {(legend: LegendView, owner: import("../view.js").default) => boolean} [filter]
+ */
+export async function createLegendViews(
+    legends,
+    owners,
+    layoutParent,
+    includeOwner,
+    filter
+) {
+    for (const { definition, resolution, owner } of getOrderedLegendEntries(
+        owners
+    )) {
+        if (!includeOwner(owner, resolution)) {
+            continue;
+        }
+
+        const legend = await createGridChildLegend(definition, layoutParent);
+        if (filter && !filter(legend, owner)) {
+            legend.disposeSubtree();
+        } else {
+            await addLegendView(legends, legend, resolution);
+        }
+    }
 }
 
 /**

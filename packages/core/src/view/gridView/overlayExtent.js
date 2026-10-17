@@ -23,47 +23,27 @@ export function resolveOverlayExtent({
     isAligned,
     label,
 }) {
-    const channel = channels.length === 1 ? channels[0] : undefined;
-    if (!channel) {
-        if (extent === "container") {
-            throw new Error(
-                `${label} cannot use extent "container" for multiple channels.`
-            );
-        } else {
-            return "view";
-        }
-    }
-
-    const effectiveExtent = extent ?? "auto";
-    const requestsContainer =
-        effectiveExtent === "container" || effectiveExtent === "auto";
-    if (!requestsContainer) {
+    if (extent === "view") {
         return "view";
     }
 
+    const channel = channels[0];
     const supportsContainer =
         (channel === "x" && isVConcatSpec(ownerSpec)) ||
         (channel === "y" && isHConcatSpec(ownerSpec));
+    let reason;
 
-    if (!supportsContainer) {
-        if (effectiveExtent === "container") {
-            throw new Error(
-                `${label} cannot use extent "container" for channel "${channel}" in this view.`
-            );
-        } else {
-            return "view";
-        }
+    if (channels.length !== 1) {
+        reason = "for multiple channels";
+    } else if (!supportsContainer) {
+        reason = `for channel "${channel}" in this view`;
+    } else if (!isAligned(channel)) {
+        reason = `because its ${channel} projections do not align`;
     }
 
-    if (!isAligned(channel)) {
-        if (effectiveExtent === "container") {
-            throw new Error(
-                `${label} cannot use extent "container" because its ${channel} projections do not align.`
-            );
-        } else {
-            return "view";
-        }
+    if (reason && extent === "container") {
+        throw new Error(`${label} cannot use extent "container" ${reason}.`);
     }
 
-    return "container";
+    return reason ? "view" : "container";
 }

@@ -45,7 +45,7 @@ will be copied or adapted from another project.
   Consumers: ViewMutationApi, App dynamic tracks, surround side concats.
   Verify mutation API/ACID, layer, concat, and surround mutation tests.
   Commit: `refactor(core): narrow container mutation plumbing`.
-- [ ] Consolidate grid guide creation and placement bookkeeping, including
+- [x] Consolidate grid guide creation and placement bookkeeping, including
   controller disposal and derived separator geometry where equivalent.
   Consumers: App SampleGridChild, SVG/Canvas/WebGL placements, shared legends.
   Verify grid/axis/legend tests and App layout/axis suites.
@@ -84,4 +84,12 @@ ownership markers. Rollback and chrome initialization remain covered by 81
 passing mutation/container tests. The baseline scope contains 8,208 non-comment
 production lines in 32 files.
 
-Implementation and independent review of the remaining milestones are pending.
+Grid milestone: separator geometry now uses normalized unscaled coordinates,
+removing position/domain caches and scale updates during layout. Local/shared
+legend creation uses one lifecycle path; controllers share disposal, and axes
+and legends share their orientation calculations. Stable sorting preserves
+decoration queue order without a sequence counter. App's duplicate-axis and
+active-candidate hooks remain intact. Verification: 359 focused Core/App tests
+and Core TypeScript pass; an SVG test checks separator geometry after resize.
+
+Independent review of the remaining milestones is pending.

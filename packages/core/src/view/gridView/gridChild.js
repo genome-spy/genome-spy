@@ -19,10 +19,8 @@ import Scrollbar from "./scrollbar.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 import {
-    addLegendView,
-    createGridChildLegend,
+    createLegendViews,
     disposeLegendViews,
-    getOrderedLegendEntries,
     iterateLegendViews,
     prepareLegendLayoutSize,
 } from "./gridChildLegends.js";
@@ -130,14 +128,8 @@ export default class GridChild {
      *   dataflow are kept in sync.
      */
 
-    /** @type {IntervalSelectionController[]} */
-    #intervalSelectionControllers = [];
-
-    /** @type {RulerMouseEventController[]} */
-    #rulerMouseEventControllers = [];
-
-    /** @type {RulerViewportController[]} */
-    #rulerViewportControllers = [];
+    /** @type {{ dispose: () => void }[]} */
+    #controllers = [];
 
     /** @type {number} */
     #serial;
@@ -285,7 +277,7 @@ export default class GridChild {
             );
 
             if (ruler.source === "viewport") {
-                this.#rulerViewportControllers.push(
+                this.#controllers.push(
                     new RulerViewportController(
                         this,
                         paramName,
@@ -296,7 +288,7 @@ export default class GridChild {
                     )
                 );
             } else {
-                this.#rulerMouseEventControllers.push(
+                this.#controllers.push(
                     new RulerMouseEventController(
                         this,
                         paramName,
@@ -446,7 +438,7 @@ export default class GridChild {
                 continue;
             }
 
-            this.#intervalSelectionControllers.push(
+            this.#controllers.push(
                 new IntervalSelectionController(
                     this,
                     paramName,
@@ -540,28 +532,22 @@ export default class GridChild {
                 return;
             }
 
-            const props = propsWithoutDefaults
-                ? { ...propsWithoutDefaults }
-                : {};
+            const props = { ...propsWithoutDefaults };
+            if (props.title === undefined) {
+                props.title = r.getTitle();
+            }
 
             // Pick a default orient based on what is available.
             // This logic is needed for layer views that have independent axes.
             if (!props.orient) {
-                for (const orient of CHANNEL_ORIENTS[channel]) {
-                    if (!axes[orient]) {
-                        props.orient = orient;
-                        break;
-                    }
-                }
+                props.orient = CHANNEL_ORIENTS[channel].find(
+                    (orient) => !axes[orient]
+                );
                 if (!props.orient) {
                     throw new Error(
                         "No slots available for an axis! Perhaps a LayerView has more than two children?"
                     );
                 }
-            }
-
-            if (props.title === undefined) {
-                props.title = r.getTitle();
             }
 
             if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
@@ -653,59 +639,40 @@ export default class GridChild {
         };
 
         if (parentChromePolicy.axes) {
-            // Handle children that have caught axis resolutions. Create axes for them.
             for (const channel of primaryPositionalChannels) {
-                if (view.needsAxes[channel]) {
-                    const r = this.getAxisResolutionForAxis(channel);
-                    if (!r) {
-                        continue;
-                    }
-
-                    await createAxis(r, channel, view);
+                if (!view.needsAxes[channel]) {
+                    continue;
                 }
-            }
 
-            // Handle gridlines of children. Note: children's axis resolution may be caught by
-            // this view or some of this view's ancestors.
-            for (const channel of primaryPositionalChannels) {
+                const axisResolution = this.getAxisResolutionForAxis(channel);
+                if (axisResolution) {
+                    await createAxis(axisResolution, channel, view);
+                }
+
+                // Gridlines also follow axis resolutions caught by ancestors.
                 if (
-                    view.needsAxes[channel] &&
-                    // Handle a special case where the child view has an excluded resolution
-                    // but no scale or axis, e.g., when only values are used on a channel.
                     view.getConfiguredOrDefaultResolution(channel, "axis") !=
-                        "excluded"
+                    "excluded"
                 ) {
                     const r = view.getAxisResolution(channel);
-                    if (!r) {
-                        continue;
+                    if (r) {
+                        await createAxisGrid(r, channel, view);
                     }
-
-                    await createAxisGrid(r, channel, view);
                 }
             }
 
             // Handle LayerView's possible independent axes
             if (view instanceof LayerView) {
-                // First create axes that have an orient preference
-                for (const layerChild of view) {
-                    for (const [channel, r] of Object.entries(
-                        layerChild.resolutions.axis
-                    )) {
-                        const props = r.getAxisProps();
-                        if (props && props.orient) {
-                            await createAxis(r, channel, layerChild);
-                        }
-                    }
-                }
-
-                // Then create axes in a priority order
-                for (const layerChild of view) {
-                    for (const [channel, r] of Object.entries(
-                        layerChild.resolutions.axis
-                    )) {
-                        const props = r.getAxisProps();
-                        if (props && !props.orient) {
-                            await createAxis(r, channel, layerChild);
+                // Reserve explicit orientations before assigning free slots.
+                for (const preferred of [true, false]) {
+                    for (const layerChild of view) {
+                        for (const [channel, r] of Object.entries(
+                            layerChild.resolutions.axis
+                        )) {
+                            const props = r.getAxisProps();
+                            if (props && Boolean(props.orient) === preferred) {
+                                await createAxis(r, channel, layerChild);
+                            }
                         }
                     }
                 }
@@ -714,26 +681,15 @@ export default class GridChild {
             }
         }
 
-        for (const { definition, resolution, owner } of getOrderedLegendEntries(
-            options.legendOwners ?? getLegendOwners(view)
-        )) {
-            if (
-                findLegendCollectionDeclaration(owner, resolution.channel) !==
-                undefined
-            ) {
-                continue;
-            }
-
-            const legend = await createGridChildLegend(
-                definition,
-                this.layoutParent
-            );
-            if (options.legendFilter && !options.legendFilter(legend, owner)) {
-                legend.disposeSubtree();
-                continue;
-            }
-            await addLegendView(this.legends, legend, resolution);
-        }
+        await createLegendViews(
+            this.legends,
+            options.legendOwners ?? getLegendOwners(view),
+            this.layoutParent,
+            (owner, resolution) =>
+                findLegendCollectionDeclaration(owner, resolution.channel) ===
+                undefined,
+            options.legendFilter
+        );
 
         // Axes are created after scales are resolved, so we need to resolve possible new scales here
         [
@@ -796,18 +752,10 @@ export default class GridChild {
     }
 
     #disposeControllers() {
-        for (const controllers of [
-            this.#intervalSelectionControllers,
-            this.#rulerViewportControllers,
-            this.#rulerMouseEventControllers,
-        ]) {
-            for (const controller of controllers) {
-                controller.dispose();
-            }
+        for (const controller of this.#controllers) {
+            controller.dispose();
         }
-        this.#intervalSelectionControllers = [];
-        this.#rulerViewportControllers = [];
-        this.#rulerMouseEventControllers = [];
+        this.#controllers = [];
     }
 
     /**
