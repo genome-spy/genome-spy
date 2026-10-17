@@ -32,7 +32,7 @@ export default class KeyIndex {
 
     /**
      * @param {string[]} keyFields
-     * @param {import("../spec/channel.js").Scalar[]} keyTuple
+     * @param {readonly import("../spec/channel.js").Scalar[]} keyTuple
      * @param {Iterable<Data>} facetBatches
      * @returns {Datum | undefined}
      */

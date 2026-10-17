@@ -493,7 +493,7 @@ export default class Collector extends FlowNode {
      * Uses a lazy index to find a datum by its key fields.
      *
      * @param {string[]} keyFields
-     * @param {import("../spec/channel.js").Scalar[]} keyTuple
+     * @param {readonly import("../spec/channel.js").Scalar[]} keyTuple
      */
     findDatumByKey(keyFields, keyTuple) {
         this.#checkStatus();

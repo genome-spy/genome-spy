@@ -240,7 +240,7 @@ function resolvePointSelectionKeys(view, select, keys) {
     const resolved = resolvePointSelectionFromKeyTuples(
         type,
         fields,
-        keys.map((tuple) => Array.from(tuple)),
+        keys,
         (keyFields, tuple) => collector.findDatumByKey(keyFields, tuple)
     );
     if (resolved.unresolved.length)

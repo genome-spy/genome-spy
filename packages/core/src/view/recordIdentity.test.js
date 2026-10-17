@@ -1,11 +1,10 @@
 import { expect, test } from "vitest";
-import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import { createTestEmbed, getPointSelection } from "./embedTestUtils.js";
 import IdentifierTransform, {
     UNIQUE_ID_KEY,
 } from "../data/transforms/identifier.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 import UnitView from "./unitView.js";
-import { createViewMutationApi } from "./viewMutationApi.js";
 
 /** @param {import("./view.js").default} root */
 function units(root) {
@@ -14,7 +13,7 @@ function units(root) {
 
 test("inherited point selection does not assign identities to generated axes and legends", async () => {
     // Include the implicit grid: an unwrapped unit has no generated guides.
-    const { view } = await createHeadlessEngine(
+    const { root: view, views: api } = await createTestEmbed(
         {
             params: [{ name: "selected", select: "point" }],
             data: {
@@ -59,15 +58,10 @@ test("inherited point selection does not assign identities to generated axes and
             )
         ).toBe(false);
     }
-    const source = createViewMutationApi({ viewRoot: view }).get({
-        scope: [],
-        view: "records",
-    });
-    const selection = source.params.getSelection("selected");
-    if (selection.type !== "point") throw new Error("Expected point selection");
+    const source = api.get({ scope: [], view: "records" });
+    const selection = getPointSelection(source);
     selection.setValue([["A"], ["B"]]);
     expect(selection.getValue().data.map((row) => row.id)).toEqual(["A", "B"]);
-    view.disposeSubtree();
 });
 
 test.each([
@@ -103,7 +97,7 @@ test.each([
 ])(
     "non-picking identity follows effective declarations: %s",
     async (_name, outer, inner, needsIdentity) => {
-        const { view } = await createHeadlessEngine({
+        const { root: view, views: api } = await createTestEmbed({
             params: /** @type {import("../spec/parameter.js").Parameter[]} */ (
                 outer
             ),
@@ -133,15 +127,10 @@ test.each([
         const data = Array.from(unit.getCollector().getData());
         expect(data.every((row) => UNIQUE_ID_KEY in row)).toBe(needsIdentity);
         expect(Boolean(unit.mark.encoding.uniqueId)).toBe(needsIdentity);
-        const handle = createViewMutationApi({ viewRoot: view }).get({
-            scope: [],
-            view: "records",
-        });
+        const handle = api.get({ scope: [], view: "records" });
         if (needsIdentity) {
             const name = _name === "another visible point" ? "other" : "chosen";
-            const selection = handle.params.getSelection(name);
-            if (selection.type !== "point")
-                throw new Error("Expected point selection");
+            const selection = getPointSelection(handle, name);
             selection.setValue([["A"], ["B"]]);
             expect(selection.getValue().data).toHaveLength(2);
         } else if (_name === "plain shadow") {
@@ -149,7 +138,6 @@ test.each([
                 "not a selection"
             );
         }
-        view.disposeSubtree();
     }
 );
 
@@ -158,7 +146,7 @@ test("selection identity preserves independent branches and existing identifiers
         { id: "A", x: 1 },
         { id: "B", x: 2 },
     ];
-    const { view } = await createHeadlessEngine({
+    const { root: view, views: api } = await createTestEmbed({
         datasets: { rows },
         params: [{ name: "selected", select: "point" }],
         data: { name: "rows" },
@@ -179,10 +167,8 @@ test("selection identity preserves independent branches and existing identifiers
         ],
     });
     const [source, sibling] = units(view);
-    const api = createViewMutationApi({ viewRoot: view });
     const handle = api.get({ scope: [], view: "selectedRows" });
-    const selection = handle.params.getSelection("selected");
-    if (selection.type !== "point") throw new Error("Expected point selection");
+    const selection = getPointSelection(handle);
     const check = () => {
         const data = Array.from(source.getCollector().getData());
         const ids = data.map((row) => row[UNIQUE_ID_KEY]);
@@ -213,11 +199,10 @@ test("selection identity preserves independent branches and existing identifiers
         { id: "A", x: 1 },
         { id: "B", x: 2 },
     ]);
-    view.disposeSubtree();
 });
 
 test("selection-only IDs span facets and survive source replay", async () => {
-    const { view } = await createHeadlessEngine({
+    const { root: view, views: api } = await createTestEmbed({
         params: [{ name: "selected", select: "point" }],
         datasets: {
             rows: [
@@ -233,11 +218,9 @@ test("selection-only IDs span facets and survive source replay", async () => {
             encoding: { key: { field: "id" }, text: { field: "id" } },
         },
     });
-    const api = createViewMutationApi({ viewRoot: view });
-    const selection = api
-        .get({ scope: [], view: "records" })
-        .params.getSelection("selected");
-    if (selection.type !== "point") throw new Error("Expected point selection");
+    const selection = getPointSelection(
+        api.get({ scope: [], view: "records" })
+    );
     const source = units(view).find((unit) => unit.name === "records");
     selection.setValue([["A"], ["B"]]);
     expect(selection.getValue().data.map((row) => row.id)).toEqual(["A", "B"]);
@@ -251,7 +234,6 @@ test("selection-only IDs span facets and survive source replay", async () => {
     expect(selection.getValue().data.map((row) => row.id)).toEqual(["C", "D"]);
     const data = Array.from(source.getCollector().getData());
     expect(new Set(data.map((row) => row[UNIQUE_ID_KEY])).size).toBe(2);
-    view.disposeSubtree();
 });
 
 test("removing and reinserting a selection source leaves no stale identity branch", async () => {
@@ -262,26 +244,27 @@ test("removing and reinserting a selection source leaves no stale identity branc
         mark: { type: "text", tooltip: null },
         encoding: { key: { field: "id" }, text: { field: "id" } },
     };
-    const { view, context } = await createHeadlessEngine({
+    const {
+        context,
+        views: api,
+        finalize,
+    } = await createTestEmbed({
         params: [{ name: "selected", select: "point" }],
         layer: [spec],
     });
-    const api = createViewMutationApi({ viewRoot: view });
     const old = api.get({ scope: [], view: "records" });
-    const previous = old.params.getSelection("selected");
-    if (previous.type !== "point") throw new Error("Expected point selection");
+    const previous = getPointSelection(old);
     previous.setValue([["A"]]);
     previous.clear();
     const count = context.dataFlow.collectors.length;
     await api.remove(old);
     const replacement = await api.insert(api.root(), spec);
-    const selected = replacement.params.getSelection("selected");
-    if (selected.type !== "point") throw new Error("Expected point selection");
+    const selected = getPointSelection(replacement);
     selected.setValue([["A"]]);
     expect(selected.getValue().data.map((row) => row.id)).toEqual(["A"]);
     expect(() => previous.setValue([["A"]])).toThrow();
     expect(context.dataFlow.collectors).toHaveLength(count);
-    view.disposeSubtree();
+    finalize();
     expect(context.dataFlow.collectors).toEqual([]);
     expect(context.dataFlow.dataSources).toEqual([]);
 });

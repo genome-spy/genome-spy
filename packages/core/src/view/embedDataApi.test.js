@@ -1,8 +1,6 @@
 import { expect, test, vi } from "vitest";
-import {
-    createHeadlessEngine,
-    createHeadlessViewHierarchy,
-} from "../genomeSpy/headlessBootstrap.js";
+import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
+import { createTestEmbed, getPointSelection } from "./embedTestUtils.js";
 import GenomeStore from "../genome/genomeStore.js";
 import { intervalSelection } from "../selection/index.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
@@ -13,7 +11,7 @@ import { createViewMutationApi } from "./viewMutationApi.js";
  * @param {boolean} [toggle]
  */
 async function setup(mark = "point", toggle = true) {
-    const { view: root } = await createHeadlessEngine({
+    const fixture = await createTestEmbed({
         params: [
             { name: "selected", select: { type: "point", toggle } },
             { name: "brush", select: { type: "interval", encodings: ["x"] } },
@@ -55,24 +53,12 @@ async function setup(mark = "point", toggle = true) {
             },
         ],
     });
-    let active = true;
-    const views = createViewMutationApi({ viewRoot: root }, () => active);
+    const { root, views } = fixture;
     const handle = views.get({ scope: [], view: "records" });
-    const selected = handle.params.getSelection("selected");
-    if (selected.type !== "point") throw new Error("Expected point selection.");
     const unit = /** @type {import("./unitView.js").default} */ (
         root.getDescendants().find((view) => view.spec.name === "records")
     );
-    return {
-        root,
-        views,
-        handle,
-        selected,
-        unit,
-        finalize: () => {
-            active = false;
-        },
-    };
+    return { ...fixture, handle, selected: getPointSelection(handle), unit };
 }
 
 test("reads bounded transformed records with cloned values and no picking identifiers", async () => {
@@ -161,7 +147,7 @@ test.each([
 ])(
     "all-data reads do not require a supported positional projection: %j",
     async (encoding) => {
-        const { view } = await createHeadlessEngine({
+        const { views } = await createTestEmbed({
             params: [{ name: "choose", select: "point" }],
             data: { values: [{ id: "A", x: 1 }] },
             mark: { type: "point", tooltip: null },
@@ -169,7 +155,7 @@ test.each([
                 encoding
             ),
         });
-        const handle = createViewMutationApi({ viewRoot: view }).root();
+        const handle = views.root();
         expect(handle.readData({ scope: "all", limit: 1 })).toEqual({
             rows: [{ id: "A", x: 1 }],
             truncated: false,
@@ -177,7 +163,6 @@ test.each([
         expect(() =>
             handle.readData({ scope: "viewport", limit: 1 })
         ).toThrow();
-        view.disposeSubtree();
     }
 );
 
@@ -189,10 +174,11 @@ test.each(["point", "text", "rect"])(
         );
         const listener = vi.fn();
         const stop = selected.subscribe(listener);
-        selected.setValue([
-            [1, "B"],
-            [2, "C"],
+        const keys = Object.freeze([
+            Object.freeze([1, "B"]),
+            Object.freeze([2, "C"]),
         ]);
+        selected.setValue(keys);
         await root.paramRuntime.whenPropagated();
         expect(selected.getValue().data.map((row) => row.id)).toEqual([
             "B",
@@ -278,8 +264,7 @@ test("rejects unready or unkeyed writes, but allows clearing before data is read
         encoding: { key: { field: "id" } },
     });
     const handle = createViewMutationApi({ viewRoot: view }).root();
-    const selected = handle.params.getSelection("selected");
-    if (selected.type !== "point") throw new Error("Expected point selection.");
+    const selected = getPointSelection(handle);
     expect(() => handle.readData({ scope: "viewport", limit: 1 })).toThrow(
         "not ready"
     );
@@ -325,7 +310,7 @@ test("reads brush membership independently of viewport, before limiting matches"
 });
 
 test("viewport reads intersect ranged marks on both axes", async () => {
-    const { view } = await createHeadlessEngine({
+    const { views } = await createTestEmbed({
         name: "ranges",
         data: {
             values: [
@@ -347,10 +332,7 @@ test("viewport reads intersect ranged marks on both axes", async () => {
             y2: { field: "y" },
         },
     });
-    const handle = createViewMutationApi({ viewRoot: view }).get({
-        scope: [],
-        view: "ranges",
-    });
+    const handle = views.get({ scope: [], view: "ranges" });
     expect(
         handle
             .readData({ scope: "viewport", limit: 10 })
@@ -368,7 +350,7 @@ test("scoped reads use normalized locus positions and scaled constants", async (
             { name: "chr2", size: 1000 },
         ],
     });
-    const { view } = await createHeadlessEngine(
+    const { root: view, views } = await createTestEmbed(
         {
             name: "bases",
             assembly: "toy",
@@ -408,10 +390,7 @@ test("scoped reads use normalized locus positions and scaled constants", async (
         },
         { contextOptions: { genomeStore } }
     );
-    const handle = createViewMutationApi({ viewRoot: view }).get({
-        scope: [],
-        view: "bases",
-    });
+    const handle = views.get({ scope: [], view: "bases" });
     expect(
         handle
             .readData({ scope: "viewport", limit: 10 })
@@ -428,7 +407,7 @@ test("scoped reads use normalized locus positions and scaled constants", async (
 });
 
 test("viewport reads reject discrete positional scales", async () => {
-    const { view } = await createHeadlessEngine({
+    const { views } = await createTestEmbed({
         name: "categorical",
         data: { values: [{ x: "A" }, { x: "B" }] },
         mark: "point",
@@ -440,10 +419,7 @@ test("viewport reads reject discrete positional scales", async () => {
             },
         },
     });
-    const handle = createViewMutationApi({ viewRoot: view }).get({
-        scope: [],
-        view: "categorical",
-    });
+    const handle = views.get({ scope: [], view: "categorical" });
     expect(() => handle.readData({ scope: "viewport", limit: 10 })).toThrow(
         "continuous positional scales"
     );
