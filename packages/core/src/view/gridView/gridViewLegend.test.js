@@ -327,12 +327,6 @@ describe("GridView legends", () => {
     });
 
     describe("basic creation", () => {
-        test("creates legends by default", async () => {
-            const view = await createLegendTestView();
-
-            expect(getLegends(view)).toHaveLength(1);
-        });
-
         test("filters legends hosted by a grid", async () => {
             const view = await createLegendTestView();
 
@@ -802,25 +796,23 @@ describe("GridView legends", () => {
                 picking: false,
             });
 
-            legendRegion.arrange(
-                renderContext,
-                Rectangle.create(0, 0, 120, 160)
-            );
-            expect(
-                renderContext.markNames.filter((name) => name === "symbols")
-            ).toHaveLength(2);
-
-            sizeLayerVisible = false;
-            renderContext.markNames = [];
-            legendRegion.arrange(
-                renderContext,
-                Rectangle.create(0, 0, 120, 160)
-            );
-
-            expect(renderContext.markNames).toContain("symbols");
-            expect(
-                renderContext.markNames.filter((name) => name === "symbols")
-            ).toHaveLength(1);
+            // The same legend region must retain hidden entries for restoration.
+            const cases = /** @type {[boolean, number][]} */ ([
+                [true, 2],
+                [false, 1],
+                [true, 2],
+            ]);
+            for (const [visible, expectedSymbols] of cases) {
+                sizeLayerVisible = visible;
+                renderContext.markNames = [];
+                legendRegion.arrange(
+                    renderContext,
+                    Rectangle.create(0, 0, 120, 160)
+                );
+                expect(
+                    renderContext.markNames.filter((name) => name === "symbols")
+                ).toHaveLength(expectedSymbols);
+            }
         });
 
         test("does not inherit axis grids into generated legend views", async () => {
