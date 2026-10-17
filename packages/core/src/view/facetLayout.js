@@ -96,12 +96,12 @@ export function getFacetGridSize(
         spacing,
         headers
     );
-    const width = getAxisSize(
+    const width = sumSizeDefs(
         tracks.column.sizes,
         spacing.column,
         childSize.width.grow
     );
-    const height = getAxisSize(
+    const height = sumSizeDefs(
         tracks.row.sizes,
         spacing.row,
         childSize.height.grow
@@ -243,21 +243,4 @@ function getFacetTracks(grid, childSize, getCellOverhang, spacing, headers) {
         column: getTracks(columns, "width"),
         row: getTracks(rows, "height"),
     };
-}
-
-/**
- * @param {import("./layout/flexLayout.js").SizeDef[]} items
- * @param {number} spacing
- * @param {number | undefined} grow
- * @returns {import("./layout/flexLayout.js").SizeDef}
- */
-function getAxisSize(items, spacing, grow) {
-    // Container growth and resize observation are decided before data loads.
-    if (items.length === 0) {
-        return { px: 0, grow: grow ?? 0 };
-    }
-
-    const totalSpacing = Math.max(0, items.length - 1) * spacing;
-    items.push({ px: totalSpacing });
-    return sumSizeDefs(items);
 }

@@ -292,6 +292,70 @@ remain modest and the 15% SLOC target remains unmet. The milestone is retained
 for simpler ownership, fewer generated view/wrapper objects, the rendering fix,
 and improvements in all three shipped-size measurements.
 
-All authorized milestones are complete. The existing changeset is now a Core
+The legend ownership milestone is complete. The existing changeset is now a Core
 patch note for the rendering/padding fix; unrelated pending fragments still
 make the aggregate release plan minor.
+
+## Shared facet/grid track prototype
+
+The user authorized a bounded structural prototype after legend ownership.
+Its comparison base is `9151cf92c`; the original branch baseline and expanded
+source scope remain unchanged.
+
+- [x] Map shared calculations and prototype a pure measurement/allocation path
+  used by both facet and grid. Preserve facet's decorated-track allocation and
+  grid's separate structural margin slots; do not merge their rounding or
+  zero-size spacing rules. Keep Surround's supported hooks and growth weights.
+- [x] Verify incomplete facet rows, directional headers, constraints, scrolling,
+  nested surrounds and App layout consumers using existing subsystem suites.
+  Independently review the prototype and compressed-size comparison.
+- [x] Keep the prototype only if both callers become clearer and shipped
+  compressed size improves; otherwise discard the production edits and commit
+  the measured decision. Reconcile this milestone before delivery.
+
+Initial mapping found that the genuinely shared pieces are SizeDef summation
+and constrained allocation. Deeper measurement differs: facets add fixed
+guide/header extents to each track then shrink arranged rectangles; grids
+measure separate plot, structural-flex and chrome slots. A generic callback or
+mode-driven track engine must justify its added code against those differences.
+
+The combined prototype was discarded after independent review. It shared only
+the allocation call sequence, added a result object to every
+`mapToPixelCoords` call, and did not simplify either measurement path. Facets
+allocate whole decorated tracks and then shrink their rectangles. Grids allocate
+separate plot and structural-margin slots, including growing surround arms.
+Merging these representations would complicate device-pixel rounding and
+zero-size spacing behavior. A mode-driven engine or callback adapters would
+replace the remaining explicit calculations with more machinery.
+
+The retained slice gives `sumSizeDefs` optional fixed spacing and empty growth,
+removing facet's local helper and its mutation of the track array. Existing
+callers retain their default behavior. Before facet data loads, empty sums still
+preserve child growth without imposing a zero maximum. Independent review found
+no correctness issues and recommended retaining this smaller cleanup.
+
+Measurements relative to `9151cf92c` (negative means smaller):
+
+| Variant                                      | Production SLOC | Physical lines | Shipped minified | Shipped gzip | Shipped Brotli |
+| -------------------------------------------- | --------------: | -------------: | ---------------: | -----------: | -------------: |
+| Combined allocation and summation, discarded |              -3 |             -2 |            -63 B |        -39 B |          +19 B |
+| Summation only, retained                     |              -2 |             -9 |            -74 B |        -30 B |          -11 B |
+
+The retained source scope is 9,298 SLOC / 13,194 physical lines; its individually
+minified attribution proxy is 124,081 B / gzip 39,405 B / Brotli 34,159 B.
+The shipped bundle is 1,430,183 B / gzip 517,168 B / Brotli 415,926 B, using the
+same build and compression settings as previous milestones.
+
+Verification: all 340 tests in the ten focused Core/App layout suites pass for
+both prototypes. These cover facet dataflow/interaction and SVG output, flex
+constraints, grid/surround layout and snapshots, and App sample/metadata layouts.
+No new tests or snapshots are needed for the retained helper substitution.
+Core TypeScript, focused ESLint, and release policy checks also pass. The
+existing legend-fix changeset still describes the contribution; this cleanup
+needs no additional release note.
+
+The branch now removes 345 production SLOC (3.58%) from the expanded baseline,
+including `legendView.js`. Shipped savings are 3,986 minified bytes, 790 gzip
+bytes and 603 Brotli bytes. The 15% SLOC target remains unmet. This experiment
+does not establish a useful shared track engine; that approach is discarded
+because the supported layout models require different measurements.
