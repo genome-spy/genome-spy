@@ -92,12 +92,12 @@ Returns handles for the current layout child views in spec order.
 
 > **readData**: (`options`) => `object`
 
-Copies loaded transformed records inside the viewport or a named interval
-brush, using structuredClone semantics and omitting picking identifiers.
+Copies all loaded transformed records, or those inside the viewport or a named
+interval brush, using structuredClone semantics and omitting picking identifiers.
 Membership is tested before the limit; truncated means more matches exist.
 Viewport membership uses encoded data positions, before pixel offsets or
 occlusion. Brush membership follows existing interval-selection predicates.
-Requires unconditional positional encodings and, for viewport reads,
+Scoped reads require unconditional positional encodings and, for viewport reads,
 continuous scales. Does not fetch data. Throws for unready data, containers,
 unsupported projections, or stale handles. Scans synchronously without a
 spatial index. Limit must be a nonnegative safe integer and bounds row count.
@@ -106,8 +106,8 @@ spatial index. Limit must be a nonnegative safe integer and bounds row count.
 
 | Parameter | Type |
 | ------ | ------ |
-| `options` | \{ `scope`: `"viewport"` \| \{ `selection`: `string`; \}; `limit`: `number`; \} |
-| `options.scope` | `"viewport"` \| \{ `selection`: `string`; \} |
+| `options` | \{ `scope`: `"all"` \| `"viewport"` \| \{ `selection`: `string`; \}; `limit`: `number`; \} |
+| `options.scope` | `"all"` \| `"viewport"` \| \{ `selection`: `string`; \} |
 | `options.limit` | `number` |
 
 #### Returns

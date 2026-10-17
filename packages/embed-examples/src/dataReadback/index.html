@@ -19,6 +19,7 @@
             >Read scope
             <select id="scope">
                 <option value="viewport">Viewport</option>
+                <option value="all">All loaded records</option>
                 <option value="brush">Brush</option>
             </select></label
         >
@@ -41,7 +42,8 @@
         </p>
         <p>
             Zooming and brushing choose which summaries to read; they do not
-            recompute the groups. A cleared brush returns no summaries.
+            recompute the groups. “All loaded records” also reads summaries
+            outside the viewport or brush. A cleared brush returns no summaries.
             Synthetic generic data.
         </p>
         <script type="module" src="./index.js"></script>

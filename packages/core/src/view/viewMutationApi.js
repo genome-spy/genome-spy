@@ -1094,10 +1094,12 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
  * Reads data-space membership with the same predicates as existing selections
  * and viewport-derived domains. Indexing is deliberately outside this read path.
  * @param {UnitView} view
- * @param {"viewport" | {selection: string}} scope
+ * @param {"all" | "viewport" | {selection: string}} scope
  * @returns {(datum: import("../data/flowNode.js").Datum) => boolean}
  */
 function createDataReadPredicate(view, scope) {
+    if (scope === "all") return () => true;
+
     if (
         scope &&
         typeof scope === "object" &&
@@ -1128,7 +1130,7 @@ function createDataReadPredicate(view, scope) {
     }
     if (scope !== "viewport")
         throw new Error(
-            "Data reads require a viewport or named interval-selection scope."
+            "Data reads require an all, viewport, or named interval-selection scope."
         );
 
     /** @type {import("../data/viewportDomain.js").ViewportConstraint[]} */

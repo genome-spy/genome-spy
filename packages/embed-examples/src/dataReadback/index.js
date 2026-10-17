@@ -58,7 +58,10 @@ const clearButton = /** @type {HTMLButtonElement} */ (
 /** Read group summaries computed by Core; the page does no aggregation. */
 function selectMatches() {
     const { rows, truncated } = view.readData({
-        scope: scope.value === "brush" ? { selection: "brush" } : "viewport",
+        scope:
+            scope.value === "brush"
+                ? { selection: "brush" }
+                : /** @type {"all" | "viewport"} */ (scope.value),
         limit: 100,
     });
     if (truncated)

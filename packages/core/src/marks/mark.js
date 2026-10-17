@@ -18,6 +18,7 @@ import { getSelectionPredicateParams } from "../selection/selection.js";
 import { normalizeOrderDefinition } from "../selection/order.js";
 import { expandNamedPredicateCondition } from "../selection/selectionPredicateTree.js";
 import { asArray } from "../utils/arrayUtils.js";
+import { isInChromeSubtree } from "../view/viewChrome.js";
 
 /**
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
@@ -606,16 +607,19 @@ export default class Mark {
     }
 
     /**
-     * Picking and point-selection predicates both require record identifiers.
-     * Dataflow and encoding preparation must agree even when picking is off.
+     * Native point selections store membership by internal row ID, even when
+     * picking is disabled. Generated guides inherit parameters for formatting,
+     * but must not acquire selection-only clones, indexes, or GPU attributes.
+     * Dataflow and encoding preparation use this same decision.
      * @returns {boolean}
      */
     requiresRecordIdentity() {
         return (
             this.isPickingParticipant() ||
-            this.unitView
-                .getDataAncestors()
-                .some((ancestor) => ancestor.paramRuntime.hasPointSelections())
+            (!isInChromeSubtree(this.unitView) &&
+                this.unitView.paramRuntime.hasPointSelections({
+                    inherited: true,
+                }))
         );
     }
 

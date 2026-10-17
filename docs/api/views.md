@@ -93,23 +93,28 @@ if (tracks.isAlive()) {
 }
 ```
 
-## Reading records in a viewport or brush
+## Reading transformed records
 
 `view.readData({scope, limit})` returns `{rows, truncated}` from a unit view's
 loaded transformed records. Scope is required:
 
 ```js
 const track = api.views.get({ scope: [], view: "observations" });
+const all = track.readData({ scope: "all", limit: 1000 });
 const viewport = track.readData({ scope: "viewport", limit: 1000 });
 const brushed = track.readData({ scope: { selection: "brush" }, limit: 1000 });
 ```
+
+The `"all"` scope reads the current collector without positional constraints, including
+records outside the viewport or brush. It supports nominal, conditional, or absent
+positional encodings.
 
 Viewport reads test encoded data positions against continuous x/y scale domains,
 using the same overlap rules as viewport-derived domains: point boundaries are
 inclusive, and ranged marks must overlap. Brush reads use the named interval
 selection's existing membership predicates, independently of the viewport; a
-cleared brush returns no rows. Both scopes require unconditional positional
-encodings. They describe data-space membership before pixel offsets, clipping,
+cleared brush returns no rows. Viewport and brush scopes require unconditional
+positional encodings. They describe data-space membership before pixel offsets, clipping,
 opacity, or occlusion, rather than proving visible pixels.
 
 Membership is tested **before** the nonnegative safe integer limit. Only returned
@@ -127,9 +132,9 @@ stale handles throw.
 
 Point-selection records remain available through the existing
 `view.params.getSelection(name).getValue().data`; their getter and subscription
-behavior are unchanged. The read scope accepts interval selections only.
+behavior are unchanged. Named selection scopes accept interval selections only.
 See [Read and select records](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/dataReadback)
-for a small brush/viewport-to-selection example.
+for a small readback-to-selection example.
 
 ## Marks and scoped interaction
 

@@ -119,6 +119,68 @@ test("reads bounded transformed records with cloned values and no picking identi
     ).toThrow("unit view");
 });
 
+test("all-data reads ignore viewport and brush while retaining copy and limit semantics", async () => {
+    const { root, unit, handle, views } = await setup();
+    await unit.getScaleResolution("x").zoomTo([3, 5], 0);
+    handle.params.get("brush").setValue(intervalSelection({ x: [0, 2] }));
+    await root.paramRuntime.whenPropagated();
+    const result = handle.readData({ scope: "all", limit: 3 });
+    expect(result.rows.map((row) => row.id)).toEqual(["A", "C", "B"]);
+    expect(result.truncated).toBe(false);
+    expect(result.rows.every((row) => !("__uniqueId" in row))).toBe(true);
+    /** @type {{note: string}} */ (result.rows[0].nested).note = "changed";
+    expect(handle.readData({ scope: "all", limit: 1 })).toMatchObject({
+        rows: [{ id: "A", score: 2, nested: { note: "original" } }],
+        truncated: true,
+    });
+    expect(handle.readData({ scope: "all", limit: 0 })).toEqual({
+        rows: [],
+        truncated: true,
+    });
+    views.root().datasets.set("rows", [{ id: "new", group: 1, value: 9 }]);
+    expect(handle.readData({ scope: "all", limit: 2 })).toEqual({
+        rows: [{ id: "new", group: 1, value: 9, score: 18 }],
+        truncated: false,
+    });
+    views.root().datasets.set("rows", []);
+    expect(handle.readData({ scope: "all", limit: 0 })).toEqual({
+        rows: [],
+        truncated: false,
+    });
+});
+
+test.each([
+    {},
+    { x: { field: "id", type: "nominal", scale: { domain: ["A"] } } },
+    {
+        x: {
+            condition: { param: "choose", field: "x", type: "quantitative" },
+            value: 0,
+        },
+    },
+])(
+    "all-data reads do not require a supported positional projection: %j",
+    async (encoding) => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "choose", select: "point" }],
+            data: { values: [{ id: "A", x: 1 }] },
+            mark: { type: "point", tooltip: null },
+            encoding: /** @type {import("../spec/channel.js").Encoding} */ (
+                encoding
+            ),
+        });
+        const handle = createViewMutationApi({ viewRoot: view }).root();
+        expect(handle.readData({ scope: "all", limit: 1 })).toEqual({
+            rows: [{ id: "A", x: 1 }],
+            truncated: false,
+        });
+        expect(() =>
+            handle.readData({ scope: "viewport", limit: 1 })
+        ).toThrow();
+        view.disposeSubtree();
+    }
+);
+
 test.each(["point", "text", "rect"])(
     "writes inherited native selection for %s marks without picking",
     async (mark) => {
@@ -146,6 +208,7 @@ test.each(["point", "text", "rect"])(
             )
         ).toEqual([0.2, 1, 1]);
         expect(unit.mark.encoding.uniqueId).toBeDefined();
+        expect(unit.mark.isPickingParticipant()).toBe(false);
         selected.setValue([]);
         expect(selected.getValue()).toMatchObject({ active: false, data: [] });
         stop();
