@@ -659,13 +659,8 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     const labelBaseline = h ? "top" : (legend.labelBaseline ?? "middle");
     const labelFontSize = legend.labelFontSize ?? 10;
     const labelOffset = legend.labelOffset ?? 4;
-    const xs = {
-        domain: [0, { expr: "width" }],
-        zero: false,
-        nice: false,
-    };
-    const ys = {
-        domain: [0, { expr: "height" }],
+    const qs = {
+        domain: [0, { expr: h ? "height" : "width" }],
         zero: false,
         nice: false,
     };
@@ -688,26 +683,23 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     const p2 = /** @type {"x2" | "y2"} */ (p + "2");
     const q = h ? "y" : "x";
     const q2 = /** @type {"x2" | "y2"} */ (q + "2");
-    const qs = h ? ys : xs;
-    const band0 = "_legendGradientBandStart";
-    const band1 = "_legendGradientBandStop";
-    const tick0 = "_legendGradientTickStart";
-    const tick1 = "_legendGradientTickStop";
-    const label = "_legendGradientLabelPosition";
+    const bandStart = h ? gradientY : 0;
+    const bandStop = h ? gradientY2 : gradientThickness;
     /**
-     * @param {string} field
+     * @param {string | number} position
      * @param {import("../spec/scale.js").Scale} scale
-     * @param {boolean} indexed
-     * @returns {import("../spec/channel.js").PositionFieldDef}
+     * @param {boolean} [disableIndex]
+     * @returns {import("../spec/channel.js").PositionFieldDef | import("../spec/channel.js").PositionDatumDef}
      */
-    const enc = (field, scale, indexed) =>
-        /** @type {import("../spec/channel.js").PositionFieldDef} */ ({
-            field,
-            type: "quantitative",
-            scale,
-            axis: null,
-            ...(indexed ? { buildIndex: false } : {}),
-        });
+    const enc = (position, scale, disableIndex = false) => ({
+        ...(typeof position === "string"
+            ? { field: position }
+            : { datum: position }),
+        type: "quantitative",
+        scale,
+        axis: null,
+        ...(disableIndex ? { buildIndex: false } : {}),
+    });
     /** @type {import("../spec/data.js").Data} */
     const tickData = {
         lazy: {
@@ -718,43 +710,10 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             values: legend.values,
         },
     };
-    /** @type {import("../spec/transform.js").FormulaParams[]} */
-    const tickTransform = [
-        {
-            type: "formula",
-            expr: "" + (h ? tickY : tickX),
-            as: tick0,
-        },
-        {
-            type: "formula",
-            expr: "" + (h ? tickY2 : tickX2),
-            as: tick1,
-        },
-        {
-            type: "formula",
-            expr: "" + (h ? labelY : labelX),
-            as: label,
-        },
-    ];
-    /** @type {import("../spec/transform.js").FormulaParams[]} */
-    const bandTransform = [
-        {
-            type: "formula",
-            expr: "" + (h ? gradientY : 0),
-            as: band0,
-        },
-        {
-            type: "formula",
-            expr: "" + (h ? gradientY2 : gradientThickness),
-            as: band1,
-        },
-    ];
-
     /** @type {(import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec)[]} */
     const bodyLayer = [
         {
             name: "gradientRamp",
-            transform: bandTransform,
             mark: {
                 type: "rect",
                 clip: false,
@@ -762,17 +721,9 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             },
             encoding: {
                 [p]: enc(h ? "position0" : "position1", ps, p == "x"),
-                [p2]: {
-                    field: h ? "position1" : "position0",
-                    type: "quantitative",
-                    scale: ps,
-                },
-                [q]: enc(band0, qs, q == "x"),
-                [q2]: {
-                    field: band1,
-                    type: "quantitative",
-                    scale: qs,
-                },
+                [p2]: enc(h ? "position1" : "position0", ps),
+                [q]: enc(bandStart, qs, q == "x"),
+                [q2]: enc(bandStop, qs),
                 [channel]: {
                     field: "value",
                     type: "quantitative",
@@ -783,7 +734,6 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         {
             name: "gradientGuide",
             data: tickData,
-            transform: tickTransform,
             layer: [
                 {
                     name: "gradientTicks",
@@ -793,17 +743,9 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
                     },
                     encoding: {
                         [p]: enc("position", ps, p == "x"),
-                        [p2]: {
-                            field: "position",
-                            type: "quantitative",
-                            scale: ps,
-                        },
-                        [q]: enc(tick0, qs, q == "x"),
-                        [q2]: {
-                            field: tick1,
-                            type: "quantitative",
-                            scale: qs,
-                        },
+                        [p2]: enc("position", ps),
+                        [q]: enc(h ? tickY : tickX, qs, q == "x"),
+                        [q2]: enc(h ? tickY2 : tickX2, qs),
                     },
                 },
                 {
@@ -841,7 +783,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
                     },
                     encoding: {
                         [p]: enc("position", ps, p == "x"),
-                        [q]: enc(label, qs, q == "x"),
+                        [q]: enc(h ? labelY : labelX, qs, q == "x"),
                         text: { field: "label" },
                     },
                 },
@@ -853,14 +795,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         bodyLayer.push({
             name: "gradientBorder",
             data: {
-                values: [
-                    {
-                        position0: 0,
-                        position1: 1,
-                        [band0]: h ? gradientY : 0,
-                        [band1]: h ? gradientY2 : gradientThickness,
-                    },
-                ],
+                values: [{}],
             },
             mark: {
                 type: "rect",
@@ -870,18 +805,10 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
                 strokeWidth: gradientStrokeWidth,
             },
             encoding: {
-                [p]: enc("position0", ps, p == "x"),
-                [p2]: {
-                    field: "position1",
-                    type: "quantitative",
-                    scale: ps,
-                },
-                [q]: enc(band0, qs, q == "x"),
-                [q2]: {
-                    field: band1,
-                    type: "quantitative",
-                    scale: qs,
-                },
+                [p]: enc(0, ps, p == "x"),
+                [p2]: enc(1, ps),
+                [q]: enc(bandStart, qs, q == "x"),
+                [q2]: enc(bandStop, qs),
             },
         });
     }

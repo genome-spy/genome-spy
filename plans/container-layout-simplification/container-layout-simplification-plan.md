@@ -359,3 +359,58 @@ including `legendView.js`. Shipped savings are 3,986 minified bytes, 790 gzip
 bytes and 603 Brotli bytes. The 15% SLOC target remains unmet. This experiment
 does not establish a useful shared track engine; that approach is discarded
 because the supported layout models require different measurements.
+
+## Gradient legend coordinate simplification
+
+Comparison base: `c013231bf`. Replace constant cross-axis coordinate fields and
+five Formula transforms with scaled datum encodings. Keep the ramp's sampled
+position fields because SVG recognizes them, the existing pixel coordinate
+scale, and the border's independent single-instance data source.
+
+- [x] Remove constant coordinate dataflow and reuse the positional encoding
+  builder for field and datum positions. Preserve continuous/discrete ramps,
+  orientation, thickness, labels, tick positions and centered border geometry.
+- [x] Replace generated border-field assertions with representative SVG
+  geometry checks. Verify legend extent/layout, resize, SVG and WebGL examples,
+  types and lint; independently review runtime and test changes.
+- [x] Measure source and shipped minified/gzip/Brotli bytes using the fixed
+  expanded scope. Keep the cleanup if readable and compressed size improves.
+  Reconcile the record and commit as
+  `refactor(core): remove constant gradient legend transforms`.
+
+This changes generated internals only. The existing changeset remains accurate;
+no specification, documentation or migration change is intended.
+
+The positional encoding builder now accepts field names or numeric datums.
+Ramp samples keep their parallel-axis fields, while ramp, tick and label cross
+positions use the existing pixel scale directly. The border uses one empty datum
+and constant positions. All five Formula declarations and their intermediate
+fields are deleted; no additional layout or dataflow abstraction is introduced.
+
+Independent review found no actionable correctness or KISS issues, including
+secondary-channel resolution, constant WebGL uniforms, border instance count,
+resizing, SVG ramp recognition, label extent and the revised tests.
+
+All 118 tests in five focused layout/legend suites pass. Core TypeScript,
+focused ESLint, formatting and release-policy checks pass. Six WebGL examples
+pass: linear, log, quantize, threshold, gradient controls and the documentation
+gradient legend. The gradient-controls WebGL PNG, containing horizontal and
+vertical bordered ramps, is byte-identical to a capture of `c013231bf`.
+
+Tests replace generated border-data and appearance assertions with rendered
+geometry at two sizes in both directions, retaining the distinct border-outset
+sizing contract. This stronger resize/rendering coverage adds 65 physical test
+lines overall; it avoids retaining the overlapping internal-shape assertions.
+
+Relative to `c013231bf`, production shrinks by 70 SLOC / 73 physical lines.
+The source scope is now 9,228 SLOC / 13,121 physical lines; its minified attribution
+proxy is 123,472 B / gzip 39,250 B / Brotli 34,029 B. The shipped bundle is
+1,429,579 B / gzip 517,060 B / Brotli 415,807 B, saving 604 / 108 / 119 B in
+this milestone with the same build/compression settings.
+
+Across the branch, the expanded scope including `legendView.js` now removes
+415 production SLOC (4.30%) and 611 physical lines. Shipped savings from the
+original baseline are 4,590 minified bytes, 898 gzip bytes and 722 Brotli bytes.
+The 15% SLOC target remains unmet. The existing legend-fix changeset still
+describes the contribution; unrelated fragments make the aggregate release plan
+minor, and this internal simplification needs no additional note.
