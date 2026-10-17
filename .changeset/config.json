@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/@changesets/config/schema.json",
   "changelog": [
-    "@changesets/changelog-github",
+    "../scripts/changelog.mjs",
     { "repo": "genome-spy/genome-spy" }
   ],
   "commit": false,

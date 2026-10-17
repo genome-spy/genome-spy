@@ -49,6 +49,8 @@ jobs:
 
             - name: Verify the reviewed release
               id: release
+              env:
+                  GH_TOKEN: ${{ github.token }}
               run: |
                   npm run release:verify -- "$VERSION"
                   if git show-ref --verify --quiet "refs/tags/v$VERSION"; then
@@ -56,10 +58,11 @@ jobs:
                       exit 1
                   fi
                   echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-                  npm run --silent release:notes > "$RUNNER_TEMP/release-notes.md"
+                  npm run --silent release:notes -- --github > "$RUNNER_TEMP/release-notes.md"
 
             - run: npm run lint
             - run: npx eslint scripts/release.mjs scripts/checkChangesets.mjs scripts/verifyPackedPackages.mjs scripts/release.test.mjs
+            - run: npx eslint scripts/changelog.mjs scripts/changelog.test.mjs
             - run: npm --workspaces run test:tsc --if-present
             # Bundle smoke tests rebuild App's dist without its generated schema.
             # The complete production build must be the last writer before packing.

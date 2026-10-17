@@ -46,6 +46,12 @@ affected package propagates the bump to the group. Private applications are
 versioned but never published or tagged. The private WebGPU prototype remains
 outside the group, at its own development version.
 
+Start the fragment body with `<!-- category: feature -->`,
+`<!-- category: improvement -->`, or `<!-- category: fix -->`, followed by a blank
+line and a concise changelog entry. Categories control presentation independently
+of version bumps; any major bump appears under **Breaking changes**. Empty
+no-release markers do not need a category.
+
 Update an existing fragment when further commits change the same unreleased
 feature. Use separate fragments for independent changes. For changes with no
 release impact, such as tests, CI, pure refactoring, or internal documentation,
@@ -79,9 +85,13 @@ git diff
 `release:status` inspects the calculated versions without modifying the repo.
 `release:version` runs Changesets, consumes pending fragments, updates manifests
 and package changelogs, synchronizes `package-lock.json`, and
-adds a root changelog entry grouped into breaking changes, features, and fixes.
+adds a root changelog entry grouped into breaking changes, new features,
+improvements, and fixes, with readable labels for directly affected packages.
 Each logical fragment appears once in the root entry, even when several fixed
-packages are affected. The GitHub changelog formatter supplies PR/commit links
+packages are affected. The shared formatter removes category metadata and puts
+descriptions before PR/commit links and contributor attribution. Package
+changelogs retain Changesets' version-bump headings.
+The GitHub changelog formatter supplies PR/commit links
 and contributor attribution; release preparation needs a `GITHUB_TOKEN` with
 the formatter's documented read permissions. See the
 [formatter documentation](https://changesets.dev/packages/changelog-github).
@@ -89,6 +99,18 @@ Empty fragments alone do not create a release. This command supports stable
 releases. The deferred branch policy and required prerelease work are recorded
 under [future major release lines](#future-major-release-lines). Snapshot
 workflows require a separate design.
+
+For optional release-wide prose, prepare a Markdown file outside the working
+tree (or commit it first) and run:
+
+```sh
+npm run release:version -- --intro /tmp/genomespy-release-intro.md
+```
+
+The prose appears above the grouped entries. You can also edit the prepared root
+release entry before committing it, including paragraphs, links, or headings.
+Both offline and GitHub release-note output preserve this prose; individual
+changeset entries remain concise.
 
 Review and commit all generated changes using Conventional Commits, then run the
 normal lint, type, build, and test checks and `npm run smoke:examples` before
@@ -150,6 +172,18 @@ skips versions already present on npm. Publication reuses the completed
 builds; publishing does not repeat them. The action creates the single
 annotated `vX.Y.Z` tag at that commit and a GitHub release containing the root
 changelog entry after npm succeeds. Package-specific Git tags are disabled.
+
+Before publishing, `npm run release:notes -- --github` enriches that entry with
+GitHub's **New Contributors** section when present and a thank-you line mentioning
+release contributors. GitHub renders those mentions as its contributor avatar
+list. Credits include PR authors and GitHub-linked commit authors across every
+page of the release comparison, including direct commits. First-contribution
+recognition follows GitHub's PR-based release-note generator. This command needs
+`GH_TOKEN` or `GITHUB_TOKEN` with Contents write permission; the action supplies
+its existing token. Plain `release:notes` reads the reviewed entry offline.
+Contributor credits are added to the GitHub release body; fragments and the root
+changelog stay focused on the changes. API failures stop the job before npm
+publication.
 
 The action explicitly calls the docs/Playground deployment workflow at the new
 tag, including versioned schemas and alias updates. A GitHub release created

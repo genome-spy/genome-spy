@@ -3,6 +3,8 @@
 "@genome-spy/app": minor
 ---
 
+<!-- category: feature -->
+
 Add `surround` composition for annotated heatmaps, UpSet plots, and other
 layouts with aligned marginal panels. Panels share the central plot's
 corresponding x or y scale and can have surrounding panels of their own.
