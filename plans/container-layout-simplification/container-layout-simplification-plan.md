@@ -561,3 +561,56 @@ of 458 SLOC (4.75%) / 688 physical lines from the original baseline. Whole-branc
 shipped savings are 5,537 minified bytes, 1,059 gzip bytes and 841 Brotli bytes.
 The 15% target remains unmet. The existing legend fix changeset remains accurate;
 this internal refactor needs no additional fragment.
+
+## Legend measurement consolidation
+
+Comparison base: `783e16083`. Share perpendicular body/title composition and
+remove repeated gradient/title arithmetic and small forwarding helpers.
+Keep existing title contributions, including their direction-dependent behavior;
+this milestone does not correct or redefine legend geometry.
+
+- [x] Consolidate body sizing without adding retained state or measuring title
+  width on parallel-only reads that previously needed only font height. Preserve
+  initial unmeasured fallbacks, fractional minimums, growth thresholds, adaptive
+  gradient length, border outset and wrapping.
+- [x] Review and simplify related tests while preserving public size/rendering
+  contracts. Verify focused headless/SVG suites and representative WebGL legend
+  examples; independently review the production change and downstream consumers.
+- [x] Measure fixed-scope SLOC and shipped minified/gzip/Brotli bytes. Retain only
+  a clearer implementation with compressed-size improvement, and commit as
+  `refactor(core): consolidate legend size measurement`.
+
+The existing legend fix changeset covers this contribution; a behavior-preserving
+internal refactor needs no additional release note or public documentation.
+
+One perpendicular measurement path now selects body and title extents for both
+directions, then combines them according to title placement. The horizontal
+gradient body reuses its minimum extent. Five small sizing helpers are removed;
+parallel measurement retains its body branches and lazy font-width reads.
+Initial fractional minimums, addition order, zero/title clamps, rounding and
+growth thresholds remain unchanged. Returning both body dimensions was prototyped
+and discarded: it computed unused dimensions, allocated objects during size
+reads and increased the shipped Brotli size despite reducing source lines.
+
+Ten baseline geometry cases replace generated child-order assertions and a
+loose extent bound, covering initial and measured symbol/gradient sizes in both
+directions with every title placement, null titles and fractional dimensions.
+An overlapping adaptive-title minimum test is removed. Tests shrink by 20 SLOC /
+24 physical lines. The production change removes 32 SLOC / 58 physical lines,
+all inside the fixed scope; no runtime code moves outside that scope.
+
+Independent review found no actionable issues and verified 300,000 deterministic
+old/new arithmetic comparisons, including title-width measurement frequency.
+All 185 tests in eight focused Core/App suites pass, including layout snapshots
+and SVG legend/example output. Workspace type checks, full lint, formatting and
+release-policy checks pass. Gradient controls, region directions, wrapping and
+root-collected legends produce byte-identical WebGL captures to `783e16083`;
+rendered captures were also inspected.
+
+The fixed scope is now 9,153 SLOC / 12,986 physical lines. Its attribution proxy
+is 122,774 B / gzip 39,108 B / Brotli 33,917 B, saving 221 / 55 / 62 B this
+milestone. The shipped bundle is 1,428,395 B / gzip 516,853 B / Brotli 415,573 B,
+saving 237 / 46 / 115 B. Whole-branch savings are 490 SLOC (5.08%) / 746 physical
+lines, and 5,774 / 1,105 / 956 shipped minified/gzip/Brotli bytes. The 15% target
+remains unmet. This internal cleanup reuses the accurate legend fix changeset;
+unrelated pending fragments keep the aggregate release plan minor.

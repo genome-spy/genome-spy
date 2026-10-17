@@ -1563,33 +1563,41 @@ function getMeasuredLabels(labelViews) {
  * @param {import("../types/viewContext.js").default} context
  */
 function getLegendExtent(legend, type, measuredLabels, context) {
-    if (isHorizontalLegend(legend)) {
-        return getHorizontalLegendExtent(legend, type, measuredLabels);
-    }
-
-    const titleWidth = isSideTitle(legend)
-        ? getTitleWidthWithPadding(legend, context)
-        : getTitleWidth(legend, context);
+    const horizontal = isHorizontalLegend(legend);
+    const sideTitle = isSideTitle(legend);
+    const minimum = getMinimumLegendExtent(type, legend);
     const labelOffset = legend.labelOffset ?? 4;
-    const labelExtent =
-        type == "gradient"
-            ? (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
-              getGradientBorderOutset(legend) +
-              DEFAULT_GRADIENT_TICK_SIZE +
-              labelOffset +
-              measuredLabels.maxWidth
-            : measuredLabels.maxEntryWidth ||
-              Math.sqrt(legend.symbolSize ?? 100) +
-                  (legend.symbolStrokeWidth ?? 1.5) +
-                  labelOffset +
-                  measuredLabels.maxWidth;
+    const bodyExtent = horizontal
+        ? type == "gradient"
+            ? minimum
+            : measuredLabels.maxY + (legend.labelFontSize ?? 10) / 2
+        : type == "gradient"
+          ? (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
+            getGradientBorderOutset(legend) +
+            DEFAULT_GRADIENT_TICK_SIZE +
+            labelOffset +
+            measuredLabels.maxWidth
+          : measuredLabels.maxEntryWidth ||
+            Math.sqrt(legend.symbolSize ?? 100) +
+                (legend.symbolStrokeWidth ?? 1.5) +
+                labelOffset +
+                measuredLabels.maxWidth;
+    const titleExtent = legend.title
+        ? horizontal
+            ? (legend.titleFontSize ?? 11) +
+              (sideTitle ? 0 : (legend.titlePadding ?? 5))
+            : getTitleWidth(legend, context) +
+              (sideTitle ? (legend.titlePadding ?? 5) : 0)
+        : 0;
+    const combined =
+        horizontal !== sideTitle
+            ? bodyExtent + titleExtent
+            : Math.max(bodyExtent, titleExtent);
 
     return Math.ceil(
-        Math.max(
-            getMinimumLegendExtent(type, legend),
-            isSideTitle(legend) ? labelExtent + titleWidth : labelExtent,
-            titleWidth
-        )
+        horizontal
+            ? Math.max(minimum, combined)
+            : Math.max(minimum, combined, titleExtent)
     );
 }
 
@@ -1598,18 +1606,14 @@ function getLegendExtent(legend, type, measuredLabels, context) {
  * @param {LegendConfig} legend
  */
 function getMinimumLegendExtent(type, legend) {
-    if (isHorizontalLegend(legend)) {
-        return type == "gradient"
-            ? (legend.labelFontSize ?? 10) +
-                  (legend.labelOffset ?? 4) +
-                  DEFAULT_GRADIENT_TICK_SIZE +
-                  (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
-                  getGradientBorderOutset(legend) +
-                  2
-            : 0;
-    } else {
-        return 0;
-    }
+    return type == "gradient" && isHorizontalLegend(legend)
+        ? (legend.labelFontSize ?? 10) +
+              (legend.labelOffset ?? 4) +
+              DEFAULT_GRADIENT_TICK_SIZE +
+              (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
+              getGradientBorderOutset(legend) +
+              2
+        : 0;
 }
 
 /**
@@ -1619,10 +1623,14 @@ function getMinimumLegendExtent(type, legend) {
  * @param {import("../types/viewContext.js").default} context
  */
 function getStackedLegendParallelSize(legend, type, measuredLabels, context) {
-    const titleExtent = getParallelTitleExtent(legend, context);
-    const titleSideBySide = isSideTitle(legend);
+    const sideTitle = isSideTitle(legend);
+    const titleExtent = legend.title
+        ? (sideTitle
+              ? getTitleWidth(legend, context)
+              : (legend.titleFontSize ?? 11)) + (legend.titlePadding ?? 5)
+        : 0;
     const combine = (/** @type {number} */ bodyExtent) =>
-        isHorizontalLegend(legend) == titleSideBySide
+        isHorizontalLegend(legend) == sideTitle
             ? Math.ceil(titleExtent + bodyExtent)
             : Math.ceil(Math.max(titleExtent, bodyExtent));
 
@@ -1644,72 +1652,6 @@ function getStackedLegendParallelSize(legend, type, measuredLabels, context) {
                 (legend.symbolStrokeWidth ?? 1.5)
         );
     }
-}
-
-/**
- * @param {LegendConfig} legend
- * @param {"symbol" | "gradient"} type
- * @param {MeasuredLabels} measuredLabels
- */
-function getHorizontalLegendExtent(legend, type, measuredLabels) {
-    const labelFontSize = legend.labelFontSize ?? 10;
-    const labelOffset = legend.labelOffset ?? 4;
-    const titleExtent = getPerpendicularTitleExtent(legend);
-    const bodyExtent =
-        type == "gradient"
-            ? labelFontSize +
-              labelOffset +
-              DEFAULT_GRADIENT_TICK_SIZE +
-              (legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS) +
-              getGradientBorderOutset(legend) +
-              2
-            : measuredLabels.maxY + labelFontSize / 2;
-
-    return Math.ceil(
-        Math.max(
-            getMinimumLegendExtent(type, legend),
-            isSideTitle(legend)
-                ? Math.max(titleExtent, bodyExtent)
-                : titleExtent + bodyExtent
-        )
-    );
-}
-
-/**
- * @param {LegendConfig} legend
- */
-function getTitleHeight(legend) {
-    return legend.title ? (legend.titleFontSize ?? 11) : 0;
-}
-
-/**
- * @param {LegendConfig} legend
- */
-function getPerpendicularTitleExtent(legend) {
-    return legend.title
-        ? getTitleHeight(legend) +
-              (isSideTitle(legend) ? 0 : (legend.titlePadding ?? 5))
-        : 0;
-}
-
-/**
- * @param {LegendConfig} legend
- * @param {import("../types/viewContext.js").default} context
- */
-function getParallelTitleExtent(legend, context) {
-    return isSideTitle(legend)
-        ? getTitleWidthWithPadding(legend, context)
-        : getPerpendicularTitleExtent(legend);
-}
-
-/**
- * @param {LegendConfig} legend
- * @param {import("../types/viewContext.js").default} context
- */
-function getTitleWidthWithPadding(legend, context) {
-    return legend.title
-        ? getTitleWidth(legend, context) + (legend.titlePadding ?? 5)
-        : 0;
 }
 
 /**
