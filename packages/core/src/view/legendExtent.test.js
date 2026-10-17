@@ -4,12 +4,7 @@ import LegendView from "./legendView.js";
 import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import { createBroadcastingTestViewContext } from "./testUtils.js";
-import { VIEW_ROOT_NAME } from "./viewFactory.js";
-import {
-    calculateCanvasSize,
-    checkForDuplicateScaleNames,
-} from "./viewUtils.js";
-import { initializeViewData } from "../genomeSpy/viewDataInit.js";
+import { calculateCanvasSize } from "./viewUtils.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 
 /**
@@ -65,22 +60,8 @@ function findLegendView(root) {
  * @param {BroadcastingViewContext} context
  */
 async function createAndInitializeRoot(spec, context) {
-    const root = await context.createOrImportView(
-        /** @type {import("../spec/view.js").ViewSpec} */ (spec),
-        null,
-        null,
-        VIEW_ROOT_NAME
-    );
-
-    checkForDuplicateScaleNames(root);
-    await initializeViewData(
-        root,
-        context.dataFlow,
-        context.textMetrics,
-        () => undefined
-    );
-
-    return root;
+    const { view } = await createHeadlessEngine(spec, { context });
+    return view;
 }
 
 /**

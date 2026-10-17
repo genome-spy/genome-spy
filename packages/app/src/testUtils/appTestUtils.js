@@ -1,6 +1,7 @@
 import ConcatView from "@genome-spy/core/view/concatView.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
+import { initializeViewGuides } from "@genome-spy/core/view/gridView/guideViewSync.js";
 
 import setupStore from "../state/setupStore.js";
 import IntentExecutor from "../state/intentExecutor.js";
@@ -169,6 +170,7 @@ export async function createSampleViewForTest(options) {
     );
 
     await view.initializeChildren();
+    await initializeViewGuides(view);
 
     if (initializeFlow) {
         initializeViewSubtree(view, context.dataFlow);

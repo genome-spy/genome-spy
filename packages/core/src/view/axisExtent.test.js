@@ -9,9 +9,6 @@ import {
     createBroadcastingTestViewContext,
     createHeadlessEngine,
 } from "./testUtils.js";
-import { VIEW_ROOT_NAME } from "./viewFactory.js";
-import { checkForDuplicateScaleNames } from "./viewUtils.js";
-import { initializeViewData } from "../genomeSpy/viewDataInit.js";
 import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import { isDataReady } from "../data/dataReadiness.js";
@@ -102,22 +99,8 @@ function findTicksAndLabelsView(axisView) {
  * @param {ReturnType<typeof createBroadcastingTestViewContext>} context
  */
 async function createAndInitializeRoot(spec, context) {
-    const root = await context.createOrImportView(
-        /** @type {import("../spec/view.js").ViewSpec} */ (spec),
-        null,
-        null,
-        VIEW_ROOT_NAME
-    );
-
-    checkForDuplicateScaleNames(root);
-    await initializeViewData(
-        root,
-        context.dataFlow,
-        context.textMetrics,
-        () => undefined
-    );
-
-    return root;
+    const { view } = await createHeadlessEngine(spec, { context });
+    return view;
 }
 
 /**

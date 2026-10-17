@@ -4,8 +4,8 @@ import AxisView, { createGenomeAxis } from "./axisView.js";
 import LayerView from "./layerView.js";
 import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
-import { specToLayout } from "./testUtils.js";
-import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
+import View from "./view.js";
+import { create, specToLayout } from "./testUtils.js";
 
 /**
  * @param {import("./view.js").default} root
@@ -53,7 +53,7 @@ function findUnitView(axisView, name) {
 async function createAxis(orient, axis, type = "quantitative", zoom) {
     const channel = orient === "left" || orient === "right" ? "y" : "x";
     const disabledChannel = channel === "x" ? "y" : "x";
-    const { view } = await createHeadlessViewHierarchy(
+    const view = await create(
         {
             data: { values: [{ x: 1, y: 2 }] },
             mark: "point",
@@ -74,11 +74,8 @@ async function createAxis(orient, axis, type = "quantitative", zoom) {
                 },
             },
         },
-        {
-            viewFactoryOptions: {
-                wrapRoot: true,
-            },
-        }
+        View,
+        { wrapRoot: true }
     );
 
     return findAxisView(view, orient);

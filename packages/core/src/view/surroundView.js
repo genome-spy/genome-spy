@@ -116,7 +116,6 @@ export default class SurroundView extends GridView {
             })
         );
         this.setChildren([this.#center, ...sides]);
-        await this.syncGuideViews();
     }
 
     /**

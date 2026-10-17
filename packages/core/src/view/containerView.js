@@ -15,6 +15,14 @@ export default class ContainerView extends View {
     }
 
     /**
+     * Materializes guides after the authored hierarchy's resolutions are ready.
+     * @param {{ legendOwners?: View[] }} [_options]
+     */
+    async syncGuideViews(_options) {
+        // override when this container owns guides
+    }
+
+    /**
      * Generates an auto name that is guaranteed to be unique within this container
      * for the given prefix. Intended for debugging-only default names.
      *

@@ -36,13 +36,7 @@ import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
-import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
-import { attachViewLevelScaleProps } from "./scales/viewLevelScaleProps.js";
-import {
-    attachViewLevelAxisProps,
-    attachViewLevelLegendProps,
-} from "./scales/viewLevelGuideProps.js";
-import { syncViewGuideViews } from "./view/gridView/guideViewSync.js";
+import { initializeViewGuides } from "./view/gridView/guideViewSync.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import {
     awaitSubtreeLazyReady,
@@ -535,11 +529,7 @@ export default class GenomeSpy {
         // Reminder: assemblies must be ensured after view creation (imports and
         // inheritance resolved), but before any code path that may touch scales
         // (e.g. step-based sizes, dynamic opacity, encoder initialization).
-        attachViewLevelScaleProps(this.viewRoot);
-        attachViewLevelAxisProps(this.viewRoot);
-        attachViewLevelLegendProps(this.viewRoot);
-        await ensureAssembliesForView(this.viewRoot, this.genomeStore);
-        await syncViewGuideViews(this.viewRoot);
+        await initializeViewGuides(this.viewRoot);
 
         this.#loadingStatusRegistry.set(this.viewRoot, "loading");
 

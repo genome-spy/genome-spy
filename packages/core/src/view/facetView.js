@@ -156,7 +156,6 @@ export default class FacetView extends ContainerView {
         });
 
         this.#gridChild = new FacetGridChild(this.child, this, 0);
-        await this.#gridChild.syncGuideViews();
 
         for (const channel of /** @type {const} */ (["column", "row"])) {
             const field = this.#facet[channel];

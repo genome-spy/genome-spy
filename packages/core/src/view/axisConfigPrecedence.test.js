@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import AxisView from "./axisView.js";
-import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
+import View from "./view.js";
+import { create } from "./testUtils.js";
 
 /**
  * @param {import("./view.js").default} root
@@ -27,12 +28,7 @@ function findAxisView(root, orient) {
  * @param {import("../spec/view.js").ViewSpec} spec
  */
 async function createRoot(spec) {
-    const { view } = await createHeadlessViewHierarchy(spec, {
-        viewFactoryOptions: {
-            wrapRoot: true,
-        },
-    });
-    return view;
+    return create(spec, View, { wrapRoot: true });
 }
 
 describe("axis config precedence", () => {

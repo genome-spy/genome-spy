@@ -7,6 +7,7 @@ import {
 import GridView from "./gridView/gridView.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
 import { getLegendResolutionOwners } from "./gridView/legendCollection.js";
+import { syncViewGuideViews } from "./gridView/guideViewSync.js";
 import { moveArrayItem } from "../utils/arrayUtils.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
@@ -73,8 +74,6 @@ export default class ConcatView extends GridView {
         );
 
         await this.#initializeAnnotationLayer();
-
-        await this.syncGuideViews();
     }
 
     /** @override */
@@ -249,6 +248,9 @@ export default class ConcatView extends GridView {
      * @returns {Promise<Set<GridView>>}
      */
     async #syncMutationGuideViews(gridChildren) {
+        for (const child of gridChildren) {
+            await syncViewGuideViews(child.view);
+        }
         await this.syncGuideViews({
             gridChildren,
             legendOwners: getLegendResolutionOwners(this),

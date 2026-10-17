@@ -414,3 +414,83 @@ original baseline are 4,590 minified bytes, 898 gzip bytes and 722 Brotli bytes.
 The 15% SLOC target remains unmet. The existing legend-fix changeset still
 describes the contribution; unrelated fragments make the aggregate release plan
 minor, and this internal simplification needs no additional note.
+
+## Guide initialization milestone
+
+Comparison base: `5aed6ecc1`. Construction establishes authored views and
+resolutions. One explicit startup boundary attaches view-level properties,
+ensures assemblies, then materializes guides before configuration/dataflow.
+Keep raw hierarchy construction available for assembly preflight and unresolved
+configuration inspection. Preserve supported dynamic mutation refreshes.
+
+- [x] Remove early concat/facet/surround guide creation and GridChild's redundant
+  UnitView scale-resolution replay. Share startup preparation across browser,
+  headless engine and guide-ready test helpers. Let container subclasses,
+  including App SampleView, expose their guide hosts through one hook.
+- [x] Prepare guides in newly inserted subtrees before parent guide refresh.
+  Verify nested mutation, App summaries/metadata, collected legends, facets,
+  surrounds, assembly preflight and rendered layout contracts. Replace redundant
+  test setup/assertions where applicable; independently review the result.
+- [x] Compare fixed-scope and out-of-scope production lines and shipped
+  minified/gzip/Brotli sizes. Verify representative browser examples and record
+  the outcome before committing
+  `refactor(core): initialize guides after hierarchy resolution`.
+
+This internal lifecycle cleanup is not expected to require public documentation
+or another changeset. New abstraction/state must remain smaller and clearer than
+the repeated startup paths it replaces.
+
+Browser startup, the headless engine and guide-ready test construction now use
+`initializeViewGuides`. Container hooks include SampleView's private guide host;
+its summary concat participates in the ordinary traversal. Initial concat,
+facet and surround construction no longer creates guides. UnitView constructors
+already resolve generated encodings, so GridChild's extra traversal is deleted.
+No new retained lifecycle state is needed.
+
+Concat mutation prepares each newly inserted subtree before refreshing its own
+and collected ancestor guides. This stays in Concat's existing mutation path:
+importing the guide synchronizer through the shared mutation helper would create
+a LayerView/AxisView module cycle. Layer children cannot contain nested grids.
+Metadata's own dynamic refresh remains sufficient because its generated nested
+groups suppress axes/legends and constructor chrome remains available.
+
+Tests now request either raw hierarchy/resolution metadata or prepared guides
+explicitly. Two extent-test helpers delegate to the headless engine instead of
+duplicating construction and data setup. A nested insertion regression verifies
+internal axis/legend placement and initialization. One readiness fixture had
+both view-level and encoding-level x-scale configuration; removing the redundant
+view-level declaration makes it exercise the supported contract. Existing
+readiness, font and extent assertions remain unchanged. Tests and test utilities
+grow by only two non-comment lines / one physical line overall.
+
+Independent review found no actionable correctness or KISS issues in startup,
+mutation, generated chrome, summary/metadata, resolution or import ordering.
+All 536 unit-test files pass: 5,051 tests, one skipped and two todo. Workspace
+type checks, full lint, formatting and release-policy checks pass. Seven Core
+WebGL examples cover facets/scrolling, nested surrounds, annotations, collected
+legends and gradients. An App browser fixture renders sample legends and a
+configured summary axis, survives resize, and produces a byte-identical PNG to
+`5aed6ecc1` before resize.
+
+Production changes relative to `5aed6ecc1`, excluding tests and test utilities:
+
+| Area | SLOC delta | Physical-line delta |
+| --- | ---: | ---: |
+| Fixed container/layout scope | +1 | +3 |
+| Core startup outside that scope | -20 | -20 |
+| App SampleView outside that scope | -11 | -6 |
+| All changed production | -30 | -23 |
+
+The shared startup code moves into the counted guide helper, so the fixed scope
+slightly grows while total production shrinks. Its attribution proxy is
+123,654 B / gzip 39,281 B / Brotli 34,033 B. The authoritative shipped bundle is
+1,429,304 B / gzip 516,991 B / Brotli 415,742 B: savings of 275 / 69 / 65 B for
+this milestone. The clearer lifecycle, deleted startup work and improvement in
+all shipped-size measurements justify retaining it.
+
+The expanded fixed scope is now 9,229 SLOC / 13,124 physical lines, a reduction
+of 414 SLOC (4.29%) / 608 physical lines from the original baseline. Whole-branch
+shipped savings are 4,865 minified bytes, 967 gzip bytes and 787 Brotli bytes.
+The 15% target remains unmet. This refactor needs no additional release note;
+the existing legend fix note is accurate and unrelated fragments keep the
+aggregate release plan minor.

@@ -1554,7 +1554,6 @@ describe("Scale resolution domain handling", () => {
                             data: [{ x: 0 }, { x: 1 }],
                         }),
                     },
-                    scales: { x: { domain: [0, 1] } },
                     resolve: { scale: { x: "shared", y: "shared" } },
                     layer: [
                         createCoordinateLookupLayer([1, 2], 0),

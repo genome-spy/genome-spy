@@ -78,12 +78,7 @@ import {
     resolveParamSelector,
     markViewAsChrome,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { attachViewLevelScaleProps } from "@genome-spy/core/scales/viewLevelScaleProps.js";
 import { createClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
-import {
-    attachViewLevelAxisProps,
-    attachViewLevelLegendProps,
-} from "@genome-spy/core/scales/viewLevelGuideProps.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import {
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
@@ -729,18 +724,7 @@ export default class SampleView extends ContainerView {
             );
         };
 
-        attachViewLevelScaleProps(this);
-        attachViewLevelAxisProps(this);
-        attachViewLevelLegendProps(this);
-
-        await this.#gridChild.syncGuideViews();
         await this.#createSummaryViews();
-        attachViewLevelScaleProps(this);
-        attachViewLevelAxisProps(this);
-        attachViewLevelLegendProps(this);
-        await this.#gridChild.summaryViews.syncGuideViews();
-        await this.#gridChild.syncGuideViews();
-
         await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
 
@@ -748,6 +732,16 @@ export default class SampleView extends ContainerView {
             "contextmenu",
             this.#handleContextMenu.bind(this)
         );
+    }
+
+    /**
+     * Creates guides for the repeated sample pane after all resolutions are ready.
+     *
+     * @returns {Promise<void>}
+     * @override
+     */
+    syncGuideViews() {
+        return this.#gridChild.syncGuideViews();
     }
 
     /**

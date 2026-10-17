@@ -15,6 +15,14 @@
   may register their own cleanup callbacks with the view, but retained renderer
   state is not stored on the unit view or mark.
 
+Construction establishes authored views and their resolutions. Startup then
+calls `initializeViewGuides`: attach view-level scale/axis/legend properties,
+ensure referenced assemblies, and invoke each container's `syncGuideViews` hook.
+Generated UnitViews resolve their encodings in their constructors. Configuration
+and dataflow initialization follow this guide phase. Dynamic insertion prepares
+the new subtree's guides before refreshing parent hosts. Raw headless hierarchy
+construction intentionally stops before the guide phase for preflight inspection.
+
 Layout sizing uses `View.getSize()` and `getViewportSize()` with a cached
 `size/*` property namespace:
 

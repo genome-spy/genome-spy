@@ -10,6 +10,7 @@ import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
 import { translateLegendCoords } from "./legendLayout.js";
+import { initializeViewGuides } from "./guideViewSync.js";
 import createScale from "../../scale/scale.js";
 import {
     initializeViewSubtree,
@@ -234,6 +235,7 @@ describe("GridView legends", () => {
         if (!(view instanceof ConcatView)) {
             throw new Error("Expected a concat root view!");
         }
+        await initializeViewGuides(view);
 
         view.visit((descendant) => {
             if (descendant instanceof UnitView) {
@@ -1010,10 +1012,12 @@ describe("GridView legends", () => {
             if (!(view instanceof ConcatView)) {
                 throw new Error("Expected a concat root view!");
             }
-            const [legend] = getLegends(view);
+            const [definition] = view.children[0]
+                .getLegendResolution("color")
+                .getLegendDefs();
 
-            expect(legend.legendProps.orient).toBe("bottom");
-            expect(legend.legendProps.titleOrient).toBe("left");
+            expect(definition.legend.orient).toBe("bottom");
+            expect(definition.legend.titleOrient).toBe("left");
         });
 
         test("uses track defaults for layer children with index x scale", async () => {

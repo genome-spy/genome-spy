@@ -692,19 +692,6 @@ export default class GridChild {
                 undefined,
             options.legendFilter
         );
-
-        // Axes are created after scales are resolved, so we need to resolve possible new scales here
-        [
-            ...this.axisCandidates.map((candidate) => candidate.axisView),
-            ...Object.values(gridLines),
-            ...Object.values(this.legends),
-        ].forEach((v) =>
-            v.visit((view) => {
-                if (view instanceof UnitView) {
-                    view.resolve("scale");
-                }
-            })
-        );
     }
 
     /**
