@@ -1,3 +1,6 @@
+import UnitView from "../view/unitView.js";
+import { getEncodingKeyFields } from "../encoder/metadataChannels.js";
+import { isDataReady } from "../data/dataReadiness.js";
 import {
     asSelectionConfig,
     createMultiPointSelection,
@@ -7,6 +10,7 @@ import {
     isMultiPointSelection,
     isPointSelectionConfig,
     isSinglePointSelection,
+    resolvePointSelectionFromKeyTuples,
 } from "../selection/selection.js";
 import { bindDisposer } from "../utils/bindDisposer.js";
 
@@ -166,6 +170,19 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             }
         },
 
+        ...(isPointSelectionConfig(select)
+            ? {
+                  setValue(keys) {
+                      ensureParamApiIsLive(lifecycle);
+                      // Resolve the entire write before publishing membership.
+                      runtime.setValue(
+                          name,
+                          resolvePointSelectionKeys(view, select, keys)
+                      );
+                  },
+              }
+            : {}),
+
         ...(controller
             ? {
                   contains(point) {
@@ -175,6 +192,61 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
               }
             : {}),
     });
+}
+
+/**
+ * @param {View} view The unit supplying records, independent of parameter ownership.
+ * @param {import("../spec/parameter.js").PointSelectionConfig} select
+ * @param {readonly (readonly import("../spec/channel.js").Scalar[])[]} keys
+ */
+function resolvePointSelectionKeys(view, select, keys) {
+    if (!Array.isArray(keys))
+        throw new Error("Expected an array of key tuples.");
+
+    const type = select.toggle ? "multi" : "single";
+    if (!keys.length) {
+        return type === "multi"
+            ? createMultiPointSelection()
+            : createSinglePointSelection(null);
+    }
+    if (!(view instanceof UnitView)) {
+        throw new Error("Set point selections through a source unit view.");
+    }
+
+    const fields = getEncodingKeyFields(view.getEncoding());
+    if (!fields)
+        throw new Error("Setting point selections requires encoding.key.");
+    for (const tuple of keys) {
+        if (
+            !Array.isArray(tuple) ||
+            tuple.length !== fields.length ||
+            !tuple.every(
+                (value) =>
+                    typeof value === "string" ||
+                    typeof value === "boolean" ||
+                    (typeof value === "number" && Number.isFinite(value))
+            )
+        ) {
+            throw new Error(
+                "Key tuples must match encoding.key and contain finite scalar values."
+            );
+        }
+    }
+
+    const collector = view.getCollector();
+    if (!collector || !isDataReady(collector))
+        throw new Error("Selection source data is not ready.");
+
+    const resolved = resolvePointSelectionFromKeyTuples(
+        type,
+        fields,
+        keys,
+        (keyFields, tuple) => collector.findDatumByKey(keyFields, tuple)
+    );
+    if (resolved.unresolved.length)
+        throw new Error("Selection keys were not found in loaded data.");
+
+    return resolved.selection;
 }
 
 /**

@@ -1,0 +1,12 @@
+[
+  { "group": "A", "value": 1 },
+  { "group": "B", "value": 3 },
+  { "group": "B", "value": 5 },
+  { "group": "C", "value": 1 },
+  { "group": "C", "value": 2 },
+  { "group": "C", "value": 3 },
+  { "group": "D", "value": 2 },
+  { "group": "D", "value": 4 },
+  { "group": "D", "value": 6 },
+  { "group": "D", "value": 8 }
+]

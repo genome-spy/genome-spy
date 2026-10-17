@@ -330,9 +330,11 @@ export function buildDataFlow(
             }
 
             if (
-                view.mark.isPickingParticipant() &&
+                view.mark.requiresRecordIdentity() &&
                 !isInBranchWithIdentifier()
             ) {
+                // Programmatic selections need record identity even when the
+                // source mark does not participate in picking.
                 // TODO: If two branches receive the same data, they should have
                 // a shared identifier transform. However, unique ids cannot be
                 // assigned right after the data source, because some transforms,

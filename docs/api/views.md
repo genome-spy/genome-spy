@@ -93,6 +93,49 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Reading transformed records
+
+`view.readData({scope, limit})` returns `{rows, truncated}` from a unit view's
+loaded transformed records. Scope is required:
+
+```js
+const track = api.views.get({ scope: [], view: "observations" });
+const all = track.readData({ scope: "all", limit: 1000 });
+const viewport = track.readData({ scope: "viewport", limit: 1000 });
+const brushed = track.readData({ scope: { selection: "brush" }, limit: 1000 });
+```
+
+The `"all"` scope reads the current collector without positional constraints, including
+records outside the viewport or brush. It supports nominal, conditional, or absent
+positional encodings.
+
+Viewport reads test encoded data positions against continuous x/y scale domains,
+using the same overlap rules as viewport-derived domains: point boundaries are
+inclusive, and ranged marks must overlap. Brush reads use the named interval
+selection's existing membership predicates, independently of the viewport; a
+cleared brush returns no rows. Viewport and brush scopes require unconditional
+positional encodings. They describe data-space membership before pixel offsets, clipping,
+opacity, or occlusion, rather than proving visible pixels.
+
+Membership is tested **before** the nonnegative safe integer limit. Only returned
+records are structured-cloned, without picking identifiers. `truncated` means
+additional matching records exist; reject it before treating results as complete.
+Zero checks whether any matches exist. Uncloneable values throw and shared memory
+retains the platform's sharing semantics. The limit bounds rows, not nested values.
+
+Reads scan synchronously; sparse brushes over large collections may still inspect
+every loaded record. Spatial indexing is deferred to a separate change. Readback
+does not fetch missing data or establish source coverage. Await current visible
+lazy requests with `api.awaitVisibleLazyData(signal)` when needed, and verify
+completeness for analysis. Unready data, containers, unsupported projections, and
+stale handles throw.
+
+Point-selection records remain available through the existing
+`view.params.getSelection(name).getValue().data`; their getter and subscription
+behavior are unchanged. Named selection scopes accept interval selections only.
+See [Read and select records](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/dataReadback)
+for a small readback-to-selection example.
+
 ## Marks and scoped interaction
 
 Each handle exposes `marks` for interaction with marks in that view's subtree.

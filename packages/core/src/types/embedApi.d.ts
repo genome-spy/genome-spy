@@ -240,10 +240,10 @@ export interface PointSnapshot {
 export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
 
 /**
- * Capability for reading and clearing a row-backed point selection.
+ * Capability for reading, replacing, and clearing a row-backed point selection.
  *
- * Point selections are exposed as detached snapshots. Use `clear()` to empty
- * the selection; writes through this capability are not supported.
+ * Point selections identify records independently of their mark type. Obtain
+ * this capability through a source unit view to replace membership by key.
  *
  * `"commit"` is accepted for future gesture-based point selections, such as a
  * lasso. For the current point-selection implementation, it has the same
@@ -266,6 +266,15 @@ export interface PointSelectionApi {
         listener: (value: PointSnapshot) => void,
         options?: { delivery?: "change" | "commit" }
     ) => () => void;
+
+    /**
+     * Replaces membership using tuples in the source unit's encoding.key order.
+     * Requires ready loaded records and unique keys. Invalid, missing, or
+     * ambiguous keys reject the whole write; single selections accept at most
+     * one tuple. Empty input clears without requiring data or encoding.key.
+     * Membership refers to the current publication; clear/reapply after updates.
+     */
+    setValue: (keys: readonly (readonly Scalar[])[]) => void;
 
     /** Clears the selection and publishes the cleared state when it changed. */
     clear: () => void;
@@ -645,6 +654,25 @@ export interface ViewHandle {
      * Returns handles for the current layout child views in spec order.
      */
     children: () => ViewHandle[];
+
+    /**
+     * Copies all loaded transformed records, or those inside the viewport or a named
+     * interval brush, using structuredClone semantics and omitting picking identifiers.
+     * Membership is tested before the limit; truncated means more matches exist.
+     * Viewport membership uses encoded data positions, before pixel offsets or
+     * occlusion. Brush membership follows existing interval-selection predicates.
+     * Scoped reads require unconditional positional encodings and, for viewport reads,
+     * continuous scales. Does not fetch data. Throws for unready data, containers,
+     * unsupported projections, or stale handles. Scans synchronously without a
+     * spatial index. Limit must be a nonnegative safe integer and bounds row count.
+     */
+    readData: (options: {
+        scope: "all" | "viewport" | { selection: string };
+        limit: number;
+    }) => {
+        rows: Record<string, unknown>[];
+        truncated: boolean;
+    };
 
     /**
      * Updates datasets declared by this exact view.

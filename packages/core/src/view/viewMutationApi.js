@@ -1,3 +1,7 @@
+import { isDataReady } from "../data/dataReadiness.js";
+import { matchesViewport } from "../data/viewportDomain.js";
+import { createSelectionPredicate } from "../encoder/encoder.js";
+import { isContinuous, isDiscrete } from "vega-scale";
 import ConcatView from "./concatView.js";
 import GridView from "./gridView/gridView.js";
 import LayerView from "./layerView.js";
@@ -330,6 +334,38 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 }
 
                 return children.map((child) => getHandle(child));
+            },
+
+            readData(options) {
+                ensureEmbedIsActive(isActive);
+                ensureViewIsLive(view);
+                if (
+                    !Number.isSafeInteger(options?.limit) ||
+                    options.limit < 0
+                ) {
+                    throw new Error(
+                        "Data reads require a nonnegative safe integer limit."
+                    );
+                }
+                if (!(view instanceof UnitView)) {
+                    throw new Error("Data reads require a unit view.");
+                }
+                const collector = view.getCollector();
+                if (!collector || !isDataReady(collector)) {
+                    throw new Error("View data is not ready.");
+                }
+
+                const matches = createDataReadPredicate(view, options.scope);
+                const rows = [];
+                for (const datum of collector.getData()) {
+                    if (!matches(datum)) continue;
+                    if (rows.length === options.limit)
+                        return { rows, truncated: true };
+                    const row = structuredClone(datum);
+                    delete row[UNIQUE_ID_KEY];
+                    rows.push(row);
+                }
+                return { rows, truncated: false };
             },
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),
@@ -1052,6 +1088,97 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
     };
 
     return api;
+}
+
+/**
+ * Reads data-space membership with the same predicates as existing selections
+ * and viewport-derived domains. Indexing is deliberately outside this read path.
+ * @param {UnitView} view
+ * @param {"all" | "viewport" | {selection: string}} scope
+ * @returns {(datum: import("../data/flowNode.js").Datum) => boolean}
+ */
+function createDataReadPredicate(view, scope) {
+    if (scope === "all") return () => true;
+
+    if (
+        scope &&
+        typeof scope === "object" &&
+        typeof scope.selection === "string"
+    ) {
+        const selection = view.paramRuntime.findSelectionCapability(
+            scope.selection
+        );
+        if (selection?.type !== "interval") {
+            throw new Error(
+                "Brush reads require an interval selection. Read point records through getSelection().getValue().data."
+            );
+        }
+        // Reject conditional positions instead of choosing one field branch.
+        for (const { component } of selection.components) {
+            getReadPositionAccessor(view, /** @type {"x" | "y"} */ (component));
+            getReadPositionAccessor(
+                view,
+                /** @type {"x2" | "y2"} */ (component + "2")
+            );
+        }
+        return createSelectionPredicate(
+            { param: scope.selection, empty: false },
+            view.mark.encoding,
+            view.paramRuntime,
+            view.mark.defaultHitTestMode
+        );
+    }
+    if (scope !== "viewport")
+        throw new Error(
+            "Data reads require an all, viewport, or named interval-selection scope."
+        );
+
+    /** @type {import("../data/viewportDomain.js").ViewportConstraint[]} */
+    const constraints = [];
+    for (const channel of /** @type {const} */ (["x", "y"])) {
+        const accessor = getReadPositionAccessor(view, channel);
+        if (!accessor) continue;
+        const resolution = view.getScaleResolution(channel);
+        const type = resolution.getScale().type;
+        if (!isContinuous(type) || isDiscrete(type)) {
+            throw new Error(
+                "Viewport reads require continuous positional scales."
+            );
+        }
+        const domain = resolution.getDomain();
+        const accessor2 = getReadPositionAccessor(
+            view,
+            channel === "x" ? "x2" : "y2"
+        );
+        constraints.push({
+            channel,
+            accessor,
+            accessor2,
+            domain: [
+                Math.min(domain[0], domain.at(-1)),
+                Math.max(domain[0], domain.at(-1)),
+            ],
+        });
+    }
+    if (!constraints.length)
+        throw new Error("Viewport reads require a scaled positional encoding.");
+    return (datum) =>
+        constraints.every((constraint) => matchesViewport(datum, constraint));
+}
+
+/**
+ * @param {UnitView} view
+ * @param {"x" | "x2" | "y" | "y2"} channel
+ */
+function getReadPositionAccessor(view, channel) {
+    const encoder = view.mark.encoders[channel];
+    if (!encoder) return undefined;
+    if (encoder.branches.length !== 1)
+        throw new Error(
+            "Scoped data reads do not support conditional positional encodings."
+        );
+    const accessor = encoder.branches[0].accessor;
+    return accessor.scaleChannel ? accessor : undefined;
 }
 
 /**

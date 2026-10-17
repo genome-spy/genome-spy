@@ -1,4 +1,3 @@
-import { isString } from "vega-util";
 import { getSpecLocation } from "../utils/specOrigin.js";
 import { annotateSpecError } from "../utils/specError.js";
 import ParamRuntime from "./paramRuntime.js";
@@ -1157,25 +1156,31 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * Returns true if this runtime has any parameters that are point selections.
-     * Point selections necessitate the use of uniqueIds in the data.
+     * Returns whether an authored point-selection declaration is accessible.
+     * When inherited declarations are included, nearer declarations shadow names.
      *
+     * @param {{ inherited?: boolean }} [options]
      * @returns {boolean}
      */
-    hasPointSelections() {
-        for (const param of this.#paramConfigs.values()) {
-            if (isSelectionParameter(param)) {
-                const select = param.select;
-                if (isString(select)) {
-                    if (select == "point") {
-                        return true;
-                    }
-                } else if (select.type == "point") {
+    hasPointSelections({ inherited = false } = {}) {
+        for (
+            let runtime = /** @type {ViewParamRuntime} */ (this);
+            runtime;
+            runtime = inherited ? runtime.#parentFinder() : undefined
+        ) {
+            for (const param of runtime.#paramConfigs.values()) {
+                if (
+                    isSelectionParameter(param) &&
+                    (param.select === "point" ||
+                        (typeof param.select === "object" &&
+                            param.select.type === "point")) &&
+                    (!inherited ||
+                        this.findConfiguredParam(param.name).config === param)
+                ) {
                     return true;
                 }
             }
         }
-
         return false;
     }
 }

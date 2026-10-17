@@ -70,13 +70,15 @@ export function getPointSelectionKeyTuples(selection, keyFields) {
 }
 
 /**
- * Resolves key tuples to a point selection value object.
+ * Resolves key tuples to a point selection value object without modifying them.
+ *
+ * @template {readonly import("../spec/channel.js").Scalar[]} T
  *
  * @param {"single" | "multi"} type
  * @param {string[]} keyFields
- * @param {import("../spec/channel.js").Scalar[][]} keyTuples
- * @param {(keyFields: string[], keyTuple: import("../spec/channel.js").Scalar[]) => import("../data/flowNode.js").Datum | undefined} resolveDatum
- * @returns {{ selection: import("../types/selectionTypes.js").SinglePointSelection | import("../types/selectionTypes.js").MultiPointSelection, unresolved: import("../spec/channel.js").Scalar[][] } | undefined}
+ * @param {readonly T[]} keyTuples
+ * @param {(keyFields: string[], keyTuple: T) => import("../data/flowNode.js").Datum | undefined} resolveDatum
+ * @returns {{ selection: import("../types/selectionTypes.js").SinglePointSelection | import("../types/selectionTypes.js").MultiPointSelection, unresolved: T[] } | undefined}
  */
 export function resolvePointSelectionFromKeyTuples(
     type,
@@ -96,7 +98,7 @@ export function resolvePointSelectionFromKeyTuples(
 
     /** @type {import("../data/flowNode.js").Datum[]} */
     const datums = [];
-    /** @type {import("../spec/channel.js").Scalar[][]} */
+    /** @type {T[]} */
     const unresolved = [];
 
     for (const tuple of keyTuples) {

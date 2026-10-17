@@ -302,7 +302,8 @@ export default class WebGLMark {
 
         for (const param of selectionParams) {
             const paramRuntime = this.unitView.paramRuntime;
-            const selection = paramRuntime.findValue(param);
+            const selectionRef = paramRuntime.getParamRef(param);
+            const selection = selectionRef.get();
 
             // The selection is supposed to have an empty value at this point
             // so that we can figure out the type of the selection.
@@ -358,7 +359,7 @@ export default class WebGLMark {
 
                 this.selectionTextureOps.push(() => {
                     // Texture is set in the prepareRender method
-                    const selection = paramRuntime.getValue(param);
+                    const selection = selectionRef.get();
                     const texture = selectionTextures.get(selection);
                     if (!texture) {
                         throw new Error(
@@ -389,7 +390,7 @@ export default class WebGLMark {
                 paramRuntime.watchExpression(param, () => {
                     const selection =
                         /** @type {import("../../../types/selectionTypes.js").MultiPointSelection} */ (
-                            paramRuntime.getValue(param)
+                            selectionRef.get()
                         );
                     glHelper.createSelectionTexture(selection);
                     this.unitView.context.animator.requestRender();
