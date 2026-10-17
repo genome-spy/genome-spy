@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import InteractionDispatcher from "../genomeSpy/interactionDispatcher.js";
+import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
 import ConcatView from "./concatView.js";
 import Point from "./layout/point.js";
 import Rectangle from "./layout/rectangle.js";
@@ -31,6 +32,57 @@ describe("UnitView point selections", () => {
         } else {
             delete globalThis.MouseEvent;
         }
+    });
+
+    test("Shift-click updates a shared outer point selection across views", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "picked", value: null }],
+                hconcat: ["first", "second"].map((name) => ({
+                    ...makeUnitSpec(name),
+                    params: [
+                        { name: "picked", select: "point", push: "outer" },
+                    ],
+                })),
+            },
+            ConcatView
+        );
+        renderToLayout(view, Rectangle.create(0, 0, 600, 240));
+        const [first, second] =
+            /** @type {import("./unitView.js").default[]} */ (view.children);
+        const dispatcher = new InteractionDispatcher({ viewRoot: view });
+        const selection =
+            createEmbedParamNamespace(first).getSelection("picked");
+
+        const click = (
+            /** @type {import("./unitView.js").default} */ unit,
+            shift = false
+        ) => {
+            const datum = Array.from(unit.getCollector().getData())[0];
+            view.context.getCurrentHover = () => ({ mark: unit.mark, datum });
+            const event = new FakeMouseEvent("click");
+            event.shiftKey = shift;
+            dispatcher.dispatch(
+                center(unit),
+                /** @type {MouseEvent} */ (event)
+            );
+        };
+        const selectedNames = () => {
+            const snapshot = selection.getValue();
+            if (snapshot.type !== "point")
+                throw new Error("Expected point selection.");
+            return snapshot.data.map((row) => row.name);
+        };
+
+        click(first);
+        expect(selectedNames()).toEqual(["first"]);
+        click(second, true);
+        expect(selectedNames()).toEqual(["first", "second"]);
+        click(first, true);
+        expect(selectedNames()).toEqual(["second"]);
+        selection.clear();
+        click(second, true);
+        expect(selectedNames()).toEqual(["second"]);
     });
 
     test("clears a hover selection when the pointer enters a sibling view", async () => {
