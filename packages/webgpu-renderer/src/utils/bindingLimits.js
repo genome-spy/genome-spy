@@ -1,9 +1,15 @@
+export const globalUniformByteSize = 112;
+
 /** @type {GPUBindGroupLayoutEntry[]} */
 export const globalBindings = [
     {
         binding: 0,
         visibility: 3,
-        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 80 },
+        buffer: {
+            type: "uniform",
+            hasDynamicOffset: true,
+            minBindingSize: globalUniformByteSize,
+        },
     },
 ];
 

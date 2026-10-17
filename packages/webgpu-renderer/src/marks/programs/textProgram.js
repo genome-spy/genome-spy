@@ -420,8 +420,7 @@ fn fixAlignForAngle(align: vec2<i32>, angleInDegrees: f32) -> vec2<i32> {
     return vec2<i32>(-y, x);
 }
 
-@vertex
-fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+fn vertexMain(v: u32, i: u32) -> VSOut {
     if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledText();
     }
