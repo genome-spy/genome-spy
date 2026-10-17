@@ -63,7 +63,7 @@ async function setup(mark = "point", toggle = true) {
 
 test("reads bounded transformed records with cloned values and no picking identifiers", async () => {
     const { handle, unit, views } = await setup();
-    const result = handle.readData({ scope: "viewport", limit: 1 });
+    const result = handle.data.read({ scope: "viewport", limit: 1 });
     expect(result).toEqual({
         rows: [
             {
@@ -77,31 +77,31 @@ test("reads bounded transformed records with cloned values and no picking identi
         truncated: true,
     });
     /** @type {{note: string}} */ (result.rows[0].nested).note = "changed";
-    const complete = handle.readData({ scope: "viewport", limit: 3 });
+    const complete = handle.data.read({ scope: "viewport", limit: 3 });
     expect(complete.rows.map((row) => row.id)).toEqual(["A", "C", "B"]);
     expect(complete.rows[0].nested).toEqual({ note: "original" });
     expect(complete.truncated).toBe(false);
-    expect(handle.readData({ scope: "viewport", limit: 0 })).toEqual({
+    expect(handle.data.read({ scope: "viewport", limit: 0 })).toEqual({
         rows: [],
         truncated: true,
     });
     await unit.getScaleResolution("x").zoomTo([1, 2], 0);
     expect(
-        handle
-            .readData({ scope: "viewport", limit: 3 })
+        handle.data
+            .read({ scope: "viewport", limit: 3 })
             .rows.map((row) => row.id)
     ).toEqual(["A", "C"]);
     await unit.getScaleResolution("x").zoomTo([3, 5], 0);
-    expect(handle.readData({ scope: "viewport", limit: 1 })).toEqual({
+    expect(handle.data.read({ scope: "viewport", limit: 1 })).toEqual({
         rows: [{ id: "B", group: 1, value: 4, score: 8 }],
         truncated: false,
     });
     for (const limit of [undefined, -1, 0.5, Infinity])
-        expect(() => handle.readData({ scope: "viewport", limit })).toThrow(
+        expect(() => handle.data.read({ scope: "viewport", limit })).toThrow(
             "limit"
         );
     expect(() =>
-        views.root().readData({ scope: "viewport", limit: 1 })
+        views.root().data.read({ scope: "viewport", limit: 1 })
     ).toThrow("unit view");
 });
 
@@ -110,26 +110,26 @@ test("all-data reads ignore viewport and brush while retaining copy and limit se
     await unit.getScaleResolution("x").zoomTo([3, 5], 0);
     handle.params.get("brush").setValue(intervalSelection({ x: [0, 2] }));
     await root.paramRuntime.whenPropagated();
-    const result = handle.readData({ scope: "all", limit: 3 });
+    const result = handle.data.read({ scope: "all", limit: 3 });
     expect(result.rows.map((row) => row.id)).toEqual(["A", "C", "B"]);
     expect(result.truncated).toBe(false);
     expect(result.rows.every((row) => !("__uniqueId" in row))).toBe(true);
     /** @type {{note: string}} */ (result.rows[0].nested).note = "changed";
-    expect(handle.readData({ scope: "all", limit: 1 })).toMatchObject({
+    expect(handle.data.read({ scope: "all", limit: 1 })).toMatchObject({
         rows: [{ id: "A", score: 2, nested: { note: "original" } }],
         truncated: true,
     });
-    expect(handle.readData({ scope: "all", limit: 0 })).toEqual({
+    expect(handle.data.read({ scope: "all", limit: 0 })).toEqual({
         rows: [],
         truncated: true,
     });
     views.root().datasets.set("rows", [{ id: "new", group: 1, value: 9 }]);
-    expect(handle.readData({ scope: "all", limit: 2 })).toEqual({
+    expect(handle.data.read({ scope: "all", limit: 2 })).toEqual({
         rows: [{ id: "new", group: 1, value: 9, score: 18 }],
         truncated: false,
     });
     views.root().datasets.set("rows", []);
-    expect(handle.readData({ scope: "all", limit: 0 })).toEqual({
+    expect(handle.data.read({ scope: "all", limit: 0 })).toEqual({
         rows: [],
         truncated: false,
     });
@@ -156,12 +156,12 @@ test.each([
             ),
         });
         const handle = views.root();
-        expect(handle.readData({ scope: "all", limit: 1 })).toEqual({
+        expect(handle.data.read({ scope: "all", limit: 1 })).toEqual({
             rows: [{ id: "A", x: 1 }],
             truncated: false,
         });
         expect(() =>
-            handle.readData({ scope: "viewport", limit: 1 })
+            handle.data.read({ scope: "viewport", limit: 1 })
         ).toThrow();
     }
 );
@@ -224,7 +224,7 @@ test("resolves new data publications and rejects duplicate keys", async () => {
     selected.setValue([[1, "B"]]);
     selected.clear();
     views.root().datasets.set("rows", [{ id: "new", group: 1, value: 3 }]);
-    expect(handle.readData({ scope: "viewport", limit: 10 })).toEqual({
+    expect(handle.data.read({ scope: "viewport", limit: 10 })).toEqual({
         rows: [{ id: "new", group: 1, value: 3, score: 6 }],
         truncated: false,
     });
@@ -237,7 +237,7 @@ test("resolves new data publications and rejects duplicate keys", async () => {
     ]);
     expect(() => selected.setValue([[1, "same"]])).toThrow("Duplicate key");
     views.root().datasets.set("rows", []);
-    expect(handle.readData({ scope: "viewport", limit: 0 })).toEqual({
+    expect(handle.data.read({ scope: "viewport", limit: 0 })).toEqual({
         rows: [],
         truncated: false,
     });
@@ -250,7 +250,7 @@ test.each(["removed", "finalized"])(
         if (state === "removed") await views.remove(handle);
         else finalize();
         expect(() =>
-            handle.readData({ scope: "viewport", limit: 1 })
+            handle.data.read({ scope: "viewport", limit: 1 })
         ).toThrow();
         expect(() => selected.setValue([[1, "A"]])).toThrow();
     }
@@ -265,7 +265,7 @@ test("rejects unready or unkeyed writes, but allows clearing before data is read
     });
     const handle = createViewMutationApi({ viewRoot: view }).root();
     const selected = getPointSelection(handle);
-    expect(() => handle.readData({ scope: "viewport", limit: 1 })).toThrow(
+    expect(() => handle.data.read({ scope: "viewport", limit: 1 })).toThrow(
         "not ready"
     );
     expect(() => selected.setValue([["A"]])).toThrow("not ready");
@@ -277,23 +277,23 @@ test("rejects unready or unkeyed writes, but allows clearing before data is read
 test("reads brush membership independently of viewport, before limiting matches", async () => {
     const { root, unit, handle } = await setup();
     const scope = { selection: "brush" };
-    expect(handle.readData({ scope, limit: 10 })).toEqual({
+    expect(handle.data.read({ scope, limit: 10 })).toEqual({
         rows: [],
         truncated: false,
     });
     handle.params.get("brush").setValue(intervalSelection({ x: [2, 5] }));
     await root.paramRuntime.whenPropagated();
-    expect(handle.readData({ scope, limit: 1 })).toMatchObject({
+    expect(handle.data.read({ scope, limit: 1 })).toMatchObject({
         rows: [{ id: "C" }],
         truncated: true,
     });
     await unit.getScaleResolution("x").zoomTo([0, 1], 0);
     expect(
-        handle.readData({ scope, limit: 10 }).rows.map((row) => row.id)
+        handle.data.read({ scope, limit: 10 }).rows.map((row) => row.id)
     ).toEqual(["C", "B"]);
     handle.params.get("brush").setValue(intervalSelection({ x: [3, 4] }));
     await root.paramRuntime.whenPropagated();
-    expect(handle.readData({ scope, limit: 0 })).toEqual({
+    expect(handle.data.read({ scope, limit: 0 })).toEqual({
         rows: [],
         truncated: false,
     });
@@ -304,7 +304,7 @@ test("reads brush membership independently of viewport, before limiting matches"
         { selection: "missing" },
     ]) {
         expect(() =>
-            handle.readData({ scope: /** @type {any} */ (invalid), limit: 1 })
+            handle.data.read({ scope: /** @type {any} */ (invalid), limit: 1 })
         ).toThrow();
     }
 });
@@ -334,8 +334,8 @@ test("viewport reads intersect ranged marks on both axes", async () => {
     });
     const handle = views.get({ scope: [], view: "ranges" });
     expect(
-        handle
-            .readData({ scope: "viewport", limit: 10 })
+        handle.data
+            .read({ scope: "viewport", limit: 10 })
             .rows.map((row) => row.id)
             .sort()
     ).toEqual(["overlap", "reversed"]);
@@ -392,16 +392,16 @@ test("scoped reads use normalized locus positions and scaled constants", async (
     );
     const handle = views.get({ scope: [], view: "bases" });
     expect(
-        handle
-            .readData({ scope: "viewport", limit: 10 })
+        handle.data
+            .read({ scope: "viewport", limit: 10 })
             .rows.map((row) => row.pos)
     ).toEqual([100, 102]);
     // The brush stores concatenated genome coordinates, including chr1's offset.
     handle.params.get("brush").setValue(intervalSelection({ x: [201, 204] }));
     await view.paramRuntime.whenPropagated();
     expect(
-        handle
-            .readData({ scope: { selection: "brush" }, limit: 10 })
+        handle.data
+            .read({ scope: { selection: "brush" }, limit: 10 })
             .rows.map((row) => row.pos)
     ).toEqual([102]);
 });
@@ -420,7 +420,7 @@ test("viewport reads reject discrete positional scales", async () => {
         },
     });
     const handle = views.get({ scope: [], view: "categorical" });
-    expect(() => handle.readData({ scope: "viewport", limit: 10 })).toThrow(
+    expect(() => handle.data.read({ scope: "viewport", limit: 10 })).toThrow(
         "continuous positional scales"
     );
 });

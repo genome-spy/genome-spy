@@ -24,6 +24,7 @@ Public TypeScript API for `@genome-spy/core`.
 - [MoveViewOptions](interfaces/MoveViewOptions.md)
 - [BinaryDatasetFormat](interfaces/BinaryDatasetFormat.md)
 - [DatasetApi](interfaces/DatasetApi.md)
+- [ViewDataApi](interfaces/ViewDataApi.md)
 - [ViewHandle](interfaces/ViewHandle.md)
 - [ViewApi](interfaces/ViewApi.md)
 - [EmbedDebugApi](interfaces/EmbedDebugApi.md)

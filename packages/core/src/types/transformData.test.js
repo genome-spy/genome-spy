@@ -45,6 +45,8 @@ test("generated request schema matches the supported analysis grammar and budget
         { type: "filter", param: "brush" },
         { type: "filter", expr: "true", debounce: 0 },
         { type: "formula", expr: { expr: "datum.value" }, as: "x" },
+        { type: "formula", expr: "datum.value" },
+        { type: "filter", expr: 1 },
         { type: "aggregate", ops: ["unsupported"] },
         { type: "sample", size: 0 },
         { type: "sample", size: 0.5 },
@@ -66,4 +68,5 @@ test("generated request schema matches the supported analysis grammar and budget
             limit: 0,
         })
     ).toBe(true);
+    expect(validate({ ...request, transform: null })).toBe(false);
 });

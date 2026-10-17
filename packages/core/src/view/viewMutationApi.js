@@ -337,64 +337,69 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 return children.map((child) => getHandle(child));
             },
 
-            readData(options) {
-                ensureEmbedIsActive(isActive);
-                ensureViewIsLive(view);
-                if (
-                    !Number.isSafeInteger(options?.limit) ||
-                    options.limit < 0
-                ) {
-                    throw new Error(
-                        "Data reads require a nonnegative safe integer limit."
-                    );
-                }
-                if (!(view instanceof UnitView)) {
-                    throw new Error("Data reads require a unit view.");
-                }
-                const collector = view.getCollector();
-                if (!collector || !isDataReady(collector)) {
-                    throw new Error("View data is not ready.");
-                }
-
-                const matches = createDataReadPredicate(view, options.scope);
-                const rows = [];
-                for (const datum of collector.getData()) {
-                    if (!matches(datum)) continue;
-                    if (rows.length === options.limit)
-                        return { rows, truncated: true };
-                    const row = structuredClone(datum);
-                    delete row[UNIQUE_ID_KEY];
-                    rows.push(row);
-                }
-                return { rows, truncated: false };
-            },
-
-            transformData(options) {
-                for (const name of /** @type {const} */ ([
-                    "inputLimit",
-                    "limit",
-                ])) {
+            data: {
+                read(options) {
+                    ensureEmbedIsActive(isActive);
+                    ensureViewIsLive(view);
                     if (
-                        !Number.isSafeInteger(options?.[name]) ||
-                        options[name] < 0
-                    )
+                        !Number.isSafeInteger(options?.limit) ||
+                        options.limit < 0
+                    ) {
                         throw new Error(
-                            name + " must be a nonnegative safe integer."
+                            "Data reads require a nonnegative safe integer limit."
                         );
-                }
-                const input = handle.readData({
-                    scope: options.scope,
-                    limit: options.inputLimit,
-                });
-                if (input.truncated)
-                    throw new Error(
-                        "Analysis input exceeds inputLimit. Narrow the scope or raise inputLimit."
+                    }
+                    if (!(view instanceof UnitView)) {
+                        throw new Error("Data reads require a unit view.");
+                    }
+                    const collector = view.getCollector();
+                    if (!collector || !isDataReady(collector)) {
+                        throw new Error("View data is not ready.");
+                    }
+
+                    const matches = createDataReadPredicate(
+                        view,
+                        options.scope
                     );
-                return runDataTransforms(
-                    input.rows,
-                    options.transform,
-                    options.limit
-                );
+                    const rows = [];
+                    for (const datum of collector.getData()) {
+                        if (!matches(datum)) continue;
+                        if (rows.length === options.limit)
+                            return { rows, truncated: true };
+                        const row = structuredClone(datum);
+                        delete row[UNIQUE_ID_KEY];
+                        rows.push(row);
+                    }
+                    return { rows, truncated: false };
+                },
+
+                transform(options) {
+                    for (const name of /** @type {const} */ ([
+                        "inputLimit",
+                        "limit",
+                    ])) {
+                        if (
+                            !Number.isSafeInteger(options?.[name]) ||
+                            options[name] < 0
+                        )
+                            throw new Error(
+                                name + " must be a nonnegative safe integer."
+                            );
+                    }
+                    const input = handle.data.read({
+                        scope: options.scope,
+                        limit: options.inputLimit,
+                    });
+                    if (input.truncated)
+                        throw new Error(
+                            "Analysis input exceeds inputLimit. Narrow the scope or raise inputLimit."
+                        );
+                    return runDataTransforms(
+                        input.rows,
+                        options.transform,
+                        options.limit
+                    );
+                },
             },
 
             datasets: createViewDatasetApi(() => view, getRootView, isActive),

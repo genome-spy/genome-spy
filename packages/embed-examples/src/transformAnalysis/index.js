@@ -30,7 +30,7 @@ const clearButton = /** @type {HTMLButtonElement} */ (
 
 /** The page requests analysis and displays results; Core performs aggregation. */
 function analyze() {
-    const { rows, truncated } = view.transformData({
+    const { rows, truncated } = view.data.transform({
         scope: { selection: "brush" },
         transform: [
             {

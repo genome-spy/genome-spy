@@ -1,15 +1,18 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { intervalSelection } from "../selection/index.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import FormulaTransform from "../data/transforms/formula.js";
-import { createViewMutationApi } from "./viewMutationApi.js";
+import { createTestEmbed } from "./embedTestUtils.js";
 
-const viewport = { scope: "viewport", inputLimit: 10, limit: 10 };
+const viewport = {
+    scope: /** @type {const} */ ("viewport"),
+    inputLimit: 10,
+    limit: 10,
+};
 
 /** Uses a real authored transform before the additional analysis pipeline. */
 async function setup() {
-    const { view: root } = await createHeadlessEngine({
+    const { root, views, finalize } = await createTestEmbed({
         name: "measurements",
         params: [
             { name: "brush", select: { type: "interval", encodings: ["x"] } },
@@ -44,12 +47,11 @@ async function setup() {
             },
         },
     });
-    const views = createViewMutationApi({ viewRoot: root });
     const handle = views.get({ scope: [], view: "measurements" });
     const unit = /** @type {import("./unitView.js").default} */ (
         root.getDescendants().find((view) => view.spec.name === "measurements")
     );
-    return { root, views, handle, unit };
+    return { root, views, handle, unit, finalize };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -65,7 +67,7 @@ test("captures brushed transformed records before analysis and limits only compl
     const listener = vi.fn();
     const stop = collector.observe(listener);
     const render = vi.spyOn(root.context.animator, "requestRender");
-    const result = handle.transformData({
+    const result = handle.data.transform({
         scope: { selection: "brush" },
         inputLimit: 3,
         limit: 1,
@@ -99,9 +101,8 @@ test("runs window/filter and sample pipelines while preserving keys and native s
     const selected = handle.params.getSelection("selected");
     if (selected.type !== "point") throw new Error("Expected point selection.");
     selected.setValue([["A1"]]);
-    const result = handle.transformData({
+    const result = handle.data.transform({
         ...viewport,
-        scope: "viewport",
         transform: [
             {
                 type: "window",
@@ -117,9 +118,8 @@ test("runs window/filter and sample pipelines while preserving keys and native s
     expect(selected.getValue().data.map((row) => row.id)).toEqual(["A1"]);
     selected.setValue(result.rows.map((row) => [String(row.id)]));
     expect(selected.getValue().data.map((row) => row.id)).toEqual(["A3", "B6"]);
-    const sample = handle.transformData({
+    const sample = handle.data.transform({
         ...viewport,
-        scope: "viewport",
         transform: [{ type: "sample", size: 2 }],
     });
     expect(sample.truncated).toBe(false);
@@ -136,9 +136,8 @@ test("rejects input overflow before executing transforms and follows viewport na
     const { handle, unit } = await setup();
     const initialize = vi.spyOn(FormulaTransform.prototype, "initialize");
     expect(() =>
-        handle.transformData({
+        handle.data.transform({
             ...viewport,
-            scope: "viewport",
             inputLimit: 3,
             transform: [
                 { type: "formula", expr: "datum.value * 2", as: "score" },
@@ -148,7 +147,7 @@ test("rejects input overflow before executing transforms and follows viewport na
     expect(initialize).not.toHaveBeenCalled();
     await unit.getScaleResolution("x").zoomTo([2, 3], 0);
     expect(
-        handle.transformData({
+        handle.data.transform({
             scope: "viewport",
             inputLimit: 2,
             limit: 0,
@@ -156,7 +155,7 @@ test("rejects input overflow before executing transforms and follows viewport na
         })
     ).toEqual({ rows: [], truncated: true });
     expect(
-        handle.transformData({
+        handle.data.transform({
             scope: "viewport",
             inputLimit: 2,
             limit: 1,
@@ -169,7 +168,7 @@ test("retains existing empty-input transform semantics and detached results", as
     const { handle } = await setup();
     const scope = { selection: "brush" };
     expect(
-        handle.transformData({
+        handle.data.transform({
             scope,
             inputLimit: 0,
             limit: 1,
@@ -177,61 +176,50 @@ test("retains existing empty-input transform semantics and detached results", as
         })
     ).toEqual({ rows: [], truncated: false });
     expect(
-        handle.transformData({
+        handle.data.transform({
             scope,
             inputLimit: 0,
             limit: 1,
             transform: [{ type: "aggregate", groupby: ["group"] }],
         })
     ).toEqual({ rows: [], truncated: false });
-    const result = handle.transformData({
+    const result = handle.data.transform({
         ...viewport,
-        scope: "viewport",
         transform: [],
     });
     /** @type {{note: string}} */ (result.rows[0].nested).note = "changed";
     expect(
-        handle.readData({ scope: "viewport", limit: 1 }).rows[0].nested
+        handle.data.read({ scope: "viewport", limit: 1 }).rows[0].nested
     ).toEqual({ note: "original" });
 });
 
-test("rejects unsupported requests and disposes private runtime on success and expression failures", async () => {
+test("disposes the private runtime on success, expression failures and unsupported transforms", async () => {
     const { handle } = await setup();
     const dispose = vi.spyOn(ViewParamRuntime.prototype, "dispose");
-    handle.transformData({ ...viewport, scope: "viewport", transform: [] });
+    handle.data.transform({ ...viewport, scope: "viewport", transform: [] });
     for (const expr of [
         "datum.value +",
         "datum.value + threshold",
         "datum.missing + 1",
     ]) {
         expect(() =>
-            handle.transformData({
+            handle.data.transform({
                 ...viewport,
-                scope: "viewport",
                 transform: [{ type: "formula", expr, as: "score" }],
             })
         ).toThrow();
     }
     expect(dispose).toHaveBeenCalledTimes(4);
-    for (const transform of [
-        [{ type: "lookup", from: { source: "input" } }],
-        [{ type: "filter", param: "selected" }],
-        [{ type: "filter", expr: "true", debounce: 0 }],
-        [{ type: "sample", size: 0 }],
-        [{ type: "sample", size: 1.5 }],
-        null,
-    ]) {
-        expect(() =>
-            handle.transformData({
-                ...viewport,
-                scope: "viewport",
-                transform: /** @type {any} */ (transform),
-            })
-        ).toThrow();
-    }
+    expect(() =>
+        handle.data.transform({
+            ...viewport,
+            transform: /** @type {any} */ ([{ type: "lookup" }]),
+        })
+    ).toThrow("Unsupported analysis transform");
+    expect(dispose).toHaveBeenCalledTimes(5);
     for (const invalid of [-1, 0.5, Infinity, undefined]) {
         expect(() =>
-            handle.transformData({
+            handle.data.transform({
                 scope: "viewport",
                 inputLimit: invalid,
                 limit: 1,
@@ -239,7 +227,7 @@ test("rejects unsupported requests and disposes private runtime on success and e
             })
         ).toThrow("inputLimit");
         expect(() =>
-            handle.transformData({
+            handle.data.transform({
                 scope: "viewport",
                 inputLimit: 10,
                 limit: invalid,
@@ -250,24 +238,17 @@ test("rejects unsupported requests and disposes private runtime on success and e
 });
 
 test("rejects unready, container, removed and finalized view handles", async () => {
-    const { root, handle } = await setup();
+    const { handle, unit, finalize } = await setup();
     /** @type {import("../types/embedApi.js").TransformDataOptions} */
     const request = {
         ...viewport,
-        scope: /** @type {const} */ ("viewport"),
         transform: [],
     };
-    let active = true;
-    const views = createViewMutationApi({ viewRoot: root }, () => active);
-    const live = views.get({ scope: [], view: "measurements" });
-    const collector = /** @type {import("./unitView.js").default} */ (
-        root
-    ).getCollector();
-    collector.reset();
-    expect(() => handle.transformData(request)).toThrow("not ready");
-    active = false;
-    expect(() => live.transformData(request)).toThrow();
-    const { view: container } = await createHeadlessEngine({
+    unit.getCollector().reset();
+    expect(() => handle.data.transform(request)).toThrow("not ready");
+    finalize();
+    expect(() => handle.data.transform(request)).toThrow();
+    const { views: api } = await createTestEmbed({
         layer: [
             {
                 name: "child",
@@ -277,9 +258,8 @@ test("rejects unready, container, removed and finalized view handles", async () 
             },
         ],
     });
-    const api = createViewMutationApi({ viewRoot: container });
-    expect(() => api.root().transformData(request)).toThrow("unit view");
+    expect(() => api.root().data.transform(request)).toThrow("unit view");
     const child = api.get({ scope: [], view: "child" });
     await api.remove(child);
-    expect(() => child.transformData(request)).toThrow();
+    expect(() => child.data.transform(request)).toThrow();
 });

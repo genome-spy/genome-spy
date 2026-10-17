@@ -95,14 +95,17 @@ if (tracks.isAlive()) {
 
 ## Reading transformed records
 
-`view.readData({scope, limit})` returns `{rows, truncated}` from a unit view's
+Each handle exposes `data` for reading and analyzing its current transformed
+records. Declared input datasets are updated through `datasets`.
+
+`view.data.read({scope, limit})` returns `{rows, truncated}` from a unit view's
 loaded transformed records. Scope is required:
 
 ```js
 const track = api.views.get({ scope: [], view: "observations" });
-const all = track.readData({ scope: "all", limit: 1000 });
-const viewport = track.readData({ scope: "viewport", limit: 1000 });
-const brushed = track.readData({ scope: { selection: "brush" }, limit: 1000 });
+const all = track.data.read({ scope: "all", limit: 1000 });
+const viewport = track.data.read({ scope: "viewport", limit: 1000 });
+const brushed = track.data.read({ scope: { selection: "brush" }, limit: 1000 });
 ```
 
 The `"all"` scope reads the current collector without positional constraints, including
@@ -138,14 +141,14 @@ for a small readback-to-selection example.
 
 ## Calculating results from scoped records
 
-`view.transformData({scope, transform, inputLimit, limit})` runs an explicit
+`view.data.transform({scope, transform, inputLimit, limit})` runs an explicit
 pipeline over a complete snapshot captured with the same scope rules as
-`readData`. Region membership is applied **before** this additional pipeline.
+`data.read`. Region membership is applied **before** this additional pipeline.
 It uses the unit's current transformed records; it cannot recover observations
 already filtered out or aggregated away by the visualization.
 
 ```js
-const result = track.transformData({
+const result = track.data.transform({
   scope: { selection: "brush" },
   transform: [
     { type: "filter", expr: "datum.value >= 0" },
@@ -167,9 +170,11 @@ Supported transforms are `formula`, expression-based `filter`, `sample`,
 `aggregate`, and `window`, using their existing visualization grammar. Expressions
 have `datum` and built-in functions; they do not inherit live view parameters.
 Selection-parameter filters, reactive `debounce` settings, and other transform
-types are rejected. Sampling uses the existing default size of 500 and is not
-seeded; an explicit size must be a positive safe integer. The generated request
+types are outside this API's supported grammar. Sampling uses the existing
+default size of 500 and is not seeded; an explicit size must be a positive safe integer. The generated request
 schema ships as `@genome-spy/core/transform-data-schema.json` for agent/tool setup.
+Apps can validate agent-generated requests against this schema before calling
+`data.transform`. The method does not run schema validation internally.
 
 For example, these pipelines calculate scores or retain the five highest-ranked
 records while preserving their keys:
