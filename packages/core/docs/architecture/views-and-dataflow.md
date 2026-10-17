@@ -23,6 +23,11 @@ and dataflow initialization follow this guide phase. Dynamic insertion prepares
 the new subtree's guides before refreshing parent hosts. Raw headless hierarchy
 construction intentionally stops before the guide phase for preflight inspection.
 
+Decorative chrome participates in scales but never contributes axes or legends.
+The resolution planner enforces this before guide registration. Container chrome
+is marked before its children are constructed; directly constructed UnitViews
+use the internal `chrome` option so their eager resolution sees the same policy.
+
 Layout sizing uses `View.getSize()` and `getViewportSize()` with a cached
 `size/*` property namespace:
 

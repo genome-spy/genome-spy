@@ -4,6 +4,8 @@
  * Chrome views may still need inherited data, scales, or parameters, but they
  * should not participate in plot-oriented defaults such as configured
  * continuous view sizes.
+ * Chrome retains scale membership but does not contribute axes or legends.
+ * Mark direct UnitViews through their construction options before resolution.
  *
  * @typedef {"exclude" | "excludeSubtree"} ChromeOverride
  */

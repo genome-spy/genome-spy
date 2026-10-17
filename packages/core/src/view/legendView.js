@@ -62,53 +62,6 @@ const LEGEND_VIEW_BACKGROUND = {
 };
 
 /**
- * Legend internals use scale-backed helper marks but must not create their own
- * axes or legends from inherited configuration.
- *
- * This must be applied to every generated child spec, not just the LegendView
- * root. The generated subtree contains ordinary unit views, including text
- * views and helper marks with internal x/y placement channels. Those channels
- * are implementation details of the legend, even when they are value-backed and
- * not semantically scale-backed data encodings.
- *
- * Without this exclusion, a generated child can still end up with an axis
- * resolution and inherit axis defaults such as `grid: true`, creating an
- * AxisGridView inside the legend. This has been observed with the title view:
- * the authored title encoding only had `text`, but the unexcluded generated
- * title still received an x-axis resolution through the normal guide machinery.
- *
- * The legend may still force the represented source scale, e.g. color/size, but
- * generated helper x/y channels and nested legend channels must stay out of the
- * normal guide resolution machinery.
- *
- * See:
- * - https://github.com/genome-spy/genome-spy/issues/412
- * - https://github.com/genome-spy/genome-spy/issues/413
- *
- * @template {import("../spec/view.js").ViewSpec & {
- *     resolve?: any,
- *     layer?: any[],
- *     vconcat?: any[],
- *     hconcat?: any[]
- * }} T
- * @param {T} spec
- * @returns {T}
- */
-function excludeLegendGuideResolutions(spec) {
-    spec.resolve = {
-        ...spec.resolve,
-        axis: { default: "excluded", ...spec.resolve?.axis },
-        legend: { default: "excluded", ...spec.resolve?.legend },
-    };
-
-    for (const children of [spec.layer, spec.vconcat, spec.hconcat]) {
-        children?.forEach(excludeLegendGuideResolutions);
-    }
-
-    return spec;
-}
-
-/**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
  * @typedef {import("./legend/legendEntries.js").LegendEntry} LegendEntry
  * @typedef {import("../spec/view.js").VConcatSpec | import("../spec/view.js").HConcatSpec} LegendRootSpec
@@ -220,7 +173,7 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
         children = { vconcat: [title, body] };
     }
 
-    return excludeLegendGuideResolutions({
+    return {
         name: "legend_" + (legend.orient ?? "right"),
         padding: legend.padding,
         resolve: {
@@ -230,7 +183,7 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
         },
         spacing: 0,
         ...children,
-    });
+    };
 }
 
 /**
@@ -335,26 +288,22 @@ function createStrokeSymbolLayer({
                 field: "symbolX",
                 type: "quantitative",
                 scale: horizontalPixelScale,
-                axis: null,
                 buildIndex: false,
             },
             x2: {
                 field: "symbolX2",
                 type: "quantitative",
                 scale: horizontalPixelScale,
-                axis: null,
             },
             y: {
                 field: "labelY2",
                 type: "quantitative",
                 scale: verticalPixelScale,
-                axis: null,
             },
             y2: {
                 field: "labelY2",
                 type: "quantitative",
                 scale: verticalPixelScale,
-                axis: null,
             },
             [channel]: {
                 field: "value",
@@ -500,14 +449,12 @@ export function createSymbolLegendSpec({
                           field: "entryX",
                           type: "quantitative",
                           scale: horizontalPixelScale,
-                          axis: null,
                           buildIndex: false,
                       },
                       y: {
                           field: "labelY2",
                           type: "quantitative",
                           scale: verticalPixelScale,
-                          axis: null,
                       },
                       [channel]: {
                           field: "value",
@@ -549,14 +496,12 @@ export function createSymbolLegendSpec({
                 field: "labelX",
                 type: "quantitative",
                 scale: horizontalPixelScale,
-                axis: null,
                 buildIndex: false,
             },
             y: {
                 field: "labelY2",
                 type: "quantitative",
                 scale: verticalPixelScale,
-                axis: null,
             },
             text: { field: "label" },
         },
@@ -570,7 +515,6 @@ export function createSymbolLegendSpec({
             view: LEGEND_VIEW_BACKGROUND,
             resolve: {
                 scale: { x: "excluded", y: "excluded" },
-                axis: { x: "excluded", y: "excluded" },
             },
             data: entries
                 ? { values: entries }
@@ -697,7 +641,6 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             : { datum: position }),
         type: "quantitative",
         scale,
-        axis: null,
         ...(disableIndex ? { buildIndex: false } : {}),
     });
     /** @type {import("../spec/data.js").Data} */
@@ -823,7 +766,6 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             view: LEGEND_VIEW_BACKGROUND,
             resolve: {
                 scale: { x: "excluded", y: "excluded" },
-                axis: { x: "excluded", y: "excluded" },
             },
             data: {
                 lazy: {
@@ -1273,13 +1215,7 @@ export default class LegendView extends ContainerView {
         })) {
             if (spec) {
                 this.#backgroundViews.push(
-                    new UnitView(
-                        excludeLegendGuideResolutions(spec),
-                        this.context,
-                        this,
-                        this,
-                        name
-                    )
+                    new UnitView(spec, this.context, this, this, name)
                 );
             }
         }

@@ -26,7 +26,7 @@ import {
     clipCoords,
     normalizeClipOptions,
 } from "./renderingContext/clipOptions.js";
-import { isInChromeSubtree } from "./viewChrome.js";
+import { isInChromeSubtree, setChromeOverride } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
@@ -192,6 +192,11 @@ export default class View {
         this.context = context;
         this.layoutParent = layoutParent;
         this.dataParent = dataParent;
+
+        if (options.chrome) {
+            setChromeOverride(this, "excludeSubtree");
+        }
+
         this.#defaultName = name;
         this.spec = spec;
         this.namedDataScope = new NamedDataScope(this);

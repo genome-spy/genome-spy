@@ -12,7 +12,6 @@ import TitleView, { getTitleCoords } from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
     hasChromeAncestor,
-    markViewAsChrome,
     markViewAsNonAddressable,
 } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
@@ -114,10 +113,10 @@ function createChromeView(spec, layoutParent, dataParent, name) {
         layoutParent.context,
         layoutParent,
         dataParent,
-        name
+        name,
+        { chrome: true }
     );
     markViewAsNonAddressable(view, { skipSubtree: true });
-    markViewAsChrome(view, { skipSubtree: true });
     return view;
 }
 

@@ -131,14 +131,6 @@ const getResolutionMember = (view, type, channel, channelDef) => {
     ) {
         return undefined;
     }
-    if (
-        type == "legend" &&
-        getResolutionBehavior(view, type, targetChannel) == "excluded" &&
-        isInChromeSubtree(view)
-    ) {
-        return undefined;
-    }
-
     return {
         view: getResolutionView(view, type, targetChannel),
         channel,
@@ -363,6 +355,11 @@ export const resolveViewResolutions = (view, type) => {
     if (!type) {
         resolveViewResolutions(view, "scale");
         resolveViewResolutions(view, "axis");
+        return;
+    }
+
+    // Chrome still uses scales, but must never contribute more guides.
+    if (type !== "scale" && isInChromeSubtree(view)) {
         return;
     }
 

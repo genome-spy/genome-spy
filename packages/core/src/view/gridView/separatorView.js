@@ -1,8 +1,5 @@
 import UnitView from "../unitView.js";
-import {
-    markViewAsChrome,
-    markViewAsNonAddressable,
-} from "../viewSelectors.js";
+import { markViewAsNonAddressable } from "../viewSelectors.js";
 
 /**
  * @typedef {"horizontal" | "vertical"} SeparatorDirection
@@ -68,10 +65,10 @@ export default class SeparatorView {
                 direction === "horizontal"
                     ? "separatorHorizontal"
                     : "separatorVertical"
-            )
+            ),
+            { chrome: true }
         );
         markViewAsNonAddressable(this.#view, { skipSubtree: true });
-        markViewAsChrome(this.#view, { skipSubtree: true });
     }
 
     /**
@@ -166,7 +163,6 @@ function createSeparatorSpec(props) {
         data: { values: [] },
         resolve: {
             scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
         },
         mark: {
             ...props,

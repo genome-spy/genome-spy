@@ -51,7 +51,6 @@ export function createBackgroundStroke(viewBackground) {
     return {
         resolve: {
             scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
         },
         data: {
             values: [

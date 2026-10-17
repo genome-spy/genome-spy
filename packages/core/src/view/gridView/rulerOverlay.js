@@ -43,10 +43,6 @@ export function createRulerOverlaySpec({
                 x: "forced",
                 y: "forced",
             },
-            axis: {
-                x: "excluded",
-                y: "excluded",
-            },
         },
         data: { values: [{}] },
         transform: [
@@ -223,7 +219,6 @@ export function resolveRulerDisplay(scaleType, snap, display) {
 function createExprEncoding(expr) {
     return /** @type {any} */ ({
         datum: { expr },
-        axis: null,
         type: null,
         title: null,
     });

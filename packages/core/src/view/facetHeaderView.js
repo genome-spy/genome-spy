@@ -1,6 +1,6 @@
 import UnitView from "./unitView.js";
 import { format as numberFormat } from "d3-format";
-import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
+import { markViewAsNonAddressable } from "./viewSelectors.js";
 import { mergeConfigScopes } from "../config/mergeConfig.js";
 import Padding from "./layout/padding.js";
 import Rectangle from "./layout/rectangle.js";
@@ -115,11 +115,11 @@ export default class FacetHeaderView extends UnitView {
             dataParent,
             layoutParent.getNextAutoName(
                 orient === "column" ? "facetHeaderColumn" : "facetHeaderRow"
-            )
+            ),
+            { chrome: true }
         );
         this.titleSpec = titleSpec;
         markViewAsNonAddressable(this, { skipSubtree: true });
-        markViewAsChrome(this, { skipSubtree: true });
         if (format !== undefined) {
             const formatter = numberFormat(format);
             this.formatLabel = (value) =>
@@ -255,7 +255,6 @@ function createHeaderSpec(titleSpec) {
         data: { values: [] },
         resolve: {
             scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
         },
         mark: createTitleTextMark(
             titleSpec,

@@ -1990,9 +1990,9 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-" + serial
+                "sample-group-background-" + serial,
+                { chrome: true }
             );
-            markViewAsChrome(this.groupBackground, { skipSubtree: true });
         }
 
         const backgroundStrokeSpec = createBackgroundStroke(viewBackgroundSpec);
@@ -2002,11 +2002,9 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-stroke-" + serial
+                "sample-group-background-stroke-" + serial,
+                { chrome: true }
             );
-            markViewAsChrome(this.groupBackgroundStroke, {
-                skipSubtree: true,
-            });
         }
 
         this.summaryViews = summaryViews;

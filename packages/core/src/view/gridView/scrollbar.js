@@ -3,10 +3,7 @@ import { makeLerpSmoother } from "../../utils/animator.js";
 import { startDocumentDrag } from "../../utils/documentDrag.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
-import {
-    markViewAsChrome,
-    markViewAsNonAddressable,
-} from "../viewSelectors.js";
+import { markViewAsNonAddressable } from "../viewSelectors.js";
 
 /**
  * This class represents a scrollbar thumb that can be used within a grid view
@@ -78,11 +75,11 @@ export default class Scrollbar extends UnitView {
             gridChild.layoutParent.context,
             gridChild.layoutParent,
             gridChild.view,
-            "scrollbar-" + scrollDirection // TODO: Serial
+            "scrollbar-" + scrollDirection, // TODO: Serial
+            { chrome: true }
         );
 
         markViewAsNonAddressable(this, { skipSubtree: true });
-        markViewAsChrome(this, { skipSubtree: true });
 
         this.config = config;
         this.#scrollDirection = scrollDirection;

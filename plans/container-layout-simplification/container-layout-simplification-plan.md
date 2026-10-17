@@ -494,3 +494,70 @@ shipped savings are 4,865 minified bytes, 967 gzip bytes and 787 Brotli bytes.
 The 15% target remains unmet. This refactor needs no additional release note;
 the existing legend fix note is accurate and unrelated fragments keep the
 aggregate release plan minor.
+
+## Chrome guide resolution boundary
+
+Comparison base: `6314367f1`. Decorative chrome retains data, scales and
+parameters, but does not contribute axes or legends. Enforce that once before
+guide registration and remove repeated generated-spec exclusions and downstream
+member filtering. The fixed container/layout denominator remains unchanged;
+report resolution, marking and App changes outside it separately.
+
+- [x] Move axis/legend suppression to the resolution boundary. Mark direct
+  chrome UnitViews before eager resolution, without adding a separate lifecycle
+  or role registry. Preserve exclude versus excludeSubtree semantics.
+- [x] Delete recursive legend spec rewriting, redundant guide exclusions and
+  AxisResolution chrome filtering. Replace fake-member tests with constructor/
+  resolution contracts; retain generated SVG, interaction and App coverage.
+- [x] Verify scale links, plot guides, facet headers, rulers, selection overlays,
+  App sidebar/metadata and legend output. Independently review, compare source
+  and shipped size, and commit as
+  `refactor(core): suppress chrome guides at resolution`.
+
+Keep non-addressability independent from chrome. In particular, the App sidebar
+stays addressable and its scales remain functional. Internal simplification
+alone does not require a new release note.
+
+The resolution planner now skips guide registration for chrome while retaining
+ordinary scale resolution. Direct decorative UnitViews receive their role in
+the View constructor before eager resolution. The existing WeakMap remains the
+single role registry; self-only and subtree exclusions remain distinct.
+Legend specs no longer need recursive rewriting, and AxisResolution no longer
+filters its members repeatedly. Generated scale exclusions and forced source
+scale links remain necessary and are retained.
+
+Two constructor-level tests replace four mocked chrome-member tests and an
+overlay existence test. They cover direct and inherited chrome, authored data
+parents, shared and private scales, source guide lookup, conflicting guide
+properties, and self-only versus subtree exclusion. Obsolete generated-spec
+field assertions are removed. Tests shrink by 75 non-comment lines / 91 physical
+lines overall.
+
+Independent review found no actionable correctness or simplification issues.
+Its suggested source-axis and source-legend lookup assertions are included.
+All 536 unit-test files pass: 5,048 tests, one skipped and two todo. Workspace
+type checks, full lint, formatting and release-policy checks pass. Six Core
+WebGL examples cover facets/scrolling, surrounds, annotations, collected legends
+and gradients. Live ruler and interval-selection interactions pass. An App
+browser fixture retains its configured summary axis, sample legends and metadata
+domain, including after resize; rendered output was inspected.
+
+Production changes relative to `6314367f1`, excluding tests and test utilities:
+
+| Area | SLOC delta | Physical-line delta |
+| --- | ---: | ---: |
+| Fixed container/layout scope | -44 | -80 |
+| Core resolution/marking outside that scope | -13 | -17 |
+| App SampleView outside that scope | -2 | -2 |
+| All changed runtime production | -59 | -99 |
+| Internal type declarations, separately | +1 | +2 |
+
+The fixed-scope attribution proxy is 122,995 B / gzip 39,163 B / Brotli 33,979 B,
+saving 659 / 118 / 54 B. The authoritative shipped bundle is 1,428,632 B /
+gzip 516,899 B / Brotli 415,688 B: savings of 672 / 92 / 54 B this milestone.
+
+The expanded fixed scope is now 9,185 SLOC / 13,044 physical lines, a reduction
+of 458 SLOC (4.75%) / 688 physical lines from the original baseline. Whole-branch
+shipped savings are 5,537 minified bytes, 1,059 gzip bytes and 841 Brotli bytes.
+The 15% target remains unmet. The existing legend fix changeset remains accurate;
+this internal refactor needs no additional fragment.
