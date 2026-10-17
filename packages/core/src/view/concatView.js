@@ -49,8 +49,6 @@ export default class ConcatView extends GridView {
                   : Infinity,
             options
         );
-
-        this.spec = spec;
     }
 
     /**

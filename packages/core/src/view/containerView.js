@@ -10,21 +10,6 @@ export default class ContainerView extends View {
     /** @type {Map<string, number>} */
     #autoNameCounters = new Map();
 
-    /**
-     *
-     * @param {TSpec} spec
-     * @param {import("../types/viewContext.js").default} context
-     * @param {ContainerView} layoutParent
-     * @param {import("./view.js").default} dataParent
-     * @param {string} name
-     * @param {import("./view.js").ViewOptions} [options]
-     */
-    constructor(spec, context, layoutParent, dataParent, name, options) {
-        super(spec, context, layoutParent, dataParent, name, options);
-
-        this.spec = spec;
-    }
-
     async initializeChildren() {
         // override
     }
@@ -102,33 +87,16 @@ export default class ContainerView extends View {
         /** @type {View | ContainerView} */
         let current = this;
 
-        for (let i = 0; i < path.length; i++) {
+        for (const name of path) {
             if (!(current instanceof ContainerView)) {
                 return;
             }
 
-            const next = current.#findImmediateChildByName(path[i]);
-            if (!next) {
-                return;
-            }
-
-            if (i === path.length - 1) {
-                return next;
-            }
-
-            current = next;
+            current = Iterator.from(current).find(
+                (child) => child.name === name
+            );
         }
-    }
-
-    /**
-     * @param {string} name
-     */
-    #findImmediateChildByName(name) {
-        for (const child of this) {
-            if (child.name === name) {
-                return child;
-            }
-        }
+        return path.length ? current : undefined;
     }
 
     /**

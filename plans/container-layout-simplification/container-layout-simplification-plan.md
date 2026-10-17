@@ -50,7 +50,7 @@ will be copied or adapted from another project.
   Consumers: App SampleGridChild, SVG/Canvas/WebGL placements, shared legends.
   Verify grid/axis/legend tests and App layout/axis suites.
   Commit: `refactor(core): consolidate grid guides and decoration layout`.
-- [ ] Unify sparse grid indexing and facet track measurement; simplify surround
+- [x] Unify sparse grid indexing and facet track measurement; simplify surround
   helpers while preserving nested alignment and growth allocation.
   Consumers: facets, surrounds, nested concats, input routing.
   Verify facet dataflow/interaction, surround nested/ACID and layout snapshots.
@@ -92,4 +92,17 @@ decoration queue order without a sequence counter. App's duplicate-axis and
 active-candidate hooks remain intact. Verification: 359 focused Core/App tests
 and Core TypeScript pass; an SVG test checks separator geometry after resize.
 
-Independent review of the remaining milestones is pending.
+Grid/facet milestone: one Grid implementation now indexes ordinary wrapping
+layouts and explicit sparse surround cells. Ordinary queries remain arithmetic
+and membership grouping remains lazy after review identified unnecessary eager
+allocation. Facet track maps share their dimensional aggregation. Redundant
+container construction/spec assignment and the separate immediate-child lookup
+were removed. Six layout suites (139 tests) and Core TypeScript pass.
+
+Independent reviewers inspected mutation lifecycle, App consumers, sparse-grid
+indexing, facet geometry, separators, axis candidates, legend filters and
+disposal, overlay validation, and decoration order. No actionable regressions
+remain. The full suite passed 534 files / 5,049 tests (one skipped, two todo);
+workspace TypeScript and repository lint pass. Ten representative WebGL examples
+passed smoke checks. Final source/bundle measurements and test cleanup commit
+are pending.

@@ -28,8 +28,6 @@ export default class LayerView extends ContainerView {
     constructor(spec, context, layoutParent, dataParent, name, options) {
         super(spec, context, layoutParent, dataParent, name, options);
 
-        this.spec = spec;
-
         this.needsAxes = { x: true, y: true };
     }
 
