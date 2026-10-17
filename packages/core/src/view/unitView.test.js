@@ -93,7 +93,8 @@ describe("UnitView point selections", () => {
         selected.clear();
         click();
         expect(selected.getValue().data[0].name).toBe("A");
-      
+    });
+
     test("Shift-click updates a shared outer point selection across views", async () => {
         const view = await createAndInitialize(
             {
