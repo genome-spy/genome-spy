@@ -71,26 +71,22 @@ The surround's own width and height describe the complete composition.
 
 Inside a concat, surrounding panels reserve overhang around the center. Central
 plots align within each row and column even when their annotations differ in
-size. Growing side tracks receive their thickness before the centers are placed.
+size.
 
 The surround's `spacing` separates the center from its sides. A side group's
 `spacing` separates its tracks. Both default to 10 pixels. Hidden tracks collapse;
 an empty or entirely hidden side also removes its gap. Hiding the center hides
 the composition.
 
-Track axes and other decorations can extend into empty corner cells when a
-visible neighboring side provides room. Any excess still reserves space, so
-decorations stay within the composition. If two sides compete for one corner,
-the top or bottom track takes priority. Explicit `overhang: { left: true }`
-(or another edge) keeps that edge's reservation; `false` removes it as usual.
-Automatic corner reuse preserves padding.
+Track axes and other decorations can extend into empty corner cells. The
+[`overhang`](concat.md#collapsed-overhang) setting controls their space
+reservation; space occupied by nested panels always remains reserved.
 
 ## Shared settings and scales
 
 Outer data, transforms, encodings, and parameters flow to the center and sides.
 A side object can declare these settings once for its `views`, such as a shared
-metadata table for several annotation columns. Center-local settings apply only
-to the center. Children can override inherited data normally.
+metadata table for several annotation columns.
 
 Each track has an independent perpendicular scale by default. A group's `resolve`
 can share those local scales among its tracks. They remain separate from the
@@ -111,26 +107,19 @@ independent legends around the complete surround.
 
 Side tracks can themselves use `surround`. The parent aligns a nested track's
 central plotting interval, leaving room for its own annotations. In the example
-above, the mutation matrix shares the expression matrix's sample rows. Its
-stacked summaries share its TP53/PIK3CA column scale and use a separate percentage
-scale and a right-hand axis. The tumor expression and mutation data are synthetic.
+above, the mutation matrix shares sample rows with the expression matrix, and
+its top summaries share its gene columns. Both datasets are synthetic.
 
-Declare shared data on the nested surround so the matrix and summaries use the
-same metadata source. To share mutation-status colors and a legend, set
+To share colors and a legend between the nested center and its top annotations, set
 `resolve.scale.color` to `"shared"` on both the nested surround and its top group.
-The example counts mutation statuses per gene and normalizes their stacked
-counts.
 
 Omit the externally aligned size from the nested center: `height` on left/right,
 or `width` on top/bottom. The outer center supplies that plotting length. Nested
 annotations extending along that dimension need fixed or step-based thicknesses.
 The outer center and ordinary perpendicular track thicknesses can still grow.
 
-Nested panels can occupy free corner space beside other regions. The layout
-reserves their maximum outward extent, rather than adding the heights or widths
-of panels that fit beside each other. Overlapping occupied panels cause an error
-naming the conflicting views; adjust spacing or composition to separate them.
-Suppressing chrome overhang does not remove space occupied by nested panels.
+Nested panels can occupy free corners but cannot overlap other panels. If an
+overlap causes an error, adjust spacing or composition to separate them.
 
 ## Supported plots
 
