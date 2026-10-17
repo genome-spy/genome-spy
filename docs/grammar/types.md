@@ -925,6 +925,26 @@ SCHEMA StringFieldDef
 
 See the [StyleConfig documentation](config.md#theme-config-and-style).
 
+## SurroundPlotSpec
+
+SCHEMA SurroundPlotSpec
+
+## SurroundSide
+
+SCHEMA SurroundSide
+
+## SurroundSideSpec
+
+See the [SurroundSideSpec documentation](composition/surround.md#side-groups).
+
+## SurroundSides
+
+See the [SurroundSides documentation](composition/surround.md#sides).
+
+## SurroundSpec
+
+See the [SurroundSpec documentation](composition/surround.md#properties).
+
 ## TabixTsvData
 
 See the [TabixTsvData documentation](data/lazy.md#parameters_3).

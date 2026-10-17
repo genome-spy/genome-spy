@@ -31,15 +31,31 @@ import { isStepSize } from "../view.js";
  * @param {FlexOptions} [options]
  * @returns {LocSize[]}
  */
-export function mapToPixelCoords(
+export function mapToPixelCoords(items, containerSize, options = {}) {
+    const { sizes } = resolveItemSizes(
+        items,
+        containerSize,
+        options.spacing || 0
+    );
+    return placeFlexItems(items, sizes, containerSize, options);
+}
+
+/**
+ * Places already resolved flex sizes, preserving zero-sized slots and snapping.
+ * @param {SizeDef[]} items
+ * @param {number[]} itemSizes
+ * @param {number} containerSize
+ * @param {FlexOptions} [options]
+ * @returns {LocSize[]}
+ */
+export function placeFlexItems(
     items,
+    itemSizes,
     containerSize,
     { spacing, devicePixelRatio, offset, reverse } = {}
 ) {
     spacing = spacing || 0;
     offset = offset || 0;
-
-    const itemSizes = resolveItemSizes(items, containerSize, spacing);
 
     let totalSize = 0;
     let nonZeroCount = 0;
@@ -398,16 +414,17 @@ export function parseSizeDef(size) {
 /**
  * Resolves final item sizes using GenomeSpy's simplified flex model. It is
  * inspired by CSS Flexbox §9.7 "Resolving Flexible Lengths", but only covers
- * grow-based free-space distribution and min/max constraints.
+ * grow-based free-space distribution and min/max constraints. The returned
+ * growth is unrounded pixels per grow weight used for the final allocation.
  *
  * https://www.w3.org/TR/css-flexbox-1/#resolve-flexible-lengths
  *
  * @param {SizeDef[]} items
  * @param {number} containerSize
- * @param {number} spacing
- * @returns {number[]}
+ * @param {number} [spacing]
+ * @returns {{ sizes: number[], growth: number }}
  */
-function resolveItemSizes(items, containerSize, spacing) {
+export function resolveItemSizes(items, containerSize, spacing = 0) {
     let hasConstraints = false;
     for (const item of items) {
         validateSizeDef(item);
@@ -444,6 +461,7 @@ function resolveItemSizes(items, containerSize, spacing) {
         }
     }
 
+    let growth = 0;
     while (true) {
         let totalBase = 0;
         let totalGrow = 0;
@@ -474,6 +492,7 @@ function resolveItemSizes(items, containerSize, spacing) {
             0,
             availableSize - frozenSize - totalBase
         );
+        growth = remainingSize / totalGrow;
         let totalViolation = 0;
         /** @type {number[]} */
         const minViolations = [];
@@ -520,7 +539,7 @@ function resolveItemSizes(items, containerSize, spacing) {
         }
     }
 
-    return sizes;
+    return { sizes, growth };
 }
 
 /**
@@ -529,7 +548,7 @@ function resolveItemSizes(items, containerSize, spacing) {
  * @param {SizeDef[]} items
  * @param {number} containerSize
  * @param {number} spacing
- * @returns {number[]}
+ * @returns {{ sizes: number[], growth: number }}
  */
 function resolveUnconstrainedItemSizes(items, containerSize, spacing) {
     let totalPx = 0;
@@ -553,7 +572,7 @@ function resolveUnconstrainedItemSizes(items, containerSize, spacing) {
               (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
     }
 
-    return sizes;
+    return { sizes, growth: totalGrow ? remainingSpace / totalGrow : 0 };
 }
 
 /**
@@ -573,7 +592,7 @@ function validateSizeDef(size) {
  * @param {number} size
  * @param {SizeDef} sizeDef
  */
-function clampSize(size, sizeDef) {
+export function clampSize(size, sizeDef) {
     return Math.min(
         Math.max(size, sizeDef.minPx ?? 0),
         sizeDef.maxPx ?? Infinity
@@ -610,7 +629,7 @@ function hasSizeConstraints(sizeDef) {
  * @param {number} px
  * @returns {SizeDef}
  */
-function addPxToSizeDef(sizeDef, px) {
+export function addPxToSizeDef(sizeDef, px) {
     return createSizeDef({
         px: (sizeDef.px ?? 0) + px,
         grow: sizeDef.grow,

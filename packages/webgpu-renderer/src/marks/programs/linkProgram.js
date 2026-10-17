@@ -530,6 +530,10 @@ export default class LinkProgram extends BaseProgram {
         return LINK_SHADER_BODY;
     }
 
+    get usesPickingEnabledOverride() {
+        return true;
+    }
+
     /**
      * @returns {GPUPrimitiveTopology}
      */

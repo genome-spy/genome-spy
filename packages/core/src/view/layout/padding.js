@@ -156,18 +156,19 @@ export default class Padding {
  *
  * @param {Padding} padding
  * @param {import("../../spec/view.js").OverhangConfig | undefined} config
+ * @param {Padding} [minimum] Occupied panels retained on suppressed edges
  * @returns {Padding}
  */
-export function applyOverhangConfig(padding, config) {
+export function applyOverhangConfig(padding, config, minimum = Padding.zero()) {
     if (!config) {
         return padding;
     }
 
     return new Padding(
-        config.top === false ? 0 : padding.top,
-        config.right === false ? 0 : padding.right,
-        config.bottom === false ? 0 : padding.bottom,
-        config.left === false ? 0 : padding.left
+        config.top === false ? minimum.top : padding.top,
+        config.right === false ? minimum.right : padding.right,
+        config.bottom === false ? minimum.bottom : padding.bottom,
+        config.left === false ? minimum.left : padding.left
     );
 }
 

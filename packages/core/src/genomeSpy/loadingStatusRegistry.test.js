@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { registerLazyDataSource } from "../data/sources/lazy/lazyDataSourceRegistry.js";
 import IntervalUrlSource from "../data/sources/lazy/intervalUrlSource.js";
 import { createAndInitialize } from "../view/testUtils.js";
@@ -11,6 +11,9 @@ afterEach(() => {
 });
 
 test("reports a later lazy failure and suppresses publication after disposal", async () => {
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     /** @extends {IntervalUrlSource<object, import("../data/flowNode.js").Datum[][]>} */
     class FailingSource extends IntervalUrlSource {
         /**
@@ -74,6 +77,9 @@ test("reports a later lazy failure and suppresses publication after disposal", a
         message: "Cannot open indexed data",
     });
     expect(registry.getSnapshot()[0].errorPhase).toBeUndefined();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ message: "Cannot open indexed data" })
+    );
 
     const sourceId = registry.getSnapshot()[0].sourceId;
     source.dispose();

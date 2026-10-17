@@ -409,6 +409,9 @@ it.each(["before", "during"])(
 it.each(["primary", "side"])(
     "rejects failed eager %s data required by a lazy branch",
     async (failure) => {
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
         vi.stubGlobal(
             "fetch",
             vi.fn(async () => new Response("", { status: 404 }))
@@ -444,10 +447,20 @@ it.each(["primary", "side"])(
             awaitSubtreeLazyReady(context, root, undefined)
         ).rejects.toThrow("missing.csv");
         expect(source.requests).toBe(requests);
+        expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({
+                message: expect.stringContaining(
+                    "Could not load data: missing.csv"
+                ),
+            })
+        );
     }
 );
 
 it("ignores failures under a hidden container and wholly eager failures", async () => {
+    const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     vi.stubGlobal(
         "fetch",
         vi.fn(async () => new Response("", { status: 404 }))
@@ -474,11 +487,21 @@ it("ignores failures under a hidden container and wholly eager failures", async 
     const wait = awaitSubtreeLazyReady(context, root, { x: [0, 10] });
     lazy.find((source) => source.view.name === "visible").succeed();
     await expect(wait).resolves.toBeUndefined();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+            message: expect.stringContaining(
+                "Could not load data: unrelated.csv"
+            ),
+        })
+    );
 });
 
 it.each(["value", "missing"])(
     "waits for lazy publication to settle with y field %s",
     async (field) => {
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
         /** @extends {IntervalUrlSource<object, import("../data/flowNode.js").Datum[][]>} */
         class PublishingSource extends IntervalUrlSource {
             /** @param {any} params @param {import("./view.js").default} view */
@@ -539,5 +562,14 @@ it.each(["value", "missing"])(
                 ? { status: "error", errorPhase: "processing" }
                 : { status: "complete" }
         );
+        if (field === "missing") {
+            expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+                expect.objectContaining({
+                    message: expect.stringContaining('Invalid field "missing"'),
+                })
+            );
+        } else {
+            expect(consoleError).not.toHaveBeenCalled();
+        }
     }
 );

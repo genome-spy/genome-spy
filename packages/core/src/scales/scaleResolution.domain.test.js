@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { toRegularArray as r } from "../utils/domainArray.js";
 import GenomeStore from "../genome/genomeStore.js";
@@ -16,6 +16,8 @@ import {
     getScaleDomain,
     initView,
 } from "./scaleResolutionTestUtils.js";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("Scale resolution domain handling", () => {
     test("explicit index scale supports ordinal positional lanes", async () => {
@@ -414,6 +416,7 @@ describe("Scale resolution domain handling", () => {
     });
 
     test("zoomLevel is available while scale domains are compiled", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         const view = await initView(
             {
                 data: { values: [{ y: 1 }] },
@@ -436,6 +439,11 @@ describe("Scale resolution domain handling", () => {
         expect(r(getRequiredScaleResolution(view, "y").getDomain())).toEqual([
             10, 50,
         ]);
+        expect(warn).toHaveBeenCalledExactlyOnceWith(
+            expect.stringContaining(
+                "The automatic zoomLevel parameter is deprecated"
+            )
+        );
     });
 
     test("zoomLevel reacts to scale zoom changes", async () => {

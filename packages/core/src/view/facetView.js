@@ -25,8 +25,7 @@ import {
 } from "./renderingContext/clipOptions.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 import { propagateInteraction } from "./interactionRouting.js";
-import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
-import { isMultiscaleSpec } from "./multiscale.js";
+import { isLayerableSpec } from "./viewSpecGuards.js";
 import ViewError from "./viewError.js";
 import {
     activateExprRefProps,
@@ -125,11 +124,7 @@ export default class FacetView extends ContainerView {
             this,
             this.getNextAutoName("facet"),
             (importedSpec) => {
-                if (
-                    !isUnitSpec(importedSpec) &&
-                    !isLayerSpec(importedSpec) &&
-                    !isMultiscaleSpec(importedSpec)
-                ) {
+                if (!isLayerableSpec(importedSpec)) {
                     throw new ViewError(
                         "Facet children must import unit, layer, or multiscale specs.",
                         this

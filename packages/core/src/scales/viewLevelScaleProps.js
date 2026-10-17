@@ -146,8 +146,11 @@ function collectVisibleScaleResolutions(view, channel) {
     visitNonChromeViews(view, (descendant) => {
         if (
             descendant !== view &&
-            descendant.getConfiguredOrDefaultResolution(channel, "scale") ===
-                "excluded"
+            (descendant.isResolutionBoundary(channel) ||
+                descendant.getConfiguredOrDefaultResolution(
+                    channel,
+                    "scale"
+                ) === "excluded")
         ) {
             return VISIT_SKIP;
         }

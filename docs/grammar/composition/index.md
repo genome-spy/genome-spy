@@ -5,7 +5,8 @@ composition](https://vega.github.io/vega-lite/docs/composition.html) model of
 Vega-Lite, and currently provides the [concatenation](./concat.md),
 [`layer`](./layer.md), and [`facet`](../facet.md) composition operators in the
 _core_ library, as well as [`multiscale`](./multiscale.md) for semantic zooming
-with multiple detail levels. The GenomeSpy _app_ also provides a specialized
+with multiple detail levels and [`surround`](./surround.md) for aligning marginal
+tracks with a central plot. The GenomeSpy _app_ also provides a specialized
 facet operator for visualizing
 [sample collections](../../sample-collections/visualizing.md) using a
 track-based layout.

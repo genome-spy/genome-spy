@@ -133,6 +133,8 @@ async function fixture() {
         { cwd, stdio: "pipe" }
     );
     git(cwd, ["init", "--quiet", "--initial-branch=master"]);
+    // Prevent background Git maintenance from racing with fixture cleanup.
+    git(cwd, ["config", "maintenance.auto", "false"]);
     git(cwd, ["config", "user.name", "Release fixture"]);
     git(cwd, ["config", "user.email", "release@example.org"]);
     git(cwd, ["config", "commit.gpgsign", "false"]);

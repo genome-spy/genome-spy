@@ -517,9 +517,9 @@ describe("example scale-domain lifecycle contracts", () => {
         for (const child of /** @type {import("../view/layerView.js").default} */ (
             view
         ).children) {
-            expect(child.paramRuntime.getValue("zoomLevel")).toBeCloseTo(
-                Math.sqrt(15)
-            );
+            expect(
+                child.paramRuntime.createExpression("zoomLevel()")()
+            ).toBeCloseTo(Math.sqrt(15));
         }
         expect(notified).not.toHaveBeenCalled();
     });

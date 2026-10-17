@@ -637,7 +637,8 @@ export type CoreViewSpec =
     | FacetSpec
     | VConcatSpec
     | HConcatSpec
-    | ConcatSpec;
+    | ConcatSpec
+    | SurroundSpec;
 
 export type ContainerSpec = (CoreViewSpec | ViewSpecExtension) & ResolveSpec;
 
@@ -764,3 +765,70 @@ export interface ConcatSpec extends ConcatBase {
 }
 
 export type AnyConcatSpec = VConcatSpec | HConcatSpec | ConcatSpec;
+
+/** Plots accepted at the center of a surround. */
+export type SurroundPlotSpec =
+    UnitSpec | LayerSpec | MultiscaleSpec | ImportSpec;
+
+/** A group of tracks sharing data, encodings, and other view settings. */
+export interface SurroundSideSpec extends ViewSpecBase {
+    width?: never;
+    height?: never;
+    viewportWidth?: never;
+    viewportHeight?: never;
+    /**
+     * Tracks ordered top-to-bottom on top/bottom, or left-to-right on left/right.
+     * Tracks support unit plots, layers, multiscale layers, nested surrounds,
+     * and imports resolving to these.
+     */
+    views: (SurroundPlotSpec | SurroundSpec)[];
+
+    /** Gap between tracks, in pixels. __Default value:__ `10` */
+    spacing?: number;
+}
+
+export type SurroundSide =
+    (SurroundPlotSpec | SurroundSpec)[] | SurroundSideSpec;
+
+/** Optional groups of plots surrounding the central plot. */
+export interface SurroundSides {
+    /** Plots above the center, stacked top-to-bottom and sharing its x scale. */
+    top?: SurroundSide;
+
+    /** Plots to the right, stacked left-to-right and sharing the center's y scale. */
+    right?: SurroundSide;
+
+    /** Plots below the center, stacked top-to-bottom and sharing its x scale. */
+    bottom?: SurroundSide;
+
+    /** Plots to the left, stacked left-to-right and sharing the center's y scale. */
+    left?: SurroundSide;
+}
+
+/** Aligns marginal tracks to a central plot's row and column coordinates. */
+export interface SurroundSpec extends ViewSpecBase {
+    axes?: never;
+    viewportWidth?: never;
+    viewportHeight?: never;
+    /**
+     * Central plot. Accepts unit plots, layers, multiscale layers, and imports
+     * resolving to these. Its width and height determine the aligned plot size.
+     */
+    spec: SurroundPlotSpec;
+
+    /**
+     * Top/bottom tracks share the center's x scale and stack vertically.
+     * Left/right tracks share its y scale and stack horizontally. Tracks have
+     * independent perpendicular scales by default. Specify only their thickness:
+     * height on top/bottom, or width on left/right.
+     * Nested surrounds align by their central plotting interval; omit its
+     * aligned size. Their annotations extending along that dimension require
+     * fixed or step-based thicknesses and may occupy free corners.
+     */
+    surround: SurroundSides;
+
+    /** Gap between the center and each side, in pixels. __Default value:__ `10` */
+    spacing?: number;
+}
+
+export type GridSpec = AnyConcatSpec | SurroundSpec;

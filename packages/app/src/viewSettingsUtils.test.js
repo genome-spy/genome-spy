@@ -5,7 +5,11 @@ import {
     buildViewVisibilityEntries,
     getRadioVisibilityGroupsBySelector,
     resolveRadioVisibilityConflicts,
+    makeViewSelectorKey,
+    normalizeViewSettingsPayload,
 } from "./viewSettingsUtils.js";
+import { getAddressableViews } from "@genome-spy/core/view/viewSelectors.js";
+import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
 
 /**
  * @param {string} name
@@ -43,6 +47,44 @@ describe("view visibility entries", () => {
         const { view } = await createHeadlessViewHierarchy(spec);
         return view;
     }
+
+    test("surround side groups and tracks retain bookmarkable authored selectors", async () => {
+        /** @type {import("./spec/view.js").AppSurroundSpec} */
+        const spec = {
+            name: "surround",
+            spec: makeUnitSpec("matrix"),
+            surround: {
+                right: {
+                    name: "metadata",
+                    configurableVisibility: true,
+                    views: [{ ...makeUnitSpec("track"), width: 20 }],
+                },
+            },
+        };
+        // App's recursive types also allow SampleView; this fixture uses Core plots.
+        const root = await createRoot(
+            /** @type {import("@genome-spy/core/spec/view.js").ViewSpec} */ (
+                /** @type {unknown} */ (spec)
+            )
+        );
+        expect(
+            getAddressableViews(root).map((view) => view.explicitName)
+        ).toEqual(["surround", "matrix", "metadata", "track"]);
+        expect(validateSelectorConstraints(root)).toEqual([]);
+
+        const expected = [
+            { scope: [], view: "metadata", visible: false },
+            { scope: [], view: "track", visible: false },
+        ];
+        const visibilities = Object.fromEntries(
+            expected.map((entry) => [makeViewSelectorKey(entry), entry.visible])
+        );
+        const entries = buildViewVisibilityEntries(root, visibilities);
+        expect(entries).toEqual(expected);
+        expect(normalizeViewSettingsPayload({ visibilities: entries })).toEqual(
+            { visibilities }
+        );
+    });
 
     test("legacy keys apply to all matching views", async () => {
         const spec = {

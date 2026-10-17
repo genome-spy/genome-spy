@@ -30,6 +30,35 @@ class ExampleGalleryPreprocessorTest(unittest.TestCase):
 
         self.assertIn("`halfLife`", lines)
 
+    def test_schema_macro_renders_union_array_items(self) -> None:
+        schema = {
+            "definitions": {
+                "Side": {
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "anyOf": [
+                                    {"$ref": "#/definitions/UnitSpec"},
+                                    {"$ref": "#/definitions/SurroundSpec"},
+                                ]
+                            },
+                        },
+                        {"$ref": "#/definitions/SurroundSideSpec"},
+                    ]
+                },
+                "UnitSpec": {},
+                "SurroundSpec": {},
+                "SurroundSideSpec": {},
+            }
+        }
+        preprocessor = MyPreprocessor(None, schema, {}, "")
+
+        self.assertEqual(
+            preprocessor.refToString("#/definitions/Side", schema),
+            "(UnitSpec | SurroundSpec)[] | SurroundSideSpec",
+        )
+
     def test_schema_macro_keeps_property_descriptions_in_definition_list(self):
         schema = {
             "definitions": {

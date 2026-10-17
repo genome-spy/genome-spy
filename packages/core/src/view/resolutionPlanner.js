@@ -33,6 +33,7 @@ import { isInChromeSubtree } from "./viewChrome.js";
 export const getResolutionView = (view, type, targetChannel) => {
     let resolutionView = view;
     while (
+        !resolutionView.isResolutionBoundary(targetChannel) &&
         (getResolutionBehavior(resolutionView, type, targetChannel) ==
             "forced" ||
             (resolutionView.dataParent &&

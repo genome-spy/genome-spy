@@ -169,7 +169,7 @@ export default class UnitView extends View {
                         if (toggle) {
                             if (datum) {
                                 const previousSelection =
-                                    this.paramRuntime.getValue(name);
+                                    this.paramRuntime.findValue(name);
                                 selection = updateMultiPointSelection(
                                     previousSelection,
                                     {

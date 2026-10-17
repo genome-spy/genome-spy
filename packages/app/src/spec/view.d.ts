@@ -7,6 +7,9 @@ import {
     MultiscaleSpec as CoreMultiscaleSpec,
     UnitSpec as CoreUnitSpec,
     VConcatSpec as CoreVConcatSpec,
+    SurroundSpec as CoreSurroundSpec,
+    SurroundSideSpec as CoreSurroundSideSpec,
+    Side,
 } from "@genome-spy/core/spec/view.js";
 import { SampleSpec } from "./sampleView.js";
 
@@ -117,6 +120,35 @@ export type AppConcatSpec = Omit<CoreConcatSpec, "templates" | "concat"> &
         concat: (AppViewSpec | ImportSpec)[];
     };
 
+export type AppSurroundPlotSpec =
+    AppUnitSpec | AppLayerSpec | AppMultiscaleSpec | ImportSpec;
+
+export type AppSurroundSideSpec = Omit<
+    CoreSurroundSideSpec,
+    "templates" | "views"
+> &
+    AppConfigurableVisibilitySpec & {
+        templates?: Record<string, AppNestedViewSpec>;
+        views: (AppSurroundPlotSpec | AppSurroundSpec)[];
+    };
+
+export type AppSurroundSides = Partial<
+    Record<
+        Side,
+        AppSurroundSideSpec | (AppSurroundPlotSpec | AppSurroundSpec)[]
+    >
+>;
+
+export type AppSurroundSpec = Omit<
+    CoreSurroundSpec,
+    "templates" | "spec" | "surround"
+> &
+    AppConfigurableVisibilitySpec & {
+        templates?: Record<string, AppNestedViewSpec>;
+        spec: AppSurroundPlotSpec;
+        surround: AppSurroundSides;
+    };
+
 export type AppNestedViewSpec =
     | AppUnitSpec
     | AppLayerSpec
@@ -124,7 +156,8 @@ export type AppNestedViewSpec =
     | AppFacetSpec
     | AppVConcatSpec
     | AppHConcatSpec
-    | AppConcatSpec;
+    | AppConcatSpec
+    | AppSurroundSpec;
 
 // App root may contain SampleSpec, but recursive descendants cannot.
 export type AppViewSpec = AppNestedViewSpec | SampleSpec;

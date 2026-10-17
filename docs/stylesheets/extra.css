@@ -47,6 +47,17 @@
     border-radius: 0.2rem;
 }
 
+.surround-schematics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 1rem;
+}
+
+.surround-schematics img {
+    display: block;
+    width: 100%;
+}
+
 .example-gallery {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));

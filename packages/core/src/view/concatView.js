@@ -63,13 +63,7 @@ export default class ConcatView extends GridView {
             : isVConcatSpec(spec)
               ? spec.vconcat
               : spec.hconcat;
-        /** @type {import("./view.js").ViewOptions} */
-        const childOptions = {
-            inheritEncoding: true,
-        };
-        if (this.options.layoutSizeParams == "force") {
-            childOptions.layoutSizeParams = "force";
-        }
+        const childOptions = this.#getChildOptions();
 
         this.setChildren(
             await Promise.all(
@@ -79,7 +73,7 @@ export default class ConcatView extends GridView {
                         this,
                         this,
                         this.getNextAutoName("grid"),
-                        undefined,
+                        this.options.childSpecValidator,
                         childOptions
                     )
                 )
@@ -206,6 +200,15 @@ export default class ConcatView extends GridView {
         }
     }
 
+    /** @override */
+    isConfiguredVisible() {
+        return (
+            super.isConfiguredVisible() &&
+            (!this.options.collapseWhenEmpty ||
+                this.children.some((child) => child.isConfiguredVisible()))
+        );
+    }
+
     /**
      * @returns {{
      *   specs: (import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec)[],
@@ -236,18 +239,23 @@ export default class ConcatView extends GridView {
         };
     }
 
+    /** @returns {import("./view.js").ViewOptions} */
+    #getChildOptions() {
+        /** @type {import("./view.js").ViewOptions} */
+        const options = {
+            inheritEncoding: true,
+            imposedAlignmentChannel: this.options.alignedChannel,
+        };
+        if (this.options.layoutSizeParams == "force") {
+            options.layoutSizeParams = "force";
+        }
+        return options;
+    }
+
     /**
      * @returns {ContainerMutationHelper}
      */
     #getMutationHelper() {
-        /** @type {import("./view.js").ViewOptions} */
-        const createViewOptions = {
-            inheritEncoding: true,
-        };
-        if (this.options.layoutSizeParams == "force") {
-            createViewOptions.layoutSizeParams = "force";
-        }
-
         return new ContainerMutationHelper(this, {
             getChildSpecs: this.#getChildSpecs.bind(this),
             insertView: (view, index) => this.insertChildViewAt(view, index),
@@ -255,7 +263,8 @@ export default class ConcatView extends GridView {
             syncMutationGuideViews: (_view, _index, gridChild) =>
                 this.#syncMutationGuideViews(gridChild ? [gridChild] : []),
             defaultName: () => this.getNextAutoName("grid"),
-            createViewOptions,
+            createViewOptions: this.#getChildOptions(),
+            specValidator: this.options.childSpecValidator,
         });
     }
 

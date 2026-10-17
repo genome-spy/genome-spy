@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="340" viewBox="0 0 380 340" role="img" aria-labelledby="title description">
+  <title id="title">Nested surround composition</title>
+  <desc id="description">A central spec has a top plot and a nested surround in right[0]. The nested center shares the outer center's y interval. Its own top plot shares a separate local x interval, shown with purple guides, and occupies the upper-right corner.</desc>
+  <style>
+    text { font-family: system-ui, sans-serif; font-size: 16px; fill: #334155; text-anchor: middle; }
+    .heading { font-size: 20px; font-weight: 600; text-anchor: start; }
+    .slot { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 17px; }
+    .hint { font-size: 14px; }
+    .x { fill: #2d6aaa; }
+    .y { fill: #956018; }
+    .local-x { fill: #7850a0; }
+    .guide { fill: none; stroke-width: 1.5; stroke-dasharray: 4 4; }
+    .x-guide { stroke: #2d6aaa; }
+    .y-guide { stroke: #b37a26; }
+    .local-x-guide { stroke: #875bb0; }
+    rect { stroke-width: 1.5; }
+    .center { fill: #e9edf2; stroke: #64748b; }
+    .x-panel { fill: #e8f1fc; stroke: #2d6aaa; }
+    .nested-panel { fill: #f1eafa; stroke: #875bb0; }
+  </style>
+
+  <rect width="380" height="340" fill="white" stroke="none"/>
+  <text class="heading" x="20" y="28">B  Nested surround</text>
+
+  <path class="guide x-guide" d="M36 82V268 M218 82V268"/>
+  <path class="guide local-x-guide" d="M234 82V268 M344 82V268"/>
+  <path class="guide y-guide" d="M20 136H360 M20 252H360"/>
+  <text class="hint x" x="127" y="68">shared x</text>
+  <text class="hint local-x" x="289" y="68">local x</text>
+  <text class="hint y" transform="translate(17 194) rotate(-90)">shared y</text>
+
+  <rect class="x-panel" x="36" y="98" width="182" height="22" rx="3"/>
+  <rect class="center" x="36" y="136" width="182" height="116" rx="3"/>
+  <rect class="nested-panel" x="234" y="98" width="110" height="22" rx="3"/>
+  <rect class="nested-panel" x="234" y="136" width="110" height="116" rx="3"/>
+
+  <text class="slot x" x="127" y="115">top</text>
+  <text class="slot" x="127" y="191">spec</text>
+  <text class="hint" x="127" y="212">center</text>
+  <text class="slot local-x" x="289" y="115">top</text>
+  <text class="slot" x="289" y="191">spec</text>
+  <text class="hint" x="289" y="212">nested center</text>
+
+  <path d="M230 268V278H348V268" fill="none" stroke="#875bb0" stroke-width="1.5"/>
+  <text class="slot local-x" x="289" y="302">right[0]</text>
+</svg>
