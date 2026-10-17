@@ -3,6 +3,8 @@
 "@genome-spy/playground": minor
 ---
 
+<!-- category: feature -->
+
 Playground now underlines declarations responsible for missing encoding fields,
 missing static top-level `datum` fields, invalid expressions and interaction
 filters, invalid or duplicate parameter names, missing `push: "outer"` targets,
