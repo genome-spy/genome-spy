@@ -15,18 +15,6 @@ import { isImportSpec } from "./viewSpecGuards.js";
 import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
 
 /**
- * @param {unknown} value
- * @returns {value is { getChildren: () => Iterable<import("./view.js").default> }}
- */
-function hasGridChildChildren(value) {
-    return (
-        typeof value === "object" &&
-        value !== null &&
-        typeof (/** @type {any} */ (value).getChildren) === "function"
-    );
-}
-
-/**
  * Shared helper for dynamic container mutations.
  * Encapsulates the common lifecycle for adding/removing child views.
  */
@@ -35,30 +23,17 @@ export default class ContainerMutationHelper {
      * @typedef {import("./view.js").default} View
      * @typedef {import("../spec/view.js").ViewSpec} ViewSpec
      * @typedef {import("../spec/view.js").ImportSpec} ImportSpec
-     *
-     * @typedef {{
-     *   specs: (ViewSpec | ImportSpec)[],
-     *   insertAt: (index: number, spec: ViewSpec | ImportSpec) => void,
-     *   removeAt: (index: number) => void
-     * }} ChildSpecs
      */
 
     /**
      * @typedef {{
-     *   getChildSpecs: () => ChildSpecs,
-     *   insertView: (view: View, index: number) => any,
+     *   specs: (ViewSpec | ImportSpec)[],
+     *   insertView: (view: View, index: number) => import("./gridView/gridChild.js").default | void,
      *   removeView: (index: number) => void,
-     *   prepareView?: (view: View, index: number, insertionResult: any) => Promise<void>,
-     *   afterRemove?: (index: number) => Promise<void>,
-     *   syncMutationGuideViews?: (
-     *     view: View | undefined,
-     *     index: number | undefined,
-     *     insertionResult: any
-     *   ) => Promise<Iterable<View> | undefined>,
-     *   defaultName?: (index: number, spec: ViewSpec | ImportSpec) => string,
+     *   syncMutationGuideViews?: (gridChild?: import("./gridView/gridChild.js").default | void) => Promise<Iterable<View>>,
+     *   namePrefix: string,
      *   createViewOptions?: import("../types/viewContext.js").CreateViewOptions,
-     *   specValidator?: (spec: ViewSpec) => void,
-     *   requestLayout?: boolean
+     *   specValidator?: (spec: ViewSpec) => void
      * }} MutationOptions
      */
 
@@ -79,11 +54,9 @@ export default class ContainerMutationHelper {
      * @returns {Promise<View>}
      */
     async addChildSpec(childSpec, index) {
-        const { specs, insertAt, removeAt } = this.options.getChildSpecs();
+        const { specs } = this.options;
         const insertIndex = index ?? specs.length;
-        const name =
-            this.options.defaultName?.(insertIndex, childSpec) ??
-            this.container.getNextAutoName("child");
+        const name = this.container.getNextAutoName(this.options.namePrefix);
 
         let specInserted = false;
         let viewInserted = false;
@@ -103,7 +76,7 @@ export default class ContainerMutationHelper {
         );
 
         try {
-            insertAt(insertIndex, childSpec);
+            specs.splice(insertIndex, 0, childSpec);
             specInserted = true;
             const insertionResult = this.options.insertView(
                 childView,
@@ -122,30 +95,14 @@ export default class ContainerMutationHelper {
                 this.container.context.genomeStore
             );
 
-            if (this.options.prepareView) {
-                await this.options.prepareView(
-                    childView,
-                    insertIndex,
-                    insertionResult
-                );
-            }
-
             // Guide views are container-specific. Sync them after configs and
             // assemblies are ready so generated guide marks can initialize.
-            const guideRoots = this.options.syncMutationGuideViews
-                ? await this.options.syncMutationGuideViews(
-                      childView,
-                      insertIndex,
-                      insertionResult
-                  )
-                : undefined;
-
-            const viewsToInitialize = collectMutationInitializedViews(
-                this.container,
-                childView,
-                insertionResult,
-                guideRoots
-            );
+            const guideRoots =
+                await this.options.syncMutationGuideViews?.(insertionResult);
+            const viewsToInitialize = new Set(childView.getDescendants());
+            for (const root of guideRoots ?? [this.container]) {
+                collectUninitializedChromeViews(root, viewsToInitialize);
+            }
             configureViewsAfterScaleResolution(viewsToInitialize);
 
             await initializeViewDataForViews(
@@ -158,16 +115,14 @@ export default class ContainerMutationHelper {
             if (viewInserted) {
                 await this.#rollbackInsertedChild(insertIndex, error);
             } else if (specInserted) {
-                removeAt(insertIndex);
+                specs.splice(insertIndex, 1);
             }
 
             throw error;
         }
 
-        if (this.options.requestLayout !== false) {
-            this.container.invalidateSizeCache();
-            this.container.context.requestLayoutReflow();
-        }
+        this.container.invalidateSizeCache();
+        this.container.context.requestLayoutReflow();
 
         return childView;
     }
@@ -191,34 +146,20 @@ export default class ContainerMutationHelper {
      * @param {{ requestLayout?: boolean }} [options]
      */
     async removeChildAt(index, options = {}) {
-        const { removeAt } = this.options.getChildSpecs();
         clearViewLevelScaleProps(this.container);
         clearViewLevelGuideProps(this.container);
         this.options.removeView(index);
-        removeAt(index);
-
-        if (this.options.afterRemove) {
-            await this.options.afterRemove(index);
-        }
+        this.options.specs.splice(index, 1);
         attachViewLevelScaleProps(this.container);
         attachViewLevelAxisProps(this.container);
         attachViewLevelLegendProps(this.container);
 
         // Removed children may change shared guide ownership and visibility.
-        const guideRoots = this.options.syncMutationGuideViews
-            ? await this.options.syncMutationGuideViews(
-                  undefined,
-                  undefined,
-                  undefined
-              )
-            : undefined;
+        const guideRoots = await this.options.syncMutationGuideViews?.();
 
         await this.initializeUninitializedChromeViews(guideRoots);
 
-        if (
-            this.options.requestLayout !== false &&
-            options.requestLayout !== false
-        ) {
+        if (options.requestLayout !== false) {
             this.container.invalidateSizeCache();
             this.container.context.requestLayoutReflow();
         }
@@ -254,27 +195,6 @@ export default class ContainerMutationHelper {
 }
 
 /**
- * @param {import("./containerView.js").default} container
- * @param {import("./view.js").default} childView
- * @param {unknown} insertionResult
- * @param {Iterable<import("./view.js").default> | undefined} guideRoots
- * @returns {Set<import("./view.js").default>}
- */
-function collectMutationInitializedViews(
-    container,
-    childView,
-    insertionResult,
-    guideRoots
-) {
-    const views = collectInsertedViews(childView, insertionResult);
-    for (const root of guideRoots ?? [container]) {
-        collectUninitializedChromeViews(root, views);
-    }
-
-    return views;
-}
-
-/**
  * @param {import("./view.js").default} root
  * @param {Set<import("./view.js").default>} [views]
  * @returns {Set<import("./view.js").default>}
@@ -294,21 +214,4 @@ function collectUninitializedChromeViews(root, views = new Set()) {
     }
 
     return views;
-}
-
-/**
- * @param {import("./view.js").default} childView
- * @param {unknown} insertionResult
- * @returns {Set<import("./view.js").default>}
- */
-function collectInsertedViews(childView, insertionResult) {
-    if (hasGridChildChildren(insertionResult)) {
-        return new Set(
-            Array.from(insertionResult.getChildren()).flatMap((view) =>
-                view.getDescendants()
-            )
-        );
-    }
-
-    return new Set(childView.getDescendants());
 }

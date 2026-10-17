@@ -41,7 +41,7 @@ will be copied or adapted from another project.
 
 ## Milestones
 
-- [ ] Simplify actual layer/concat mutation contracts and remove unused options.
+- [x] Simplify actual layer/concat mutation contracts and remove unused options.
   Consumers: ViewMutationApi, App dynamic tracks, surround side concats.
   Verify mutation API/ACID, layer, concat, and surround mutation tests.
   Commit: `refactor(core): narrow container mutation plumbing`.
@@ -78,4 +78,10 @@ result even if the 15% target is not safely attainable.
 
 ## Results
 
-Pending implementation and independent review.
+Mutation milestone: the helper now owns spec splices directly, accepts only
+options used by layer/concat, and discovers generated chrome through its normal
+ownership markers. Rollback and chrome initialization remain covered by 81
+passing mutation/container tests. The baseline scope contains 8,208 non-comment
+production lines in 32 files.
+
+Implementation and independent review of the remaining milestones are pending.
