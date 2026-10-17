@@ -823,6 +823,9 @@ struct Globals {
     placementClipMode: u32,
     placementCount: u32,
     orderPass: u32,
+    renderTargetOrigin: vec2<f32>,
+    viewportScale: vec2<f32>,
+    viewportOffset: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
@@ -886,7 +889,7 @@ fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
 }
 
 fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool {
-    let logicalPosition = position.xy / globals.dpr;
+    let logicalPosition = position.xy / globals.dpr + globals.renderTargetOrigin;
     return ((globals.placementClipMode & 1u) == 0u ||
         (logicalPosition.x >= placementClip.x && logicalPosition.x <= placementClip.z)) &&
         ((globals.placementClipMode & 2u) == 0u ||

@@ -6,6 +6,22 @@ import {
 import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
 import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
 
+// Mark bodies provide vertexMain(v, i) -> VSOut with a pos member.
+const VERTEX_ENTRY = /* wgsl */ `
+@vertex
+fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+    var out = vertexMain(v, i);
+    // Safari 26.5 rejects negative or attachment-exceeding viewports, although
+    // WebGPU permits them. Keep the GPU viewport inside the cropped target and
+    // map viewport-local clip coordinates here instead, preserving placement.
+    out.pos = vec4<f32>(
+        out.pos.xy * globals.viewportScale + globals.viewportOffset * out.pos.w,
+        out.pos.zw
+    );
+    return out;
+}
+`;
+
 /**
  * @typedef {object} PipelineBuildParams
  * @property {GPUDevice} device
@@ -94,7 +110,7 @@ export function buildPipelines({
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         compiledChannels,
         uniformLayout,
-        shaderBody,
+        shaderBody: shaderBody + VERTEX_ENTRY,
         packedSeriesLayout,
         selectionDefs,
         visibleWhen,

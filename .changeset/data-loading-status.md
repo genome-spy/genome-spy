@@ -2,6 +2,8 @@
 "@genome-spy/core": minor
 ---
 
+<!-- category: feature -->
+
 Inspect eager URL and lazy data-loading outcomes through the embed API's new
 `dataLoading.getSnapshot()` and `dataLoading.subscribe()` methods. Embedders can
 detect failed sources without reading the visualization or browser console.

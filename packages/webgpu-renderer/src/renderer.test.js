@@ -364,7 +364,7 @@ describe("Renderer mark definitions", () => {
             draws: [
                 {
                     mark: second,
-                    viewport: { x: 50, y: 0, width: 50, height: 50 },
+                    viewport: { x: 50.25, y: 0, width: 49.5, height: 50 },
                     scissor: { x: 75, y: 0, width: 25, height: 50 },
                     firstInstance: 2,
                     instanceCount: 3,
@@ -385,9 +385,9 @@ describe("Renderer mark definitions", () => {
         );
         expect(pass.setViewport).toHaveBeenNthCalledWith(
             1,
-            100,
+            100.5,
             0,
-            100,
+            99,
             100,
             0,
             1
@@ -624,17 +624,23 @@ describe("Renderer mark definitions", () => {
                     items: [
                         {
                             mark,
-                            viewport: {
-                                x: 10,
-                                y: 5,
-                                width: 20,
-                                height: 10,
-                            },
+                            // Cropping the layer must not produce a negative,
+                            // oversized GPU viewport (rejected by Safari).
+                            viewport: { x: 0, y: 0, width: 100, height: 50 },
                             scissor: {
                                 x: 10,
                                 y: 5,
                                 width: 20,
                                 height: 10,
+                            },
+                        },
+                        {
+                            mark,
+                            viewport: {
+                                x: 10.25,
+                                y: 5.25,
+                                width: 19.5,
+                                height: 9.5,
                             },
                         },
                     ],
@@ -662,9 +668,18 @@ describe("Renderer mark definitions", () => {
             "viewRoot/samples/copy-ratios: group composite pass"
         );
         expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 40, 20, 0, 1);
-        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
         expect(pass.setViewport).toHaveBeenNthCalledWith(
             2,
+            0.5,
+            0.5,
+            39,
+            19,
+            0,
+            1
+        );
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
+        expect(pass.setViewport).toHaveBeenNthCalledWith(
+            3,
             20,
             10,
             40,
@@ -672,7 +687,7 @@ describe("Renderer mark definitions", () => {
             0,
             1
         );
-        expect(renderer._renderFrame).toHaveLength(1);
+        expect(renderer._renderFrame).toHaveLength(2);
 
         renderer.renderPicking();
         expect(renderer._pickingFrame).toBe(renderer._renderFrame);
