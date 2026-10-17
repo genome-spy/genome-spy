@@ -667,3 +667,29 @@ and about 24-33% lower for the decorated/facet/legend/surround fixtures. With si
 caches invalidated, facet arrangement measured 0.105 ms baseline / 0.107 ms fixed;
 other fixtures were unchanged or faster. No material end-to-end slowdown was
 observed. These timings cover CPU initialization/layout, not GPU throughput.
+
+## Final delivery disposition
+
+All implementation and review checklists are complete. Earlier follow-up
+proposals are reconciled for this PR:
+
+- Resolved-spec factory validation: discarded from this branch. It changes the
+  direct/import preparation boundary and is not needed for the delivered cleanup.
+- Legend-region ownership: completed in `9151cf92c` and subsequent measurement
+  and chrome-resolution milestones.
+- A shared facet/grid track engine: discarded after the measured prototype;
+  only the smaller size-summation cleanup is retained.
+- One resolution-complete guide stage: completed in `6314367f1`, including
+  dynamic insertion and App consumers.
+- Further work toward the 15% aspiration: discarded from this delivery to
+  preserve behavior, readability and measured performance. The achieved fixed
+  scope reduction is 4.99%; the target was not reached.
+
+The reviewed revision is preserved on `codex/simplify-container-layouts-reviewed`.
+For delivery, only the twelve layout commits were rebased onto current
+`origin/master` (`d455331f9`), excluding three unrelated ancestor commits.
+`git range-diff` reports identical patches for all twelve milestones. Original
+measurement baselines and review references above remain historical records;
+the PR will report fresh integration checks against its actual master base.
+
+This reconciled plan is committed before its removal in the following commit.
