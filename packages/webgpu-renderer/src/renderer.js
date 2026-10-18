@@ -1,4 +1,8 @@
-import { globalBindings, placementBindings } from "./utils/bindingLimits.js";
+import {
+    globalBindings,
+    globalUniformByteSize,
+    placementBindings,
+} from "./utils/bindingLimits.js";
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
@@ -391,7 +395,7 @@ export class Renderer {
         this._pickingFrame = null;
 
         this.#globalUniformStride = Math.max(
-            80,
+            globalUniformByteSize,
             device.limits.minUniformBufferOffsetAlignment
         );
 
@@ -421,7 +425,7 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this.#globalUniformBuffer,
-                        size: 80,
+                        size: globalUniformByteSize,
                     },
                 },
             ],
@@ -546,7 +550,7 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this.#globalUniformBuffer,
-                        size: 80,
+                        size: globalUniformByteSize,
                     },
                 },
             ],
@@ -556,48 +560,66 @@ export class Renderer {
     }
 
     /**
-     * @param {NormalizedDraw[]} draws
-     * @returns {void}
+     * @param {NormalizedDraw} draw
+     * @param {RenderTarget} target
+     * @param {import("./index.d.ts").DrawRect} viewport Physical, target-local viewport.
+     * @param {boolean} picking
      */
-    #writeDrawGlobals(draws, forceAll = false) {
+    #stageDrawGlobals(draw, target, viewport, picking) {
+        const { floats, integers } = this.#globalUniformStaging;
+        const offset = (draw.uniformIndex * this.#globalUniformStride) / 4;
+        const dpr = this._globals.dpr;
+        const scaleX = (draw.viewport.width * dpr) / viewport.width;
+        const scaleY = (draw.viewport.height * dpr) / viewport.height;
+        const offsetX =
+            ((draw.viewport.x - target.logicalX) * dpr - viewport.x) /
+            viewport.width;
+        const offsetY =
+            ((draw.viewport.y - target.logicalY) * dpr - viewport.y) /
+            viewport.height;
+
+        floats[offset] = draw.viewport.width;
+        floats[offset + 1] = draw.viewport.height;
+        floats[offset + 2] = this._globals.dpr;
+        floats[offset + 4] = draw.visibleRange.x1;
+        floats[offset + 5] = draw.visibleRange.y1;
+        floats[offset + 6] = draw.visibleRange.x2;
+        floats[offset + 7] = draw.visibleRange.y2;
+        floats[offset + 8] = draw.visibleRange.cullX ? 1 : 0;
+        floats[offset + 9] = draw.visibleRange.cullY ? 1 : 0;
+        floats[offset + 12] = draw.viewport.x;
+        floats[offset + 13] = draw.viewport.y;
+        floats[offset + 14] = draw.viewport.width;
+        floats[offset + 15] = draw.viewport.height;
+        integers[offset + 16] = draw.placement?.index ?? 0;
+        integers[offset + 17] = draw.placement?.clipMode ?? 0;
+        integers[offset + 18] = draw.placement?.count ?? 0;
+        integers[offset + 19] = picking ? 0 : draw.orderPass;
+        floats[offset + 20] = target.logicalX;
+        floats[offset + 21] = target.logicalY;
+        floats[offset + 22] = scaleX;
+        floats[offset + 23] = scaleY;
+        floats[offset + 24] = offsetX * 2 + scaleX - 1;
+        floats[offset + 25] = -offsetY * 2 - scaleY + 1;
+    }
+
+    /** @param {number} drawCount */
+    #uploadDrawGlobals(drawCount) {
         const phaseStart = startPhase();
-        if (!draws.length) {
+        if (!drawCount) {
             finishPhase("drawGlobals", phaseStart);
             return;
         }
 
-        this.#ensureGlobalUniformCapacity(draws.length);
-        const { buffer, floats, integers } = this.#globalUniformStaging;
-        for (let i = 0; i < draws.length; i++) {
-            const offset = (i * this.#globalUniformStride) / 4;
-            const draw = draws[i];
-            floats[offset] = draw.viewport.width;
-            floats[offset + 1] = draw.viewport.height;
-            floats[offset + 2] = this._globals.dpr;
-            floats[offset + 4] = draw.visibleRange.x1;
-            floats[offset + 5] = draw.visibleRange.y1;
-            floats[offset + 6] = draw.visibleRange.x2;
-            floats[offset + 7] = draw.visibleRange.y2;
-            floats[offset + 8] = draw.visibleRange.cullX ? 1 : 0;
-            floats[offset + 9] = draw.visibleRange.cullY ? 1 : 0;
-            floats[offset + 12] = draw.viewport.x;
-            floats[offset + 13] = draw.viewport.y;
-            floats[offset + 14] = draw.viewport.width;
-            floats[offset + 15] = draw.viewport.height;
-            integers[offset + 16] = draw.placement?.index ?? 0;
-            integers[offset + 17] = draw.placement?.clipMode ?? 0;
-            integers[offset + 18] = draw.placement?.count ?? 0;
-            integers[offset + 19] = forceAll ? 0 : draw.orderPass;
-        }
         this.device.queue.writeBuffer(
             this.#globalUniformBuffer,
             0,
-            buffer,
+            this.#globalUniformStaging.buffer,
             0,
-            draws.length * this.#globalUniformStride
+            drawCount * this.#globalUniformStride
         );
         addCount("drawGlobalWrites");
-        addCount("drawGlobalBytes", draws.length * this.#globalUniformStride);
+        addCount("drawGlobalBytes", drawCount * this.#globalUniformStride);
         finishPhase("drawGlobals", phaseStart);
     }
 
@@ -738,8 +760,9 @@ export class Renderer {
             this._pickingFrame ??
             this._renderFrame ??
             this.#normalizeDraws(this._marks.keys());
-        this.#writeDrawGlobals(draws, true);
+        this.#ensureGlobalUniformCapacity(draws.length);
         this.#encodeDraws(pass, draws, true);
+        this.#uploadDrawGlobals(draws.length);
 
         pass.end();
         this.device.queue.submit([commandEncoder.finish()]);
@@ -953,7 +976,7 @@ export class Renderer {
         );
         addCount("renderDraws", draws.length);
         addCount("renderGroups", groupCount);
-        this.#writeDrawGlobals(draws);
+        this.#ensureGlobalUniformCapacity(draws.length);
         this.#textureCompositor.prepare(draws.length + groupCount + 1);
         const commandEncoder = this.device.createCommandEncoder({
             label: gpuLabel(RENDERER_GPU_OWNER, "main command encoder"),
@@ -979,6 +1002,7 @@ export class Renderer {
                 1,
                 frame.clearColor ?? { r: 1, g: 1, b: 1, a: 1 }
             );
+            this.#uploadDrawGlobals(draws.length);
             this.#textureCompositor.flush();
             finishPhase("commandEncoding", encodingStart);
             const submissionStart = startPhase();
@@ -1593,6 +1617,12 @@ export class Renderer {
     ) {
         const dpr = this._globals.dpr;
         const state = new RenderPassState(pass);
+        const targetBounds = {
+            x: target.logicalX,
+            y: target.logicalY,
+            width: target.width / dpr,
+            height: target.height / dpr,
+        };
         for (const draw of draws) {
             if (picking && draw.orderPass & 4) {
                 continue;
@@ -1602,20 +1632,30 @@ export class Renderer {
                 continue;
             }
 
+            const viewport = intersectRects(draw.viewport, targetBounds);
+            if (!viewport.width || !viewport.height) {
+                continue;
+            }
+            viewport.x = Math.max(0, (viewport.x - target.logicalX) * dpr);
+            viewport.y = Math.max(0, (viewport.y - target.logicalY) * dpr);
+            viewport.width = Math.min(
+                target.width - viewport.x,
+                viewport.width * dpr
+            );
+            viewport.height = Math.min(
+                target.height - viewport.y,
+                viewport.height * dpr
+            );
             state.setViewport(
-                (draw.viewport.x - target.logicalX) * dpr,
-                (draw.viewport.y - target.logicalY) * dpr,
-                draw.viewport.width * dpr,
-                draw.viewport.height * dpr,
+                viewport.x,
+                viewport.y,
+                viewport.width,
+                viewport.height,
                 0,
                 1
             );
-            const targetScissor = intersectRects(draw.scissor, {
-                x: target.logicalX,
-                y: target.logicalY,
-                width: target.width / dpr,
-                height: target.height / dpr,
-            });
+            this.#stageDrawGlobals(draw, target, viewport, picking);
+            const targetScissor = intersectRects(draw.scissor, targetBounds);
             const scissor = toPhysicalScissor(
                 targetScissor,
                 dpr,

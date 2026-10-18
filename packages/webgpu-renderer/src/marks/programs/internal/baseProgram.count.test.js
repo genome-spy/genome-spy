@@ -12,12 +12,12 @@ class TestSeriesProgram extends BaseProgram {
     get shaderBody() {
         return /* wgsl */ `
 struct VSOut {
-    @builtin(position) position: vec4<f32>,
+    @builtin(position) pos: vec4<f32>,
 };
 
-@vertex fn vs_main(@builtin(vertex_index) _idx: u32) -> VSOut {
+fn vertexMain(_v: u32, _i: u32) -> VSOut {
     var out: VSOut;
-    out.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    out.pos = vec4<f32>(0.0, 0.0, 0.0, 1.0);
     return out;
 }
 
@@ -38,12 +38,12 @@ class TestValueProgram extends BaseProgram {
     get shaderBody() {
         return /* wgsl */ `
 struct VSOut {
-    @builtin(position) position: vec4<f32>,
+    @builtin(position) pos: vec4<f32>,
 };
 
-@vertex fn vs_main(@builtin(vertex_index) _idx: u32) -> VSOut {
+fn vertexMain(_v: u32, _i: u32) -> VSOut {
     var out: VSOut;
-    out.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    out.pos = vec4<f32>(0.0, 0.0, 0.0, 1.0);
     return out;
 }
 

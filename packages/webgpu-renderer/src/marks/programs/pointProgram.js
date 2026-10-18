@@ -85,8 +85,7 @@ fn culledPoint() -> VSOut {
     return out;
 }
 
-@vertex
-fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+fn vertexMain(v: u32, i: u32) -> VSOut {
     if (!isInstanceVisible(i) || !isPlacementVisible(i)) {
         return culledPoint();
     }

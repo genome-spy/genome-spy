@@ -8,8 +8,7 @@ struct VSOut {
     @builtin(position) pos: vec4<f32>,
 };
 
-@vertex
-fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
+fn vertexMain(v: u32, i: u32) -> VSOut {
     var out: VSOut;
     out.pos = vec4<f32>(0.0, 0.0, 0.0, 1.0);
     return out;
