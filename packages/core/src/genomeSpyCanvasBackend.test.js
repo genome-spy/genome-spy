@@ -11,6 +11,10 @@ vi.mock("./rendering/renderingBackend.js", () => ({
 }));
 
 vi.mock("./styles/genome-spy.css.js", () => ({ default: "" }));
+// Real scoped CSS resolution is covered by testDefaultThemeStyles.mjs.
+vi.mock("./genomeSpy/defaultThemeStyle.js", () => ({
+    createDefaultThemeStyle: () => ({ refresh() {}, dispose() {} }),
+}));
 
 import GenomeSpy from "./genomeSpyBase.js";
 import { createEmbed } from "./embedFactory.js";

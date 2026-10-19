@@ -40,6 +40,7 @@
   "scripts": {
     "dev": "node dev-server.mjs",
     "capture:screenshots": "node scripts/captureScreenshots.mjs",
+    "test:appearance": "node scripts/testDefaultThemeStyles.mjs",
     "test:arrow:webgl": "node scripts/testArrowWebGL.mjs",
     "test:link:renderers": "node scripts/testOrthogonalLinks.mjs",
     "test:dendrogram:renderers": "node scripts/testDendrogramRenderers.mjs",

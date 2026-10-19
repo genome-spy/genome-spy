@@ -1048,8 +1048,8 @@ describe("generated core schema", () => {
                         encodings: ["x"],
                         extent: "container",
                         mark: {
-                            fill: { expr: "themeColors.grid" },
-                            stroke: { expr: "themeColors.foreground" },
+                            fill: { expr: "defaultThemeColors.grid" },
+                            stroke: { expr: "defaultThemeColors.foreground" },
                         },
                     },
                 },

@@ -292,6 +292,16 @@ describe("embed factory", () => {
         expect(api.debug.createPickingBufferVisualization?.()).toBeUndefined();
     });
 
+    test("refreshes styles through the shared API until finalized", async () => {
+        const refreshStyles = vi.fn();
+        const api = await embedMock({ refreshStyles });
+        api.refreshStyles();
+        expect(refreshStyles).toHaveBeenCalledOnce();
+        api.finalize();
+        expect(() => api.refreshStyles()).toThrow("finalized embed");
+        expect(refreshStyles).toHaveBeenCalledOnce();
+    });
+
     test("leaves missing width implicit", async () => {
         /** @type {MockGenomeSpy | undefined} */
         let instance;

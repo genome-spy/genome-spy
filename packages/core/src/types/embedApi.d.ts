@@ -1028,6 +1028,14 @@ export interface EmbedResult {
     finalize: () => void;
 
     /**
+     * Rereads CSS-backed default theme colors after external stylesheet changes.
+     * Browser preference and container/ancestor attribute changes refresh them
+     * automatically. Authored `defaultThemeColors` declarations retain control.
+     * Throws after finalization.
+     */
+    refreshStyles: () => void;
+
+    /**
      * @deprecated Use `EmbedResult.events.subscribe()` and its returned cleanup
      * function.
      *

@@ -13,6 +13,22 @@
         flex-direction: column;
     }
 
+    /* Public color properties remain unset so host overrides can inherit. */
+    .gs-theme-colors {
+        position: absolute;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+        visibility: hidden;
+        pointer-events: none;
+        --_genome-spy-foreground: light-dark(black, #e5ebf1);
+        --_genome-spy-stroke: light-dark(gray, #a0adba);
+        --_genome-spy-grid: light-dark(lightgray, #3a4653);
+        --_genome-spy-chromosome-tick: light-dark(#989898, #b0bdca);
+        --_genome-spy-symbol-stroke: light-dark(#888, #c0cbd6);
+        --_genome-spy-background: transparent;
+    }
+
     .canvas-wrapper {
         position: relative;
         flex-grow: 1;

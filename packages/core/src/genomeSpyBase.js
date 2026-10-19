@@ -3,6 +3,7 @@ import {
     createContainerUi,
     createMessageBox,
 } from "./genomeSpy/containerUi.js";
+import { createDefaultThemeStyle } from "./genomeSpy/defaultThemeStyle.js";
 import LoadingIndicatorManager from "./genomeSpy/loadingIndicatorManager.js";
 import LoadingStatusRegistry from "./genomeSpy/loadingStatusRegistry.js";
 import { createViewHighlighter } from "./genomeSpy/viewHighlight.js";
@@ -65,6 +66,8 @@ import {
 export default class GenomeSpy {
     /** @type {() => string | undefined} */
     #getCanvasBackground = () => undefined;
+
+    #refreshStyles = () => {};
 
     /** @type {(() => void)[]} */
     #destructionCallbacks = [];
@@ -235,6 +238,14 @@ export default class GenomeSpy {
      */
     getParam(name) {
         return resolveEmbedParam(this.viewRoot, name);
+    }
+
+    /** Refreshes CSS-backed defaults after external stylesheet changes. */
+    refreshStyles() {
+        if (this.#destroyed) {
+            throw new Error("Cannot refresh styles on a finalized embed.");
+        }
+        this.#refreshStyles();
     }
 
     /**
@@ -546,6 +557,14 @@ export default class GenomeSpy {
         this.#initializeParameterBindings();
 
         prepareViewHierarchy(this.viewRoot);
+        const styles = createDefaultThemeStyle(
+            this.container,
+            getTopLevelSpecView(this.viewRoot),
+            this.#reportRuntimeError.bind(this)
+        );
+        this.#refreshStyles = styles.refresh;
+        this.#destructionCallbacks.push(styles.dispose);
+        this.refreshStyles();
         this.#getCanvasBackground = createCanvasBackgroundReader(
             this.spec,
             getTopLevelSpecView(this.viewRoot)

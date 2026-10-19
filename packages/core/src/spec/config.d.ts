@@ -26,10 +26,13 @@ export type BuiltInThemeName =
     | "urbaninstitute";
 
 /**
- * Neutral colors used by the default GenomeSpy theme. The root `themeColors`
- * parameter contains this complete palette.
+ * Neutral colors used by the default GenomeSpy theme. The root
+ * `defaultThemeColors` parameter contains the complete palette. Browser embeds
+ * resolve it from CSS and browser light/dark preference unless the root
+ * specification declares the parameter explicitly. Defaults below describe
+ * light mode, which is also used by headless rendering.
  */
-export interface ThemeColors {
+export interface DefaultThemeColors {
     /**
      * Text, titles, rules, links, transcript arrows, and selection brush outlines.
      *

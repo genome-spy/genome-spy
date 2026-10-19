@@ -14,7 +14,7 @@ import ViewError from "./viewError.js";
 import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
 import { resolveImportedSpecConfig } from "../config/resolveConfig.js";
-import { getThemeColorsParams } from "../config/themeColors.js";
+import { getDefaultThemeColorsParams } from "../config/defaultThemeColors.js";
 import {
     markViewAsNonAddressable,
     registerImportInstance,
@@ -265,7 +265,7 @@ export class ViewFactory {
         if (!dataParent) {
             viewSpec = inheritSpecOrigin(viewSpec, {
                 ...viewSpec,
-                params: getThemeColorsParams(viewSpec.params),
+                params: getDefaultThemeColorsParams(viewSpec.params),
             });
         }
 

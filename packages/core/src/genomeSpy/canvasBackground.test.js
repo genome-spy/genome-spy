@@ -6,6 +6,7 @@ import {
 } from "./canvasBackground.js";
 import { createHeadlessEngine } from "./headlessBootstrap.js";
 import { getTopLevelSpecView } from "../view/viewFactory.js";
+import { DEFAULT_THEME_COLORS } from "../config/defaultThemeColors.js";
 
 describe("canvas background", () => {
     test("prefers the explicit visualization background over its theme", () => {
@@ -38,6 +39,35 @@ describe("canvas background", () => {
             getExportBackground("lavender", { background: null })
         ).toBeNull();
         expect(getExportBackground(undefined, {})).toBe("white");
+    });
+
+    test.each([
+        [undefined, "pink"],
+        ["genomespy", "pink"],
+        ["vegalite", undefined],
+        [["genomespy", "vegalite"], undefined],
+        [["vegalite", "genomespy"], "pink"],
+        ["dark", "#333"],
+        ["quartz", "#f9f9f9"],
+    ])("keeps the background contract of theme %j", async (theme, expected) => {
+        const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
+            theme,
+            data: { values: [{}] },
+            mark: "point",
+        });
+        const { view } = await createHeadlessEngine(spec);
+        try {
+            const root = getTopLevelSpecView(view);
+            const read = createCanvasBackgroundReader(spec, root);
+            root.paramRuntime.setValue("defaultThemeColors", {
+                ...DEFAULT_THEME_COLORS,
+                background: "pink",
+            });
+            await root.paramRuntime.whenPropagated();
+            expect(read()).toBe(expected);
+        } finally {
+            view.disposeSubtree();
+        }
     });
 
     test("shares a reactive authored-root background between paint and export", async () => {

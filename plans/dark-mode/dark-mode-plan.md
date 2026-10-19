@@ -1,7 +1,7 @@
 # Reactive appearance and automatic default colors
 
-Status: the reactive rendering foundation is complete. The automatic CSS-backed
-appearance revision below is reviewed and ready for implementation.
+Status: the reactive rendering foundation and automatic CSS-backed Core
+appearance milestone are implemented. The four-mode example is being verified.
 
 ## Goals and contracts
 
@@ -102,12 +102,12 @@ support is outside scope.
 
 - [x] Review this plan with an independent subagent, including App/Core embeds,
       lifecycle, scoped CSS inheritance, transparent export behavior, and SLOC.
-- [ ] Rename the palette contract, add scoped CSS defaults and the browser
+- [x] Rename the palette contract, add scoped CSS defaults and the browser
       bridge, and expose `refreshStyles()` through common Core/App embed APIs.
-- [ ] Keep authored palette ownership and headless behavior explicit; ensure
+- [x] Keep authored palette ownership and headless behavior explicit; ensure
       named presets remain fixed even as CSS changes the automatic palette.
-- [ ] Update the existing changeset and palette/API documentation.
-- [ ] Verify focused headless contracts and browser-only integration behavior:
+- [x] Update the existing changeset and palette/API documentation.
+- [x] Verify focused headless contracts and browser-only integration behavior:
       OS changes, ancestor/local attribute toggles, CSS overrides and refresh,
       inherited/forced schemes, transparent background, explicit overrides,
       separate embeds, finalization, and no repeated reads on ordinary draws.
@@ -143,3 +143,25 @@ need `refreshStyles()`; this boundary must be documented. No permanent work runs
 between appearance events. Test the common App API and launch failure cleanup,
 not only successful Core examples. Temporary plan files must be reconciled and
 retired before PR creation, as required by repository workflow.
+
+## Automatic appearance milestone outcome
+
+The bridge is 104 source lines, including comments, with six probe swatches,
+one preference listener, and one observer of ancestor attributes. Browser
+coverage passes on Canvas, WebGL, and WebGPU using the real stylesheet. It
+verifies zero CSS reads and zero palette publications during an ordinary
+parameter-driven draw, alongside ownership, mode/override, export, interaction,
+and failure/finalization contracts. No shader or GPU resource changes were made.
+
+The full unit suite passed 539 files and 5,118 tests before one additional font
+readiness regression test was added; that focused suite also passes. All
+workspace types, lint, schema and API docs generation, docs build, example build,
+and release checks pass. The existing release group remains a minor update.
+
+Browser failure testing exposed an early WebGL default-font rejection after
+aborted startup. The font manager now marks the pending promise handled while
+preserving its original rejection for readiness callers. The App's existing
+light UI explicitly declares `color-scheme: light` so the transparent Core plot
+matches its surface; a real App embed verifies light colors under a dark host
+and the shared `refreshStyles()` API. Full App dark UI styling remains outside
+scope.

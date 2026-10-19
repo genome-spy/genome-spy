@@ -80,6 +80,21 @@ Releases all resources and unregisters event listeners, etc.
 
 ***
 
+### refreshStyles
+
+> **refreshStyles**: () => `void`
+
+Rereads CSS-backed default theme colors after external stylesheet changes.
+Browser preference and container/ancestor attribute changes refresh them
+automatically. Authored `defaultThemeColors` declarations retain control.
+Throws after finalization.
+
+#### Returns
+
+`void`
+
+***
+
 ### addEventListener
 
 > **addEventListener**: (`type`, `listener`) => `void`

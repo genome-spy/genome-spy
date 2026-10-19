@@ -15,6 +15,8 @@ describe("GenomeSpy destruction", () => {
         genomeSpy.destroy();
 
         expect(finalize).toHaveBeenCalledOnce();
+        // Lifecycle guarding also applies when no automatic CSS bridge exists.
+        expect(() => genomeSpy.refreshStyles()).toThrow("finalized embed");
     });
 });
 

@@ -8,10 +8,10 @@ import UnitView from "../view/unitView.js";
 import { getTopLevelSpecView } from "../view/viewFactory.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
 import { resolveBaseConfig } from "./resolveConfig.js";
-import { DEFAULT_THEME_COLORS } from "./themeColors.js";
+import { DEFAULT_THEME_COLORS } from "./defaultThemeColors.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./themes.js";
 
-/** @type {import("../spec/config.js").ThemeColors} */
+/** @type {import("../spec/config.js").DefaultThemeColors} */
 const darkColors = {
     foreground: "#eeeeee",
     stroke: "#aaaaaa",
@@ -42,8 +42,8 @@ async function create(spec) {
     });
     const authored = getTopLevelSpecView(view);
     const params = createEmbedParamNamespace(authored);
-    /** @type {import("../types/embedApi.js").ParamApi<import("../spec/config.js").ThemeColors>} */
-    const palette = params.get("themeColors");
+    /** @type {import("../types/embedApi.js").ParamApi<import("../spec/config.js").DefaultThemeColors>} */
+    const palette = params.get("defaultThemeColors");
     const draw = () =>
         createSvg({
             viewRoot: view,
@@ -116,7 +116,9 @@ test.each(["unit", "layer", "concat"])(
                 view
                     .getDescendants()
                     .filter((child) =>
-                        child.paramRuntime.paramConfigs.has("themeColors")
+                        child.paramRuntime.paramConfigs.has(
+                            "defaultThemeColors"
+                        )
                     )
             ).toEqual([authored]);
             expectColor(
@@ -368,7 +370,7 @@ test("one palette update recolors generated guides and neutral marks while prese
 test("authored palettes replace the root declaration, shadow lexically, and remain independent between embeds", async () => {
     const authoredPalette = { ...darkColors, foreground: "purple" };
     const first = await create({
-        params: [{ name: "themeColors", value: authoredPalette }],
+        params: [{ name: "defaultThemeColors", value: authoredPalette }],
         vconcat: [
             {
                 name: "inherited",
@@ -379,7 +381,7 @@ test("authored palettes replace the root declaration, shadow lexically, and rema
                 name: "shadowed",
                 params: [
                     {
-                        name: "themeColors",
+                        name: "defaultThemeColors",
                         value: { ...darkColors, foreground: "orange" },
                     },
                 ],
@@ -437,7 +439,7 @@ test("computed authored palettes use the normal read-only parameter API", async 
         name: "text",
         params: [
             { name: "colors", value: { ...darkColors, foreground: "purple" } },
-            { name: "themeColors", expr: "colors" },
+            { name: "defaultThemeColors", expr: "colors" },
         ],
         data: { values: [{}] },
         mark: { type: "text", text: "Computed palette" },
@@ -452,7 +454,7 @@ test("computed authored palettes use the normal read-only parameter API", async 
         expect(() => palette.setValue({ ...darkColors })).toThrow(
             /computed parameter/
         );
-        /** @type {import("../types/embedApi.js").ParamApi<import("../spec/config.js").ThemeColors>} */
+        /** @type {import("../types/embedApi.js").ParamApi<import("../spec/config.js").DefaultThemeColors>} */
         const colors = params.get("colors");
         colors.setValue({ ...darkColors });
         await view.paramRuntime.whenPropagated();
@@ -510,7 +512,7 @@ test.each([{ background: "white" }, { theme: "dark" }])(
                 ),
                 params: [
                     { name: "colors", value: { foreground: "white" } },
-                    { name: "themeColors", expr: "colors" },
+                    { name: "defaultThemeColors", expr: "colors" },
                 ],
                 data: { values: [{}] },
                 mark: { type: "text", text: "Invalid palette" },
@@ -524,13 +526,13 @@ test("validates computed palette updates even with a fixed background", async ()
         background: "white",
         params: [
             { name: "colors", value: { ...darkColors } },
-            { name: "themeColors", expr: "colors" },
+            { name: "defaultThemeColors", expr: "colors" },
         ],
         data: { values: [{}] },
         mark: { type: "text", text: "Computed palette" },
     });
     try {
-        /** @type {import("../types/embedApi.js").ParamApi<Partial<import("../spec/config.js").ThemeColors>>} */
+        /** @type {import("../types/embedApi.js").ParamApi<Partial<import("../spec/config.js").DefaultThemeColors>>} */
         const colors = params.get("colors");
         view.paramRuntime.runInTransaction(() => {
             colors.setValue({ foreground: "white" });

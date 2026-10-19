@@ -10,6 +10,8 @@ $basic-spacing: generic.$basic-spacing;
 }
 
 .genome-spy-app {
+    // The App UI supplies a light surface; its embedded plot must match it.
+    color-scheme: light;
     position: absolute;
     top: 0;
     bottom: 0;

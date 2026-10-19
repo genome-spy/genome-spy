@@ -1,4 +1,4 @@
-/** @type {import("../spec/config.js").ThemeColors} */
+/** @type {import("../spec/config.js").DefaultThemeColors} */
 export const DEFAULT_THEME_COLORS = Object.freeze({
     foreground: "black",
     stroke: "gray",
@@ -8,6 +8,14 @@ export const DEFAULT_THEME_COLORS = Object.freeze({
     background: null,
 });
 
+/** @type {WeakSet<import("../spec/parameter.js").Parameter>} */
+const automaticDeclarations = new WeakSet();
+
+/** @param {import("../spec/parameter.js").Parameter} param */
+export function isAutomaticDefaultThemeColors(param) {
+    return automaticDeclarations.has(param);
+}
+
 /**
  * Supplies one ordinary palette declaration on the authored root.
  * Explicit declarations replace the whole palette and retain normal scope rules.
@@ -15,8 +23,10 @@ export const DEFAULT_THEME_COLORS = Object.freeze({
  * @param {import("../spec/parameter.js").Parameter[]} [params]
  * @returns {import("../spec/parameter.js").Parameter[]}
  */
-export function getThemeColorsParams(params = []) {
-    const authored = params.find((param) => param.name === "themeColors");
+export function getDefaultThemeColorsParams(params = []) {
+    const authored = params.find(
+        (param) => param.name === "defaultThemeColors"
+    );
     if (authored) {
         if (
             "select" in authored ||
@@ -25,29 +35,28 @@ export function getThemeColorsParams(params = []) {
             "transition" in authored
         ) {
             throw new Error(
-                'The "themeColors" parameter must declare a palette value or expression.'
+                'The "defaultThemeColors" parameter must declare a palette value or expression.'
             );
         }
         if (!("expr" in authored)) {
-            validateThemeColors(authored.value);
+            validateDefaultThemeColors(authored.value);
         }
         return params;
     }
 
-    return [
-        {
-            name: "themeColors",
-            value: { ...DEFAULT_THEME_COLORS },
-        },
-        ...params,
-    ];
+    const declaration = {
+        name: "defaultThemeColors",
+        value: { ...DEFAULT_THEME_COLORS },
+    };
+    automaticDeclarations.add(declaration);
+    return [declaration, ...params];
 }
 
 /** @param {unknown} value */
-export function validateThemeColors(value) {
+export function validateDefaultThemeColors(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
         throw new Error(
-            'The "themeColors" parameter must contain a complete palette object.'
+            'The "defaultThemeColors" parameter must contain a complete palette object.'
         );
     }
     for (const key of Object.keys(DEFAULT_THEME_COLORS)) {
@@ -57,7 +66,9 @@ export function validateThemeColors(value) {
             typeof color !== "string"
         ) {
             throw new Error(
-                'The "themeColors" palette requires a color for "' + key + '".'
+                'The "defaultThemeColors" palette requires a color for "' +
+                    key +
+                    '".'
             );
         }
     }

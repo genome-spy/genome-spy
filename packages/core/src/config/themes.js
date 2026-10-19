@@ -113,38 +113,38 @@ const BUILT_IN_THEME_DEFINITIONS = {
             color: "#4c78a8",
         },
         rule: {
-            color: { expr: "themeColors.foreground" },
+            color: { expr: "defaultThemeColors.foreground" },
         },
         text: {
-            color: { expr: "themeColors.foreground" },
+            color: { expr: "defaultThemeColors.foreground" },
         },
         link: {
-            color: { expr: "themeColors.foreground" },
+            color: { expr: "defaultThemeColors.foreground" },
         },
         header: {
-            color: { expr: "themeColors.foreground" },
+            color: { expr: "defaultThemeColors.foreground" },
         },
         axis: {
-            labelColor: { expr: "themeColors.foreground" },
-            titleColor: { expr: "themeColors.foreground" },
-            domainColor: { expr: "themeColors.stroke" },
-            tickColor: { expr: "themeColors.stroke" },
-            gridColor: { expr: "themeColors.grid" },
+            labelColor: { expr: "defaultThemeColors.foreground" },
+            titleColor: { expr: "defaultThemeColors.foreground" },
+            domainColor: { expr: "defaultThemeColors.stroke" },
+            tickColor: { expr: "defaultThemeColors.stroke" },
+            gridColor: { expr: "defaultThemeColors.grid" },
         },
         axisLocus: {
-            chromTickColor: { expr: "themeColors.chromosomeTick" },
-            chromLabelColor: { expr: "themeColors.foreground" },
-            chromGridColor: { expr: "themeColors.stroke" },
+            chromTickColor: { expr: "defaultThemeColors.chromosomeTick" },
+            chromLabelColor: { expr: "defaultThemeColors.foreground" },
+            chromGridColor: { expr: "defaultThemeColors.stroke" },
         },
         legend: {
-            symbolBaseStrokeColor: { expr: "themeColors.symbolStroke" },
+            symbolBaseStrokeColor: { expr: "defaultThemeColors.symbolStroke" },
         },
         style: {
             "arrow-transcript": {
-                color: { expr: "themeColors.foreground" },
+                color: { expr: "defaultThemeColors.foreground" },
             },
             "selection-brush": {
-                stroke: { expr: "themeColors.foreground" },
+                stroke: { expr: "defaultThemeColors.foreground" },
             },
         },
     },

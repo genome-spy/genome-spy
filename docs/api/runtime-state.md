@@ -315,42 +315,44 @@ selection and lifecycle rules shared by these handles.
 
 ### Updating appearance
 
-An embedding application can update the default theme's
-[`themeColors` palette](../grammar/config.md#default-theme-palette) after
-embedding. Publish a new object containing all six fields:
+The default theme follows browser preference and
+[CSS appearance settings](../grammar/config.md#default-theme-palette)
+automatically. After changing stylesheets, CSS rules, or other styles that do
+not change attributes on the visualization container or its ancestors, refresh
+its resolved colors explicitly:
 
 ```js
-const colors = api.params.get("themeColors");
+api.refreshStyles();
+```
+
+This reads the current CSS and publishes a changed palette through the normal
+parameter graph. Browser preference events and container/ancestor attribute
+changes already trigger this refresh. GenomeSpy does not poll styles.
+
+An application can also publish a complete
+[`defaultThemeColors` palette](../grammar/config.md#default-theme-palette):
+
+```js
+const colors = api.params.get("defaultThemeColors");
 colors.setValue({
   foreground: "#eeeeee",
   stroke: "#aaaaaa",
   grid: "#444444",
   chromosomeTick: "#999999",
   symbolStroke: "#bbbbbb",
-  background: "#181818",
+  background: null,
 });
 ```
 
-Replace the object through `setValue()` whenever the palette changes. Mutating
-properties of the existing object does not publish a parameter update. Custom
-palette parameters, such as the authored `uiColors` example, use the same API
-with their own names and fields.
-
-The host controls when to publish a palette. It can follow
-`matchMedia("(prefers-color-scheme: dark)")` change events, an application theme
-toggle, or CSS custom properties scoped to the visualization container. Read
-the initial colors before embedding to avoid an initial frame with the wrong
-appearance. Remove host event listeners when finalizing the embed.
+Manual writes to the automatic palette last until the next CSS refresh. Declare
+`defaultThemeColors` explicitly in the root specification to opt out of CSS
+updates and own its value. Replace the object through `setValue()` when the
+palette changes; mutating its properties does not publish an update. Authored
+expression parameters remain read-only. Custom palette parameters, such as
+`uiColors`, use the same API with their own names and fields.
 
 The [light and dark mode example](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/darkMode)
-shows a CSS palette with System, Light, and Dark modes on one running visualization.
-
-CSS custom properties must resolve to concrete colors supported by GenomeSpy's
-color parsers, such as hex, named colors, or legacy `rgb()` syntax. Passing
-`var(...)`, `currentColor`, or `light-dark(...)` directly does not resolve them
-against the host element. Reading a custom property with `getComputedStyle()`
-can still return such unresolved values, so the host must supply concrete
-colors.
+shows System, Light, Dark, and Custom modes on one running visualization.
 
 ### Setting point selections
 

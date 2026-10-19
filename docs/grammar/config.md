@@ -79,39 +79,72 @@ resetting zoom and selections.
 
 ### Default theme palette
 
-The default `genomespy` theme reads neutral colors from an automatically
-initialized root parameter named `themeColors`:
+The default `genomespy` theme follows the browser's light/dark preference
+without extra embedding code. Its canvas stays transparent in both modes, so
+the host page supplies the surface behind the visualization. Explicit colors
+and data color scales retain their normal precedence.
 
-| Field            | Used for                                                                     | Default       |
-| ---------------- | ---------------------------------------------------------------------------- | ------------- |
-| `foreground`     | Text, titles, facet headers, rules, links, transcript arrows, brush outlines | `"black"`     |
-| `stroke`         | Axis domains, ticks, chromosome grids                                        | `"gray"`      |
-| `grid`           | Ordinary grid lines                                                          | `"lightgray"` |
-| `chromosomeTick` | Chromosome boundary ticks                                                    | `"#989898"`   |
-| `symbolStroke`   | Default legend symbol outlines                                               | `"#888"`      |
-| `background`     | Canvas and default export background                                         | `null`        |
+CSS `color-scheme` on the container or its ancestors can force either mode.
+With the normal/unset scheme, GenomeSpy follows browser preference. For example:
 
-Publish a complete palette through
-[`api.params.get("themeColors")`](../api/runtime-state.md#updating-appearance)
-to update these defaults. The blue default mark color and data color scales
-keep their colors. The palette does not add view fills or borders where none
-are configured.
+```css
+#plot {
+  color-scheme: dark;
+}
+```
 
-To choose the initial palette, declare `themeColors` in the root `params`.
-This declaration replaces the built-in declaration and must supply every field:
+Override any of these inherited CSS custom properties to customize individual
+roles. The defaults use `light-dark()` and preserve the existing light colors:
+
+| CSS property                   | Used for                                                      | Light       | Dark        |
+| ------------------------------ | ------------------------------------------------------------- | ----------- | ----------- |
+| `--genome-spy-foreground`      | Text, titles, rules, links, transcript arrows, brush outlines | `black`     | `#e5ebf1`   |
+| `--genome-spy-stroke`          | Axis domains, ticks, chromosome grids                         | `gray`      | `#a0adba`   |
+| `--genome-spy-grid`            | Ordinary grid lines                                           | `lightgray` | `#3a4653`   |
+| `--genome-spy-chromosome-tick` | Chromosome boundary ticks                                     | `#989898`   | `#b0bdca`   |
+| `--genome-spy-symbol-stroke`   | Legend symbol outlines                                        | `#888`      | `#c0cbd6`   |
+| `--genome-spy-background`      | Canvas and default export background                          | transparent | transparent |
+
+```css
+#plot {
+  --genome-spy-foreground: light-dark(#352719, #f4e4cf);
+  --genome-spy-grid: light-dark(#ded2c0, #5e4c37);
+}
+```
+
+GenomeSpy resolves CSS variables and `light-dark()` through the browser. Colors
+must resolve to values supported by its color parser: named colors, hex, RGB,
+or HSL. Modern CSS Color 4 results such as `oklch()` and `color(display-p3 ...)`
+are rejected; supply an RGB or HSL alternative.
+
+Browser preference changes and attributes changed on the container or its
+ancestors refresh the palette automatically, without polling. After replacing
+a stylesheet or making another CSS change outside those events, call
+[`api.refreshStyles()`](../api/runtime-state.md#updating-appearance).
+
+The resolved colors populate the root `defaultThemeColors` parameter, with
+fields `foreground`, `stroke`, `grid`, `chromosomeTick`, `symbolStroke`, and
+`background`. A transparent background is represented by `null`. The palette
+does not add view fills or borders where none are configured. Headless renders
+use deterministic light defaults. GenomeSpy App keeps its existing light scheme
+to match its UI surfaces.
+
+For exclusive programmatic control, declare `defaultThemeColors` in the root
+`params`. This opts out of automatic CSS updates and replaces the complete
+palette:
 
 ```json
 {
   "params": [
     {
-      "name": "themeColors",
+      "name": "defaultThemeColors",
       "value": {
         "foreground": "#eeeeee",
         "stroke": "#aaaaaa",
         "grid": "#444444",
         "chromosomeTick": "#999999",
         "symbolStroke": "#bbbbbb",
-        "background": "#181818"
+        "background": null
       }
     }
   ]
@@ -119,15 +152,13 @@ This declaration replaces the built-in declaration and must supply every field:
 ```
 
 An authored expression parameter can compute the palette instead; it follows
-the usual read-only parameter API.
-Descendant views can shadow `themeColors` through normal parameter scoping.
-The root canvas background continues to use the root palette.
+the usual read-only parameter API. Descendant views can shadow
+`defaultThemeColors` through normal parameter scoping. The root canvas
+background continues to use the root palette.
 
-Explicit specification and configuration colors keep their normal precedence.
-Other named presets supply fixed colors that override the reactive defaults;
-the `dark` preset is a fixed appearance, whereas `themeColors` supports live
-switching. A root `theme` also takes precedence over an embed-level `theme`
-option.
+Other named presets supply fixed colors and backgrounds; they do not follow
+CSS mode changes. For example, `dark` is a fixed appearance. A root `theme`
+takes precedence over an embed-level `theme` option.
 
 ### Custom palette parameters
 
@@ -175,8 +206,9 @@ normal precedence.
 The root `background` controls the entire canvas, while `view.fill` and
 `config.view.fill` control individual view backgrounds. An explicit root
 background takes precedence over a selected preset's background, which takes
-precedence over `themeColors.background`. When no background color is
-configured, the canvas is transparent and exports default to white.
+precedence over `defaultThemeColors.background` in the default theme. Fixed
+named presets without their own background stay transparent. When no background
+color is configured, the canvas is transparent and exports default to white.
 
 A root background expression uses the root parameter scope. When it resolves
 to `null`, the canvas is transparent even if the palette or preset provides an

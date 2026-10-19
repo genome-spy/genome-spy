@@ -39,9 +39,14 @@ export function getCanvasBackground(spec) {
  */
 export function createCanvasBackgroundReader(spec, view) {
     const configuredBackground = getCanvasBackground(spec);
-    const background = configuredBackground ?? {
-        expr: "themeColors.background",
-    };
+    const lastTheme = Array.isArray(spec.theme)
+        ? spec.theme.at(-1)
+        : spec.theme;
+    const background =
+        configuredBackground ??
+        (!lastTheme || lastTheme === "genomespy"
+            ? { expr: "defaultThemeColors.background" }
+            : undefined);
     if (!isExprRef(background)) {
         return () => background;
     }
