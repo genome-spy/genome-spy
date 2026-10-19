@@ -5,7 +5,8 @@ and four-mode embedding example are implemented and verified.
 
 ## Goals and contracts
 
-- An ordinary browser embed follows browser light/dark preference immediately
+- An ordinary browser embed remains light unless its host opts into dark mode.
+  With CSS `color-scheme: light dark`, it follows browser preference immediately
   and after initialization, with no palette setup by its caller.
 - The default canvas remains transparent in **both** modes. Existing export
   fallback remains white. Only an explicitly supplied background changes that.
@@ -21,7 +22,8 @@ and four-mode embedding example are implemented and verified.
   `--genome-spy-background`. Inherited overrides must work; local library
   declarations must not mask values set on a host ancestor.
 - CSS `color-scheme` on the container or inherited from its host can force light
-  or dark. With the normal/unset scheme, GenomeSpy follows browser preference.
+  or dark. The normal/unset scheme stays light, regardless of browser preference.
+  Only a host declaring `light dark` enables automatic browser mode selection.
   Scoped stylesheet defaults use `light-dark()`; a non-rendering probe resolves
   these and authored `var()` colors into renderer-compatible RGB strings.
 - The five neutral defaults preserve the existing light appearance. Dark values
@@ -60,9 +62,9 @@ the first rendered frame; refresh after asynchronous startup as needed through
 normal event delivery. Headless bootstrap remains DOM-independent.
 
 Use one hidden probe subtree, with role-specific color properties resolving
-stylesheet defaults and optional public overrides. If the container's computed
-`color-scheme` is `normal`, the probe uses `light dark`; otherwise it inherits
-the host scheme. Read concrete computed colors, normalize them with the existing
+stylesheet defaults and optional public overrides. The probe inherits the host's
+`color-scheme` without overriding it; a normal/unset scheme stays light. Read
+concrete computed colors, normalize them with the existing
 color parser, compare all six roles, and publish only a changed complete object. Accept resolved
 named/hex/RGB/HSL colors supported by the existing parser; reject unsupported
 computed CSS Color 4 syntax with a clear error rather than adding conversion
@@ -146,7 +148,7 @@ retired before PR creation, as required by repository workflow.
 
 ## Automatic appearance milestone outcome
 
-The bridge is 104 source lines, including comments, with six probe swatches,
+The bridge is 102 source lines, including comments, with six probe swatches,
 one preference listener, and one observer of ancestor attributes. Browser
 coverage passes on Canvas, WebGL, and WebGPU using the real stylesheet. It
 verifies zero CSS reads and zero palette publications during an ordinary
@@ -183,11 +185,30 @@ pass. The repeatable Core browser command is
 `npm -w @genome-spy/core run test:appearance` (Canvas, WebGL, WebGPU).
 
 Final Core runtime JavaScript against local master
-`b34836e8319e844ccecbc713e4f4fb6b3403575f`: +575/-125 non-comment production
-lines, net +450, excluding tests and declarations. This revision adds net 137
+`b34836e8319e844ccecbc713e4f4fb6b3403575f`: +573/-125 non-comment production
+lines, net +448, excluding tests and declarations. This revision adds net 135
 Core production lines over the prior branch milestone. The complete example
-contains 166 source lines across HTML, JavaScript, and SCSS, down from 198.
+contains 169 source lines across HTML, JavaScript, and SCSS, down from 198.
 The additional CSS resolution and comparison runs only on supported appearance
 events or explicit refresh; ordinary rendering adds no CSS reads. GPU shaders,
 attributes, textures, and draw behavior are unchanged. No timing speedup is
 claimed.
+
+## Host opt-in correction
+
+- [x] Preserve light colors on unconfigured pages even when the browser prefers
+      dark, both at initial embedding and after preference changes.
+- [x] Inherit `color-scheme` without substituting `light dark` for `normal`.
+      Dark support is explicitly enabled by the host, whose background remains
+      its own responsibility. The example already opts into both modes.
+- [x] Verify the corrected contract across all three browser renderers and
+      update documentation and measurements.
+
+Tentative commit: `fix(core): require host opt-in for automatic dark mode`.
+
+The corrected browser suite passes on Canvas, WebGL, and WebGPU: unconfigured
+hosts retain light colors after switching browser preference to dark, and new
+embeds created under that preference also stay light. Declaring `light dark`
+then enables the existing live-switching contract. TypeScript, lint, schema,
+and clean documentation builds pass. This correction removes two production
+JavaScript lines and one computed-style read per appearance refresh.

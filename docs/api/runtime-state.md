@@ -315,10 +315,11 @@ selection and lifecycle rules shared by these handles.
 
 ### Updating appearance
 
-The default theme follows browser preference and
+The default theme follows
 [CSS appearance settings](../grammar/config.md#default-theme-palette)
-automatically. After changing stylesheets, CSS rules, or other styles that do
-not change attributes on the visualization container or its ancestors, refresh
+automatically. Browser preference changes apply when the host opts into both
+modes with `color-scheme: light dark`; unconfigured hosts stay light. After
+changing stylesheets, CSS rules, or other styles that do not change attributes on the visualization container or its ancestors, refresh
 its resolved colors explicitly:
 
 ```js

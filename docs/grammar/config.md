@@ -79,19 +79,24 @@ resetting zoom and selections.
 
 ### Default theme palette
 
-The default `genomespy` theme follows the browser's light/dark preference
-without extra embedding code. Its canvas stays transparent in both modes, so
-the host page supplies the surface behind the visualization. Explicit colors
-and data color scales retain their normal precedence.
+The default `genomespy` theme stays light unless the host page opts into dark
+mode through CSS `color-scheme`. Its canvas stays transparent in both modes, so
+the host page must supply a matching surface. Explicit colors and data color
+scales retain their normal precedence.
 
-CSS `color-scheme` on the container or its ancestors can force either mode.
-With the normal/unset scheme, GenomeSpy follows browser preference. For example:
+A page that supports both modes can enable automatic browser preference changes:
 
 ```css
-#plot {
-  color-scheme: dark;
+:root {
+  color-scheme: light dark;
+  background: light-dark(white, #19212a);
 }
 ```
+
+GenomeSpy inherits this setting from its container and ancestors. An unset or
+`normal` scheme stays light, regardless of browser preference. An explicit
+`color-scheme: light` or `color-scheme: dark` forces that mode. The host remains
+responsible for styling its own background.
 
 Override any of these inherited CSS custom properties to customize individual
 roles. The defaults use `light-dark()` and preserve the existing light colors:

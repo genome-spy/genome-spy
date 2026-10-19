@@ -28,9 +28,9 @@ export type BuiltInThemeName =
 /**
  * Neutral colors used by the default GenomeSpy theme. The root
  * `defaultThemeColors` parameter contains the complete palette. Browser embeds
- * resolve it from CSS and browser light/dark preference unless the root
- * specification declares the parameter explicitly. Defaults below describe
- * light mode, which is also used by headless rendering.
+ * resolve it from CSS unless the root specification declares the parameter
+ * explicitly. Dark mode requires a host `color-scheme` opt-in; unconfigured
+ * hosts and headless rendering use the light defaults below.
  */
 export interface DefaultThemeColors {
     /**

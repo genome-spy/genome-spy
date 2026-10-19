@@ -22,6 +22,7 @@ export function createDefaultThemeStyle(container, view, reportError) {
     }
 
     const probe = document.createElement("div");
+    // Inherit color-scheme: normal stays light; the host opts into dark support.
     probe.className = "gs-theme-colors";
     probe.setAttribute("aria-hidden", "true");
     const roles =
@@ -43,9 +44,6 @@ export function createDefaultThemeStyle(container, view, reportError) {
     container.appendChild(probe);
 
     function refresh() {
-        const scheme = getComputedStyle(container).colorScheme;
-        // Respect a host's forced scheme. Unconfigured hosts follow the browser.
-        probe.style.colorScheme = scheme === "normal" ? "light dark" : scheme;
         const colors = { ...DEFAULT_THEME_COLORS };
         for (const [index, role] of roles.entries()) {
             const value = getComputedStyle(swatches[index]).color;

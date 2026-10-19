@@ -116,6 +116,19 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     assert.equal(light.background, null);
 
     await page.emulateMedia({ colorScheme: "dark" });
+    assert.equal((await read()).foreground, light.foreground);
+    const unconfigured = await page.evaluate(async () => {
+        const { create, snapshot } = window.appearanceTest;
+        const instance = await create();
+        const result = await snapshot(instance);
+        instance.api.finalize();
+        return result;
+    });
+    assert.equal(unconfigured.foreground, light.foreground);
+    // Only a host that declares dark support should follow browser preference.
+    await page.evaluate(() => {
+        document.documentElement.style.colorScheme = "light dark";
+    });
     const dark = await read();
     assert.equal(dark.foreground, "rgb(229, 235, 241)");
     assert.equal(dark.brush, dark.foreground);
