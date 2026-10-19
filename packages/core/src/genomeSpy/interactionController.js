@@ -1055,6 +1055,7 @@ export default class InteractionController {
 
         /** @type {InternalMarkHit | undefined} */
         let hit;
+        let hitWithinBounds = false;
         this.#viewRoot.visit((view) => {
             if (
                 view instanceof UnitView &&
@@ -1070,10 +1071,18 @@ export default class InteractionController {
                             .some((ancestor) => isFacetSpec(ancestor.spec))
                             ? facetId
                             : undefined;
-                    // Visible unclipped marks may extend outside ordinary plot bounds.
+                    const withinBounds = coords.containsPoint(x, y);
+                    const clip = view.mark.properties.clip;
+                    const outsideClip =
+                        clip === true ||
+                        (clip === "x" && (x < coords.x || x > coords.x2)) ||
+                        (clip === "y" && (y < coords.y || y > coords.y2));
+                    // Prefer the owning plot when views share the same record IDs.
                     if (
-                        cellFacetId !== undefined &&
-                        !coords.containsPoint(x, y)
+                        !withinBounds &&
+                        (cellFacetId !== undefined ||
+                            hitWithinBounds ||
+                            outsideClip)
                     ) {
                         continue;
                     }
@@ -1089,6 +1098,7 @@ export default class InteractionController {
                                 ? {}
                                 : { facetId: cellFacetId }),
                         };
+                        hitWithinBounds = withinBounds;
                     }
                     break;
                 }
