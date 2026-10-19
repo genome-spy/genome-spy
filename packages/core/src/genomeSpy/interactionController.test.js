@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import UnitView from "../view/unitView.js";
+import ContainerView from "../view/containerView.js";
 import Rectangle from "../view/layout/rectangle.js";
 import InteractionController from "./interactionController.js";
 
@@ -1827,7 +1828,7 @@ describe("InteractionController", () => {
     );
 
     describe("explicit picking", () => {
-        it("prefers the owning plot when another view shares its record IDs", async () => {
+        it("prefers the owning plot in nested views sharing record IDs", async () => {
             const { controller, pickerUnitView, viewRoot } =
                 createPickingHarness({
                     reader: () => 1,
@@ -1843,11 +1844,16 @@ describe("InteractionController", () => {
                 [pickerUnitView, other],
                 [other, pickerUnitView],
             ]) {
-                viewRoot.visit = (
-                    /** @type {(view: UnitView) => void} */ visitor
-                ) => {
-                    views.forEach(visitor);
-                };
+                // Real nested traversal must reach the owning plot after a fallback hit.
+                const groups = views.map((view) => {
+                    const group = Object.create(ContainerView.prototype);
+                    group[Symbol.iterator] = function* () {
+                        yield view;
+                    };
+                    return group;
+                });
+                viewRoot[Symbol.iterator] = () => groups.values();
+                viewRoot.visit = ContainerView.prototype.visit;
                 const result = await controller.pick({ x: 10, y: 20 });
                 expect(result.status).toBe("hit");
                 if (result.status === "hit") {

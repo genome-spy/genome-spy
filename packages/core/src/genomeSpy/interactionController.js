@@ -1103,7 +1103,7 @@ export default class InteractionController {
                     break;
                 }
             }
-            if (hit) {
+            if (hitWithinBounds) {
                 return VISIT_STOP;
             }
         });
