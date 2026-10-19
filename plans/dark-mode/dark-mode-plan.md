@@ -1,14 +1,28 @@
 # Reactive appearance and dark mode
 
-Status: implementation in progress. Milestones 1 and 2 are complete; milestone 3
-remains.
+Status: complete. All three milestones are implemented and verified on
+`codex/dark-mode`, with a separate commit for each milestone.
 
 Implementation verification: reactive background and scoped legend tests pass,
 including shared source colors; Canvas2D/immediate tests cover draw-scoped palette
 reads and refreshes. Workspace TypeScript checks, lint, schema/docs builds, and a
-live WebGL palette/background/export smoke check pass. The full unit suite passed
-(539 files, 5,102 tests), with the new default-palette integration suite also
-passing. Root palette validation runs independently of configured backgrounds.
+live WebGL palette/background/export smoke check pass. The final full unit suite
+passes (539 files, 5,105 tests; one existing skip and two todos). Root palette
+validation runs independently of configured backgrounds. Facet headers also
+follow the palette, while fixed presets preserve their own colors.
+
+The standalone example passes its production build and catalog navigation.
+Browser checks cover initial OS preferences, manual overrides, subsequent System
+preference changes, repeated switches with a zoomed domain and nonempty brush,
+PNG/SVG exports, automatic Canvas fallback, actual back/forward-cache restoration,
+and listener/finalize cleanup. Independent Canvas and WebGPU browser checks also
+cover live colors, preserved domains, and explicit/null export backgrounds.
+
+Core runtime JavaScript changes add 428 and delete 117 non-comment lines, net 311,
+against local `master` (`b34836e8319e844ccecbc713e4f4fb6b3403575f`), excluding tests
+and declarations. The example contains 315 source lines across HTML, JS, and SCSS.
+No shaders, GPU attributes, or textures were added. Canvas palette evaluation is
+draw-scoped; no timing benchmark or quantitative speedup is claimed.
 
 ## Recommendation
 
@@ -48,7 +62,7 @@ Lifetime-constant parameter declarations are a separate optimization tracked in
 [#585](https://github.com/genome-spy/genome-spy/issues/585); draw-scoped caching
 must also work with the mutable palette used for live dark-mode switching.
 
-## Current implementation
+## Investigation baseline
 
 ### Config is assembled once, but expression values can remain live
 
@@ -399,7 +413,7 @@ closely adapted, so there is no new third-party code/license dependency.
    Document the palette API and collision policy; add/update the Core changeset.
    Tentative commit: `feat(core): expose a reactive default theme palette`.
 
-3. **Deliver the light/dark embedding example.** Add the required `darkMode` page,
+3. **Deliver the light/dark embedding example (complete).** Add the required `darkMode` page,
    module, and styles to `packages/embed-examples`, its catalog, and Vite inputs.
    Demonstrate explicit Light/Dark overrides and System mode on one initialized
    visualization, with CSS hooks, listener teardown, and correct initial values.
@@ -460,22 +474,23 @@ with final integration; avoid separate review gates for routine documentation.
   the corresponding implementation work. Full tests are appropriate once shared
   root/background/default contracts change.
 
-## Risks and questions to resolve before implementation
+## Resolved decisions and deferred scope
 
-- Final public palette name and treatment of existing same-named user parameters.
-  Do not accidentally override an unrelated parameter or make anonymous internal
-  parameters public. Validate the chosen root declaration before consumers bind.
-- The exact small role vocabulary and whether milestone 2 is wanted immediately
-  or the authored-palette solution is sufficient for the first release. The
-  recommendation is to include the default convenience after milestone 1 proves
-  the contract, while deferring general `config.params`.
-- How many named presets to convert deliberately. Preserving their current
-  identity is the default; an OS mode does not implicitly switch to `theme: dark`.
-- Neutral-token colors do not guarantee readable user-authored data palettes.
-  Adapting those is a separate author decision, using existing range expressions.
-- Core tooltips/loading messages contain light CSS colors. Give those UI elements
-  appropriate custom properties in the host integration work if they are included
-  in the advertised dark-mode experience; full App CSS remains separate.
+- `themeColors` is a public ordinary root parameter with six audited fields.
+  Authored declarations replace its full value and persistence policy; lexical
+  shadowing and computed read-only behavior follow the existing runtime.
+- The default palette is included. General `config.params`, immutable constant
+  parameters, and automatic recoloring of user data palettes are deferred;
+  constant parameters are tracked separately in issue #585.
+- Named presets keep fixed colors, with deliberate dark-preset contrast fixes.
+  OS preference handling belongs to the host and does not select a named preset.
+- Connecting the existing documentation site's theme switch and restyling the
+  full App are discarded from this implementation. The new standalone host
+  demonstrates the complete browser/CSS bridge, and the API documentation links
+  its source. Existing docs embeds still use their configured appearance.
+- Tooltip/loading-message CSS restyling is deferred. The example uses inline data
+  and no tooltip, so its demonstrated appearance has no dependency on those UI
+  elements. These remain separate from visualization color expressions.
 
 Before PR delivery, reconcile completed/discarded tasks and retire this temporary
 plan according to the repository workflow.

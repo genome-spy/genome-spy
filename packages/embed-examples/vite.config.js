@@ -20,6 +20,7 @@ export default defineConfig({
                 index: "index.html",
                 "scaleApi/index": "scaleApi/index.html",
                 "paramApi/index": "paramApi/index.html",
+                "darkMode/index": "darkMode/index.html",
                 "dataReadback/index": "dataReadback/index.html",
                 "brushLinkingApi/index": "brushLinkingApi/index.html",
                 "viewMutationApi/index": "viewMutationApi/index.html",

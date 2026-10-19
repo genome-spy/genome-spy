@@ -1,5 +1,6 @@
 ---
 "@genome-spy/core": minor
+"@genome-spy/embed-examples": minor
 ---
 
 Use parameters to update axis, legend, view-decoration, and canvas background
@@ -13,3 +14,6 @@ also has consistent light guide text.
 
 Canvas rendering reuses palette colors during each draw instead of evaluating
 them for every instance, while preserving data-dependent color encodings.
+
+The embedding examples include a CSS-driven Light/Dark/System switch that keeps
+zoom and brush selections while updating an existing visualization.

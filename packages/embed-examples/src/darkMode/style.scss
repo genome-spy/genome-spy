@@ -1,0 +1,54 @@
+:root {
+    color-scheme: light;
+    --gs-foreground: #20252b;
+    --gs-stroke: #6a737d;
+    --gs-grid: #d9dfe5;
+    --gs-chromosome-tick: #87929e;
+    --gs-symbol-stroke: #596673;
+    --gs-background: #ffffff;
+    --text: var(--gs-foreground);
+    --muted-text: var(--gs-stroke);
+    --surface: var(--gs-background);
+    --page-background: var(--gs-background);
+    --border: var(--gs-grid);
+    --link: #196c9c;
+    --link-hover: #135176;
+}
+
+@mixin dark-palette {
+    color-scheme: dark;
+    --gs-foreground: #e5ebf1;
+    --gs-stroke: #a0adba;
+    --gs-grid: #3a4653;
+    --gs-chromosome-tick: #b0bdca;
+    --gs-symbol-stroke: #c0cbd6;
+    --gs-background: #19212a;
+    --link: #93c9eb;
+    --link-hover: #c0e4fa;
+}
+
+/* Resolve the first paint before JavaScript connects the preference listener. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        @include dark-palette;
+    }
+}
+
+:root[data-theme="dark"] {
+    @include dark-palette;
+}
+
+.theme-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-block: 1.5rem;
+}
+
+#plot {
+    position: relative;
+    overflow: visible;
+    --gs-controls-color: var(--gs-foreground);
+    --gs-controls-background: var(--gs-background);
+}

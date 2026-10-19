@@ -342,6 +342,9 @@ toggle, or CSS custom properties scoped to the visualization container. Read
 the initial colors before embedding to avoid an initial frame with the wrong
 appearance. Remove host event listeners when finalizing the embed.
 
+The [light and dark mode example](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/darkMode)
+shows a CSS palette with System, Light, and Dark modes on one running visualization.
+
 CSS custom properties must resolve to concrete colors supported by GenomeSpy's
 color parsers, such as hex, named colors, or legacy `rgb()` syntax. Passing
 `var(...)`, `currentColor`, or `light-dark(...)` directly does not resolve them
