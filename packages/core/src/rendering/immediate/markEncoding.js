@@ -153,6 +153,42 @@ export function encodeString(encoder, datum) {
 }
 
 /**
+ * Snapshots a repeatable, datum-independent color for one synchronous draw.
+ * Direct parameter reads are deliberately the only expression optimization:
+ * datum independence alone does not make random(), now(), or helper calls safe.
+ *
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @param {{data: object[], start?: number, end?: number}} options
+ * @returns {string | undefined} Undefined retains per-instance evaluation.
+ */
+export function getDrawConstantPaint(encoder, options) {
+    const start = options.start ?? 0;
+    if (!encoder.constant || start === (options.end ?? options.data.length)) {
+        return;
+    }
+
+    const accessor = encoder.branches[0].accessor;
+    const def = accessor.channelDef;
+    const value = "value" in def ? def.value : "datum" in def ? def.datum : def;
+    if (isExprRef(value)) {
+        const expression =
+            /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */ (
+                /** @type {unknown} */ (accessor)
+            );
+        if (
+            !/^[$A-Z_a-z][$\w]*(?:\s*\.\s*[$A-Z_a-z][$\w]*)*$/.test(
+                value.expr.trim()
+            ) ||
+            !expression.dependencies?.every((ref) => ref.batchStable)
+        ) {
+            return;
+        }
+    }
+
+    return toPaintString(encoder(options.data[start]));
+}
+
+/**
  * Resolves the current value of an expression-valued mark property.
  *
  * @template T

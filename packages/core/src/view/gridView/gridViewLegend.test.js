@@ -3154,69 +3154,94 @@ describe("GridView legends", () => {
             expect(legend.getSize().height.px).toBeLessThan(60);
         });
 
-        test("uses stroke-width symbols for rule size legends", async () => {
-            const view = await createLegendTestView({
-                config: { legend: { disable: false } },
-                vconcat: [
-                    {
-                        data: {
-                            values: [
-                                { x: 0, x2: 1, y: 2, width: 1 },
-                                { x: 1, x2: 2, y: 3, width: 6 },
-                            ],
-                        },
-                        mark: { type: "rule", color: "red" },
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                            x2: { field: "x2", type: "quantitative" },
-                            y: { field: "y", type: "quantitative" },
-                            size: {
-                                field: "width",
-                                type: "quantitative",
-                                scale: { domain: [0, 6], range: [1, 6] },
+        test.each([false, true])(
+            "uses stroke-width symbols for rule size legends with color encoding=%s",
+            async (colorEncoding) => {
+                const view = await createLegendTestView({
+                    config: { legend: { disable: false } },
+                    params: [{ name: "palette", value: { foreground: "red" } }],
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 0, x2: 1, y: 2, width: 1 },
+                                    { x: 1, x2: 2, y: 3, width: 6 },
+                                ],
+                            },
+                            mark: {
+                                type: "rule",
+                                ...(!colorEncoding
+                                    ? { color: { expr: "palette.foreground" } }
+                                    : {}),
+                            },
+                            encoding: {
+                                ...(colorEncoding
+                                    ? {
+                                          color: {
+                                              value: {
+                                                  expr: "palette.foreground",
+                                              },
+                                          },
+                                      }
+                                    : {}),
+                                x: { field: "x", type: "quantitative" },
+                                x2: { field: "x2", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                size: {
+                                    field: "width",
+                                    type: "quantitative",
+                                    scale: { domain: [0, 6], range: [1, 6] },
+                                },
                             },
                         },
-                    },
-                ],
-            });
-            const legend = getLegends(view)[0];
-            const symbols = getLegendUnitChild(legend, "symbols");
-            const labels = getLegendUnitChild(legend, "labels");
-            const plot = view
-                .getDescendants()
-                .find((descendant) => descendant.name == "grid0");
-            const labelData = getUnitData(labels);
+                    ],
+                });
+                const legend = getLegends(view)[0];
+                const symbols = getLegendUnitChild(legend, "symbols");
+                const labels = getLegendUnitChild(legend, "labels");
+                const plot = view
+                    .getDescendants()
+                    .find((descendant) => descendant.name == "grid0");
+                const labelData = getUnitData(labels);
+                const symbolDatum = getUnitData(symbols)[0];
+                expect(symbols.mark.encoders.color(symbolDatum)).toBe("red");
 
-            expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
-                expect.objectContaining({ type: "rule" })
-            );
-            expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
-                expect.objectContaining({
-                    x: expect.objectContaining({ field: "symbolX" }),
-                    x2: expect.objectContaining({ field: "symbolX2" }),
-                    color: { value: "red" },
-                    size: expect.objectContaining({
-                        field: "value",
-                        type: "quantitative",
-                    }),
-                })
-            );
-            expect(
-                /** @type {UnitView} */ (symbols).getScaleResolution("size")
-            ).toBe(/** @type {UnitView} */ (plot).getScaleResolution("size"));
-            expect(labelData).toEqual(
-                expect.arrayContaining([
+                expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
+                    expect.objectContaining({ type: "rule" })
+                );
+                expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
                     expect.objectContaining({
-                        value: 6,
-                        _legendStrokeWidth: 6,
-                    }),
-                ])
-            );
-        });
+                        x: expect.objectContaining({ field: "symbolX" }),
+                        x2: expect.objectContaining({ field: "symbolX2" }),
+                        size: expect.objectContaining({
+                            field: "value",
+                            type: "quantitative",
+                        }),
+                    })
+                );
+                expect(
+                    /** @type {UnitView} */ (symbols).getScaleResolution("size")
+                ).toBe(
+                    /** @type {UnitView} */ (plot).getScaleResolution("size")
+                );
+                expect(labelData).toEqual(
+                    expect.arrayContaining([
+                        expect.objectContaining({
+                            value: 6,
+                            _legendStrokeWidth: 6,
+                        }),
+                    ])
+                );
+                view.paramRuntime.setValue("palette", { foreground: "white" });
+                await view.paramRuntime.whenPropagated();
+                expect(symbols.mark.encoders.color(symbolDatum)).toBe("white");
+            }
+        );
 
         test("uses stroke-width symbols for link size legends", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
+                params: [{ name: "palette", value: { foreground: "red" } }],
                 vconcat: [
                     {
                         data: {
@@ -3225,7 +3250,10 @@ describe("GridView legends", () => {
                                 { x: 1, x2: 2, y: 3, y2: 4, width: 6 },
                             ],
                         },
-                        mark: { type: "link", color: "#444" },
+                        mark: {
+                            type: "link",
+                            color: { expr: "palette.foreground" },
+                        },
                         encoding: {
                             x: { field: "x", type: "quantitative" },
                             x2: { field: "x2", type: "quantitative" },
@@ -3241,19 +3269,23 @@ describe("GridView legends", () => {
                 ],
             });
             const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
+            const symbolDatum = getUnitData(symbols)[0];
+            expect(symbols.mark.encoders.color(symbolDatum)).toBe("red");
 
             expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
                 expect.objectContaining({ type: "rule" })
             );
             expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
                 expect.objectContaining({
-                    color: { value: "#444" },
                     size: expect.objectContaining({
                         field: "value",
                         type: "quantitative",
                     }),
                 })
             );
+            view.paramRuntime.setValue("palette", { foreground: "white" });
+            await view.paramRuntime.whenPropagated();
+            expect(symbols.mark.encoders.color(symbolDatum)).toBe("white");
         });
 
         test("updates quantitative size entries when a dynamic range changes", async () => {

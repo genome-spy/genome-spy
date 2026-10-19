@@ -8,7 +8,11 @@ import {
     resolveLinkProperties,
     visitLinkInstances,
 } from "../../immediate/marks/link.js";
-import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
+import {
+    encodeNumber,
+    getDrawConstantPaint,
+    toPaintString,
+} from "../../immediate/markEncoding.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -33,11 +37,13 @@ export function renderLinkCanvas(baseMark, options) {
     context.lineCap = "butt";
     context.lineJoin = "miter";
     context.miterLimit = 2;
+    const constantStroke = getDrawConstantPaint(encoders.color, options);
     /** @type {string | undefined} */
     let strokeStyle;
 
     return visitLinkInstances(mark, properties, options, (instance) => {
-        const stroke = toPaintString(encoders.color(instance.datum));
+        const stroke =
+            constantStroke ?? toPaintString(encoders.color(instance.datum));
         const opacity =
             encodeNumber(encoders.opacity, instance.datum) *
             options.viewOpacity;

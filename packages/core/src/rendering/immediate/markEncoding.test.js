@@ -1,6 +1,12 @@
 import { describe, expect, test, vi } from "vitest";
 import Rectangle from "../../view/layout/rectangle.js";
-import { prepareRangeProjection } from "./markEncoding.js";
+import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
+import { createAccessor } from "../../encoder/accessor.js";
+import { createEncoder as buildEncoder } from "../../encoder/encoder.js";
+import {
+    getDrawConstantPaint,
+    prepareRangeProjection,
+} from "./markEncoding.js";
 
 /**
  * @param {(datum: import("../../data/flowNode.js").Datum) => import("../../spec/channel.js").Scalar} value
@@ -22,6 +28,26 @@ function createEncoder(value, options = {}) {
         )
     );
 }
+
+test("draw paint snapshots preserve settled scoped aliases", async () => {
+    const source = new ViewParamRuntime();
+    const target = new ViewParamRuntime(() => source);
+    source.registerParam({ name: "palette", value: { foreground: "black" } });
+    target.registerScopedExpression("paint", "palette.foreground", source);
+    const encoder = buildEncoder(
+        createAccessor("fill", { value: { expr: "paint" } }, target),
+        () => undefined
+    );
+    const options = { data: [{}] };
+
+    expect(getDrawConstantPaint(encoder, options)).toBe("black");
+    source.setValue("palette", { foreground: "white" });
+    await source.whenPropagated();
+    expect(getDrawConstantPaint(encoder, options)).toBe("white");
+    expect(
+        getDrawConstantPaint(encoder, { ...options, end: 0 })
+    ).toBeUndefined();
+});
 
 describe("prepareRangeProjection", () => {
     test("hoists constant positions and offsets but evaluates data-dependent encoders", () => {

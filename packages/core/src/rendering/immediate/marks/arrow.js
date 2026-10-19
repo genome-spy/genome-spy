@@ -72,8 +72,15 @@ export function resolveArrowProperties(mark) {
  * @param {ReturnType<typeof resolveArrowProperties>} properties
  * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, viewOpacity: number, countOnly?: boolean}} options
  * @param {(instance: ArrowInstance) => void} visitor
+ * @param {string} [constantStroke] A caller's draw-scoped stroke snapshot.
  */
-export function visitArrowInstances(mark, properties, options, visitor) {
+export function visitArrowInstances(
+    mark,
+    properties,
+    options,
+    visitor,
+    constantStroke
+) {
     const { viewOpacity } = options;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
@@ -121,7 +128,8 @@ export function visitArrowInstances(mark, properties, options, visitor) {
                 );
             });
             const hasVisibleStroke =
-                toPaintString(encoders.stroke(skeleton.datum)) != "none" &&
+                (constantStroke ??
+                    toPaintString(encoders.stroke(skeleton.datum))) != "none" &&
                 encodeNumber(encoders.strokeOpacity, skeleton.datum) *
                     viewOpacity >
                     0 &&

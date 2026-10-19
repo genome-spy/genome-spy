@@ -2,6 +2,7 @@ import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
+    getDrawConstantPaint,
     prepareRangeProjection,
     resolveMarkProperty,
     toPaintString,
@@ -130,10 +131,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
     const constantFillOpacity = fillOpacityIsConstant
         ? encodeNumber(encoders.fillOpacity, data[start])
         : 0;
-    const fillIsConstant = encoders.fill.constant;
-    const constantFill = fillIsConstant
-        ? toPaintString(encoders.fill(data[start]))
-        : "none";
+    const constantFill = getDrawConstantPaint(encoders.fill, options);
     const shadowPadding =
         properties.shadow.opacity > 0
             ? properties.shadow.blur +
@@ -207,9 +205,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
         const strokeWidth = strokeWidthIsConstant
             ? constantStrokeWidth
             : encodeNumber(encoders.strokeWidth, datum);
-        const fill = fillIsConstant
-            ? constantFill
-            : toPaintString(encoders.fill(datum));
+        const fill = constantFill ?? toPaintString(encoders.fill(datum));
         const fillOpacity =
             (fillOpacityIsConstant
                 ? constantFillOpacity

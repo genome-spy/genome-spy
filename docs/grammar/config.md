@@ -69,6 +69,63 @@ Theme selection is root-only. Specs can choose one of the built-in themes.
 
 EXAMPLE examples/docs/grammar/config/theme.json height=420
 
+## Reactive colors
+
+Colors in mark properties, axes, chromosome guides, legends, titles, and view
+backgrounds can use [expressions](./expressions.md). An object-valued
+[parameter](./parameters.md) can group these colors into a palette. Updating
+the palette changes an initialized visualization without reloading its data or
+resetting zoom and selections.
+
+For example, add the following properties to the root specification:
+
+```json
+{
+  "params": [
+    {
+      "name": "uiColors",
+      "value": {
+        "foreground": "#222222",
+        "stroke": "#808080",
+        "grid": "#dddddd",
+        "background": "#ffffff"
+      },
+      "persist": false
+    }
+  ],
+  "background": { "expr": "uiColors.background" },
+  "config": {
+    "text": { "color": { "expr": "uiColors.foreground" } },
+    "axis": {
+      "labelColor": { "expr": "uiColors.foreground" },
+      "titleColor": { "expr": "uiColors.foreground" },
+      "domainColor": { "expr": "uiColors.stroke" },
+      "tickColor": { "expr": "uiColors.stroke" },
+      "gridColor": { "expr": "uiColors.grid" }
+    },
+    "legend": {
+      "labelColor": { "expr": "uiColors.foreground" },
+      "titleColor": { "expr": "uiColors.foreground" }
+    }
+  }
+}
+```
+
+`uiColors` is an authored parameter; its name and fields are chosen by the
+specification author. The example maps selected defaults, and other colors can
+reference the same palette. Explicit mark and encoding colors retain their
+normal precedence. `persist: false` keeps host appearance out of App bookmarks
+and provenance.
+
+The root `background` controls the entire canvas, while `view.fill` and
+`config.view.fill` control individual view backgrounds. A root background
+expression uses the root parameter scope. When it resolves to `null`, the
+canvas is transparent and exports default to white. An explicit export
+`background` overrides this default, including `null` for transparent output.
+
+See [Updating appearance](../api/runtime-state.md#updating-appearance) for
+publishing palettes from an embedding application.
+
 ## Config scopes
 
 Config can appear in the root spec, in any view, and at an import site. Scopes

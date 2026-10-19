@@ -229,7 +229,7 @@ function getGradientBorderOutset(legend) {
 }
 
 /**
- * @param {string | undefined} value
+ * @param {string | import("../spec/parameter.js").ExprRef | undefined} value
  * @returns {import("../spec/channel.js").ValueDef | undefined}
  */
 function createBaseColorEncoding(value) {
@@ -370,7 +370,11 @@ export function createSymbolLegendSpec({
         if (value !== undefined && !styledScaleChannels.has(channel)) {
             symbolEncoding[channel] = /** @type {any} */ (
                 channel == "fill" || channel == "stroke"
-                    ? createBaseColorEncoding(/** @type {string} */ (value))
+                    ? createBaseColorEncoding(
+                          /** @type {string | import("../spec/parameter.js").ExprRef} */ (
+                              value
+                          )
+                      )
                     : { value }
             );
         }

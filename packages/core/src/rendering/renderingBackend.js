@@ -45,7 +45,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @property {undefined} [glHelper] Legacy field retained for the unchanged WebGPU adapter.
  * @property {(mark: import("../marks/mark.js").default) => import("../types/viewContext.js").MarkRenderingDebugState} [getMarkRenderingDebugState]
- * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator
+ * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string | undefined, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
  * @property {(options: RasterExportOptions & {devicePixelRatio?: number}) => string} exportCanvas
  * @property {(options: RasterExportOptions) => Promise<Blob>} [exportRaster]

@@ -1,4 +1,5 @@
 import { ShadowProps } from "./mark.js";
+import { ExprRef } from "./parameter.js";
 
 export interface ZIndexProps {
     /**
@@ -27,7 +28,7 @@ export interface ViewBackgroundProps
     /**
      * Fill color of the view background.
      */
-    fill?: string;
+    fill?: string | ExprRef;
 
     /**
      * Opacity of the view background fill.
@@ -37,7 +38,7 @@ export interface ViewBackgroundProps
     /**
      * Stroke color of the view background.
      */
-    stroke?: string;
+    stroke?: string | ExprRef;
 
     /**
      * Stroke width of the view background border.

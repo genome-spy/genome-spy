@@ -2,7 +2,11 @@ import {
     resolveRectProperties,
     visitRectInstances,
 } from "../../immediate/marks/rect.js";
-import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
+import {
+    encodeNumber,
+    getDrawConstantPaint,
+    toPaintString,
+} from "../../immediate/markEncoding.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -31,13 +35,9 @@ export function renderRectCanvas(baseMark, options) {
     /** @type {string | undefined} */
     let strokeStyle;
     const radii = [0, 0, 0, 0];
-    const strokeIsConstant = encoders.stroke.constant;
     const strokeOpacityIsConstant = encoders.strokeOpacity.constant;
-    const constantStroke = strokeIsConstant
-        ? toPaintString(encoders.stroke(options.data[start]))
-        : "none";
-    const hasInvisibleConstantStroke =
-        strokeIsConstant && constantStroke == "none";
+    const constantStroke = getDrawConstantPaint(encoders.stroke, options);
+    const hasInvisibleConstantStroke = constantStroke == "none";
     const constantStrokeOpacity =
         !hasInvisibleConstantStroke && strokeOpacityIsConstant
             ? encodeNumber(encoders.strokeOpacity, options.data[start])
@@ -49,9 +49,8 @@ export function renderRectCanvas(baseMark, options) {
         }
         const opacityFactor = instance.opacityFactor;
         const fillVisible = instance.fill != "none" && instance.fillOpacity > 0;
-        const stroke = strokeIsConstant
-            ? constantStroke
-            : toPaintString(encoders.stroke(instance.datum));
+        const stroke =
+            constantStroke ?? toPaintString(encoders.stroke(instance.datum));
         const strokeOpacity =
             (strokeOpacityIsConstant
                 ? constantStrokeOpacity

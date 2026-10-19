@@ -4,6 +4,7 @@ import {
 } from "../../immediate/marks/rule.js";
 import {
     encodeNumber,
+    getDrawConstantPaint,
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
@@ -29,6 +30,7 @@ export function renderRuleCanvas(baseMark, options) {
         mark,
         mark.properties.strokeDashOffset
     );
+    const constantStroke = getDrawConstantPaint(encoders.color, options);
     /** @type {string | undefined} */
     let strokeStyle;
 
@@ -37,7 +39,8 @@ export function renderRuleCanvas(baseMark, options) {
         resolveRuleProperties(mark),
         options,
         (instance) => {
-            const stroke = toPaintString(encoders.color(instance.datum));
+            const stroke =
+                constantStroke ?? toPaintString(encoders.color(instance.datum));
             const opacity =
                 encodeNumber(encoders.opacity, instance.datum) *
                 options.viewOpacity;

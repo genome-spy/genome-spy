@@ -31,7 +31,7 @@ export interface GenomeAxis extends Axis {
      *
      * __Default value:__ `"#989898"`
      */
-    chromTickColor?: string;
+    chromTickColor?: string | ExprRef;
 
     /**
      * An array of alternating [stroke, space] lengths for dashed chromosome boundary ticks.
@@ -86,7 +86,7 @@ export interface GenomeAxis extends Axis {
      *
      * __Default value:__ `"black"`
      */
-    chromLabelColor?: string;
+    chromLabelColor?: string | ExprRef;
 
     /**
      * The padding, in pixels, between chromosome boundary ticks and chromosome name labels.
@@ -115,7 +115,7 @@ export interface GenomeAxis extends Axis {
      *
      * __Default value:__ `lightgray`
      */
-    chromGridColor?: string;
+    chromGridColor?: string | ExprRef;
 
     /**
      * The stroke cap for the chromosome grid line's ending style. One of `"butt"`, `"round"` or `"square"`.
@@ -154,14 +154,14 @@ export interface GenomeAxis extends Axis {
      *
      * __Default value:__ (none)
      */
-    chromGridFillOdd?: string;
+    chromGridFillOdd?: string | ExprRef;
 
     /**
      * Fill color of odd chromosomes.
      *
      * __Default value:__ (none)
      */
-    chromGridFillEven?: string;
+    chromGridFillEven?: string | ExprRef;
 }
 
 /*!
@@ -304,7 +304,7 @@ export interface BaseAxis {
     /**
      * Color of the title, can be in hex color code or regular color name.
      */
-    titleColor?: string;
+    titleColor?: string | ExprRef;
 
     /**
      * Font of the title. (e.g., `"Helvetica Neue"`).
@@ -364,7 +364,7 @@ export interface BaseAxis {
      *
      * __Default value:__ `"gray"`.
      */
-    domainColor?: string;
+    domainColor?: string | ExprRef;
 
     /**
      * Stroke width of axis domain line
@@ -393,7 +393,7 @@ export interface BaseAxis {
      *
      * __Default value:__ `"gray"`
      */
-    tickColor?: string;
+    tickColor?: string | ExprRef;
 
     /**
      * An array of alternating [stroke, space] lengths for dashed tick mark lines.
@@ -499,7 +499,7 @@ export interface BaseAxis {
     /**
      * The color of the tick label, can be in hex color code or regular color name.
      */
-    labelColor?: string;
+    labelColor?: string | ExprRef;
 
     /**
      * The font of the tick label.
@@ -550,7 +550,7 @@ export interface BaseAxis {
      *
      * __Default value:__ `lightgray`
      */
-    gridColor?: string;
+    gridColor?: string | ExprRef;
 
     /**
      * The stroke cap for the grid line's ending style. One of `"butt"`, `"round"` or `"square"`.

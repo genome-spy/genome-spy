@@ -14,7 +14,7 @@ export default class RenderCoordinator {
     #glHelper;
     /** @type {import("./rendererResources.js").default} */
     #markAdapter;
-    /** @type {() => string} */
+    /** @type {() => string | undefined} */
     #getBackground;
     /** @type {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} */
     #broadcast;
@@ -31,7 +31,7 @@ export default class RenderCoordinator {
      * @param {import("../../view/view.js").default} options.viewRoot
      * @param {import("./gl/webGLHelper.js").default} options.glHelper
      * @param {import("./rendererResources.js").default} options.markAdapter
-     * @param {() => string} options.getBackground
+     * @param {() => string | undefined} options.getBackground
      * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
      * @param {() => void} options.onLayoutComputed
      */
@@ -157,6 +157,7 @@ export default class RenderCoordinator {
     }
 
     renderAll() {
+        this.#renderingContext?.setClearColor(this.#getBackground());
         const profiler = getPerformanceProfiler();
         profiler?.beginFrame("webgl");
         measurePerformance("render", () => this.#renderingContext?.render());

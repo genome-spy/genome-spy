@@ -39,6 +39,9 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /** @type {[number, number, number, number]} */
     #clearColor = [0, 0, 0, 0];
 
+    /** @type {string | undefined} */
+    #clearColorValue;
+
     /** @type {(() => void)[]} */
     #batch;
 
@@ -87,10 +90,18 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         this.#markPredicate = bufferedOptions.markPredicate ?? (() => true);
         this.#pixelOffset = bufferedOptions.pixelOffset;
 
-        if (bufferedOptions.clearColor) {
-            const c = color(bufferedOptions.clearColor).rgb();
-            this.#clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
-        }
+        this.setClearColor(bufferedOptions.clearColor);
+    }
+
+    /** @param {string | undefined} value */
+    setClearColor(value) {
+        if (value === this.#clearColorValue) return;
+        this.#clearColorValue = value;
+        const c = value === undefined ? null : color(value).rgb();
+        this.#clearColor[0] = c ? c.r / 255 : 0;
+        this.#clearColor[1] = c ? c.g / 255 : 0;
+        this.#clearColor[2] = c ? c.b / 255 : 0;
+        this.#clearColor[3] = c ? c.opacity : 0;
     }
 
     getDevicePixelRatio() {

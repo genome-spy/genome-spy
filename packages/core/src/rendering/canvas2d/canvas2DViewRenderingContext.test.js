@@ -8,6 +8,7 @@ import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
 import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
 import { createSvg } from "../svg/index.js";
 import NativeTextMetricsProvider from "../nativeTextMetrics.js";
+import { renderMarkCanvas } from "./renderers/index.js";
 
 afterEach(() => {
     const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
@@ -30,6 +31,7 @@ function createRecordingContext() {
      *     translates: [number, number][],
      *     rotations: number[],
      *     fillTexts: [string, number, number, number | undefined][],
+     *     textColors: string[],
      *     fonts: string[],
      *     scales: [number, number][],
      *     drawImages: number[],
@@ -52,6 +54,7 @@ function createRecordingContext() {
         translates: [],
         rotations: [],
         fillTexts: [],
+        textColors: [],
         fonts: [],
         scales: [],
         drawImages: [],
@@ -148,7 +151,10 @@ function createRecordingContext() {
             /** @type {number} */ x,
             /** @type {number} */ y,
             /** @type {number | undefined} */ maxWidth
-        ) => calls.fillTexts.push([text, x, y, maxWidth]),
+        ) => {
+            calls.fillTexts.push([text, x, y, maxWidth]);
+            calls.textColors.push(context.fillStyle);
+        },
         arc: (
             /** @type {number} */ x,
             /** @type {number} */ y,
@@ -666,9 +672,10 @@ describe("Canvas2DViewRenderingContext", () => {
 
     test("repaints conditional encodings when a selection changes", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{ value: 1 }] },
+            data: { values: [{ value: 1 }, { value: 2 }] },
             params: [
                 { name: "selected", select: { type: "point", toggle: false } },
+                { name: "palette", value: { foreground: "black" } },
             ],
             mark: "point",
             encoding: {
@@ -682,7 +689,14 @@ describe("Canvas2DViewRenderingContext", () => {
                         value: 400,
                     },
                 },
-                fill: { value: "black" },
+                fill: {
+                    value: { expr: "palette.foreground" },
+                    condition: {
+                        param: "selected",
+                        empty: false,
+                        value: "red",
+                    },
+                },
             },
         });
         const requestRender = vi.spyOn(view.context.animator, "requestRender");
@@ -692,7 +706,14 @@ describe("Canvas2DViewRenderingContext", () => {
         );
         const initial = createRecordingContext();
         render(view, initial.context);
-        expect(initial.calls.arcs).toEqual([[50, 50, 5]]);
+        expect(initial.calls.arcs).toEqual([
+            [50, 50, 5],
+            [50, 50, 5],
+        ]);
+        expect(initial.calls.fills).toEqual([
+            [1, "black"],
+            [1, "black"],
+        ]);
 
         const unitView =
             /** @type {import("../../view/unitView.js").default} */ (view);
@@ -705,7 +726,14 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(requestRender).toHaveBeenCalledOnce();
         const selected = createRecordingContext();
         render(view, selected.context);
-        expect(selected.calls.arcs).toEqual([[50, 50, 10]]);
+        expect(selected.calls.arcs).toEqual([
+            [50, 50, 10],
+            [50, 50, 5],
+        ]);
+        expect(selected.calls.fills).toEqual([
+            [1, "red"],
+            [1, "black"],
+        ]);
     });
 
     test("draws an active order partition after its unselected partition", async () => {
@@ -713,6 +741,7 @@ describe("Canvas2DViewRenderingContext", () => {
             data: { values: [{ x: 0.25 }, { x: 0.75 }] },
             params: [
                 { name: "picked", select: { type: "point", toggle: false } },
+                { name: "palette", value: { foreground: "black" } },
             ],
             mark: "point",
             encoding: {
@@ -723,7 +752,7 @@ describe("Canvas2DViewRenderingContext", () => {
                 },
                 y: { value: 0.5 },
                 size: { value: 100 },
-                fill: { value: "black" },
+                fill: { value: { expr: "palette.foreground" } },
                 order: {
                     condition: { param: "picked", value: 1 },
                     value: 0,
@@ -733,6 +762,11 @@ describe("Canvas2DViewRenderingContext", () => {
         const unitView =
             /** @type {import("../../view/unitView.js").default} */ (view);
         const datum = unitView.getCollector().facetBatches.get(undefined)[0];
+        const fill = Object.assign(
+            vi.fn(unitView.mark.encoders.fill),
+            unitView.mark.encoders.fill
+        );
+        unitView.mark.encoders.fill = fill;
         const order = unitView.mark.getOrder();
         const predicate = vi.spyOn(order, "predicate");
         const requestRender = vi.spyOn(view.context.animator, "requestRender");
@@ -740,6 +774,7 @@ describe("Canvas2DViewRenderingContext", () => {
         render(view, initial.context);
         expect(initial.calls.arcs.map(([x]) => x)).toEqual([25, 75]);
         expect(predicate).not.toHaveBeenCalled();
+        expect(fill).toHaveBeenCalledOnce();
 
         requestRender.mockClear();
         view.paramRuntime.setValue("picked", createSinglePointSelection(datum));
@@ -750,6 +785,7 @@ describe("Canvas2DViewRenderingContext", () => {
 
         expect(recording.calls.arcs.map(([x]) => x)).toEqual([75, 25]);
         expect(predicate).toHaveBeenCalledTimes(2);
+        expect(fill).toHaveBeenCalledTimes(3);
     });
 
     test("draws points without per-datum save scopes", async () => {
@@ -883,18 +919,24 @@ describe("Canvas2DViewRenderingContext", () => {
 
     test("projects repeated sample facets into their assigned rows", async () => {
         const { view } = await createHeadlessEngine({
+            params: [{ name: "palette", value: { foreground: "black" } }],
             data: { values: [{}] },
             mark: "point",
             encoding: {
                 x: { value: 0.5 },
                 y: { value: 0.5 },
                 size: { value: 100 },
-                fill: { value: "black" },
+                fill: { value: { expr: "palette.foreground" } },
             },
         });
         const recording = createRecordingContext();
         const unitView =
             /** @type {import("../../view/unitView.js").default} */ (view);
+        const fill = Object.assign(
+            vi.fn(unitView.mark.encoders.fill),
+            unitView.mark.encoders.fill
+        );
+        unitView.mark.encoders.fill = fill;
         const getEffectiveOpacity = vi.spyOn(unitView, "getEffectiveOpacity");
         const context = new Canvas2DViewRenderingContext(
             { picking: false },
@@ -912,6 +954,10 @@ describe("Canvas2DViewRenderingContext", () => {
             { location: 20, size: 40 },
             { location: 60, size: 20 },
         ]) {
+            view.paramRuntime.setValue("palette", {
+                foreground: locSize.location == 20 ? "black" : "white",
+            });
+            await view.paramRuntime.whenPropagated();
             view.arrange(context, Rectangle.create(0, 0, 100, 100), {
                 sampleFacetRenderingOptions: {
                     locSize,
@@ -931,10 +977,16 @@ describe("Canvas2DViewRenderingContext", () => {
         ]);
         expect(recording.context.clip).toHaveBeenCalledTimes(2);
         expect(getEffectiveOpacity).toHaveBeenCalledOnce();
+        expect(fill).toHaveBeenCalledTimes(2);
+        expect(recording.calls.fills).toEqual([
+            [1, "black"],
+            [1, "white"],
+        ]);
 
         render(view, createRecordingContext().context);
 
         expect(getEffectiveOpacity).toHaveBeenCalledTimes(2);
+        expect(fill).toHaveBeenCalledTimes(3);
     });
 
     test("culls only explicit offscreen sample facets before data traversal", async () => {
@@ -1177,6 +1229,7 @@ describe("Canvas2DViewRenderingContext", () => {
 
     test("evaluates constant rect encoders once per render", async () => {
         const { view } = await createHeadlessEngine({
+            params: [{ name: "palette", value: { foreground: "black" } }],
             data: {
                 values: [
                     { x: 0.1, x2: 0.4, fillOpacity: 0.25 },
@@ -1186,14 +1239,14 @@ describe("Canvas2DViewRenderingContext", () => {
             mark: {
                 type: "rect",
                 cornerRadius: 1,
-                stroke: "black",
+                stroke: { expr: "palette.foreground" },
             },
             encoding: {
                 x: { field: "x", type: "quantitative", scale: null },
                 x2: { field: "x2" },
                 y: { value: 0.2 },
                 y2: { value: 0.8 },
-                fill: { value: "black" },
+                fill: { value: { expr: "palette.foreground" } },
             },
         });
         const encoders =
@@ -1239,6 +1292,8 @@ describe("Canvas2DViewRenderingContext", () => {
         ]);
         expect(first.context.lineWidth).toBe(1);
 
+        view.paramRuntime.setValue("palette", { foreground: "white" });
+        await view.paramRuntime.whenPropagated();
         strokeWidth = 3;
         const second = createRecordingContext();
         render(view, second.context);
@@ -1249,7 +1304,153 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(strokeOpacityEncoder).toHaveBeenCalledTimes(2);
         expect(fillOpacityEncoder).toHaveBeenCalledTimes(4);
         expect(second.context.lineWidth).toBe(3);
+        expect(first.calls.fills.map(([, color]) => color)).toEqual([
+            "black",
+            "black",
+        ]);
+        expect(second.calls.fills.map(([, color]) => color)).toEqual([
+            "white",
+            "white",
+        ]);
+        expect(second.calls.strokes.map(([, color]) => color)).toEqual([
+            "white",
+            "white",
+        ]);
     });
+
+    test.each(["rule", "link", "point", "arrow"])(
+        "snapshots palette colors once per %s draw and refreshes on repaint",
+        async (type) => {
+            const { view } = await createHeadlessEngine({
+                params: [{ name: "palette", value: { foreground: "black" } }],
+                data: { values: [{ x: 0.2 }, { x: 0.3 }, { x: 0.4 }] },
+                mark: {
+                    type: /** @type {"rule" | "link" | "point" | "arrow"} */ (
+                        type
+                    ),
+                    color: { expr: "palette.foreground" },
+                    fill: { expr: "palette.foreground" },
+                    stroke: { expr: "palette.foreground" },
+                    strokeWidth: 1,
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative", scale: null },
+                    x2: { value: 0.8 },
+                    y: { value: 0.5 },
+                    y2: { value: 0.5 },
+                },
+            });
+            const mark =
+                /** @type {import("../../view/unitView.js").default} */ (view)
+                    .mark;
+            const channels =
+                type == "rule" || type == "link"
+                    ? ["color"]
+                    : ["fill", "stroke"];
+            const encoders =
+                /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
+                    mark.encoders
+                );
+            const spies = channels.map((channel) => {
+                const encoder = Object.assign(
+                    vi.fn(encoders[channel]),
+                    encoders[channel]
+                );
+                encoders[channel] = encoder;
+                return encoder;
+            });
+
+            const initial = createRecordingContext();
+            render(view, initial.context);
+            for (const spy of spies) expect(spy).toHaveBeenCalledOnce();
+            expect(initial.calls.strokes.map(([, color]) => color)).toEqual([
+                "black",
+                "black",
+                "black",
+            ]);
+
+            view.paramRuntime.setValue("palette", { foreground: "white" });
+            await view.paramRuntime.whenPropagated();
+            const updated = createRecordingContext();
+            render(view, updated.context);
+            for (const spy of spies) expect(spy).toHaveBeenCalledTimes(2);
+            expect(updated.calls.strokes.map(([, color]) => color)).toEqual([
+                "white",
+                "white",
+                "white",
+            ]);
+            if (type == "point" || type == "arrow") {
+                expect(updated.calls.fills.map(([, color]) => color)).toEqual([
+                    "white",
+                    "white",
+                    "white",
+                ]);
+            }
+
+            const empty = createRecordingContext();
+            // The painters can also receive an empty indexed or partitioned range.
+            renderMarkCanvas(mark, {
+                context: empty.context,
+                coords: Rectangle.create(0, 0, 100, 100),
+                data: [{}],
+                start: 0,
+                end: 0,
+                devicePixelRatio: 1,
+                visibleBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
+                anchorCullBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
+                viewOpacity: 1,
+                warn: vi.fn(),
+            });
+            for (const spy of spies) expect(spy).toHaveBeenCalledTimes(2);
+            expect(empty.calls.strokes).toEqual([]);
+        }
+    );
+
+    test.each([
+        "datum.color",
+        "random() > 0.5 ? 'red' : 'blue'",
+        "now() > 0 ? 'red' : 'blue'",
+        "isString(palette.foreground) ? palette.foreground : 'red'",
+    ])(
+        "keeps data-dependent and nontrivial colors per instance: %s",
+        async (expr) => {
+            const { view } = await createHeadlessEngine({
+                params: [{ name: "palette", value: { foreground: "black" } }],
+                data: {
+                    values: [
+                        { color: "red" },
+                        { color: "green" },
+                        { color: "blue" },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: { value: 0.5 },
+                    y: { value: 0.5 },
+                    fill: { expr, type: "nominal", scale: null },
+                },
+            });
+            const encoders =
+                /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
+                    /** @type {import("../../view/unitView.js").default} */ (
+                        view
+                    ).mark.encoders
+                );
+            const fill = Object.assign(vi.fn(encoders.fill), encoders.fill);
+            encoders.fill = fill;
+
+            const recording = createRecordingContext();
+            render(view, recording.context);
+
+            expect(fill.constant).toBe(expr != "datum.color");
+            expect(fill).toHaveBeenCalledTimes(3);
+            if (expr == "datum.color") {
+                expect(recording.calls.fills.map(([, color]) => color)).toEqual(
+                    ["red", "green", "blue"]
+                );
+            }
+        }
+    );
 
     test("draws independently rounded and clamped rectangle corners", async () => {
         const { view } = await createHeadlessEngine({
@@ -1466,6 +1667,10 @@ describe("Canvas2DViewRenderingContext", () => {
 
     test("evaluates constant text encoders once per render", async () => {
         const { view } = await createHeadlessEngine({
+            params: [
+                { name: "palette", value: { foreground: "black" } },
+                { name: "textColor", expr: "palette.foreground" },
+            ],
             data: {
                 values: [
                     { x: 0.25, label: "A", angle: 0 },
@@ -1477,7 +1682,7 @@ describe("Canvas2DViewRenderingContext", () => {
                 x: { field: "x", type: "quantitative", scale: null },
                 y: { value: 0.5 },
                 text: { field: "label" },
-                color: { value: "black" },
+                color: { value: { expr: "textColor" } },
             },
         });
         const encoders =
@@ -1495,6 +1700,11 @@ describe("Canvas2DViewRenderingContext", () => {
             encoders.angle,
             { constant: false }
         );
+        const colorEncoder = Object.assign(
+            vi.fn(encoders.color),
+            encoders.color
+        );
+        encoders.color = colorEncoder;
         encoders.size = sizeEncoder;
         encoders.angle = angleEncoder;
 
@@ -1505,6 +1715,8 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(angleEncoder).toHaveBeenCalledTimes(2);
         expect(first.calls.fonts[0]).toContain("12px");
 
+        view.paramRuntime.setValue("palette", { foreground: "white" });
+        await view.paramRuntime.whenPropagated();
         size = 18;
         const second = createRecordingContext();
         render(view, second.context);
@@ -1512,6 +1724,9 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(sizeEncoder).toHaveBeenCalledTimes(2);
         expect(angleEncoder).toHaveBeenCalledTimes(4);
         expect(second.calls.fonts[0]).toContain("18px");
+        expect(colorEncoder).toHaveBeenCalledTimes(2);
+        expect(first.calls.textColors).toEqual(["black", "black"]);
+        expect(second.calls.textColors).toEqual(["white", "white"]);
     });
 
     test("records closed arrow boundaries beginning at its tip", async () => {

@@ -8,6 +8,7 @@ import { asArray } from "../../utils/arrayUtils.js";
 import { getConfiguredLegendRegionLayout } from "../../config/legendConfig.js";
 import {
     activateExprRefProps,
+    isExprRef,
     resolveInitOnlyExprRef,
 } from "../../paramRuntime/paramUtils.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
@@ -34,6 +35,20 @@ const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
     "strokeOpacity",
     "strokeWidth",
     "shape",
+]);
+
+// These values belong to generated mark encoders, which retain live bindings.
+const LEGEND_PAINT_PROPS = new Set([
+    "backgroundFill",
+    "backgroundStroke",
+    "gradientStrokeColor",
+    "labelColor",
+    "titleColor",
+    "symbolFillColor",
+    "symbolStrokeColor",
+    "symbolBaseFillColor",
+    "symbolBaseStrokeColor",
+    "symbolOpacity",
 ]);
 
 export const INSIDE_LEGEND_ORIENTS = new Set(
@@ -150,10 +165,10 @@ function getEmptySelectionValueDef(channelDef, predicates) {
 
 /**
  * @param {any} value
- * @returns {value is string}
+ * @returns {value is string | import("../../spec/parameter.js").ExprRef}
  */
-function isConstantColor(value) {
-    return typeof value === "string";
+function isColorValue(value) {
+    return typeof value === "string" || isExprRef(value);
 }
 
 /**
@@ -162,38 +177,34 @@ function isConstantColor(value) {
  * @param {Partial<import("../../spec/mark.js").PointProps>} sourceProps
  * @param {import("../../spec/legend.js").LegendConfig} legend
  */
-function applyConstantMarkColorStyle(
-    encoding,
-    scaledChannels,
-    sourceProps,
-    legend
-) {
-    if (isConstantColor(sourceProps.fill) && !scaledChannels.has("fill")) {
+function applyMarkColorStyle(encoding, scaledChannels, sourceProps, legend) {
+    if (isColorValue(sourceProps.fill) && !scaledChannels.has("fill")) {
         encoding.fill = { value: sourceProps.fill };
     }
-    if (isConstantColor(sourceProps.stroke) && !scaledChannels.has("stroke")) {
+    if (isColorValue(sourceProps.stroke) && !scaledChannels.has("stroke")) {
         encoding.stroke = { value: sourceProps.stroke };
     }
 
-    if (isConstantColor(sourceProps.color) && !scaledChannels.has("color")) {
+    if (isColorValue(sourceProps.color) && !scaledChannels.has("color")) {
         if (sourceProps.filled) {
-            if (!scaledChannels.has("fill")) {
+            if (!scaledChannels.has("fill") && !encoding.fill) {
                 encoding.fill = { value: sourceProps.color };
             }
-            if (!scaledChannels.has("stroke")) {
+            if (!scaledChannels.has("stroke") && !encoding.stroke) {
                 encoding.stroke = { value: null };
             }
             if (
                 !scaledChannels.has("strokeWidth") &&
+                !isColorValue(sourceProps.stroke) &&
                 legend.symbolStrokeColor === undefined
             ) {
                 encoding.strokeWidth = { value: 0 };
             }
         } else {
-            if (!scaledChannels.has("stroke")) {
+            if (!scaledChannels.has("stroke") && !encoding.stroke) {
                 encoding.stroke = { value: sourceProps.color };
             }
-            if (!scaledChannels.has("fill")) {
+            if (!scaledChannels.has("fill") && !encoding.fill) {
                 encoding.fill = { value: sourceProps.color };
             }
             if (
@@ -294,12 +305,7 @@ function createInheritedSymbolStyle(
         styleMark.shape = "square";
     }
 
-    applyConstantMarkColorStyle(
-        styleEncoding,
-        scaledChannels,
-        sourceProps,
-        legend
-    );
+    applyMarkColorStyle(styleEncoding, scaledChannels, sourceProps, legend);
     applyConflictingScaledColorStyle(styleEncoding, scaledChannels, sourceView);
 
     const colorDef = sourceView.spec.encoding?.color;
@@ -388,15 +394,27 @@ function resolveLegendProps(legend, legendParent, registerDisposer, listener) {
         registerDisposer
     );
 
-    return activateExprRefProps(
-        legendParent.paramRuntime,
-        orientedLegend,
-        (props) => {
-            if (props.has("disable")) {
-                listener();
-            }
-        },
-        registerDisposer
+    const paintProps = {};
+    /** @type {ResolvedLegendConfig} */
+    const otherProps = {};
+    for (const [key, value] of Object.entries(orientedLegend)) {
+        Object.assign(LEGEND_PAINT_PROPS.has(key) ? paintProps : otherProps, {
+            [key]: value,
+        });
+    }
+
+    return Object.assign(
+        activateExprRefProps(
+            legendParent.paramRuntime,
+            otherProps,
+            (props) => {
+                if (props.has("disable")) {
+                    listener();
+                }
+            },
+            registerDisposer
+        ),
+        paintProps
     );
 }
 
@@ -407,12 +425,38 @@ function resolveLegendProps(legend, legendParent, registerDisposer, listener) {
  */
 export async function createGridChildLegend(definition, layoutParent) {
     const legendParent = definition.view;
+    /** @type {{ name: string, expr: string, runtime: import("../../paramRuntime/viewParamRuntime.js").default }[]} */
+    const expressions = [];
+    /**
+     * Generated legend internals declare their own layout parameters. Keep
+     * styling expressions bound to the view that contributed each style.
+     * @template T
+     * @param {T} value
+     * @param {import("../../paramRuntime/viewParamRuntime.js").default} runtime
+     * @returns {T}
+     */
+    const scopeExpression = (value, runtime) => {
+        if (!isExprRef(value)) {
+            return value;
+        }
+
+        const name = "__legend_style_" + expressions.length;
+        expressions.push({ name, expr: value.expr, runtime });
+        return /** @type {T} */ ({ expr: name });
+    };
     /** @type {(() => void)[]} */
     const legendDisposers = [];
     /** @type {LegendView | undefined} */
     let legend;
     const legendProps = resolveLegendProps(
-        definition.legend,
+        Object.fromEntries(
+            Object.entries(definition.legend).map(([key, value]) => [
+                key,
+                LEGEND_PAINT_PROPS.has(key)
+                    ? scopeExpression(value, legendParent.paramRuntime)
+                    : value,
+            ])
+        ),
         legendParent,
         (disposer) => legendDisposers.push(disposer),
         () => {
@@ -425,6 +469,9 @@ export async function createGridChildLegend(definition, layoutParent) {
             legend.context.requestLayoutReflow();
         }
     );
+    // The legend definition and first scale contributor can be different views
+    // when legends are collected. Inherited mark styling keeps the latter scope.
+    const sourceView = definition.scaleResolution.getOrderedMembers()[0].view;
     const symbolStyle =
         definition.type == "symbol"
             ? createInheritedSymbolStyle(
@@ -432,10 +479,28 @@ export async function createGridChildLegend(definition, layoutParent) {
                   definition.symbolChannels ?? {},
                   // Multi-view arbitration is intentionally simple for now:
                   // use the first deterministic contributor.
-                  definition.scaleResolution.getOrderedMembers()[0].view,
+                  sourceView,
                   legendProps
               )
             : undefined;
+    if (symbolStyle) {
+        for (const [key, value] of Object.entries(symbolStyle.mark)) {
+            Object.assign(symbolStyle.mark, {
+                [key]: scopeExpression(value, sourceView.paramRuntime),
+            });
+        }
+        const styleEncoding =
+            /** @type {Record<string, import("../../spec/channel.js").ValueDef>} */ (
+                symbolStyle.encoding
+            );
+        for (const [channel, valueDef] of Object.entries(styleEncoding)) {
+            // Generic color can supply both fill and stroke through one ValueDef.
+            styleEncoding[channel] = {
+                ...valueDef,
+                value: scopeExpression(valueDef.value, sourceView.paramRuntime),
+            };
+        }
+    }
 
     legend = new LegendView(
         {
@@ -455,6 +520,9 @@ export async function createGridChildLegend(definition, layoutParent) {
 
     for (const dispose of legendDisposers) {
         legend.registerDisposer(dispose);
+    }
+    for (const { name, expr, runtime } of expressions) {
+        legend.paramRuntime.registerScopedExpression(name, expr, runtime);
     }
 
     await legend.initializeChildren();

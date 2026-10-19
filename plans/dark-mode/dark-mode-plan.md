@@ -1,6 +1,13 @@
 # Reactive appearance and dark mode
 
-Status: investigation and proposal; implementation has not started.
+Status: implementation in progress. Milestone 1 is complete; milestones 2 and 3
+remain.
+
+Implementation verification: reactive background and scoped legend tests pass,
+including shared source colors; Canvas2D/immediate tests cover draw-scoped palette
+reads and refreshes. Workspace TypeScript checks, lint, schema/docs builds, and a
+live WebGL palette/background/export smoke check pass. The full suite passed all
+other tests; a new Canvas assertion was corrected and its focused suite rerun.
 
 ## Recommendation
 
@@ -373,7 +380,7 @@ closely adapted, so there is no new third-party code/license dependency.
 
 ## Milestones and review gates
 
-1. **Complete reactive color and background support.** Update the relevant Core
+1. **Complete reactive color and background support (complete).** Update the relevant Core
    spec types/schema, guide/decoration consumers where necessary, and one shared
    resolved background path. Preserve legend-property and inherited source-style
    expressions in their original scopes. Synchronize WebGL's cached clear color.

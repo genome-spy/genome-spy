@@ -313,6 +313,39 @@ and `clear()`. See
 [Marks and scoped interaction](./views.md#marks-and-scoped-interaction) for the
 selection and lifecycle rules shared by these handles.
 
+### Updating appearance
+
+An embedding application can update parameter-backed colors after embedding.
+For the authored `uiColors` palette in the
+[reactive colors example](../grammar/config.md#reactive-colors), publish a new
+object containing all its fields:
+
+```js
+const colors = api.params.get("uiColors");
+colors.setValue({
+  foreground: "#eeeeee",
+  stroke: "#aaaaaa",
+  grid: "#444444",
+  background: "#181818",
+});
+```
+
+Replace the object through `setValue()` whenever the palette changes. Mutating
+properties of the existing object does not publish a parameter update.
+
+The host controls when to publish a palette. It can follow
+`matchMedia("(prefers-color-scheme: dark)")` change events, an application theme
+toggle, or CSS custom properties scoped to the visualization container. Read
+the initial colors before embedding to avoid an initial frame with the wrong
+appearance. Remove host event listeners when finalizing the embed.
+
+CSS custom properties must resolve to concrete colors supported by GenomeSpy's
+color parsers, such as hex, named colors, or legacy `rgb()` syntax. Passing
+`var(...)`, `currentColor`, or `light-dark(...)` directly does not resolve them
+against the host element. Reading a custom property with `getComputedStyle()`
+can still return such unresolved values, so the host must supply concrete
+colors.
+
 ### Setting point selections
 
 Obtain a point selection through the unit view supplying its records, including

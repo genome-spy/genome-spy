@@ -16,7 +16,7 @@ export default class Canvas2DRenderCoordinator {
      * @param {CanvasRenderingContext2D} options.context
      * @param {import("./canvas2DSurface.js").default} options.surface
      * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
-     * @param {() => string} options.getBackground
+     * @param {() => string | undefined} options.getBackground
      * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
      * @param {() => void} options.onLayoutComputed
      */
