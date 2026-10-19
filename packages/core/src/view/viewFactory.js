@@ -309,9 +309,7 @@ export class ViewFactory {
             layoutParent,
             dataParent,
             defaultName,
-            isImplicitRoot
-                ? { ...options, initializeThemeColors: false }
-                : options
+            options
         );
 
         if (importScopeName !== undefined) {

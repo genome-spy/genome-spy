@@ -18,11 +18,16 @@ PNG/SVG exports, automatic Canvas fallback, actual back/forward-cache restoratio
 and listener/finalize cleanup. Independent Canvas and WebGPU browser checks also
 cover live colors, preserved domains, and explicit/null export backgrounds.
 
-Core runtime JavaScript changes add 428 and delete 117 non-comment lines, net 311,
+Core runtime JavaScript changes add 421 and delete 115 non-comment lines, net 306,
 against local `master` (`b34836e8319e844ccecbc713e4f4fb6b3403575f`), excluding tests
 and declarations. The example contains 315 source lines across HTML, JS, and SCSS.
 No shaders, GPU attributes, or textures were added. Canvas palette evaluation is
 draw-scoped; no timing benchmark or quantitative speedup is claimed.
+
+The SLOC review centralized root palette initialization in `ViewFactory`, removing
+the duplicate constructor fallback and its synthetic-wrapper suppression option.
+All 91 focused palette/view/factory tests, workspace TypeScript checks, and
+targeted lint pass after this cleanup. The embedding example remains unchanged.
 
 ## Recommendation
 
