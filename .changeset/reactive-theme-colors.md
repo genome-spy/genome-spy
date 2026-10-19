@@ -15,5 +15,6 @@ also has consistent light guide text.
 Canvas rendering reuses palette colors during each draw instead of evaluating
 them for every instance, while preserving data-dependent color encodings.
 
-The embedding examples include a CSS-driven Light/Dark/System switch that keeps
-zoom and brush selections while updating an existing visualization.
+The commented light/dark embedding example shows how to bridge CSS colors and
+browser preferences to an existing visualization while preserving zoom and
+brush selections.

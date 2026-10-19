@@ -13,7 +13,8 @@
         <p>
             Change the appearance of one running visualization. System follows
             your browser’s preference; Light and Dark override it. The host
-            reads six CSS colors and updates GenomeSpy’s palette parameter.
+            reads CSS colors and updates GenomeSpy’s <code>themeColors</code>
+            parameter.
         </p>
         <div class="theme-controls">
             <label>
@@ -29,12 +30,10 @@
         <div id="plot" class="visualization-surface"></div>
         <p>
             Scroll over the plot to zoom and Shift-drag to brush a region, then
-            switch appearance. Zoom and selection stay in place. Data colors and
-            the red annotation stay the same; titles, guides, legends, neutral
-            lines, and backgrounds follow the palette. Download PNG or SVG with
-            the plot’s controls.
+            switch appearance. Zoom and selection stay in place. Data colors
+            stay the same; titles, guides, grid lines, legend text, and the
+            canvas background follow the palette.
         </p>
-        <p id="state" aria-live="polite"></p>
         <script type="module" src="./index.js"></script>
     </body>
 </html>

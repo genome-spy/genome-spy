@@ -14,20 +14,29 @@ follow the palette, while fixed presets preserve their own colors.
 The standalone example passes its production build and catalog navigation.
 Browser checks cover initial OS preferences, manual overrides, subsequent System
 preference changes, repeated switches with a zoomed domain and nonempty brush,
-PNG/SVG exports, automatic Canvas fallback, actual back/forward-cache restoration,
-and listener/finalize cleanup. Independent Canvas and WebGPU browser checks also
+automatic Canvas fallback and actual back/forward-cache restoration.
+Independent Canvas and WebGPU browser checks also
 cover live colors, preserved domains, and explicit/null export backgrounds.
 
 Core runtime JavaScript changes add 421 and delete 115 non-comment lines, net 306,
 against local `master` (`b34836e8319e844ccecbc713e4f4fb6b3403575f`), excluding tests
-and declarations. The example contains 315 source lines across HTML, JS, and SCSS.
+and declarations. The example contains 199 source lines across HTML, JS, and SCSS.
 No shaders, GPU attributes, or textures were added. Canvas palette evaluation is
 draw-scoped; no timing benchmark or quantitative speedup is claimed.
 
 The SLOC review centralized root palette initialization in `ViewFactory`, removing
 the duplicate constructor fallback and its synthetic-wrapper suppression option.
 All 91 focused palette/view/factory tests, workspace TypeScript checks, and
-targeted lint pass after this cleanup. The embedding example remains unchanged.
+targeted lint pass after this cleanup.
+
+The standalone example was subsequently simplified for readability: `index.js`
+is a 64-line commented recipe for host mode resolution, CSS color reads, initial
+palette declaration, and live palette replacement. A small `plotSpec.js` contains
+the visualization grammar. Export controls, state readouts, and the mark gallery
+were discarded from the example; the Core tests retain their feature coverage.
+Explicit page-exit cleanup is omitted because the browser owns this standalone
+page's lifetime.
+Package TypeScript, lint, smoke build, and live preference/override checks pass.
 
 ## Recommendation
 
@@ -370,13 +379,14 @@ Provide visible Light, Dark, and System controls and show the resolved mode.
 Explicit Light/Dark selection overrides the OS preference and always works on
 the same initialized embed; System follows preference changes automatically.
 Use CSS custom properties and the public palette API for both paths, with
-listener cleanup and initial values that avoid flashing the wrong appearance.
+initial values that avoid flashing the wrong appearance.
 
-Use inline data so an external dataset cannot prevent the demonstration. Include
-representative titles, ordinary/chromosome guides, legends, rule/link symbols,
-and view/canvas backgrounds, alongside stable data colors and an explicit
-annotation color. Style the host controls and surface for both modes. Include
-zoom and selection interactions so switching modes visibly preserves state.
+Use inline data so an external dataset cannot prevent the demonstration. A small
+locus scatter plot demonstrates titles, ordinary/chromosome guides, grids, a
+color legend, and canvas backgrounds, alongside stable data colors. Keep its
+grammar separate from the commented theme-integration recipe. Style the host
+controls and surface for both modes. Include zoom and brushing so switching modes
+visibly preserves state, without export controls or state-monitoring code.
 
 ## Comparable designs and browser references
 
@@ -471,8 +481,8 @@ with final integration; avoid separate review gates for routine documentation.
   preferences. Repeatedly select Light → Dark → Light without re-embedding, verify
   current guide/legend/background colors, and compare zoom domains and selections
   before and after. Check System mode responds to a subsequent preference change,
-  while an explicit override remains authoritative. Verify exports in both modes
-  and navigation from the built example catalog.
+  while an explicit override remains authoritative. Verify navigation from the
+  built example catalog.
 - Run focused Vitest suites with `--reporter=agent`, relevant TypeScript/schema
   checks, and browser smoke checks. Use `test-genomespy-views`,
   `debug-genomespy-web`, `write-genomespy-docs`, and `write-genomespy-changeset` for
