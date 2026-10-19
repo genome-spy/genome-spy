@@ -37,12 +37,11 @@ function readPalette() {
 }
 
 // 3. Choose the palette before embedding so the first frame matches the page.
-// persist: false keeps host appearance out of saved interaction state.
 updatePageTheme();
 const api = await embed(container, {
     ...plotSpec,
     params: [
-        { name: "themeColors", value: readPalette(), persist: false },
+        { name: "themeColors", value: readPalette() },
         { name: "brush", select: { type: "interval", encodings: ["x"] } },
     ],
 });

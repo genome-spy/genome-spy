@@ -18,9 +18,9 @@ automatic Canvas fallback and actual back/forward-cache restoration.
 Independent Canvas and WebGPU browser checks also
 cover live colors, preserved domains, and explicit/null export backgrounds.
 
-Core runtime JavaScript changes add 421 and delete 115 non-comment lines, net 306,
+Core runtime JavaScript changes add 420 and delete 115 non-comment lines, net 305,
 against local `master` (`b34836e8319e844ccecbc713e4f4fb6b3403575f`), excluding tests
-and declarations. The example contains 199 source lines across HTML, JS, and SCSS.
+and declarations. The example contains 198 source lines across HTML, JS, and SCSS.
 No shaders, GPU attributes, or textures were added. Canvas palette evaluation is
 draw-scoped; no timing benchmark or quantitative speedup is claimed.
 
@@ -30,7 +30,7 @@ All 91 focused palette/view/factory tests, workspace TypeScript checks, and
 targeted lint pass after this cleanup.
 
 The standalone example was subsequently simplified for readability: `index.js`
-is a 64-line commented recipe for host mode resolution, CSS color reads, initial
+is a 63-line commented recipe for host mode resolution, CSS color reads, initial
 palette declaration, and live palette replacement. A small `plotSpec.js` contains
 the visualization grammar. Export controls, state readouts, and the mark gallery
 were discarded from the example; the Core tests retain their feature coverage.
@@ -168,9 +168,6 @@ Parameters must be registered declarations to appear through this namespace
 provide the public capability. `view/viewFactory.js` also wraps some root specs;
 the authored top-level scope can be a child of `implicitRoot`.
 
-Appearance is environment state: declare palette parameters with `persist: false`
-so App provenance/bookmarks do not restore an old host appearance.
-
 ### The static dark preset has incomplete coverage
 
 The preset inherits black `group-title`/`group-subtitle` styles and legend title
@@ -194,7 +191,7 @@ based on source inspection; no browser smoke test was performed for this proposa
 | Option                                            | Benefits                                                                                                          | Costs and limits                                                                                                                         | Assessment                                                             |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Authored root palette plus config expressions     | Uses current parameter API; host controls policy; smallest implementation                                         | Author/embedding helper supplies palette declaration and complete config mapping; public color types and root background need completion | Implement the underlying contract first                                |
-| Default semantic palette parameter                | Default appearance becomes adjustable through one existing parameter handle; specs need no repeated theme mapping | Requires explicit initialization, naming, overriding, persistence, and root-scope policy                                                 | Recommended convenience after the contract works                       |
+| Default semantic palette parameter                | Default appearance becomes adjustable through one existing parameter handle; specs need no repeated theme mapping | Requires explicit initialization, naming, overriding, and root-scope policy                                                              | Recommended convenience after the contract works                       |
 | General `config.params`, like Vega config signals | Self-contained custom themes can declare arbitrary reactive defaults                                              | New grammar, name-based merge rules, root ownership, and collision contracts                                                             | Defer unless independently needed                                      |
 | CSS values directly in every color property       | Attractive author syntax, such as `var(--gs-foreground)`                                                          | GPU parsers lack DOM/CSS context; needs resolution, invalidation, and export policy across backends                                      | Avoid for initial implementation                                       |
 | Replace/reinitialize the theme or visualization   | Reuses static presets                                                                                             | Rebuilding can reset interaction state and repeat initialization/data work; changing `spec.theme` also changes sizing/fonts/styles       | Fallback for hosts already rebuilding, unsuitable as the main solution |
@@ -250,9 +247,9 @@ render and after palette updates, preserving the current source-style precedence
 Initialize one ordinary configured declaration in the authored top-level scope,
 before guides or marks bind expressions. Prepare this declaration before the
 factory constructs the authored root and its optional wrapper; looking up the
-completed top-level view afterward is too late. The default is ephemeral. Merge this
-single built-in default with authored root declarations before registration: an
-explicit same-named declaration replaces the default once. Descendant shadowing
+completed top-level view afterward is too late. Merge this single built-in default
+with authored root declarations before registration: an explicit same-named
+declaration replaces the default once. Descendant shadowing
 follows normal lexical rules. A user-computed palette is read-only through the API,
 as other computed parameters are today. An authored replacement supplies the full
 palette rather than implicitly merging object fields. Do not register inherited defaults in
@@ -423,7 +420,7 @@ closely adapted, so there is no new third-party code/license dependency.
 2. **Expose reactive default neutral colors (complete).** Register the single root declaration,
    map default colors/styles, and audit the dark preset. Verify wrapped unit/layer
    roots and concat roots, existing precedence, explicit palette declarations,
-   descendant shadowing, unchanged authored/data colors, ephemeral state, and
+   descendant shadowing, unchanged authored/data colors, and
    rule/link size legends matching their source marks before and after updates.
    Document the palette API and collision policy; add/update the Core changeset.
    Tentative commit: `feat(core): expose a reactive default theme palette`.
@@ -492,7 +489,7 @@ with final integration; avoid separate review gates for routine documentation.
 ## Resolved decisions and deferred scope
 
 - `themeColors` is a public ordinary root parameter with six audited fields.
-  Authored declarations replace its full value and persistence policy; lexical
+  Authored declarations replace its full value; lexical
   shadowing and computed read-only behavior follow the existing runtime.
 - The default palette is included. General `config.params`, immutable constant
   parameters, and automatic recoloring of user data palettes are deferred;

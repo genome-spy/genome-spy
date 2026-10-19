@@ -6,7 +6,6 @@ import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
 import { createSvg } from "../rendering/svg/index.js";
 import UnitView from "../view/unitView.js";
 import { getTopLevelSpecView } from "../view/viewFactory.js";
-import { getBookmarkableParams } from "../view/viewSelectors.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
 import { resolveBaseConfig } from "./resolveConfig.js";
 import { DEFAULT_THEME_COLORS } from "./themeColors.js";
@@ -96,7 +95,7 @@ function expectColor(svg, selector, attribute, color) {
 }
 
 test.each(["unit", "layer", "concat"])(
-    "the default palette is public and ephemeral on an authored %s root",
+    "the default palette is public on an authored %s root",
     async (shape) => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const text = {
@@ -114,20 +113,12 @@ test.each(["unit", "layer", "concat"])(
         try {
             expect(palette.getValue()).toEqual(DEFAULT_THEME_COLORS);
             expect(
-                authored.paramRuntime.paramConfigs.get("themeColors").persist
-            ).toBe(false);
-            expect(
                 view
                     .getDescendants()
                     .filter((child) =>
                         child.paramRuntime.paramConfigs.has("themeColors")
                     )
             ).toEqual([authored]);
-            expect(
-                getBookmarkableParams(view).some(
-                    ({ param }) => param.name === "themeColors"
-                )
-            ).toBe(false);
             expectColor(
                 await render(),
                 '[data-name="text"] [data-mark-type="text"]',
@@ -377,9 +368,7 @@ test("one palette update recolors generated guides and neutral marks while prese
 test("authored palettes replace the root declaration, shadow lexically, and remain independent between embeds", async () => {
     const authoredPalette = { ...darkColors, foreground: "purple" };
     const first = await create({
-        params: [
-            { name: "themeColors", value: authoredPalette, persist: true },
-        ],
+        params: [{ name: "themeColors", value: authoredPalette }],
         vconcat: [
             {
                 name: "inherited",
@@ -407,9 +396,6 @@ test("authored palettes replace the root declaration, shadow lexically, and rema
     });
     try {
         expect(first.palette.getValue()).toBe(authoredPalette);
-        expect(
-            first.authored.paramRuntime.paramConfigs.get("themeColors").persist
-        ).toBe(true);
         expectColor(
             await first.render(),
             '[data-name="inherited"] [data-mark-type="text"]',

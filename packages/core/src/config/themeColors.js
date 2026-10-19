@@ -9,7 +9,7 @@ export const DEFAULT_THEME_COLORS = Object.freeze({
 });
 
 /**
- * Supplies one ordinary, ephemeral palette declaration on the authored root.
+ * Supplies one ordinary palette declaration on the authored root.
  * Explicit declarations replace the whole palette and retain normal scope rules.
  *
  * @param {import("../spec/parameter.js").Parameter[]} [params]
@@ -38,7 +38,6 @@ export function getThemeColorsParams(params = []) {
         {
             name: "themeColors",
             value: { ...DEFAULT_THEME_COLORS },
-            persist: false,
         },
         ...params,
     ];

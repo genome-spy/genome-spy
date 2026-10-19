@@ -7,7 +7,7 @@ Use parameters to update axis, legend, view-decoration, and canvas background
 colors in initialized visualizations. Image exports use the current background,
 and legend colors retain the parameter scope of their source views.
 
-The default theme exposes an ephemeral `themeColors` parameter for changing its
+The default theme exposes a `themeColors` parameter for changing its
 neutral colors and background together. Explicit colors and data palettes retain
 their precedence. Facet headers follow the palette, and the fixed `dark` preset
 also has consistent light guide text.

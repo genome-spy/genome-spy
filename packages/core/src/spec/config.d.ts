@@ -27,7 +27,7 @@ export type BuiltInThemeName =
 
 /**
  * Neutral colors used by the default GenomeSpy theme. The root `themeColors`
- * parameter contains this complete palette and is ephemeral by default.
+ * parameter contains this complete palette.
  */
 export interface ThemeColors {
     /**

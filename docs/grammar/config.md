@@ -98,9 +98,7 @@ keep their colors. The palette does not add view fills or borders where none
 are configured.
 
 To choose the initial palette, declare `themeColors` in the root `params`.
-This declaration replaces the built-in declaration, including its persistence
-setting, and must supply every field. Use `persist: false` for host-controlled
-appearance:
+This declaration replaces the built-in declaration and must supply every field:
 
 ```json
 {
@@ -114,15 +112,14 @@ appearance:
         "chromosomeTick": "#999999",
         "symbolStroke": "#bbbbbb",
         "background": "#181818"
-      },
-      "persist": false
+      }
     }
   ]
 }
 ```
 
-The built-in declaration has `persist: false`. An authored expression parameter
-can compute the palette instead; it follows the usual read-only parameter API.
+An authored expression parameter can compute the palette instead; it follows
+the usual read-only parameter API.
 Descendant views can shadow `themeColors` through normal parameter scoping.
 The root canvas background continues to use the root palette.
 
@@ -147,8 +144,7 @@ add the following properties to the root specification:
         "stroke": "#808080",
         "grid": "#dddddd",
         "background": "#ffffff"
-      },
-      "persist": false
+      }
     }
   ],
   "background": { "expr": "uiColors.background" },
@@ -172,8 +168,7 @@ add the following properties to the root specification:
 `uiColors` is an authored parameter; its name and fields are chosen by the
 specification author. The example maps selected defaults, and other colors can
 reference the same palette. Explicit mark and encoding colors retain their
-normal precedence. `persist: false` keeps host appearance out of App bookmarks
-and provenance.
+normal precedence.
 
 ### Canvas and view backgrounds
 
