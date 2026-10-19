@@ -1,7 +1,7 @@
 # Reactive appearance and automatic default colors
 
-Status: the reactive rendering foundation and automatic CSS-backed Core
-appearance milestone are implemented. The four-mode example is being verified.
+Status: complete. The reactive foundation, automatic CSS-backed Core appearance,
+and four-mode embedding example are implemented and verified.
 
 ## Goals and contracts
 
@@ -116,15 +116,15 @@ Tentative commit: `feat(core): follow CSS and browser appearance automatically`.
 
 ### 2. A clear four-mode embedding example and integration verification
 
-- [ ] Replace manual palette wiring with plain `embed`; keep useful comments.
-- [ ] Offer System, Light, Dark, and Custom. The custom option applies a warm
+- [x] Replace manual palette wiring with plain `embed`; keep useful comments.
+- [x] Offer System, Light, Dark, and Custom. The custom option applies a warm
       cream/brown CSS palette to demonstrate individual property overrides.
       Default modes leave the canvas transparent; the page supplies its surface.
-- [ ] Remove stale claims and retain zoom/brush instructions. Do not add export
+- [x] Remove stale claims and retain zoom/brush instructions. Do not add export
       controls, persistence settings, pagehide cleanup, or unrelated features.
-- [ ] Verify initial/repeated switches with a zoomed domain and active brush on
+- [x] Verify initial/repeated switches with a zoomed domain and active brush on
       the same canvas, browser preference changes, and custom CSS overrides.
-- [ ] Run appropriate regression suites, all workspace types, lint, schema/docs,
+- [x] Run appropriate regression suites, all workspace types, lint, schema/docs,
       example build, and release checks. Measure final production SLOC and update
       this plan with outcomes. No quantitative CPU/GPU speedup claim.
 
@@ -153,8 +153,8 @@ verifies zero CSS reads and zero palette publications during an ordinary
 parameter-driven draw, alongside ownership, mode/override, export, interaction,
 and failure/finalization contracts. No shader or GPU resource changes were made.
 
-The full unit suite passed 539 files and 5,118 tests before one additional font
-readiness regression test was added; that focused suite also passes. All
+The final full unit suite passes 539 files and 5,119 tests (one existing skip
+and two todos), including the font readiness regression. All
 workspace types, lint, schema and API docs generation, docs build, example build,
 and release checks pass. The existing release group remains a minor update.
 
@@ -165,3 +165,29 @@ light UI explicitly declares `color-scheme: light` so the transparent Core plot
 matches its surface; a real App embed verifies light colors under a dark host
 and the shared `refreshStyles()` API. Full App dark UI styling remains outside
 scope.
+
+## Four-mode example and final outcome
+
+The example uses plain `embed(container, plotSpec)`. Its 33-line JavaScript only
+connects the host selector and status label; Core owns palette initialization
+and subsequent updates. CSS supplies System/Light/Dark page surfaces and a
+cream/brown Custom appearance through inherited public overrides. The default
+canvas remains transparent in every example mode.
+
+A browser run exercised the actual example with real wheel zooming and
+Shift-drag brushing, repeated switches through all four modes, and browser
+preference changes. Canvas identity, point geometry and data colors, and the
+active selection remain unchanged. The example production build, workspace
+types, lint, schema/API docs generation, clean docs build, and release checks
+pass. The repeatable Core browser command is
+`npm -w @genome-spy/core run test:appearance` (Canvas, WebGL, WebGPU).
+
+Final Core runtime JavaScript against local master
+`b34836e8319e844ccecbc713e4f4fb6b3403575f`: +575/-125 non-comment production
+lines, net +450, excluding tests and declarations. This revision adds net 137
+Core production lines over the prior branch milestone. The complete example
+contains 166 source lines across HTML, JavaScript, and SCSS, down from 198.
+The additional CSS resolution and comparison runs only on supported appearance
+events or explicit refresh; ordinary rendering adds no CSS reads. GPU shaders,
+attributes, textures, and draw behavior are unchanged. No timing speedup is
+claimed.

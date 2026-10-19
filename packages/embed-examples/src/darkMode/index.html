@@ -12,9 +12,8 @@
         <h1>Light and dark mode</h1>
         <p>
             Change the appearance of one running visualization. System follows
-            your browser’s preference; Light and Dark override it. The host
-            reads CSS colors and updates GenomeSpy’s <code>themeColors</code>
-            parameter.
+            your browser’s preference; Light and Dark override it. Custom shows
+            how CSS properties can customize GenomeSpy’s default colors.
         </p>
         <div class="theme-controls">
             <label>
@@ -23,6 +22,7 @@
                     <option value="system">System</option>
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
+                    <option value="custom">Custom</option>
                 </select>
             </label>
             <output id="resolved-mode" aria-live="polite"></output>
@@ -31,8 +31,8 @@
         <p>
             Scroll over the plot to zoom and Shift-drag to brush a region, then
             switch appearance. Zoom and selection stay in place. Data colors
-            stay the same; titles, guides, grid lines, legend text, and the
-            canvas background follow the palette.
+            stay the same. Titles, guides, grid lines, and legend text update;
+            the transparent canvas reveals the page’s background.
         </p>
         <script type="module" src="./index.js"></script>
     </body>

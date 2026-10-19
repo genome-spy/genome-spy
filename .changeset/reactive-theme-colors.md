@@ -26,5 +26,5 @@ brush appearance can be customized through the `selection-brush` style.
 Canvas rendering reuses palette colors during each draw instead of evaluating
 them for every instance, while preserving data-dependent color encodings.
 
-The commented embedding example demonstrates System, Light, Dark, and a custom
-CSS appearance while preserving zoom and brush selections.
+The commented embedding example uses plain `embed` and demonstrates System,
+Light, Dark, and a custom CSS appearance while preserving zoom and brush selections.

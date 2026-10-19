@@ -1,8 +1,6 @@
 import { embed } from "@genome-spy/core";
 import plotSpec from "./plotSpec.js";
 
-/** @typedef {import("@genome-spy/core/spec/config.js").ThemeColors} ThemeColors */
-
 const container = /** @type {HTMLElement} */ (document.getElementById("plot"));
 const appearance = /** @type {HTMLSelectElement} */ (
     document.getElementById("appearance")
@@ -10,54 +8,26 @@ const appearance = /** @type {HTMLSelectElement} */ (
 const resolvedMode = document.getElementById("resolved-mode");
 const preference = matchMedia("(prefers-color-scheme: dark)");
 
-// 1. Let the host choose the appearance. data-theme selects the CSS palette in
-// style.scss; an explicit Light or Dark choice takes precedence over the OS.
+// The host controls its page through CSS. Light/Dark force color-scheme;
+// Custom also overrides GenomeSpy's CSS color properties (see style.scss).
 function updatePageTheme() {
+    document.documentElement.dataset.appearance = appearance.value;
+    updateLabel();
+}
+
+function updateLabel() {
     const systemMode = preference.matches ? "dark" : "light";
-    const mode = appearance.value == "system" ? systemMode : appearance.value;
-    document.documentElement.dataset.theme = mode;
+    const mode = appearance.value === "system" ? systemMode : appearance.value;
     resolvedMode.textContent = "Currently " + mode;
 }
 
-// 2. Rendered marks don't inherit CSS colors. Read concrete colors from the host
-// element and collect all six roles into GenomeSpy's themeColors palette.
-/** @returns {ThemeColors} */
-function readPalette() {
-    const css = getComputedStyle(container);
-    /** @param {string} name */
-    const read = (name) => css.getPropertyValue("--gs-" + name).trim();
-    return {
-        foreground: read("foreground"),
-        stroke: read("stroke"),
-        grid: read("grid"),
-        chromosomeTick: read("chromosome-tick"),
-        symbolStroke: read("symbol-stroke"),
-        background: read("background"),
-    };
-}
-
-// 3. Choose the palette before embedding so the first frame matches the page.
 updatePageTheme();
-const api = await embed(container, {
-    ...plotSpec,
-    params: [
-        { name: "themeColors", value: readPalette() },
-        { name: "brush", select: { type: "interval", encodings: ["x"] } },
-    ],
-});
-
-/** @type {import("@genome-spy/core/types/embedApi.js").ParamApi<ThemeColors>} */
-const colors = api.params.get("themeColors");
-
-// 4. Update the existing embed by replacing the whole palette object. Mutating
-// individual fields would not notify GenomeSpy. Zoom and brushing stay intact.
-function updateTheme() {
-    updatePageTheme();
-    colors.setValue(readPalette());
-}
+// No palette declaration or parameter updates: GenomeSpy reads the CSS and
+// observes browser preference and host attribute changes on the existing embed.
+await embed(container, plotSpec);
 
 appearance.disabled = false;
-appearance.addEventListener("change", updateTheme);
-preference.addEventListener("change", updateTheme);
-// The OS preference may have changed while await embed() was initializing.
-updateTheme();
+appearance.addEventListener("change", updatePageTheme);
+// This listener only updates the label; GenomeSpy handles its own mode changes.
+preference.addEventListener("change", updateLabel);
+updateLabel();

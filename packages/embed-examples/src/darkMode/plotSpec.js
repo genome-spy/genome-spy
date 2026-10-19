@@ -1,10 +1,10 @@
 // A small plot to make theme changes visible. Its data colors stay fixed;
-// titles, axes, chromosome guides, grid lines, and legend text use themeColors.
+// titles, axes, chromosome guides, grid lines, and legend text use defaultThemeColors.
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const plotSpec = {
     width: "container",
     height: 300,
-    title: "One visualization, two appearances",
+    title: "One visualization, four appearances",
     genomes: {
         demo: {
             contigs: [
@@ -14,6 +14,7 @@ const plotSpec = {
         },
     },
     assembly: "demo",
+    params: [{ name: "brush", select: { type: "interval", encodings: ["x"] } }],
     data: {
         values: Array.from({ length: 30 }, (_, i) => ({
             chrom: i < 15 ? "chr1" : "chr2",

@@ -1,41 +1,38 @@
 :root {
+    color-scheme: light dark;
+    --text: light-dark(#20252b, #e5ebf1);
+    --muted-text: light-dark(#6a737d, #a0adba);
+    --surface: light-dark(#ffffff, #19212a);
+    --page-background: var(--surface);
+    --border: light-dark(#d9dfe5, #3a4653);
+    --link: light-dark(#196c9c, #93c9eb);
+    --link-hover: light-dark(#135176, #c0e4fa);
+    --code-background: light-dark(#f3f3f3, #2c3641);
+}
+
+:root[data-appearance="light"] {
     color-scheme: light;
-    --gs-foreground: #20252b;
-    --gs-stroke: #6a737d;
-    --gs-grid: #d9dfe5;
-    --gs-chromosome-tick: #87929e;
-    --gs-symbol-stroke: #596673;
-    --gs-background: #ffffff;
-    --text: var(--gs-foreground);
-    --muted-text: var(--gs-stroke);
-    --surface: var(--gs-background);
-    --page-background: var(--gs-background);
-    --border: var(--gs-grid);
-    --link: #196c9c;
-    --link-hover: #135176;
 }
 
-@mixin dark-palette {
+:root[data-appearance="dark"] {
     color-scheme: dark;
-    --gs-foreground: #e5ebf1;
-    --gs-stroke: #a0adba;
-    --gs-grid: #3a4653;
-    --gs-chromosome-tick: #b0bdca;
-    --gs-symbol-stroke: #c0cbd6;
-    --gs-background: #19212a;
-    --link: #93c9eb;
-    --link-hover: #c0e4fa;
 }
 
-/* Resolve the first paint before JavaScript connects the preference listener. */
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-        @include dark-palette;
-    }
-}
-
-:root[data-theme="dark"] {
-    @include dark-palette;
+/* Override only the desired roles. These properties inherit into GenomeSpy;
+ * its default canvas stays transparent over the page's cream surface. */
+:root[data-appearance="custom"] {
+    color-scheme: light;
+    --genome-spy-foreground: #563b24;
+    --genome-spy-stroke: #a58b72;
+    --genome-spy-grid: #e4d4bf;
+    --genome-spy-chromosome-tick: #b18a63;
+    --genome-spy-symbol-stroke: #8d6340;
+    --text: var(--genome-spy-foreground);
+    --muted-text: #80634b;
+    --surface: #fff4df;
+    --border: var(--genome-spy-grid);
+    --link: #8b4e20;
+    --link-hover: #563b24;
 }
 
 .theme-controls {
