@@ -1062,22 +1062,25 @@ export default class InteractionController {
                 (!scopeView || view.getLayoutAncestors().includes(scopeView))
             ) {
                 for (const [facetId, coords] of view.facetCoords) {
-                    if (!coords.containsPoint(x, y)) {
+                    // Only facet operators establish cell identity by bounds.
+                    const cellFacetId =
+                        facetId !== undefined &&
+                        view
+                            .getLayoutAncestors()
+                            .some((ancestor) => isFacetSpec(ancestor.spec))
+                            ? facetId
+                            : undefined;
+                    // Visible unclipped marks may extend outside ordinary plot bounds.
+                    if (
+                        cellFacetId !== undefined &&
+                        !coords.containsPoint(x, y)
+                    ) {
                         continue;
                     }
                     const datum = view
                         .getCollector()
                         ?.findDatumByUniqueId(uniqueId);
                     if (datum) {
-                        // Shader-based sample facets can share the same bounds;
-                        // only facet operators establish cell identity by point.
-                        const cellFacetId =
-                            facetId !== undefined &&
-                            view
-                                .getLayoutAncestors()
-                                .some((ancestor) => isFacetSpec(ancestor.spec))
-                                ? facetId
-                                : undefined;
                         hit = {
                             mark: view.mark,
                             datum,

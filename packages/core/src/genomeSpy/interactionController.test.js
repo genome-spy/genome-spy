@@ -1824,6 +1824,41 @@ describe("InteractionController", () => {
     );
 
     describe("explicit picking", () => {
+        it("keeps rendered hits outside an ordinary plot's bounds", async () => {
+            const { controller, datum, pickerUnitView } = createPickingHarness({
+                reader: () => 1,
+            });
+            pickerUnitView.facetCoords = new Map([
+                [undefined, { containsPoint: () => false }],
+            ]);
+            await expect(
+                controller.pick({ x: 10, y: 20 })
+            ).resolves.toMatchObject({
+                status: "hit",
+                hit: { datum },
+            });
+        });
+
+        it("still rejects a rendered ID outside its logical facet cell", async () => {
+            const { controller, pickerUnitView } = createPickingHarness({
+                reader: () => 1,
+            });
+            pickerUnitView.facetCoords = new Map([
+                [["A"], { containsPoint: () => false }],
+            ]);
+            pickerUnitView.getLayoutAncestors = () => [
+                {
+                    spec: {
+                        facet: { field: "group" },
+                        spec: { mark: "point" },
+                    },
+                },
+            ];
+            await expect(controller.pick({ x: 10, y: 20 })).resolves.toEqual({
+                status: "empty",
+            });
+        });
+
         it("does not infer facet operator identity from overlapping sample bounds", async () => {
             const { controller, pickerUnitView } = createPickingHarness({
                 reader: () => 1,
