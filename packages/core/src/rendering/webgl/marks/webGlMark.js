@@ -1,6 +1,6 @@
 import {
     bindUniformBlock,
-    createBufferInfoFromArrays,
+    createAttribsFromArrays,
     createProgramInfoFromProgram,
     createVertexArrayInfo,
     setAttribInfoBufferFromArray,
@@ -1046,6 +1046,7 @@ export default class WebGLMark {
             this.bufferInfo &&
             vertexData.vertexCount <= this.bufferInfo.allocatedVertices
         ) {
+            this.bufferInfo.numElements = vertexData.vertexCount;
             for (const [attribute, attributeData] of Object.entries(
                 vertexData.arrays
             )) {
@@ -1062,12 +1063,12 @@ export default class WebGLMark {
             }
         } else {
             this.deleteGraphicsData();
-            this.bufferInfo = createBufferInfoFromArrays(
-                this.gl,
-                vertexData.arrays,
-                { numElements: vertexData.vertexCount }
-            );
-            this.bufferInfo.allocatedVertices = vertexData.allocatedVertices;
+            // All-uniform marks have no attribute buffer from which to infer a count.
+            this.bufferInfo = {
+                attribs: createAttribsFromArrays(this.gl, vertexData.arrays),
+                numElements: vertexData.vertexCount,
+                allocatedVertices: vertexData.allocatedVertices,
+            };
 
             for (const [attribute, attributeData] of Object.entries(
                 vertexData.arrays
