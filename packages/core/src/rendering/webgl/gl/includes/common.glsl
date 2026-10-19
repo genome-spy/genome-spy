@@ -1,5 +1,10 @@
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;

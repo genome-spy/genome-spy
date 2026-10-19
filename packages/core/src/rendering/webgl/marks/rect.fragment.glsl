@@ -163,7 +163,7 @@ float pattern() {
             break;
     }
 #endif
-    return 1.0 / 0.0; // Infinity
+    return INFINITY_SUBSTITUTE;
 }
 
 void main(void) {
