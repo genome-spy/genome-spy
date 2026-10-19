@@ -315,23 +315,26 @@ selection and lifecycle rules shared by these handles.
 
 ### Updating appearance
 
-An embedding application can update parameter-backed colors after embedding.
-For the authored `uiColors` palette in the
-[reactive colors example](../grammar/config.md#reactive-colors), publish a new
-object containing all its fields:
+An embedding application can update the default theme's
+[`themeColors` palette](../grammar/config.md#default-theme-palette) after
+embedding. Publish a new object containing all six fields:
 
 ```js
-const colors = api.params.get("uiColors");
+const colors = api.params.get("themeColors");
 colors.setValue({
   foreground: "#eeeeee",
   stroke: "#aaaaaa",
   grid: "#444444",
+  chromosomeTick: "#999999",
+  symbolStroke: "#bbbbbb",
   background: "#181818",
 });
 ```
 
 Replace the object through `setValue()` whenever the palette changes. Mutating
-properties of the existing object does not publish a parameter update.
+properties of the existing object does not publish a parameter update. Custom
+palette parameters, such as the authored `uiColors` example, use the same API
+with their own names and fields.
 
 The host controls when to publish a palette. It can follow
 `matchMedia("(prefers-color-scheme: dark)")` change events, an application theme

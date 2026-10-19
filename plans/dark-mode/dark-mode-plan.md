@@ -1,13 +1,14 @@
 # Reactive appearance and dark mode
 
-Status: implementation in progress. Milestone 1 is complete; milestones 2 and 3
-remain.
+Status: implementation in progress. Milestones 1 and 2 are complete; milestone 3
+remains.
 
 Implementation verification: reactive background and scoped legend tests pass,
 including shared source colors; Canvas2D/immediate tests cover draw-scoped palette
 reads and refreshes. Workspace TypeScript checks, lint, schema/docs builds, and a
-live WebGL palette/background/export smoke check pass. The full suite passed all
-other tests; a new Canvas assertion was corrected and its focused suite rerun.
+live WebGL palette/background/export smoke check pass. The full unit suite passed
+(539 files, 5,102 tests), with the new default-palette integration suite also
+passing. Root palette validation runs independently of configured backgrounds.
 
 ## Recommendation
 
@@ -22,9 +23,8 @@ no new runtime API. For convenient adjustment of the default GenomeSpy appearanc
 make its neutral defaults consume a documented, initialized root palette parameter.
 Do not introduce a general mutable theme/configuration system for this feature.
 
-The proposed default parameter name is `themeColors`; it is tentative until the
-public naming and collision policy is reviewed. Examples below distinguish
-existing mechanisms from proposed grammar and default-theme behavior.
+The default parameter name is `themeColors`. An authored declaration replaces the
+complete built-in palette; descendants retain normal lexical shadowing.
 
 ## Goals and non-goals
 
@@ -208,10 +208,9 @@ legacy behavior. This precedence must be implemented in one resolution path.
 
 ### 2. Default neutral palette
 
-Use semantic roles such as foreground, secondary foreground, stroke, grid,
-border, and background. Finalize the exact role list by auditing existing shades:
-do not collapse distinct chromosome/symbol strokes just to reduce the key count.
-The background role is nullable; mark color roles remain concrete opaque colors.
+Use the six audited roles `foreground`, `stroke`, `grid`, `chromosomeTick`,
+`symbolStroke`, and `background`, preserving distinct chromosome and symbol
+strokes. The background role is nullable; other color roles are concrete strings.
 
 Map ordinary text/rules/links, guide labels/titles/strokes, title styles, and
 relevant built-in mark styles to these roles. Do not turn the default blue mark
@@ -392,7 +391,7 @@ closely adapted, so there is no new third-party code/license dependency.
    appropriate Core changeset. Tentative commit:
    `feat(core): support reactive guide and canvas background colors`.
 
-2. **Expose reactive default neutral colors.** Register the single root declaration,
+2. **Expose reactive default neutral colors (complete).** Register the single root declaration,
    map default colors/styles, and audit the dark preset. Verify wrapped unit/layer
    roots and concat roots, existing precedence, explicit palette declarations,
    descendant shadowing, unchanged authored/data colors, ephemeral state, and

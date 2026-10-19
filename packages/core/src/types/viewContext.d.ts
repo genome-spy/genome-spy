@@ -28,6 +28,8 @@ export interface Hover {
 export type DataLoadingStatus = "loading" | "complete" | "error";
 
 export interface ViewOptions {
+    /** Suppresses palette initialization on synthetic root wrappers. */
+    initializeThemeColors?: boolean;
     /** Marks generated decorative subtrees before scale and guide resolution. */
     chrome?: boolean;
     /** Inherits encodings from the data parent. Authored composition children opt in. */

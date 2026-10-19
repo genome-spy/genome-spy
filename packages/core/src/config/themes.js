@@ -21,6 +21,12 @@ const VEGALITE_THEME = {
     text: {
         color: "black",
     },
+    link: {
+        color: "black",
+    },
+    header: {
+        color: "black",
+    },
     view: {
         continuousWidth: 300,
         continuousHeight: 300,
@@ -45,7 +51,13 @@ const VEGALITE_THEME = {
     axisY: {
         tickCount: { expr: "ceil(axisLength / 40)" },
     },
+    axisLocus: {
+        chromTickColor: "#989898",
+        chromLabelColor: "black",
+        chromGridColor: "gray",
+    },
     legend: {
+        symbolBaseStrokeColor: "#888",
         titleColor: "black",
         titleFontSize: 11,
         titleFontWeight: "bold",
@@ -59,6 +71,9 @@ const VEGALITE_THEME = {
         "group-subtitle": {
             color: "black",
             fontSize: 12,
+        },
+        "arrow-transcript": {
+            color: "black",
         },
     },
     axisQuantitative: {
@@ -95,13 +110,36 @@ const BUILT_IN_THEME_DEFINITIONS = {
             color: "#4c78a8",
         },
         rule: {
-            color: "black",
+            color: { expr: "themeColors.foreground" },
         },
         text: {
-            color: "black",
+            color: { expr: "themeColors.foreground" },
         },
         link: {
-            color: "black",
+            color: { expr: "themeColors.foreground" },
+        },
+        header: {
+            color: { expr: "themeColors.foreground" },
+        },
+        axis: {
+            labelColor: { expr: "themeColors.foreground" },
+            titleColor: { expr: "themeColors.foreground" },
+            domainColor: { expr: "themeColors.stroke" },
+            tickColor: { expr: "themeColors.stroke" },
+            gridColor: { expr: "themeColors.grid" },
+        },
+        axisLocus: {
+            chromTickColor: { expr: "themeColors.chromosomeTick" },
+            chromLabelColor: { expr: "themeColors.foreground" },
+            chromGridColor: { expr: "themeColors.stroke" },
+        },
+        legend: {
+            symbolBaseStrokeColor: { expr: "themeColors.symbolStroke" },
+        },
+        style: {
+            "arrow-transcript": {
+                color: { expr: "themeColors.foreground" },
+            },
         },
     },
     vegalite: VEGALITE_THEME,
@@ -148,6 +186,7 @@ const BUILT_IN_THEME_DEFINITIONS = {
             },
             title: {
                 color: "#fff",
+                subtitleColor: "#fff",
             },
             axis: {
                 domainColor: "#fff",
@@ -161,6 +200,26 @@ const BUILT_IN_THEME_DEFINITIONS = {
             },
             rule: {
                 color: "#fff",
+            },
+            link: {
+                color: "#fff",
+            },
+            header: {
+                color: "#fff",
+            },
+            axisLocus: {
+                chromLabelColor: "#fff",
+                chromTickColor: "#aaa",
+                chromGridColor: "#888",
+            },
+            legend: {
+                labelColor: "#fff",
+                titleColor: "#fff",
+            },
+            style: {
+                "group-title": { color: "#fff" },
+                "group-subtitle": { color: "#fff" },
+                "arrow-transcript": { color: "#fff" },
             },
         },
     ]),

@@ -25,6 +25,54 @@ export type BuiltInThemeName =
     | "fivethirtyeight"
     | "urbaninstitute";
 
+/**
+ * Neutral colors used by the default GenomeSpy theme. The root `themeColors`
+ * parameter contains this complete palette and is ephemeral by default.
+ */
+export interface ThemeColors {
+    /**
+     * Text, titles, rules, links, and transcript arrows.
+     *
+     * __Default value:__ `"black"`
+     */
+    foreground: string;
+
+    /**
+     * Axis domains, ticks, and chromosome grids.
+     *
+     * __Default value:__ `"gray"`
+     */
+    stroke: string;
+
+    /**
+     * Ordinary grid lines.
+     *
+     * __Default value:__ `"lightgray"`
+     */
+    grid: string;
+
+    /**
+     * Chromosome boundary ticks.
+     *
+     * __Default value:__ `"#989898"`
+     */
+    chromosomeTick: string;
+
+    /**
+     * Default legend symbol outlines.
+     *
+     * __Default value:__ `"#888"`
+     */
+    symbolStroke: string;
+
+    /**
+     * Canvas background. `null` preserves the transparent default.
+     *
+     * __Default value:__ `null`
+     */
+    background: string | null;
+}
+
 export interface ViewConfig extends ViewBackgroundProps {
     /**
      * The default width when the view has a continuous x scale.

@@ -77,7 +77,65 @@ backgrounds can use [expressions](./expressions.md). An object-valued
 the palette changes an initialized visualization without reloading its data or
 resetting zoom and selections.
 
-For example, add the following properties to the root specification:
+### Default theme palette
+
+The default `genomespy` theme reads neutral colors from an automatically
+initialized root parameter named `themeColors`:
+
+| Field            | Used for                                      | Default       |
+| ---------------- | --------------------------------------------- | ------------- |
+| `foreground`     | Text, titles, facet headers, rules, links, transcript arrows | `"black"`     |
+| `stroke`         | Axis domains, ticks, chromosome grids         | `"gray"`      |
+| `grid`           | Ordinary grid lines                           | `"lightgray"` |
+| `chromosomeTick` | Chromosome boundary ticks                     | `"#989898"`   |
+| `symbolStroke`   | Default legend symbol outlines                | `"#888"`      |
+| `background`     | Canvas and default export background          | `null`        |
+
+Publish a complete palette through
+[`api.params.get("themeColors")`](../api/runtime-state.md#updating-appearance)
+to update these defaults. The blue default mark color and data color scales
+keep their colors. The palette does not add view fills or borders where none
+are configured.
+
+To choose the initial palette, declare `themeColors` in the root `params`.
+This declaration replaces the built-in declaration, including its persistence
+setting, and must supply every field. Use `persist: false` for host-controlled
+appearance:
+
+```json
+{
+  "params": [
+    {
+      "name": "themeColors",
+      "value": {
+        "foreground": "#eeeeee",
+        "stroke": "#aaaaaa",
+        "grid": "#444444",
+        "chromosomeTick": "#999999",
+        "symbolStroke": "#bbbbbb",
+        "background": "#181818"
+      },
+      "persist": false
+    }
+  ]
+}
+```
+
+The built-in declaration has `persist: false`. An authored expression parameter
+can compute the palette instead; it follows the usual read-only parameter API.
+Descendant views can shadow `themeColors` through normal parameter scoping.
+The root canvas background continues to use the root palette.
+
+Explicit specification and configuration colors keep their normal precedence.
+Other named presets supply fixed colors that override the reactive defaults;
+the `dark` preset is a fixed appearance, whereas `themeColors` supports live
+switching. A root `theme` also takes precedence over an embed-level `theme`
+option.
+
+### Custom palette parameters
+
+An authored palette can use a different name and set of fields. For example,
+add the following properties to the root specification:
 
 ```json
 {
@@ -117,11 +175,18 @@ reference the same palette. Explicit mark and encoding colors retain their
 normal precedence. `persist: false` keeps host appearance out of App bookmarks
 and provenance.
 
+### Canvas and view backgrounds
+
 The root `background` controls the entire canvas, while `view.fill` and
-`config.view.fill` control individual view backgrounds. A root background
-expression uses the root parameter scope. When it resolves to `null`, the
-canvas is transparent and exports default to white. An explicit export
-`background` overrides this default, including `null` for transparent output.
+`config.view.fill` control individual view backgrounds. An explicit root
+background takes precedence over a selected preset's background, which takes
+precedence over `themeColors.background`. When no background color is
+configured, the canvas is transparent and exports default to white.
+
+A root background expression uses the root parameter scope. When it resolves
+to `null`, the canvas is transparent even if the palette or preset provides an
+opaque background. An explicit export `background` overrides the resolved
+default, including `null` for transparent output.
 
 See [Updating appearance](../api/runtime-state.md#updating-appearance) for
 publishing palettes from an embedding application.

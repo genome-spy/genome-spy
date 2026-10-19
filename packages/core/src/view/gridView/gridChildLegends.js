@@ -6,6 +6,7 @@ import {
 } from "../../selection/selectionPredicateTree.js";
 import { asArray } from "../../utils/arrayUtils.js";
 import { getConfiguredLegendRegionLayout } from "../../config/legendConfig.js";
+import { getConfiguredMarkDefaults } from "../../config/markConfig.js";
 import {
     activateExprRefProps,
     isExprRef,
@@ -256,7 +257,14 @@ function applyConflictingScaledColorStyle(
     );
 
     if (hasConflictingColorScale && !scaledChannels.has("fill")) {
-        encoding.fill = { value: "black" };
+        encoding.fill = {
+            value:
+                getConfiguredMarkDefaults(
+                    sourceView.getConfigScopes(),
+                    "rule",
+                    undefined
+                ).color ?? "black",
+        };
     }
 }
 

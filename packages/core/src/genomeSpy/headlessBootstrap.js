@@ -11,8 +11,13 @@ import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
 import Animator from "../utils/animator.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import { resolveBaseConfig } from "../config/resolveConfig.js";
+import { validateThemeColors } from "../config/themeColors.js";
 import { createViewContext } from "./viewContextFactory.js";
-import { ViewFactory, VIEW_ROOT_NAME } from "../view/viewFactory.js";
+import {
+    ViewFactory,
+    VIEW_ROOT_NAME,
+    getTopLevelSpecView,
+} from "../view/viewFactory.js";
 import {
     configureViewHierarchy,
     finalizeViewConfiguration,
@@ -163,6 +168,12 @@ export function createHeadlessViewContext(options = {}) {
 export function prepareViewHierarchy(viewRoot) {
     configureViewHierarchy(viewRoot);
     finalizeViewConfiguration(viewRoot);
+
+    const root = getTopLevelSpecView(viewRoot);
+    const palette = root.paramRuntime.createExpression("themeColors");
+    root.paramRuntime.computed("theme colors", palette.dependencies, () =>
+        validateThemeColors(palette())
+    );
 }
 
 /**

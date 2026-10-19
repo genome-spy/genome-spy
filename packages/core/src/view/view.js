@@ -22,6 +22,7 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
 import { mergeConfigScopes } from "../config/mergeConfig.js";
+import { getThemeColorsParams } from "../config/themeColors.js";
 import {
     clipCoords,
     normalizeClipOptions,
@@ -281,7 +282,9 @@ export default class View {
         }
 
         const params = [
-            ...(spec.params ?? []),
+            ...(!dataParent && options.initializeThemeColors !== false
+                ? getThemeColorsParams(spec.params)
+                : (spec.params ?? [])),
             ...(getPostScaleParams(spec) ?? []),
         ];
         for (const param of params) {

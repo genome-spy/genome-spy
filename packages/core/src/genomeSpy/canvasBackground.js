@@ -38,7 +38,10 @@ export function getCanvasBackground(spec) {
  * @returns {() => string | undefined}
  */
 export function createCanvasBackgroundReader(spec, view) {
-    const background = getCanvasBackground(spec);
+    const configuredBackground = getCanvasBackground(spec);
+    const background = configuredBackground ?? {
+        expr: "themeColors.background",
+    };
     if (!isExprRef(background)) {
         return () => background;
     }
