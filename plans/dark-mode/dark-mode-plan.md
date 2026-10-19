@@ -1,515 +1,145 @@
-# Reactive appearance and dark mode
-
-Status: complete. All three milestones are implemented and verified on
-`codex/dark-mode`, with a separate commit for each milestone.
-
-Implementation verification: reactive background and scoped legend tests pass,
-including shared source colors; Canvas2D/immediate tests cover draw-scoped palette
-reads and refreshes. Workspace TypeScript checks, lint, schema/docs builds, and a
-live WebGL palette/background/export smoke check pass. The final full unit suite
-passes (539 files, 5,110 tests; one existing skip and two todos). Root palette
-validation runs independently of configured backgrounds. Facet headers also
-follow the palette, while fixed presets preserve their own colors. Selection
-brush outlines use the existing foreground role through the `selection-brush`
-style. Explicit brush colors retain precedence and accept expressions; shared
-styles and fixed presets remain configurable. Light-mode opacity and width are
-unchanged. SVG regression tests cover live brush colors and retained interaction
-state, and a WebGL browser check confirms the outline in both modes.
-
-The standalone example passes its production build and catalog navigation.
-Browser checks cover initial OS preferences, manual overrides, subsequent System
-preference changes, repeated switches with a zoomed domain and nonempty brush,
-automatic Canvas fallback and actual back/forward-cache restoration.
-Independent Canvas and WebGPU browser checks also
-cover live colors, preserved domains, and explicit/null export backgrounds.
-
-Core runtime JavaScript changes add 438 and delete 125 non-comment lines, net 313,
-against local `master` (`b34836e8319e844ccecbc713e4f4fb6b3403575f`), excluding tests
-and declarations. The example contains 198 source lines across HTML, JS, and SCSS.
-No shaders, GPU attributes, or textures were added. Canvas palette evaluation is
-draw-scoped; no timing benchmark or quantitative speedup is claimed.
-
-The SLOC review centralized root palette initialization in `ViewFactory`, removing
-the duplicate constructor fallback and its synthetic-wrapper suppression option.
-All 91 focused palette/view/factory tests, workspace TypeScript checks, and
-targeted lint pass after this cleanup.
-The App's directly constructed SampleView test fixture now explicitly seeds the
-root palette, matching the factory initialization that production views use.
-
-The standalone example was subsequently simplified for readability: `index.js`
-is a 63-line commented recipe for host mode resolution, CSS color reads, initial
-palette declaration, and live palette replacement. A small `plotSpec.js` contains
-the visualization grammar. Export controls, state readouts, and the mark gallery
-were discarded from the example; the Core tests retain their feature coverage.
-Explicit page-exit cleanup is omitted because the browser owns this standalone
-page's lifetime.
-Package TypeScript, lint, smoke build, and live preference/override checks pass.
-
-## Recommendation
-
-Use GenomeSpy's existing parameter and expression runtime for appearance colors.
-Keep browser preference detection and application theme policy in the embedding
-application. CSS custom properties can supply the colors, with a small JavaScript
-bridge publishing a complete palette into one object-valued parameter.
-
-First complete the public color-expression contract, including the root canvas
-background. A custom theme can then use an ordinary authored root parameter with
-no new runtime API. For convenient adjustment of the default GenomeSpy appearance,
-make its neutral defaults consume a documented, initialized root palette parameter.
-Do not introduce a general mutable theme/configuration system for this feature.
-
-The default parameter name is `themeColors`. An authored declaration replaces the
-complete built-in palette; descendants retain normal lexical shadowing.
-
-## Goals and non-goals
-
-- An initialized visualization changes appearance when its host publishes new
-  colors, without re-embedding, reloading data, or resetting navigation/selections.
-- The host can follow `prefers-color-scheme`, an application override, or CSS
-  properties scoped to each visualization container.
-- Ordinary marks, titles/subtitles, axes, chromosome guides, legends, view
-  decorations, and canvas/export backgrounds use the same settled colors.
-- Explicit spec/config/encoding colors keep their existing precedence. Data
-  palettes are unchanged unless the author deliberately parameterizes them.
-- Preserve the existing initial light appearance and transparent-screen/white-export
-  defaults when appearance adaptation is not configured.
-- Canvas2D evaluates a palette color once per synchronous mark draw and reuses it
-  across that draw's instances, while observing new values on subsequent draws.
-
-Full App dark-mode styling, automatic recoloring of arbitrary data palettes,
-arbitrary live config replacement, CSS Color 4 support, color transitions, and
-observing every possible stylesheet change are outside the initial scope.
-Lifetime-constant parameter declarations are a separate optimization tracked in
-[#585](https://github.com/genome-spy/genome-spy/issues/585); draw-scoped caching
-must also work with the mutable palette used for live dark-mode switching.
-
-## Investigation baseline
-
-### Config is assembled once, but expression values can remain live
-
-`packages/core/src/genomeSpyBase.js` assembles base config in `#createViewContext()`.
-The order is internal defaults, default GenomeSpy theme, embed `options.theme`,
-and root `spec.theme`. Root/subtree config and component-specific styles then
-participate in the existing resolution rules. `options.theme` is a config object;
-`spec.theme` selects built-in presets. Neither is a live theme setter.
-
-`packages/core/src/config/themes.js` and `config/defaults/` contain literal neutral
-colors. Config merging does not inherently prevent reactivity: mark config values
-become encoding values, and `ExprRef` objects survive that conversion.
-
-`MarkPropsBase`/fill/stroke properties and title colors already support expressions.
-WebGL binds uniform color expressions and updates their values without rebuilding
-data buffers or shaders. Canvas2D/SVG use live CPU encoders. The experimental WebGPU
-adapter observes semantic mark revisions. Scale range entries can also be
-expressions; there is no need for a second palette propagation mechanism.
-
-Relevant files:
-
-- `packages/core/src/config/markConfig.js`
-- `packages/core/src/marks/mark.js`, especially `initializeEncoders()`
-- `packages/core/src/rendering/webgl/marks/webGlMark.js`
-- `packages/core/src/rendering/canvas2d/canvas2DViewRenderingContext.js`
-- `packages/core/src/rendering/svg/svgAttributes.js`
-- `packages/core/src/rendering/webgpu/webGpuMarkAdapter.js`
-
-### Most guide colors are already forwarded to ordinary marks
-
-Axis/domain/tick/label colors in `view/axisView.js`, grid colors in
-`view/axisGridView.js`, title colors in `view/titleView.js`, legend colors in
-`view/legendView.js`, and view fill/stroke in `view/gridView/gridChild.js` mostly
-pass directly into generated marks.
-
-However, `spec/axis.d.ts`, `spec/legend.d.ts`, and `spec/decoration.d.ts` declare many
-of these colors as strings only. Widening them to `string | ExprRef` and updating
-the schema should expose much of the existing mechanism, but legends also need
-a runtime fix. `view/gridView/gridChildLegends.js:resolveLegendProps()` activates
-every top-level expression into scalar getters before constructing the legend.
-Generated marks copy the initial paint values, while the change callback only
-handles `disable`. Consequently legend title/label/symbol colors remain stale.
-Keep paint expressions live separately from existing legend
-layout/orientation/disable handling. Their evaluation scope also matters:
-`resolveLegendProps()` uses `definition.view.paramRuntime`, while generated legend
-internals force local `width`/`height` parameters in `legendView.js`. Forwarding raw
-expressions would make source-view layout references observe legend dimensions.
-Reuse `ViewParamRuntime.registerScopedExpression()` to preserve the source scope
-and existing lifecycle ownership.
-
-There is a second legend boundary in `gridChildLegends.js`:
-`createInheritedSymbolStyle()` and `applyConstantMarkColorStyle()` inherit source
-mark `color`/`fill`/`stroke` only when they are literal strings. Converting neutral
-mark defaults to expressions would drop those colors from size legends, causing
-rule/link symbols to use the base legend stroke instead of the source foreground.
-Preserve expression-valued source styling and its original runtime as well as
-expressions authored directly on the legend.
-
-Transparent legend base colors also have a literal special case, and decorations
-are created based on their initial configured presence. Initial support should
-use concrete opaque colors and existing opacity properties; changing palette
-values must not require adding/removing generated views.
-
-### Root canvas background is a genuine runtime gap
-
-`spec/root.d.ts` accepts a literal background string.
-`genomeSpy/canvasBackground.js` reads that string or static built-in theme
-backgrounds. `genomeSpyBase.js` supplies this separately to live rendering and
-exports; it is not part of ordinary generated mark styling.
-
-WebGL additionally captures the clear color while computing layout in
-`rendering/webgl/renderCoordinator.js`. A new getter value plus a render request
-alone is insufficient unless that cached clear-color path is updated. Canvas2D
-and WebGPU consult their background getter during rendering.
-
-The screen is transparent by default, while `getExportBackground()` falls back
-to white. Light text over a CSS-only dark canvas surface would therefore export
-onto white unless the exporter receives an explicit dark background.
-
-### Parameter ingress already exists
-
-`api.params.get("uiColors").setValue(nextPalette)` uses the authored top-level
-scope. Object-valued parameters and lexical inheritance already work. Replace
-the object rather than mutating its fields: one write publishes one coherent
-palette and avoids needing a new public batch API.
-
-Parameters must be registered declarations to appear through this namespace
-(`paramRuntime/embedParamApi.js`). Allocating an internal setter alone does not
-provide the public capability. `view/viewFactory.js` also wraps some root specs;
-the authored top-level scope can be a child of `implicitRoot`.
-
-### The static dark preset has incomplete coverage
-
-The preset inherits black `group-title`/`group-subtitle` styles and legend title
-colors from the Vega-Lite base. Title styles can override its white `title.color`.
-Chromosome label defaults remain black, as do default links and the
-`arrow-transcript` style. These must be included in the color audit; changing
-only `config.text.color` and ordinary axis labels is insufficient.
-
-### Investigation verification
-
-Two temporary Vitest tests using the real headless engine and SVG export passed,
-and were removed after investigation. They confirmed that replacing one palette
-after initialization changes plain text, axis labels/title/domain/grid, view
-title/subtitle, and view background fill/stroke. They also confirmed that legend
-title/labels/symbol stroke/opacity remain at their initial expression values, and
-that the dark preset's group title renders black. GPU/browser behavior above is
-based on source inspection; no browser smoke test was performed for this proposal.
-
-## Solution options
-
-| Option                                            | Benefits                                                                                                          | Costs and limits                                                                                                                         | Assessment                                                             |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Authored root palette plus config expressions     | Uses current parameter API; host controls policy; smallest implementation                                         | Author/embedding helper supplies palette declaration and complete config mapping; public color types and root background need completion | Implement the underlying contract first                                |
-| Default semantic palette parameter                | Default appearance becomes adjustable through one existing parameter handle; specs need no repeated theme mapping | Requires explicit initialization, naming, overriding, and root-scope policy                                                              | Recommended convenience after the contract works                       |
-| General `config.params`, like Vega config signals | Self-contained custom themes can declare arbitrary reactive defaults                                              | New grammar, name-based merge rules, root ownership, and collision contracts                                                             | Defer unless independently needed                                      |
-| CSS values directly in every color property       | Attractive author syntax, such as `var(--gs-foreground)`                                                          | GPU parsers lack DOM/CSS context; needs resolution, invalidation, and export policy across backends                                      | Avoid for initial implementation                                       |
-| Replace/reinitialize the theme or visualization   | Reuses static presets                                                                                             | Rebuilding can reset interaction state and repeat initialization/data work; changing `spec.theme` also changes sizing/fonts/styles       | Fallback for hosts already rebuilding, unsuitable as the main solution |
-
-CSS filters/inversion would also change data colors and cannot express a deliberate
-neutral palette; they do not satisfy the goal.
-
-## Proposed contracts
-
-### 1. Complete expression support at the existing boundaries
-
-Allow expressions on the color properties of axes, chromosome guides, legends,
-and view decoration fills/strokes/shadows, following mark/title conventions.
-Bind them through the generated marks that already own their lifecycle.
-Fix both legend paint paths in `gridChildLegends.js`: legend property resolution
-and inherited source-mark colors. Bind expressions in their original source
-runtime through the existing scoped-expression mechanism before generated marks
-consume them: legend properties use `definition.view.paramRuntime`, while inherited
-mark styles use the contributing `sourceView.paramRuntime` selected by existing
-scale-member ordering. These owners can differ for collected legends.
-Generated views own the derived bindings and dispose them normally;
-their local `width`/`height` must not change the expression's meaning. Keep explicit
-legend overrides, filled/unfilled mapping, conflicting-color-scale neutralization,
-and scale-driven symbol channels authoritative. Also cover the
-currently runtime-accepted expression-valued symbol opacity; its public type is
-still number-only.
-
-Allow `RootSpec.background` to be a color expression. Evaluate it in the authored
-root parameter scope and share the resolved current value between screen rendering
-and raster/SVG exports. An explicit root expression resolving to null overrides
-preset/palette backgrounds for a transparent screen; exports still use the existing
-white fallback unless export `options.background` is explicitly null. Preserve
-static named-theme background precedence when no explicit root background is given.
-
-For the default palette convenience, a configured opaque palette background is
-also eligible as the default canvas/export background; an explicit root background
-or selected preset background still wins. A null palette background preserves
-legacy behavior. This precedence must be implemented in one resolution path.
-
-### 2. Default neutral palette
-
-Use the six audited roles `foreground`, `stroke`, `grid`, `chromosomeTick`,
-`symbolStroke`, and `background`, preserving distinct chromosome and symbol
-strokes. The background role is nullable; other color roles are concrete strings.
-
-Map ordinary text/rules/links, guide labels/titles/strokes, title styles, and
-relevant built-in mark styles to these roles. Do not turn the default blue mark
-color, genomic/data categories, or sequential/diverging scales into neutral colors.
-Absent view fills/strokes remain absent; a palette does not create new decorations.
-Rule/link size legends must inherit the expression-valued foreground at initial
-render and after palette updates, preserving the current source-style precedence.
-
-Initialize one ordinary configured declaration in the authored top-level scope,
-before guides or marks bind expressions. Prepare this declaration before the
-factory constructs the authored root and its optional wrapper; looking up the
-completed top-level view afterward is too late. Merge this single built-in default
-with authored root declarations before registration: an explicit same-named
-declaration replaces the default once. Descendant shadowing
-follows normal lexical rules. A user-computed palette is read-only through the API,
-as other computed parameters are today. An authored replacement supplies the full
-palette rather than implicitly merging object fields. Do not register inherited defaults in
-every view or introduce a separate reactive store.
-
-Existing named presets retain their literal color choices unless deliberately
-converted. Document that explicit preset/config colors override the reactive
-default, including the existing precedence of `spec.theme` over `options.theme`.
-Repair the dark preset's inherited black colors as part of its deliberate audit;
-converting every branded preset into light/dark variants is separate work.
-
-### 3. Canvas2D draw-scoped color evaluation
-
-Extend the existing rectangle fill/stroke hoisting pattern to palette-backed
-colors in the other Canvas2D painters under `rendering/canvas2d/renderers/`.
-Initially cover literals and direct reads of settled palette parameters, including
-scoped aliases. Evaluate eligible colors and convert them to paint strings once
-before the instance loop, then reuse the values. Use the final
-`encoder.constant` metadata to distinguish datum-independent encoders from
-data-dependent and conditional selection encoders; inspecting an individual
-constant branch is insufficient.
-
-Keep snapshots local to one synchronous painter invocation. Each facet occurrence
-or order pass gets its own snapshot, and the next draw reads current parameter
-and scale values again. Existing invalidation schedules the next repaint; no
-persistent cache, additional listeners, or cross-frame invalidation machinery is
-needed. Skip evaluation for empty draw ranges. Reuse current paint-style caching
-to avoid assigning identical Canvas fill/stroke styles repeatedly.
-
-`encoder.constant` describes datum independence, not purity. Palette-field lookups
-are safe to hoist. Volatile expressions such as `random()`/`now()`, and expressions
-with uncertain repeatability, retain their existing evaluation path. This change
-does not require general purity analysis or change volatile-expression semantics.
-Data-dependent colors, conditional selections, and per-instance opacity/fading
-remain live.
-
-This changes palette evaluation cost from once per visible instance to once per
-eligible color per draw. Normal painting still visits visible instances. GPU
-rendering and lifetime-constant parameter support are unaffected.
-
-### 4. Host CSS/browser bridge
-
-This illustrates the proposed default palette interface; it is not available today.
-The initial documented hook vocabulary should match the finalized palette fields.
-
-```css
-.genomespy-host {
-  --gs-foreground: #000;
-  --gs-secondary-foreground: #333;
-  --gs-stroke: #808080;
-  --gs-grid: #d3d3d3;
-  --gs-border: #ddd;
-  --gs-background: #fff;
-}
-
-@media (prefers-color-scheme: dark) {
-  .genomespy-host {
-    --gs-foreground: #eee;
-    --gs-secondary-foreground: #bbb;
-    --gs-stroke: #aaa;
-    --gs-grid: #444;
-    --gs-border: #666;
-    --gs-background: #181818;
-  }
-}
-```
-
-```js
-// Proposed built-in declaration. An authored uiColors parameter can use the
-// same existing API once its config expressions are supplied explicitly.
-const colors = api.params.get("themeColors");
-const preference = matchMedia("(prefers-color-scheme: dark)");
-
-function syncColors() {
-  const css = getComputedStyle(container);
-  const read = (name) => css.getPropertyValue("--gs-" + name).trim();
-  colors.setValue({
-    foreground: read("foreground"),
-    secondaryForeground: read("secondary-foreground"),
-    stroke: read("stroke"),
-    grid: read("grid"),
-    border: read("border"),
-    background: read("background"),
-  });
-}
-
-preference.addEventListener("change", syncColors);
-syncColors();
-
-// The host also calls syncColors() after its explicit theme toggle.
-// During teardown, remove the listener before api.finalize().
-```
-
-Read the initial CSS palette before embedding and use it as the root declaration's
-initial value when avoiding a light first frame matters. Re-read after embedding
-when connecting the listener so a change during initialization is not missed.
-Only fully specified palettes are published; missing/invalid CSS is an embedding
-boundary error, not a silent renderer fallback.
-
-Start with hex, named colors, or legacy RGB syntax supported by GenomeSpy's color
-parsers. Raw custom-property text can still contain `light-dark()`, `currentColor`,
-or other unresolved/contextual values. `getComputedStyle(...).getPropertyValue()`
-does not guarantee a parser-compatible color, and even computed color properties
-can serialize modern color spaces. A general CSS color normalization service is
-separate scope.
-
-`matchMedia` handles browser/OS preference changes. Hosts with explicit theme
-selection call the same synchronization function themselves; their CSS can use
-classes or data attributes to give that selection precedence. There is no general
-computed-style-change event. Avoid polling and a document-wide MutationObserver.
-
-An embedding helper can package this recipe if repetition warrants it. Core does
-not need a media observer or automatic policy. React's `onEmbed` and doc embeds'
-connect/disconnect lifecycle provide suitable integration points. Inherited custom
-properties also cross doc embeds' shadow boundary.
-
-### 5. Required embedding example
-
-Add a dedicated example under `packages/embed-examples/src/darkMode/`, following
-the package's page/module/style conventions. Link it from `src/index.html` and
-register its page in `vite.config.js` so the package smoke build includes it.
-
-Provide visible Light, Dark, and System controls and show the resolved mode.
-Explicit Light/Dark selection overrides the OS preference and always works on
-the same initialized embed; System follows preference changes automatically.
-Use CSS custom properties and the public palette API for both paths, with
-initial values that avoid flashing the wrong appearance.
-
-Use inline data so an external dataset cannot prevent the demonstration. A small
-locus scatter plot demonstrates titles, ordinary/chromosome guides, grids, a
-color legend, and canvas backgrounds, alongside stable data colors. Keep its
-grammar separate from the commented theme-integration recipe. Style the host
-controls and surface for both modes. Include zoom and brushing so switching modes
-visibly preserves state, without export controls or state-monitoring code.
-
-## Comparable designs and browser references
-
-- [Vega configuration signals](https://vega.github.io/vega/docs/config/#signals)
-  demonstrate reactive style variables declared alongside configuration. Its
-  [View API](https://vega.github.io/vega/docs/api/view/#view_signal) updates signals,
-  and its background can also be signal-driven. This supports reusing GenomeSpy's
-  existing expression model rather than adding a second theming runtime.
-- [Chart.js color defaults](https://www.chartjs.org/docs/latest/general/colors.html)
-  distinguish text, borders, and backgrounds. [Apache ECharts themes](https://echarts.apache.org/handbook/en/concepts/style/)
-  illustrate initialization-time presets, a different concern from live palette
-  ingress.
-- [MediaQueryList change events](https://developer.mozilla.org/en-US/docs/Web/API/MediaQueryList/change_event)
-  provide browser preference notifications. [Computed styles](https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle)
-  expose CSS values, including their color serialization limitations.
-
-These are design comparisons. No external implementation code is copied or
-closely adapted, so there is no new third-party code/license dependency.
+# Reactive appearance and automatic default colors
+
+Status: the reactive rendering foundation is complete. The automatic CSS-backed
+appearance revision below is reviewed and ready for implementation.
+
+## Goals and contracts
+
+- An ordinary browser embed follows browser light/dark preference immediately
+  and after initialization, with no palette setup by its caller.
+- The default canvas remains transparent in **both** modes. Existing export
+  fallback remains white. Only an explicitly supplied background changes that.
+- Polling is forbidden: no timers, recurring animation callbacks, per-render
+  CSS reads, or document-wide subtree observation for appearance detection.
+- The default theme consumes `defaultThemeColors`, renamed from the unreleased
+  `themeColors` contract. Rename the public type/module/helpers consistently;
+  retain no compatibility alias. Other themes may reference it explicitly, but
+  automatic background fallback applies only to the default theme; named presets such as `vegalite` and `dark` keep their fixed colors.
+- CSS custom properties customize individual roles. Public properties are
+  `--genome-spy-foreground`, `--genome-spy-stroke`, `--genome-spy-grid`,
+  `--genome-spy-chromosome-tick`, `--genome-spy-symbol-stroke`, and
+  `--genome-spy-background`. Inherited overrides must work; local library
+  declarations must not mask values set on a host ancestor.
+- CSS `color-scheme` on the container or inherited from its host can force light
+  or dark. With the normal/unset scheme, GenomeSpy follows browser preference.
+  Scoped stylesheet defaults use `light-dark()`; a non-rendering probe resolves
+  these and authored `var()` colors into renderer-compatible RGB strings.
+- The five neutral defaults preserve the existing light appearance. Dark values
+  match the existing example's neutral roles. Background defaults to transparent,
+  normalized to the palette's existing `null` sentinel rather than introducing
+  an opaque fill. Explicit root/export backgrounds retain precedence.
+- An explicitly authored root `defaultThemeColors` declaration opts out of CSS
+  ownership, including expression declarations. Descendant lexical shadows
+  remain unchanged. Manual writes to the automatic parameter last until the next
+  CSS refresh; callers needing exclusive control author the declaration.
+- Headless rendering retains deterministic light defaults and no browser APIs.
+- Palette publication uses the existing parameter graph and renderer paths;
+  preserve zoom, selections, data palettes, and draw-scoped Canvas caching.
+
+## Existing foundation
+
+Implemented on `codex/dark-mode`: live guide/legend/background color expressions,
+source-scoped legend bindings, initialized palette validation, default-theme
+neutral roles, reactive selection-brush outlines through `selection-brush`, and
+Canvas evaluation caching for a synchronous mark draw. Fixed presets keep their
+colors. Root background readers serve rendering and all export backends.
+
+Baseline verification: 539 test files, 5,110 tests passing (one skip, two todos),
+workspace types, lint, schema/docs builds, and browser checks. Core JavaScript
+against master `b34836e8319e844ccecbc713e4f4fb6b3403575f`: +438/-125 non-comment
+production lines, net +313. The current example contains 198 source lines.
+No shader, GPU attribute, or texture was added. No timing speedup is claimed.
+
+## Architecture and event ownership
+
+The browser bridge belongs beside `genomeSpy/containerUi.js`, owned by
+`GenomeSpyBase` initialization/destruction. `ViewFactory` continues to supply the
+ordinary root declaration before wrapping and guide creation. After hierarchy
+preparation, seed the browser-resolved value before dataflow initialization and
+the first rendered frame; refresh after asynchronous startup as needed through
+normal event delivery. Headless bootstrap remains DOM-independent.
+
+Use one hidden probe subtree, with role-specific color properties resolving
+stylesheet defaults and optional public overrides. If the container's computed
+`color-scheme` is `normal`, the probe uses `light dark`; otherwise it inherits
+the host scheme. Read concrete computed colors, normalize them with the existing
+color parser, compare all six roles, and publish only a changed complete object. Accept resolved
+named/hex/RGB/HSL colors supported by the existing parser; reject unsupported
+computed CSS Color 4 syntax with a clear error rather than adding conversion
+machinery. Track factory-created declarations with a WeakSet so imported roots
+and implicit wrappers preserve authored ownership.
+
+Subscribe to the browser's `prefers-color-scheme` change event. A
+`MutationObserver` observes attributes on the container and each composed
+ancestor individually, without `subtree`; this covers host class, style, and
+attribute toggles without watching the visualization DOM. No polling or
+observation of every stylesheet. A public `api.refreshStyles()` performs the
+same synchronous refresh after stylesheet replacement or changes outside that
+observation boundary. Finalization disconnects the observer, media listener,
+and probe before disposing the parameter runtime. Async observer/media errors
+use Core's existing runtime error reporter. Refresh after finalization rejects.
+Embeds are initialized in their intended DOM location; automatic reparenting
+support is outside scope.
+
+## Design evidence and alternatives
+
+- CSS `color-scheme` plus `light-dark()` supplies mode selection without a new
+  theme-selection system: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark
+- ECharts likewise separates explicit themes from runtime switching driven by
+  browser preference: https://echarts.apache.org/handbook/en/basics/release-note/v6-feature/
+- MutationObserver observes DOM changes, not arbitrary computed-style changes:
+  https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
+- No code is copied or closely adapted from these projects.
+- Keeping the entire CSS bridge in each embedder was discarded because it
+  prevents automatic behavior and duplicates palette conversion and lifecycle.
+- A general live theme/config replacement API and arbitrary stylesheet tracking
+  remain outside scope. Lifetime-constant parameters remain a separate issue:
+  https://github.com/genome-spy/genome-spy/issues/585
 
 ## Milestones and review gates
 
-1. **Complete reactive color and background support (complete).** Update the relevant Core
-   spec types/schema, guide/decoration consumers where necessary, and one shared
-   resolved background path. Preserve legend-property and inherited source-style
-   expressions in their original scopes. Synchronize WebGL's cached clear color.
-   Hoist eligible Canvas2D palette colors once per draw using local snapshots,
-   retaining data/selection-dependent paths and refreshing on every invocation.
-   Verify an authored palette through real generated guides, Canvas2D/SVG, WebGL, and the
-   WebGPU adapter. Cover explicit background/export overrides and transparent
-   defaults. Document color expressions and the authored-palette recipe; add the
-   appropriate Core changeset. Tentative commit:
-   `feat(core): support reactive guide and canvas background colors`.
+### 1. Automatic CSS-backed default appearance
 
-2. **Expose reactive default neutral colors (complete).** Register the single root declaration,
-   map default colors/styles, and audit the dark preset. Verify wrapped unit/layer
-   roots and concat roots, existing precedence, explicit palette declarations,
-   descendant shadowing, unchanged authored/data colors, and
-   rule/link size legends matching their source marks before and after updates.
-   Document the palette API and collision policy; add/update the Core changeset.
-   Tentative commit: `feat(core): expose a reactive default theme palette`.
+- [x] Review this plan with an independent subagent, including App/Core embeds,
+      lifecycle, scoped CSS inheritance, transparent export behavior, and SLOC.
+- [ ] Rename the palette contract, add scoped CSS defaults and the browser
+      bridge, and expose `refreshStyles()` through common Core/App embed APIs.
+- [ ] Keep authored palette ownership and headless behavior explicit; ensure
+      named presets remain fixed even as CSS changes the automatic palette.
+- [ ] Update the existing changeset and palette/API documentation.
+- [ ] Verify focused headless contracts and browser-only integration behavior:
+      OS changes, ancestor/local attribute toggles, CSS overrides and refresh,
+      inherited/forced schemes, transparent background, explicit overrides,
+      separate embeds, finalization, and no repeated reads on ordinary draws.
 
-3. **Deliver the light/dark embedding example (complete).** Add the required `darkMode` page,
-   module, and styles to `packages/embed-examples`, its catalog, and Vite inputs.
-   Demonstrate explicit Light/Dark overrides and System mode on one initialized
-   visualization, with CSS hooks, listener teardown, and correct initial values.
-   Connect documentation embeds to the site's actual theme-toggle mechanism if
-   desired; keep full App restyling separate. Verify two containers with different
-   palettes and reconnect/unmount behavior. Run the package's `build:smoke` and
-   `test:tsc` checks, document the browser/CSS contract, and record release impact
-   for changed integration packages as appropriate. Tentative commit:
-   `feat(embed-examples): demonstrate automatic dark mode`.
+Tentative commit: `feat(core): follow CSS and browser appearance automatically`.
 
-Review the shared grammar/background contract after milestone 1, and the public
-palette/root-scope policy in milestone 2. Combine the embedding example review
-with final integration; avoid separate review gates for routine documentation.
+### 2. A clear four-mode embedding example and integration verification
 
-## Verification and acceptance criteria
+- [ ] Replace manual palette wiring with plain `embed`; keep useful comments.
+- [ ] Offer System, Light, Dark, and Custom. The custom option applies a warm
+      cream/brown CSS palette to demonstrate individual property overrides.
+      Default modes leave the canvas transparent; the page supplies its surface.
+- [ ] Remove stale claims and retain zoom/brush instructions. Do not add export
+      controls, persistence settings, pagehide cleanup, or unrelated features.
+- [ ] Verify initial/repeated switches with a zoomed domain and active brush on
+      the same canvas, browser preference changes, and custom CSS overrides.
+- [ ] Run appropriate regression suites, all workspace types, lint, schema/docs,
+      example build, and release checks. Measure final production SLOC and update
+      this plan with outcomes. No quantitative CPU/GPU speedup claim.
 
-- A focused headless spec exercises text, title/subtitle, ordinary/locus axes,
-  grids, categorical/gradient legends, a view fill/stroke, and neutral mark styles.
-  Publish one new palette, await propagation, and assert representative emitted
-  SVG colors. Keep assertions about visible behavior rather than generated shape.
-- For local and collected legends, use paint expressions referencing source-view
-  `width`/`height` and palettes with different values in legend-definition and
-  contributing-mark scopes. Give generated legend internals different dimensions
-  and verify both property and inherited-style expressions retain their source.
-  Include title, label, symbol, and runtime-accepted symbol-opacity consumers.
-- Extend the existing rule/link size-legend cases in `gridViewLegend.test.js` with
-  reactive source `color`, and add a point size legend with reactive `fill`/`stroke`.
-  Check initial appearance and palette updates, filled/unfilled mapping, explicit
-  legend overrides, and preservation of scale-driven channels and neutralization.
-- Extend `canvas2DViewRenderingContext.test.js`'s existing constant-encoder cases
-  to cover palette colors in the additional painters. Verify one evaluation per
-  eligible color per nonempty draw, correct first/last drawn colors, and fresh
-  values after changing the palette and repainting. Cover facets/order passes,
-  data-dependent colors, selection-conditional colors, and volatile expressions
-  that retain per-instance evaluation. Prefer representative cases over a new
-  painter-by-property test matrix.
-- Preserve a representative explicit red annotation and data color scale while
-  changing the neutral palette. Preserve default light appearance and preset/config
-  precedence; include regressions for the dark preset's black text inheritance.
-- A browser test changes preference after initialization and verifies live text,
-  guides, and canvas background on WebGL and Canvas2D, plus WebGPU where available.
-  Verify the next frame, subsequent zoom/pan, and SVG/PNG export after the change.
-- Use representative real specs such as `examples/docs/grammar/config/theme.json`
-  and a chromosome-axis example selected from the current examples. Retain zoom
-  domain, selections, and loaded data across switches; check a docs embed as well
-  as the standalone host.
-- Test custom CSS/theme toggles separately from preference changes. Unmount/finalize
-  removes host listeners, and multiple embeds do not share mutable palette state.
-- Browser-smoke the new `embed-examples` page with both light and dark emulated OS
-  preferences. Repeatedly select Light → Dark → Light without re-embedding, verify
-  current guide/legend/background colors, and compare zoom domains and selections
-  before and after. Check System mode responds to a subsequent preference change,
-  while an explicit override remains authoritative. Verify navigation from the
-  built example catalog.
-- Run focused Vitest suites with `--reporter=agent`, relevant TypeScript/schema
-  checks, and browser smoke checks. Use `test-genomespy-views`,
-  `debug-genomespy-web`, `write-genomespy-docs`, and `write-genomespy-changeset` for
-  the corresponding implementation work. Full tests are appropriate once shared
-  root/background/default contracts change.
+Tentative commit: `feat(embed-examples): demonstrate automatic and custom appearance`.
 
-## Resolved decisions and deferred scope
+## Risks and acceptance boundaries
 
-- `themeColors` is a public ordinary root parameter with six audited fields.
-  Authored declarations replace its full value; lexical
-  shadowing and computed read-only behavior follow the existing runtime.
-- The default palette is included. General `config.params`, immutable constant
-  parameters, and automatic recoloring of user data palettes are deferred;
-  constant parameters are tracked separately in issue #585.
-- Named presets keep fixed colors, with deliberate dark-preset contrast fixes.
-  OS preference handling belongs to the host and does not select a named preset.
-- Connecting the existing documentation site's theme switch and restyling the
-  full App are discarded from this implementation. The new standalone host
-  demonstrates the complete browser/CSS bridge, and the API documentation links
-  its source. Existing docs embeds still use their configured appearance.
-- Tooltip/loading-message CSS restyling is deferred. The example uses inline data
-  and no tooltip, so its demonstrated appearance has no dependency on those UI
-  elements. These remain separate from visualization color expressions.
-
-Before PR delivery, reconcile completed/discarded tasks and retire this temporary
-plan according to the repository workflow.
+The browser is the authority for resolving CSS colors; normalize supported RGB
+results before sending values into renderers. Independent review accepted the
+architecture; its ownership, color compatibility, named-background precedence,
+and failure-cleanup findings are incorporated above. Browser tests must use the actual
+scoped stylesheet and embed path, not mocked CSS resolution. Preserve local and
+inherited custom properties and avoid self-triggering observer feedback.
+Changes outside browser preference events and the observed ancestor attributes
+need `refreshStyles()`; this boundary must be documented. No permanent work runs
+between appearance events. Test the common App API and launch failure cleanup,
+not only successful Core examples. Temporary plan files must be reconciled and
+retired before PR creation, as required by repository workflow.
