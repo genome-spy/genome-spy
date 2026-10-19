@@ -31,10 +31,15 @@ existing mechanisms from proposed grammar and default-theme behavior.
   palettes are unchanged unless the author deliberately parameterizes them.
 - Preserve the existing initial light appearance and transparent-screen/white-export
   defaults when appearance adaptation is not configured.
+- Canvas2D evaluates a palette color once per synchronous mark draw and reuses it
+  across that draw's instances, while observing new values on subsequent draws.
 
 Full App dark-mode styling, automatic recoloring of arbitrary data palettes,
 arbitrary live config replacement, CSS Color 4 support, color transitions, and
 observing every possible stylesheet change are outside the initial scope.
+Lifetime-constant parameter declarations are a separate optimization tracked in
+[#585](https://github.com/genome-spy/genome-spy/issues/585); draw-scoped caching
+must also work with the mutable palette used for live dark-mode switching.
 
 ## Current implementation
 
@@ -225,7 +230,36 @@ default, including the existing precedence of `spec.theme` over `options.theme`.
 Repair the dark preset's inherited black colors as part of its deliberate audit;
 converting every branded preset into light/dark variants is separate work.
 
-### 3. Host CSS/browser bridge
+### 3. Canvas2D draw-scoped color evaluation
+
+Extend the existing rectangle fill/stroke hoisting pattern to palette-backed
+colors in the other Canvas2D painters under `rendering/canvas2d/renderers/`.
+Initially cover literals and direct reads of settled palette parameters, including
+scoped aliases. Evaluate eligible colors and convert them to paint strings once
+before the instance loop, then reuse the values. Use the final
+`encoder.constant` metadata to distinguish datum-independent encoders from
+data-dependent and conditional selection encoders; inspecting an individual
+constant branch is insufficient.
+
+Keep snapshots local to one synchronous painter invocation. Each facet occurrence
+or order pass gets its own snapshot, and the next draw reads current parameter
+and scale values again. Existing invalidation schedules the next repaint; no
+persistent cache, additional listeners, or cross-frame invalidation machinery is
+needed. Skip evaluation for empty draw ranges. Reuse current paint-style caching
+to avoid assigning identical Canvas fill/stroke styles repeatedly.
+
+`encoder.constant` describes datum independence, not purity. Palette-field lookups
+are safe to hoist. Volatile expressions such as `random()`/`now()`, and expressions
+with uncertain repeatability, retain their existing evaluation path. This change
+does not require general purity analysis or change volatile-expression semantics.
+Data-dependent colors, conditional selections, and per-instance opacity/fading
+remain live.
+
+This changes palette evaluation cost from once per visible instance to once per
+eligible color per draw. Normal painting still visits visible instances. GPU
+rendering and lifetime-constant parameter support are unaffected.
+
+### 4. Host CSS/browser bridge
 
 This illustrates the proposed default palette interface; it is not available today.
 The initial documented hook vocabulary should match the finalized palette fields.
@@ -301,7 +335,7 @@ not need a media observer or automatic policy. React's `onEmbed` and doc embeds'
 connect/disconnect lifecycle provide suitable integration points. Inherited custom
 properties also cross doc embeds' shadow boundary.
 
-### 4. Required embedding example
+### 5. Required embedding example
 
 Add a dedicated example under `packages/embed-examples/src/darkMode/`, following
 the package's page/module/style conventions. Link it from `src/index.html` and
@@ -343,6 +377,8 @@ closely adapted, so there is no new third-party code/license dependency.
    spec types/schema, guide/decoration consumers where necessary, and one shared
    resolved background path. Preserve legend-property and inherited source-style
    expressions in their original scopes. Synchronize WebGL's cached clear color.
+   Hoist eligible Canvas2D palette colors once per draw using local snapshots,
+   retaining data/selection-dependent paths and refreshing on every invocation.
    Verify an authored palette through real generated guides, Canvas2D/SVG, WebGL, and the
    WebGPU adapter. Cover explicit background/export overrides and transparent
    defaults. Document color expressions and the authored-palette recipe; add the
@@ -387,6 +423,13 @@ with final integration; avoid separate review gates for routine documentation.
   reactive source `color`, and add a point size legend with reactive `fill`/`stroke`.
   Check initial appearance and palette updates, filled/unfilled mapping, explicit
   legend overrides, and preservation of scale-driven channels and neutralization.
+- Extend `canvas2DViewRenderingContext.test.js`'s existing constant-encoder cases
+  to cover palette colors in the additional painters. Verify one evaluation per
+  eligible color per nonempty draw, correct first/last drawn colors, and fresh
+  values after changing the palette and repainting. Cover facets/order passes,
+  data-dependent colors, selection-conditional colors, and volatile expressions
+  that retain per-instance evaluation. Prefer representative cases over a new
+  painter-by-property test matrix.
 - Preserve a representative explicit red annotation and data color scale while
   changing the neutral palette. Preserve default light appearance and preset/config
   precedence; include regressions for the dark preset's black text inheritance.
