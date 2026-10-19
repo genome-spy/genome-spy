@@ -79,8 +79,21 @@ a runtime fix. `view/gridView/gridChildLegends.js:resolveLegendProps()` activate
 every top-level expression into scalar getters before constructing the legend.
 Generated marks copy the initial paint values, while the change callback only
 handles `disable`. Consequently legend title/label/symbol colors remain stale.
-Preserve paint expressions into the generated marks, separately from existing
-legend layout/orientation/disable handling. Do not add another evaluation layer.
+Keep paint expressions live separately from existing legend
+layout/orientation/disable handling. Their evaluation scope also matters:
+`resolveLegendProps()` uses `definition.view.paramRuntime`, while generated legend
+internals force local `width`/`height` parameters in `legendView.js`. Forwarding raw
+expressions would make source-view layout references observe legend dimensions.
+Reuse `ViewParamRuntime.registerScopedExpression()` to preserve the source scope
+and existing lifecycle ownership.
+
+There is a second legend boundary in `gridChildLegends.js`:
+`createInheritedSymbolStyle()` and `applyConstantMarkColorStyle()` inherit source
+mark `color`/`fill`/`stroke` only when they are literal strings. Converting neutral
+mark defaults to expressions would drop those colors from size legends, causing
+rule/link symbols to use the base legend stroke instead of the source foreground.
+Preserve expression-valued source styling and its original runtime as well as
+expressions authored directly on the legend.
 
 Transparent legend base colors also have a literal special case, and decorations
 are created based on their initial configured presence. Initial support should
@@ -156,8 +169,18 @@ neutral palette; they do not satisfy the goal.
 Allow expressions on the color properties of axes, chromosome guides, legends,
 and view decoration fills/strokes/shadows, following mark/title conventions.
 Bind them through the generated marks that already own their lifecycle.
-Fix legend paint-expression preservation at `gridChildLegends.js`; include the
-same propagation regression for existing expression-valued symbol opacity.
+Fix both legend paint paths in `gridChildLegends.js`: legend property resolution
+and inherited source-mark colors. Bind expressions in their original source
+runtime through the existing scoped-expression mechanism before generated marks
+consume them: legend properties use `definition.view.paramRuntime`, while inherited
+mark styles use the contributing `sourceView.paramRuntime` selected by existing
+scale-member ordering. These owners can differ for collected legends.
+Generated views own the derived bindings and dispose them normally;
+their local `width`/`height` must not change the expression's meaning. Keep explicit
+legend overrides, filled/unfilled mapping, conflicting-color-scale neutralization,
+and scale-driven symbol channels authoritative. Also cover the
+currently runtime-accepted expression-valued symbol opacity; its public type is
+still number-only.
 
 Allow `RootSpec.background` to be a color expression. Evaluate it in the authored
 root parameter scope and share the resolved current value between screen rendering
@@ -182,6 +205,8 @@ Map ordinary text/rules/links, guide labels/titles/strokes, title styles, and
 relevant built-in mark styles to these roles. Do not turn the default blue mark
 color, genomic/data categories, or sequential/diverging scales into neutral colors.
 Absent view fills/strokes remain absent; a palette does not create new decorations.
+Rule/link size legends must inherit the expression-valued foreground at initial
+render and after palette updates, preserving the current source-style precedence.
 
 Initialize one ordinary configured declaration in the authored top-level scope,
 before guides or marks bind expressions. Prepare this declaration before the
@@ -276,6 +301,24 @@ not need a media observer or automatic policy. React's `onEmbed` and doc embeds'
 connect/disconnect lifecycle provide suitable integration points. Inherited custom
 properties also cross doc embeds' shadow boundary.
 
+### 4. Required embedding example
+
+Add a dedicated example under `packages/embed-examples/src/darkMode/`, following
+the package's page/module/style conventions. Link it from `src/index.html` and
+register its page in `vite.config.js` so the package smoke build includes it.
+
+Provide visible Light, Dark, and System controls and show the resolved mode.
+Explicit Light/Dark selection overrides the OS preference and always works on
+the same initialized embed; System follows preference changes automatically.
+Use CSS custom properties and the public palette API for both paths, with
+listener cleanup and initial values that avoid flashing the wrong appearance.
+
+Use inline data so an external dataset cannot prevent the demonstration. Include
+representative titles, ordinary/chromosome guides, legends, rule/link symbols,
+and view/canvas backgrounds, alongside stable data colors and an explicit
+annotation color. Style the host controls and surface for both modes. Include
+zoom and selection interactions so switching modes visibly preserves state.
+
 ## Comparable designs and browser references
 
 - [Vega configuration signals](https://vega.github.io/vega/docs/config/#signals)
@@ -298,8 +341,9 @@ closely adapted, so there is no new third-party code/license dependency.
 
 1. **Complete reactive color and background support.** Update the relevant Core
    spec types/schema, guide/decoration consumers where necessary, and one shared
-   resolved background path. Synchronize WebGL's cached clear color. Verify an
-   authored palette through real generated guides, Canvas2D/SVG, WebGL, and the
+   resolved background path. Preserve legend-property and inherited source-style
+   expressions in their original scopes. Synchronize WebGL's cached clear color.
+   Verify an authored palette through real generated guides, Canvas2D/SVG, WebGL, and the
    WebGPU adapter. Cover explicit background/export overrides and transparent
    defaults. Document color expressions and the authored-palette recipe; add the
    appropriate Core changeset. Tentative commit:
@@ -308,16 +352,20 @@ closely adapted, so there is no new third-party code/license dependency.
 2. **Expose reactive default neutral colors.** Register the single root declaration,
    map default colors/styles, and audit the dark preset. Verify wrapped unit/layer
    roots and concat roots, existing precedence, explicit palette declarations,
-   descendant shadowing, unchanged authored/data colors, and ephemeral state.
+   descendant shadowing, unchanged authored/data colors, ephemeral state, and
+   rule/link size legends matching their source marks before and after updates.
    Document the palette API and collision policy; add/update the Core changeset.
    Tentative commit: `feat(core): expose a reactive default theme palette`.
 
-3. **Demonstrate automatic host integration.** Add a standalone embedding example
-   with CSS and a manual override, including listener teardown and initial values.
+3. **Deliver the light/dark embedding example.** Add the required `darkMode` page,
+   module, and styles to `packages/embed-examples`, its catalog, and Vite inputs.
+   Demonstrate explicit Light/Dark overrides and System mode on one initialized
+   visualization, with CSS hooks, listener teardown, and correct initial values.
    Connect documentation embeds to the site's actual theme-toggle mechanism if
    desired; keep full App restyling separate. Verify two containers with different
-   palettes and reconnect/unmount behavior. Document the browser/CSS contract and
-   release any changed integration package as appropriate. Tentative commit:
+   palettes and reconnect/unmount behavior. Run the package's `build:smoke` and
+   `test:tsc` checks, document the browser/CSS contract, and record release impact
+   for changed integration packages as appropriate. Tentative commit:
    `feat(embed-examples): demonstrate automatic dark mode`.
 
 Review the shared grammar/background contract after milestone 1, and the public
@@ -330,6 +378,15 @@ with final integration; avoid separate review gates for routine documentation.
   grids, categorical/gradient legends, a view fill/stroke, and neutral mark styles.
   Publish one new palette, await propagation, and assert representative emitted
   SVG colors. Keep assertions about visible behavior rather than generated shape.
+- For local and collected legends, use paint expressions referencing source-view
+  `width`/`height` and palettes with different values in legend-definition and
+  contributing-mark scopes. Give generated legend internals different dimensions
+  and verify both property and inherited-style expressions retain their source.
+  Include title, label, symbol, and runtime-accepted symbol-opacity consumers.
+- Extend the existing rule/link size-legend cases in `gridViewLegend.test.js` with
+  reactive source `color`, and add a point size legend with reactive `fill`/`stroke`.
+  Check initial appearance and palette updates, filled/unfilled mapping, explicit
+  legend overrides, and preservation of scale-driven channels and neutralization.
 - Preserve a representative explicit red annotation and data color scale while
   changing the neutral palette. Preserve default light appearance and preset/config
   precedence; include regressions for the dark preset's black text inheritance.
@@ -342,6 +399,12 @@ with final integration; avoid separate review gates for routine documentation.
   as the standalone host.
 - Test custom CSS/theme toggles separately from preference changes. Unmount/finalize
   removes host listeners, and multiple embeds do not share mutable palette state.
+- Browser-smoke the new `embed-examples` page with both light and dark emulated OS
+  preferences. Repeatedly select Light → Dark → Light without re-embedding, verify
+  current guide/legend/background colors, and compare zoom domains and selections
+  before and after. Check System mode responds to a subsequent preference change,
+  while an explicit override remains authoritative. Verify exports in both modes
+  and navigation from the built example catalog.
 - Run focused Vitest suites with `--reporter=agent`, relevant TypeScript/schema
   checks, and browser smoke checks. Use `test-genomespy-views`,
   `debug-genomespy-web`, `write-genomespy-docs`, and `write-genomespy-changeset` for
