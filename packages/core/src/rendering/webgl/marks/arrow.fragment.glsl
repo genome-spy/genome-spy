@@ -17,7 +17,6 @@ flat in float vDirection;
 out lowp vec4 fragColor;
 
 const int N = 6;
-const float FAR_OUTSIDE = 1e20;
 
 // Adapted from: https://iquilezles.org/articles/distfunctions2d/
 float sdPolygon(vec2[N] v, vec2 p) {
@@ -43,7 +42,7 @@ float sdStem(
     bool bidirectional
 ) {
     if (halfWidth < 0.0) {
-        return FAR_OUTSIDE;
+        return INFINITY_SUBSTITUTE;
     }
 
     float headSideLength = halfWidth * rHeadSlope;
@@ -143,7 +142,7 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
     bool headRepeat = vHeadSpacing >= 0.0;
     float spacing = headRepeat
         ? max(vHeadSpacing, vHeadRepeatFootprintLength)
-        : 1.0 / 0.0;
+        : INFINITY_SUBSTITUTE;
     float distanceFromStart = arrowPos.x + arrowHalfLength;
 
     // Keep the stroked tip inside the repeated head's local window.
@@ -179,7 +178,7 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
             - vHalfStrokeWidth;
 
         if (headTipDistance > 0.0 && headEndDistance > arrowHalfLength * 2.0) {
-            headDistance = FAR_OUTSIDE;
+            headDistance = INFINITY_SUBSTITUTE;
         }
     }
 
