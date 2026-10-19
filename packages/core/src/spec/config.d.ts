@@ -31,7 +31,7 @@ export type BuiltInThemeName =
  */
 export interface ThemeColors {
     /**
-     * Text, titles, rules, links, and transcript arrows.
+     * Text, titles, rules, links, transcript arrows, and selection brush outlines.
      *
      * __Default value:__ `"black"`
      */

@@ -75,6 +75,9 @@ const VEGALITE_THEME = {
         "arrow-transcript": {
             color: "black",
         },
+        "selection-brush": {
+            stroke: "black",
+        },
     },
     axisQuantitative: {
         grid: true,
@@ -139,6 +142,9 @@ const BUILT_IN_THEME_DEFINITIONS = {
         style: {
             "arrow-transcript": {
                 color: { expr: "themeColors.foreground" },
+            },
+            "selection-brush": {
+                stroke: { expr: "themeColors.foreground" },
             },
         },
     },
@@ -220,6 +226,7 @@ const BUILT_IN_THEME_DEFINITIONS = {
                 "group-title": { color: "#fff" },
                 "group-subtitle": { color: "#fff" },
                 "arrow-transcript": { color: "#fff" },
+                "selection-brush": { stroke: "#fff" },
             },
         },
     ]),

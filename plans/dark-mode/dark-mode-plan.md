@@ -7,9 +7,14 @@ Implementation verification: reactive background and scoped legend tests pass,
 including shared source colors; Canvas2D/immediate tests cover draw-scoped palette
 reads and refreshes. Workspace TypeScript checks, lint, schema/docs builds, and a
 live WebGL palette/background/export smoke check pass. The final full unit suite
-passes (539 files, 5,105 tests; one existing skip and two todos). Root palette
+passes (539 files, 5,110 tests; one existing skip and two todos). Root palette
 validation runs independently of configured backgrounds. Facet headers also
-follow the palette, while fixed presets preserve their own colors.
+follow the palette, while fixed presets preserve their own colors. Selection
+brush outlines use the existing foreground role through the `selection-brush`
+style. Explicit brush colors retain precedence and accept expressions; shared
+styles and fixed presets remain configurable. Light-mode opacity and width are
+unchanged. SVG regression tests cover live brush colors and retained interaction
+state, and a WebGL browser check confirms the outline in both modes.
 
 The standalone example passes its production build and catalog navigation.
 Browser checks cover initial OS preferences, manual overrides, subsequent System
@@ -18,7 +23,7 @@ automatic Canvas fallback and actual back/forward-cache restoration.
 Independent Canvas and WebGPU browser checks also
 cover live colors, preserved domains, and explicit/null export backgrounds.
 
-Core runtime JavaScript changes add 420 and delete 115 non-comment lines, net 305,
+Core runtime JavaScript changes add 438 and delete 125 non-comment lines, net 313,
 against local `master` (`b34836e8319e844ccecbc713e4f4fb6b3403575f`), excluding tests
 and declarations. The example contains 198 source lines across HTML, JS, and SCSS.
 No shaders, GPU attributes, or textures were added. Canvas palette evaluation is
@@ -28,6 +33,8 @@ The SLOC review centralized root palette initialization in `ViewFactory`, removi
 the duplicate constructor fallback and its synthetic-wrapper suppression option.
 All 91 focused palette/view/factory tests, workspace TypeScript checks, and
 targeted lint pass after this cleanup.
+The App's directly constructed SampleView test fixture now explicitly seeds the
+root palette, matching the factory initialization that production views use.
 
 The standalone example was subsequently simplified for readability: `index.js`
 is a 63-line commented recipe for host mode resolution, CSS color reads, initial

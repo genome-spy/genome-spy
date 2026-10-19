@@ -548,3 +548,119 @@ test("validates computed palette updates even with a fixed background", async ()
         view.disposeSubtree();
     }
 });
+
+test.each(
+    /** @type {const} */ ([
+        [undefined, undefined, "black", darkColors.foreground],
+        ["dark", undefined, "#fff", "#fff"],
+        ["vegalite", undefined, "black", "black"],
+        [undefined, "orange", "orange", "orange"],
+    ])
+)(
+    "brush outlines follow theme %s and shared style %s",
+    async (theme, styleStroke, before, after) => {
+        const { view, authored, params, palette, render } = await create({
+            theme,
+            config: styleStroke
+                ? { style: { "selection-brush": { stroke: styleStroke } } }
+                : undefined,
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                    value: { x: [2, 7] },
+                },
+            ],
+            data: { values: [{ x: 4, y: 3 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 10], zoom: true },
+                },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
+        try {
+            const scale = authored.getScaleResolution("x");
+            await scale.zoomTo([1, 9]);
+            const domain = scale.getDomain();
+            const selection = params.getSelection("brush");
+            const selected = selection.getValue();
+            const selector = '[data-name="selectionRectRect"] [stroke]';
+            const initial = await render();
+            expectColor(initial, selector, "stroke", before);
+            expectColor(initial, selector, "fill", "#808080");
+            expectColor(initial, selector, "stroke-opacity", "0.2");
+            expectColor(initial, selector, "stroke-width", "1");
+
+            palette.setValue({ ...darkColors });
+            await view.paramRuntime.whenPropagated();
+            expectColor(await render(), selector, "stroke", after);
+            expect(scale.getDomain()).toEqual(domain);
+            expect(selection.getValue()).toEqual(selected);
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
+
+test("explicit brush colors override shared styles and update through expressions", async () => {
+    const { view, params, palette, render } = await create({
+        config: {
+            style: {
+                "selection-brush": {
+                    stroke: "orange",
+                    fill: "blue",
+                    strokeOpacity: 0.5,
+                },
+            },
+        },
+        params: [
+            { name: "paint", value: { stroke: "red", fill: "pink" } },
+            {
+                name: "brush",
+                select: {
+                    type: "interval",
+                    encodings: ["x"],
+                    mark: {
+                        stroke: { expr: "paint.stroke" },
+                        fill: { expr: "paint.fill" },
+                        strokeOpacity: 1,
+                    },
+                },
+                value: { x: [2, 7] },
+            },
+        ],
+        data: { values: [{ x: 4 }] },
+        mark: "point",
+        encoding: {
+            x: {
+                field: "x",
+                type: "quantitative",
+                scale: { domain: [0, 10] },
+            },
+        },
+    });
+    try {
+        const selector = '[data-name="selectionRectRect"] [stroke]';
+        const initial = await render();
+        expectColor(initial, selector, "stroke", "red");
+        expectColor(initial, selector, "fill", "pink");
+        expectColor(initial, selector, "stroke-opacity", "1");
+        palette.setValue({ ...darkColors });
+        await view.paramRuntime.whenPropagated();
+        expectColor(await render(), selector, "stroke", "red");
+
+        /** @type {import("../types/embedApi.js").ParamApi<{stroke: string, fill: string}>} */
+        const paint = params.get("paint");
+        paint.setValue({ stroke: "green", fill: "yellow" });
+        await view.paramRuntime.whenPropagated();
+        const changed = await render();
+        expectColor(changed, selector, "stroke", "green");
+        expectColor(changed, selector, "fill", "yellow");
+    } finally {
+        view.disposeSubtree();
+    }
+});

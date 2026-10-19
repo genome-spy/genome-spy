@@ -104,18 +104,12 @@ export function createSelectionRectSpec({
         name: "selectionRectRect",
         mark: {
             type: "rect",
+            style: "selection-brush",
             clip,
-            ...{
-                fill: "#808080",
-                fillOpacity: 0.05,
-                stroke: "black",
-                strokeWidth: 1,
-                strokeOpacity: 0.2,
-                cursor: brushMarkProps.cursor ?? {
-                    expr: `${INTERVAL_DRAG_ACTIVE_PARAM} ? 'grabbing' : 'move'`,
-                },
-                ...brushMarkProps,
+            cursor: brushMarkProps.cursor ?? {
+                expr: `${INTERVAL_DRAG_ACTIVE_PARAM} ? 'grabbing' : 'move'`,
             },
+            ...brushMarkProps,
         },
     });
 

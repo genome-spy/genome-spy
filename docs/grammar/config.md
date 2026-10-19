@@ -82,14 +82,14 @@ resetting zoom and selections.
 The default `genomespy` theme reads neutral colors from an automatically
 initialized root parameter named `themeColors`:
 
-| Field            | Used for                                                     | Default       |
-| ---------------- | ------------------------------------------------------------ | ------------- |
-| `foreground`     | Text, titles, facet headers, rules, links, transcript arrows | `"black"`     |
-| `stroke`         | Axis domains, ticks, chromosome grids                        | `"gray"`      |
-| `grid`           | Ordinary grid lines                                          | `"lightgray"` |
-| `chromosomeTick` | Chromosome boundary ticks                                    | `"#989898"`   |
-| `symbolStroke`   | Default legend symbol outlines                               | `"#888"`      |
-| `background`     | Canvas and default export background                         | `null`        |
+| Field            | Used for                                                                     | Default       |
+| ---------------- | ---------------------------------------------------------------------------- | ------------- |
+| `foreground`     | Text, titles, facet headers, rules, links, transcript arrows, brush outlines | `"black"`     |
+| `stroke`         | Axis domains, ticks, chromosome grids                                        | `"gray"`      |
+| `grid`           | Ordinary grid lines                                                          | `"lightgray"` |
+| `chromosomeTick` | Chromosome boundary ticks                                                    | `"#989898"`   |
+| `symbolStroke`   | Default legend symbol outlines                                               | `"#888"`      |
+| `background`     | Canvas and default export background                                         | `null`        |
 
 Publish a complete palette through
 [`api.params.get("themeColors")`](../api/runtime-state.md#updating-appearance)

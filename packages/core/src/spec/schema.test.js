@@ -1030,7 +1030,7 @@ describe("generated core schema", () => {
         expect(validate(spec)).toBe(false);
     });
 
-    test("accepts interval selection extent configuration", () => {
+    test("accepts interval selection extent and expression-backed brush colors", () => {
         const schema = createCoreSchema();
         const validate = new Ajv.default({
             allErrors: true,
@@ -1047,6 +1047,10 @@ describe("generated core schema", () => {
                         type: "interval",
                         encodings: ["x"],
                         extent: "container",
+                        mark: {
+                            fill: { expr: "themeColors.grid" },
+                            stroke: { expr: "themeColors.foreground" },
+                        },
                     },
                 },
             ],
