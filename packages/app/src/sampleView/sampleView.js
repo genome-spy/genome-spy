@@ -30,7 +30,11 @@ import {
     getSampleLocationAt,
 } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
-import { interactionToZoom } from "@genome-spy/core/view/zoom.js";
+import {
+    interactionToZoom,
+    stopPanInertia,
+} from "@genome-spy/core/view/zoom.js";
+import { normalizeWheelScrollDelta } from "@genome-spy/core/utils/interactionEvent.js";
 import {
     propagateInteraction,
     propagateInteractionSurface,
@@ -159,6 +163,9 @@ export default class SampleView extends ContainerView {
     #sampleRenderLocationSource;
 
     #selectionExpansionMultiParamWarningShown = false;
+
+    // A close-up transition invalidates any pending wheel zoom replay.
+    #wheelChartOwner = {};
 
     /**
      *
@@ -479,22 +486,22 @@ export default class SampleView extends ContainerView {
             (event) => {
                 const wheelEvent = event.wheelEvent;
                 if (this.locationManager.isCloseup() && !wheelEvent.ctrlKey) {
-                    this.locationManager.handleWheelEvent(wheelEvent);
+                    this.#scrollSamples(
+                        normalizeWheelScrollDelta(
+                            wheelEvent,
+                            this.childCoords.height
+                        )
+                    );
 
-                    const vScrollbar = this.#gridChild.scrollbars.vertical;
-                    if (vScrollbar) {
-                        vScrollbar.setViewportOffset(
-                            this.locationManager.getScrollOffset(),
-                            { notify: false, syncSmoother: true }
-                        );
-                    }
-
-                    this.sampleGroupView.updateRange();
-                    this.context.animator.requestRender();
-
-                    // Keep downstream zoom handling on the same wheel event, but
-                    // suppress vertical zooming once closeup scrolling consumes it.
-                    event.setWheelDeltas(wheelEvent.deltaX, 0);
+                    // Preserve horizontal navigation and authored wheel observers.
+                    // A vertical scroll consumes the entire delta vector.
+                    event.setWheelDeltas(
+                        Math.abs(wheelEvent.deltaX) >
+                            Math.abs(wheelEvent.deltaY)
+                            ? wheelEvent.deltaX
+                            : 0,
+                        0
+                    );
                 }
             },
             true
@@ -517,6 +524,22 @@ export default class SampleView extends ContainerView {
                 }
             }
         );
+    }
+
+    /** @param {number} delta */
+    #scrollSamples(delta) {
+        stopPanInertia(this.context.animator);
+        this.locationManager.setScrollOffset(
+            this.locationManager.getScrollOffset() + delta
+        );
+
+        this.#gridChild.scrollbars.vertical?.setViewportOffset(
+            this.locationManager.getScrollOffset(),
+            { notify: false, syncSmoother: true }
+        );
+
+        this.sampleGroupView.updateRange();
+        this.context.animator.requestRender();
     }
 
     /** Initialize view helper instances (attribute source, coords, location manager) */
@@ -1335,6 +1358,8 @@ export default class SampleView extends ContainerView {
      * @param {string} [sampleId]
      */
     #togglePeek(open, mouseY, sampleId) {
+        this.#wheelChartOwner = {};
+
         // Peek changes sample height every frame. Let legends redraw live scale
         // ranges, but postpone layout-packing data updates until it settles.
         const releaseLegendLayoutDataUpdates =
@@ -1708,14 +1733,72 @@ export default class SampleView extends ContainerView {
                 event.point.x,
                 event.point.y
             );
+            const inSidebar = this.sidebarCoords.containsPoint(
+                event.point.x,
+                event.point.y
+            );
 
             if (event.type === "wheelclaimprobe") {
-                if (inMainPaneZoomSurface) {
-                    const resolution =
-                        this.#gridChild.view.getScaleResolution("x");
-                    if (resolution?.isZoomable()) {
-                        event.claimWheel();
+                const wheelEvent = event.wheelEvent;
+                const resolution = this.#gridChild.view.getScaleResolution("x");
+                const supportsZoom =
+                    inMainPaneZoomSurface && resolution?.isZoomable();
+                const vertical =
+                    Math.abs(wheelEvent.deltaY) >= Math.abs(wheelEvent.deltaX);
+
+                if (event.wheelIntent === "scroll" && inMainPane) {
+                    // Give a nested Core viewport the first chance to scroll.
+                    this.#gridChild.view.propagateInteraction(event);
+                    if (event.wheelClaimed) {
+                        return;
                     }
+                }
+
+                if (
+                    event.wheelIntent !== "chart" &&
+                    !wheelEvent.ctrlKey &&
+                    this.locationManager.isCloseup() &&
+                    (inMainPaneZoomSurface || inSidebar) &&
+                    (vertical || !supportsZoom)
+                ) {
+                    const delta = normalizeWheelScrollDelta(
+                        wheelEvent,
+                        this.childCoords.height
+                    );
+                    if (
+                        delta !== 0 &&
+                        (event.wheelIntent === "default" ||
+                            this.locationManager.canScroll(delta))
+                    ) {
+                        if (event.wheelIntent === "default") {
+                            // Keep the normal capture/bubble route, without zoom inertia.
+                            event.claimWheel(this, { smooth: false });
+                        } else {
+                            event.claimWheel(this, {
+                                scroll: () => this.#scrollSamples(delta),
+                            });
+                        }
+                    }
+                    return;
+                }
+
+                if (event.wheelIntent === "scroll") {
+                    return;
+                }
+
+                if (inMainPane) {
+                    this.#gridChild.view.propagateInteraction(event);
+                    if (event.wheelClaimed) {
+                        // Pending chart input must not survive a peek transition.
+                        event.claimWheel(this.#wheelChartOwner, {
+                            smooth: event.wheelSmooth,
+                        });
+                        return;
+                    }
+                }
+
+                if (supportsZoom) {
+                    event.claimWheel(this.#wheelChartOwner);
                 }
                 return;
             }

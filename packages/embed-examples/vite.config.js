@@ -26,6 +26,7 @@ export default defineConfig({
                 "viewMutationApi/index": "viewMutationApi/index.html",
                 "inspectorOverlay/index": "inspectorOverlay/index.html",
                 "controls/index": "controls/index.html",
+                "cooperativeWheel/index": "cooperativeWheel/index.html",
                 "linkedEmbeds/index": "linkedEmbeds/index.html",
                 "dynamicNamedData/index": "dynamicNamedData/index.html",
                 "multipleDynamicSources/index":

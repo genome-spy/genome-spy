@@ -55,6 +55,12 @@ If you're using a touchpad, you can zoom the genome axis by performing a
 vertical two-finger gesture. Similarly, you can pan the view by performing a
 horizontal gesture.
 
+When the embedding application enables
+[cooperative wheel behavior](../api/embed-options.md), ordinary wheel and
+two-finger scrolling move the surrounding page. Hold ++ctrl++ to zoom the genome;
+horizontal gestures also require ++ctrl++ to pan. The embedding application may
+provide its own reminder of this behavior.
+
 ### Peeking samples
 
 The GenomeSpy app is designed for the exploration of large datasets containing
@@ -68,6 +74,10 @@ on the keyboard.
 Once the close-up view is activated, the zooming interaction will change to
 vertical scrolling. However, you can still zoom in and out by holding down the
 ++ctrl++ key while operating the mouse wheel or touchpad.
+
+In cooperative mode, scrolling over either the genomic data or the sample
+sidebar moves the samples in close-up view. At the top or bottom of the sample
+collection, further scrolling in that direction moves the surrounding page.
 
 <video autoplay muted controls class="screenshot">
   <source src="../../img/peeking.webm" type="video/webm">

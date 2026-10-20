@@ -1,0 +1,64 @@
+.introduction {
+    font-size: 1.1rem;
+}
+
+.wheel-hint {
+    max-width: none;
+    margin: 1.5rem 0 0;
+    padding: 0.9rem 1rem;
+    border-left: 3px solid var(--link);
+    background: #f1f6f8;
+    color: #384f5b;
+}
+
+kbd {
+    padding: 0.05em 0.3em;
+    border: 1px solid #c6ced3;
+    border-radius: 0.2rem;
+    background: white;
+    color: #384f5b;
+    font: inherit;
+    font-size: 0.9em;
+}
+
+main > section {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-light);
+}
+
+.example-number {
+    margin-bottom: 0.4rem;
+    color: var(--subtle-text);
+    font-size: 0.85rem;
+}
+
+h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.65rem;
+}
+
+.chart-surface,
+.cohort-surface {
+    width: 100%;
+    margin: 1.5rem 0 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.2rem;
+}
+
+.chart-surface {
+    min-height: 280px;
+}
+
+.cohort-surface {
+    height: 390px;
+}
+
+.caption {
+    color: var(--subtle-text);
+    font-size: 0.9rem;
+}
+
+.page-end {
+    min-height: 65vh;
+}

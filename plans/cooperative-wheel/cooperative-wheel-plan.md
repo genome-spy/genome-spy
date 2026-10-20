@@ -1,7 +1,7 @@
 # Cooperative wheel interaction
 
-Status: implementation in progress. Milestone 1 is complete. Each implementation
-milestone is committed separately after its focused verification.
+Status: implementation in progress. Milestones 1 and 2 are complete. Each
+implementation milestone is committed separately after its focused verification.
 
 Issue: https://github.com/genome-spy/genome-spy/issues/584
 
@@ -236,19 +236,19 @@ Tentative commit: `feat(core): add cooperative wheel navigation for embeds`
 
 ### 2. App cohort scrolling and embedding integration
 
-- [ ] Adapt `SampleView` to the shared ownership rules. In cooperative mode,
+- [x] Adapt `SampleView` to the shared ownership rules. In cooperative mode,
       represent sample scrolling on main and sidebar surfaces independently from
       genomic zoom; chain outward at close-up scroll boundaries.
-- [ ] Preserve overview/close-up and sidebar behavior in default mode, without
+- [x] Preserve overview/close-up and sidebar behavior in default mode, without
       introducing bookmark or provenance state, while applying sample-scroll
       deltas directly without synthetic inertia. Confirm inherited App options and
       Core/App forwarding need no duplicated public configuration. Smoke-test the
       existing React example in default mode; do not add a React options prop here.
-- [ ] Exercise App's main/sidebar matrix with real sample offsets and genomic
+- [x] Exercise App's main/sidebar matrix with real sample offsets and genomic
       domains, including close-up at the top/bottom and changing from overview to
       close-up during inertia. Use existing `sampleView.test.js` and
       `locationManager.test.js` seams; the embed option itself is instance-fixed.
-- [ ] Add a dedicated new demo at
+- [x] Add a dedicated new demo at
       `packages/embed-examples/src/cooperativeWheel/`, linked from the
       embed-examples index. Demonstrate page scrolling across a zoomable Core
       chart, internal viewport scrolling with outward chaining, and cooperative
@@ -261,6 +261,11 @@ Tentative commit: `feat(core): add cooperative wheel navigation for embeds`
 
 Affected consumers: embedded App, Core/App example hosts, existing React embeds,
 metadata/sample sidebar surfaces, and native event subscribers. No Core hint UI.
+
+Verified App/demo milestone: 70 focused App tests and App TypeScript pass.
+The new demo builds, and native Chrome wheel checks pass with Canvas2D, WebGL2,
+and simple WebGPU Core fixtures (App uses Canvas2D for the WebGPU demo variant).
+The existing React example also loads without browser errors.
 
 Tentative commit: `feat(app): support cooperative wheel scrolling in cohort views`
 
@@ -289,8 +294,8 @@ Tentative commit: `feat(app): support cooperative wheel scrolling in cohort view
       committing the completed/discarded record, then delete the plan in a later
       commit before creating a PR.
 
-This is an integration gate, not a separate implementation commit unless
-verification reveals an independently meaningful change. Follow the
+Record the final integration gate in its own commit, together with any fixes
+revealed by verification. Follow the
 `debug-genomespy-web`, `write-genomespy-docs`, and `test-genomespy-views` skills
 when their respective browser, docs, or structured-view workflows are needed.
 
