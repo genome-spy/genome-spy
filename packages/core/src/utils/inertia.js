@@ -46,6 +46,13 @@ export default class Inertia {
         this.smoother({ x: this.targetValue });
     }
 
+    /** Stop publication immediately and discard momentum before a new owner. */
+    stop() {
+        this.smoother.stop();
+        this.targetValue = this.lastValue;
+        this.callback = null;
+    }
+
     /**
      *
      * @param {number} value

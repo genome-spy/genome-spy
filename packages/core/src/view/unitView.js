@@ -144,6 +144,10 @@ export default class UnitView extends View {
                     eventConfig,
                     getEventFilterLocation(this.paramRuntime, source, "on")
                 );
+                const clearPredicate = createEventPredicate(
+                    clearEventConfig,
+                    getEventFilterLocation(this.paramRuntime, source, "clear")
+                );
 
                 const clearSelection = () => {
                     const selection = select.toggle
@@ -204,6 +208,22 @@ export default class UnitView extends View {
                     hoverSelection ? "mousemove" : eventConfig.type,
                     listener
                 );
+                if (
+                    eventConfig.type === "wheel" ||
+                    clearEventConfig?.type === "wheel"
+                ) {
+                    this.addInteractionListener("wheelclaimprobe", (event) => {
+                        if (
+                            event.wheelIntent !== "scroll" &&
+                            ((eventConfig.type === "wheel" &&
+                                eventPredicate(event.proxiedMouseEvent)) ||
+                                (clearEventConfig?.type === "wheel" &&
+                                    clearPredicate(event.proxiedMouseEvent)))
+                        ) {
+                            event.claimWheel(this, { smooth: false });
+                        }
+                    });
+                }
 
                 if (hoverSelection) {
                     // Hover selections are continuously derived from the picked
@@ -221,15 +241,6 @@ export default class UnitView extends View {
                 const clearHandledByHoverExit =
                     hoverSelection && clearEventConfig?.type === "mouseleave";
                 if (clearEventConfig && !clearHandledByHoverExit) {
-                    const clearPredicate = createEventPredicate(
-                        clearEventConfig,
-                        getEventFilterLocation(
-                            this.paramRuntime,
-                            source,
-                            "clear"
-                        )
-                    );
-
                     const clearListener = (
                         /** @type {import("../utils/interaction.js").default} */ event
                     ) => {

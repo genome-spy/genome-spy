@@ -47,6 +47,11 @@ export function isStillZooming() {
     return delta < 50;
 }
 
+/** @param {import("../utils/animator.js").default} animator */
+export function stopPanInertia(animator) {
+    zoomInteractionStates.get(animator)?.smoother?.stop();
+}
+
 /**
  *
  * @param {T} fn
@@ -136,7 +141,7 @@ export function interactionToZoom(
         }
 
         const handled =
-            Math.abs(wheelEvent.deltaX) < Math.abs(wheelEvent.deltaY)
+            Math.abs(wheelEvent.deltaX) <= Math.abs(wheelEvent.deltaY)
                 ? handleZoom({
                       x,
                       y,

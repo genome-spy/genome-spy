@@ -11,6 +11,15 @@ import Point from "./layout/point.js";
 import { getSpecErrorLocation } from "../utils/specError.js";
 import annotatedMatrix from "../../../../examples/docs/grammar/composition/surround/annotated-matrix.json" with { type: "json" };
 
+const wheelProbeSource = /** @type {WheelEvent} */ ({
+    type: "wheel",
+    deltaX: 0,
+    deltaY: -120,
+    deltaMode: 0,
+    ctrlKey: false,
+    preventDefault() {},
+});
+
 /** @param {import("./view.js").default} root @param {string} name */
 function plot(root, name) {
     return /** @type {import("./unitView.js").default} */ (
@@ -447,11 +456,10 @@ describe("nested surround", () => {
                 [24, false],
                 [matrix.coords.y + 20, true],
             ])) {
-                const probe = new Interaction(
-                    new Point(gapX, y),
-                    /** @type {UIEvent} */ (new Event("wheel")),
-                    "wheelclaimprobe"
-                );
+                const probe = new Interaction(new Point(gapX, y), {
+                    type: "wheelclaimprobe",
+                    sourceEvent: wheelProbeSource,
+                });
                 view.propagateInteraction(probe);
                 expect(probe.wheelClaimed).toBe(claimed);
             }
@@ -487,15 +495,19 @@ describe("nested surround", () => {
             const first = plot(view, "summary").coords;
             const probe = new Interaction(
                 new Point(first.x + first.width / 2, first.y2 + 4),
-                /** @type {UIEvent} */ (new Event("wheel")),
-                "wheelclaimprobe"
+                {
+                    type: "wheelclaimprobe",
+                    sourceEvent: wheelProbeSource,
+                }
             );
             view.propagateInteraction(probe);
             expect(probe.wheelClaimed).toBe(true);
             const emptyCorner = new Interaction(
                 new Point(first.x - 4, first.y + 4),
-                /** @type {UIEvent} */ (new Event("wheel")),
-                "wheelclaimprobe"
+                {
+                    type: "wheelclaimprobe",
+                    sourceEvent: wheelProbeSource,
+                }
             );
             expect(() => view.propagateInteraction(emptyCorner)).not.toThrow();
             expect(emptyCorner.wheelClaimed).toBe(false);
@@ -525,11 +537,10 @@ describe("nested surround", () => {
         });
         try {
             renderToLayout(view);
-            const probe = new Interaction(
-                new Point(10, 10),
-                /** @type {UIEvent} */ (new Event("wheel")),
-                "wheelclaimprobe"
-            );
+            const probe = new Interaction(new Point(10, 10), {
+                type: "wheelclaimprobe",
+                sourceEvent: wheelProbeSource,
+            });
             view.propagateInteraction(probe);
             expect(probe.wheelClaimed).toBe(false);
         } finally {

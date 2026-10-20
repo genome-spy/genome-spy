@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="./style.css" />
+        <title>Cooperative wheel navigation · GenomeSpy</title>
+    </head>
+
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <header>
+            <h1>Cooperative wheel navigation</h1>
+            <p class="introduction">
+                Charts and a scrollable page can share the mouse wheel. Scroll
+                through the examples below, then try zooming and scrolling
+                inside the visualizations.
+            </p>
+            <p class="wheel-hint">
+                Hold <kbd>Ctrl</kbd> while scrolling over a chart to zoom. A
+                trackpad pinch also zooms. This hint belongs to the embedding
+                page.
+            </p>
+        </header>
+
+        <main>
+            <section aria-labelledby="page-scroll-heading">
+                <p class="example-number">01 · Page scrolling</p>
+                <h2 id="page-scroll-heading">Continue down the page</h2>
+                <p>
+                    An ordinary wheel gesture over this chart scrolls the page.
+                    Hold <kbd>Ctrl</kbd> to zoom its horizontal scale, or drag
+                    the chart to pan. Scroll down to the next example when you
+                    are ready.
+                </p>
+                <div id="chart" class="chart-surface"></div>
+            </section>
+
+            <section aria-labelledby="viewport-heading">
+                <p class="example-number">02 · A scrollable viewport</p>
+                <h2 id="viewport-heading">Scroll the rows, then the page</h2>
+                <p>
+                    This chart has more rows than fit in its viewport. Ordinary
+                    wheel input scrolls the rows directly. At the top or bottom,
+                    further wheel input continues scrolling the page, like an
+                    overflowing DOM element. Hold <kbd>Ctrl</kbd> to zoom the
+                    horizontal scale instead.
+                </p>
+                <div id="viewport" class="chart-surface"></div>
+                <p class="caption">
+                    The narrow scrollbar on the right shows your position among
+                    the 36 rows.
+                </p>
+            </section>
+
+            <section aria-labelledby="app-heading">
+                <p class="example-number">03 · An embedded cohort</p>
+                <h2 id="app-heading">Switch between overview and closeup</h2>
+                <p>
+                    In overview, ordinary wheel input scrolls the page. To
+                    inspect individual samples, right-click a sample and choose
+                    <strong>Open closeup</strong>. Now wheel input scrolls the
+                    samples over both the chart and the metadata on the left. At
+                    either end, further input scrolls the page.
+                </p>
+                <p>
+                    Hold <kbd>Ctrl</kbd> over the main chart to zoom. Use the
+                    context menu's <strong>Close closeup</strong> to return to
+                    overview. You can also hold <kbd>E</kbd> over a sample for a
+                    temporary closeup.
+                </p>
+                <div id="cohort" class="cohort-surface"></div>
+                <p class="caption">
+                    All 32 samples, their metadata, and their segments are
+                    generated locally for this example.
+                </p>
+            </section>
+
+            <section class="page-end" aria-labelledby="end-heading">
+                <p class="example-number">Keep scrolling</p>
+                <h2 id="end-heading">The surrounding page stays in control</h2>
+                <p>
+                    Scroll back up to try the same boundaries in the other
+                    direction. Each embed enables
+                    <code>wheelBehavior: "cooperative"</code>; the host page
+                    provides these instructions using ordinary HTML.
+                </p>
+                <a href="../">Explore more embedding examples →</a>
+            </section>
+        </main>
+
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

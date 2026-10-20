@@ -1697,31 +1697,29 @@ export default class GridView extends ContainerView {
             const pointedChild = this.findPointedChild(event.point);
             const pointedView = pointedChild?.view;
 
-            if (event.type === "wheelclaimprobe") {
-                this.#propagateWheelClaimProbe(event, pointedView);
-                return;
-            }
-
-            this.#keyboardZoomController?.handlePointerEvent(
-                pointedChild,
-                event
-            );
-
-            for (const scrollbar of Object.values(
-                pointedChild?.scrollbars ?? {}
-            )) {
-                propagateInteractionSurface(
-                    event,
-                    () =>
-                        scrollbar.coords.containsPoint(
-                            event.point.x,
-                            event.point.y
-                        ),
-                    () => scrollbar.propagateInteraction(event)
+            const isWheelProbe = event.type === "wheelclaimprobe";
+            if (!isWheelProbe) {
+                this.#keyboardZoomController?.handlePointerEvent(
+                    pointedChild,
+                    event
                 );
 
-                if (event.stopped) {
-                    return;
+                for (const scrollbar of Object.values(
+                    pointedChild?.scrollbars ?? {}
+                )) {
+                    propagateInteractionSurface(
+                        event,
+                        () =>
+                            scrollbar.coords.containsPoint(
+                                event.point.x,
+                                event.point.y
+                            ),
+                        () => scrollbar.propagateInteraction(event)
+                    );
+
+                    if (event.stopped) {
+                        return;
+                    }
                 }
             }
 
@@ -1739,9 +1737,14 @@ export default class GridView extends ContainerView {
                     .includes(annotationLayer);
             if (pointedAnnotation) {
                 annotationLayer.propagateInteraction(event);
-                if (event.stopped) {
+                if (event.stopped || (isWheelProbe && event.wheelClaimed)) {
                     return;
                 }
+            }
+
+            if (isWheelProbe) {
+                this.#propagateWheelClaimProbe(event, pointedChild);
+                return;
             }
 
             if (!pointedView) {
@@ -1801,19 +1804,35 @@ export default class GridView extends ContainerView {
      * Claims a wheel only when the pointed surface would consume a wheel zoom.
      *
      * @param {import("../../utils/interaction.js").default} event
-     * @param {View | undefined} pointedView
+     * @param {GridChild | undefined} pointedChild
      */
-    #propagateWheelClaimProbe(event, pointedView) {
+    #propagateWheelClaimProbe(event, pointedChild) {
+        const pointedView = pointedChild?.view;
+        pointedView?.propagateInteraction(event);
+        if (event.stopped || event.wheelClaimed) {
+            return;
+        }
+
+        if (event.wheelIntent === "scroll") {
+            // Claim on unwind so intervening containers, including App sample
+            // scrolling, get priority over this enclosing viewport.
+            const scrollbar = pointedChild?.scrollbars.vertical;
+            const scroll = scrollbar?.getWheelScroll(event.wheelEvent);
+            if (scroll) {
+                event.claimWheel(scrollbar, { scroll });
+            }
+            return;
+        }
+
         if (!pointedView) {
             if (this.#getGapZoomTarget(event.point)) {
-                event.claimWheel();
+                event.claimWheel(this);
             }
             return;
         }
 
         const target = getZoomInteractionTarget(pointedView, event.point);
         if (!target) {
-            pointedView.propagateInteraction(event);
             return;
         }
 
@@ -1823,7 +1842,7 @@ export default class GridView extends ContainerView {
                 (resolutions) => resolutions.size > 0
             )
         ) {
-            event.claimWheel();
+            event.claimWheel(target.view);
         }
     }
 

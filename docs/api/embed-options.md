@@ -2,6 +2,38 @@
 
 The `embed` function accepts an optional options object.
 
+## Wheel behavior
+
+For visualizations embedded in a scrollable page, cooperative wheel behavior
+lets visitors scroll through the visualization and hold Ctrl to zoom:
+
+```js
+const api = await embed(container, spec, {
+  wheelBehavior: "cooperative",
+});
+```
+
+Ordinary vertical wheel input scrolls the innermost overflowing vertical
+viewport that can move in that direction. At its boundary, subsequent wheel
+events scroll an enclosing viewport or the page. Each event has one scroll
+destination; unused distance is not transferred at a boundary. Internal
+scrolling applies wheel deltas directly, without added inertia. Line deltas
+use 16 CSS pixels per line; page deltas use the owning viewport's height.
+
+Ctrl+wheel retains chart zooming and horizontal panning, including trackpad
+pinch events reported by the browser with Ctrl pressed. Ordinary horizontal
+wheel input remains available to the browser. Cooperative mode also reserves
+ordinary wheel input for scrolling when a specification defines wheel-based
+selections. Ctrl+wheel preserves those selections and their authored event
+filters, including interval resizing before chart zooming.
+
+The embedding application provides any Ctrl-zoom hint. GenomeSpy adds no hint
+UI. Native [event subscribers](./instance.md) still run before view handling
+and can override it with `preventViewDefault()`.
+
+Omitting the option, or using `wheelBehavior: "default"`, retains ordinary
+wheel chart navigation. The option is fixed when the instance is embedded.
+
 ## Rendering backend
 
 GenomeSpy uses WebGL2 when available. The default `renderer: "auto"` setting

@@ -4,6 +4,7 @@ import { startDocumentDrag } from "../../utils/documentDrag.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
+import { normalizeWheelScrollDelta } from "../../utils/interactionEvent.js";
 
 /**
  * This class represents a scrollbar thumb that can be used within a grid view
@@ -170,6 +171,31 @@ export default class Scrollbar extends UnitView {
      */
     canScroll() {
         return this.#getMaxViewportOffset() > 0;
+    }
+
+    /**
+     * @param {import("../../utils/interactionEvent.js").WheelLikeEvent} event
+     * @returns {(() => void) | undefined}
+     */
+    getWheelScroll(event) {
+        const delta = normalizeWheelScrollDelta(
+            event,
+            this.#viewportCoords.height
+        );
+        const next = clamp(
+            this.viewportOffset + delta,
+            0,
+            this.#getMaxViewportOffset()
+        );
+        if (next === this.viewportOffset) {
+            return;
+        }
+
+        return () => {
+            this.interpolateViewportOffset.stop();
+            this.setViewportOffset(next, { syncSmoother: true });
+            this.context.animator.requestRender();
+        };
     }
 
     /**

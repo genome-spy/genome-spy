@@ -16,6 +16,8 @@
  *
  * @typedef {object} WheelClaimProbeEvent
  * @prop {"wheelclaimprobe"} type
+ * @prop {WheelEvent} sourceEvent Original event, retained for filters and direction.
+ * @prop {"default" | "scroll" | "chart"} [intent]
  */
 
 /**
@@ -28,6 +30,26 @@
 /**
  * @typedef {UIEvent | WheelLikeEvent | TouchGestureEvent | WheelClaimProbeEvent} InteractionUiEvent
  */
+
+/**
+ * Wheel scrolling uses 16 CSS pixels per line and the owning viewport per page.
+ * Native browser scrolling retains its original units and event.
+ *
+ * @param {WheelLikeEvent} event
+ * @param {number} viewportHeight
+ */
+export function normalizeWheelScrollDelta(event, viewportHeight) {
+    switch (event.deltaMode) {
+        case 0:
+            return event.deltaY;
+        case 1:
+            return event.deltaY * 16;
+        case 2:
+            return event.deltaY * viewportHeight;
+        default:
+            throw new Error("Unknown wheel delta mode: " + event.deltaMode);
+    }
+}
 
 /**
  * @param {unknown} eventLike

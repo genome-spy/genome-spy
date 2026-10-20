@@ -102,7 +102,10 @@ test("explicit domains keep initially empty and replaced windows navigable", asy
         const b = child.facetCoords.get(["B"]);
         const gap = new Point(a.x + 25, (b.y2 + a.y) / 2);
         expect(
-            dispatcher.dispatch(gap, { type: "wheelclaimprobe" }).wheelClaimed
+            dispatcher.dispatch(gap, {
+                type: "wheelclaimprobe",
+                sourceEvent: new WheelEvent("wheel", { deltaY: -120 }),
+            }).wheelClaimed
         ).toBe(true);
         const beforeZoom = resolution.getDomain().slice();
         const wheel = new WheelEvent("wheel", {
@@ -419,7 +422,10 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
         facetId: ["A"],
     });
     expect(
-        dispatcher.dispatch(point, { type: "wheelclaimprobe" }).wheelClaimed
+        dispatcher.dispatch(point, {
+            type: "wheelclaimprobe",
+            sourceEvent: new WheelEvent("wheel", { deltaY: -120 }),
+        }).wheelClaimed
     ).toBe(true);
     expect(zoom).not.toHaveBeenCalled();
     const wheel = new WheelEvent("wheel", { deltaY: -300, cancelable: true });
@@ -481,7 +487,10 @@ test.each(/** @type {const} */ (["row", "column"]))(
             dispatcher.dispatch(gap, mouse("click", gap)).target
         ).toBeUndefined();
         expect(
-            dispatcher.dispatch(gap, { type: "wheelclaimprobe" }).wheelClaimed
+            dispatcher.dispatch(gap, {
+                type: "wheelclaimprobe",
+                sourceEvent: new WheelEvent("wheel", { deltaY: -120 }),
+            }).wheelClaimed
         ).toBe(true);
 
         const resolution = child.getScaleResolution(channel);
@@ -585,7 +594,10 @@ test.each([false, true])(
         const gap = new Point(a.x + a.width / 4, a.y2 + 2);
         expect(facet.getInteractionCell(gap)).toBeUndefined();
         expect(
-            dispatcher.dispatch(gap, { type: "wheelclaimprobe" }).wheelClaimed
+            dispatcher.dispatch(gap, {
+                type: "wheelclaimprobe",
+                sourceEvent: new WheelEvent("wheel", { deltaY: -120 }),
+            }).wheelClaimed
         ).toBe(true);
         dispatcher.dispatch(gap, new WheelEvent("wheel", { deltaY: -300 }));
         expect(child.getScaleResolution("x").getDomain()).toEqual([1.25, 6.25]);

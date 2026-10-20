@@ -2,7 +2,7 @@ import UnitView from "../view/unitView.js";
 import { VISIT_STOP } from "../view/view.js";
 import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
-import { isStillZooming } from "../view/zoom.js";
+import { isStillZooming, stopPanInertia } from "../view/zoom.js";
 import createTooltipContext from "../tooltip/tooltipContext.js";
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
@@ -40,6 +40,13 @@ export default class InteractionController {
     #currentHover;
     /** @type {Inertia} */
     #wheelInertia;
+
+    /** @type {object | undefined} */
+    #wheelOwner;
+
+    /** @type {"default" | "cooperative"} */
+    #wheelBehavior;
+
     /** @type {Point} */
     #mouseDownCoords;
     /** @type {Point | undefined} */
@@ -81,6 +88,7 @@ export default class InteractionController {
      * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
      * @param {(error: unknown) => void} [options.reportError]
      * @param {() => boolean} [options.canPick]
+     * @param {"default" | "cooperative"} [options.wheelBehavior]
      */
     constructor({
         viewRoot,
@@ -93,8 +101,10 @@ export default class InteractionController {
         readPickingId,
         reportError,
         canPick,
+        wheelBehavior = "default",
     }) {
         this.#viewRoot = viewRoot;
+        this.#wheelBehavior = wheelBehavior;
         this.#canvas = canvas;
         this.#tooltip = tooltip;
         this.#animator = animator;
@@ -401,6 +411,9 @@ export default class InteractionController {
                     this.#reportError
                 );
                 if (viewDefaultPrevented) {
+                    if (event.type === "wheel") {
+                        this.#stopWheelInteraction();
+                    }
                     return;
                 }
 
@@ -419,6 +432,9 @@ export default class InteractionController {
                     event.type !== "contextmenu" &&
                     this.#isInteractionFrozen()
                 ) {
+                    if (event.type === "wheel") {
+                        this.#stopWheelInteraction();
+                    }
                     return;
                 }
 
@@ -460,13 +476,6 @@ export default class InteractionController {
                     return;
                 }
 
-                /**
-                 * @param {MouseEvent} dispatchedEvent
-                 */
-                const dispatchEvent = (dispatchedEvent) => {
-                    dispatchInteraction(point, dispatchedEvent);
-                };
-
                 if (event.type != "wheel") {
                     this.#wheelInertia.cancel();
                 }
@@ -483,55 +492,94 @@ export default class InteractionController {
 
                     const wheelEvent = /** @type {WheelEvent} */ (event);
 
-                    if (
+                    const horizontal =
                         Math.abs(wheelEvent.deltaX) >
-                        Math.abs(wheelEvent.deltaY)
+                        Math.abs(wheelEvent.deltaY);
+                    const cooperative = this.#wheelBehavior === "cooperative";
+                    const ordinary = cooperative && !wheelEvent.ctrlKey;
+                    if (
+                        (!wheelEvent.deltaX && !wheelEvent.deltaY) ||
+                        (ordinary && horizontal)
                     ) {
-                        // If the viewport is panned (horizontally) using the wheel (touchpad),
-                        // the picking buffer becomes stale and needs redrawing. However, we
-                        // optimize by just clearing the currently hovered item so that snapping
-                        // doesn't work incorrectly when zooming in/out.
+                        this.#stopWheelInteraction();
+                        return;
+                    }
 
-                        // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
-                        this.#clearHover();
-
-                        this.#wheelInertia.cancel();
-                    } else {
-                        // We must decide on the native wheel event whether to
-                        // call preventDefault() (to block page scrolling).
-                        // This probe asks the pointed view hierarchy to claim
-                        // wheel ownership without running real wheel side
-                        // effects first. Inertia is layered on top of that
-                        // decision and is not the reason for the probe.
-                        const probeEvent = dispatchInteraction(point, {
+                    // Resolve the consumer before cancelling the native source.
+                    // Probes retain the source so authored filters see modifiers.
+                    const probe = () =>
+                        dispatchInteraction(point, {
                             type: "wheelclaimprobe",
+                            sourceEvent: wheelEvent,
+                            intent: ordinary
+                                ? "scroll"
+                                : cooperative
+                                  ? "chart"
+                                  : "default",
                         });
+                    const claimed = probe();
 
-                        if (probeEvent.wheelClaimed) {
-                            // Vertical wheeling zooms.
-                            // We use inertia to generate fake wheel events for smoother zooming
+                    if (claimed.wheelScroll) {
+                        this.#stopWheelInteraction();
+                        wheelEvent.preventDefault();
+                        claimed.wheelScroll();
+                        return;
+                    } else if (ordinary) {
+                        this.#stopWheelInteraction();
+                        return;
+                    }
 
+                    if (!claimed.wheelClaimed) {
+                        this.#stopWheelInteraction();
+                        if (cooperative) {
+                            return;
+                        }
+                    } else {
+                        stopPanInertia(this.#animator);
+                        if (this.#wheelOwner !== claimed.wheelOwner) {
+                            this.#stopWheelInteraction();
+                        }
+                        this.#wheelOwner = claimed.wheelOwner;
+                        wheelEvent.preventDefault();
+
+                        if (!horizontal && claimed.wheelSmooth) {
+                            const owner = claimed.wheelOwner;
                             const template = makeEventTemplate(wheelEvent);
-
                             this.#wheelInertia.setMomentum(
                                 wheelEvent.deltaY *
                                     (wheelEvent.deltaMode ? 80 : 1),
                                 (delta) => {
-                                    const e = new WheelEvent("wheel", {
-                                        ...template,
-                                        deltaMode: 0,
-                                        deltaX: 0,
-                                        deltaY: delta,
-                                    });
-                                    dispatchEvent(e);
+                                    const current = probe();
+                                    if (
+                                        !current.wheelClaimed ||
+                                        current.wheelScroll ||
+                                        current.wheelOwner !== owner ||
+                                        !current.wheelSmooth
+                                    ) {
+                                        this.#stopWheelInteraction();
+                                        return;
+                                    }
+
+                                    dispatchInteraction(
+                                        point,
+                                        new WheelEvent("wheel", {
+                                            ...template,
+                                            ctrlKey: wheelEvent.ctrlKey,
+                                            deltaMode: 0,
+                                            deltaX: 0,
+                                            deltaY: delta,
+                                        })
+                                    );
                                 }
                             );
-
-                            wheelEvent.preventDefault();
                             return;
-                        } else {
-                            this.#wheelInertia.cancel();
                         }
+                    }
+
+                    // Horizontal panning and selection-only gestures are direct.
+                    this.#wheelInertia.stop();
+                    if (horizontal) {
+                        this.#clearHover();
                     }
                 }
 
@@ -681,7 +729,14 @@ export default class InteractionController {
             "dblclick",
             "mouseenter",
             "mouseleave",
-        ].forEach((type) => addListener(canvas, type, listener));
+        ].forEach((type) =>
+            addListener(
+                canvas,
+                type,
+                listener,
+                type === "wheel" ? { passive: false } : undefined
+            )
+        );
 
         /**
          * @param {number} clientX
@@ -858,6 +913,7 @@ export default class InteractionController {
         });
 
         return () => {
+            this.#stopWheelInteraction();
             for (const remove of removers) {
                 remove();
             }
@@ -865,6 +921,12 @@ export default class InteractionController {
             this.#markEventListeners.clear();
             this.#hoverListeners.clear();
         };
+    }
+
+    #stopWheelInteraction() {
+        this.#wheelInertia.stop();
+        this.#wheelOwner = undefined;
+        stopPanInertia(this.#animator);
     }
 
     /**

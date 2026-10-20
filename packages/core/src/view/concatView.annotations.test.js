@@ -438,7 +438,7 @@ describe("container annotation contracts", () => {
         }
     );
 
-    test("unclaimed annotation wheel gestures reach nested track navigation", async () => {
+    test("annotation wheel claims take priority over nested track navigation", async () => {
         const spec = makeSpec("x");
         for (const track of spec.vconcat) {
             track.encoding.x = {
@@ -446,6 +446,16 @@ describe("container annotation contracts", () => {
                 scale: { domain: [0, 100], zoom: true },
             };
         }
+        spec.annotate[0].params = [
+            {
+                name: "picked",
+                select: {
+                    type: "point",
+                    toggle: false,
+                    on: { type: "wheel", filter: "event.altKey" },
+                },
+            },
+        ];
         const view = await createAndInitialize(
             { vconcat: [{ vconcat: spec.vconcat }], annotate: spec.annotate },
             ConcatView
@@ -465,6 +475,20 @@ describe("container annotation contracts", () => {
             inner.children[0].coords.x + 60,
             (inner.children[0].coords.y2 + inner.children[1].coords.y) / 2
         );
+        const selection = annotation.paramRuntime.getValue("picked");
+        // Ownership queries must honor the annotation filter without applying
+        // either selection or navigation side effects.
+        for (const altKey of [false, true]) {
+            const probe = new Interaction(point, {
+                type: "wheelclaimprobe",
+                sourceEvent: new WheelEvent("wheel", { deltaY: -120, altKey }),
+                intent: "chart",
+            });
+            view.propagateInteraction(probe);
+            expect(probe.wheelOwner).toBe(altKey ? annotation : inner);
+            expect(annotation.paramRuntime.getValue("picked")).toBe(selection);
+            expect(zoom).not.toHaveBeenCalled();
+        }
         view.propagateInteraction(
             new Interaction(point, new WheelEvent("wheel", { deltaY: -120 }))
         );

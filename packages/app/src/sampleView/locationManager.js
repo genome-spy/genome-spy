@@ -185,12 +185,14 @@ export class LocationManager {
         };
     }
 
-    /**
-     *
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").WheelLikeEvent} wheelEvent
-     */
-    handleWheelEvent(wheelEvent) {
-        this.setScrollOffset(this.#scrollOffset + wheelEvent.deltaY);
+    /** @param {number} delta */
+    canScroll(delta) {
+        return (
+            (delta < 0 && this.#scrollOffset > 0) ||
+            (delta > 0 &&
+                this.#scrollOffset <
+                    this.#scrollableHeight - this.#locationContext.getHeight())
+        );
     }
 
     #callOnLocationUpdate() {

@@ -2392,7 +2392,17 @@ describe("GridView wheel zoom", () => {
 
         const interaction = new Interaction(
             point,
-            /** @type {any} */ ({ type: "wheelclaimprobe" })
+            /** @type {any} */ ({
+                type: "wheelclaimprobe",
+                sourceEvent: /** @type {WheelEvent} */ ({
+                    type: "wheel",
+                    deltaX: 0,
+                    deltaY: -120,
+                    deltaMode: 0,
+                    ctrlKey: false,
+                    preventDefault() {},
+                }),
+            })
         );
 
         concatView.propagateInteraction(interaction);
