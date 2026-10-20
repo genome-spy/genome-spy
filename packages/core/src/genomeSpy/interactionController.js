@@ -476,13 +476,6 @@ export default class InteractionController {
                     return;
                 }
 
-                /**
-                 * @param {MouseEvent} dispatchedEvent
-                 */
-                const dispatchEvent = (dispatchedEvent) => {
-                    dispatchInteraction(point, dispatchedEvent);
-                };
-
                 if (event.type != "wheel") {
                     this.#wheelInertia.cancel();
                 }
@@ -567,7 +560,8 @@ export default class InteractionController {
                                         return;
                                     }
 
-                                    dispatchEvent(
+                                    dispatchInteraction(
+                                        point,
                                         new WheelEvent("wheel", {
                                             ...template,
                                             ctrlKey: wheelEvent.ctrlKey,

@@ -607,9 +607,7 @@ export class IntervalSelectionController {
             /** @param {import("../../utils/interaction.js").default} event */
             const canClear = (event) =>
                 clearEventPredicate(event.proxiedMouseEvent) &&
-                isInsideHost(event.point) &&
-                ownsInteraction(event.point) &&
-                !!selectionRectAt(event.point);
+                this.#containsPoint(event.point);
 
             if (clearEventConfig.type === "wheel") {
                 this.#addViewInteractionListener(
@@ -645,11 +643,9 @@ export class IntervalSelectionController {
             return (
                 !!zoomEventConfig &&
                 zoomEventPredicate(createPrimitiveEventProxy(wheelEvent)) &&
-                isInsideHost(event.point) &&
-                ownsInteraction(event.point) &&
+                this.#containsPoint(event.point) &&
                 wheelEvent.deltaY !== 0 &&
                 Math.abs(wheelEvent.deltaX) <= Math.abs(wheelEvent.deltaY) &&
-                !!selectionRectAt(event.point) &&
                 isActiveIntervalSelection(selectionExpr())
             );
         };

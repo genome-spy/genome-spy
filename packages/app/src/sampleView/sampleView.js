@@ -1765,19 +1765,13 @@ export default class SampleView extends ContainerView {
                         wheelEvent,
                         this.childCoords.height
                     );
-                    if (
-                        delta !== 0 &&
-                        (event.wheelIntent === "default" ||
-                            this.locationManager.canScroll(delta))
-                    ) {
-                        if (event.wheelIntent === "default") {
-                            // Keep the normal capture/bubble route, without zoom inertia.
-                            event.claimWheel(this, { smooth: false });
-                        } else {
-                            event.claimWheel(this, {
-                                scroll: () => this.#scrollSamples(delta),
-                            });
-                        }
+                    if (delta !== 0 && event.wheelIntent === "default") {
+                        // Keep the normal capture/bubble route, without zoom inertia.
+                        event.claimWheel(this, { smooth: false });
+                    } else if (this.locationManager.canScroll(delta)) {
+                        event.claimWheel(this, {
+                            scroll: () => this.#scrollSamples(delta),
+                        });
                     }
                     return;
                 }
@@ -1859,11 +1853,7 @@ export default class SampleView extends ContainerView {
 
             propagateInteractionSurface(
                 event,
-                () =>
-                    this.sidebarCoords.containsPoint(
-                        event.point.x,
-                        event.point.y
-                    ),
+                () => inSidebar,
                 () => this.#sidebarView.propagateInteraction(event)
             );
         });

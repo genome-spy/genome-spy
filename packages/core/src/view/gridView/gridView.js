@@ -1697,31 +1697,29 @@ export default class GridView extends ContainerView {
             const pointedChild = this.findPointedChild(event.point);
             const pointedView = pointedChild?.view;
 
-            if (event.type === "wheelclaimprobe") {
-                this.#propagateWheelClaimProbe(event, pointedChild);
-                return;
-            }
-
-            this.#keyboardZoomController?.handlePointerEvent(
-                pointedChild,
-                event
-            );
-
-            for (const scrollbar of Object.values(
-                pointedChild?.scrollbars ?? {}
-            )) {
-                propagateInteractionSurface(
-                    event,
-                    () =>
-                        scrollbar.coords.containsPoint(
-                            event.point.x,
-                            event.point.y
-                        ),
-                    () => scrollbar.propagateInteraction(event)
+            const isWheelProbe = event.type === "wheelclaimprobe";
+            if (!isWheelProbe) {
+                this.#keyboardZoomController?.handlePointerEvent(
+                    pointedChild,
+                    event
                 );
 
-                if (event.stopped) {
-                    return;
+                for (const scrollbar of Object.values(
+                    pointedChild?.scrollbars ?? {}
+                )) {
+                    propagateInteractionSurface(
+                        event,
+                        () =>
+                            scrollbar.coords.containsPoint(
+                                event.point.x,
+                                event.point.y
+                            ),
+                        () => scrollbar.propagateInteraction(event)
+                    );
+
+                    if (event.stopped) {
+                        return;
+                    }
                 }
             }
 
@@ -1739,9 +1737,14 @@ export default class GridView extends ContainerView {
                     .includes(annotationLayer);
             if (pointedAnnotation) {
                 annotationLayer.propagateInteraction(event);
-                if (event.stopped) {
+                if (event.stopped || (isWheelProbe && event.wheelClaimed)) {
                     return;
                 }
+            }
+
+            if (isWheelProbe) {
+                this.#propagateWheelClaimProbe(event, pointedChild);
+                return;
             }
 
             if (!pointedView) {
@@ -1805,23 +1808,6 @@ export default class GridView extends ContainerView {
      */
     #propagateWheelClaimProbe(event, pointedChild) {
         const pointedView = pointedChild?.view;
-        const annotation = this.getAnnotationLayer();
-        if (
-            annotation &&
-            this.getTrackPlotGeometry(
-                this.#getConcatSharedChannel()
-            )?.viewport.containsPoint(event.point.x, event.point.y) &&
-            this.context
-                .getCurrentHover()
-                ?.mark?.unitView?.getLayoutAncestors()
-                .includes(annotation)
-        ) {
-            annotation.propagateInteraction(event);
-            if (event.stopped || event.wheelClaimed) {
-                return;
-            }
-        }
-
         pointedView?.propagateInteraction(event);
         if (event.stopped || event.wheelClaimed) {
             return;
