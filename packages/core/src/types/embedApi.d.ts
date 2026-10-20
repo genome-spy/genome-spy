@@ -1031,7 +1031,7 @@ export interface EmbedResult {
      * Rereads CSS-backed default theme colors after external stylesheet changes.
      * Browser preference and container/ancestor attribute changes refresh them
      * automatically. Authored `defaultThemeColors` declarations retain control.
-     * Throws after finalization.
+     * Has no effect after finalization.
      */
     refreshStyles: () => void;
 

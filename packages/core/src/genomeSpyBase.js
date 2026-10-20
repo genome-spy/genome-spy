@@ -242,10 +242,9 @@ export default class GenomeSpy {
 
     /** Refreshes CSS-backed defaults after external stylesheet changes. */
     refreshStyles() {
-        if (this.#destroyed) {
-            throw new Error("Cannot refresh styles on a finalized embed.");
+        if (!this.#destroyed) {
+            this.#refreshStyles();
         }
-        this.#refreshStyles();
     }
 
     /**

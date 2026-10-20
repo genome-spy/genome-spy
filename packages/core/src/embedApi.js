@@ -52,12 +52,7 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
 
         finalize,
 
-        refreshStyles() {
-            if (!isActive()) {
-                throw new Error("Cannot refresh styles on a finalized embed.");
-            }
-            genomeSpy.refreshStyles();
-        },
+        refreshStyles: genomeSpy.refreshStyles.bind(genomeSpy),
 
         addEventListener: genomeSpy.addEventListener.bind(genomeSpy),
         removeEventListener: genomeSpy.removeEventListener.bind(genomeSpy),

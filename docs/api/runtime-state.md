@@ -329,6 +329,7 @@ api.refreshStyles();
 This reads the current CSS and publishes a changed palette through the normal
 parameter graph. Browser preference events and container/ancestor attribute
 changes already trigger this refresh. GenomeSpy does not poll styles.
+Calling `refreshStyles()` after finalization has no effect.
 
 An application can also publish a complete
 [`defaultThemeColors` palette](../grammar/config.md#default-theme-palette):

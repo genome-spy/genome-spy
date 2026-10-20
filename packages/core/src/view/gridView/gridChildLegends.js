@@ -389,44 +389,6 @@ function resolveLegendOrient(legend, legendParent, registerDisposer) {
 }
 
 /**
- * @param {import("../../spec/legend.js").LegendConfig} legend
- * @param {import("../view.js").default} legendParent
- * @param {(disposer: () => void) => void} registerDisposer
- * @param {() => void} listener
- * @returns {ResolvedLegendConfig}
- */
-function resolveLegendProps(legend, legendParent, registerDisposer, listener) {
-    const orientedLegend = resolveLegendOrient(
-        legend,
-        legendParent,
-        registerDisposer
-    );
-
-    const paintProps = {};
-    /** @type {ResolvedLegendConfig} */
-    const otherProps = {};
-    for (const [key, value] of Object.entries(orientedLegend)) {
-        Object.assign(LEGEND_PAINT_PROPS.has(key) ? paintProps : otherProps, {
-            [key]: value,
-        });
-    }
-
-    return Object.assign(
-        activateExprRefProps(
-            legendParent.paramRuntime,
-            otherProps,
-            (props) => {
-                if (props.has("disable")) {
-                    listener();
-                }
-            },
-            registerDisposer
-        ),
-        paintProps
-    );
-}
-
-/**
  * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
  * @param {import("../containerView.js").default} layoutParent
  * @returns {Promise<LegendView>}
@@ -456,26 +418,40 @@ export async function createGridChildLegend(definition, layoutParent) {
     const legendDisposers = [];
     /** @type {LegendView | undefined} */
     let legend;
-    const legendProps = resolveLegendProps(
-        Object.fromEntries(
-            Object.entries(definition.legend).map(([key, value]) => [
-                key,
-                LEGEND_PAINT_PROPS.has(key)
-                    ? scopeExpression(value, legendParent.paramRuntime)
-                    : value,
-            ])
-        ),
+    const orientedLegend = resolveLegendOrient(
+        definition.legend,
         legendParent,
-        (disposer) => legendDisposers.push(disposer),
-        () => {
-            if (!legend) {
-                throw new Error("Legend has not been initialized!");
-            }
-
-            legend.invalidateSizeCache();
-
-            legend.context.requestLayoutReflow();
+        (disposer) => legendDisposers.push(disposer)
+    );
+    /** @type {Record<string, any>} */
+    const paintProps = {};
+    /** @type {Record<string, any>} */
+    const otherProps = {};
+    for (const [key, value] of Object.entries(orientedLegend)) {
+        if (LEGEND_PAINT_PROPS.has(key)) {
+            paintProps[key] = scopeExpression(value, legendParent.paramRuntime);
+        } else {
+            otherProps[key] = value;
         }
+    }
+
+    const legendProps = Object.assign(
+        activateExprRefProps(
+            legendParent.paramRuntime,
+            otherProps,
+            (props) => {
+                if (props.has("disable")) {
+                    if (!legend) {
+                        throw new Error("Legend has not been initialized!");
+                    }
+
+                    legend.invalidateSizeCache();
+                    legend.context.requestLayoutReflow();
+                }
+            },
+            (disposer) => legendDisposers.push(disposer)
+        ),
+        paintProps
     );
     // The legend definition and first scale contributor can be different views
     // when legends are collected. Inherited mark styling keeps the latter scope.
@@ -492,10 +468,9 @@ export async function createGridChildLegend(definition, layoutParent) {
               )
             : undefined;
     if (symbolStyle) {
-        for (const [key, value] of Object.entries(symbolStyle.mark)) {
-            Object.assign(symbolStyle.mark, {
-                [key]: scopeExpression(value, sourceView.paramRuntime),
-            });
+        const styleMark = /** @type {Record<string, any>} */ (symbolStyle.mark);
+        for (const [key, value] of Object.entries(styleMark)) {
+            styleMark[key] = scopeExpression(value, sourceView.paramRuntime);
         }
         const styleEncoding =
             /** @type {Record<string, import("../../spec/channel.js").ValueDef>} */ (

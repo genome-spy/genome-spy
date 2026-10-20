@@ -15,6 +15,7 @@ const { AppMock } = vi.hoisted(() => ({
         };
         this.genomeSpy = {
             destroy: vi.fn(),
+            refreshStyles: vi.fn(),
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
             getNamedScaleResolutions: vi.fn(() => new Map()),

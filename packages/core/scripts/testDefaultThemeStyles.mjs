@@ -285,12 +285,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
 
         // Keep the second instance alive for a post-finalization preference event.
         main.api.finalize();
-        let finalizedError;
-        try {
-            main.api.refreshStyles();
-        } catch (error) {
-            finalizedError = error.message;
-        }
+        main.api.refreshStyles();
         main.ancestor.classList.add("custom");
         await frame();
         window.appearanceTest.second = second;
@@ -308,7 +303,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             refreshed,
             reads,
             publications,
-            finalizedError,
             probeRemoved: !main.host.querySelector(".gs-theme-colors"),
         };
     });
@@ -327,7 +321,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     assert.equal(cases.refreshed.palette.grid, "rgb(171, 205, 239)");
     assert.equal(cases.reads, 0);
     assert.equal(cases.publications, 0);
-    assert.match(cases.finalizedError, /finalized|destroyed/i);
     assert.equal(cases.probeRemoved, true);
 
     await page.emulateMedia({ colorScheme: "light" });
@@ -373,12 +366,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         const fallbackExport = await snapshot(second, {});
         for (const instance of [authored, fixed, explicit, second])
             instance.api.finalize();
-        let authoredFinalizedError;
-        try {
-            authored.api.refreshStyles();
-        } catch (error) {
-            authoredFinalizedError = error.message;
-        }
+        authored.api.refreshStyles();
         return {
             afterFinalize,
             explicitPalette,
@@ -388,7 +376,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             exportBackground,
             transparentExport,
             fallbackExport,
-            authoredFinalizedError,
         };
     });
     assert.equal(precedence.afterFinalize.foreground, light.foreground);
@@ -400,7 +387,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     assert.equal(precedence.exportBackground.background, "orange");
     assert.equal(precedence.transparentExport.background, null);
     assert.equal(precedence.fallbackExport.background, "white");
-    assert.match(precedence.authoredFinalizedError, /finalized|destroyed/i);
 
     const loadedSpec = await page.evaluate(() => ({
         ...window.appearanceTest.spec,
