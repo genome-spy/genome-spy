@@ -331,26 +331,23 @@ parameter graph. Browser preference events and container/ancestor attribute
 changes already trigger this refresh. GenomeSpy does not poll styles.
 Calling `refreshStyles()` after finalization has no effect.
 
-An application can also publish a complete
+An application can also publish a partial
 [`defaultThemeColors` palette](../grammar/config.md#default-theme-palette):
 
 ```js
 const colors = api.params.get("defaultThemeColors");
 colors.setValue({
-  foreground: "#eeeeee",
-  stroke: "#aaaaaa",
-  grid: "#444444",
-  chromosomeTick: "#999999",
-  symbolStroke: "#bbbbbb",
-  background: null,
+  foreground: "#352719",
+  grid: "#ded2c0",
 });
 ```
 
 Manual writes to the automatic palette last until the next CSS refresh. Declare
 `defaultThemeColors` explicitly in the root specification to opt out of CSS
-updates and own its value. Replace the object through `setValue()` when the
-palette changes; mutating its properties does not publish an update. Authored
-expression parameters remain read-only.
+updates and own its value. Each write replaces the object; omitted roles use
+the built-in light defaults rather than previous values. `getValue()` returns
+the supplied object. Mutating its properties does not publish an update.
+Authored expression parameters remain read-only.
 
 The [light and dark mode example](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/darkMode)
 shows System, Light, Dark, and Custom modes on one running visualization.

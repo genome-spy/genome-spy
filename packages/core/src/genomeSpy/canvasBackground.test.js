@@ -6,7 +6,6 @@ import {
 } from "./canvasBackground.js";
 import { createHeadlessEngine } from "./headlessBootstrap.js";
 import { getTopLevelSpecView } from "../view/viewFactory.js";
-import { DEFAULT_THEME_COLORS } from "../config/defaultThemeColors.js";
 
 describe("canvas background", () => {
     test("prefers the explicit visualization background over its theme", () => {
@@ -52,6 +51,7 @@ describe("canvas background", () => {
     ])("keeps the background contract of theme %j", async (theme, expected) => {
         const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
             theme,
+            params: [{ name: "defaultThemeColors", value: {} }],
             data: { values: [{}] },
             mark: "point",
         });
@@ -59,12 +59,18 @@ describe("canvas background", () => {
         try {
             const root = getTopLevelSpecView(view);
             const read = createCanvasBackgroundReader(spec, root);
+            expect(read()).toBe(getCanvasBackground(spec));
             root.paramRuntime.setValue("defaultThemeColors", {
-                ...DEFAULT_THEME_COLORS,
                 background: "pink",
             });
             await root.paramRuntime.whenPropagated();
             expect(read()).toBe(expected);
+
+            for (const colors of [{}, { background: null }]) {
+                root.paramRuntime.setValue("defaultThemeColors", colors);
+                await root.paramRuntime.whenPropagated();
+                expect(read()).toBe(getCanvasBackground(spec));
+            }
         } finally {
             view.disposeSubtree();
         }

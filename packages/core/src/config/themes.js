@@ -5,6 +5,7 @@
  */
 
 import { mergeConfigScopes } from "./mergeConfig.js";
+import { defaultThemeColor } from "./defaultThemeColors.js";
 
 /** @type {import("../spec/config.js").GenomeSpyConfig} */
 const VEGALITE_THEME = {
@@ -113,38 +114,38 @@ const BUILT_IN_THEME_DEFINITIONS = {
             color: "#4c78a8",
         },
         rule: {
-            color: { expr: "defaultThemeColors.foreground" },
+            color: defaultThemeColor("foreground"),
         },
         text: {
-            color: { expr: "defaultThemeColors.foreground" },
+            color: defaultThemeColor("foreground"),
         },
         link: {
-            color: { expr: "defaultThemeColors.foreground" },
+            color: defaultThemeColor("foreground"),
         },
         header: {
-            color: { expr: "defaultThemeColors.foreground" },
+            color: defaultThemeColor("foreground"),
         },
         axis: {
-            labelColor: { expr: "defaultThemeColors.foreground" },
-            titleColor: { expr: "defaultThemeColors.foreground" },
-            domainColor: { expr: "defaultThemeColors.stroke" },
-            tickColor: { expr: "defaultThemeColors.stroke" },
-            gridColor: { expr: "defaultThemeColors.grid" },
+            labelColor: defaultThemeColor("foreground"),
+            titleColor: defaultThemeColor("foreground"),
+            domainColor: defaultThemeColor("stroke"),
+            tickColor: defaultThemeColor("stroke"),
+            gridColor: defaultThemeColor("grid"),
         },
         axisLocus: {
-            chromTickColor: { expr: "defaultThemeColors.chromosomeTick" },
-            chromLabelColor: { expr: "defaultThemeColors.foreground" },
-            chromGridColor: { expr: "defaultThemeColors.stroke" },
+            chromTickColor: defaultThemeColor("chromosomeTick"),
+            chromLabelColor: defaultThemeColor("foreground"),
+            chromGridColor: defaultThemeColor("stroke"),
         },
         legend: {
-            symbolBaseStrokeColor: { expr: "defaultThemeColors.symbolStroke" },
+            symbolBaseStrokeColor: defaultThemeColor("symbolStroke"),
         },
         style: {
             "arrow-transcript": {
-                color: { expr: "defaultThemeColors.foreground" },
+                color: defaultThemeColor("foreground"),
             },
             "selection-brush": {
-                stroke: { expr: "defaultThemeColors.foreground" },
+                stroke: defaultThemeColor("foreground"),
             },
         },
     },

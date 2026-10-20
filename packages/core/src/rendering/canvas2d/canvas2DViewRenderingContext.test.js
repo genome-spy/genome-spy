@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import { defaultThemeColor } from "../../config/defaultThemeColors.js";
 import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { startPerformanceProfiler } from "../../debug/performanceProfiler.js";
@@ -1319,18 +1320,18 @@ describe("Canvas2DViewRenderingContext", () => {
     });
 
     test.each(["rule", "link", "point", "arrow"])(
-        "snapshots palette colors once per %s draw and refreshes on repaint",
+        "snapshots partial palette colors once per %s draw and refreshes on repaint",
         async (type) => {
             const { view } = await createHeadlessEngine({
-                params: [{ name: "palette", value: { foreground: "black" } }],
+                params: [{ name: "defaultThemeColors", value: {} }],
                 data: { values: [{ x: 0.2 }, { x: 0.3 }, { x: 0.4 }] },
                 mark: {
                     type: /** @type {"rule" | "link" | "point" | "arrow"} */ (
                         type
                     ),
-                    color: { expr: "palette.foreground" },
-                    fill: { expr: "palette.foreground" },
-                    stroke: { expr: "palette.foreground" },
+                    color: defaultThemeColor("foreground"),
+                    fill: defaultThemeColor("foreground"),
+                    stroke: defaultThemeColor("foreground"),
                     strokeWidth: 1,
                 },
                 encoding: {
@@ -1369,7 +1370,9 @@ describe("Canvas2DViewRenderingContext", () => {
                 "black",
             ]);
 
-            view.paramRuntime.setValue("palette", { foreground: "white" });
+            view.paramRuntime.setValue("defaultThemeColors", {
+                foreground: "white",
+            });
             await view.paramRuntime.whenPropagated();
             const updated = createRecordingContext();
             render(view, updated.context);
@@ -1411,6 +1414,8 @@ describe("Canvas2DViewRenderingContext", () => {
         "random() > 0.5 ? 'red' : 'blue'",
         "now() > 0 ? 'red' : 'blue'",
         "isString(palette.foreground) ? palette.foreground : 'red'",
+        "palette.foreground || now()",
+        'palette.foreground || "red" || random()',
     ])(
         "keeps data-dependent and nontrivial colors per instance: %s",
         async (expr) => {

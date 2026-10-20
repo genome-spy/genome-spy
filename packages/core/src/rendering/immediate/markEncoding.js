@@ -154,7 +154,7 @@ export function encodeString(encoder, datum) {
 
 /**
  * Snapshots a repeatable, datum-independent color for one synchronous draw.
- * Direct parameter reads are deliberately the only expression optimization:
+ * Only direct parameter reads, optionally with a literal fallback, are cached:
  * datum independence alone does not make random(), now(), or helper calls safe.
  *
  * @param {import("../../types/encoder.js").Encoder} encoder
@@ -176,7 +176,7 @@ export function getDrawConstantPaint(encoder, options) {
                 /** @type {unknown} */ (accessor)
             );
         if (
-            !/^[$A-Z_a-z][$\w]*(?:\s*\.\s*[$A-Z_a-z][$\w]*)*$/.test(
+            !/^[$A-Z_a-z][$\w]*(?:\s*\.\s*[$A-Z_a-z][$\w]*)*(?:\s*\|\|\s*(?:"(?:[^"\\]|\\.)*"|null))?$/.test(
                 value.expr.trim()
             ) ||
             !expression.dependencies?.every((ref) => ref.batchStable)

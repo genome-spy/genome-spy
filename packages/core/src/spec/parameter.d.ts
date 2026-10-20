@@ -419,7 +419,8 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     /**
      * The stroke color of the interval mark.
      *
-     * __Default value:__ `{ expr: "defaultThemeColors.foreground" }` in the default theme
+     * __Default value:__ `defaultThemeColors.foreground`, falling back to `"black"`
+     * in the default theme
      */
     stroke?: string | ExprRef;
 

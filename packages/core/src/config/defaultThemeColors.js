@@ -1,4 +1,4 @@
-/** @type {import("../spec/config.js").DefaultThemeColors} */
+/** @type {Required<import("../spec/config.js").DefaultThemeColors>} */
 export const DEFAULT_THEME_COLORS = Object.freeze({
     foreground: "black",
     stroke: "gray",
@@ -7,6 +7,17 @@ export const DEFAULT_THEME_COLORS = Object.freeze({
     symbolStroke: "#888",
     background: null,
 });
+
+/**
+ * Reads a scoped palette role, falling back when an authored palette omits it.
+ * @param {keyof import("../spec/config.js").DefaultThemeColors} role
+ * @returns {import("../spec/parameter.js").ExprRef}
+ */
+export function defaultThemeColor(role) {
+    return {
+        expr: `defaultThemeColors.${role} || ${JSON.stringify(DEFAULT_THEME_COLORS[role])}`,
+    };
+}
 
 /** @type {WeakSet<import("../spec/parameter.js").Parameter>} */
 const automaticDeclarations = new WeakSet();
@@ -18,7 +29,7 @@ export function isAutomaticDefaultThemeColors(param) {
 
 /**
  * Supplies one ordinary palette declaration on the authored root.
- * Explicit declarations replace the whole palette and retain normal scope rules.
+ * Explicit declarations retain normal parameter values and scope rules.
  *
  * @param {import("../spec/parameter.js").Parameter[]} [params]
  * @returns {import("../spec/parameter.js").Parameter[]}
@@ -56,12 +67,13 @@ export function getDefaultThemeColorsParams(params = []) {
 export function validateDefaultThemeColors(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
         throw new Error(
-            'The "defaultThemeColors" parameter must contain a complete palette object.'
+            'The "defaultThemeColors" parameter must contain a palette object.'
         );
     }
     for (const key of Object.keys(DEFAULT_THEME_COLORS)) {
         const color = /** @type {Record<string, unknown>} */ (value)[key];
         if (
+            color !== undefined &&
             !(key === "background" && color === null) &&
             typeof color !== "string"
         ) {

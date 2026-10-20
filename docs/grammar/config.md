@@ -140,8 +140,9 @@ use deterministic light defaults. GenomeSpy App keeps its existing light scheme
 to match its UI surfaces.
 
 For exclusive programmatic control, declare `defaultThemeColors` in the root
-`params`. This opts out of automatic CSS updates and replaces the complete
-palette:
+`params`. This opts out of automatic CSS updates. Supply only the roles you
+want to override; omitted roles use the built-in light defaults above, including
+colors introduced in future versions:
 
 ```json
 {
@@ -149,20 +150,16 @@ palette:
     {
       "name": "defaultThemeColors",
       "value": {
-        "foreground": "#eeeeee",
-        "stroke": "#aaaaaa",
-        "grid": "#444444",
-        "chromosomeTick": "#999999",
-        "symbolStroke": "#bbbbbb",
-        "background": null
+        "foreground": "#352719",
+        "grid": "#ded2c0"
       }
     }
   ]
 }
 ```
 
-An authored expression parameter can compute the palette instead; it follows
-the usual read-only parameter API. Descendant views can shadow
+An authored expression parameter can compute a partial palette instead; it
+follows the usual read-only parameter API. Descendant views can shadow
 `defaultThemeColors` through normal parameter scoping. The root canvas
 background continues to use the root palette.
 

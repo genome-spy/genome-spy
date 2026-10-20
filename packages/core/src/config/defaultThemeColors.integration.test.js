@@ -11,7 +11,7 @@ import { resolveBaseConfig } from "./resolveConfig.js";
 import { DEFAULT_THEME_COLORS } from "./defaultThemeColors.js";
 import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./themes.js";
 
-/** @type {import("../spec/config.js").DefaultThemeColors} */
+/** @type {Required<import("../spec/config.js").DefaultThemeColors>} */
 const darkColors = {
     foreground: "#eeeeee",
     stroke: "#aaaaaa",
@@ -367,8 +367,8 @@ test("one palette update recolors generated guides and neutral marks while prese
     }
 });
 
-test("authored palettes replace the root declaration, shadow lexically, and remain independent between embeds", async () => {
-    const authoredPalette = { ...darkColors, foreground: "purple" };
+test("partial authored palettes shadow lexically and remain independent between embeds", async () => {
+    const authoredPalette = { foreground: "purple" };
     const first = await create({
         params: [{ name: "defaultThemeColors", value: authoredPalette }],
         vconcat: [
@@ -382,7 +382,7 @@ test("authored palettes replace the root declaration, shadow lexically, and rema
                 params: [
                     {
                         name: "defaultThemeColors",
-                        value: { ...darkColors, foreground: "orange" },
+                        value: { stroke: "orange" },
                     },
                 ],
                 data: { values: [{}] },
@@ -404,7 +404,7 @@ test("authored palettes replace the root declaration, shadow lexically, and rema
             "fill",
             "purple"
         );
-        first.palette.setValue({ ...darkColors, foreground: "green" });
+        first.palette.setValue({ foreground: "green" });
         await first.view.paramRuntime.whenPropagated();
         const changed = await first.render();
         expectColor(
@@ -417,7 +417,7 @@ test("authored palettes replace the root declaration, shadow lexically, and rema
             changed,
             '[data-name="shadowed"] [data-mark-type="text"]',
             "fill",
-            "orange"
+            DEFAULT_THEME_COLORS.foreground
         );
         expect(second.palette.getValue()).toEqual(DEFAULT_THEME_COLORS);
         second.palette.setValue({ ...darkColors });
@@ -434,11 +434,51 @@ test("authored palettes replace the root declaration, shadow lexically, and rema
     }
 });
 
+test("partial palette writes restore defaults for omitted guide colors", async () => {
+    const { view, palette, render } = await create({
+        params: [
+            {
+                name: "defaultThemeColors",
+                value: { foreground: "purple", grid: "red" },
+            },
+        ],
+        data: { values: [{ x: 1 }, { x: 2 }] },
+        mark: "point",
+        encoding: {
+            x: { field: "x", type: "quantitative", axis: { grid: true } },
+        },
+    });
+    try {
+        const grid = '[data-name="grid_lines"] [data-mark-type="rule"]';
+        const initial = await render();
+        expectColor(initial, grid, "stroke", "red");
+        expectColor(
+            initial,
+            '[data-name="domain"] [data-mark-type="rule"]',
+            "stroke",
+            DEFAULT_THEME_COLORS.stroke
+        );
+
+        palette.setValue({ foreground: "green" });
+        await view.paramRuntime.whenPropagated();
+        const changed = await render();
+        expectColor(changed, grid, "stroke", DEFAULT_THEME_COLORS.grid);
+        expectColor(
+            changed,
+            '[data-name="labels_main"] [data-mark-type="text"]',
+            "fill",
+            "green"
+        );
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
 test("computed authored palettes use the normal read-only parameter API", async () => {
     const { view, params, palette, render } = await create({
         name: "text",
         params: [
-            { name: "colors", value: { ...darkColors, foreground: "purple" } },
+            { name: "colors", value: { foreground: "purple" } },
             { name: "defaultThemeColors", expr: "colors" },
         ],
         data: { values: [{}] },
@@ -456,13 +496,15 @@ test("computed authored palettes use the normal read-only parameter API", async 
         );
         /** @type {import("../types/embedApi.js").ParamApi<import("../spec/config.js").DefaultThemeColors>} */
         const colors = params.get("colors");
-        colors.setValue({ ...darkColors });
+        const updated = {};
+        colors.setValue(updated);
         await view.paramRuntime.whenPropagated();
+        expect(palette.getValue()).toBe(updated);
         expectColor(
             await render(),
             '[data-name="text"] [data-mark-type="text"]',
             "fill",
-            darkColors.foreground
+            DEFAULT_THEME_COLORS.foreground
         );
     } finally {
         view.disposeSubtree();
@@ -503,7 +545,7 @@ test.each(
 );
 
 test.each([{ background: "white" }, { theme: "dark" }])(
-    "rejects an incomplete computed root palette with fixed appearance %j",
+    "rejects malformed supplied colors with fixed appearance %j",
     async (fixedAppearance) => {
         await expect(
             create({
@@ -511,7 +553,7 @@ test.each([{ background: "white" }, { theme: "dark" }])(
                     fixedAppearance
                 ),
                 params: [
-                    { name: "colors", value: { foreground: "white" } },
+                    { name: "colors", value: { stroke: 42 } },
                     { name: "defaultThemeColors", expr: "colors" },
                 ],
                 data: { values: [{}] },
@@ -532,10 +574,10 @@ test("validates computed palette updates even with a fixed background", async ()
         mark: { type: "text", text: "Computed palette" },
     });
     try {
-        /** @type {import("../types/embedApi.js").ParamApi<Partial<import("../spec/config.js").DefaultThemeColors>>} */
+        /** @type {import("../types/embedApi.js").ParamApi<object>} */
         const colors = params.get("colors");
         view.paramRuntime.runInTransaction(() => {
-            colors.setValue({ foreground: "white" });
+            colors.setValue({ stroke: 42 });
         });
         const failed = expect(
             view.paramRuntime.whenPropagated()

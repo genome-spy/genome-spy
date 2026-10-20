@@ -1,4 +1,5 @@
 import { getBuiltInThemeBackground } from "../config/themes.js";
+import { defaultThemeColor } from "../config/defaultThemeColors.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
@@ -45,7 +46,7 @@ export function createCanvasBackgroundReader(spec, view) {
     const background =
         configuredBackground ??
         (!lastTheme || lastTheme === "genomespy"
-            ? { expr: "defaultThemeColors.background" }
+            ? defaultThemeColor("background")
             : undefined);
     if (!isExprRef(background)) {
         return () => background;

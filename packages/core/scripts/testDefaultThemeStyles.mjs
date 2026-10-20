@@ -329,11 +329,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         const afterFinalize = await snapshot(second);
         const authoredColors = {
             foreground: "purple",
-            stroke: "gray",
-            grid: "lightgray",
-            chromosomeTick: "#989898",
-            symbolStroke: "#888",
-            background: null,
         };
         const authored = await create({
             params: [
@@ -380,6 +375,9 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     });
     assert.equal(precedence.afterFinalize.foreground, light.foreground);
     assert.equal(precedence.explicitPalette.foreground, "purple");
+    assert.deepEqual(precedence.explicitPalette.palette, {
+        foreground: "purple",
+    });
     assert.equal(precedence.optedOut, true);
     assert.equal(precedence.fixedTheme.foreground, "black");
     assert.equal(precedence.fixedTheme.background, "white");
@@ -396,11 +394,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
                 name: "defaultThemeColors",
                 value: {
                     foreground: "teal",
-                    stroke: "gray",
-                    grid: "lightgray",
-                    chromosomeTick: "#989898",
-                    symbolStroke: "#888",
-                    background: null,
                 },
             },
         ],
