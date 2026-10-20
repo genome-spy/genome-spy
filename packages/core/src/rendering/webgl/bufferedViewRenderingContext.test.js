@@ -118,6 +118,7 @@ describe("BufferedViewRenderingContext", () => {
                     ),
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
+                clearColor: null,
                 pixelOffset: 0,
                 markAdapter: /** @type {any} */ (markAdapter),
             }
@@ -132,6 +133,7 @@ describe("BufferedViewRenderingContext", () => {
         context.render();
 
         expect(draws).toBe(2);
+        expect(gl.clearColor).toHaveBeenLastCalledWith(0, 0, 0, 0);
         expect(prepareRender).toHaveBeenCalledWith({
             picking: false,
             placement,
