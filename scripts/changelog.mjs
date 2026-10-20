@@ -26,12 +26,22 @@ export function parseNote({ id, summary }) {
 
 /** @type {import("@changesets/types").ChangelogFunctions} */
 const formatter = {
-    getReleaseLine(changeset, type, options) {
+    async getReleaseLine(changeset, type, options) {
         const { summary } = parseNote(changeset);
-        return githubChangelog.getReleaseLine({ ...changeset, summary }, type, {
-            ...options,
-            template: "- {summary} {ref} {authors}",
-        });
+        // The upstream template formats only the first summary line. Move its
+        // metadata after the complete entry, including continuation paragraphs.
+        const [attribution, ...lines] = (
+            await githubChangelog.getReleaseLine(
+                { ...changeset, summary },
+                type,
+                { ...options, template: "{ref} {authors}\n- {summary}" }
+            )
+        ).split("\n");
+        const prose = lines
+            .map((line) => line.trimEnd())
+            .join("\n")
+            .trimEnd();
+        return `${prose} ${attribution.trim()}`.trimEnd();
     },
     getDependencyReleaseLine: githubChangelog.getDependencyReleaseLine,
 };

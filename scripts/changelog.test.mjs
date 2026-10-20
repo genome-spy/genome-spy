@@ -6,7 +6,7 @@ afterEach(() => {
     vi.unstubAllEnvs();
 });
 
-test("formats prose before GitHub references and attribution while preserving migration text", async () => {
+test("places GitHub references and attribution after the complete entry", async () => {
     // Stub the HTTP boundary while exercising the actual GitHub formatter and metadata client.
     vi.stubEnv("GITHUB_TOKEN", "fixture-token");
     vi.stubGlobal(
@@ -43,17 +43,37 @@ test("formats prose before GitHub references and attribution while preserving mi
             commit: "abc1234",
             releases: [{ name: "@genome-spy/core", type: "major" }],
             summary:
-                "<!-- category: feature -->\n\nReplace the old API.\n\nMigration: rename oldProperty to newProperty.",
+                "<!-- category: feature -->\n\nReplace the old\nAPI; see #456.\n\nMigration:\n- Rename oldProperty to newProperty.",
         },
         "major",
         { repo: "example/project" }
     );
 
-    expect(entry).toContain(
-        "- Replace the old API. ([#123](https://github.com/example/project/pull/123)) [@contributor](https://github.com/contributor)"
+    expect(entry).toBe(
+        "- Replace the old\n" +
+            "  API; see [#456](https://github.com/example/project/issues/456).\n\n" +
+            "  Migration:\n" +
+            "  - Rename oldProperty to newProperty. " +
+            "([#123](https://github.com/example/project/pull/123)) " +
+            "[@contributor](https://github.com/contributor)"
     );
-    expect(entry).toContain("Migration: rename oldProperty to newProperty.");
-    expect(entry).not.toContain("category:");
+});
+
+test("preserves paragraphs without adding whitespace when attribution is absent", async () => {
+    const entry = await formatter.getReleaseLine(
+        {
+            id: "offline-fix",
+            releases: [{ name: "@genome-spy/core", type: "patch" }],
+            summary:
+                "<!-- category: fix -->\n\nKeep wrapped\nnotes readable.\n\nPreserve paragraphs.",
+        },
+        "patch",
+        { repo: "example/project" }
+    );
+
+    expect(entry).toBe(
+        "- Keep wrapped\n  notes readable.\n\n  Preserve paragraphs."
+    );
 });
 
 test("retains dependency updates through the shared formatter", async () => {
