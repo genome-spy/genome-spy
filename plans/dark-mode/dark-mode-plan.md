@@ -54,14 +54,14 @@ No shader, GPU attribute, or texture was added. No timing speedup is claimed.
 
 ## Architecture and event ownership
 
-The browser bridge belongs beside `genomeSpy/containerUi.js`, owned by
-`GenomeSpyBase` initialization/destruction. `ViewFactory` continues to supply the
+The browser bridge belongs beside `genomeSpy/containerUi.js`, initialized by
+`GenomeSpyBase` and disposed with the authored root view. `ViewFactory` continues to supply the
 ordinary root declaration before wrapping and guide creation. After hierarchy
 preparation, seed the browser-resolved value before dataflow initialization and
 the first rendered frame; refresh after asynchronous startup as needed through
 normal event delivery. Headless bootstrap remains DOM-independent.
 
-Use one hidden probe subtree, with role-specific color properties resolving
+Use one hidden probe element, resolving each role's color in sequence through
 stylesheet defaults and optional public overrides. The probe inherits the host's
 `color-scheme` without overriding it; a normal/unset scheme stays light. Read
 concrete computed colors, normalize them with the existing
@@ -148,7 +148,7 @@ retired before PR creation, as required by repository workflow.
 
 ## Automatic appearance milestone outcome
 
-The bridge is 102 source lines, including comments, with six probe swatches,
+The bridge is 90 source lines, including comments, with one reusable color probe,
 one preference listener, and one observer of ancestor attributes. Browser
 coverage passes on Canvas, WebGL, and WebGPU using the real stylesheet. It
 verifies zero CSS reads and zero palette publications during an ordinary
@@ -185,9 +185,8 @@ pass. The repeatable Core browser command is
 `npm -w @genome-spy/core run test:appearance` (Canvas, WebGL, WebGPU).
 
 Final Core runtime JavaScript against local master
-`b34836e8319e844ccecbc713e4f4fb6b3403575f`: +593/-137 non-comment production
-lines, net +456, excluding tests and declarations. This revision adds net 143
-Core production lines over the prior branch milestone. The complete example
+`b34836e8319e844ccecbc713e4f4fb6b3403575f`: +575/-137 non-comment production
+lines, net +438, excluding tests and declarations. The complete example
 contains 156 source lines across HTML, JavaScript, and SCSS, down from 198.
 The additional CSS resolution and comparison runs only on supported appearance
 events or explicit refresh; ordinary rendering adds no CSS reads. GPU shaders,
@@ -233,3 +232,16 @@ production behavior is CSS-only. The existing generated CSS module and a
 formatting of the tooltip renderer account for net eight Core JavaScript lines
 in the branch's source-line measurement. No polling or fallback machinery was
 introduced.
+
+## Delivery reconciliation
+
+- [x] Complete all planned behavior and verification; no unfinished tasks remain.
+- [x] Retain the Canvas optimization and simplify the CSS bridge to one probe,
+      a refresh function, and view-owned disposal. Keep palette ownership and
+      validation intact. Verify inherited `currentColor` and attribute changes
+      across a shadow root on Canvas, WebGL, and WebGPU.
+- [x] Re-run the full unit suite: 539 files and 5,119 tests pass, with one
+      existing skip and two todos. Workspace type checks, lint, and release
+      checks pass; the fixed release group remains a minor update.
+- [x] Record the final implementation here before retiring this temporary plan
+      in a subsequent commit for PR creation.
