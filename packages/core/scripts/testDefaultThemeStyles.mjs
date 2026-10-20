@@ -155,7 +155,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             snapshot,
             main,
             frame,
-            stylesheet,
             spec,
             readTooltip,
         };
@@ -222,8 +221,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     }
 
     const cases = await page.evaluate(async () => {
-        const { main, create, snapshot, frame, stylesheet } =
-            window.appearanceTest;
+        const { main, create, snapshot, frame } = window.appearanceTest;
         const shadowHost = document.body.appendChild(
             document.createElement("div")
         );
@@ -256,16 +254,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         main.host.style.removeProperty("--genome-spy-foreground");
         await frame();
 
-        // CSSOM rule changes produce no observed attribute mutation.
-        stylesheet.sheet.insertRule(
-            ".appearance-host { --genome-spy-grid: #abcdef; }"
-        );
-        const beforeRefresh = main.api.params
-            .get("defaultThemeColors")
-            .getValue().grid;
-        main.api.refreshStyles();
-        const refreshed = await snapshot(main);
-
         // Ordinary parameter-driven rendering must not inspect CSS or republish it.
         let reads = 0;
         let publications = 0;
@@ -285,7 +273,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
 
         // Keep the second instance alive for a post-finalization preference event.
         main.api.finalize();
-        main.api.refreshStyles();
         main.ancestor.classList.add("custom");
         await frame();
         window.appearanceTest.second = second;
@@ -299,8 +286,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             independent,
             attribute,
             localOverride,
-            beforeRefresh,
-            refreshed,
             reads,
             publications,
             probeRemoved: !main.host.querySelector(".gs-theme-colors"),
@@ -317,8 +302,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     assert.equal(cases.independent.foreground, dark.foreground);
     assert.equal(cases.attribute.foreground, "rgb(23, 91, 73)");
     assert.equal(cases.localOverride.foreground, "rgb(36, 49, 167)");
-    assert.notEqual(cases.beforeRefresh, "rgb(171, 205, 239)");
-    assert.equal(cases.refreshed.palette.grid, "rgb(171, 205, 239)");
     assert.equal(cases.reads, 0);
     assert.equal(cases.publications, 0);
     assert.equal(cases.probeRemoved, true);
@@ -345,7 +328,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         authored.ancestor.classList.add("custom");
         const explicitPalette = await snapshot(authored);
         const optedOut = !authored.host.querySelector(".gs-theme-colors");
-        authored.api.refreshStyles();
         const fixed = await create({ theme: "vegalite" });
         fixed.ancestor.classList.add("custom");
         const fixedTheme = await snapshot(fixed, {});
@@ -361,7 +343,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         const fallbackExport = await snapshot(second, {});
         for (const instance of [authored, fixed, explicit, second])
             instance.api.finalize();
-        authored.api.refreshStyles();
         return {
             afterFinalize,
             explicitPalette,

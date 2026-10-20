@@ -23,7 +23,6 @@ describe("embed factory", () => {
             this.launch = vi.fn(async () => true);
             this.getParam = vi.fn();
             this.destroy = vi.fn();
-            this.refreshStyles = vi.fn();
             this.addEventListener = vi.fn();
             this.removeEventListener = vi.fn();
             this.getNamedScaleResolutions = vi.fn(() => new Map());
@@ -291,14 +290,6 @@ describe("embed factory", () => {
         });
 
         expect(api.debug.createPickingBufferVisualization?.()).toBeUndefined();
-    });
-
-    test("refreshes styles through the shared API", async () => {
-        const refreshStyles = vi.fn();
-        const api = await embedMock({ refreshStyles });
-        api.refreshStyles();
-        expect(refreshStyles).toHaveBeenCalledOnce();
-        api.finalize();
     });
 
     test("leaves missing width implicit", async () => {

@@ -52,8 +52,6 @@ export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
 
         finalize,
 
-        refreshStyles: genomeSpy.refreshStyles.bind(genomeSpy),
-
         addEventListener: genomeSpy.addEventListener.bind(genomeSpy),
         removeEventListener: genomeSpy.removeEventListener.bind(genomeSpy),
 

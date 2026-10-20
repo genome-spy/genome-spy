@@ -339,14 +339,7 @@ clear or reapply it after replacing datasets.
 The default theme follows
 [CSS appearance settings](../grammar/config.md#default-theme-palette)
 automatically when the browser preference or attributes on the container or its
-ancestors change. After changing stylesheets or CSS rules, refresh its resolved
-colors explicitly:
-
-```js
-api.refreshStyles();
-```
-
-Calling `refreshStyles()` after finalization has no effect.
+ancestors change.
 
 For exclusive programmatic control, declare `defaultThemeColors` in the root
 `params` before embedding. This disables automatic CSS updates:

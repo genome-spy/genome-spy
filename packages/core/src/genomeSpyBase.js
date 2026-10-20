@@ -67,8 +67,6 @@ export default class GenomeSpy {
     /** @type {() => string | undefined} */
     #getCanvasBackground = () => undefined;
 
-    #refreshStyles = () => {};
-
     /** @type {(() => void)[]} */
     #destructionCallbacks = [];
     /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
@@ -238,13 +236,6 @@ export default class GenomeSpy {
      */
     getParam(name) {
         return resolveEmbedParam(this.viewRoot, name);
-    }
-
-    /** Refreshes CSS-backed defaults after external stylesheet changes. */
-    refreshStyles() {
-        if (!this.#destroyed) {
-            this.#refreshStyles();
-        }
     }
 
     /**
@@ -556,7 +547,7 @@ export default class GenomeSpy {
         this.#initializeParameterBindings();
 
         prepareViewHierarchy(this.viewRoot);
-        this.#refreshStyles = createDefaultThemeStyle(
+        createDefaultThemeStyle(
             this.container,
             getTopLevelSpecView(this.viewRoot)
         );

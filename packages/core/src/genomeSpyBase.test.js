@@ -15,8 +15,6 @@ describe("GenomeSpy destruction", () => {
         genomeSpy.destroy();
 
         expect(finalize).toHaveBeenCalledOnce();
-        // Late host refreshes are harmless, even without an automatic CSS bridge.
-        expect(() => genomeSpy.refreshStyles()).not.toThrow();
     });
 });
 

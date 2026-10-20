@@ -123,8 +123,7 @@ CSS colors must resolve to named colors, hex, RGB, or HSL. CSS Color 4 values
 such as `oklch()` and `color(display-p3 ...)` are unsupported.
 
 Browser preference changes and container or ancestor attribute changes refresh
-the palette automatically. Other CSS changes, such as replacing a stylesheet,
-require [`api.refreshStyles()`](../api/runtime-state.md#updating-appearance).
+the palette automatically. Changes to stylesheet rules alone are not observed.
 
 For programmatic control through the `defaultThemeColors` parameter, see
 [Updating appearance](../api/runtime-state.md#updating-appearance).

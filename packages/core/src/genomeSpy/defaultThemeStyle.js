@@ -18,7 +18,7 @@ export function createDefaultThemeStyle(container, view) {
             view.paramRuntime.paramConfigs.get("defaultThemeColors")
         )
     ) {
-        return () => {};
+        return;
     }
 
     const probe = container.appendChild(document.createElement("div"));
@@ -86,5 +86,4 @@ export function createDefaultThemeStyle(container, view) {
     });
 
     refresh();
-    return refresh;
 }
