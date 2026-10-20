@@ -84,6 +84,9 @@ mode through CSS `color-scheme`. Its canvas stays transparent in both modes, so
 the host page must supply a matching surface. Explicit colors and data color
 scales retain their normal precedence.
 
+The [light and dark mode embedding example](https://genomespy.app/docs/api/embed-examples/darkMode/)
+demonstrates automatic switching and CSS customization.
+
 A page that supports both modes can enable automatic browser preference changes:
 
 ```css
@@ -166,47 +169,6 @@ background continues to use the root palette.
 Other named presets supply fixed colors and backgrounds; they do not follow
 CSS mode changes. For example, `dark` is a fixed appearance. A root `theme`
 takes precedence over an embed-level `theme` option.
-
-### Custom palette parameters
-
-An authored palette can use a different name and set of fields. For example,
-add the following properties to the root specification:
-
-```json
-{
-  "params": [
-    {
-      "name": "uiColors",
-      "value": {
-        "foreground": "#222222",
-        "stroke": "#808080",
-        "grid": "#dddddd",
-        "background": "#ffffff"
-      }
-    }
-  ],
-  "background": { "expr": "uiColors.background" },
-  "config": {
-    "text": { "color": { "expr": "uiColors.foreground" } },
-    "axis": {
-      "labelColor": { "expr": "uiColors.foreground" },
-      "titleColor": { "expr": "uiColors.foreground" },
-      "domainColor": { "expr": "uiColors.stroke" },
-      "tickColor": { "expr": "uiColors.stroke" },
-      "gridColor": { "expr": "uiColors.grid" }
-    },
-    "legend": {
-      "labelColor": { "expr": "uiColors.foreground" },
-      "titleColor": { "expr": "uiColors.foreground" }
-    }
-  }
-}
-```
-
-`uiColors` is an authored parameter; its name and fields are chosen by the
-specification author. The example maps selected defaults, and other colors can
-reference the same palette. Explicit mark and encoding colors retain their
-normal precedence.
 
 ### Canvas and view backgrounds
 

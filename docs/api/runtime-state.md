@@ -350,8 +350,7 @@ Manual writes to the automatic palette last until the next CSS refresh. Declare
 `defaultThemeColors` explicitly in the root specification to opt out of CSS
 updates and own its value. Replace the object through `setValue()` when the
 palette changes; mutating its properties does not publish an update. Authored
-expression parameters remain read-only. Custom palette parameters, such as
-`uiColors`, use the same API with their own names and fields.
+expression parameters remain read-only.
 
 The [light and dark mode example](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/darkMode)
 shows System, Light, Dark, and Custom modes on one running visualization.
