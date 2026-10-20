@@ -14,6 +14,8 @@ remains transparent in both modes. Inherited `color-scheme` and the six
 `--genome-spy-*` CSS properties customize its neutral colors and optional
 background. Mode and host attribute changes update initialized visualizations
 without polling; `api.refreshStyles()` applies other stylesheet changes.
+Tooltips follow the host color scheme, with readable dark surfaces, text, and
+highlights. Their compact table styles override generic page table styles.
 
 The `defaultThemeColors` parameter exposes the complete resolved palette,
 including facet headers and selection brush outlines. An explicit root

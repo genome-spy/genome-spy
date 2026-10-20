@@ -96,7 +96,9 @@ A page that supports both modes can enable automatic browser preference changes:
 GenomeSpy inherits this setting from its container and ancestors. An unset or
 `normal` scheme stays light, regardless of browser preference. An explicit
 `color-scheme: light` or `color-scheme: dark` forces that mode. The host remains
-responsible for styling its own background.
+responsible for styling its own background. Tooltips follow the same scheme
+and use an opaque light or dark surface. Their text also respects
+`--genome-spy-foreground`.
 
 Override any of these inherited CSS custom properties to customize individual
 roles. The defaults use `light-dark()` and preserve the existing light colors:

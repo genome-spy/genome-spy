@@ -185,8 +185,8 @@ pass. The repeatable Core browser command is
 `npm -w @genome-spy/core run test:appearance` (Canvas, WebGL, WebGPU).
 
 Final Core runtime JavaScript against local master
-`b34836e8319e844ccecbc713e4f4fb6b3403575f`: +573/-125 non-comment production
-lines, net +448, excluding tests and declarations. This revision adds net 135
+`b34836e8319e844ccecbc713e4f4fb6b3403575f`: +593/-137 non-comment production
+lines, net +456, excluding tests and declarations. This revision adds net 143
 Core production lines over the prior branch milestone. The complete example
 contains 156 source lines across HTML, JavaScript, and SCSS, down from 198.
 The additional CSS resolution and comparison runs only on supported appearance
@@ -212,3 +212,24 @@ embeds created under that preference also stay light. Declaring `light dark`
 then enables the existing live-switching contract. TypeScript, lint, schema,
 and clean documentation builds pass. This correction removes two production
 JavaScript lines and one computed-style read per appearance refresh.
+
+## Tooltip appearance and table isolation
+
+- [x] Make tooltip text and opaque surfaces follow the host's inherited
+      `color-scheme`; keep light styling on hosts that have not opted into dark.
+- [x] Use the public foreground CSS override for tooltip text, and make sticky
+      outlines, title separators, swatches, highlights, and missing values
+      readable in both modes. No new JavaScript listeners or palette fields.
+- [x] Give tooltip tables explicit compact dimensions, transparent table/cell
+      backgrounds, inherited text colors, and borderless cells so generic host
+      table rules cannot supply the wrong defaults.
+- [x] Verify the actual embedding example in Light, Dark, and Custom modes and
+      extend the browser suite with conflicting host table styles. Canvas,
+      WebGL, and WebGPU suites pass, as do 16 focused tooltip tests, formatting,
+      lint, clean docs build, and release checks.
+
+The readable stylesheet and shipped CSS module each grow by five source lines;
+production behavior is CSS-only. The existing generated CSS module and a
+formatting of the tooltip renderer account for net eight Core JavaScript lines
+in the branch's source-line measurement. No polling or fallback machinery was
+introduced.

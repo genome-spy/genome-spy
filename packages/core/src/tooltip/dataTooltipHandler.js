@@ -59,14 +59,16 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
                             return html`
                                 <span
                                     class="color-legend"
-                                    style=${"background-color: " +
-                                    String(encodedColor)}
+                                    style=${
+                                        "background-color: " +
+                                        String(encodedColor)
+                                    }
                                 ></span>
                             `;
                         } else if (hasValue(value)) {
                             // The field has a value but the scale did not map it
                             // (typically outside/absent domain): show an empty,
-                            // black-stroked swatch to signal the mismatch.
+                            // outlined swatch to signal the mismatch.
                             return html`
                                 <span
                                     class="color-legend color-legend-unmapped"

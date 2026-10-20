@@ -7,16 +7,21 @@ import { testRenderers } from "./testRenderers.mjs";
 await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.evaluate(async (renderer) => {
-        const { embed } = await import("/index.js");
+        const { embed, html } = await import("/index.js");
+        const { default: Tooltip } = await import("/utils/ui/tooltip.js");
         document.body.replaceChildren();
         document.documentElement.style.colorScheme = "normal";
         const stylesheet = document.createElement("style");
         stylesheet.textContent = `
             .appearance-host.custom {
+                color-scheme: light;
                 --genome-spy-foreground: #59391d;
                 --genome-spy-background: #fff0d8;
             }
             [data-appearance="accent"] { --genome-spy-foreground: #175b49; }
+            /* Generic host table rules must not style the tooltip's table. */
+            table { width: 100%; margin-top: 24px; background: yellow; font-size: 20px; }
+            th, td { border: 1px solid red; background: white; color: green; padding: 9px; }
         `;
         document.head.append(stylesheet);
         const frame = () =>
@@ -93,6 +98,57 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             };
         }
         const main = await create();
+        const tooltip = new Tooltip(main.host);
+        tooltip.mouseCoords = [20, 20];
+        tooltip.setContent(html`
+            <div class="title">Details</div>
+            <table class="attributes">
+                <tr>
+                    <th>Position</th>
+                    <td>123</td>
+                </tr>
+                <tr class="hovered">
+                    <th>Signal</th>
+                    <td>
+                        <span class="color-legend color-legend-unmapped"></span>
+                    </td>
+                </tr>
+            </table>
+        `);
+        tooltip.sticky = true;
+        const tooltipElement = main.host.querySelector(
+            ".gs-tooltip:last-child"
+        );
+        function readTooltip() {
+            const style = window.getComputedStyle(tooltipElement);
+            const table = window.getComputedStyle(
+                tooltipElement.querySelector("table")
+            );
+            const header = window.getComputedStyle(
+                tooltipElement.querySelector("th")
+            );
+            const cell = window.getComputedStyle(
+                tooltipElement.querySelector("td")
+            );
+            return {
+                color: style.color,
+                background: style.backgroundColor,
+                tableBackground: table.backgroundColor,
+                tableMargin: table.marginTop,
+                fontSize: table.fontSize,
+                headerBackground: header.backgroundColor,
+                headerColor: header.color,
+                headerBorder: header.borderTopWidth,
+                cellBackground: cell.backgroundColor,
+                cellBorder: cell.borderTopWidth,
+                hoveredBackground: window.getComputedStyle(
+                    tooltipElement.querySelector(".hovered")
+                ).backgroundColor,
+                unmappedStroke: window.getComputedStyle(
+                    tooltipElement.querySelector(".color-legend-unmapped")
+                ).borderTopColor,
+            };
+        }
         await main.api.getScaleResolutionByName("x").zoomTo([1, 9]);
         window.appearanceTest = {
             create,
@@ -101,6 +157,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             frame,
             stylesheet,
             spec,
+            readTooltip,
         };
     }, renderer);
 
@@ -114,9 +171,18 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     assert.equal(light.brush, light.foreground);
     assert.equal(light.palette.background, null);
     assert.equal(light.background, null);
+    const tooltipLight = await page.evaluate(() =>
+        window.appearanceTest.readTooltip()
+    );
+    assert.equal(tooltipLight.color, light.foreground);
+    assert.equal(tooltipLight.background, "rgb(246, 246, 246)");
 
     await page.emulateMedia({ colorScheme: "dark" });
     assert.equal((await read()).foreground, light.foreground);
+    assert.deepEqual(
+        await page.evaluate(() => window.appearanceTest.readTooltip()),
+        tooltipLight
+    );
     const unconfigured = await page.evaluate(async () => {
         const { create, snapshot } = window.appearanceTest;
         const instance = await create();
@@ -137,6 +203,23 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     assert.equal(dark.sameCanvas, true);
     assert.deepEqual(dark.domain, light.domain);
     assert.deepEqual(dark.selection, light.selection);
+    const tooltipDark = await page.evaluate(() =>
+        window.appearanceTest.readTooltip()
+    );
+    assert.equal(tooltipDark.color, dark.foreground);
+    assert.equal(tooltipDark.background, "rgb(37, 47, 59)");
+    assert.equal(tooltipDark.hoveredBackground, "rgb(58, 70, 83)");
+    for (const tooltip of [tooltipLight, tooltipDark]) {
+        assert.equal(tooltip.tableBackground, "rgba(0, 0, 0, 0)");
+        assert.equal(tooltip.tableMargin, "0px");
+        assert.equal(tooltip.fontSize, "12px");
+        assert.equal(tooltip.headerBackground, "rgba(0, 0, 0, 0)");
+        assert.equal(tooltip.headerColor, tooltip.color);
+        assert.equal(tooltip.headerBorder, "0px");
+        assert.equal(tooltip.cellBackground, "rgba(0, 0, 0, 0)");
+        assert.equal(tooltip.cellBorder, "0px");
+        assert.equal(tooltip.unmappedStroke, tooltip.color);
+    }
 
     const cases = await page.evaluate(async () => {
         const { main, create, snapshot, frame, stylesheet } =
@@ -151,6 +234,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         main.ancestor.style.removeProperty("color-scheme");
         main.ancestor.classList.add("custom");
         const custom = await snapshot(main, {});
+        const customTooltip = window.appearanceTest.readTooltip();
         const independent = await snapshot(second);
         main.ancestor.classList.remove("custom");
         main.ancestor.setAttribute("data-appearance", "accent");
@@ -204,6 +288,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             inheritedLight,
             localDark,
             custom,
+            customTooltip,
             independent,
             attribute,
             localOverride,
@@ -219,6 +304,8 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     assert.equal(cases.inheritedLight.foreground, light.foreground);
     assert.equal(cases.localDark.foreground, dark.foreground);
     assert.equal(cases.custom.foreground, "rgb(89, 57, 29)");
+    assert.equal(cases.customTooltip.color, cases.custom.foreground);
+    assert.equal(cases.customTooltip.background, tooltipLight.background);
     assert.equal(cases.custom.background, "rgb(255, 240, 216)");
     assert.equal(cases.independent.foreground, dark.foreground);
     assert.equal(cases.attribute.foreground, "rgb(23, 91, 73)");
