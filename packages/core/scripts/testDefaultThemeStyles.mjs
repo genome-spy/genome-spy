@@ -224,8 +224,19 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     const cases = await page.evaluate(async () => {
         const { main, create, snapshot, frame, stylesheet } =
             window.appearanceTest;
-        const second = await create();
+        const shadowHost = document.body.appendChild(
+            document.createElement("div")
+        );
+        const second = await create(
+            {},
+            shadowHost.attachShadow({ mode: "open" })
+        );
         const initialDark = await snapshot(second);
+        // Attribute observation crosses shadow roots; currentColor inherits.
+        shadowHost.style.cssText =
+            "color: #2431a7; --genome-spy-grid: currentColor";
+        const shadowOverride = await snapshot(second);
+        shadowHost.removeAttribute("style");
         main.ancestor.style.colorScheme = "light";
         const inheritedLight = await snapshot(main);
         main.host.style.colorScheme = "dark";
@@ -285,6 +296,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         window.appearanceTest.second = second;
         return {
             initialDark,
+            shadowOverride,
             inheritedLight,
             localDark,
             custom,
@@ -301,6 +313,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         };
     });
     assert.equal(cases.initialDark.foreground, dark.foreground);
+    assert.equal(cases.shadowOverride.palette.grid, "rgb(36, 49, 167)");
     assert.equal(cases.inheritedLight.foreground, light.foreground);
     assert.equal(cases.localDark.foreground, dark.foreground);
     assert.equal(cases.custom.foreground, "rgb(89, 57, 29)");

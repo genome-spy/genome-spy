@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 vi.mock("./styles/genome-spy.css.js", () => ({ default: "" }));
 // Real scoped CSS resolution is covered by testDefaultThemeStyles.mjs.
 vi.mock("./genomeSpy/defaultThemeStyle.js", () => ({
-    createDefaultThemeStyle: () => ({ refresh() {}, dispose() {} }),
+    createDefaultThemeStyle: () => () => {},
 }));
 
 import "./rendering/registerCanvas.js";

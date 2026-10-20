@@ -6,22 +6,22 @@ import {
 
 /**
  * Bridges scoped CSS into the automatic palette, without doing work per frame.
+ * The view owns the probe and listeners.
  * Authored palette declarations retain exclusive ownership of their values.
  *
  * @param {HTMLElement} container
  * @param {import("../view/view.js").default} view Authored top-level view.
- * @param {(error: unknown) => void} reportError
  */
-export function createDefaultThemeStyle(container, view, reportError) {
+export function createDefaultThemeStyle(container, view) {
     if (
         !isAutomaticDefaultThemeColors(
             view.paramRuntime.paramConfigs.get("defaultThemeColors")
         )
     ) {
-        return { refresh() {}, dispose() {} };
+        return () => {};
     }
 
-    const probe = document.createElement("div");
+    const probe = container.appendChild(document.createElement("div"));
     // Inherit color-scheme: normal stays light; the host opts into dark support.
     probe.className = "gs-theme-colors";
     probe.setAttribute("aria-hidden", "true");
@@ -29,35 +29,26 @@ export function createDefaultThemeStyle(container, view, reportError) {
         /** @type {(keyof import("../spec/config.js").DefaultThemeColors)[]} */ (
             Object.keys(DEFAULT_THEME_COLORS)
         );
-    const swatches = roles.map((role) => {
-        const name = role.replace(
-            /[A-Z]/g,
-            (letter) => "-" + letter.toLowerCase()
-        );
-        const swatch = document.createElement("span");
-        // Public properties are intentionally not declared locally: ancestor
-        // overrides must inherit through to each embed's scoped defaults.
-        swatch.style.color = `var(--genome-spy-${name}, var(--_genome-spy-${name}))`;
-        probe.appendChild(swatch);
-        return swatch;
-    });
-    container.appendChild(probe);
+    // Computed styles are live, so one probe can resolve every role in sequence.
+    const style = getComputedStyle(probe);
 
     function refresh() {
         const colors = { ...DEFAULT_THEME_COLORS };
-        for (const [index, role] of roles.entries()) {
-            const value = getComputedStyle(swatches[index]).color;
+        for (const role of roles) {
+            const name = role.replace(/[A-Z]/g, "-$&").toLowerCase();
+            // Public properties stay unset locally so host overrides inherit.
+            probe.style.color = `var(--genome-spy-${name}, var(--_genome-spy-${name}))`;
+            const value = style.color;
             const color = parseColor(value);
             if (!color) {
                 throw new Error(
                     `Unsupported CSS color for defaultThemeColors.${role}: ${value}. Use named, hex, RGB, or HSL colors.`
                 );
             }
-            if (role === "background" && color.opacity === 0) {
-                colors.background = null;
-            } else {
-                colors[role] = color.formatRgb();
-            }
+            colors[role] =
+                role === "background" && color.opacity === 0
+                    ? null
+                    : color.formatRgb();
         }
         const previous = view.paramRuntime.getValue("defaultThemeColors");
         if (roles.some((role) => previous[role] !== colors[role])) {
@@ -69,7 +60,7 @@ export function createDefaultThemeStyle(container, view, reportError) {
         try {
             refresh();
         } catch (error) {
-            reportError(error);
+            view.context.reportError(error);
         }
     }
 
@@ -77,26 +68,23 @@ export function createDefaultThemeStyle(container, view, reportError) {
     preference.addEventListener("change", onChange);
     const observer = new MutationObserver(onChange);
     // Observe only host attributes, never rendering descendants or stylesheets.
-    for (
-        let ancestor = container;
-        ancestor;
+    /** @type {Node} */
+    let ancestor = container;
+    while (ancestor) {
+        if (ancestor instanceof Element) {
+            observer.observe(ancestor, { attributes: true });
+        }
         ancestor =
-            ancestor.parentElement ??
-            (ancestor.getRootNode() instanceof ShadowRoot
-                ? /** @type {HTMLElement} */ (
-                      /** @type {ShadowRoot} */ (ancestor.getRootNode()).host
-                  )
-                : null)
-    ) {
-        observer.observe(ancestor, { attributes: true });
+            ancestor.parentNode ??
+            (ancestor instanceof ShadowRoot ? ancestor.host : null);
     }
 
-    return {
-        refresh,
-        dispose() {
-            observer.disconnect();
-            preference.removeEventListener("change", onChange);
-            probe.remove();
-        },
-    };
+    view.registerDisposer(() => {
+        observer.disconnect();
+        preference.removeEventListener("change", onChange);
+        probe.remove();
+    });
+
+    refresh();
+    return refresh;
 }

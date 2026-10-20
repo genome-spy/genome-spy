@@ -557,14 +557,10 @@ export default class GenomeSpy {
         this.#initializeParameterBindings();
 
         prepareViewHierarchy(this.viewRoot);
-        const styles = createDefaultThemeStyle(
+        this.#refreshStyles = createDefaultThemeStyle(
             this.container,
-            getTopLevelSpecView(this.viewRoot),
-            this.#reportRuntimeError.bind(this)
+            getTopLevelSpecView(this.viewRoot)
         );
-        this.#refreshStyles = styles.refresh;
-        this.#destructionCallbacks.push(styles.dispose);
-        this.refreshStyles();
         this.#getCanvasBackground = createCanvasBackgroundReader(
             this.spec,
             getTopLevelSpecView(this.viewRoot)
