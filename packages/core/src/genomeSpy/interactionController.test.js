@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import UnitView from "../view/unitView.js";
+import ContainerView from "../view/containerView.js";
+import Rectangle from "../view/layout/rectangle.js";
 import InteractionController from "./interactionController.js";
 
 const readPickingId = vi.fn();
@@ -126,13 +128,14 @@ function createPickingHarness({
         findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
             uniqueId === 1 ? datum : undefined,
     });
+    const viewRoot = /** @type {any} */ ({
+        visit(/** @type {(view: UnitView) => any} */ visitor) {
+            return visitor(pickerUnitView);
+        },
+        propagateInteraction() {},
+    });
     const controller = new InteractionController({
-        viewRoot: /** @type {any} */ ({
-            visit(/** @type {(view: UnitView) => any} */ visitor) {
-                return visitor(pickerUnitView);
-            },
-            propagateInteraction() {},
-        }),
+        viewRoot,
         canvas: /** @type {any} */ (canvas),
         tooltip: /** @type {any} */ ({
             clear() {},
@@ -163,6 +166,7 @@ function createPickingHarness({
         scope,
         updateWithDatum,
         pickerUnitView,
+        viewRoot,
     };
 }
 
@@ -1852,6 +1856,86 @@ describe("InteractionController", () => {
     );
 
     describe("explicit picking", () => {
+        it("prefers the owning plot in nested views sharing record IDs", async () => {
+            const { controller, pickerUnitView, viewRoot } =
+                createPickingHarness({
+                    reader: () => 1,
+                });
+            const other = Object.create(UnitView.prototype);
+            other.mark = { ...pickerUnitView.mark, unitView: other };
+            other.getLayoutAncestors = pickerUnitView.getLayoutAncestors;
+            other.getCollector = pickerUnitView.getCollector;
+            other.facetCoords = new Map([
+                [undefined, { containsPoint: () => false }],
+            ]);
+            for (const views of [
+                [pickerUnitView, other],
+                [other, pickerUnitView],
+            ]) {
+                // Real nested traversal must reach the owning plot after a fallback hit.
+                const groups = views.map((view) => {
+                    const group = Object.create(ContainerView.prototype);
+                    group[Symbol.iterator] = function* () {
+                        yield view;
+                    };
+                    return group;
+                });
+                viewRoot[Symbol.iterator] = () => groups.values();
+                viewRoot.visit = ContainerView.prototype.visit;
+                const result = await controller.pick({ x: 10, y: 20 });
+                expect(result.status).toBe("hit");
+                if (result.status === "hit") {
+                    expect(result.hit.mark).toBe(pickerUnitView.mark);
+                }
+            }
+        });
+
+        it.each([
+            [false, "hit"],
+            ["never", "hit"],
+            ["y", "hit"],
+            [true, "empty"],
+            ["x", "empty"],
+        ])(
+            "respects clip %s for a rendered hit left of an ordinary plot",
+            async (clip, status) => {
+                const { controller, datum, pickerUnitView } =
+                    createPickingHarness({
+                        reader: () => 1,
+                    });
+                pickerUnitView.mark.properties.clip = clip;
+                pickerUnitView.facetCoords = new Map([
+                    [undefined, Rectangle.create(20, 0, 40, 80)],
+                ]);
+                await expect(
+                    controller.pick({ x: 10, y: 20 })
+                ).resolves.toMatchObject({
+                    status,
+                    ...(status === "hit" ? { hit: { datum } } : {}),
+                });
+            }
+        );
+
+        it("still rejects a rendered ID outside its logical facet cell", async () => {
+            const { controller, pickerUnitView } = createPickingHarness({
+                reader: () => 1,
+            });
+            pickerUnitView.facetCoords = new Map([
+                [["A"], { containsPoint: () => false }],
+            ]);
+            pickerUnitView.getLayoutAncestors = () => [
+                {
+                    spec: {
+                        facet: { field: "group" },
+                        spec: { mark: "point" },
+                    },
+                },
+            ];
+            await expect(controller.pick({ x: 10, y: 20 })).resolves.toEqual({
+                status: "empty",
+            });
+        });
+
         it("does not infer facet operator identity from overlapping sample bounds", async () => {
             const { controller, pickerUnitView } = createPickingHarness({
                 reader: () => 1,

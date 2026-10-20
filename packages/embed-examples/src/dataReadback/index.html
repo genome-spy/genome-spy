@@ -35,10 +35,10 @@
             Input records contain <code>group</code> and <code>value</code>. The
             app receives <code>group</code>, <code>count</code>, and
             <code>mean</code> through
-            <code>view.readData({scope, limit})</code>; it never loads the input
-            or repeats the aggregation. Page code sends the returned group keys
-            to <code>selection.setValue(keys)</code> to highlight the results
-            using conditional opacity.
+            <code>view.data.read({scope, limit})</code>; it never loads the
+            input or repeats the aggregation. Page code sends the returned group
+            keys to <code>selection.setValue(keys)</code> to highlight the
+            results using conditional opacity.
         </p>
         <p>
             Zooming and brushing choose which summaries to read; they do not

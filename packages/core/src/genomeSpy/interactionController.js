@@ -1117,6 +1117,7 @@ export default class InteractionController {
 
         /** @type {InternalMarkHit | undefined} */
         let hit;
+        let hitWithinBounds = false;
         this.#viewRoot.visit((view) => {
             if (
                 view instanceof UnitView &&
@@ -1124,22 +1125,33 @@ export default class InteractionController {
                 (!scopeView || view.getLayoutAncestors().includes(scopeView))
             ) {
                 for (const [facetId, coords] of view.facetCoords) {
-                    if (!coords.containsPoint(x, y)) {
+                    // Only facet operators establish cell identity by bounds.
+                    const cellFacetId =
+                        facetId !== undefined &&
+                        view
+                            .getLayoutAncestors()
+                            .some((ancestor) => isFacetSpec(ancestor.spec))
+                            ? facetId
+                            : undefined;
+                    const withinBounds = coords.containsPoint(x, y);
+                    const clip = view.mark.properties.clip;
+                    const outsideClip =
+                        clip === true ||
+                        (clip === "x" && (x < coords.x || x > coords.x2)) ||
+                        (clip === "y" && (y < coords.y || y > coords.y2));
+                    // Prefer the owning plot when views share the same record IDs.
+                    if (
+                        !withinBounds &&
+                        (cellFacetId !== undefined ||
+                            hitWithinBounds ||
+                            outsideClip)
+                    ) {
                         continue;
                     }
                     const datum = view
                         .getCollector()
                         ?.findDatumByUniqueId(uniqueId);
                     if (datum) {
-                        // Shader-based sample facets can share the same bounds;
-                        // only facet operators establish cell identity by point.
-                        const cellFacetId =
-                            facetId !== undefined &&
-                            view
-                                .getLayoutAncestors()
-                                .some((ancestor) => isFacetSpec(ancestor.spec))
-                                ? facetId
-                                : undefined;
                         hit = {
                             mark: view.mark,
                             datum,
@@ -1148,11 +1160,12 @@ export default class InteractionController {
                                 ? {}
                                 : { facetId: cellFacetId }),
                         };
+                        hitWithinBounds = withinBounds;
                     }
                     break;
                 }
             }
-            if (hit) {
+            if (hitWithinBounds) {
                 return VISIT_STOP;
             }
         });
