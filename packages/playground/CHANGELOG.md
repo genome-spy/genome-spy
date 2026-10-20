@@ -1,5 +1,52 @@
 # Change Log
 
+## 1.2.0
+
+### Minor Changes
+
+- The Playground now links loaded examples to the documentation pages that use
+  them, opening the relevant section when needed. Links remain available while
+  editing and after reloading the page. This bar replaces the base URL notice;
+  relative data and import URLs continue to resolve against the loaded example's
+  base URL. ([`de13048`](https://github.com/genome-spy/genome-spy/commit/de1304874a52c190f1862ca75765fdebbf034513)) [@tuner](https://github.com/tuner)
+- Playground now underlines declarations responsible for missing encoding fields,
+  missing static top-level `datum` fields, invalid expressions and interaction
+  filters, invalid or duplicate parameter names, missing `push: "outer"` targets,
+  and transform construction failures such as invalid regular expressions,
+  alongside the existing data-loading diagnostics. Highlights follow formatting
+  and disappear when the specification is corrected.
+  Missing fields with spaces, punctuation, or escaped property names now report
+  errors instead of silently producing empty plots.
+  Missing flat fields in transform properties also highlight the affected property
+  or array entry, including grouping, sorting, and lookup fields.
+
+  Error displays and console reports include available specification locations.
+  Playground shows the message and specification path in an error card with a
+  "Show in editor" action. Data-loading failures retain their local indicators with
+  added location context.
+
+  Missing flat fields in encodings, transforms, and expressions now report an error
+  on any processed row, including expression references inside guards and
+  conditional branches. Ensure these fields are present in the input data or
+  produced by an earlier transform. For optional values, include
+  `null` (or `undefined` in JavaScript-provided data); use `isValid` when `null`
+  should count as missing. Computed keys and nested properties retain their existing
+  behavior.
+
+  Embedding applications can use the `getSpecOrigin` option and
+  `getSpecErrorLocation(error)` helper to connect errors to declarations in an
+  editor or generated specification. This supports editor diagnostics and feedback
+  for LLM agents that revise specifications. Data-loading reports include
+  `errorLocation` when a processing failure identifies an encoding, expression, or
+  transform, so embedders can point users to the declaration that needs correcting
+  instead of the data URL. ([#558](https://github.com/genome-spy/genome-spy/pull/558)) [@tuner](https://github.com/tuner)
+
+### Patch Changes
+
+- Updated dependencies [[`b44200f`](https://github.com/genome-spy/genome-spy/commit/b44200fb16febf676685ba320a995bd3ed604f4f), [`4b23f16`](https://github.com/genome-spy/genome-spy/commit/4b23f166c8c122fec2e7a270a093f6276b5db9fa), [`74bbd7e`](https://github.com/genome-spy/genome-spy/commit/74bbd7e1315bf2d14c7f2f4b05d4e977170f74a1), [`b34836e`](https://github.com/genome-spy/genome-spy/commit/b34836e8319e844ccecbc713e4f4fb6b3403575f), [`3125069`](https://github.com/genome-spy/genome-spy/commit/3125069a70ebf9f76d26a425d8a774b1e258e2ab), [`b5128d8`](https://github.com/genome-spy/genome-spy/commit/b5128d8e3c0870529f5b9232222644be66303eea), [`5f6467a`](https://github.com/genome-spy/genome-spy/commit/5f6467aaedb01a7d4e183d6e53681642a98400a0), [`8277ae6`](https://github.com/genome-spy/genome-spy/commit/8277ae6ff8d8c22976de97ae8fc8024053df1f83), [`d455331`](https://github.com/genome-spy/genome-spy/commit/d455331f9876fae053076a9881b866ebd056917a), [`066ec03`](https://github.com/genome-spy/genome-spy/commit/066ec0306a06bdf7aa951ba028133bc75f0da110), [`5e87d39`](https://github.com/genome-spy/genome-spy/commit/5e87d39a8c10aa4433bed1e65b0a6febebf0bc10), [`bfc07d1`](https://github.com/genome-spy/genome-spy/commit/bfc07d182e915e7abdd083f9a582ac83814c46ee), [`dca83c3`](https://github.com/genome-spy/genome-spy/commit/dca83c3ae66046bea0371d2053ed33b87cfb2b75), [`835f932`](https://github.com/genome-spy/genome-spy/commit/835f93296f012217c071fdaeb75fe7889262a5f7), [`67601b9`](https://github.com/genome-spy/genome-spy/commit/67601b9e5042dbe5798f019089b2eaeb4ae5ef9d), [`54b41e0`](https://github.com/genome-spy/genome-spy/commit/54b41e021ef3196b79c897f6139cba62696195bf), [`22d005a`](https://github.com/genome-spy/genome-spy/commit/22d005a088ad0511cc17dae3b6fcbcf6b2bb7b60), [`f93a97d`](https://github.com/genome-spy/genome-spy/commit/f93a97ddfc363ae3f40866770024abe351b3c443), [`9ba7b2a`](https://github.com/genome-spy/genome-spy/commit/9ba7b2a59f265114e6999c2f187f108d25c00aa2), [`e362e1b`](https://github.com/genome-spy/genome-spy/commit/e362e1b0f3091c9372010538ea5c785f8f37798d)]:
+  - @genome-spy/core@1.2.0
+  - @genome-spy/inspector@1.2.0
+
 ## 1.1.1
 
 ### Patch Changes

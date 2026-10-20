@@ -1,5 +1,171 @@
 # Change Log
 
+## 1.2.0
+
+### Minor Changes
+
+- Run an explicit `formula`, `filter`, `sample`, `aggregate`, or `window` pipeline
+  on viewport or interval-brush records with `ViewHandle.data.transform()`. Analysis
+  uses an isolated flow and leaves the visualization unchanged. Input overflow
+  rejects before calculation; output limits apply after the complete pipeline.
+  Designed primarily for agentic use, it lets agents query loaded data and receive
+  summaries or selected records without loading the full raw dataset into their context.
+  A generated request schema is available as `@genome-spy/core/transform-data-schema.json`.
+
+  Record readback is grouped under `ViewHandle.data` alongside analysis. Replace
+  `view.readData(options)` with `view.data.read(options)` when using the readback
+  API added since the last release. Dataset updates remain under `view.datasets`. ([#578](https://github.com/genome-spy/genome-spy/pull/578)) [@okunator](https://github.com/okunator)
+
+- Fit viewport-derived scale domains to complete links or intervals with
+  `domain: { "source": "viewport", "mode": "contain" }`. The clustered heatmap
+  example uses this option with scale padding to expand local dendrogram branches
+  while keeping them clear of panel edges when zooming and panning the matrix.
+  The default intersection behavior is unchanged. ([#574](https://github.com/genome-spy/genome-spy/pull/574)) [@tuner](https://github.com/tuner)
+- Add opt-in cooperative wheel behavior to Core and App embeds so ordinary wheel
+  input scrolls the page or an overflowing view, while Ctrl+wheel retains chart
+  navigation and authored wheel selections. Viewport and sample scrolling applies
+  wheel deltas directly without added inertia and passes further scrolling outward
+  at boundaries. Embedding applications provide their own Ctrl-zoom hints. ([#590](https://github.com/genome-spy/genome-spy/pull/590)) [@tuner](https://github.com/tuner)
+- Inspect eager URL and lazy data-loading outcomes through the embed API's new
+  `dataLoading.getSnapshot()` and `dataLoading.subscribe()` methods. Embedders can
+  detect failed sources without reading the visualization or browser console.
+  Shared sources retain their status until disposal, and successful sources no
+  longer hide another source's error. The optional `getSpecOrigin` embed option
+  links loading outcomes to data definitions in a specification.
+  Processing failures include buffered transforms and final data publication.
+
+  `awaitVisibleLazyData()` waits for publication to finish and rejects when a required
+  source fails, including a failure already recorded before the wait, so automated
+  validation and capture can finish promptly without retrying failed requests.
+  Tracks hidden by their own visibility or an ancestor do not participate.
+
+  Playground now underlines failed data declarations and shows the loading error
+  on hover. Confirmed requests to a single URL highlight that URL; processing and
+  ambiguous lazy-source failures highlight the enclosing data configuration.
+  Diagnostics follow formatting changes and clear when the source succeeds or
+  the specification changes. ([#557](https://github.com/genome-spy/genome-spy/pull/557)) [@tuner](https://github.com/tuner)
+
+- Add support for dendrograms aligned with heatmap rows or columns while keeping
+  index scales discrete. Leaves stay aligned and branches remain connected during
+  zooming, panning, and resizing.
+
+  The new `dendrogram` transform lays out precomputed node tables using explicit
+  leaf indices and merge heights. It emits parent–child edges with integer anchors
+  and relative offsets for rendering with a single link mark.
+
+  The new `x2Offset` and `y2Offset` encoding channels independently displace
+  secondary endpoints using the corresponding `xOffset` or `yOffset` scale.
+
+  The reactive `bandstep()` expression helper returns the regular spacing between
+  adjacent bands, including padding. `bandwidth()` returns the band size without
+  that padding. Dendrogram offsets can follow row or column spacing during zooming
+  and resizing, including scales with grouping gaps.
+
+  Link marks now support `linkShape: "orthogonal"` with horizontal and vertical
+  orientations across WebGL, WebGPU, Canvas, and SVG. Right-angle joins remain
+  consistent across rendering and picking.
+
+  Canvas and SVG now honor within-band placement on nested offset scales, so
+  points align with their corresponding grouped bars.
+
+  WebGPU link picking now honors `minPickingSize`, making thin links easier to
+  select. ([#572](https://github.com/genome-spy/genome-spy/pull/572)) [@tuner](https://github.com/tuner)
+
+- Read all loaded transformed records, or those inside a viewport or named interval brush, with
+  `ViewHandle.data.read({scope, limit})`. Bounds are applied before the record limit.
+  Replace native point-selection membership by `encoding.key` tuples with
+  `PointSelectionApi.setValue(keys)`, across mark types and existing conditional
+  encodings. Existing point-selection reads and subscriptions are unchanged.
+
+  Inherited point selections assign record identities to data views without enabling
+  picking or adding selection-only identity work to generated guides. ([#576](https://github.com/genome-spy/genome-spy/pull/576)) [@okunator](https://github.com/okunator)
+
+- Add `surround` composition for annotated heatmaps, UpSet plots, and other
+  layouts with aligned marginal panels. Panels share the central plot's
+  corresponding x or y scale and can have surrounding panels of their own.
+  Central plots align in concats, with fixed or growing surrounding panels reserved as overhang. ([#577](https://github.com/genome-spy/genome-spy/pull/577)) [@tuner](https://github.com/tuner)
+- Add opt-in light and dark mode support for the default theme and tooltips through
+  CSS `color-scheme`, with customizable colors using `--genome-spy-*` properties.
+  Appearance changes update existing visualizations while preserving zoom,
+  selections, and the transparent canvas background. ([#588](https://github.com/genome-spy/genome-spy/pull/588)) [@tuner](https://github.com/tuner)
+- Add `facet` composition to Core and App specifications to repeat a plot by
+  category in rows or columns, or wrap a single-field facet into a grid. Facets share
+  scales, outer axes, and legends, with configurable headers, smooth scrolling,
+  picking, tooltips, and shared pan/zoom. Explicit category domains keep empty tracks navigable.
+  Child transforms run independently for each category.
+
+  See the [facet guide](https://genomespy.app/docs/grammar/facet/) for examples. ([#560](https://github.com/genome-spy/genome-spy/pull/560)) [@tuner](https://github.com/tuner)
+
+- Adds fixed-size grouping gaps to index and locus scales with `gapPositions` and
+  `gapWidth`, including chromosome gaps and matching axis domain lines. Adds the
+  `scaleGroups` data source for group guides and outlines, plus mark-local `clamp`
+  for either or both axes.
+
+  Improves fragment shader stability by always clamping long rules. This fixes
+  visual artifacts in the synteny example when zooming in very close. ([#566](https://github.com/genome-spy/genome-spy/pull/566)) [@tuner](https://github.com/tuner)
+
+- Playground now underlines declarations responsible for missing encoding fields,
+  missing static top-level `datum` fields, invalid expressions and interaction
+  filters, invalid or duplicate parameter names, missing `push: "outer"` targets,
+  and transform construction failures such as invalid regular expressions,
+  alongside the existing data-loading diagnostics. Highlights follow formatting
+  and disappear when the specification is corrected.
+  Missing fields with spaces, punctuation, or escaped property names now report
+  errors instead of silently producing empty plots.
+  Missing flat fields in transform properties also highlight the affected property
+  or array entry, including grouping, sorting, and lookup fields.
+
+  Error displays and console reports include available specification locations.
+  Playground shows the message and specification path in an error card with a
+  "Show in editor" action. Data-loading failures retain their local indicators with
+  added location context.
+
+  Missing flat fields in encodings, transforms, and expressions now report an error
+  on any processed row, including expression references inside guards and
+  conditional branches. Ensure these fields are present in the input data or
+  produced by an earlier transform. For optional values, include
+  `null` (or `undefined` in JavaScript-provided data); use `isValid` when `null`
+  should count as missing. Computed keys and nested properties retain their existing
+  behavior.
+
+  Embedding applications can use the `getSpecOrigin` option and
+  `getSpecErrorLocation(error)` helper to connect errors to declarations in an
+  editor or generated specification. This supports editor diagnostics and feedback
+  for LLM agents that revise specifications. Data-loading reports include
+  `errorLocation` when a processing failure identifies an encoding, expression, or
+  transform, so embedders can point users to the declaration that needs correcting
+  instead of the data URL. ([#558](https://github.com/genome-spy/genome-spy/pull/558)) [@tuner](https://github.com/tuner)
+
+### Patch Changes
+
+- Keep Core and App error messages readable and centered in the viewport when
+  embedding into the document body, including after startup failures. ([`4b23f16`](https://github.com/genome-spy/genome-spy/commit/4b23f166c8c122fec2e7a270a093f6276b5db9fa)) [@tuner](https://github.com/tuner)
+- Render configured legend background fills and outlines, and apply legend padding
+  inside their borders. Stacked and wrapped legends retain their visibility and
+  layout behavior. ([#581](https://github.com/genome-spy/genome-spy/pull/581)) [@tuner](https://github.com/tuner)
+- Defer drawing triggered by resize or scheduled layout updates until startup
+  preparation completes. This prevents startup from failing when generated legend
+  or facet labels become ready before their fonts. ([`b5128d8`](https://github.com/genome-spy/genome-spy/commit/b5128d8e3c0870529f5b9232222644be66303eea)) [@tuner](https://github.com/tuner)
+- Fix WebGL charts with band rulers failing to load before the first pointer
+  event when no initial cursor coordinate is supplied. Keep the ruler working
+  as it appears and clears when the pointer enters and leaves the chart. ([#586](https://github.com/genome-spy/genome-spy/pull/586)) [@okunator](https://github.com/okunator)
+- Report invalid literal mark and encoding colors consistently across renderers
+  instead of throwing an opaque WebGL error or silently drawing black points with
+  Canvas. Playground highlights the offending color value, including inherited
+  encodings and conditional values. ([`bfc07d1`](https://github.com/genome-spy/genome-spy/commit/bfc07d182e915e7abdd083f9a582ac83814c46ee)) [@tuner](https://github.com/tuner)
+- Reduce the retained memory used by unique-ID indexes and speed up their
+  construction, improving loading and data updates for large datasets. Lookups
+  preserve current collector ordering and support IDs beyond the 32-bit range.
+  Speed up numeric array sorting while preserving ordinary-array results and
+  safe-integer precision. ([#570](https://github.com/genome-spy/genome-spy/pull/570)) [@tuner](https://github.com/tuner)
+- Keep data-loading errors visible when shared data on a root concatenation fails
+  to load. Failed requests now show a loading error in the visualization instead
+  of leaving empty plots without explanation. ([`835f932`](https://github.com/genome-spy/genome-spy/commit/835f93296f012217c071fdaeb75fe7889262a5f7)) [@tuner](https://github.com/tuner)
+- Fix Shift-clicking points when a point selection uses `push: "outer"` to share
+  its value across views. Adding or removing points now reads the shared selection
+  instead of throwing an error after an ordinary click. ([#579](https://github.com/genome-spy/genome-spy/pull/579)) [@okunator](https://github.com/okunator)
+- Allow tooltips and mark interactions on visible marks outside ordinary plot bounds when clipping is disabled. Keep logical facet-cell bounds checks and hover attached to the owning plot when views share data. ([#587](https://github.com/genome-spy/genome-spy/pull/587)) [@okunator](https://github.com/okunator)
+
 ## 1.1.1
 
 ### Patch Changes

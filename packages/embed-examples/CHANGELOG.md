@@ -1,5 +1,22 @@
 # Change Log
 
+## 1.2.0
+
+### Minor Changes
+
+- Add opt-in light and dark mode support for the default theme and tooltips through
+  CSS `color-scheme`, with customizable colors using `--genome-spy-*` properties.
+  Appearance changes update existing visualizations while preserving zoom,
+  selections, and the transparent canvas background. ([#588](https://github.com/genome-spy/genome-spy/pull/588)) [@tuner](https://github.com/tuner)
+
+### Patch Changes
+
+- Updated dependencies [[`b44200f`](https://github.com/genome-spy/genome-spy/commit/b44200fb16febf676685ba320a995bd3ed604f4f), [`4b23f16`](https://github.com/genome-spy/genome-spy/commit/4b23f166c8c122fec2e7a270a093f6276b5db9fa), [`74bbd7e`](https://github.com/genome-spy/genome-spy/commit/74bbd7e1315bf2d14c7f2f4b05d4e977170f74a1), [`b34836e`](https://github.com/genome-spy/genome-spy/commit/b34836e8319e844ccecbc713e4f4fb6b3403575f), [`3125069`](https://github.com/genome-spy/genome-spy/commit/3125069a70ebf9f76d26a425d8a774b1e258e2ab), [`b5128d8`](https://github.com/genome-spy/genome-spy/commit/b5128d8e3c0870529f5b9232222644be66303eea), [`5f6467a`](https://github.com/genome-spy/genome-spy/commit/5f6467aaedb01a7d4e183d6e53681642a98400a0), [`8277ae6`](https://github.com/genome-spy/genome-spy/commit/8277ae6ff8d8c22976de97ae8fc8024053df1f83), [`d455331`](https://github.com/genome-spy/genome-spy/commit/d455331f9876fae053076a9881b866ebd056917a), [`066ec03`](https://github.com/genome-spy/genome-spy/commit/066ec0306a06bdf7aa951ba028133bc75f0da110), [`5e87d39`](https://github.com/genome-spy/genome-spy/commit/5e87d39a8c10aa4433bed1e65b0a6febebf0bc10), [`bfc07d1`](https://github.com/genome-spy/genome-spy/commit/bfc07d182e915e7abdd083f9a582ac83814c46ee), [`dca83c3`](https://github.com/genome-spy/genome-spy/commit/dca83c3ae66046bea0371d2053ed33b87cfb2b75), [`835f932`](https://github.com/genome-spy/genome-spy/commit/835f93296f012217c071fdaeb75fe7889262a5f7), [`67601b9`](https://github.com/genome-spy/genome-spy/commit/67601b9e5042dbe5798f019089b2eaeb4ae5ef9d), [`54b41e0`](https://github.com/genome-spy/genome-spy/commit/54b41e021ef3196b79c897f6139cba62696195bf), [`22d005a`](https://github.com/genome-spy/genome-spy/commit/22d005a088ad0511cc17dae3b6fcbcf6b2bb7b60), [`f93a97d`](https://github.com/genome-spy/genome-spy/commit/f93a97ddfc363ae3f40866770024abe351b3c443), [`9ba7b2a`](https://github.com/genome-spy/genome-spy/commit/9ba7b2a59f265114e6999c2f187f108d25c00aa2), [`e362e1b`](https://github.com/genome-spy/genome-spy/commit/e362e1b0f3091c9372010538ea5c785f8f37798d)]:
+  - @genome-spy/core@1.2.0
+  - @genome-spy/app@1.2.0
+  - @genome-spy/inspector@1.2.0
+  - @genome-spy/react-component@1.2.0
+
 ## 1.1.1
 
 ### Patch Changes
