@@ -1,6 +1,7 @@
 # Cooperative wheel interaction
 
-Status: proposal. No runtime implementation is included.
+Status: implementation in progress. Each implementation milestone is committed
+separately after its focused verification.
 
 Issue: https://github.com/genome-spy/genome-spy/issues/584
 
@@ -27,8 +28,9 @@ event, before native cancellation and before adding zoom inertia.
 - Retain Ctrl+wheel genomic navigation, including wheel-based trackpad pinch.
 - Support ordinary wheel scrolling for Core's vertical viewports and App's
   close-up sample collection, with outward chaining at scroll boundaries.
-- Preserve the default interaction behavior, public event hooks, view hit
-  routing, and renderer independence.
+- Preserve default navigation behavior, public event hooks, view hit routing,
+  and renderer independence. Scrolling receives no GenomeSpy-added inertia in
+  either mode; native trackpad momentum remains ordinary incoming wheel events.
 - Give ownership probing and actual handling the same eligibility rules.
 
 Do not change touchscreen gestures, mouse dragging, keyboard navigation, scale
@@ -111,8 +113,9 @@ Detailed rules:
 4. Normalize pixel, line, and page wheel deltas consistently for internal scroll
    capacity checks and application. Use a documented line step and the owning
    viewport height for page deltas. Preserve current zoom sensitivity and
-   native browser deltas. Do not add zoom inertia to ordinary scrolling: a
-   trackpad already supplies its own momentum.
+   native browser deltas. Do not add inertia or easing to viewport or sample
+   scrolling in either mode: a trackpad already supplies its own momentum.
+   Separate default App sample scrolling from synthetic zoom inertia as well.
 5. Ordinary cooperative wheel does not invoke built-in wheel navigation or
    declarative wheel selection gestures, including interval resize and point
    selection `on: "wheel"`. Hosts can observe or override input with the native
@@ -175,6 +178,8 @@ navigation dispatch to honor the host policy.
 Keep the `"default"` path compatible. Avoid replacing the entire wheel system
 solely to support this option; share the new ownership representation where it
 reduces duplicate decisions, but retain current default scroll/zoom priorities.
+The intentional default-mode refinement is immediate sample scrolling without
+GenomeSpy-generated inertia; zoom keeps its existing smoothing.
 
 ## Alternatives considered
 
@@ -230,16 +235,22 @@ Tentative commit: `feat(core): add cooperative wheel navigation for embeds`
       represent sample scrolling on main and sidebar surfaces independently from
       genomic zoom; chain outward at close-up scroll boundaries.
 - [ ] Preserve overview/close-up and sidebar behavior in default mode, without
-      introducing bookmark or provenance state. Confirm inherited App options and
+      introducing bookmark or provenance state, while applying sample-scroll
+      deltas directly without synthetic inertia. Confirm inherited App options and
       Core/App forwarding need no duplicated public configuration. Smoke-test the
       existing React example in default mode; do not add a React options prop here.
 - [ ] Exercise App's main/sidebar matrix with real sample offsets and genomic
       domains, including close-up at the top/bottom and changing from overview to
       close-up during inertia. Use existing `sampleView.test.js` and
       `locationManager.test.js` seams; the embed option itself is instance-fixed.
-- [ ] Add a vertically scrollable host example under
-      `packages/embed-examples/src/` with cooperative Core and App cases and
-      host-authored Ctrl-zoom text. Explain optional App behavior in
+- [ ] Add a dedicated new demo at
+      `packages/embed-examples/src/cooperativeWheel/`, linked from the
+      embed-examples index. Demonstrate page scrolling across a zoomable Core
+      chart, internal viewport scrolling with outward chaining, and cooperative
+      App overview/close-up scrolling. Include host-authored Ctrl-zoom text and
+      enough surrounding content to scroll naturally. Keep demo data local or
+      inline so the interaction can be verified without third-party services.
+      Explain optional App behavior in
       `docs/sample-collections/analyzing.md` and the embed example index.
       Update the same changeset for any direct App release impact.
 
@@ -252,7 +263,8 @@ Tentative commit: `feat(app): support cooperative wheel scrolling in cohort view
 
 - [ ] Run focused affected Vitest suites with the `agent` reporter, workspace
       TypeScript checks, lint, and the applicable documentation/example checks.
-- [ ] In a real scrollable page, verify body or enclosing scroll-container
+- [ ] Use the new cooperative-wheel demo as the primary browser acceptance
+      harness. In its real scrollable page, verify body or enclosing scroll-container
       movement and unchanged domains for plain wheel, Ctrl genomic zoom/pan without
       browser zoom, nested scroll chaining, active brush behavior, and host vetoes
       during inertia. Include brush resizing on a view with no zoomable scales,
