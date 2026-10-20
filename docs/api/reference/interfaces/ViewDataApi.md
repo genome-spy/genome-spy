@@ -46,6 +46,11 @@ spatial index. Limit must be a nonnegative safe integer and bounds row count.
 
 > **transform**: (`options`) => `object`
 
+Designed primarily for agentic queries: return compact results without loading
+the full raw dataset into the agent's context. The limited declarative grammar
+has a JSON Schema at `@genome-spy/core/transform-data-schema.json` for validating
+tool inputs.
+
 Runs a one-shot pipeline on a complete scoped snapshot of current transformed
 records. Rejects input overflow; truncated reports additional output rows.
 Uses an isolated flow without changing live data, parameters, or GPU buffers.

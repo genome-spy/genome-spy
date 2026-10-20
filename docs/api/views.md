@@ -141,6 +141,13 @@ for a small readback-to-selection example.
 
 ## Calculating results from scoped records
 
+`view.data.transform()` is designed primarily for agentic queries: calculate
+summaries, rankings, or samples inside GenomeSpy without loading the full raw
+dataset into the agent's context. Its limited declarative grammar has a JSON
+Schema for validating tool inputs. Explicit scopes, isolated calculations, and
+clear overflow and truncation signals help agents refine queries without
+changing the visualization.
+
 `view.data.transform({scope, transform, inputLimit, limit})` runs an explicit
 pipeline over a complete snapshot captured with the same scope rules as
 `data.read`. Region membership is applied **before** this additional pipeline.
@@ -172,9 +179,8 @@ have `datum` and built-in functions; they do not inherit live view parameters.
 Selection-parameter filters, reactive `debounce` settings, and other transform
 types are outside this API's supported grammar. Sampling uses the existing
 default size of 500 and is not seeded; an explicit size must be a positive safe integer. The generated request
-schema ships as `@genome-spy/core/transform-data-schema.json` for agent/tool setup.
-Apps can validate agent-generated requests against this schema before calling
-`data.transform`. The method does not run schema validation internally.
+schema ships as `@genome-spy/core/transform-data-schema.json`.
+The method does not run schema validation internally.
 
 For example, these pipelines calculate scores or retain the five highest-ranked
 records while preserving their keys:
