@@ -1,14 +1,15 @@
 # Cooperative wheel interaction
 
-Status: implementation in progress. Milestones 1 and 2 are complete. Each
-implementation milestone is committed separately after its focused verification.
+Status: implementation complete. Each milestone is committed separately.
+Automated integration verification and independent review are complete; physical
+trackpad and Firefox/Safari coverage were unavailable in this environment.
 
 Issue: https://github.com/genome-spy/genome-spy/issues/584
 
 ## Recommendation
 
 Add `wheelBehavior?: "default" | "cooperative"` to `EmbedOptions`, with
-`"default"` preserving existing behavior. In cooperative mode, ordinary wheel
+`"default"` preserving existing navigation bindings. In cooperative mode, ordinary wheel
 input scrolls a vertically overflowing view or the surrounding page; Ctrl+wheel
 uses GenomeSpy's existing genomic navigation. Keep this policy at the embedding
 boundary because the host knows the surrounding page's navigation requirements.
@@ -232,7 +233,7 @@ selection changes, native cancellation, and inertia handoffs. Independent review
 also added filtered wheel-selection clearing on nonzoomable scales and made
 probe source events required. Core/App TypeScript and scoped lint pass.
 
-Tentative commit: `feat(core): add cooperative wheel navigation for embeds`
+Commit: `9700e0020` — `feat(core): support cooperative wheel navigation in embeds`
 
 ### 2. App cohort scrolling and embedding integration
 
@@ -267,54 +268,70 @@ The new demo builds, and native Chrome wheel checks pass with Canvas2D, WebGL2,
 and simple WebGPU Core fixtures (App uses Canvas2D for the WebGPU demo variant).
 The existing React example also loads without browser errors.
 
-Tentative commit: `feat(app): support cooperative wheel scrolling in cohort views`
+Commit: `80093d2c1` — App sample scrolling, dedicated demo, and native-wheel checks.
 
 ### 3. Final browser integration and delivery
 
-- [ ] Run focused affected Vitest suites with the `agent` reporter, workspace
+- [x] Run focused affected Vitest suites with the `agent` reporter, workspace
       TypeScript checks, lint, and the applicable documentation/example checks.
-- [ ] Use the new cooperative-wheel demo as the primary browser acceptance
+- [x] Use the new cooperative-wheel demo as the primary browser acceptance
       harness. In its real scrollable page, verify body or enclosing scroll-container
       movement and unchanged domains for plain wheel, Ctrl genomic zoom/pan without
       browser zoom, nested scroll chaining, active brush behavior, and host vetoes
       during inertia. Include brush resizing on a view with no zoomable scales,
       drag-release followed by page/internal scrolling, and wheel entry through
       shared axes, gaps, and facets.
-- [ ] Use `examples/core/layout/grid/scrollable_viewport.json`,
+- [x] Use `examples/core/layout/grid/scrollable_viewport.json`,
       `examples/core/facet/sine_offsets_scrollable.json`, and
       `examples/app/samples.json` in the host harness. Test Core with Canvas2D and
       WebGL2 and a supported simple WebGPU spec where available. SVG export has no
       input path; existing export behavior must remain unchanged.
-- [ ] Verify physical mouse wheel and trackpad pinch/two-finger scrolling in
+- [x] Verify physical mouse wheel and trackpad pinch/two-finger scrolling in
       Chromium, Firefox, and Safari where available. Record unavailable device or
       browser coverage rather than replacing it with synthetic-event claims.
-- [ ] Review the shared ownership/public contract after milestones 1-2 and the
+      Physical devices and Firefox/Safari were unavailable; these checks are
+      recorded as unavailable, without claiming physical pinch validation.
+- [x] Review the shared ownership/public contract after milestones 1-2 and the
       final Core/App integration. Fix material issues without recursive reviews for
       wording. Verify release checks and reconcile every remaining plan task before
-      committing the completed/discarded record, then delete the plan in a later
-      commit before creating a PR.
+      committing the completed/discarded record. This plan is retained as requested;
+      delete it in a later commit before any future PR (PR creation is outside
+      the current task). The unrelated view-visibility plan remains untouched.
 
 Record the final integration gate in its own commit, together with any fixes
 revealed by verification. Follow the
 `debug-genomespy-web`, `write-genomespy-docs`, and `test-genomespy-views` skills
 when their respective browser, docs, or structured-view workflows are needed.
 
-## Risks, unresolved questions, and acceptance
+## Integration results and remaining verification
 
-- **Browser/device verification:** native Ctrl/pinch cancellation and gesture
-  transitions are not established by this code-level proposal. The wheel-event
-  [platform documentation](https://developer.mozilla.org/en-US/docs/Web/API/Element/wheel_event)
-  describes pinch-related Ctrl events and cancellation limitations. Confirm the
-  browser matrix before treating pinch support as delivered.
-- **Public API and authored events:** `wheelBehavior` and the cooperative
-  override of declarative wheel selection gestures are proposed contracts.
-  Review them before implementation; the default mode must remain compatible.
-- **Scroll delta normalization:** choose a documented line-step constant during
-  implementation and verify it on real devices. Native browser/page scrolling
-  must receive its original event, without manual pixel scrolling.
-- **Routing:** App sidebar scrolling, annotation/facet surfaces, and nested
-  viewport ownership are the principal correctness risks. Resolve them through
-  existing hit routing rather than cached approximate rectangles.
+- Full unit suite: 542 test files passed; 5,153 tests passed, with one existing
+  skip and two existing TODOs. The final run includes the selection-clear and
+  required-source review corrections.
+- All workspace TypeScript checks, repository lint, formatting/diff checks,
+  generated public API documentation, and the embed-examples production build
+  passed. The new demo is included in that build.
+- `npm -w @genome-spy/embed-examples run test:cooperative-wheel` passed in Chrome
+  for Canvas2D, WebGL2, and simple WebGPU Core fixtures. It verifies real page
+  movement, internal viewport and App sample movement, boundary chaining,
+  absence of added scrolling inertia, Ctrl chart navigation, nonzoomable brush
+  resizing, and wheel/drag inertia handoffs. The WebGPU variant uses Canvas2D
+  for App because the prototype backend has narrower rendering support.
+- Existing scrollable viewport and sine-offset facet examples passed Canvas2D
+  and WebGL2 browser smoke checks. Existing App samples and React embedding
+  examples loaded without browser errors. The new demo was visually inspected.
+- The line step is 16 CSS pixels, with page deltas based on the owning viewport
+  height. Pixel/line/page normalization has focused state-based coverage;
+  subjective device calibration remains a physical-device follow-up.
+- `wheelBehavior` naming and authored-wheel precedence are implemented as
+  specified. No additional product decisions block the implementation.
+- `release:status --since master` succeeds and selects a minor release for the
+  fixed package group. `release:check -- master` is blocked by the unchanged
+  baseline `.changeset/empty-band-ruler.md`, whose note lacks a category marker.
+  The feature fragment includes its category and Core/App minor release intent.
+- Firefox, Safari, and physical mouse/trackpad input were unavailable. Chrome's
+  browser-level input checks do not establish physical pinch/OS behavior in
+  those environments. This is the remaining verification limitation.
 
 ## Independent review disposition
 
@@ -331,12 +348,17 @@ Core/App routing and selection code. Addressed findings:
   forward this option. Also clarify that only App overview/close-up state, not
   the fixed embed option, can change during an instance's lifetime.
 
-Remaining review items are the proposed public option name and authored-wheel
-precedence, physical browser/device cancellation evidence, and line-step
-calibration. They are recorded above with proposed behavior and verification;
-there is no remaining identified blocker to writing the implementation.
+A second independent review inspected the implementation across Core/App,
+annotations, shared axes/gaps, nested scrolling, facets, selections, native hooks,
+and inertia. It identified missing Ctrl+wheel selection clearing on nonzoomable
+scales, which is now fixed with authored-filter and brush-bound regressions.
+The internal probe source is also required, and existing test fixtures were
+updated without adding a legacy App path or changing node test environments.
+No additional implementation blocker was identified. Remaining device/browser
+verification is recorded above.
 
 Acceptance requires the interaction table and detailed rules above, unchanged
-default behavior, real page-scroll verification, no duplicate scroll/zoom
-effects, and no GenomeSpy-generated Ctrl-zoom hint. The host example demonstrates
+default navigation, direct scrolling without added inertia, real page-scroll
+verification, no duplicate scroll/zoom effects, and no GenomeSpy-generated
+Ctrl-zoom hint. The host example demonstrates
 that an embedding application can provide its own hint with ordinary DOM text.
