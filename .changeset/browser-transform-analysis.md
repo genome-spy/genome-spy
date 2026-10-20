@@ -2,6 +2,8 @@
 "@genome-spy/core": minor
 ---
 
+<!-- category: feature -->
+
 Run an explicit `formula`, `filter`, `sample`, `aggregate`, or `window` pipeline
 on viewport or interval-brush records with `ViewHandle.data.transform()`. Analysis
 uses an isolated flow and leaves the visualization unchanged. Input overflow
