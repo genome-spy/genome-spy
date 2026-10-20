@@ -2,6 +2,8 @@
 "@genome-spy/core": minor
 ---
 
+<!-- category: feature -->
+
 Add support for dendrograms aligned with heatmap rows or columns while keeping
 index scales discrete. Leaves stay aligned and branches remain connected during
 zooming, panning, and resizing.

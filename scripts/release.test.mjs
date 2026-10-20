@@ -10,8 +10,9 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import process from "node:process";
 import { fileURLToPath, URL } from "node:url";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { checkChangesets } from "./checkChangesets.mjs";
 import { verifyPackedPackages } from "./verifyPackedPackages.mjs";
 import {
@@ -28,6 +29,8 @@ const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const fixtures = [];
 
 afterEach(async () => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     await Promise.all(
         fixtures
             .splice(0)
@@ -59,10 +62,19 @@ async function fixture() {
     const config = await readJson(
         path.join(repoRoot, ".changeset/config.json")
     );
-    // Use the offline formatter while exercising real Changesets versioning.
-    config.changelog = ["@changesets/cli/changelog", null];
+    // Exercise the real formatter; the fixture adapter omits commits to avoid GitHub lookups.
     config.format = false;
     await writeJson(path.join(cwd, ".changeset/config.json"), config);
+    await mkdir(path.join(cwd, "scripts"));
+    await writeFile(
+        path.join(cwd, "scripts/changelog.mjs"),
+        `import formatter from ${JSON.stringify(new URL("./changelog.mjs", import.meta.url).href)};
+const offline = (changeset) => ({ ...changeset, commit: undefined });
+export default {
+    getReleaseLine: (changeset, type, options) => formatter.getReleaseLine(offline(changeset), type, options),
+    getDependencyReleaseLine: (changesets, dependencies, options) => formatter.getDependencyReleaseLine(changesets.map(offline), dependencies, options),
+};\n`
+    );
     await writeJson(path.join(cwd, "package.json"), {
         name: "release-fixture",
         private: true,
@@ -161,7 +173,7 @@ describe("fixed post-1.0 releases", () => {
             const cwd = await fixture();
             await addChangeset(
                 cwd,
-                `---\n"${name}": ${type}\n---\n\nKeep axis labels consistent.\n`
+                `---\n"${name}": ${type}\n---\n\n<!-- category: ${type === "patch" ? "fix" : "feature"} -->\n\nKeep axis labels consistent.\n`
             );
             const baseline = git(cwd, ["rev-parse", "HEAD"]);
             const plan = await readReleasePlan(cwd);
@@ -202,6 +214,12 @@ describe("fixed post-1.0 releases", () => {
                 "Keep axis labels consistent."
             );
             expect(
+                await readFile(
+                    path.join(cwd, "packages/core/CHANGELOG.md"),
+                    "utf8"
+                )
+            ).not.toContain("category:");
+            expect(
                 await readFile(path.join(cwd, "CHANGELOG.md"), "utf8")
             ).toContain("Existing history.");
             expect(git(cwd, ["rev-parse", "HEAD"])).toBe(baseline);
@@ -215,44 +233,6 @@ describe("fixed post-1.0 releases", () => {
             ).resolves.toBeUndefined();
         }
     );
-
-    test("versions private applications and aggregates a multi-package note once", async () => {
-        const cwd = await fixture();
-        await addChangeset(
-            cwd,
-            '---\n"@genome-spy/app-agent": minor\n"@genome-spy/core": major\n---\n\nReplace the old API.\n\nMigration: rename oldProperty to newProperty.\n'
-        );
-        await writeFile(
-            path.join(cwd, ".changeset/fix.md"),
-            '---\n"@genome-spy/app": patch\n---\n\nPreserve sample order.\n'
-        );
-        commit(cwd);
-        await prepareRelease(cwd);
-
-        const agent = await readJson(
-            path.join(cwd, "packages/app-agent/package.json")
-        );
-        expect(agent.version).toBe("2.0.0");
-        expect(agent.private).toBe(true);
-        const notes = await releaseNotes(cwd);
-        expect(notes.match(/Replace the old API\./g)).toHaveLength(1);
-        expect(notes).toContain("### Breaking changes");
-        expect(notes).toContain(
-            "Migration: rename oldProperty to newProperty."
-        );
-        expect(notes).not.toContain("### New features");
-        expect(notes).toContain("### Fixes");
-        expect(notes).toContain("Preserve sample order.");
-
-        // Rehearse the single global tag at the reviewed version commit.
-        commit(cwd);
-        git(cwd, ["tag", "-a", "v2.0.0", "-m", "v2.0.0"]);
-        expect(git(cwd, ["tag"])).toBe("v1.0.0\nv2.0.0");
-        expect(
-            JSON.parse(git(cwd, ["show", "v2.0.0:packages/core/package.json"]))
-                .version
-        ).toBe("2.0.0");
-    });
 
     test("empty fragments record no release and cannot bump the baseline", async () => {
         const cwd = await fixture();
@@ -268,7 +248,7 @@ describe("fixed post-1.0 releases", () => {
         const cwd = await fixture();
         await writeFile(
             path.join(cwd, ".changeset/change.md"),
-            '---\n"@genome-spy/missing": patch\n---\n\nFix it.\n'
+            '---\n"@genome-spy/missing": patch\n---\n\n<!-- category: fix -->\n\nFix it.\n'
         );
         await expect(readReleasePlan(cwd)).rejects.toThrow();
         await rm(path.join(cwd, ".changeset/change.md"));
@@ -285,11 +265,101 @@ describe("fixed post-1.0 releases", () => {
     });
 });
 
+test("groups categories independently of bumps, labels direct packages, and accepts release prose", async () => {
+    const cwd = await fixture();
+    const notes = [
+        [
+            "feature",
+            '"@genome-spy/core": minor\n"@genome-spy/app": minor',
+            "Add shared controls.",
+        ],
+        [
+            "improvement",
+            '"@genome-spy/playground": patch',
+            "Make controls easier to navigate.",
+        ],
+        ["fix", '"@genome-spy/core": patch', "Keep axis labels visible."],
+        [
+            "feature",
+            '"@genome-spy/core": major',
+            "Replace the old API.\n\nMigration: rename oldProperty to newProperty.",
+        ],
+    ];
+    for (const [category, packages, summary] of notes) {
+        await writeFile(
+            path.join(
+                cwd,
+                ".changeset",
+                category + "-" + summary.slice(0, 3) + ".md"
+            ),
+            `---\n${packages}\n---\n\n<!-- category: ${category} -->\n\n${summary}\n`
+        );
+    }
+    commit(cwd);
+
+    // An introduction is editorial Markdown, outside the fragments consumed by Changesets.
+    const introPath = path.join(cwd, ".git/release-intro.md");
+    const intro =
+        "This release improves everyday navigation.\n\n## [Highlights](https://genomespy.app/)\n\nRead the migration notes before upgrading.";
+    await writeFile(introPath, intro);
+    execFileSync(
+        process.execPath,
+        [
+            path.join(repoRoot, "scripts/release.mjs"),
+            "version",
+            "--intro",
+            introPath,
+        ],
+        { cwd, stdio: "pipe" }
+    );
+
+    const prepared = await releaseNotes(cwd);
+    expect(prepared).toContain(
+        intro + "\n\n### Breaking changes\n\n- **Core:** Replace the old API."
+    );
+    expect(prepared).toContain(
+        "### New features\n\n- **App, Core:** Add shared controls."
+    );
+    expect(prepared).toContain(
+        "### Improvements\n\n- **Playground:** Make controls easier to navigate."
+    );
+    expect(prepared).toContain(
+        "### Fixes\n\n- **Core:** Keep axis labels visible."
+    );
+    expect(prepared.match(/Add shared controls\./g)).toHaveLength(1);
+    expect(prepared).toContain("Migration: rename oldProperty to newProperty.");
+    expect(prepared).not.toMatch(/category:|App Agent|Inspector|React/);
+    for (const name of ["core", "app", "playground"]) {
+        const changelog = await readFile(
+            path.join(cwd, "packages", name, "CHANGELOG.md"),
+            "utf8"
+        );
+        expect(changelog).not.toContain("category:");
+    }
+    expect(await releaseVersion(cwd)).toBe("2.0.0");
+});
+
+test("release checks reject missing, invalid, duplicated, and prose-free category markers", async () => {
+    const cwd = await fixture();
+    for (const summary of [
+        "Fix axis labels.",
+        "<!-- category: typo -->\n\nFix axis labels.",
+        "<!-- category: fix -->\n\n<!-- category: feature -->\n\nFix axis labels.",
+        "<!-- category: fix -->",
+    ]) {
+        await writeFile(
+            path.join(cwd, ".changeset/invalid.md"),
+            '---\n"@genome-spy/core": patch\n---\n\n' + summary + "\n"
+        );
+        await expect(checkChangesets(cwd)).rejects.toThrow(/Changeset invalid/);
+    }
+});
+
 test("publication requires consumed fragments and the reviewed stable version", async () => {
     const cwd = await fixture();
     await addChangeset(
         cwd,
-        '---\n"@genome-spy/core": patch\n---\n\nKeep axis labels consistent.\n'
+        '---\n"@genome-spy/core": patch\n---\n\n<!-- category: fix -->\n\nKeep axis labels consistent.\n'
     );
     await expect(verifyRelease(cwd, "1.0.0")).rejects.toThrow(
         "before publishing"
@@ -302,6 +372,130 @@ test("publication requires consumed fragments and the reviewed stable version", 
     await writeFile(path.join(cwd, "CHANGELOG.md"), "# Change Log\n");
     await expect(verifyRelease(cwd, "1.0.1")).rejects.toThrow(
         "Missing root release notes"
+    );
+});
+
+test("GitHub credits preserve reviewed notes and include new, returning, and direct-commit authors", async () => {
+    const cwd = await fixture();
+    await addChangeset(
+        cwd,
+        '---\n"@genome-spy/core": patch\n---\n\n<!-- category: fix -->\n\nKeep axis labels consistent.\n'
+    );
+    const intro =
+        "A release introduction.\n\n## [Highlights](https://genomespy.app/)\n\nSome editorial context.";
+    await prepareRelease(cwd, { intro });
+    commit(cwd);
+    const target = git(cwd, ["rev-parse", "HEAD"]);
+    const changelog = await readFile(path.join(cwd, "CHANGELOG.md"), "utf8");
+
+    const generated = [
+        "## What's Changed",
+        "",
+        "* Generated PR summary by @pr-author in https://github.com/genome-spy/genome-spy/pull/123",
+        "* Another PR by @returning in https://github.com/genome-spy/genome-spy/pull/124",
+        "",
+        "## New Contributors",
+        "",
+        "* @new-user made their first contribution in https://github.com/genome-spy/genome-spy/pull/125",
+        "",
+        "**Full Changelog**: https://github.com/genome-spy/genome-spy/compare/v1.0.0...v1.0.1",
+    ].join("\r\n");
+    // A full first page must not hide direct-commit authors on later pages.
+    const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(globalThis.Response.json({ body: generated }))
+        .mockResolvedValueOnce(
+            globalThis.Response.json({
+                commits: Array.from({ length: 100 }, () => ({
+                    author: { login: "Returning" },
+                })),
+            })
+        )
+        .mockResolvedValueOnce(
+            globalThis.Response.json({
+                commits: [{ author: { login: "direct" } }, { author: null }],
+            })
+        );
+    vi.stubGlobal("fetch", fetch);
+    vi.stubEnv("GH_TOKEN", "fixture-token");
+
+    const reviewedNotes = await releaseNotes(cwd);
+    expect(reviewedNotes).toContain(intro);
+    expect(fetch).not.toHaveBeenCalled();
+    const notes = await releaseNotes(cwd, { github: true });
+    expect(notes).toBe(
+        reviewedNotes.trimEnd() +
+            "\n\n## New Contributors\n\n" +
+            "* @new-user made their first contribution in https://github.com/genome-spy/genome-spy/pull/125\n\n" +
+            "Thanks to @direct, @new-user, @pr-author, @Returning!\n"
+    );
+    expect(fetch.mock.calls[0][0]).toBe(
+        "https://api.github.com/repos/genome-spy/genome-spy/releases/generate-notes"
+    );
+    const request = fetch.mock.calls[0][1];
+    expect(request.method).toBe("POST");
+    expect(request.headers.Authorization).toBe("Bearer fixture-token");
+    expect(JSON.parse(request.body)).toEqual({
+        tag_name: "v1.0.1",
+        previous_tag_name: "v1.0.0",
+        target_commitish: target,
+    });
+    expect(fetch.mock.calls.slice(1).map(([url]) => url)).toEqual([
+        `https://api.github.com/repos/genome-spy/genome-spy/compare/v1.0.0...${target}?per_page=100&page=1`,
+        `https://api.github.com/repos/genome-spy/genome-spy/compare/v1.0.0...${target}?per_page=100&page=2`,
+    ]);
+    expect(await readFile(path.join(cwd, "CHANGELOG.md"), "utf8")).toBe(
+        changelog
+    );
+});
+
+test("GitHub credits omit empty sections and use GITHUB_TOKEN when GH_TOKEN is absent", async () => {
+    const cwd = await fixture();
+    await addChangeset(
+        cwd,
+        '---\n"@genome-spy/core": patch\n---\n\n<!-- category: fix -->\n\nKeep axis labels consistent.\n'
+    );
+    await prepareRelease(cwd);
+    const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(
+            globalThis.Response.json({ body: "**Full Changelog**: comparison" })
+        )
+        .mockResolvedValueOnce(
+            globalThis.Response.json({ commits: [{ author: null }] })
+        );
+    vi.stubGlobal("fetch", fetch);
+    vi.stubEnv("GH_TOKEN", "");
+    vi.stubEnv("GITHUB_TOKEN", "fixture-token");
+
+    expect(await releaseNotes(cwd, { github: true })).toBe(
+        await releaseNotes(cwd)
+    );
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBe(
+        "Bearer fixture-token"
+    );
+});
+
+test("GitHub credits fail on API errors instead of silently publishing incomplete credits", async () => {
+    const cwd = await fixture();
+    await addChangeset(
+        cwd,
+        '---\n"@genome-spy/core": patch\n---\n\n<!-- category: fix -->\n\nKeep axis labels consistent.\n'
+    );
+    await prepareRelease(cwd);
+    vi.stubEnv("GH_TOKEN", "fixture-token");
+    vi.stubGlobal(
+        "fetch",
+        vi
+            .fn()
+            .mockResolvedValueOnce(globalThis.Response.json({ body: "" }))
+            .mockResolvedValueOnce(
+                new globalThis.Response(null, { status: 403 })
+            )
+    );
+
+    await expect(releaseNotes(cwd, { github: true })).rejects.toThrow(
+        "HTTP 403"
     );
 });
 
