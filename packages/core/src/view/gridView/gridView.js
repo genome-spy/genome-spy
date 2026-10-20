@@ -1698,7 +1698,7 @@ export default class GridView extends ContainerView {
             const pointedView = pointedChild?.view;
 
             if (event.type === "wheelclaimprobe") {
-                this.#propagateWheelClaimProbe(event, pointedView);
+                this.#propagateWheelClaimProbe(event, pointedChild);
                 return;
             }
 
@@ -1801,19 +1801,52 @@ export default class GridView extends ContainerView {
      * Claims a wheel only when the pointed surface would consume a wheel zoom.
      *
      * @param {import("../../utils/interaction.js").default} event
-     * @param {View | undefined} pointedView
+     * @param {GridChild | undefined} pointedChild
      */
-    #propagateWheelClaimProbe(event, pointedView) {
+    #propagateWheelClaimProbe(event, pointedChild) {
+        const pointedView = pointedChild?.view;
+        const annotation = this.getAnnotationLayer();
+        if (
+            annotation &&
+            this.getTrackPlotGeometry(
+                this.#getConcatSharedChannel()
+            )?.viewport.containsPoint(event.point.x, event.point.y) &&
+            this.context
+                .getCurrentHover()
+                ?.mark?.unitView?.getLayoutAncestors()
+                .includes(annotation)
+        ) {
+            annotation.propagateInteraction(event);
+            if (event.stopped || event.wheelClaimed) {
+                return;
+            }
+        }
+
+        pointedView?.propagateInteraction(event);
+        if (event.stopped || event.wheelClaimed) {
+            return;
+        }
+
+        if (event.wheelIntent === "scroll") {
+            // Claim on unwind so intervening containers, including App sample
+            // scrolling, get priority over this enclosing viewport.
+            const scrollbar = pointedChild?.scrollbars.vertical;
+            const scroll = scrollbar?.getWheelScroll(event.wheelEvent);
+            if (scroll) {
+                event.claimWheel(scrollbar, { scroll });
+            }
+            return;
+        }
+
         if (!pointedView) {
             if (this.#getGapZoomTarget(event.point)) {
-                event.claimWheel();
+                event.claimWheel(this);
             }
             return;
         }
 
         const target = getZoomInteractionTarget(pointedView, event.point);
         if (!target) {
-            pointedView.propagateInteraction(event);
             return;
         }
 
@@ -1823,7 +1856,7 @@ export default class GridView extends ContainerView {
                 (resolutions) => resolutions.size > 0
             )
         ) {
-            event.claimWheel();
+            event.claimWheel(target.view);
         }
     }
 

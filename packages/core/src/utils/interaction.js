@@ -63,6 +63,14 @@ export default class Interaction {
         this.#uiEvent = uiEvent;
         this.stopped = false;
         this.wheelClaimed = false;
+
+        /** @type {object | undefined} */
+        this.wheelOwner = undefined;
+
+        /** @type {(() => void) | undefined} */
+        this.wheelScroll = undefined;
+
+        this.wheelSmooth = true;
         this.#typeOverride = type;
 
         /**
@@ -128,13 +136,28 @@ export default class Interaction {
      * This is used both for real wheel events and for the synthetic
      * `wheelclaimprobe` preflight. Controllers use the claimed state to decide
      * whether the native wheel event should call `preventDefault()`.
+     *
+     * @param {object} [owner] Stable identity for detecting gesture handoffs.
+     * @param {{scroll?: () => void, smooth?: boolean}} [options]
      */
-    claimWheel() {
+    claimWheel(
+        owner = this.target,
+        { scroll = undefined, smooth = true } = {}
+    ) {
         if (this.type !== "wheel" && this.type !== "wheelclaimprobe") {
             throw new Error("Can claim wheel only for wheel events!");
         }
 
         this.wheelClaimed = true;
+        this.wheelOwner = owner;
+        this.wheelScroll = scroll;
+        this.wheelSmooth = smooth;
+    }
+
+    get wheelIntent() {
+        return "intent" in this.uiEvent
+            ? (this.uiEvent.intent ?? "default")
+            : "default";
     }
 
     /**
@@ -176,6 +199,9 @@ export default class Interaction {
     }
 
     get mouseEvent() {
+        if ("sourceEvent" in this.uiEvent) {
+            return this.uiEvent.sourceEvent;
+        }
         if (this.uiEvent instanceof MouseEvent) {
             return this.uiEvent;
         } else {
@@ -192,6 +218,9 @@ export default class Interaction {
      * handling on the same event instance.
      */
     get wheelEvent() {
+        if ("sourceEvent" in this.uiEvent) {
+            return this.uiEvent.sourceEvent;
+        }
         if (!isWheelEvent(this.uiEvent)) {
             throw new Error("Not a WheelEvent!");
         }

@@ -114,6 +114,14 @@ export default class GenomeSpy {
      * @param {import("./types/embedApi.js").EmbedOptions} [options]
      */
     constructor(container, spec, options = {}) {
+        if (
+            options.wheelBehavior !== undefined &&
+            options.wheelBehavior !== "default" &&
+            options.wheelBehavior !== "cooperative"
+        ) {
+            throw new Error("Invalid wheelBehavior: " + options.wheelBehavior);
+        }
+
         this.container = container;
         this.options = options;
 
@@ -600,6 +608,7 @@ export default class GenomeSpy {
         this.#surface.invalidateSize();
 
         this.#interactionController = new InteractionController({
+            wheelBehavior: this.options.wheelBehavior,
             viewRoot: this.viewRoot,
             canvas: this.#surface.canvas,
             tooltip: this.tooltip,

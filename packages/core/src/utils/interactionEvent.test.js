@@ -3,6 +3,15 @@ import { createPrimitiveEventProxy } from "./interactionEvent.js";
 import Interaction from "./interaction.js";
 import Point from "../view/layout/point.js";
 
+const wheelProbeSource = /** @type {WheelEvent} */ ({
+    type: "wheel",
+    deltaX: 0,
+    deltaY: -120,
+    deltaMode: 0,
+    ctrlKey: false,
+    preventDefault() {},
+});
+
 describe("createPrimitiveEventProxy", () => {
     it("exposes primitive properties and hides non-primitives", () => {
         const mock = {
@@ -40,6 +49,7 @@ describe("Interaction wheel claiming", () => {
     it("allows claiming wheel for wheel probe events", () => {
         const event = new Interaction(new Point(0, 0), {
             type: "wheelclaimprobe",
+            sourceEvent: wheelProbeSource,
         });
 
         event.claimWheel();
@@ -63,6 +73,7 @@ describe("Interaction", () => {
     it("mutates interaction state directly", () => {
         const interaction = new Interaction(new Point(0, 0), {
             type: "wheelclaimprobe",
+            sourceEvent: wheelProbeSource,
         });
 
         interaction.stopPropagation();

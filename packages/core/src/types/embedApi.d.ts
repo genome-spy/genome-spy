@@ -47,6 +47,15 @@ export interface FontCatalogEntry {
 
 export interface EmbedOptions {
     /**
+     * In cooperative mode, ordinary wheel input scrolls an overflowing vertical
+     * viewport or the page. Ctrl+wheel retains chart navigation and authored
+     * wheel selections. The embedding application provides any Ctrl-zoom hint.
+     *
+     * __Default value:__ `"default"`
+     */
+    wheelBehavior?: "default" | "cooperative";
+
+    /**
      * Rendering backend. `"auto"` uses WebGL2 when available and falls back to
      * the Canvas2D compatibility renderer. `"webgpu"` enables an experimental
      * proof-of-concept renderer for a narrow subset of marks. `"canvas"` does

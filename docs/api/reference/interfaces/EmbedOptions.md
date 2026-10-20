@@ -4,6 +4,18 @@
 
 ## Properties
 
+### wheelBehavior?
+
+> `optional` **wheelBehavior?**: `"default"` \| `"cooperative"`
+
+In cooperative mode, ordinary wheel input scrolls an overflowing vertical
+viewport or the page. Ctrl+wheel retains chart navigation and authored
+wheel selections. The embedding application provides any Ctrl-zoom hint.
+
+__Default value:__ `"default"`
+
+***
+
 ### renderer?
 
 > `optional` **renderer?**: `"auto"` \| `"webgl"` \| `"canvas"` \| `"webgpu"`
@@ -66,7 +78,7 @@ Custom tooltip handlers. Use `"default"` to override the default handler
 
 ### inputBindingContainer?
 
-> `optional` **inputBindingContainer?**: `HTMLElement` \| `"none"` \| `"default"`
+> `optional` **inputBindingContainer?**: `HTMLElement` \| `"default"` \| `"none"`
 
 Where to put the input binding elements. The default is `"default"`, which means that
 the input binding elements are placed in the same container as the GenomeSpy instance.

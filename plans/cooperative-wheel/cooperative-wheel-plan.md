@@ -1,7 +1,7 @@
 # Cooperative wheel interaction
 
-Status: implementation in progress. Each implementation milestone is committed
-separately after its focused verification.
+Status: implementation in progress. Milestone 1 is complete. Each implementation
+milestone is committed separately after its focused verification.
 
 Issue: https://github.com/genome-spy/genome-spy/issues/584
 
@@ -205,20 +205,20 @@ GenomeSpy-generated inertia; zoom keeps its existing smoothing.
 
 ### 1. Wheel policy and Core viewport ownership
 
-- [ ] Add and validate the option, forward it to the controller, and extend the
+- [x] Add and validate the option, forward it to the controller, and extend the
       existing probe/outcome contract in `interactionEvent.js` and `interaction.js`.
-- [ ] Route cooperative ordinary input to direction-aware vertical viewport
+- [x] Route cooperative ordinary input to direction-aware vertical viewport
       scrolling, then the browser; reuse scrollbar offset/clamping mechanics.
-- [ ] Gate built-in and declarative wheel gestures consistently, preserve native
+- [x] Gate built-in and declarative wheel gestures consistently, preserve native
       subscriber precedence, and stop stale wheel-zoom and drag-pan inertia when
       ownership changes. Preserve immediate horizontal pan on Ctrl input.
-- [ ] Cover actual domains, offsets, selected values, and native cancellation
+- [x] Cover actual domains, offsets, selected values, and native cancellation
       through focused controller/GridView integration tests. Include shared axes,
       gaps, nested viewports, facets, brush precedence, selection-only ownership on
       nonzoomable scales with matching/nonmatching filters, and zero/horizontal
       deltas. Verify drag-release followed by page/internal scroll and host veto.
       Review related tests and remove duplicated implementation-detail assertions.
-- [ ] Document the embed option and precedence in `docs/api/embed-options.md`;
+- [x] Document the embed option and precedence in `docs/api/embed-options.md`;
       include host ownership of the Ctrl-zoom hint. Add a Core minor changeset when
       the runtime feature is implemented, replacing this branch's empty marker.
 
@@ -226,6 +226,11 @@ Affected areas: Core embed types/constructor, interaction controller and event
 contracts, GridView/scrollbar, selections, and downstream App/custom view probes.
 Any shared probe change must preserve existing App behavior during this step.
 All live renderers use this same input pipeline; no renderer API changes.
+
+Verified Core milestone: focused real-pipeline tests cover domains, offsets,
+selection changes, native cancellation, and inertia handoffs. Independent review
+also added filtered wheel-selection clearing on nonzoomable scales and made
+probe source events required. Core/App TypeScript and scoped lint pass.
 
 Tentative commit: `feat(core): add cooperative wheel navigation for embeds`
 

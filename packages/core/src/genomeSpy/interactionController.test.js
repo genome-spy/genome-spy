@@ -77,6 +77,7 @@ function createMinimalInteractionController({
             ),
             tooltip: /** @type {any} */ (actualTooltip),
             animator: /** @type {any} */ ({
+                cancelTransition: /** @returns {void} */ () => undefined,
                 requestRender: /** @returns {void} */ () => undefined,
             }),
             emitEvent: /** @returns {void} */ () => undefined,
@@ -143,7 +144,10 @@ function createPickingHarness({
             visible: false,
             sticky: false,
         }),
-        animator: /** @type {any} */ ({ requestRender() {} }),
+        animator: /** @type {any} */ ({
+            requestRender() {},
+            cancelTransition() {},
+        }),
         emitEvent() {},
         tooltipHandlers: {},
         renderPickingFramebuffer: render,
@@ -325,6 +329,7 @@ describe("InteractionController", () => {
                 },
             }),
             animator: /** @type {any} */ ({
+                cancelTransition: /** @returns {void} */ () => undefined,
                 requestRender: () => {
                     window.requestAnimationFrame(() => {
                         pickingUniqueId = 0;
@@ -456,7 +461,10 @@ describe("InteractionController", () => {
                 visible: false,
                 sticky: false,
             }),
-            animator: /** @type {any} */ ({ requestRender() {} }),
+            animator: /** @type {any} */ ({
+                requestRender() {},
+                cancelTransition() {},
+            }),
             emitEvent(/** @type {string} */ type, /** @type {any} */ event) {
                 emitted.push({ type, event });
             },
@@ -659,6 +667,7 @@ describe("InteractionController", () => {
                 sticky: false,
             }),
             animator: /** @type {any} */ ({
+                cancelTransition: /** @returns {void} */ () => undefined,
                 requestRender: /** @returns {void} */ () => undefined,
             }),
             emitEvent: /** @returns {void} */ () => undefined,
@@ -834,6 +843,7 @@ describe("InteractionController", () => {
                 sticky: false,
             }),
             animator: /** @type {any} */ ({
+                cancelTransition: /** @returns {void} */ () => undefined,
                 requestRender: /** @returns {void} */ () => undefined,
             }),
             emitEvent: /** @returns {void} */ () => undefined,
@@ -993,6 +1003,7 @@ describe("InteractionController", () => {
                 sticky: false,
             }),
             animator: /** @type {any} */ ({
+                cancelTransition: /** @returns {void} */ () => undefined,
                 requestRender: /** @returns {void} */ () => undefined,
             }),
             emitEvent: /** @returns {void} */ () => undefined,
@@ -1096,6 +1107,7 @@ describe("InteractionController", () => {
                 sticky: false,
             }),
             animator: /** @type {any} */ ({
+                cancelTransition: /** @returns {void} */ () => undefined,
                 requestRender: /** @returns {void} */ () => undefined,
             }),
             emitEvent: /** @returns {void} */ () => undefined,
@@ -1244,6 +1256,7 @@ describe("InteractionController", () => {
                 sticky: true,
             }),
             animator: /** @type {any} */ ({
+                cancelTransition: /** @returns {void} */ () => undefined,
                 requestRender: /** @returns {void} */ () => undefined,
             }),
             emitEvent: /** @returns {void} */ () => undefined,
@@ -1374,7 +1387,10 @@ describe("InteractionController", () => {
                 sticky: false,
                 visible: false,
             }),
-            animator: /** @type {any} */ ({ requestRender() {} }),
+            animator: /** @type {any} */ ({
+                requestRender() {},
+                cancelTransition() {},
+            }),
             emitEvent() {},
             tooltipHandlers: {},
         });
@@ -1457,7 +1473,10 @@ describe("InteractionController", () => {
                 visible: false,
                 sticky: false,
             }),
-            animator: /** @type {any} */ ({ requestRender() {} }),
+            animator: /** @type {any} */ ({
+                requestRender() {},
+                cancelTransition() {},
+            }),
             emitEvent(/** @type {string} */ type) {
                 order.push("generic " + type);
             },
@@ -1563,7 +1582,10 @@ describe("InteractionController", () => {
                 visible: false,
                 sticky: false,
             }),
-            animator: /** @type {any} */ ({ requestRender() {} }),
+            animator: /** @type {any} */ ({
+                requestRender() {},
+                cancelTransition() {},
+            }),
             emitEvent() {},
             tooltipHandlers: {},
             renderPickingFramebuffer() {},
@@ -1662,7 +1684,10 @@ describe("InteractionController", () => {
                 visible: false,
                 sticky: false,
             }),
-            animator: /** @type {any} */ ({ requestRender() {} }),
+            animator: /** @type {any} */ ({
+                requestRender() {},
+                cancelTransition() {},
+            }),
             emitEvent() {},
             tooltipHandlers: {},
             renderPickingFramebuffer() {},
@@ -1759,7 +1784,10 @@ describe("InteractionController", () => {
                 visible: false,
                 sticky: false,
             }),
-            animator: /** @type {any} */ ({ requestRender() {} }),
+            animator: /** @type {any} */ ({
+                requestRender() {},
+                cancelTransition() {},
+            }),
             emitEvent() {},
             tooltipHandlers: {},
             renderPickingFramebuffer() {},

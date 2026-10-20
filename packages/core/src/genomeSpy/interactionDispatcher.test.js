@@ -20,6 +20,14 @@ describe("InteractionDispatcher", () => {
 
         const interaction = dispatcher.dispatch(new Point(1, 2), {
             type: "wheelclaimprobe",
+            sourceEvent: /** @type {WheelEvent} */ ({
+                type: "wheel",
+                deltaX: 0,
+                deltaY: -120,
+                deltaMode: 0,
+                ctrlKey: false,
+                preventDefault() {},
+            }),
         });
 
         expect(propagateInteraction).toHaveBeenCalledTimes(1);

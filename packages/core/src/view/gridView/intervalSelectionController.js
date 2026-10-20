@@ -604,15 +604,30 @@ export class IntervalSelectionController {
             !!selectionRectAt(point);
 
         if (clearEventConfig) {
+            /** @param {import("../../utils/interaction.js").default} event */
+            const canClear = (event) =>
+                clearEventPredicate(event.proxiedMouseEvent) &&
+                isInsideHost(event.point) &&
+                ownsInteraction(event.point) &&
+                !!selectionRectAt(event.point);
+
+            if (clearEventConfig.type === "wheel") {
+                this.#addViewInteractionListener(
+                    "wheelclaimprobe",
+                    (event) => {
+                        if (event.wheelIntent !== "scroll" && canClear(event)) {
+                            event.claimWheel(this, { smooth: false });
+                            event.stopPropagation();
+                        }
+                    },
+                    true
+                );
+            }
+
             this.#addViewInteractionListener(
                 clearEventConfig.type,
                 (event) => {
-                    if (
-                        clearEventPredicate(event.proxiedMouseEvent) &&
-                        isInsideHost(event.point) &&
-                        ownsInteraction(event.point) &&
-                        selectionRectAt(event.point)
-                    ) {
+                    if (canClear(event)) {
                         clearSelection();
                         event.stopPropagation();
                     }
@@ -621,30 +636,37 @@ export class IntervalSelectionController {
             );
         }
 
-        this.#addViewInteractionListener("wheel", (event) => {
+        /** @param {import("../../utils/interaction.js").default} event */
+        const canWheelZoom = (event) => {
+            if (event.wheelIntent === "scroll") {
+                return false;
+            }
             const wheelEvent = event.wheelEvent;
+            return (
+                !!zoomEventConfig &&
+                zoomEventPredicate(createPrimitiveEventProxy(wheelEvent)) &&
+                isInsideHost(event.point) &&
+                ownsInteraction(event.point) &&
+                wheelEvent.deltaY !== 0 &&
+                Math.abs(wheelEvent.deltaX) <= Math.abs(wheelEvent.deltaY) &&
+                !!selectionRectAt(event.point) &&
+                isActiveIntervalSelection(selectionExpr())
+            );
+        };
 
-            if (
-                !zoomEventConfig ||
-                !zoomEventPredicate(createPrimitiveEventProxy(wheelEvent))
-            ) {
-                return;
+        this.#addViewInteractionListener("wheelclaimprobe", (event) => {
+            if (canWheelZoom(event)) {
+                event.claimWheel(this, { smooth: false });
+                event.stopPropagation();
             }
-            if (!isInsideHost(event.point) || !ownsInteraction(event.point)) {
-                return;
-            }
+        });
 
-            if (Math.abs(wheelEvent.deltaX) >= Math.abs(wheelEvent.deltaY)) {
+        this.#addViewInteractionListener("wheel", (event) => {
+            if (!canWheelZoom(event)) {
                 return;
             }
-            if (!selectionRectAt(event.point)) {
-                return;
-            }
-
+            const wheelEvent = event.wheelEvent;
             const selection = selectionExpr();
-            if (!isActiveIntervalSelection(selection)) {
-                return;
-            }
 
             const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
             const scaleFactor =
