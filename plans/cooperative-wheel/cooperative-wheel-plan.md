@@ -1,8 +1,10 @@
 # Cooperative wheel interaction
 
-Status: implementation complete. Each milestone is committed separately.
-Automated integration verification and independent review are complete; physical
-trackpad and Firefox/Safari coverage were unavailable in this environment.
+Status: implementation complete and reconciled for PR preparation. Each milestone
+is committed separately. Automated integration verification and independent review
+are complete; physical trackpad and Firefox/Safari checks are discarded for this
+environment because the devices and browsers were unavailable. Delete this plan
+in the following commit so it does not enter the PR.
 
 Issue: https://github.com/genome-spy/genome-spy/issues/584
 
@@ -294,9 +296,10 @@ Commit: `80093d2c1` — App sample scrolling, dedicated demo, and native-wheel c
 - [x] Review the shared ownership/public contract after milestones 1-2 and the
       final Core/App integration. Fix material issues without recursive reviews for
       wording. Verify release checks and reconcile every remaining plan task before
-      committing the completed/discarded record. This plan is retained as requested;
-      delete it in a later commit before any future PR (PR creation is outside
-      the current task). The unrelated view-visibility plan remains untouched.
+      committing the completed/discarded record. All in-scope tasks are complete;
+      unavailable physical-device/browser checks are explicitly discarded for
+      this environment. Delete the plan in the following commit before creating
+      the requested PR. The unrelated view-visibility plan remains untouched.
 
 Record the final integration gate in its own commit, together with any fixes
 revealed by verification. Follow the
@@ -332,6 +335,11 @@ when their respective browser, docs, or structured-view workflows are needed.
 - Firefox, Safari, and physical mouse/trackpad input were unavailable. Chrome's
   browser-level input checks do not establish physical pinch/OS behavior in
   those environments. This is the remaining verification limitation.
+- The final simplification commit `a4956670c` removes 29 runtime SLOC while
+  preserving wheel routing. All 251 focused tests, Core/App TypeScript checks,
+  scoped lint, formatting, and the Canvas2D/WebGL2/WebGPU browser wheel harness
+  pass. Independent review found no actionable concerns. The existing feature
+  changeset remains accurate; no additional release fragment is needed.
 
 ## Independent review disposition
 
