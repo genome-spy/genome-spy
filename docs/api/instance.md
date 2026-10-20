@@ -139,8 +139,8 @@ const { blob } = await api.imageExport.raster();
 
 The default logical dimensions match the current canvas, and `pixelRatio`
 defaults to `window.devicePixelRatio`. The visualization background is used
-when configured; otherwise it defaults to white. Pass `null` for a transparent
-background:
+when configured; otherwise exports use white. The `background` option overrides
+this default; set it to a color or `null` for transparency:
 
 ```js
 const { blob } = await api.imageExport.raster({
@@ -177,8 +177,8 @@ const { blob, warnings, rasterized } = await api.imageExport.svg();
 ```
 
 The default dimensions match the current canvas. The visualization background
-is used when configured; otherwise it defaults to white. Pass `null` for a
-transparent background:
+is used when configured; otherwise exports use white. The `background` option
+overrides this default; set it to a color or `null` for transparency:
 
 ```js
 const result = await api.imageExport.svg({

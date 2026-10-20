@@ -65,6 +65,9 @@ follows Vega-Lite defaults where GenomeSpy supports the same features. The
 remaining themes are loosely adapted from
 [vega-themes](https://github.com/vega/vega-themes).
 
+Only `genomespy` follows CSS appearance settings. Other named themes supply
+fixed colors and backgrounds.
+
 Theme selection is root-only. Specs can choose one of the built-in themes.
 
 EXAMPLE examples/docs/grammar/config/theme.json height=420
@@ -81,8 +84,7 @@ resetting zoom and selections.
 
 The default `genomespy` theme stays light unless the host page opts into dark
 mode through CSS `color-scheme`. Its canvas stays transparent in both modes, so
-the host page must supply a matching surface. Explicit colors and data color
-scales retain their normal precedence.
+the host page must supply a matching surface.
 
 The [light and dark mode embedding example](https://genomespy.app/docs/api/embed-examples/darkMode/)
 demonstrates automatic switching and CSS customization.
@@ -96,15 +98,10 @@ A page that supports both modes can enable automatic browser preference changes:
 }
 ```
 
-GenomeSpy inherits this setting from its container and ancestors. An unset or
-`normal` scheme stays light, regardless of browser preference. An explicit
-`color-scheme: light` or `color-scheme: dark` forces that mode. The host remains
-responsible for styling its own background. Tooltips follow the same scheme
-and use an opaque light or dark surface. Their text also respects
-`--genome-spy-foreground`.
+Set `color-scheme: light` or `color-scheme: dark` to force one mode. Tooltips
+follow the same mode and respect `--genome-spy-foreground`.
 
-Override any of these inherited CSS custom properties to customize individual
-roles. The defaults use `light-dark()` and preserve the existing light colors:
+Override these inherited CSS custom properties to customize the palette:
 
 | CSS property                   | Used for                                                      | Light       | Dark        |
 | ------------------------------ | ------------------------------------------------------------- | ----------- | ----------- |
@@ -122,67 +119,25 @@ roles. The defaults use `light-dark()` and preserve the existing light colors:
 }
 ```
 
-GenomeSpy resolves CSS variables and `light-dark()` through the browser. Colors
-must resolve to values supported by its color parser: named colors, hex, RGB,
-or HSL. Modern CSS Color 4 results such as `oklch()` and `color(display-p3 ...)`
-are rejected; supply an RGB or HSL alternative.
+CSS colors must resolve to named colors, hex, RGB, or HSL. CSS Color 4 values
+such as `oklch()` and `color(display-p3 ...)` are unsupported.
 
-Browser preference changes and attributes changed on the container or its
-ancestors refresh the palette automatically, without polling. After replacing
-a stylesheet or making another CSS change outside those events, call
-[`api.refreshStyles()`](../api/runtime-state.md#updating-appearance).
+Browser preference changes and container or ancestor attribute changes refresh
+the palette automatically. Other CSS changes, such as replacing a stylesheet,
+require [`api.refreshStyles()`](../api/runtime-state.md#updating-appearance).
 
-The resolved colors populate the root `defaultThemeColors` parameter, with
-fields `foreground`, `stroke`, `grid`, `chromosomeTick`, `symbolStroke`, and
-`background`. A transparent background is represented by `null`. The palette
-does not add view fills or borders where none are configured. Headless renders
-use deterministic light defaults. GenomeSpy App keeps its existing light scheme
-to match its UI surfaces.
-
-For exclusive programmatic control, declare `defaultThemeColors` in the root
-`params`. This opts out of automatic CSS updates. Supply only the roles you
-want to override; omitted roles use the built-in light defaults above, including
-colors introduced in future versions:
-
-```json
-{
-  "params": [
-    {
-      "name": "defaultThemeColors",
-      "value": {
-        "foreground": "#352719",
-        "grid": "#ded2c0"
-      }
-    }
-  ]
-}
-```
-
-An authored expression parameter can compute a partial palette instead; it
-follows the usual read-only parameter API. Descendant views can shadow
-`defaultThemeColors` through normal parameter scoping. The root canvas
-background continues to use the root palette.
-
-Other named presets supply fixed colors and backgrounds; they do not follow
-CSS mode changes. For example, `dark` is a fixed appearance. A root `theme`
-takes precedence over an embed-level `theme` option.
+For programmatic control through the `defaultThemeColors` parameter, see
+[Updating appearance](../api/runtime-state.md#updating-appearance).
 
 ### Canvas and view backgrounds
 
 The root `background` controls the entire canvas, while `view.fill` and
 `config.view.fill` control individual view backgrounds. An explicit root
-background takes precedence over a selected preset's background, which takes
-precedence over `defaultThemeColors.background` in the default theme. Fixed
-named presets without their own background stay transparent. When no background
-color is configured, the canvas is transparent and exports default to white.
+background overrides the theme background. A background expression can return
+`null` for transparency.
 
-A root background expression uses the root parameter scope. When it resolves
-to `null`, the canvas is transparent even if the palette or preset provides an
-opaque background. An explicit export `background` overrides the resolved
-default, including `null` for transparent output.
-
-See [Updating appearance](../api/runtime-state.md#updating-appearance) for
-publishing palettes from an embedding application.
+See [Image export](../api/instance.md#exporting-raster-images) for export
+background options.
 
 ## Config scopes
 

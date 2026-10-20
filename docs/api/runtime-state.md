@@ -313,45 +313,6 @@ and `clear()`. See
 [Marks and scoped interaction](./views.md#marks-and-scoped-interaction) for the
 selection and lifecycle rules shared by these handles.
 
-### Updating appearance
-
-The default theme follows
-[CSS appearance settings](../grammar/config.md#default-theme-palette)
-automatically. Browser preference changes apply when the host opts into both
-modes with `color-scheme: light dark`; unconfigured hosts stay light. After
-changing stylesheets, CSS rules, or other styles that do not change attributes on the visualization container or its ancestors, refresh
-its resolved colors explicitly:
-
-```js
-api.refreshStyles();
-```
-
-This reads the current CSS and publishes a changed palette through the normal
-parameter graph. Browser preference events and container/ancestor attribute
-changes already trigger this refresh. GenomeSpy does not poll styles.
-Calling `refreshStyles()` after finalization has no effect.
-
-An application can also publish a partial
-[`defaultThemeColors` palette](../grammar/config.md#default-theme-palette):
-
-```js
-const colors = api.params.get("defaultThemeColors");
-colors.setValue({
-  foreground: "#352719",
-  grid: "#ded2c0",
-});
-```
-
-Manual writes to the automatic palette last until the next CSS refresh. Declare
-`defaultThemeColors` explicitly in the root specification to opt out of CSS
-updates and own its value. Each write replaces the object; omitted roles use
-the built-in light defaults rather than previous values. `getValue()` returns
-the supplied object. Mutating its properties does not publish an update.
-Authored expression parameters remain read-only.
-
-The [light and dark mode example](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/darkMode)
-shows System, Light, Dark, and Custom modes on one running visualization.
-
 ### Setting point selections
 
 Obtain a point selection through the unit view supplying its records, including
@@ -372,3 +333,61 @@ membership. Single selections (`toggle: false`) accept at most one tuple; `[]`
 clears without requiring data or a key. The setter works across mark types,
 including text and rectangles. Membership binds the current publication; apps
 clear or reapply it after replacing datasets.
+
+## Updating appearance
+
+The default theme follows
+[CSS appearance settings](../grammar/config.md#default-theme-palette)
+automatically when the browser preference or attributes on the container or its
+ancestors change. After changing stylesheets or CSS rules, refresh its resolved
+colors explicitly:
+
+```js
+api.refreshStyles();
+```
+
+Calling `refreshStyles()` after finalization has no effect.
+
+For exclusive programmatic control, declare `defaultThemeColors` in the root
+`params` before embedding. This disables automatic CSS updates:
+
+```json
+{
+  "params": [
+    {
+      "name": "defaultThemeColors",
+      "value": {
+        "foreground": "#352719",
+        "grid": "#ded2c0"
+      }
+    }
+  ]
+}
+```
+
+Palette fields are `foreground`, `stroke`, `grid`, `chromosomeTick`,
+`symbolStroke`, and `background`. Omitted roles use the built-in light defaults,
+including colors introduced in future versions. Set `background` to `null` for
+transparency.
+
+Update the palette through the parameter API:
+
+```js
+const colors = api.params.get("defaultThemeColors");
+colors.setValue({
+  foreground: "#352719",
+  grid: "#ded2c0",
+});
+```
+
+Each write replaces the object; omitted roles revert to their defaults rather
+than previous values. `getValue()` returns the supplied object. Mutating its
+properties does not publish an update. Without an explicit declaration, manual
+writes to the automatic palette last until the next CSS refresh.
+
+An authored `expr` parameter can compute a partial palette instead; it remains
+read-only. Descendant views can shadow `defaultThemeColors` through normal
+parameter scoping. The canvas background uses the root palette.
+
+The [light and dark mode example](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/darkMode)
+shows System, Light, Dark, and Custom modes on one running visualization.
