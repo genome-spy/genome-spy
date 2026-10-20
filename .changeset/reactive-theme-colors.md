@@ -4,6 +4,8 @@
 "@genome-spy/embed-examples": minor
 ---
 
+<!-- category: feature -->
+
 Add opt-in light and dark mode support for the default theme and tooltips through
 CSS `color-scheme`, with customizable colors using `--genome-spy-*` properties.
 Appearance changes update existing visualizations while preserving zoom,
