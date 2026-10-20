@@ -2,6 +2,8 @@
 "@genome-spy/core": minor
 ---
 
+<!-- category: feature -->
+
 Read all loaded transformed records, or those inside a viewport or named interval brush, with
 `ViewHandle.readData({scope, limit})`. Bounds are applied before the record limit.
 Replace native point-selection membership by `encoding.key` tuples with
