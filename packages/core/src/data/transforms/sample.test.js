@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, onTestFinished, test, vi } from "vitest";
 import SampleTransform from "./sample.js";
 import { extent } from "d3-array";
 import { createChain } from "../../view/flowBuilder.js";
@@ -30,6 +30,16 @@ test("sampling restarts per facet and retains selected physical row shapes", () 
 });
 
 test("SampleTransform produces roughly uniform distributions", () => {
+    // Fix the random sequence so normal sampling variation cannot fail CI.
+    let seed = 123456789;
+    const random = vi.spyOn(Math, "random").mockImplementation(() => {
+        seed ^= seed << 13;
+        seed ^= seed >>> 17;
+        seed ^= seed << 5;
+        return (seed >>> 0) / 2 ** 32;
+    });
+    onTestFinished(() => random.mockRestore());
+
     const size = 10;
     const n = 20;
     const rounds = 10000;
@@ -58,7 +68,6 @@ test("SampleTransform produces roughly uniform distributions", () => {
 
     const e = extent(freqs);
 
-    // Not a deterministic test! TODO: Come up with some sensical testing method
     expect(e[0]).toBeGreaterThan(4800);
     expect(e[1]).toBeLessThan(5200);
 });

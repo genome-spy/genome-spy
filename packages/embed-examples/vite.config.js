@@ -22,6 +22,7 @@ export default defineConfig({
                 "paramApi/index": "paramApi/index.html",
                 "darkMode/index": "darkMode/index.html",
                 "dataReadback/index": "dataReadback/index.html",
+                "transformAnalysis/index": "transformAnalysis/index.html",
                 "brushLinkingApi/index": "brushLinkingApi/index.html",
                 "viewMutationApi/index": "viewMutationApi/index.html",
                 "inspectorOverlay/index": "inspectorOverlay/index.html",

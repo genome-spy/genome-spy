@@ -40,5 +40,10 @@ description: Debug GenomeSpy specifications, UI, and rendering in a real browser
   [inspector snapshots](references/inspector-snapshots.md). The Inspector UI
   presents the same snapshots. The reference also explains when to use SVG or
   screenshots to inspect actual rendering.
+- For summaries, rankings, or samples of plotted records, prefer
+  `view.data.transform()` with viewport or brush scope to keep the full raw dataset
+  out of context. Calculations are isolated; set input/output limits, handle input
+  overflow, and check `truncated` before treating results as complete. See
+  [scoped analysis](../../../docs/api/views.md#calculating-results-from-scoped-records).
 - To crop one rendered view or subtree from the live canvas, read
   [focused view capture](references/view-capture.md).
