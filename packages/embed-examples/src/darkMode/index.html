@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <link rel="stylesheet" href="./style.scss" />
+        <title>Light and dark mode</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <h1>Light and dark mode</h1>
+        <p>
+            Change the appearance of one running visualization. System follows
+            your browser’s preference; Light and Dark override it. Custom shows
+            how CSS properties can customize GenomeSpy’s default colors. This
+            page opts into both modes with
+            <code>color-scheme: light dark</code>.
+        </p>
+        <div class="theme-controls">
+            <label>
+                Appearance
+                <select id="appearance" disabled>
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </label>
+        </div>
+        <div id="plot" class="visualization-surface"></div>
+        <p>
+            Scroll over the plot to zoom and Shift-drag to brush a region, then
+            switch appearance. Zoom and selection stay in place. Data colors
+            stay the same. Titles, guides, grid lines, and legend text update;
+            the transparent canvas reveals the page’s background.
+        </p>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

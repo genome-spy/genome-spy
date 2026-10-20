@@ -406,9 +406,8 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
      * The fill color of the interval mark.
      *
      * __Default value:__ `"#808080"`
-     *
      */
-    fill?: string;
+    fill?: string | ExprRef;
 
     /**
      * The fill opacity of the interval mark (a value between `0` and `1`).
@@ -420,9 +419,10 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     /**
      * The stroke color of the interval mark.
      *
-     * __Default value:__ `"black"`
+     * __Default value:__ `defaultThemeColors.foreground`, falling back to `"black"`
+     * in the default theme
      */
-    stroke?: string;
+    stroke?: string | ExprRef;
 
     /**
      * The stroke opacity of the interval mark (a value between `0` and `1`).

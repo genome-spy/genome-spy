@@ -14,6 +14,22 @@ display: flex;
 flex-direction: column;
 }
 
+/* Public color properties remain unset so host overrides can inherit. */
+.gs-theme-colors {
+position: absolute;
+width: 0;
+height: 0;
+overflow: hidden;
+visibility: hidden;
+pointer-events: none;
+--_genome-spy-foreground: light-dark(black, #e5ebf1);
+--_genome-spy-stroke: light-dark(gray, #a0adba);
+--_genome-spy-grid: light-dark(lightgray, #3a4653);
+--_genome-spy-chromosome-tick: light-dark(#989898, #b0bdca);
+--_genome-spy-symbol-stroke: light-dark(#888, #c0cbd6);
+--_genome-spy-background: transparent;
+}
+
 .canvas-wrapper {
 position: relative;
 flex-grow: 1;
@@ -100,8 +116,9 @@ border: 0;
 max-width: 450px;
 overflow: hidden;
 
---background-color: #f6f6f6;
+--background-color: light-dark(#f6f6f6, #252f3b);
 background: var(--background-color);
+color: var(--genome-spy-foreground, light-dark(black, #e5ebf1));
 padding: var(--genome-spy-basic-spacing);
 
 --font-size: 12px;
@@ -119,7 +136,7 @@ box-shadow 0.3s ease-in-out;
 
 outline: 0px solid transparent;
 &.sticky {
-outline: 2px solid black;
+outline: 2px solid currentColor;
 box-shadow: 0px 3px 18px 0px rgba(0, 0, 0, 0.3);
 }
 
@@ -134,7 +151,7 @@ padding-bottom: calc(var(--genome-spy-basic-spacing) / 2);
 margin-bottom: calc(var(--genome-spy-basic-spacing) / 2);
 border-bottom: 1px dashed var(--background-color);
 border-bottom: 1px dashed
-color-mix(in srgb, black 25%, var(--background-color));
+color-mix(in srgb, currentColor 25%, var(--background-color));
 }
 
 .summary {
@@ -142,14 +159,18 @@ font-size: 12px;
 }
 
 table {
-&:first-child {
-margin-top: 0;
-}
-
+width: auto;
+max-width: none;
+margin: 0;
+background: transparent;
 border-collapse: collapse;
+font-size: var(--font-size);
 
 th,
 td {
+border: 0;
+background: transparent;
+color: inherit;
 padding: 2px 0.4em;
 vertical-align: top;
 font-size: var(--font-size);
@@ -170,19 +191,19 @@ display: inline-block;
 width: 0.8em;
 height: 0.8em;
 margin-left: 0.4em;
-box-shadow: 0px 0px 3px 1px white;
+box-shadow: 0px 0px 3px 1px var(--background-color);
 }
 
 .color-legend-unmapped {
 background-color: transparent;
-border: 1px solid black;
+border: 1px solid currentColor;
 box-sizing: border-box;
 box-shadow: none;
 }
 
 .attributes {
 .hovered {
-background-color: #e0e0e0;
+background-color: light-dark(#e0e0e0, #3a4653);
 }
 }
 
@@ -195,7 +216,7 @@ margin-right: calc(-1 * var(--genome-spy-basic-spacing));
 }
 
 .na {
-color: #aaa;
+color: light-dark(#aaa, #a0adba);
 font-style: italic;
 font-size: 80%;
 }

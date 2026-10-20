@@ -26,6 +26,10 @@ import { renderTextCanvas } from "./text.js";
  * @param {CanvasMarkRenderingOptions} options
  */
 export function renderMarkCanvas(mark, options) {
+    if ((options.start ?? 0) === (options.end ?? options.data.length)) {
+        return 0;
+    }
+
     if (mark.getType() == "arrow") {
         return renderArrowCanvas(mark, options);
     } else if (mark.getType() == "link") {

@@ -46,7 +46,7 @@ describe("BufferedViewRenderingContext", () => {
                 /** @returns {void} */
                 disable: () => undefined,
                 /** @returns {void} */
-                clearColor: () => undefined,
+                clearColor: vi.fn(),
                 /** @returns {void} */
                 clear: () => undefined,
             })
@@ -118,6 +118,7 @@ describe("BufferedViewRenderingContext", () => {
                     ),
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
+                clearColor: null,
                 pixelOffset: 0,
                 markAdapter: /** @type {any} */ (markAdapter),
             }
@@ -132,6 +133,7 @@ describe("BufferedViewRenderingContext", () => {
         context.render();
 
         expect(draws).toBe(2);
+        expect(gl.clearColor).toHaveBeenLastCalledWith(0, 0, 0, 0);
         expect(prepareRender).toHaveBeenCalledWith({
             picking: false,
             placement,
@@ -140,6 +142,16 @@ describe("BufferedViewRenderingContext", () => {
         expect(setViewport.mock.calls[0][5]).toBe(0);
         expect(markAdapter.prepareMarks).toHaveBeenCalledWith([mark, mark]);
         expect(markAdapter.synchronize).toHaveBeenCalledWith(new Set([entry]));
+
+        // Refreshing paint colors must reuse the existing placement batch.
+        context.setClearColor("black");
+        context.render();
+        expect(gl.clearColor).toHaveBeenLastCalledWith(0, 0, 0, 1);
+        context.setClearColor(undefined);
+        context.render();
+        expect(gl.clearColor).toHaveBeenLastCalledWith(0, 0, 0, 0);
+        expect(draws).toBe(6);
+        expect(markAdapter.prepareMarks).toHaveBeenCalledOnce();
     });
 
     test("updates retained order passes and keeps picking in the all pass", () => {

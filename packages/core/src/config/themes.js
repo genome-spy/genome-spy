@@ -5,6 +5,7 @@
  */
 
 import { mergeConfigScopes } from "./mergeConfig.js";
+import { defaultThemeColor } from "./defaultThemeColors.js";
 
 /** @type {import("../spec/config.js").GenomeSpyConfig} */
 const VEGALITE_THEME = {
@@ -19,6 +20,12 @@ const VEGALITE_THEME = {
         color: "black",
     },
     text: {
+        color: "black",
+    },
+    link: {
+        color: "black",
+    },
+    header: {
         color: "black",
     },
     view: {
@@ -45,7 +52,13 @@ const VEGALITE_THEME = {
     axisY: {
         tickCount: { expr: "ceil(axisLength / 40)" },
     },
+    axisLocus: {
+        chromTickColor: "#989898",
+        chromLabelColor: "black",
+        chromGridColor: "gray",
+    },
     legend: {
+        symbolBaseStrokeColor: "#888",
         titleColor: "black",
         titleFontSize: 11,
         titleFontWeight: "bold",
@@ -59,6 +72,12 @@ const VEGALITE_THEME = {
         "group-subtitle": {
             color: "black",
             fontSize: 12,
+        },
+        "arrow-transcript": {
+            color: "black",
+        },
+        "selection-brush": {
+            stroke: "black",
         },
     },
     axisQuantitative: {
@@ -95,13 +114,39 @@ const BUILT_IN_THEME_DEFINITIONS = {
             color: "#4c78a8",
         },
         rule: {
-            color: "black",
+            color: defaultThemeColor("foreground"),
         },
         text: {
-            color: "black",
+            color: defaultThemeColor("foreground"),
         },
         link: {
-            color: "black",
+            color: defaultThemeColor("foreground"),
+        },
+        header: {
+            color: defaultThemeColor("foreground"),
+        },
+        axis: {
+            labelColor: defaultThemeColor("foreground"),
+            titleColor: defaultThemeColor("foreground"),
+            domainColor: defaultThemeColor("stroke"),
+            tickColor: defaultThemeColor("stroke"),
+            gridColor: defaultThemeColor("grid"),
+        },
+        axisLocus: {
+            chromTickColor: defaultThemeColor("chromosomeTick"),
+            chromLabelColor: defaultThemeColor("foreground"),
+            chromGridColor: defaultThemeColor("stroke"),
+        },
+        legend: {
+            symbolBaseStrokeColor: defaultThemeColor("symbolStroke"),
+        },
+        style: {
+            "arrow-transcript": {
+                color: defaultThemeColor("foreground"),
+            },
+            "selection-brush": {
+                stroke: defaultThemeColor("foreground"),
+            },
         },
     },
     vegalite: VEGALITE_THEME,
@@ -148,6 +193,7 @@ const BUILT_IN_THEME_DEFINITIONS = {
             },
             title: {
                 color: "#fff",
+                subtitleColor: "#fff",
             },
             axis: {
                 domainColor: "#fff",
@@ -161,6 +207,27 @@ const BUILT_IN_THEME_DEFINITIONS = {
             },
             rule: {
                 color: "#fff",
+            },
+            link: {
+                color: "#fff",
+            },
+            header: {
+                color: "#fff",
+            },
+            axisLocus: {
+                chromLabelColor: "#fff",
+                chromTickColor: "#aaa",
+                chromGridColor: "#888",
+            },
+            legend: {
+                labelColor: "#fff",
+                titleColor: "#fff",
+            },
+            style: {
+                "group-title": { color: "#fff" },
+                "group-subtitle": { color: "#fff" },
+                "arrow-transcript": { color: "#fff" },
+                "selection-brush": { stroke: "#fff" },
             },
         },
     ]),

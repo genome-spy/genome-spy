@@ -82,6 +82,9 @@ export default class BmFontManager {
             this._defaultFontEntry
         );
         if (defaultBitmap) {
+            // Startup may abort before waitUntilReady attaches its handler.
+            // Keep the original rejection available to readiness callers.
+            defaultBitmap.catch(() => {});
             this._promises.push(defaultBitmap);
         }
         this._fonts.set(DEFAULT_FONT_KEY, this._defaultFontEntry);

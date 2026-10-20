@@ -55,5 +55,12 @@ export const INTERNAL_DEFAULT_CONFIG = {
         ...TITLE_STYLE_DEFAULTS,
         ...LEGEND_STYLE_DEFAULTS,
         ...ARROW_STYLE_DEFAULTS,
+        "selection-brush": {
+            fill: "#808080",
+            fillOpacity: 0.05,
+            stroke: "black",
+            strokeWidth: 1,
+            strokeOpacity: 0.2,
+        },
     },
 };

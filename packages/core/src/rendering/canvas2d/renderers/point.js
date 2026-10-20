@@ -5,6 +5,7 @@ import {
 import { tracePointPath } from "../../immediate/geometry/pointPath.js";
 import {
     encodeNumber,
+    getDrawConstantPaint,
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
@@ -34,6 +35,8 @@ export function renderPointCanvas(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const constantFill = getDrawConstantPaint(encoders.fill, options);
+    const constantStroke = getDrawConstantPaint(encoders.stroke, options);
     /** @type {string | undefined} */
     let fillStyle;
 
@@ -43,10 +46,10 @@ export function renderPointCanvas(baseMark, options) {
     return visitPointInstances(mark, properties, options, (instance) => {
         const datum = instance.datum;
         const lineShape = instance.lineShape;
-        const fill = toPaintString(encoders.fill(datum));
+        const fill = constantFill ?? toPaintString(encoders.fill(datum));
         const fillOpacity =
             encodeNumber(encoders.fillOpacity, datum) * options.viewOpacity;
-        let stroke = toPaintString(encoders.stroke(datum));
+        let stroke = constantStroke ?? toPaintString(encoders.stroke(datum));
         let strokeOpacity =
             encodeNumber(encoders.strokeOpacity, datum) * options.viewOpacity;
         if (lineShape && (stroke == "none" || strokeOpacity <= 0)) {

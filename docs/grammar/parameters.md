@@ -180,6 +180,10 @@ the selected channel uses aligned projections in the child views. Otherwise, it
 draws a rectangle in each participating view. `"container"` requires the
 spanning rectangle, and `"view"` always draws per-view rectangles.
 
+The brush outline follows `defaultThemeColors.foreground` in the default theme. Override
+its appearance with `select.mark`; its `fill` and `stroke` colors can be
+expressions. Use `config.style["selection-brush"]` to set shared brush defaults.
+
 EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
 
 Selections can also drive ["filter"](./transform/filter.md) transforms, allowing for

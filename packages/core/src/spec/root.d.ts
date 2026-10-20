@@ -1,6 +1,7 @@
 import { GenomeConfig, GenomeDefinition } from "./genome.js";
 import { BuiltInThemeName, GenomeSpyConfig } from "./config.js";
 import { ViewSpec } from "./view.js";
+import { ExprRef } from "./parameter.js";
 
 export type NamedGenomeConfig = GenomeDefinition | Record<string, never>;
 
@@ -29,9 +30,12 @@ export interface RootConfig {
     baseUrl?: string;
 
     /**
-     * Background color of the canvas.
+     * Background color of the canvas. Expressions use the root parameter scope
+     * and update the canvas and default export background when dependencies change.
+     * An expression resolving to `null` makes the canvas transparent; exports
+     * use white unless their background is explicitly set to `null`.
      */
-    background?: string;
+    background?: string | ExprRef;
 
     /**
      * Global configuration defaults and theme tokens.

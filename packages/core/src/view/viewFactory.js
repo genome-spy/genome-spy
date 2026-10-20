@@ -1,4 +1,4 @@
-import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
+import { cloneWithSpecOrigin, inheritSpecOrigin } from "../utils/specOrigin.js";
 // eslint-disable-next-line no-unused-vars
 import View from "./view.js";
 
@@ -14,6 +14,7 @@ import ViewError from "./viewError.js";
 import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
 import { resolveImportedSpecConfig } from "../config/resolveConfig.js";
+import { getDefaultThemeColorsParams } from "../config/defaultThemeColors.js";
 import {
     markViewAsNonAddressable,
     registerImportInstance,
@@ -261,6 +262,13 @@ export class ViewFactory {
             viewSpec = spec;
         }
 
+        if (!dataParent) {
+            viewSpec = inheritSpecOrigin(viewSpec, {
+                ...viewSpec,
+                params: getDefaultThemeColorsParams(viewSpec.params),
+            });
+        }
+
         // A view with an interval selection always needs a parent.
         const hasIntervalSelection = (/** @type {ViewSpec} */ spec) =>
             spec?.params?.some(
@@ -287,7 +295,7 @@ export class ViewFactory {
                 hasIntervalSelection(viewSpec));
 
         if (isImplicitRoot) {
-            const wrappedChild = { ...viewSpec };
+            const wrappedChild = inheritSpecOrigin(viewSpec, { ...viewSpec });
             delete (/** @type {any} */ (wrappedChild).theme);
             viewSpec = {
                 name: "implicitRoot",

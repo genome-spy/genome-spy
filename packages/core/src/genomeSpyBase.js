@@ -3,6 +3,7 @@ import {
     createContainerUi,
     createMessageBox,
 } from "./genomeSpy/containerUi.js";
+import { createDefaultThemeStyle } from "./genomeSpy/defaultThemeStyle.js";
 import LoadingIndicatorManager from "./genomeSpy/loadingIndicatorManager.js";
 import LoadingStatusRegistry from "./genomeSpy/loadingStatusRegistry.js";
 import { createViewHighlighter } from "./genomeSpy/viewHighlight.js";
@@ -23,7 +24,11 @@ import GenomeStore from "./genome/genomeStore.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
-import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
+import {
+    getTopLevelSpecView,
+    VIEW_ROOT_NAME,
+    ViewFactory,
+} from "./view/viewFactory.js";
 import InteractionController from "./genomeSpy/interactionController.js";
 import { createRenderingBackend } from "./rendering/renderingBackend.js";
 import { renderingModules } from "./rendering/renderingModuleRegistry.js";
@@ -49,7 +54,7 @@ import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./config/themes.js";
 import { warnOnce } from "./utils/warning.js";
 import { formatErrorMessage, logError } from "./utils/errorPresentation.js";
 import {
-    getCanvasBackground,
+    createCanvasBackgroundReader,
     getExportBackground,
 } from "./genomeSpy/canvasBackground.js";
 
@@ -59,6 +64,9 @@ import {
  */
 
 export default class GenomeSpy {
+    /** @type {() => string | undefined} */
+    #getCanvasBackground = () => undefined;
+
     /** @type {(() => void)[]} */
     #destructionCallbacks = [];
     /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
@@ -539,6 +547,14 @@ export default class GenomeSpy {
         this.#initializeParameterBindings();
 
         prepareViewHierarchy(this.viewRoot);
+        createDefaultThemeStyle(
+            this.container,
+            getTopLevelSpecView(this.viewRoot)
+        );
+        this.#getCanvasBackground = createCanvasBackgroundReader(
+            this.spec,
+            getTopLevelSpecView(this.viewRoot)
+        );
         this.#logSelectorConstraintWarnings();
 
         // We should now have a complete view hierarchy. Let's update the canvas size
@@ -547,7 +563,7 @@ export default class GenomeSpy {
         this.#renderCoordinator =
             this.#renderingBackend.createRenderCoordinator({
                 viewRoot: this.viewRoot,
-                getBackground: () => getCanvasBackground(this.spec),
+                getBackground: this.#getCanvasBackground,
                 broadcast: this.broadcast.bind(this),
                 onLayoutComputed: () =>
                     this.#loadingIndicatorManager.updateLayout(),
@@ -814,7 +830,10 @@ export default class GenomeSpy {
      * @returns {Promise<import("./types/embedApi.js").RasterExportResult>}
      */
     async exportRaster(options = {}) {
-        const background = getExportBackground(this.spec, options);
+        const background = getExportBackground(
+            this.#getCanvasBackground(),
+            options
+        );
 
         try {
             const blob = await exportRasterUsingBackend(
@@ -850,7 +869,10 @@ export default class GenomeSpy {
         const canvasSize = this.#surface.getLogicalCanvasSize();
         const logicalWidth = options.logicalWidth ?? canvasSize.width;
         const logicalHeight = options.logicalHeight ?? canvasSize.height;
-        const background = getExportBackground(this.spec, options);
+        const background = getExportBackground(
+            this.#getCanvasBackground(),
+            options
+        );
 
         try {
             const { createSvgExport } = await loadSvgRenderer();

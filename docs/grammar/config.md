@@ -65,9 +65,78 @@ follows Vega-Lite defaults where GenomeSpy supports the same features. The
 remaining themes are loosely adapted from
 [vega-themes](https://github.com/vega/vega-themes).
 
+Only `genomespy` follows CSS appearance settings. Other named themes supply
+fixed colors and backgrounds.
+
 Theme selection is root-only. Specs can choose one of the built-in themes.
 
 EXAMPLE examples/docs/grammar/config/theme.json height=420
+
+## Reactive colors
+
+Colors in mark properties, axes, chromosome guides, legends, titles, and view
+backgrounds can use [expressions](./expressions.md). An object-valued
+[parameter](./parameters.md) can group these colors into a palette. Updating
+the palette changes an initialized visualization without reloading its data or
+resetting zoom and selections.
+
+### Default theme palette
+
+The default `genomespy` theme stays light unless the host page opts into dark
+mode through CSS `color-scheme`. Its canvas stays transparent in both modes, so
+the host page must supply a matching surface.
+
+The [light and dark mode embedding example](https://genomespy.app/docs/api/embed-examples/darkMode/)
+demonstrates automatic switching and CSS customization.
+
+A page that supports both modes can enable automatic browser preference changes:
+
+```css
+:root {
+  color-scheme: light dark;
+  background: light-dark(white, #19212a);
+}
+```
+
+Set `color-scheme: light` or `color-scheme: dark` to force one mode. Tooltips
+follow the same mode and respect `--genome-spy-foreground`.
+
+Override these inherited CSS custom properties to customize the palette:
+
+| CSS property                   | Used for                                                      | Light       | Dark        |
+| ------------------------------ | ------------------------------------------------------------- | ----------- | ----------- |
+| `--genome-spy-foreground`      | Text, titles, rules, links, transcript arrows, brush outlines | `black`     | `#e5ebf1`   |
+| `--genome-spy-stroke`          | Axis domains, ticks, chromosome grids                         | `gray`      | `#a0adba`   |
+| `--genome-spy-grid`            | Ordinary grid lines                                           | `lightgray` | `#3a4653`   |
+| `--genome-spy-chromosome-tick` | Chromosome boundary ticks                                     | `#989898`   | `#b0bdca`   |
+| `--genome-spy-symbol-stroke`   | Legend symbol outlines                                        | `#888`      | `#c0cbd6`   |
+| `--genome-spy-background`      | Canvas and default export background                          | transparent | transparent |
+
+```css
+#plot {
+  --genome-spy-foreground: light-dark(#352719, #f4e4cf);
+  --genome-spy-grid: light-dark(#ded2c0, #5e4c37);
+}
+```
+
+CSS colors must resolve to named colors, hex, RGB, or HSL. CSS Color 4 values
+such as `oklch()` and `color(display-p3 ...)` are unsupported.
+
+Browser preference changes and container or ancestor attribute changes refresh
+the palette automatically. Changes to stylesheet rules alone are not observed.
+
+For programmatic control through the `defaultThemeColors` parameter, see
+[Updating appearance](../api/runtime-state.md#updating-appearance).
+
+### Canvas and view backgrounds
+
+The root `background` controls the entire canvas, while `view.fill` and
+`config.view.fill` control individual view backgrounds. An explicit root
+background overrides the theme background. A background expression can return
+`null` for transparency.
+
+See [Image export](../api/instance.md#exporting-raster-images) for export
+background options.
 
 ## Config scopes
 

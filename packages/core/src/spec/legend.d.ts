@@ -145,7 +145,7 @@ export interface Legend {
     /**
      * Stroke color of the gradient ramp border.
      */
-    gradientStrokeColor?: string;
+    gradientStrokeColor?: string | ExprRef;
 
     /**
      * Stroke width of the gradient ramp border in pixels.
@@ -174,7 +174,7 @@ export interface Legend {
     /**
      * Fill color of the legend background.
      */
-    backgroundFill?: string;
+    backgroundFill?: string | ExprRef;
 
     /**
      * Opacity of the legend background fill.
@@ -184,7 +184,7 @@ export interface Legend {
     /**
      * Stroke color of the legend background.
      */
-    backgroundStroke?: string;
+    backgroundStroke?: string | ExprRef;
 
     /**
      * Stroke width of the legend background border.
@@ -216,19 +216,19 @@ export interface Legend {
      * @minimum 0
      * @maximum 1
      */
-    symbolOpacity?: number;
+    symbolOpacity?: number | ExprRef;
 
     /**
      * Symbol fill color. Overrides inherited fill styling, except when the
      * legend encodes fill or uses fill to encode color.
      */
-    symbolFillColor?: string;
+    symbolFillColor?: string | ExprRef;
 
     /**
      * Symbol stroke color. Overrides inherited stroke styling, except when
      * the legend encodes stroke or uses stroke to encode color.
      */
-    symbolStrokeColor?: string;
+    symbolStrokeColor?: string | ExprRef;
 
     /**
      * Symbol stroke width in pixels. Overrides inherited styling, except when
@@ -292,7 +292,7 @@ export interface LegendConfig extends Legend {
     /**
      * Legend label color.
      */
-    labelColor?: string;
+    labelColor?: string | ExprRef;
 
     /**
      * Legend label font.
@@ -327,17 +327,17 @@ export interface LegendConfig extends Legend {
     /**
      * Base fill color for legend symbols when the legend does not encode fill.
      */
-    symbolBaseFillColor?: string;
+    symbolBaseFillColor?: string | ExprRef;
 
     /**
      * Base stroke color for legend symbols when the legend does not encode stroke.
      */
-    symbolBaseStrokeColor?: string;
+    symbolBaseStrokeColor?: string | ExprRef;
 
     /**
      * Legend title color.
      */
-    titleColor?: string;
+    titleColor?: string | ExprRef;
 
     /**
      * Legend title font.

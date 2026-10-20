@@ -1,4 +1,6 @@
 import { getBuiltInThemeBackground } from "../config/themes.js";
+import { defaultThemeColor } from "../config/defaultThemeColors.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
  * Resolves the canvas background configured by the root spec or its selected
@@ -6,7 +8,7 @@ import { getBuiltInThemeBackground } from "../config/themes.js";
  * background.
  *
  * @param {import("../spec/root.js").RootSpec} spec
- * @returns {string | undefined}
+ * @returns {string | import("../spec/parameter.js").ExprRef | undefined}
  */
 export function getCanvasBackground(spec) {
     if (spec.background !== undefined) {
@@ -29,12 +31,54 @@ export function getCanvasBackground(spec) {
 }
 
 /**
+ * Binds the canvas background in the authored root scope. Live rendering and
+ * exports read the same settled value; the view owns the computation's lifetime.
+ *
  * @param {import("../spec/root.js").RootSpec} spec
+ * @param {import("../view/view.js").default} view
+ * @returns {() => string | undefined}
+ */
+export function createCanvasBackgroundReader(spec, view) {
+    const configuredBackground = getCanvasBackground(spec);
+    const lastTheme = Array.isArray(spec.theme)
+        ? spec.theme.at(-1)
+        : spec.theme;
+    const background =
+        configuredBackground ??
+        (!lastTheme || lastTheme === "genomespy"
+            ? defaultThemeColor("background")
+            : undefined);
+    if (!isExprRef(background)) {
+        return () => background;
+    }
+
+    const expression = view.paramRuntime.createExpression(background);
+    const value = view.paramRuntime.computed(
+        "canvas background",
+        expression.dependencies,
+        () => {
+            const color = expression();
+            if (color !== null && typeof color !== "string") {
+                throw new Error(
+                    "Canvas background expressions must return a color string or null."
+                );
+            }
+            return color ?? undefined;
+        }
+    );
+    view.paramRuntime.effect([value], () =>
+        view.context.animator.requestRender()
+    );
+    return () => value.get();
+}
+
+/**
+ * @param {string | undefined} background
  * @param {{background?: string | null}} options
  * @returns {string | null}
  */
-export function getExportBackground(spec, options) {
+export function getExportBackground(background, options) {
     return options.background !== undefined
         ? options.background
-        : (getCanvasBackground(spec) ?? "white");
+        : (background ?? "white");
 }

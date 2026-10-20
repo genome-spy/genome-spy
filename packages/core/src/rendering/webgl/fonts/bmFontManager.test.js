@@ -13,6 +13,17 @@ describe("BmFontManager", () => {
         expect(manager.getDefaultFont().bitmapUrl).toBeUndefined();
     });
 
+    test("handles early bitmap rejection while preserving readiness failure", async () => {
+        const error = new Error("Disposed during startup");
+        const manager = new BmFontManager(
+            () => Promise.reject(error),
+            "default.png"
+        );
+        // Let rejection reporting run before any readiness consumer attaches.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await expect(manager.waitUntilReady()).rejects.toBe(error);
+    });
+
     test("loads non-default metrics without bitmap preparation", async () => {
         const manager = new BmFontManager();
         const metrics = manager.getDefaultFont().metrics;

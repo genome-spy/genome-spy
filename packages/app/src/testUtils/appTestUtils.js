@@ -2,6 +2,7 @@ import ConcatView from "@genome-spy/core/view/concatView.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { initializeViewGuides } from "@genome-spy/core/view/gridView/guideViewSync.js";
+import { getDefaultThemeColorsParams } from "@genome-spy/core/config/defaultThemeColors.js";
 
 import setupStore from "../state/setupStore.js";
 import IntentExecutor from "../state/intentExecutor.js";
@@ -159,8 +160,9 @@ export async function createSampleViewForTest(options) {
         }
     );
 
+    // Direct construction bypasses the factory's root parameter defaults.
     const view = new SampleView(
-        spec,
+        { ...spec, params: getDefaultThemeColorsParams(spec.params) },
         context,
         null,
         null,

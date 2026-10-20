@@ -15,7 +15,7 @@ import {
  * @prop {{width: number, height: number}} canvasSize Size of the canvas in logical pixels.
  * @prop {number} devicePixelRatio
  * @prop {import("twgl.js").FramebufferInfo} [framebufferInfo]
- * @prop {string} [clearColor] Clear color for the  WebGL context,
+ * @prop {string | null} [clearColor] Clear color for the WebGL context,
  *      defaults to transparent black.
  * @prop {(mark: import("../../marks/mark.js").default) => boolean} [markPredicate]
  * @prop {number} [pixelOffset] Logical-pixel offset applied to WebGL marks.
@@ -38,6 +38,9 @@ import {
 export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /** @type {[number, number, number, number]} */
     #clearColor = [0, 0, 0, 0];
+
+    /** @type {string | null | undefined} */
+    #clearColorValue;
 
     /** @type {(() => void)[]} */
     #batch;
@@ -87,10 +90,18 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         this.#markPredicate = bufferedOptions.markPredicate ?? (() => true);
         this.#pixelOffset = bufferedOptions.pixelOffset;
 
-        if (bufferedOptions.clearColor) {
-            const c = color(bufferedOptions.clearColor).rgb();
-            this.#clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
-        }
+        this.setClearColor(bufferedOptions.clearColor);
+    }
+
+    /** @param {string | null | undefined} value */
+    setClearColor(value) {
+        if (value === this.#clearColorValue) return;
+        this.#clearColorValue = value;
+        const c = value == null ? null : color(value).rgb();
+        this.#clearColor[0] = c ? c.r / 255 : 0;
+        this.#clearColor[1] = c ? c.g / 255 : 0;
+        this.#clearColor[2] = c ? c.b / 255 : 0;
+        this.#clearColor[3] = c ? c.opacity : 0;
     }
 
     getDevicePixelRatio() {

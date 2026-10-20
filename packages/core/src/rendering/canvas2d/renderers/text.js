@@ -4,6 +4,7 @@ import {
 } from "../../immediate/marks/text.js";
 import {
     encodeNumber,
+    getDrawConstantPaint,
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
@@ -46,6 +47,7 @@ export function renderTextCanvas(baseMark, options) {
     ) {
         options.warn("Canvas2D ignored unsupported text viewport edge fading.");
     }
+    const constantFill = getDrawConstantPaint(encoders.color, options);
     /** @type {string | undefined} */
     let fillStyle;
     /** @type {number | undefined} */
@@ -66,7 +68,8 @@ export function renderTextCanvas(baseMark, options) {
                     "Canvas2D stretches multi-character logo text as a single glyph cell."
                 );
             }
-            const fill = toPaintString(encoders.color(instance.datum));
+            const fill =
+                constantFill ?? toPaintString(encoders.color(instance.datum));
             const opacity =
                 encodeNumber(encoders.opacity, instance.datum) *
                 options.viewOpacity *

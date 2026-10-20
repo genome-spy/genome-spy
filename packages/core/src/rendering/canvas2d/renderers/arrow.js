@@ -2,7 +2,11 @@ import {
     resolveArrowProperties,
     visitArrowInstances,
 } from "../../immediate/marks/arrow.js";
-import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
+import {
+    encodeNumber,
+    getDrawConstantPaint,
+    toPaintString,
+} from "../../immediate/markEncoding.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -19,52 +23,67 @@ export function renderArrowCanvas(baseMark, options) {
         );
     const properties = resolveArrowProperties(mark);
     context.lineJoin = "miter";
+    const constantFill = getDrawConstantPaint(encoders.fill, options);
+    const constantStroke = getDrawConstantPaint(encoders.stroke, options);
     /** @type {string | undefined} */
     let fillStyle;
     /** @type {string | undefined} */
     let strokeStyle;
 
-    return visitArrowInstances(mark, properties, options, (instance) => {
-        if (instance.headShapeFallback) {
-            options.warn(
-                `Canvas2D rendered unsupported arrow headShape "${properties.headShape}" as a triangle.`
-            );
-        }
-        context.beginPath();
-        for (const loop of instance.boundaryLoops) {
-            const first = loop[0];
-            context.moveTo(first.x, first.y);
-            for (let i = 1; i < loop.length; i++) {
-                context.lineTo(loop[i].x, loop[i].y);
+    return visitArrowInstances(
+        mark,
+        properties,
+        options,
+        (instance) => {
+            if (instance.headShapeFallback) {
+                options.warn(
+                    `Canvas2D rendered unsupported arrow headShape "${properties.headShape}" as a triangle.`
+                );
             }
-            context.closePath();
-        }
+            context.beginPath();
+            for (const loop of instance.boundaryLoops) {
+                const first = loop[0];
+                context.moveTo(first.x, first.y);
+                for (let i = 1; i < loop.length; i++) {
+                    context.lineTo(loop[i].x, loop[i].y);
+                }
+                context.closePath();
+            }
 
-        const fill = toPaintString(encoders.fill(instance.datum));
-        const fillOpacity =
-            encodeNumber(encoders.fillOpacity, instance.datum) *
-            options.viewOpacity;
-        if (fill != "none" && fillOpacity > 0) {
-            if (fillStyle != fill) {
-                context.fillStyle = fill;
-                fillStyle = fill;
+            const fill =
+                constantFill ?? toPaintString(encoders.fill(instance.datum));
+            const fillOpacity =
+                encodeNumber(encoders.fillOpacity, instance.datum) *
+                options.viewOpacity;
+            if (fill != "none" && fillOpacity > 0) {
+                if (fillStyle != fill) {
+                    context.fillStyle = fill;
+                    fillStyle = fill;
+                }
+                context.globalAlpha = fillOpacity;
+                context.fill();
             }
-            context.globalAlpha = fillOpacity;
-            context.fill();
-        }
 
-        const stroke = toPaintString(encoders.stroke(instance.datum));
-        const strokeOpacity =
-            encodeNumber(encoders.strokeOpacity, instance.datum) *
-            options.viewOpacity;
-        if (stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0) {
-            if (strokeStyle != stroke) {
-                context.strokeStyle = stroke;
-                strokeStyle = stroke;
+            const stroke =
+                constantStroke ??
+                toPaintString(encoders.stroke(instance.datum));
+            const strokeOpacity =
+                encodeNumber(encoders.strokeOpacity, instance.datum) *
+                options.viewOpacity;
+            if (
+                stroke != "none" &&
+                strokeOpacity > 0 &&
+                instance.strokeWidth > 0
+            ) {
+                if (strokeStyle != stroke) {
+                    context.strokeStyle = stroke;
+                    strokeStyle = stroke;
+                }
+                context.globalAlpha = strokeOpacity;
+                context.lineWidth = instance.strokeWidth;
+                context.stroke();
             }
-            context.globalAlpha = strokeOpacity;
-            context.lineWidth = instance.strokeWidth;
-            context.stroke();
-        }
-    });
+        },
+        constantStroke
+    );
 }

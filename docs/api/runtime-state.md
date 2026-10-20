@@ -333,3 +333,54 @@ membership. Single selections (`toggle: false`) accept at most one tuple; `[]`
 clears without requiring data or a key. The setter works across mark types,
 including text and rectangles. Membership binds the current publication; apps
 clear or reapply it after replacing datasets.
+
+## Updating appearance
+
+The default theme follows
+[CSS appearance settings](../grammar/config.md#default-theme-palette)
+automatically when the browser preference or attributes on the container or its
+ancestors change.
+
+For exclusive programmatic control, declare `defaultThemeColors` in the root
+`params` before embedding. This disables automatic CSS updates:
+
+```json
+{
+  "params": [
+    {
+      "name": "defaultThemeColors",
+      "value": {
+        "foreground": "#352719",
+        "grid": "#ded2c0"
+      }
+    }
+  ]
+}
+```
+
+Palette fields are `foreground`, `stroke`, `grid`, `chromosomeTick`,
+`symbolStroke`, and `background`. Omitted roles use the built-in light defaults,
+including colors introduced in future versions. Set `background` to `null` for
+transparency.
+
+Update the palette through the parameter API:
+
+```js
+const colors = api.params.get("defaultThemeColors");
+colors.setValue({
+  foreground: "#352719",
+  grid: "#ded2c0",
+});
+```
+
+Each write replaces the object; omitted roles revert to their defaults rather
+than previous values. `getValue()` returns the supplied object. Mutating its
+properties does not publish an update. Without an explicit declaration, manual
+writes to the automatic palette last until the next CSS refresh.
+
+An authored `expr` parameter can compute a partial palette instead; it remains
+read-only. Descendant views can shadow `defaultThemeColors` through normal
+parameter scoping. The canvas background uses the root palette.
+
+The [light and dark mode example](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/darkMode)
+shows System, Light, Dark, and Custom modes on one running visualization.
