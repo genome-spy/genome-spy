@@ -170,8 +170,8 @@ scope.
 
 ## Four-mode example and final outcome
 
-The example uses plain `embed(container, plotSpec)`. Its 33-line JavaScript only
-connects the host selector and status label; Core owns palette initialization
+The example uses plain `embed(container, plotSpec)`. Its 21-line JavaScript only
+connects the host selector; Core owns palette initialization
 and subsequent updates. CSS supplies System/Light/Dark page surfaces and a
 cream/brown Custom appearance through inherited public overrides. The default
 canvas remains transparent in every example mode.
@@ -188,7 +188,7 @@ Final Core runtime JavaScript against local master
 `b34836e8319e844ccecbc713e4f4fb6b3403575f`: +573/-125 non-comment production
 lines, net +448, excluding tests and declarations. This revision adds net 135
 Core production lines over the prior branch milestone. The complete example
-contains 169 source lines across HTML, JavaScript, and SCSS, down from 198.
+contains 156 source lines across HTML, JavaScript, and SCSS, down from 198.
 The additional CSS resolution and comparison runs only on supported appearance
 events or explicit refresh; ordinary rendering adds no CSS reads. GPU shaders,
 attributes, textures, and draw behavior are unchanged. No timing speedup is
