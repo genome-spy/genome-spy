@@ -5,6 +5,8 @@ import {
 } from "../fileBatchUtils.js";
 import { UNIQUE_ID_KEY } from "./identifier.js";
 import Transform from "./transform.js";
+import { validateOutputSources } from "../flowOutput.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /** @typedef {import("../flowNode.js").Datum} Datum */
 /**
@@ -39,6 +41,14 @@ export default class DendrogramTransform extends Transform {
     /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
     #fileBatchStarts = [];
 
+    /** @type {import("../../spec/channel.js").Scalar[]} */
+    #categories = [];
+
+    #treeCount = 0;
+
+    /** @type {() => unknown} */
+    #leafOrder = () => undefined;
+
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -56,8 +66,50 @@ export default class DendrogramTransform extends Transform {
         this.keyAccessor = this.createFieldAccessor(params, "key");
         this.parentAccessor = this.createFieldAccessor(params, "parentKey");
         this.heightAccessor = this.createFieldAccessor(params, "height");
-        this.leafIndexAccessor = this.createFieldAccessor(params, "leafIndex");
-        this.as = params.as ?? OUTPUT_FIELDS;
+        this.params = params;
+        this.categorical = params.leaf !== undefined;
+        if (this.categorical) {
+            if (
+                params.leafIndex !== undefined ||
+                (params.siblingOrder !== undefined) ===
+                    (params.leafOrder !== undefined)
+            ) {
+                throw new Error(
+                    "Categorical dendrograms require exactly one of siblingOrder and leafOrder, without leafIndex."
+                );
+            }
+        } else if (
+            params.param !== undefined ||
+            params.siblingOrder !== undefined ||
+            params.leafOrder !== undefined
+        ) {
+            throw new Error(
+                "Numeric dendrograms require leafIndex without categorical ordering or publication."
+            );
+        }
+        this.leafAccessor = this.createFieldAccessor(
+            params,
+            this.categorical ? "leaf" : "leafIndex"
+        );
+        this.siblingOrderAccessor =
+            params.siblingOrder === undefined
+                ? undefined
+                : this.createFieldAccessor(params, "siblingOrder");
+        if (Array.isArray(params.leafOrder))
+            this.#leafOrder = () => params.leafOrder;
+        if (params.param !== undefined) {
+            this.output = this.paramRuntime.resolveOutput(params.param);
+            if (this.output.producer)
+                throw new Error("Duplicate dendrogram output producer.");
+            this.output.producer = this;
+        }
+        this.as =
+            params.as ??
+            OUTPUT_FIELDS.map((name, i) =>
+                this.categorical && (i === 4 || i === 5)
+                    ? name.replace("Index", "Value")
+                    : name
+            );
         if (
             this.as.length !== 8 ||
             new Set(this.as).size !== 8 ||
@@ -74,8 +126,22 @@ export default class DendrogramTransform extends Transform {
         }
     }
 
+    initialize() {
+        if (this.output) validateOutputSources(this);
+        if (isExprRef(this.params.leafOrder)) {
+            this.#leafOrder = this.watchSnapshottedExpression(
+                this.params.leafOrder
+            );
+        }
+    }
+
     reset() {
         super.reset();
+        this.#treeCount = 0;
+        if (this.output) {
+            this.output.ready = false;
+            this.output.candidate = undefined;
+        }
         this.#buffer = [];
         this.#fileBatchStarts = [];
     }
@@ -87,6 +153,9 @@ export default class DendrogramTransform extends Transform {
 
     /** @param {import("../../types/flowBatch.js").FlowBatch} batch */
     beginBatch(batch) {
+        if (this.output && batch.type === "facet") {
+            throw new Error("Publishing dendrograms do not support facets.");
+        }
         if (batch.type === "file") {
             if (!this.inFacet) this.#flush();
             this.#fileBatchStarts.push({ index: this.#buffer.length, batch });
@@ -99,12 +168,23 @@ export default class DendrogramTransform extends Transform {
     complete() {
         this.#flush();
         super.complete();
+        if (this.output && this.#treeCount === 0)
+            this.output.candidate = Object.freeze([]);
     }
 
     #flush() {
         const data = this.#buffer;
         const getBatch = createFileBatchAccessor(data, this.#fileBatchStarts);
         const nodes = this.#layout(data);
+        if (this.output && nodes.length && ++this.#treeCount > 1) {
+            throw new Error(
+                "Publishing dendrograms require one tree per completed flow."
+            );
+        }
+        const anchor = (/** @type {number} */ position) =>
+            this.categorical
+                ? this.#categories[Math.floor(position)]
+                : Math.floor(position);
         const propagate = createFileBatchPropagator(
             (node) => getBatch(node.datum),
             (batch) => super.beginBatch(batch),
@@ -117,8 +197,8 @@ export default class DendrogramTransform extends Transform {
                 edge[this.as[1]] = node.key;
                 edge[this.as[2]] = parent.height;
                 edge[this.as[3]] = node.height;
-                edge[this.as[4]] = Math.floor(parent.position);
-                edge[this.as[5]] = Math.floor(node.position);
+                edge[this.as[4]] = anchor(parent.position);
+                edge[this.as[5]] = anchor(node.position);
                 edge[this.as[6]] = parent.position % 1;
                 edge[this.as[7]] = node.position % 1;
                 this._propagate(edge);
@@ -127,12 +207,15 @@ export default class DendrogramTransform extends Transform {
         for (const node of nodes) {
             if (node.parent) propagate(node);
         }
+        if (this.output && nodes.length)
+            this.output.candidate = Object.freeze(this.#categories);
         this.#buffer = [];
         this.#fileBatchStarts = [];
     }
 
     /** @param {Datum[]} data @returns {LayoutNode[]} */
     #layout(data) {
+        this.#categories = [];
         /** @type {Map<string | number, LayoutNode>} */
         const byKey = new Map();
         const nodes = data.map((datum) => {
@@ -187,13 +270,39 @@ export default class DendrogramTransform extends Transform {
                 "Dendrogram requires exactly one root; found " + roots.length
             );
 
+        if (this.siblingOrderAccessor) {
+            for (const node of nodes) {
+                const ranks = new Set();
+                for (const child of node.children) {
+                    const rank = this.siblingOrderAccessor(child.datum);
+                    if (
+                        typeof rank !== "number" ||
+                        !Number.isFinite(rank) ||
+                        ranks.has(rank)
+                    ) {
+                        throw new Error(
+                            "Invalid or duplicate dendrogram sibling order at node " +
+                                String(child.key)
+                        );
+                    }
+                    ranks.add(rank);
+                }
+                node.children.sort(
+                    (a, b) =>
+                        this.siblingOrderAccessor(a.datum) -
+                        this.siblingOrderAccessor(b.datum)
+                );
+            }
+        }
+
         const order = [];
         const pending = [roots[0]];
         // Unique nodes with one parent cannot form a cycle reachable from the root.
         while (pending.length) {
             const node = pending.pop();
             order.push(node);
-            for (const child of node.children) pending.push(child);
+            for (let i = node.children.length - 1; i >= 0; i--)
+                pending.push(node.children[i]);
         }
         if (order.length !== nodes.length) {
             const visited = new Set(order);
@@ -204,9 +313,12 @@ export default class DendrogramTransform extends Transform {
             );
         }
 
-        const leaves = nodes.filter((node) => !node.children.length);
+        const leaves = order.filter((node) => !node.children.length);
+        if (this.categorical) this.#assignCategories(leaves);
         for (const node of leaves) {
-            const index = this.leafIndexAccessor(node.datum);
+            const index = this.categorical
+                ? node.position
+                : this.leafAccessor(node.datum);
             if (!Number.isSafeInteger(index) || index < 0 || index >= 2 ** 44)
                 throw new Error(
                     "Invalid dendrogram leaf index for node " + String(node.key)
@@ -246,6 +358,47 @@ export default class DendrogramTransform extends Transform {
             node.position = (minimum + maximum) / 2;
         }
         return nodes;
+    }
+
+    /** @param {LayoutNode[]} leaves */
+    #assignCategories(leaves) {
+        const values = leaves.map((node) => this.leafAccessor(node.datum));
+        validateCategories(values);
+        const domain = this.siblingOrderAccessor ? values : this.#leafOrder();
+        validateCategories(domain);
+        this.#categories = Array.from(domain);
+        const ranks = new Map(
+            this.#categories.map((value, rank) => [value, rank])
+        );
+        for (let i = 0; i < leaves.length; i++) {
+            const rank = ranks.get(values[i]);
+            if (rank === undefined)
+                throw new Error(
+                    "Dendrogram leafOrder is missing category " +
+                        String(values[i])
+                );
+            leaves[i].position = rank;
+        }
+    }
+}
+
+/** @param {unknown} values @returns {asserts values is import("../../spec/channel.js").Scalar[]} */
+function validateCategories(values) {
+    if (
+        !Array.isArray(values) ||
+        values.some(
+            (value) =>
+                !(
+                    typeof value === "string" ||
+                    typeof value === "boolean" ||
+                    (typeof value === "number" && Number.isFinite(value))
+                )
+        ) ||
+        new Set(values).size !== values.length
+    ) {
+        throw new Error(
+            "Dendrogram categories must be unique strings, finite numbers, or booleans."
+        );
     }
 }
 

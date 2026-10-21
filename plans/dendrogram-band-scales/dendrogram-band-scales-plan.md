@@ -1,6 +1,6 @@
 # Dendrograms on categorical band scales
 
-Status: implementation underway; milestone 1 is complete. This branch is stacked on
+Status: implementation underway; milestones 1 and 2 are complete. This branch is stacked on
 `codex/transform-value-outputs` ([PR #575](https://github.com/genome-spy/genome-spy/pull/575)).
 
 ## Goal and dependency
@@ -370,6 +370,11 @@ Review gate: shared public ownership contract, declaration/binding timing, hidde
 producer flow ownership, and downstream scale/App parameter consumers.
 
 ### 2. Add categorical tree layout and direct order publication
+
+Completed: structural and explicit category ordering share numeric midpoint
+layout. The transform publishes through #575's successful flow boundary, including
+empty and single-leaf trees. Numeric regression and categorical contract suites
+pass, including real source replacement, failed input, replay, and feedback guards.
 
 Outcome: categorical dendrograms derive category anchors and an ordered domain
 from their own tree input, preserving numeric compatibility.

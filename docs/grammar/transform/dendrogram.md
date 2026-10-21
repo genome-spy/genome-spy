@@ -2,7 +2,7 @@
 
 The `"dendrogram"` transform turns a precomputed clustering tree into
 parent–child edges for a [link mark](../mark/link.md). It preserves merge heights
-and computes node positions along a discrete index scale.
+and computes node positions along an index or categorical band scale.
 
 EXAMPLE examples/docs/grammar/transform/dendrogram/dendrogram.json height=320
 
@@ -53,6 +53,46 @@ negative `merge` references identify leaves and positive references identify
 earlier merges; copy `height` and use `order` to assign zero-based row positions.
 Keep labels as separate metadata, so node identity remains independent of order.
 
+## Categorical band scales
+
+Categorical heatmaps can encode their original sample and gene IDs directly.
+Use `leaf` for the category field and `siblingOrder` for a numeric ordering field
+on every non-root node. Sibling ranks must be distinct within each parent; they
+may repeat under different parents. Internal nodes need no category and the
+root needs no rank. Input row order does not determine orientation.
+
+```json
+{
+  "type": "dendrogram",
+  "key": "id",
+  "parentKey": "parent",
+  "height": "height",
+  "leaf": "sample",
+  "siblingOrder": "childOrder",
+  "param": { "name": "sampleOrder", "push": "outer" }
+}
+```
+
+The transform traverses the ordered tree and can publish its leaf categories
+with `param`. A string declares a local output. To share the domain with a
+sibling heatmap, reserve `{ "name": "sampleOrder", "output": true }` in their
+common ancestor's `params`, then push as above. Set the shared band scale's
+`domain` to `{ "expr": "sampleOrder" }`. Each axis can have its own tree and
+output; no numeric heatmap positions or separate domain arrays are needed.
+
+Categories must be unique strings, finite numbers, or booleans. Numeric `1`
+and string `"1"` remain distinct. For intentional external alignment, replace
+`siblingOrder` with `leafOrder`: a complete domain array or an expression reading
+ordinary parameters. Include every leaf; extra categories reserve band slots.
+Subtree leaves must remain contiguous among actual tree leaves. Transform outputs
+and scales derived from them cannot feed `leafOrder`.
+
+Publication supports one unfaceted tree from an eager source per completed flow.
+A single leaf publishes its category with no edges; empty input publishes `[]`.
+Loading or invalid input retains the last successful domain. Unchanged arrays
+retain identity and do not notify consumers again. See
+[output parameters](values.md#output-parameters) for pushing and lifecycle limits.
+
 ## Output and placement
 
 One output row represents each non-root node's incoming edge. Child metadata,
@@ -64,12 +104,18 @@ same-named metadata. The optional `as` array changes the output field names.
 | `sourceId`, `targetId`         | Parent and child node IDs                   |
 | `sourceHeight`, `targetHeight` | Their supplied merge heights                |
 | `sourceIndex`, `targetIndex`   | Integer row anchors                         |
+| `sourceValue`, `targetValue`   | Category anchors in categorical mode        |
 | `sourceOffset`, `targetOffset` | Relative displacements from the row anchors |
 
 An internal node is placed midway between its extreme direct children. For an
 unbalanced tree, positions may include quarters or eighths of a row. The
 transform separates each position into an integer anchor and a fraction, so the
 index scale continues to receive integers.
+
+Categorical mode emits `sourceValue` and `targetValue` instead of the index
+fields. Each names the category at the integer part of the node's leaf rank;
+the offset fields contain the remaining fraction. The same padded-step offsets
+work on band scales, including reversal and resize, without recomputing layout.
 
 For a horizontal dendrogram, encode heights on `x`/`x2`, anchors on `y`/`y2`
 with `band: 0.5`, and fractions on `yOffset`/`y2Offset`. Give the primary offset

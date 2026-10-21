@@ -1,4 +1,8 @@
-import { PositionalChannel, PrimaryPositionalChannel } from "./channel.js";
+import {
+    PositionalChannel,
+    PrimaryPositionalChannel,
+    Scalar,
+} from "./channel.js";
 import {
     DataSource,
     Generator,
@@ -28,7 +32,7 @@ export interface TransformParamsBase {
 }
 
 /** Lay out a precomputed tree and emit one parent-child edge per non-root node. */
-export interface DendrogramParams extends TransformParamsBase {
+interface DendrogramParamsBase extends TransformParamsBase {
     type: "dendrogram";
 
     /** Unique string or finite numeric node identifier. */
@@ -41,21 +45,60 @@ export interface DendrogramParams extends TransformParamsBase {
     height: Field;
 
     /**
+     * Output field names for source/target IDs, heights, anchors, and
+     * fractional offsets. Generated values overwrite copied child metadata.
+     * Names must be distinct and cannot use the reserved internal __uniqueId.
+     * Categorical mode defaults to sourceValue/targetValue for its anchor fields.
+     *
+     * __Default value:__ ["sourceId", "targetId", "sourceHeight", "targetHeight", "sourceIndex", "targetIndex", "sourceOffset", "targetOffset"]
+     */
+    as?: [string, string, string, string, string, string, string, string];
+}
+
+export interface IndexDendrogramParams extends DendrogramParamsBase {
+    /**
      * Integer row position for each leaf, matching the heatmap order. Indices
      * must be distinct and in [0, 2^44); each subtree's leaves must be contiguous
      * in the ordered leaf sequence. Internal nodes need no value in this field.
      */
     leafIndex: Field;
 
-    /**
-     * Output field names for source/target IDs, heights, integer anchors, and
-     * fractional offsets. Generated values overwrite copied child metadata.
-     * Names must be distinct and cannot use the reserved internal __uniqueId.
-     *
-     * __Default value:__ ["sourceId", "targetId", "sourceHeight", "targetHeight", "sourceIndex", "targetIndex", "sourceOffset", "targetOffset"]
-     */
-    as?: [string, string, string, string, string, string, string, string];
+    leaf?: never;
+    siblingOrder?: never;
+    leafOrder?: never;
+    param?: never;
 }
+
+interface CategoricalDendrogramParamsBase extends DendrogramParamsBase {
+    /** Leaf category field. Values must be distinct strings, finite numbers, or booleans. */
+    leaf: Field;
+    leafIndex?: never;
+
+    /** Publish the ordered categories as a local output or push to an ancestor output. */
+    param?: TransformOutput;
+}
+
+export interface SiblingOrderedDendrogramParams extends CategoricalDendrogramParamsBase {
+    /** Finite numeric order on each non-root node, unique among its siblings. */
+    siblingOrder: Field;
+    leafOrder?: never;
+}
+
+export interface ExplicitlyOrderedDendrogramParams extends CategoricalDendrogramParamsBase {
+    /**
+     * Complete ordered band domain. Include every leaf category exactly once;
+     * extra categories reserve slots. Expressions may read ordinary parameters,
+     * but cannot read transform outputs or scales derived from those outputs.
+     */
+    leafOrder: Scalar[] | ExprRef;
+    siblingOrder?: never;
+}
+
+/** Numeric index layout or categorical layout with exactly one ordering input. */
+export type DendrogramParams =
+    | IndexDendrogramParams
+    | SiblingOrderedDendrogramParams
+    | ExplicitlyOrderedDendrogramParams;
 
 /** Options for transforms whose predicates or expressions can trigger replay. */
 export interface ReactiveTransformParams {

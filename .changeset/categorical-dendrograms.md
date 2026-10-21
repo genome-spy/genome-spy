@@ -4,6 +4,7 @@
 
 <!-- category: feature -->
 
-Allow child transforms to push read-only array outputs to ancestor parameter
-scopes. Sibling plots can share data-derived scale domains while each producer
-keeps its own data pipeline, including when its presentation is hidden.
+Support dendrograms on categorical band scales, so heatmaps can encode original
+sample and gene IDs. Each supplied tree can publish its ordered leaf categories
+to a shared scale through parameter pushing, including when the tree presentation
+is hidden. Existing index-scale dendrograms remain compatible.
