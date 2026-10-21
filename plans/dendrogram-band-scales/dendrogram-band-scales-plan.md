@@ -1,81 +1,103 @@
 # Dendrograms on categorical band scales
 
-Status: proposed; implementation has not started.
+Status: proposed; implementation has not started. This branch is stacked on
+`codex/transform-value-outputs` ([PR #575](https://github.com/genome-spy/genome-spy/pull/575)).
 
-## Goal
+## Goal and dependency
 
-Support a clustered heatmap whose y axis contains sample names, whose x axis
-contains gene names, and whose cells contain synthetic z scores. Both axes use
-categorical band scales. A sample dendrogram sits to the left and a gene
-dendrogram sits above the matrix. Authors should not need numeric row/column
-fields or formula/lookup transforms to translate dendrogram anchors to categories.
+Support a heatmap with sample IDs on y, gene IDs on x, synthetic z scores in the
+cells, a sample dendrogram on the left, and a gene dendrogram above. Each
+precomputed tree supplies its own ordering. Its dendrogram transform emits
+categorical anchors and publishes that order for the corresponding shared band
+scale. Matrix cells and annotation tracks keep encoding their original IDs.
+Authors do not maintain separate domain arrays or numeric matrix positions.
 
-Keep existing index-scale specifications and their output unchanged. Retain
-precomputed clustering, supplied merge heights, and the existing link marks.
+Use #575's producer-owned outputs as a prerequisite, following
+[issue #513](https://github.com/genome-spy/genome-spy/issues/513). Do not build a
+second publisher, scheduler, or named-dataset system. Preserve existing numeric
+`leafIndex` specifications and outputs. Computing the clustering itself remains
+a separate feature; this increment handles supplied trees.
 
-## Current implementation and constraints
+The stack was inspected at #575 head `f014c90d2420dc49f8169486958743d034b185e6`.
+It includes `968531599`, the WebGL categorical-mapping fix from #595. Dynamic
+categorical domains are now a supported foundation, including data arriving
+before its explicit domain. Keep that behavior in integration verification.
+When #575 merges, rebase this branch onto `master` and retarget any stacked PR.
 
-Investigated at local commit `3fb913668` on `master`.
+## Current implementation and architectural boundaries
 
-- `packages/core/src/data/transforms/dendrogram.js` validates integer
-  `leafIndex` values, computes internal positions, and emits integer anchors
-  plus fractional offsets. The transform does not consult scales.
-- `packages/core/src/spec/transform.d.ts` exposes only that numeric input mode.
-  The eight output slots are IDs, heights, anchors, and offsets.
-- `packages/core/src/marks/link.js` supports ordinary positional scales and
-  secondary endpoint offsets. It does not require an index scale.
-- `packages/core/src/utils/expression.js` already implements signed
-  `bandstep()` for band, point, index, and locus scales. Its step includes inner
-  padding; using `bandwidth()` instead would misplace internal joins.
-- `packages/core/src/scales/scalePosition.js` already supports band-center
-  placement. Existing immediate rendering, SVG, and GPU paths should consume
-  categorical anchors through their ordinary encoders.
-- Band domains must be explicit. The domain array determines category order;
-  stable GPU category IDs are a separate concern and must not become layout ranks.
-- `packages/core/src/scales/scaleInstanceManager.js` explicitly defers dynamic
-  explicit categorical reordering/removal on WebGL. Initial asynchronous
-  publication of an ordered domain can encounter the same identity/order issue.
-- `packages/core/src/rendering/svg/dendrogram.test.js` and
-  `packages/core/scripts/testDendrogramRenderers.mjs` already exercise alignment,
-  fractional offsets, interaction, and several renderers for index scales.
-- The existing DepMap example is intentionally a zoomable index-scale example.
-  Add a smaller band example rather than replace it.
+Paths below are repository-relative.
 
-Baseline sizes: dendrogram implementation 258 lines; transform tests 285;
-SVG dendrogram tests 141; endpoint-offset tests 211. Measure the focused diff
-after implementation and recheck any growth outside categorical normalization,
-validation, and meaningful regression coverage.
+- `packages/core/src/data/transforms/dendrogram.js` buffers a tree, validates
+  integer leaf positions, and computes internal midpoints. Its eight output
+  fields describe edge IDs, heights, integer anchors, and fractional offsets.
+- `packages/core/src/data/flowOutput.js` and
+  `packages/core/src/paramRuntime/viewParamRuntime.js` provide #575's read-only
+  array outputs and successful source/replay publication boundary. Declaration
+  discovery currently recognizes `values`; output ownership is local to a view.
+- `packages/core/src/data/transforms/values.js` projects a scalar field into an
+  array. It must not become an obligatory adapter for another transform that
+  already computes an ordered array. Dendrogram edge rows repeat anchors and
+  cannot reconstruct the complete leaf domain, especially for a single leaf.
+- `packages/core/src/view/view.js` reserves output declarations, while
+  `view/flowBuilder.js`, `data/flowHandle.js`, and dataflow initialization/pruning
+  own producer paths and lifetimes. Extend those existing boundaries when
+  resolving an ancestor-owned output; do not equate layout ancestry with a data
+  dependency or put GPU state in views.
+- The existing `link` mark, band-center placement, signed `bandstep()`, and
+  secondary endpoint offsets already support categorical projection. Changes to
+  renderer algorithms are not expected.
+- Shared scales resolve expressions in their owner's lexical scope. A side
+  view's local output is invisible to its parent and siblings. #575's root-owned
+  summary branches solve the gap example but do not directly express two side
+  views publishing their own orders into one ordinary `surround`.
+- #575 rejects published outputs as source/transform inputs. This feature needs
+  only tree-to-scale publication and must preserve that rejection.
 
-## Established designs
+The existing implementation is 258 lines; its transform tests are 285 and its
+SVG dendrogram tests 141. Record the focused production-code delta during
+implementation and justify growth in shared publication/lifecycle code.
 
-[D3 band scales](https://d3js.org/d3-scale/band) map domain values through an
-ordered category index and separate band width from band step. Follow that
-model: use ranks to calculate the tree and category values to encode its marks.
+## Design references
 
-[Vega's tree transform](https://vega.github.io/vega/docs/transforms/tree/) keeps
-tree layout coordinates separate from display projection. Preserve GenomeSpy's
-equivalent boundary, including its supplied merge heights and current midpoint
-convention, rather than introduce a scale-aware tree layout or replace it with
-a generic hierarchy layout. These are design comparisons; no upstream code
-needs to be copied or adapted.
+[D3 band scales](https://d3js.org/d3-scale/band) separate category identity from
+ordered display slots. Compute tree positions in numeric rank space, then emit
+category values for the ordinary scale encoders.
 
-## Proposed public contract
+[Vega tree layout](https://vega.github.io/vega/docs/transforms/tree/) keeps layout
+coordinates independent of their display projection. Preserve GenomeSpy's
+existing supplied heights and midpoint convention. Reuse #575's transform-value
+publication design rather than couple tree layout to a live scale. These are
+architectural references; no upstream code needs copying or adaptation.
 
-Extend `DendrogramParams` with two mutually exclusive input modes. Use a shared
-base and a TypeScript union so schema generation and runtime validation enforce
-the same contract.
+## Public contract
 
-| Mode                    | Required properties                             | Default anchor output fields |
-| ----------------------- | ----------------------------------------------- | ---------------------------- |
-| Existing numeric layout | `leafIndex: Field`                              | `sourceIndex`, `targetIndex` |
-| Categorical layout      | `leaf: Field`, `leafOrder: Scalar[] \| ExprRef` | `sourceValue`, `targetValue` |
+All new syntax below is proposed. Final spelling is an API review gate; the
+ownership, ordering, and lifecycle semantics must be resolved before implementing
+rendered examples.
 
-`key`, `parentKey`, `height`, and the optional eight-element `as` tuple retain
-their meanings. In categorical mode, tuple positions five and six contain
-category anchors; the other slots keep their existing semantics. Do not emit
-additional numeric-index aliases or change existing numeric defaults.
+### Numeric compatibility and categorical mode
 
-Example sample-tree transform, using proposed syntax:
+Keep numeric mode unchanged: `leafIndex: Field`, integer anchors named
+`sourceIndex`/`targetIndex`, existing bounds, gaps in indices, and the same
+file/facet behavior. Do not require publication or a view runtime for pure numeric
+layout.
+
+Categorical mode uses `leaf: Field`, an ordering input described below, and an
+optional `param` output declaration. Default anchor fields become `sourceValue`
+and `targetValue`; IDs, heights, offsets, child metadata, and fresh edge identity
+retain their meanings. The eight-element `as` tuple retains its slot semantics.
+The presence of `leaf` selects categorical mode; reject conflicting numeric mode
+properties through a type union, generated schema, and runtime validation.
+
+Categories are strings, finite numbers, or booleans, matching `Scalar`. Keep typed
+values distinct, such as `1` and `"1"`. Reject duplicate leaf categories and retain
+all existing node-ID, parent, root, cycle, height, and contiguity validation.
+
+### Tree-owned ordering
+
+Publication does not discover a biologically meaningful order from an unordered
+parent table. Give categorical mode an explicit structural ordering input:
 
 ```json
 {
@@ -84,22 +106,124 @@ Example sample-tree transform, using proposed syntax:
   "parentKey": "parent",
   "height": "height",
   "leaf": "sample",
-  "leafOrder": { "expr": "sampleOrder" }
+  "siblingOrder": "childOrder",
+  "param": { "name": "sampleOrder", "owner": "clusteredHeatmap" }
 }
 ```
 
-Declare the order once at the common composition owner and use it for both
-the transform and its shared scale:
+`siblingOrder` names a finite numeric ordering field on each non-root node.
+Values must be distinct within each sibling set; they may repeat in different
+sets and need not be consecutive. Sort each node's children by that field and
+traverse the ordered tree left-to-right. Assign dense ranks to the resulting leaf
+categories. This works for unary, binary, and multifurcating trees. The root needs
+no sibling rank, and internal nodes need no leaf category. Input row/file arrival
+order does not choose branch orientations.
+
+The tree itself therefore carries its chosen orientation, using local child
+ranks rather than global heatmap row/column positions. A future clustering
+transform can supply those orientations after optional optimal leaf ordering.
+This feature does not perform clustering or optimize the supplied order.
+
+Retain an optional alternative for externally controlled alignment:
+`leafOrder: Scalar[] | ExprRef` instead of `siblingOrder`. It lists the complete
+ordered domain and may refer to ordinary parameters. Require unique valid values
+and include every leaf category. Extra categories reserve normal band slots, as
+holes do in numeric input. Use full-domain ranks and validate subtree contiguity
+in the sequence of actual leaves. Publish that same complete domain if `param`
+is present. Read expression inputs through existing batch-stable replay helpers.
+Do not allow outputs, including the transform's own output or `domain()` derived
+from it, to feed this input. This mode is optional; the primary example must use
+structural order and no hand-written domain arrays.
+
+Require exactly one categorical ordering input. Numeric mode retains its existing
+unordered-input contract. Categorical layout without `param` remains usable for
+standalone computation or externally supplied band domains.
+
+### Explicit output ownership
+
+A string `param: "sampleOrder"` keeps #575's local declaration semantics. The
+proposed object form adds an explicit named ancestor owner. Here
+`clusteredHeatmap` is the authored `name` of the common surround containing the
+matrix and both tree views. Limit resolution to the producer's ancestry and
+existing import/name scope. Reject missing or ambiguous owners, unrelated views,
+duplicate producers, and collisions with ordinary parameters. Implicit title or
+side-group wrappers must not change the requested owner.
+
+This object form is a small generic extension to #575's declaration/binding API,
+usable by `values` and dendrogram outputs alike. It declares a producer-owned,
+read-only output in the owner's runtime, without requiring a writable placeholder
+in `params` or using imperative `setValue()` calls. Reserve declarations before
+owner expressions bind, independent of child construction order. Reuse the same
+output handle so dependency guards retain the producer's identity across scopes.
+
+Keep existing local string declarations compatible. If #575 has not acquired
+ancestor ownership when this branch is implemented, implement that capability
+first using its shared primitives; do not substitute a dendrogram-specific
+registry. Coordinate generic changes with the lower PR when practical.
+
+Producer and output-owner lifetimes need explicit behavior. The owner retains a
+stable output ref and the last successful value while a producer is pending or
+removed; producer removal marks it unready and prevents late publication. A
+replacement producer may claim the output only after the previous binding is
+released and validation succeeds. Owner disposal releases the ref and all producer
+bindings. Follow existing failure handling, with no automatic retry or row rollback.
+
+A shared domain must not depend on its dendrogram being visibly drawn. Declare
+and track the producer flow as a real dependency of its output owner. Initialize
+and maintain the needed flow when the shared consumers are active, including an
+initially hidden tree presentation, while keeping hidden mark resources deferred.
+Use #575's endpoint ownership/readiness and disposal machinery; do not initialize
+all hidden views indiscriminately or duplicate the layout in a root summary branch.
+
+### Publication and projection
+
+The transform validates and lays out the complete tree, emits its edges, and
+stages an immutable ordered-domain candidate. Release it only at #575's successful
+completion/replay boundary, after synchronous fan-out settles and before rendering
+effects. Equal arrays preserve identity and suppress value notifications. Loading
+or failure retains the last successful domain; successful empty input publishes
+`[]`. A single leaf publishes its category even though it emits no edges.
+
+Initially support publication for one unfaceted tree per completed eager flow.
+Reject facets and multiple logical trees when `param` is present; never silently
+publish only the last partition. Preserve existing file/facet behavior for numeric
+layout and nonpublishing categorical layout. Reuse #575's eager source allowlist,
+including side-input dependencies, and reject unsupported lazy publishers.
+
+Compute midpoints with the existing numeric algorithm. For position `p`, emit
+`orderedCategories[Math.floor(p)]` and `p % 1`. Reuse one tree layout for both
+modes; numeric mode continues emitting its integer anchor. Do not derive the
+order by reading the destination scale.
+
+```text
+sample tree -> categorical layout -> edges -> left link mark
+                                  -> sampleOrder -> shared y band
+
+gene tree   -> categorical layout -> edges -> top link mark
+                                  -> geneOrder   -> shared x band
+```
+
+For the horizontal sample tree, encode categories on y/y2 with `band: 0.5`,
+heights on x/x2, and fractions on y/y2 offsets. Keep the offset domain `[0, 1]`
+and range `[0, { "expr": "-height * bandstep('y', height)" }]`. The gene tree
+uses categorical x/x2 and offsets scaled by
+`width * bandstep('x', width)`, with heights on y/y2. Use `bandstep()` rather
+than `bandwidth()` so padding is included. Resize, padding changes, and scale
+reversal update projection without recomputing the tree.
+
+## Required example
+
+Create `examples/docs/examples/generic/clustered-heatmap-band.json` and its docs
+page. Use one named surround, `clusteredHeatmap`, with the matrix as `spec`, a
+sample tree on the left, and a gene tree above. Each tree owns its own input and
+single dendrogram transform, with `siblingOrder` and an ancestor-owned output.
+There is no root summary pipeline, duplicated tree layout, or extra order array.
+
+Shared scale configuration is:
 
 ```json
 {
-  "params": [
-    {
-      "name": "sampleOrder",
-      "value": ["Sample C", "Sample A", "Sample D", "Sample B"]
-    },
-    { "name": "geneOrder", "value": ["TP53", "MYC", "EGFR", "BRCA1"] }
-  ],
+  "name": "clusteredHeatmap",
   "scales": {
     "x": {
       "type": "band",
@@ -117,77 +241,11 @@ the transform and its shared scale:
 }
 ```
 
-This is a shared configuration fragment, not a complete specification. Put its
-parameters and scales in the same effective owner scope, including when a title
-creates an implicit wrapper. Verify the final example's resolved ownership.
+This is a proposed configuration fragment, not a complete current specification.
+Verify actual scale ownership beneath titles and implicit wrappers, using explicit
+resolution boundaries where necessary as in #575's current heatmap.
 
-### Ordering and validation
-
-- `leaf` identifies a field on leaf records, independent of the tree node ID.
-  Internal nodes need no value in that field.
-- Categories are strings, finite numbers, or booleans, matching `Scalar`.
-  Keep typed values distinct, such as `1` and `"1"`.
-- `leafOrder` is the full ordered category domain, not a sort direction or a
-  list of tree node IDs. It must contain unique valid scalars. Reject missing
-  categories, duplicate leaf categories, malformed arrays, and mixed input modes.
-- Extra domain categories are allowed and reserve ordinary band slots. Use
-  their full-domain ranks for layout. Check subtree contiguity in the sequence
-  of tree leaves, preserving the existing treatment of holes in numeric indices.
-- Preserve missing-parent, root, cycle, height, and tree-order validation.
-  Numeric mode keeps its current integer bounds and unordered-input contract.
-- Read an expression-backed order as a batch-stable snapshot through existing
-  transform expression/replay machinery. Rebuild the category-to-rank map when
-  that ordered value changes; avoid per-row expression evaluation.
-- The supported initial visualization uses a fixed categorical domain for the
-  embed lifetime. Reactive input evaluation must not be advertised as general
-  live band reordering support while the WebGL limitation remains.
-
-### Layout and placement
-
-Normalize each leaf category to its rank in `leafOrder`. Run the existing tree
-validation and midpoint algorithm on those numeric positions. For a position
-`p`, emit `leafOrder[Math.floor(p)]` as its anchor and `p % 1` as its offset.
-For example, position `1.25` uses category `leafOrder[1]` with offset `0.25`.
-That anchor is a positioning reference; it is not the internal node's identity.
-
-Keep one tree-layout implementation. Numeric mode uses the same layout and its
-current integer-anchor emission. Preserve child metadata, fresh edge identities,
-file provenance, reset behavior, and facet isolation.
-
-The horizontal sample dendrogram uses:
-
-```json
-{
-  "y": { "field": "sourceValue", "type": "nominal", "band": 0.5 },
-  "y2": { "field": "targetValue", "band": 0.5 },
-  "yOffset": {
-    "field": "sourceOffset",
-    "type": "quantitative",
-    "scale": {
-      "domain": [0, 1],
-      "range": [0, { "expr": "-height * bandstep('y', height)" }]
-    }
-  },
-  "y2Offset": { "field": "targetOffset" }
-}
-```
-
-Its x/x2 channels encode source/target merge heights. The vertical gene tree
-uses categorical x/x2, quantitative y/y2, and x/x2 offsets with
-`width * bandstep('x', width)`. Explicit shared `type: "band"` is needed for
-link marks, whose nominal positional defaults must not choose another scale.
-Use the existing signs and `band: 0.5` behavior for normal and reversed scales.
-Resizing and padding changes update projection without rerunning tree layout.
-
-## Required example
-
-Create `examples/docs/examples/generic/clustered-heatmap-band.json` and a
-matching documentation page. Use one `surround` with top and left dendrograms
-and the heatmap as `spec`. Both trees receive the ordinary order parameters
-above; the heatmap directly encodes `sample` on y and `gene` on x.
-
-Use this deterministic, explicitly imaginary matrix, stored as 16 inline
-`{ sample, gene, z }` records in the specification:
+Use 16 inline `{ sample, gene, z }` records from this explicitly imaginary matrix:
 
 | Sample / gene | TP53 |  MYC | EGFR | BRCA1 |
 | ------------- | ---: | ---: | ---: | ----: |
@@ -196,171 +254,154 @@ Use this deterministic, explicitly imaginary matrix, stored as 16 inline
 | Sample D      | -0.4 | -0.7 |  1.3 |   0.9 |
 | Sample B      | -1.5 | -1.2 |  0.8 |   1.5 |
 
-Provide two small inline, precomputed illustrative trees with categorical leaf
-fields and no numeric row/column fields:
+Supply two small precomputed trees whose `childOrder` values yield those orders.
+Merge samples C/A at height 0.6, that group with D at 1.4, and then with B at 2.6.
+Merge genes TP53/MYC at 0.7, EGFR/BRCA1 at 0.9, and both groups at 2.2. The sample
+comb exercises fractional joins. Deliberately shuffle node rows to prove that
+structural order, rather than source arrival, drives layout and publication.
 
-- Sample tree: merge C/A at height 0.6, merge that group with D at 1.4, then
-  merge with B at 2.6. Its unbalanced structure exercises fractional joins.
-- Gene tree: merge TP53/MYC at 0.7, EGFR/BRCA1 at 0.9, then merge at 2.2.
+The matrix directly encodes `sample` on y and `gene` on x. Use ordinary categorical
+labels, a diverging color scale centered at zero with domain `[-2, 2]`, and
+sample/gene/z tooltips. The trees and scores are illustrative; no clustering is
+claimed. Keep the example offline and readable, following `examples/README.md`.
+Retain the existing DepMap index example for zoom, pan, and group gaps.
 
-Show sample and gene labels on ordinary categorical axes. Use a diverging z-score
-color scale centered at zero, with domain `[-2, 2]`, and tooltips containing the
-original sample, gene, and z value. Explain that these values and trees are
-illustrative, rather than claim that GenomeSpy computed a clustering.
+## Scope, alternatives, and risks
 
-The deliberate nonalphabetical sample/gene order must be visible. Exercise
-nonzero inner/outer padding, container resizing, and reversed sample direction
-in tests. Keep the example readable and offline: no hosted data or preprocessing
-script is necessary. Retain the existing index example for zoom, pan, and gaps.
-
-## Relationship to issue #513 and draft PR #575
-
-[Issue #513](https://github.com/genome-spy/genome-spy/issues/513), "Allow FlowNodes
-to publish reactive parameters," addresses a useful next step: derive a band
-domain from a completed tree rather than author an order array separately.
-
-[Draft PR #575](https://github.com/genome-spy/genome-spy/pull/575), inspected at
-`2c41f9657a56588499cb70e52111cbaace47e7c4`, supplies producer-owned array outputs,
-`values`, and structural `branch`. It remains a draft, and explicitly defers
-output-driven dataflow scheduling and lazy-source outputs. Its current flow-input
-guards reject published output parameters as inputs to other transforms.
-
-Consequences for this plan:
-
-1. Initial categorical support does not depend on #575. A shared ordinary
-   order parameter already gives the scale and transform one source of truth.
-2. Do not demonstrate a `values`-published `sampleOrder` consumed by
-   `dendrogram.leafOrder`, or an indirect version using `domain('y')`. That
-   would require the downstream-flow ordering that #575 deliberately rejects.
-3. A later integration should let the tree layout itself publish its ordered
-   categories, using #575's output binding and successful-completion boundary.
-   Then dependency direction is tree layout -> order output -> band scale;
-   the producing transform does not read that scale or its own output.
-4. `values` over the current edge rows is insufficient: parent anchors repeat
-   and are not a complete ordered leaf list. Use the layout's actual leaf order.
-5. Reuse output equality, read-only ownership, initialization, scope, failure,
-   and disposal contracts. Do not implement a second publisher or scheduler.
-
-The tree-owned extension needs a separate design increment after #575's API is
-settled. Settle where leaf order originates when `leafOrder` is omitted, how
-the output is declared, and how one producer represents files/facets. Do not
-silently pick the last tree's order for a multi-tree flow.
-
-Also resolve scope and rendering before claiming the extension works end to
-end. A producer in a side-track scope cannot publish directly into an ancestor's
-scale scope under #575. One possible composition is an outer vconcat owning
-the gene-tree pipeline/x scale, with a gene-tree mark above a sample-tree-owned
-surround/y scale containing the matrix. Marks inherit their producer's edges;
-the matrix overrides its data. Verify exported plot alignment rather than add
-fake views, duplicate layout pipelines, or a named-dataset subsystem.
-
-Finally, test matrix-first and tree-first asynchronous completion on every live
-backend. A nonempty published domain arriving after category IDs were assigned
-must still use its intended order. The current WebGL limitation can make this
-a prerequisite even for initial publication, not merely later interactive
-reordering. Do not work around it by assuming URL load order or rebuilding
-whole specifications. Keep that follow-up separate from basic band support.
-
-## Non-goals and alternatives
-
-- No clustering algorithm, automatic optimal leaf ordering, tree pruning,
-  categorical zoom/pan, grouping gaps for bands, or general category sorting.
-- No changes to link geometry, picking semantics, renderer APIs, or the App's
-  sample-order state unless the representative tests expose a concrete defect.
-- No dependency on #575's unfinished lazy-output or flow-scheduling work.
-- Reject a scale-aware dendrogram transform: it would couple layout to views,
-  create domain feedback risks, and complicate standalone transform use.
-- Reject documenting manual lookup/formula mappings as the feature: the goal
-  is to remove that authoring burden.
-- Reject replacing all anchors with continuous ranks: it would bypass shared
-  categorical scales and weaken existing index behavior and selection semantics.
-- Keep required explicit ordering rather than infer order from arbitrary tree
-  row arrival or alphabetically sort sample/gene identifiers.
+- This branch depends on #575's eager outputs. It does not close #513's lazy
+  empty-track acceptance case or implement output-driven flow scheduling.
+- Clustering algorithms, optimal leaf ordering, workers/async transforms, tree
+  cuts, and derived-dataset publication are separate features. A future clustering
+  implementation should feed ordinary tree data and avoid scale feedback.
+- No categorical zoom/pan, new band grouping-gap behavior, or arbitrary category
+  sorting. Preserve existing index navigation and selection semantics.
+- Do not infer tree orientation from arbitrary row arrival, alphabetical category
+  sorting, or stable GPU IDs. Require structural order or an explicit domain input.
+- Do not make externally authored `leafOrder` arrays the main workflow. They remain
+  an alternative for intentional external alignment, without a second layout path.
+- Reject scope repairs that restructure the plot solely to expose parameters or
+  recompute each tree in a root branch. Explicit output ownership is shared runtime
+  work and must receive its own review gate.
+- Guard against feedback through owner scale/layout/visibility expressions while
+  supporting ordinary order-output-to-scale consumers. Preserve #575's bound
+  producer provenance rather than adding broad expression bans.
+- Hidden-producer initialization, ancestor declaration timing, and producer
+  replacement are the main cross-subsystem risks. Test them before polishing
+  the complete example. Generic support should stay small enough to review with
+  the existing output lifecycle rather than become a new resource framework.
 
 ## Implementation milestones
 
-### 1. Add categorical layout inputs and outputs
+### 1. Resolve reusable output ownership and categorical-domain consumption
 
-Outcome: literal and ordinary-parameter-backed categorical order produce
-category anchors and fractional offsets through the existing layout.
+Outcome: two ordinary eager producers in side views can declare read-only outputs
+at their common scale owner, independently of title wrappers and presentation
+visibility. Existing local `values.param` specifications keep working.
 
-Affected areas: `spec/transform.d.ts`, `data/transforms/dendrogram.js`, its tests,
-and `spec/schema.test.js`. Follow the existing transform expression lifecycle;
-do not add a second tree layout, rank owner, or replay queue.
+Affected areas: #575's `data/flowOutput.js`, declaration preflight in `view/view.js`,
+parameter output binding, `view/flowBuilder.js`, `data/flowHandle.js`, and producer
+initialization/readiness/disposal. Reuse current `FlowOutput` and flow-input guards.
+Generalize declaration discovery only for known output-producing transforms; do
+not add arbitrary callbacks to every transform. No new global registry is needed.
 
-Verification: retain numeric behavior; cover a deliberately shuffled tree with
-nonalphabetical categories, internal fractional anchors, extra domain slots,
-typed scalar identity, renamed outputs, and invalid/missing/duplicate categories.
-Use representative boundary cases instead of duplicating the existing tree
-validation matrix. A focused real spec test must exercise parameter scope,
-the collector's category values, and the shared band domain. Preserve facet/file
-isolation and dataset replacement with the same categorical domain.
+Verification: a small real spec with two `values` publishers drives both band
+domains without clustering. Cover declaration order, owner-name validation,
+shadowing, duplicate writers, read-only embedding access, initially empty domains,
+source/domain arrival order, cached replay, hidden presentation, child removal,
+replacement, disposal, and direct/indirect feedback rejection. Reuse existing
+publication tests instead of duplicating their complete failure matrix.
 
-Docs/migration: document both input modes and mode-specific defaults in the
-transform reference using `write-genomespy-docs`; regenerate schemas. Existing
-numeric users need no migration. Use `write-genomespy-changeset` for a Core
-minor feature fragment and reuse it for the remaining milestone.
+Docs/migration: extend output/`values` documentation with explicit ancestor targets
+and lifecycle limits using `write-genomespy-docs`; preserve string syntax. Coordinate
+shared changes with #575. Use `write-genomespy-changeset` for the cumulative release
+impact, keeping the lower branch's fragment separate from this feature's note.
 
-Tentative commit: `feat(core): support categorical dendrogram anchors`
+Tentative commit: `feat(core): support ancestor-owned transform outputs`
 
-Review gate: public grammar and generated schema, tree-layout equivalence,
-batch/replay semantics, and downstream category encoders.
+Review gate: shared public ownership contract, preflight timing, hidden producer
+flow ownership, and downstream scale/App parameter consumers.
 
-### 2. Verify both axes and deliver the synthetic heatmap
+### 2. Add categorical tree layout and direct order publication
 
-Outcome: a documented 4-by-4 categorical heatmap renders both trees in alignment
-on Canvas2D, WebGL, WebGPU, and SVG export.
+Outcome: categorical dendrograms derive category anchors and an ordered domain
+from their own tree input, preserving numeric compatibility.
 
-Affected areas: the new shared example and documentation page, docs example
-index/navigation, `rendering/svg/dendrogram.test.js`, and
-`scripts/testDendrogramRenderers.mjs`. Prefer extending the existing test harness
-with a band fixture over copying it. Follow `examples/README.md` and the
-`test-genomespy-views`, `debug-genomespy-web`, and documentation skills.
+Affected areas: `spec/transform.d.ts`, dendrogram transform and tests, known output
+declaration discovery, and schema validation. Keep one validation/layout path and
+use #575's successful publication boundary. Do not require a `values` projection.
 
-Verification: assert shared scale resolution, leaf endpoints at cell centers on
-both axes, connected internal joins, preserved merge heights, and ordinary
-categorical axis labels. Cover resize, nonzero padding, sample reversal, and
-one diagonal-link presentation. Verify GPU/Canvas pixels as well as SVG geometry;
-SVG export alone does not verify GPU category mapping. Smoke-test edge picking,
-tooltips, point selection, and PNG/SVG export. Keep index navigation regressions.
-Do not promise interval brushing or navigation on a noninvertible band scale.
+Verification: structural sibling ordering with shuffled input, scalar categories,
+unary/multifurcating trees, fractional anchors, explicit-order alternatives and
+extra slots, custom `as`, and malformed/duplicate ordering inputs. Assert empty
+and single-leaf outputs, equality suppression, fresh edge IDs, same-size changed
+orders, and multi-tree/facet rejection for publishing flows. Preserve numeric and
+nonpublishing batch contracts. Test real collector-to-output-to-scale behavior,
+including a failed tree that must not publish its candidate.
 
-Docs/migration: add the polished example and screenshot, explain shared order
-parameters and the index/band tradeoff, and link from the dendrogram reference.
-Build schemas before editing example specs. Update the feature changeset.
+Docs/migration: explain ordering inputs, output/default-field contracts, supported
+source/partition limits, and index compatibility. Regenerate schemas. Add or update
+the feature's Core minor changeset rather than one note per implementation commit.
 
-Tentative commit: `docs(core): demonstrate clustered heatmaps on band scales`
+Tentative commit: `feat(core): publish categorical dendrogram domains`
 
-Review gate: inspect final cross-renderer integration and the actual example,
-including scale ownership, axes, labels, selections, and export.
+### 3. Deliver and verify the two-axis synthetic heatmap
 
-## Final integration verification and acceptance
+Outcome: the required example renders on Canvas2D, WebGL, WebGPU, and SVG without
+manual domain arrays or preprocessing of numeric matrix positions.
 
-- [ ] The example uses sample strings on y and gene strings on x, with all 16
-      imaginary z-score cells and two precomputed dendrograms.
-- [ ] No author-provided numeric positions or index-to-category mappings appear
-      in that example. Each category order is declared once.
-- [ ] Leaves align with their corresponding cell centers, internal branches
-      stay connected, and merge heights remain correct in both orientations.
-- [ ] Padding, reversal, resize, categorical labels, picking, and export agree
-      across the live backends and SVG within appropriate pixel tolerances.
-- [ ] Existing index-mode outputs, zoom/pan, grouping gaps, file/facet behavior,
-      and fresh edge identities retain their contracts.
-- [ ] Focused Vitest suites use `--reporter=agent`; Core types, lint, schemas,
-      shared-example validation, docs generation/build, and release checks pass.
-      Run the complete unit suite if expression/runtime or shared encoder code
-      changes beyond the dendrogram implementation.
-- [ ] Run `npm -w @genome-spy/core run test:dendrogram:renderers` and inspect
-      the new synthetic example plus `dendrogram-gaps.json` and the existing
-      clustered DepMap heatmap. Exercise band resize/reversal and index
-      navigation/reset. Record unavailable backend checks explicitly.
-- [ ] Review related tests for overlapping implementation assertions; preserve
-      behavioral contracts and keep representative subsystem/rendered tests.
-- [ ] Assess the focused production-code delta and simplify duplicated paths.
-- [ ] Reconcile every task, commit the final task record when delivery is
-      authorized, and delete this temporary plan in a later commit before a PR.
+Affected areas: shared example/docs/navigation, existing SVG dendrogram tests, and
+`scripts/testDendrogramRenderers.mjs`. Use the `test-genomespy-views`,
+`debug-genomespy-web`, and documentation skills when implementing these changes.
+Extend the current harness rather than copy it.
 
-Open review questions are limited to the public naming (`leaf`, `leafOrder`,
-`sourceValue`, `targetValue`) and schema presentation of the union. The selected
-initial design and example do not wait on a scheduler or renderer redesign.
-Tree-published domains are a documented follow-up, outside these milestones.
+Verification: leaf endpoints align with cell centers on both axes; internal joins
+stay connected and heights stay correct. Check categorical labels, padding,
+reversal, resizing, a diagonal-link variant, picking, point selection, and PNG/SVG
+export. Verify actual GPU pixels as well as SVG geometry. Replace trees with a
+compatible new leaf order and check scale/mark agreement; hide either tree before
+initialization and after publication while retaining matrix/annotation alignment.
+Keep index navigation regressions. Band interval brushing remains unsupported.
+
+Docs/migration: publish the polished spec/page/screenshot, link it from the
+transform reference, and explain tree-owned domains. Build schemas before editing
+example specs and reuse the feature's changeset.
+
+Tentative commit: `docs(core): demonstrate tree-owned heatmap domains`
+
+Final review gate: complete cross-renderer integration, ordinary surround
+composition, initialization/disposal, and both new and existing examples.
+
+## Acceptance and final verification
+
+- [ ] Shared output ownership is explicitly resolved and reviewed using #575's
+      machinery; no second publisher or expression scheduler is introduced.
+- [ ] Two precomputed trees independently publish sample/gene domains into one
+      common surround. Source order, titles, and hidden tree presentation do not
+      alter ownership or prevent required domain publication.
+- [ ] The 4-by-4 example shows all 16 imaginary z scores, original sample/gene IDs,
+      categorical labels, and both trees. It has no separate domain arrays or
+      numeric heatmap row/column fields.
+- [ ] Empty/single-leaf trees, successful replacement, failed input, unchanged
+      output, producer removal, and owner disposal follow the stated contract.
+- [ ] Tree geometry and published domains agree before rendering effects, without
+      reading an output/domain back into the producing dataflow.
+- [ ] Leaf alignment, fractional joins, heights, padding, reversal, resize, picking,
+      and export agree across live backends and SVG within suitable tolerances.
+- [ ] Existing numeric outputs, index navigation/gaps, identities, file/facet
+      behavior, and local output declarations retain their contracts.
+- [ ] Focused Vitest suites use `--reporter=agent`; applicable types, lint, schema,
+      example/docs, and release checks pass. Shared output/lifecycle changes also
+      warrant the complete unit suite before delivery.
+- [ ] Run `npm -w @genome-spy/core run test:dendrogram:renderers`; inspect the new
+      synthetic example, `dendrogram-gaps.json`, #575's branch-values example,
+      and the existing DepMap heatmap. Record unavailable checks explicitly.
+- [ ] Review related tests for duplication and report focused production-code
+      growth, including changes made to the shared publication machinery.
+- [ ] Reconcile every task and commit the final record, then delete this temporary
+      plan in a later commit before creating a PR or before merge if explicitly
+      retained for draft review. Do not retire the lower branch's plan here.
+
+The first review must settle the names/shape of the ancestor target and structural
+ordering input. Their semantics above are required; API spelling can change without
+reviving manual-domain boilerplate. Clustering implementation remains outside this
+plan, with the tree/output boundary available for that later increment.
