@@ -8,7 +8,7 @@ import { identityScale } from "../src/scales/identity.js";
  * the cut stays the same logical-pixel width. One retained mark is reused.
  * @param {HTMLCanvasElement} canvas
  * @param {{gapWidth?: number}} [options]
- * @returns {Promise<() => void>}
+ * @returns {Promise<{cleanup: () => void, update: (next: {gapWidth?: number}) => void}>}
  */
 export default async function runIndexGapScene(canvas, { gapWidth = 10 } = {}) {
     const renderer = await createExampleRenderer(canvas);
@@ -66,9 +66,18 @@ export default async function runIndexGapScene(canvas, { gapWidth = 10 } = {}) {
         renderer.render();
     };
     canvas.addEventListener("wheel", zoom, { passive: false });
-    return () => {
-        canvas.removeEventListener("wheel", zoom);
-        cleanupResize();
-        renderer.destroy();
+    return {
+        update({ gapWidth = 10 }) {
+            handle.batchUpdates(() => {
+                handle.scales.x.setGapWidth(gapWidth);
+                handle.scales.x2.setGapWidth(gapWidth);
+            });
+            renderer.render();
+        },
+        cleanup() {
+            canvas.removeEventListener("wheel", zoom);
+            cleanupResize();
+            renderer.destroy();
+        },
     };
 }
