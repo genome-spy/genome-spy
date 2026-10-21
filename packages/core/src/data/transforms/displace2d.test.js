@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import {
     createHeadlessEngine,
@@ -251,6 +251,10 @@ describe("Displace2DTransform", () => {
     });
 
     test("updates animation speed while labels are moving", async () => {
+        // Give both solvers the same frame budget regardless of machine load.
+        const now = vi.spyOn(performance, "now").mockReturnValue(0);
+        onTestFinished(() => now.mockRestore());
+
         const paramRuntime = new ViewParamRuntime();
         const setHalfLife = paramRuntime.registerParam({
             name: "halfLife",

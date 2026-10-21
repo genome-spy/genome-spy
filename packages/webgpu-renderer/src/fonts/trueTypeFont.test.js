@@ -11,28 +11,24 @@ import { buildOutlineTextLayout } from "./outlineTextLayout.js";
 import { createAsciiTrueTypeFont } from "../../tests/oracles/createAsciiTrueTypeFont.js";
 import { parseTrueTypeFont } from "../vendor/textShaper/font/trueType.js";
 
-const SOURCE_CODE_PRO = new URL(
-    "../../../../node_modules/polished/docs/assets/fonts/TTF/SourceCodePro-Regular.ttf",
-    import.meta.url
-);
 const DEFAULT_FONT = new URL("./DefaultFont.ttf", import.meta.url);
 
 describe("ASCII TrueType adaptation", () => {
     test("extracts printable ASCII outlines and metrics", () => {
-        const font = createAsciiTrueTypeFont(readFileSync(SOURCE_CODE_PRO));
+        const font = createAsciiTrueTypeFont(readFileSync(DEFAULT_FONT));
 
-        expect(font.unitsPerEm).toBe(1000);
+        expect(font.unitsPerEm).toBe(2000);
         expect(font.paths).toHaveLength(94);
         expect(font.characters.size).toBe(95);
         expect(font.characters.get(" ")).toEqual({
-            glyphId: 3,
+            glyphId: 1,
             pathIndex: -1,
-            advanceWidth: 600,
+            advanceWidth: 512,
             bounds: null,
         });
         expect(font.characters.get("A")).toMatchObject({
-            advanceWidth: 600,
-            bounds: { xMin: 32, yMin: 0, xMax: 568, yMax: 656 },
+            advanceWidth: 1354,
+            bounds: { xMin: 6, yMin: 0, xMax: 1348, yMax: 1433 },
         });
         expect(font.characters.get("i").pathIndex).toBeGreaterThanOrEqual(0);
         expect(font.paths[font.characters.get("A").pathIndex]).toMatch(
