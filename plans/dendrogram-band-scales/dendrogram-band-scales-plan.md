@@ -1,6 +1,6 @@
 # Dendrograms on categorical band scales
 
-Status: implementation complete; final independent review pending. This branch is stacked on
+Status: complete; independent implementation review and follow-up verification passed. This branch is stacked on
 `codex/transform-value-outputs` ([PR #575](https://github.com/genome-spy/genome-spy/pull/575)).
 
 ## Goal and dependency
@@ -408,7 +408,7 @@ index example, branch-values example, and DepMap heatmap also render and export.
 
 Final integration caught and fixed visibility regressions in App summaries and
 ensured producer-removal rejection happens before guide/hierarchy mutation.
-The complete suite passes: 548 files, 5,218 tests, one existing skip and two TODOs.
+The complete suite passes: 548 files, 5,222 tests, one existing skip and two TODOs.
 Workspace type checks, lint, generated schemas, and the documentation build pass.
 `release:status` proposes the expected fixed-group minor release; `release:check`
 still fails on #575's inherited fragment missing its category marker, unchanged here.
@@ -441,7 +441,7 @@ composition, initialization/disposal, and both new and existing examples.
 
 ## Acceptance and final verification
 
-- [ ] Shared output ownership is explicitly resolved and reviewed using #575's
+- [x] Shared output ownership is explicitly resolved and reviewed using #575's
       machinery; no second publisher or expression scheduler is introduced.
 - [x] Two precomputed trees independently publish sample/gene domains into one
       common surround. Source order, titles, and hidden tree presentation do not
@@ -466,10 +466,32 @@ composition, initialization/disposal, and both new and existing examples.
       and the existing DepMap heatmap. Record unavailable checks explicitly.
 - [x] Review related tests for duplication and report focused production-code
       growth, including changes made to the shared publication machinery.
-- [ ] Reconcile every task and commit the final record, then delete this temporary
-      plan in a later commit before creating a PR or before merge if explicitly
-      retained for draft review. Do not retire the lower branch's plan here.
+- [x] Reconcile all implementation tasks and commit this completed record.
+      Retire this temporary plan in a later commit before preparing a PR; no PR
+      is being created in this task. Do not retire the lower branch's plan here.
 
 The implementation uses read-only owner slots, `push: "outer"`, and explicit
 structural ordering. Clustering implementation remains outside this plan, with
 the tree/output boundary available for that later increment.
+
+## Final review and size record
+
+The independent implementation review found and resolved three issues: dynamic
+insertion now validates output slots before attachment, independent branch
+endpoints load during dynamic initialization even without a primary source, and
+the docs qualify index-only navigation and nonpublishing facet behavior. The
+reviewer reproduced the loading fixes and reported no remaining actionable
+findings. Regression tests preserve cached primary replay without reloading it.
+
+Against #575 base `f014c90d2420dc49f8169486958743d034b185e6`, the repository's
+production-line counter reports **330 added, 76 deleted, net 254** non-comment
+runtime JavaScript lines in `packages/core/src/`, excluding tests and declarations.
+The dendrogram transform accounts for net 142 lines; generic output ownership,
+source discovery, and lifecycle integration account for the remaining net 112.
+Shared publication reuses the existing runtime and removes the duplicate dynamic
+source walker; no renderer algorithm or clustering implementation was added.
+
+All milestones and review fixes are committed separately. Final verification:
+548 test files and 5,222 tests pass, with one existing skip and two TODOs; types,
+lint, schema generation, docs build, and live renderer checks pass. The inherited
+#575 changeset category-marker failure is the only outstanding release check.
