@@ -1,9 +1,10 @@
 export default {
+    tags: ["autodocs"],
     parameters: {
         layout: "fullscreen",
         docs: {
-            source: {
-                state: "open",
+            canvas: {
+                sourceState: "shown",
             },
         },
     },

@@ -36,7 +36,10 @@ export default async function runBasicScene(canvas) {
             fillOpacity: { value: 1.0 },
             strokeOpacity: { value: 1.0 },
             strokeWidth: { value: 1.0, dynamic: true },
-            cornerRadius: { value: 0.0, dynamic: true },
+            cornerRadiusTopRight: { value: 0.0, dynamic: true },
+            cornerRadiusBottomRight: { value: 0.0, dynamic: true },
+            cornerRadiusTopLeft: { value: 0.0, dynamic: true },
+            cornerRadiusBottomLeft: { value: 0.0, dynamic: true },
         },
     });
 
@@ -73,7 +76,10 @@ export default async function runBasicScene(canvas) {
         const width = 1.0 + (Math.sin(t * 2.0) * 0.5 + 0.5) * 3.0;
         const corner = (Math.sin(t) * 0.5 + 0.5) * 8.0;
         values.strokeWidth.set(width);
-        values.cornerRadius.set(corner);
+        values.cornerRadiusTopRight.set(corner);
+        values.cornerRadiusBottomRight.set(corner);
+        values.cornerRadiusTopLeft.set(corner);
+        values.cornerRadiusBottomLeft.set(corner);
 
         if (now >= nextDataUpdate) {
             dynamicCount = 80 + Math.floor(Math.random() * 240);

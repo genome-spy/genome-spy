@@ -15,7 +15,8 @@ export default {
         title: { control: "text" },
         message: { control: "text" },
         type: {
-            control: { type: "select", options: ["info", "warning", "error"] },
+            control: "select",
+            options: ["info", "warning", "error"],
         },
         confirm: { control: "boolean" },
     },

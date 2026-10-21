@@ -23,8 +23,8 @@ export default async function runOrthogonalLinkScene(canvas, args = {}) {
             x2: { data: targetDepth, scale: linearScale({ domain: [0, 1] }) },
             y: { data: sourceRow, scale: linearScale({ domain: [0, 1] }) },
             y2: { data: targetRow, scale: linearScale({ domain: [0, 1] }) },
-            size: { value: 3 },
-            opacity: { value: 0.5 },
+            size: { value: 3, dynamic: true },
+            opacity: { value: 0.5, dynamic: true },
             color: { value: [0.12, 0.35, 0.65, 1] },
         },
     });
@@ -50,8 +50,8 @@ export default async function runOrthogonalLinkScene(canvas, args = {}) {
         );
         mark.properties.linkShape.set(next.shape ?? "orthogonal");
         mark.properties.orient.set(next.orient ?? "horizontal");
-        mark.uniforms.size.set(next.size ?? 3);
-        mark.uniforms.opacity.set(next.opacity ?? 0.5);
+        mark.values.size.set(next.size ?? 3);
+        mark.values.opacity.set(next.opacity ?? 0.5);
         renderer.render();
     };
     update(args);

@@ -33,10 +33,8 @@ export default {
     },
     argTypes: {
         scenario: {
-            control: {
-                type: "select",
-                options: ["answer", "tool_call", "error"],
-            },
+            control: "select",
+            options: ["answer", "tool_call", "error"],
         },
         preflightDelayMs: {
             control: {
