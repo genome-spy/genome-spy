@@ -26,7 +26,8 @@ When #575 merges, rebase this branch onto `master` and retarget any stacked PR.
 
 ## Current implementation and architectural boundaries
 
-Paths below are repository-relative.
+Abbreviated source paths are relative to `packages/core/src/`; other paths are
+repository-relative.
 
 - `packages/core/src/data/transforms/dendrogram.js` buffers a tree, validates
   integer leaf positions, and computes internal midpoints. Its eight output
@@ -141,39 +142,76 @@ standalone computation or externally supplied band domains.
 
 ### Explicit output ownership
 
-A string `param: "sampleOrder"` keeps #575's local declaration semantics. The
-proposed object form adds an explicit named ancestor owner. Here
+A string `param: "sampleOrder"` keeps #575's local declaration semantics. For a
+shared output, explicitly reserve a read-only output slot at the ancestor owner:
+
+```json
+{
+  "name": "clusteredHeatmap",
+  "params": [
+    { "name": "sampleOrder", "output": true },
+    { "name": "geneOrder", "output": true }
+  ]
+}
+```
+
+The transform's object-form `param` binds that existing slot. Here
 `clusteredHeatmap` is the authored `name` of the common surround containing the
 matrix and both tree views. Limit resolution to the producer's ancestry and
-existing import/name scope. Reject missing or ambiguous owners, unrelated views,
-duplicate producers, and collisions with ordinary parameters. Implicit title or
-side-group wrappers must not change the requested owner.
+existing import/name scope. Reject missing or ambiguous owners, undeclared slots,
+unrelated views, duplicate producers, and collisions with ordinary parameters.
+Implicit title or side-group wrappers must not change the requested owner.
 
-This object form is a small generic extension to #575's declaration/binding API,
-usable by `values` and dendrogram outputs alike. It declares a producer-owned,
-read-only output in the owner's runtime, without requiring a writable placeholder
-in `params` or using imperative `setValue()` calls. Reserve declarations before
-owner expressions bind, independent of child construction order. Reuse the same
-output handle so dependency guards retain the producer's identity across scopes.
+These are output declarations, not writable variable parameters. They reserve
+#575's `FlowOutput`, initially unready with an empty array, and accept no `value`,
+`expr`, binding, selection, transition, debounce, or `push` configuration. They
+cannot be set through embedding APIs or restored from App provenance. The same
+binding form must work for `values` and dendrogram outputs. Do not add an
+imperative `setValue()` path or a dendrogram-specific registry.
+
+Use a concrete construction boundary:
+
+1. In the owner's `View` constructor, reserve its explicit output slots and local
+   string-form transform outputs before registering ordinary parameters. Thus an
+   owner expression such as `length(sampleOrder)` and an earlier center view can
+   bind before the side views exist. Declaration order within `params` does not
+   matter; imports and wrappers need no whole-hierarchy declaration scan.
+2. As descendant views are constructed, resolve each object-form target and record
+   its unique producer declaration/view on the existing output handle. This
+   identifies the required flow even when its presentation is hidden. After
+   hierarchy construction, reject shared slots without exactly one producer
+   declaration. Bind each required producer's real `FlowNode` to that same handle
+   when its flow is built, before loading its sources. Inactive owners retain
+   normal deferred initialization. Preserve #575's output-input guards and producer
+   provenance, including rejection of unready outputs as flow inputs.
+
+Explicit owner declarations repeat two names in the example but require no domain
+arrays. Prefer this small, predictable contract over refactoring view construction
+into a global declaration phase that must resolve all descendant imports first.
 
 Keep existing local string declarations compatible. If #575 has not acquired
 ancestor ownership when this branch is implemented, implement that capability
 first using its shared primitives; do not substitute a dendrogram-specific
 registry. Coordinate generic changes with the lower PR when practical.
 
-Producer and output-owner lifetimes need explicit behavior. The owner retains a
-stable output ref and the last successful value while a producer is pending or
-removed; producer removal marks it unready and prevents late publication. A
-replacement producer may claim the output only after the previous binding is
-released and validation succeeds. Owner disposal releases the ref and all producer
-bindings. Follow existing failure handling, with no automatic retry or row rollback.
+Each shared output has one producer for its owner's lifetime. Support replacing
+the tree/dataset through that same producer; keep its output ref and last
+successful value while new data is pending or fails. Reject structural removal or
+replacement of a shared producer while its owner survives, before detaching or
+disposing it.
+Hiding the tree is supported. Disposing the owning composition disposes its
+producers and output refs through the existing lifecycle and prevents late
+publication. Do not introduce producer takeover, rebinding, automatic retry, or
+row rollback.
 
-A shared domain must not depend on its dendrogram being visibly drawn. Declare
-and track the producer flow as a real dependency of its output owner. Initialize
-and maintain the needed flow when the shared consumers are active, including an
-initially hidden tree presentation, while keeping hidden mark resources deferred.
-Use #575's endpoint ownership/readiness and disposal machinery; do not initialize
-all hidden views indiscriminately or duplicate the layout in a root summary branch.
+A shared domain must not depend on its dendrogram being visibly drawn. Track the
+producer flow as a real dependency of its output owner. Include the required
+producer paths, their ancestry, and data dependencies in existing initialization
+and loading when the shared consumers are active, even for an initially hidden
+tree presentation. Keep unrelated hidden siblings excluded. Reuse `data/flowInit.js`
+and its semantic mark wiring; it does not create GPU resources, so no additional
+initialization state is needed. Reuse #575's endpoint ownership/readiness and
+disposal machinery instead of duplicating layout in a root summary branch.
 
 ### Publication and projection
 
@@ -217,7 +255,8 @@ Create `examples/docs/examples/generic/clustered-heatmap-band.json` and its docs
 page. Use one named surround, `clusteredHeatmap`, with the matrix as `spec`, a
 sample tree on the left, and a gene tree above. Each tree owns its own input and
 single dendrogram transform, with `siblingOrder` and an ancestor-owned output.
-There is no root summary pipeline, duplicated tree layout, or extra order array.
+Reserve the two read-only output slots in the surround's `params` as above. There
+is no root summary pipeline, duplicated tree layout, or extra order array.
 
 Shared scale configuration is:
 
@@ -285,30 +324,35 @@ Retain the existing DepMap index example for zoom, pan, and group gaps.
 - Guard against feedback through owner scale/layout/visibility expressions while
   supporting ordinary order-output-to-scale consumers. Preserve #575's bound
   producer provenance rather than adding broad expression bans.
-- Hidden-producer initialization, ancestor declaration timing, and producer
-  replacement are the main cross-subsystem risks. Test them before polishing
-  the complete example. Generic support should stay small enough to review with
-  the existing output lifecycle rather than become a new resource framework.
+- Hidden-producer initialization, output-slot binding, and owner disposal are the
+  main cross-subsystem risks. Test them before polishing the complete example.
+  Generic support should stay small enough to review with the existing output
+  lifecycle rather than become a new resource framework. Replacing producer
+  objects under a surviving output owner is outside this increment.
 
 ## Implementation milestones
 
 ### 1. Resolve reusable output ownership and categorical-domain consumption
 
-Outcome: two ordinary eager producers in side views can declare read-only outputs
-at their common scale owner, independently of title wrappers and presentation
-visibility. Existing local `values.param` specifications keep working.
+Outcome: two ordinary eager producers in side views can bind read-only outputs
+reserved at their common scale owner, independently of title wrappers and
+presentation visibility. Existing local `values.param` specifications keep working.
 
-Affected areas: #575's `data/flowOutput.js`, declaration preflight in `view/view.js`,
-parameter output binding, `view/flowBuilder.js`, `data/flowHandle.js`, and producer
+Affected areas: `spec/parameter.d.ts`, #575's `data/flowOutput.js`, owner-slot
+reservation in `view/view.js`, parameter output binding, `view/flowBuilder.js`,
+`data/flowHandle.js`, `data/flowInit.js`, `genomeSpy/viewDataInit.js`, and producer
 initialization/readiness/disposal. Reuse current `FlowOutput` and flow-input guards.
 Generalize declaration discovery only for known output-producing transforms; do
 not add arbitrary callbacks to every transform. No new global registry is needed.
 
 Verification: a small real spec with two `values` publishers drives both band
-domains without clustering. Cover declaration order, owner-name validation,
-shadowing, duplicate writers, read-only embedding access, initially empty domains,
-source/domain arrival order, cached replay, hidden presentation, child removal,
-replacement, disposal, and direct/indirect feedback rejection. Reuse existing
+domains without clustering. Cover owner/center expressions that bind before side
+construction, declaration order, imports/wrappers, owner-name validation,
+undeclared/unbound slots, shadowing, duplicate writers, and read-only embedding/App
+access. Cover initially empty domains, source/domain arrival order, cached replay,
+required hidden producers without initializing unrelated hidden siblings, dataset
+replacement on the same producer, rejection of structural producer removal or
+replacement, owner disposal, and direct/indirect feedback rejection. Reuse existing
 publication tests instead of duplicating their complete failure matrix.
 
 Docs/migration: extend output/`values` documentation with explicit ancestor targets
@@ -318,8 +362,8 @@ impact, keeping the lower branch's fragment separate from this feature's note.
 
 Tentative commit: `feat(core): support ancestor-owned transform outputs`
 
-Review gate: shared public ownership contract, preflight timing, hidden producer
-flow ownership, and downstream scale/App parameter consumers.
+Review gate: shared public ownership contract, declaration/binding timing, hidden
+producer flow ownership, and downstream scale/App parameter consumers.
 
 ### 2. Add categorical tree layout and direct order publication
 
@@ -350,16 +394,17 @@ Outcome: the required example renders on Canvas2D, WebGL, WebGPU, and SVG withou
 manual domain arrays or preprocessing of numeric matrix positions.
 
 Affected areas: shared example/docs/navigation, existing SVG dendrogram tests, and
-`scripts/testDendrogramRenderers.mjs`. Use the `test-genomespy-views`,
+`packages/core/scripts/testDendrogramRenderers.mjs`. Use the `test-genomespy-views`,
 `debug-genomespy-web`, and documentation skills when implementing these changes.
 Extend the current harness rather than copy it.
 
 Verification: leaf endpoints align with cell centers on both axes; internal joins
 stay connected and heights stay correct. Check categorical labels, padding,
 reversal, resizing, a diagonal-link variant, picking, point selection, and PNG/SVG
-export. Verify actual GPU pixels as well as SVG geometry. Replace trees with a
-compatible new leaf order and check scale/mark agreement; hide either tree before
-initialization and after publication while retaining matrix/annotation alignment.
+export. Verify actual GPU pixels as well as SVG geometry. Replace tree data on
+the same producers with a compatible new leaf order and check scale/mark agreement;
+hide either tree before initialization and after publication while retaining
+matrix/annotation alignment.
 Keep index navigation regressions. Band interval brushing remains unsupported.
 
 Docs/migration: publish the polished spec/page/screenshot, link it from the
@@ -381,8 +426,9 @@ composition, initialization/disposal, and both new and existing examples.
 - [ ] The 4-by-4 example shows all 16 imaginary z scores, original sample/gene IDs,
       categorical labels, and both trees. It has no separate domain arrays or
       numeric heatmap row/column fields.
-- [ ] Empty/single-leaf trees, successful replacement, failed input, unchanged
-      output, producer removal, and owner disposal follow the stated contract.
+- [ ] Empty/single-leaf trees, successful dataset replacement through the same
+      producer, failed input, unchanged output, rejected structural producer
+      removal/replacement, and owner disposal follow the stated contract.
 - [ ] Tree geometry and published domains agree before rendering effects, without
       reading an output/domain back into the producing dataflow.
 - [ ] Leaf alignment, fractional joins, heights, padding, reversal, resize, picking,
@@ -392,7 +438,7 @@ composition, initialization/disposal, and both new and existing examples.
 - [ ] Focused Vitest suites use `--reporter=agent`; applicable types, lint, schema,
       example/docs, and release checks pass. Shared output/lifecycle changes also
       warrant the complete unit suite before delivery.
-- [ ] Run `npm -w @genome-spy/core run test:dendrogram:renderers`; inspect the new
+- [ ] Run `node packages/core/scripts/testDendrogramRenderers.mjs`; inspect the new
       synthetic example, `dendrogram-gaps.json`, #575's branch-values example,
       and the existing DepMap heatmap. Record unavailable checks explicitly.
 - [ ] Review related tests for duplication and report focused production-code
@@ -401,7 +447,8 @@ composition, initialization/disposal, and both new and existing examples.
       plan in a later commit before creating a PR or before merge if explicitly
       retained for draft review. Do not retire the lower branch's plan here.
 
-The first review must settle the names/shape of the ancestor target and structural
-ordering input. Their semantics above are required; API spelling can change without
-reviving manual-domain boilerplate. Clustering implementation remains outside this
-plan, with the tree/output boundary available for that later increment.
+The first review must settle the names/shape of the read-only owner slots,
+ancestor target, and structural ordering input. Their semantics above are required;
+API spelling can change without reviving manual-domain boilerplate. Clustering
+implementation remains outside this plan, with the tree/output boundary available
+for that later increment.
