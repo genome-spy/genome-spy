@@ -189,7 +189,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     strokeColor.a = strokeColor.a * in.strokeOpacity;
 
     if (in.gradientStrength > 0.0) {
-        fillColor = mix(fillColor, vec4<f32>(1.0), -d * in.gradientStrength / max(r, 0.0001));
+        fillColor = mix(fillColor, vec4<f32>(vec3<f32>(1.0), fillColor.a), -d * in.gradientStrength / max(r, 0.0001));
     }
 
     fillColor = premultiplyAlpha(fillColor);

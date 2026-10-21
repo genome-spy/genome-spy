@@ -325,23 +325,35 @@ await testRenderers(
                     }
                 }
                 const styleStates = [];
+                const shapeStates = [];
                 if (dataFirst) {
-                    // Keep positions and size valid so missing color membership
-                    // must suppress paint independently of positional NaN culling.
+                    // Keep positions and size valid so missing styles cannot
+                    // hide behind positional NaN culling.
                     const stylesApi = await embed(
                         host,
                         {
                             width: 360,
                             height: 240,
                             padding: 0,
-                            params: [{ name: "colors", value: [] }],
+                            params: [
+                                { name: "colors", value: [] },
+                                { name: "shapes", value: ["a", "b", "c"] },
+                                { name: "gradient", value: 0 },
+                                { name: "alpha", value: 1 },
+                            ],
                             data: {
                                 values: rows.map((row, i) => ({
                                     ...row,
                                     x: (i + 1) / 4,
                                 })),
                             },
-                            mark: { type: "point", size: 400, tooltip: false },
+                            mark: {
+                                type: "point",
+                                size: 1600,
+                                tooltip: false,
+                                fillGradientStrength: { expr: "gradient" },
+                                fillOpacity: { expr: "alpha" },
+                            },
                             encoding: {
                                 x: {
                                     field: "x",
@@ -350,6 +362,15 @@ await testRenderers(
                                     scale: { domain: [0, 1] },
                                 },
                                 y: { value: 0.5 },
+                                shape: {
+                                    field: "category",
+                                    type: "nominal",
+                                    legend: null,
+                                    scale: {
+                                        domain: { expr: "shapes" },
+                                        range: ["circle", "square"],
+                                    },
+                                },
                                 color: {
                                     field: "category",
                                     type: "nominal",
@@ -369,8 +390,7 @@ await testRenderers(
                     await stylesApi.awaitVisibleLazyData(
                         AbortSignal.timeout(5000)
                     );
-                    for (const domain of [[], ["a", "c"], ["c", "a", "b"]]) {
-                        stylesApi.params.get("colors").setValue(domain);
+                    const readStylePixels = async () => {
                         await frame();
                         const raster = await stylesApi.imageExport.raster({
                             background: null,
@@ -383,14 +403,66 @@ await testRenderers(
                         const ctx = canvas.getContext("2d");
                         ctx.drawImage(bitmap, 0, 0);
                         bitmap.close();
-                        styleStates.push({
-                            domain,
+                        /** @param {number} x @param {number} y */
+                        const pixel = (x, y) =>
+                            Array.from(ctx.getImageData(x, y, 1, 1).data);
+                        return {
                             colors: rows.map((row, i) =>
-                                Array.from(
-                                    ctx.getImageData((i + 1) * 90, 120, 1, 1)
-                                        .data
-                                )
+                                pixel((i + 1) * 90, 120)
                             ),
+                            edges: rows.map((row, i) =>
+                                pixel((i + 1) * 90 + 12, 120)
+                            ),
+                            corners: rows.map((row, i) =>
+                                pixel((i + 1) * 90 + 18, 138)
+                            ),
+                        };
+                    };
+                    // Canvas ignores gradients; exercise both GPU paths without
+                    // duplicating the otherwise identical style fixture.
+                    for (const gradient of renderer === "canvas"
+                        ? [0]
+                        : [0, 1]) {
+                        const opacity = gradient ? 0.5 : 1;
+                        stylesApi.params.get("gradient").setValue(gradient);
+                        stylesApi.params.get("alpha").setValue(opacity);
+                        for (const domain of [
+                            [],
+                            ["a", "c"],
+                            ["c", "a", "b"],
+                        ]) {
+                            stylesApi.params.get("colors").setValue(domain);
+                            styleStates.push({
+                                domain,
+                                gradient,
+                                opacity,
+                                ...(await readStylePixels()),
+                            });
+                        }
+                    }
+
+                    stylesApi.params.get("colors").setValue(["a", "b", "c"]);
+                    stylesApi.params.get("gradient").setValue(0);
+                    stylesApi.params.get("alpha").setValue(1);
+                    for (const domain of [
+                        ["a", "b", "c"],
+                        ["a", "c"],
+                        [],
+                        ["c", "b", "a"],
+                    ]) {
+                        stylesApi.params.get("shapes").setValue(domain);
+                        const pixels = await readStylePixels();
+                        const centerPick = await stylesApi.views
+                            .root()
+                            .marks.pick({ x: 180, y: 120 });
+                        const cornerPick = await stylesApi.views
+                            .root()
+                            .marks.pick({ x: 198, y: 138 });
+                        shapeStates.push({
+                            domain,
+                            ...pixels,
+                            centerPick: centerPick.status,
+                            cornerPick: cornerPick.status,
                         });
                     }
                     stylesApi.finalize();
@@ -403,6 +475,7 @@ await testRenderers(
                     initialUploads,
                     attributeUploads,
                     styleStates,
+                    shapeStates,
                 };
             },
             { renderer, ...variant }
@@ -507,6 +580,22 @@ await testRenderers(
                         0,
                         `${label}: missing ordinal color ${category} is transparent`
                     );
+                    assert.equal(
+                        state.edges[i][3],
+                        0,
+                        `${label}: missing ordinal color ${category} has no gradient edge`
+                    );
+                } else if (state.gradient) {
+                    for (const sample of [color, state.edges[i]]) {
+                        assert.ok(
+                            Math.abs(sample[3] - state.opacity * 255) <= 1,
+                            `${label}: gradient preserves ordinal paint opacity`
+                        );
+                    }
+                    assert.ok(
+                        color.slice(0, 3).every((component) => component > 0),
+                        `${label}: active ordinal paint has its white gradient center`
+                    );
                 } else {
                     assert.deepEqual(
                         color,
@@ -514,6 +603,33 @@ await testRenderers(
                         `${label}: restored ordinal color ${category}`
                     );
                 }
+            }
+        }
+        for (const state of result.shapeStates) {
+            const slot = state.domain.indexOf("b");
+            const square = slot >= 0 && slot % 2 === 1;
+            assert.deepEqual(
+                state.colors[1],
+                [0, 0, 255, 255],
+                `${label}: missing shape keeps opaque paint`
+            );
+            assert.deepEqual(
+                state.corners[1],
+                square ? [0, 0, 255, 255] : [0, 0, 0, 0],
+                `${label}: missing shape uses the circle fallback`
+            );
+            assert.equal(
+                state.centerPick,
+                "hit",
+                `${label}: missing shape keeps its center pick`
+            );
+            // Canvas picking uses bounds; GPU picking follows the painted shape.
+            if (renderer !== "canvas") {
+                assert.equal(
+                    state.cornerPick,
+                    square ? "hit" : "empty",
+                    `${label}: picking follows fallback shape geometry`
+                );
             }
         }
         console.log(

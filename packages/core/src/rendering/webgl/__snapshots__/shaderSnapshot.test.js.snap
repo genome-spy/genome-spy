@@ -873,7 +873,7 @@ uniform highp usampler2D uDomainTexture_direction;
 
 float scale_direction(uint value) {
     uint slotId = getCategorySlot(uDomainTexture_direction, value);
-    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    if (slotId == 0u) return 0.0;
     value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
@@ -3168,7 +3168,7 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
 
 		fragColor = distanceToColor(
 			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),
@@ -5598,7 +5598,7 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
 
 		fragColor = distanceToColor(
 			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),
@@ -6791,7 +6791,7 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
 
 		fragColor = distanceToColor(
 			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),

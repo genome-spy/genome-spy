@@ -487,11 +487,13 @@ export function generateScaleGlsl(channel, scale, channelDef) {
         if (channel === primary)
             glsl.push(`uniform highp usampler2D ${texture};`);
         scaleBody.push(`uint slotId = getCategorySlot(${texture}, value);`);
-        // Undefined positions/numbers propagate as NaN. The RGB path uses a
-        // sentinel that premultiplyColor converts to transparent paint.
+        // Unknown enums keep their zero-valued fallback (circle/forward).
+        // Undefined numbers propagate as NaN; missing RGB paint is transparent.
         const unknown = isColorChannel(channel)
             ? "vec3(-1.0)"
-            : "uintBitsToFloat(0x7fc00000u)";
+            : isDiscreteChannel(channel)
+              ? "0.0"
+              : "uintBitsToFloat(0x7fc00000u)";
         scaleBody.push(`if (slotId == 0u) return ${unknown};`);
         scaleBody.push("value = slotId - 1u;");
     }
