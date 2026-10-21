@@ -325,7 +325,7 @@ void main(void) {
 
     vec3 color = getScaled_color();
 
-    vColor = vec4(color * opacity, opacity);
+    vColor = premultiplyColor(color, opacity);
 
     vGamma = getGammaForColor(color);
 

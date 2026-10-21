@@ -128,13 +128,13 @@ void main(void) {
 
     vCornerRadii = min(cornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
     vHalfStrokeWidth = strokeWidth / 2.0;
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 #endif
 
     gl_Position = unitToNdc(pos);
 
     float fillOpacity = getScaled_fillOpacity() * opaFactor;
-    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
 }

@@ -214,6 +214,90 @@ test("shares scale-resolution subscriptions across marks", () => {
     expect(resolution.dispose).toHaveBeenCalledTimes(1);
 });
 
+test("categorical mappings refresh shared textures without re-encoding rows", async () => {
+    const { view } = await createHeadlessEngine({
+        params: [{ name: "order", value: ["a", "b", "c"] }],
+        data: { values: ["a", "b", "c"].map((category) => ({ category })) },
+        mark: "point",
+        encoding: {
+            x: {
+                field: "category",
+                type: "nominal",
+                scale: { domain: { expr: "order" } },
+                axis: null,
+            },
+        },
+    });
+    const mark = /** @type {import("../../view/unitView.js").default} */ (view)
+        .mark;
+    const resolution = view.getScaleResolution("x");
+    const glHelper = createGlHelper();
+    const gl = glHelper.gl;
+    const otherTexture = {};
+    let boundTexture = otherTexture;
+    /** @type {number[][]} */
+    const uploads = [];
+    Object.assign(gl, {
+        MAX_TEXTURE_SIZE: 0x0d33,
+        TEXTURE_BINDING_2D: 0x8069,
+        getParameter: (/** @type {number} */ parameter) =>
+            parameter === gl.MAX_TEXTURE_SIZE ? 2 : boundTexture,
+        createTexture: () => ({}),
+        bindTexture: (
+            /** @type {number} */ target,
+            /** @type {object} */ texture
+        ) => {
+            boundTexture = texture;
+        },
+        texParameteri: vi.fn(),
+        /** @param {any[]} args */
+        texImage2D: (...args) => {
+            uploads.push(Array.from(args[8]));
+        },
+    });
+    const resources = new WebGLRendererResources(glHelper);
+    const shared = createMark("shared");
+    shared.mark.encoders = mark.encoders;
+    shared.mark.unitView.getScaleResolution = () => resolution;
+    try {
+        resources.prepareMarks([mark, shared.mark]);
+        const entries = [
+            resources.getMarkEntry(mark),
+            resources.getMarkEntry(shared.mark),
+        ];
+        resources.synchronize(entries);
+        const texture = resources.getCategoricalTexture(resolution);
+        expect(uploads).toEqual([[1, 2, 3, 0]]);
+
+        for (const order of [["c", "a"], ["b", "c", "a"], []]) {
+            view.paramRuntime.setValue("order", order);
+            resources.synchronize(entries);
+            expect(resources.getCategoricalTexture(resolution)).toBe(texture);
+        }
+        expect(uploads).toEqual([
+            [1, 2, 3, 0],
+            [2, 0, 1, 0],
+            [3, 1, 2, 0],
+            [0],
+        ]);
+        expect(mocks.delegates.map((delegate) => delegate.updateCount)).toEqual(
+            [1, 1]
+        );
+        expect(boundTexture).toBe(otherTexture);
+
+        shared.dispose();
+        expect(gl.deleteTexture).not.toHaveBeenCalled();
+        resources.releaseMark(mark);
+        expect(gl.deleteTexture).toHaveBeenCalledExactlyOnceWith(texture);
+        const count = uploads.length;
+        view.paramRuntime.setValue("order", ["a"]);
+        expect(uploads).toHaveLength(count);
+    } finally {
+        resources.dispose();
+        view.disposeSubtree();
+    }
+});
+
 test("disposed entries stay inactive for already compiled batches", () => {
     const resources = new WebGLRendererResources(createGlHelper());
     const fixture = createMark("point");
@@ -397,6 +481,7 @@ function createScaleResolution() {
     return {
         listeners,
         dispose,
+        getScale: () => ({ type: "linear" }),
         observeMapping: vi.fn((/** @type {() => void} */ listener) => {
             listeners.set("mapping", listener);
             return dispose;

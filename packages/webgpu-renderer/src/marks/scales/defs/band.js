@@ -29,13 +29,11 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
 
     let n = domainExtent.y - domainExtent.x;
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    let paddingInnerAdjusted = select(paddingInner, 0.0, i32(n) <= 1);
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    let step = rangeSpan / max(1.0, n - paddingInnerAdjusted + paddingOuter * 2.0);
-    start += (rangeSpan - step * (n - paddingInnerAdjusted)) * align;
-    let bandwidth = step * (1.0 - paddingInnerAdjusted);
+    // Match Vega's band space, including singleton domains with padding.
+    let space = n - paddingInner + paddingOuter * 2.0;
+    let step = rangeSpan / select(1.0, space, space > 0.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    let bandwidth = step * (1.0 - paddingInner);
 
     var offset = f32(value) - domainExtent.x;
     if (reverse) {
@@ -48,9 +46,8 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
 /**
  * Band scale: maps discrete indices to evenly spaced bands in a numeric range.
  *
- * Technical notes: implements the d3 band formula in WGSL, including the
- * paddingInner edge case fix, and optionally routes sparse domains through
- * a hash map before band lookup.
+ * Technical notes: implements the Vega band formula in WGSL and optionally
+ * routes sparse domains through a hash map before band lookup.
  *
  * @type {import("../../../index.d.ts").ScaleDef}
  */
@@ -101,22 +98,14 @@ function emitBandScale({
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
     if (domainMapName) {
+        // WGSL rejects constant NaNs, so construct the missing position at runtime.
         return `${makeFnHeader(name, "f32", functionName)} {
     let raw = ${valueExpr};
-    let mapCount = u32(params.${mapCountName});
-    if (mapCount == 0u) {
-        return scaleBand(
-            raw,
-            ${domainVec2(name)},
-            ${rangeVec2(name)},
-            params.${SCALE_PADDING_INNER_PREFIX}${name},
-            params.${SCALE_PADDING_OUTER_PREFIX}${name},
-            params.${SCALE_ALIGN_PREFIX}${name},
-            params.${SCALE_BAND_PREFIX}${name}
-        );
+    var mapped = raw;
+    if (params.${mapCountName} >= 0.0) {
+        mapped = ${hashLookupFunctionName(domainMapName)}(raw, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
+        if (mapped == HASH_NOT_FOUND) { return bitcast<f32>(raw | 0x7fc00000u); }
     }
-    let mapped = ${hashLookupFunctionName(domainMapName)}(raw, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
-    if (mapped == HASH_NOT_FOUND) { return ${rangeVec2(name)}.x; }
     return scaleBand(
         mapped,
         ${domainVec2(name)},

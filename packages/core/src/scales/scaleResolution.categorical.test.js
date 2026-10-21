@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 
 describe("categorical domain publication", () => {
-    test("reactive explicit order changes color mapping without reassigning category IDs", async () => {
+    test("explicit order and membership change ordinal mapping without reassigning category IDs", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "order", value: ["a", "b", "c"] }],
             data: {
@@ -61,6 +61,16 @@ describe("categorical domain publication", () => {
                 encodedRows
             );
             expect([color("c"), color("a"), color("b")]).toEqual(colors);
+
+            view.paramRuntime.setValue("order", ["c", "a"]);
+            expect(color("b")).toBeUndefined();
+            expect([color("c"), color("a")]).toEqual(colors.slice(0, 2));
+
+            view.paramRuntime.setValue("order", ["b", "c", "a"]);
+            expect([color("b"), color("c"), color("a")]).toEqual(colors);
+            expect([indexer("a"), indexer("b"), indexer("c")]).toEqual(
+                encodedRows
+            );
         } finally {
             view.disposeSubtree();
         }
@@ -103,4 +113,90 @@ describe("categorical domain publication", () => {
             view.disposeSubtree();
         }
     });
+
+    test.each(["data-first", "domain-first"])(
+        "empty categorical domains retain identity during %s initialization",
+        async (initialization) => {
+            const { view } = await createHeadlessEngine({
+                params: [{ name: "order", value: [] }],
+                data: { values: [] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "category",
+                        type: "nominal",
+                        axis: null,
+                        scale: { type: "point", domain: { expr: "order" } },
+                    },
+                    size: {
+                        field: "category",
+                        type: "nominal",
+                        legend: null,
+                        scale: {
+                            type: "ordinal",
+                            domain: { expr: "order" },
+                            range: [9, 25],
+                        },
+                    },
+                },
+            });
+            try {
+                const positionScale = view.getScaleResolution("x").getScale();
+                const position =
+                    /** @type {import("d3-scale").ScalePoint<string>} */ (
+                        positionScale
+                    );
+                const size =
+                    /** @type {import("d3-scale").ScaleOrdinal<string, number>} */ (
+                        view.getScaleResolution("size").getScale()
+                    );
+                const indexer = /** @type {any} */ (positionScale.props)
+                    .domainIndexer;
+                const source =
+                    /** @type {import("../data/sources/inlineSource.js").default} */ (
+                        view.flowHandle.dataSource
+                    );
+                const discovery = ["b", "a", "c"];
+                const explicit = ["c", "b", "a"];
+                expect(indexer.domain()).toEqual([]);
+                expect(position.domain()).toEqual([]);
+
+                if (initialization === "domain-first") {
+                    view.paramRuntime.setValue("order", explicit);
+                }
+                source.updateDynamicData(
+                    discovery.map((category) => ({ category }))
+                );
+                // Retained backends intern rows even while an explicit domain is
+                // empty; source publication must not change its membership.
+                const encodedRows = discovery.map(indexer);
+                if (initialization === "data-first") {
+                    expect(position.domain()).toEqual([]);
+                    view.paramRuntime.setValue("order", explicit);
+                }
+
+                expect(position.domain()).toEqual(explicit);
+                expect(discovery.map(indexer)).toEqual(encodedRows);
+                expect(
+                    /** @type {any} */ (positionScale.props).domainIndexer
+                ).toBe(indexer);
+                expect([position("c"), position("b"), position("a")]).toEqual([
+                    0, 0.5, 1,
+                ]);
+                expect([size("c"), size("b"), size("a")]).toEqual([9, 25, 9]);
+
+                view.paramRuntime.setValue("order", ["a", "c"]);
+                expect(position("b")).toBeUndefined();
+                expect([position("a"), position("c")]).toEqual([0, 1]);
+
+                view.paramRuntime.setValue("order", ["b", "a", "c"]);
+                expect(discovery.map(indexer)).toEqual(encodedRows);
+                expect([position("b"), position("a"), position("c")]).toEqual([
+                    0, 0.5, 1,
+                ]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
 });

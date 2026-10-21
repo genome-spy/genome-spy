@@ -151,6 +151,13 @@ attachments, size observers, and the canvas.
   resolutions used by its retained marks through completed-mapping graph effects.
   One shared subscription refreshes each range texture after domain and range
   inputs settle; mark resource revisions use the same mapping contract.
+  Categorical attributes retain Core-owned stable IDs. WebGL owns an integer
+  texture per shared scale resolution that maps those IDs to dense active-domain
+  slots, with zero marking nonmembership. The same subscription updates this
+  texture without re-encoding attributes. Band/point scales use the dense slots;
+  ordinal scales cycle through the current range texture. The last retained mark
+  releases the domain texture and subscription. WebGPU uses the same semantic
+  mapping through renderer-owned hash tables in storage buffers.
   Font and range textures are not
   stored in marks or scale planning.
 - Picking renders into a dedicated framebuffer owned by `WebGLHelper`.

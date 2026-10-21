@@ -503,6 +503,12 @@ example, the upper end of this size range follows the `maxSize` parameter:
 }
 ```
 
+Explicit categorical domains preserve their array order when they change. Band
+and point scales place the current categories in consecutive slots; values
+outside the domain have no position. Ordinal scales assign range values in the
+current domain order, cycling the range if it is shorter than the domain. These
+updates also apply when an explicit domain arrives after the mark data.
+
 ### Parameter scope
 
 An independent scale resolves parameter names from its unit view or an ancestor.

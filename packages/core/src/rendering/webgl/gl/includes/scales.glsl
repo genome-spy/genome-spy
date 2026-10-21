@@ -2,6 +2,12 @@ uniform highp float uZero;
 
 // Utils ------------
 
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
+
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
 }
@@ -71,22 +77,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;

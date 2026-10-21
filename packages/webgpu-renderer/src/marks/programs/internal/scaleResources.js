@@ -336,6 +336,10 @@ export class ScaleResourceManager {
             }
             this.#setUniformValue(`${param.prefix}${name}`, value);
         }
+        if (analysis.needsDomainMap) {
+            // Only an omitted domain uses identity IDs; an explicit [] is empty.
+            this.#setUniformValue(DOMAIN_MAP_COUNT_PREFIX + name, -1);
+        }
         this.#scaleUpdaters.set(
             name,
             this.#buildScaleUpdater({ name, channel, scale, analysis })

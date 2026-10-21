@@ -249,7 +249,6 @@ describe("scaleCodegen codegen", () => {
 
         expect(code).toContain("hashLookup_domainMap_fill");
         expect(code).toContain("domainMap_fill");
-        expect(code).toContain("let slot = raw % count;");
         expect(code).toContain("let slot = idx % count;");
     });
 

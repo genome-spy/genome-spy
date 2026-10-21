@@ -45,6 +45,7 @@
     "test:arrow:webgl": "node scripts/testArrowWebGL.mjs",
     "test:link:renderers": "node scripts/testOrthogonalLinks.mjs",
     "test:dendrogram:renderers": "node scripts/testDendrogramRenderers.mjs",
+    "test:categorical:renderers": "node scripts/testCategoricalDomains.mjs",
     "benchmark:interaction": "node scripts/runWebGpuInteractionBenchmark.mjs",
     "smoke:examples": "node scripts/captureScreenshots.mjs --all --check",
     "smoke:examples:webgpu": "node scripts/runWebGpuExamples.mjs --all",

@@ -366,8 +366,7 @@ export default class WebGLHelper {
 
     /**
      * Creates textures for color schemes and discrete/discretizing ranges.
-     * N.B. Discrete range textures need domain. Thus, this cannot be called
-     * before the final domains are resolved.
+     * Ordinal textures hold the current range; domain lookup happens separately.
      *
      * TODO: This may be too specific to be included in WebGLHelper. Find a better place.
      *
@@ -378,24 +377,6 @@ export default class WebGLHelper {
         const existingTexture = this.rangeTextures.get(resolution.getScale());
         if (!update && existingTexture) {
             return;
-        }
-
-        /**
-         * TODO: The count configuration logic etc should be combined
-         * with scale.js that configures d3 scales using vega specs
-         * @param {number} count
-         * @param {any} scale
-         * @returns {number}
-         */
-        function fixCount(count, scale) {
-            if (isDiscrete(scale.type)) {
-                return scale.domain().length;
-            } else if (scale.type == "threshold" || scale.type == "quantize") {
-                return getDiscreteRangeCountForGlsl(scale);
-            } else if (scale.type == "quantile") {
-                return count ?? 4;
-            }
-            return count;
         }
 
         const channel = resolution.channel;
@@ -416,15 +397,15 @@ export default class WebGLHelper {
                     texture = createDiscreteColorTexture(
                         range,
                         this.gl,
-                        getDiscreteRangeCountForGlsl(scale),
+                        isDiscrete(scale.type)
+                            ? range.length
+                            : getDiscreteRangeCountForGlsl(scale),
                         existingTexture
                     );
                 } else {
-                    let count = isString(props.scheme)
+                    const count = isString(props.scheme)
                         ? undefined
                         : props.scheme.count;
-
-                    count = fixCount(count, scale);
 
                     texture = createSchemeTexture(
                         props.scheme,
@@ -452,7 +433,7 @@ export default class WebGLHelper {
                     this.gl,
                     isDiscretizing(scale.type)
                         ? getDiscreteRangeCountForGlsl(scale)
-                        : scale.domain().length,
+                        : range.length,
                     existingTexture
                 );
             }
@@ -475,7 +456,7 @@ export default class WebGLHelper {
                     this.gl,
                     isDiscretizing(scale.type)
                         ? getDiscreteRangeCountForGlsl(scale)
-                        : scale.domain().length,
+                        : range.length,
                     existingTexture
                 );
                 this.rangeTextures.set(scale, texture);

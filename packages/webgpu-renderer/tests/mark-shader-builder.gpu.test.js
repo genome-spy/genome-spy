@@ -144,7 +144,7 @@ test("markShaderBuilder matches d3 ordinal mapping for explicit categories", asy
         dumpLabel: test.info().title,
     });
 
-    const expected = input.map((value) => reference(value) ?? 0);
+    const expected = input.map((value) => reference(value) ?? NaN);
     expect(output).toEqual(expected);
 });
 
@@ -225,12 +225,11 @@ test("markShaderBuilder matches d3 band positions through a sparse domain map", 
 
     const expected = input.map((value) => {
         const start = reference(value);
-        return start === undefined
-            ? range[0]
-            : start + reference.bandwidth() * band;
+        return start === undefined ? NaN : start + reference.bandwidth() * band;
     });
     expected.forEach((value, index) => {
-        expect(output[index]).toBeCloseTo(value, 4);
+        if (Number.isNaN(value)) expect(output[index]).toBeNaN();
+        else expect(output[index]).toBeCloseTo(value, 4);
     });
 });
 
@@ -474,7 +473,7 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
         uniformLayout,
         uniforms: {
             uRangeCount_shape: 2,
-            uDomainMapCount_shape: 0,
+            uDomainMapCount_shape: -1,
         },
         scaleTables: {
             range_shape: new Float32Array(rangeData),

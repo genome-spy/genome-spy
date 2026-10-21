@@ -293,12 +293,12 @@ void main(void) {
         vHalfStrokeWidth
     );
     vHeadSpacing = headRepeat ? uHeadSpacing * arrowSize : -1.0;
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 
     gl_Position = unitToNdc(p);
 
     float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
-    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
 }

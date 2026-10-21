@@ -33,6 +33,7 @@ export const ACCESSOR_FUNCTION_PREFIX = "accessor_";
 export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
+export const DOMAIN_TEXTURE_PREFIX = "uDomainTexture_";
 export const PARAM_PREFIX = "uParam_";
 export const SELECTION_MEMBERSHIP_PREFIX = "isSelectionMember_";
 export const SELECTION_EMPTY_PREFIX = "isSelectionEmpty_";
@@ -392,17 +393,14 @@ export function generateScaleGlsl(channel, scale, channelDef) {
                 "scaleBand",
                 "domain",
                 rangeUniformName,
-                scale.paddingInner(),
-                scale.paddingOuter(),
+                transform === "point" ? 1 : scale.paddingInner(),
+                transform === "point" ? scale.padding() : scale.paddingOuter(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 channelDef.band ?? 0.5
             );
             break;
 
-        // TODO: Enable dynamic reordering/removal in explicit categorical domains
-        // once WebGL is fully retired. webgpu-renderer already supports this;
-        // WebGL treats stable category IDs as fixed range-texture positions.
         case "ordinal": // Use identity transform and lookup the value from a texture
         case "null":
         case "identity":
@@ -483,6 +481,20 @@ export function generateScaleGlsl(channel, scale, channelDef) {
 
     /** @type {string[]} Channel's scale function*/
     const scaleBody = [];
+
+    if (isDiscrete(scale.type)) {
+        const texture = DOMAIN_TEXTURE_PREFIX + primary;
+        if (channel === primary)
+            glsl.push(`uniform highp usampler2D ${texture};`);
+        scaleBody.push(`uint slotId = getCategorySlot(${texture}, value);`);
+        // Undefined positions/numbers propagate as NaN. The RGB path uses a
+        // sentinel that premultiplyColor converts to transparent paint.
+        const unknown = isColorChannel(channel)
+            ? "vec3(-1.0)"
+            : "uintBitsToFloat(0x7fc00000u)";
+        scaleBody.push(`if (slotId == 0u) return ${unknown};`);
+        scaleBody.push("value = slotId - 1u;");
+    }
 
     const piecewise = isContinuous(scale.type) && domainLength > 2;
     const needsSlot = isDiscretizing(scale.type) || piecewise;
@@ -755,17 +767,13 @@ export function getAttributeAndArrayTypes(scale, channel) {
     const largeHp = hp && isLargeIndexDomain(scale.domain());
 
     /**
-     * @type {{attributeType: string, arrayConstructor: Uint32ArrayConstructor | Uint16ArrayConstructor | Float32ArrayConstructor}}
+     * @type {{attributeType: string, arrayConstructor: Uint32ArrayConstructor | Float32ArrayConstructor}}
      */
     const props = largeHp
         ? { attributeType: "uvec2", arrayConstructor: Uint32Array }
-        : hp
+        : hp || discrete || channel == "uniqueId"
           ? { attributeType: "uint", arrayConstructor: Uint32Array }
-          : discrete
-            ? { attributeType: "uint", arrayConstructor: Uint16Array }
-            : channel == "uniqueId"
-              ? { attributeType: "uint", arrayConstructor: Uint32Array }
-              : { attributeType: "float", arrayConstructor: Float32Array };
+          : { attributeType: "float", arrayConstructor: Float32Array };
 
     return Object.assign(props, {
         numComponents: +(

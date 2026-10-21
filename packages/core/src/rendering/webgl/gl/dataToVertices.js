@@ -15,7 +15,6 @@ import {
     splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
 import { isContinuous } from "vega-scale";
-import createIndexer from "../../../utils/indexer.js";
 import { createVertexRangeIndexer } from "./vertexRangeIndex.js";
 
 /**
@@ -85,24 +84,13 @@ export class GeometryBuilder {
                 getAttributeAndArrayTypes(scale, channel);
             const largeHpArray = [0, 0];
 
-            /** @type {ReturnType<typeof createIndexer> | undefined} */
-            let indexer;
-            if (scale && discrete) {
-                if (
-                    "props" in scale &&
-                    /** @type {any} */ (scale.props).domainIndexer
-                ) {
-                    // domainIndexer is a runtime-only extension, not in VegaScale typings.
-                    indexer = /** @type {any} */ (scale.props).domainIndexer;
-                } else if ("domain" in scale) {
-                    indexer = createIndexer();
-                    indexer.addAll(scale.domain());
-                } else {
-                    throw new Error(
-                        "Missing domain indexer for discrete scale."
-                    );
-                }
-            }
+            // Core owns categorical identity, including values encoded before
+            // an asynchronous explicit domain becomes available.
+            const indexer = discrete
+                ? /** @type {ReturnType<import("../../../utils/indexer.js").default>} */ (
+                      /** @type {any} */ (scale.props).domainIndexer
+                  )
+                : undefined;
 
             /**
              * Discrete variables both numeric and strings must be "indexed",

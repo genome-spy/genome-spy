@@ -144,6 +144,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -542,6 +549,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -581,6 +595,12 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float hal
 uniform highp float uZero;
 
 // Utils ------------
+
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
 
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
@@ -651,22 +671,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;
@@ -849,8 +869,12 @@ uint accessor_direction_0() {
 // Channel: direction
 
 uniform sampler2D uRangeTexture_direction;
+uniform highp usampler2D uDomainTexture_direction;
 
 float scale_direction(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_direction, value);
+    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
     return getDiscreteColor(uRangeTexture_direction, int(transformed)).r;
@@ -922,8 +946,12 @@ uint accessor_y_0() {
 // Channel: y
 
 const vec2 range_y = vec2(1.0, 0.0);
+uniform highp usampler2D uDomainTexture_y;
 
 float scale_y(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_y, value);
+    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
     float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 0.5);
@@ -948,6 +976,9 @@ uint accessor_y2_0() {
 
 
 float scale_y2(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_y, value);
+    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
     float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 0.5);
@@ -1403,12 +1434,12 @@ void main(void) {
         vHalfStrokeWidth
     );
     vHeadSpacing = headRepeat ? uHeadSpacing * arrowSize : -1.0;
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 
     gl_Position = unitToNdc(p);
 
     float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
-    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
 }
@@ -1562,6 +1593,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     }
 
     return false;
+}
+
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
 }
 
 /**
@@ -1966,6 +2004,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -2005,6 +2050,12 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float hal
 uniform highp float uZero;
 
 // Utils ------------
+
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
 
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
@@ -2075,22 +2126,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;
@@ -2333,8 +2384,12 @@ uint accessor_y_0() {
 // Channel: y
 
 const vec2 range_y = vec2(1.0, 0.0);
+uniform highp usampler2D uDomainTexture_y;
 
 float scale_y(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_y, value);
+    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
     float transformed = scaleBand(value, domain, range_y, 0.25, 0.25, 0.5, 0.5);
@@ -2359,6 +2414,9 @@ uint accessor_y2_0() {
 
 
 float scale_y2(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_y, value);
+    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
     float transformed = scaleBand(value, domain, range_y, 0.25, 0.25, 0.5, 0.5);
@@ -2814,12 +2872,12 @@ void main(void) {
         vHalfStrokeWidth
     );
     vHeadSpacing = headRepeat ? uHeadSpacing * arrowSize : -1.0;
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 
     gl_Position = unitToNdc(p);
 
     float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
-    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
 }
@@ -2956,6 +3014,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     }
 
     return false;
+}
+
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
 }
 
 /**
@@ -3249,6 +3314,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -3288,6 +3360,12 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float hal
 uniform highp float uZero;
 
 // Utils ------------
+
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
 
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
@@ -3358,22 +3436,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;
@@ -3940,8 +4018,8 @@ void main(void) {
 
     vHalfStrokeWidth = strokeWidth / 2.0;
 
-    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
 
     setupPicking();
 }
@@ -4120,6 +4198,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     }
 
     return false;
+}
+
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
 }
 
 /**
@@ -4379,6 +4464,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -4418,6 +4510,12 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float hal
 uniform highp float uZero;
 
 // Utils ------------
+
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
 
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
@@ -4488,22 +4586,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;
@@ -5198,7 +5296,7 @@ void main(void) {
 
     vec3 color = getScaled_color();
 
-    vColor = vec4(color * opacity, opacity);
+    vColor = premultiplyColor(color, opacity);
 
     vGamma = getGammaForColor(color);
 
@@ -5346,6 +5444,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     }
 
     return false;
+}
+
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
 }
 
 /**
@@ -5645,6 +5750,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -5684,6 +5796,12 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float hal
 uniform highp float uZero;
 
 // Utils ------------
+
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
 
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
@@ -5754,22 +5872,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;
@@ -6047,8 +6165,12 @@ vec3 accessor_stroke_1() {
 // Channel: stroke
 
 uniform sampler2D uRangeTexture_stroke;
+uniform highp usampler2D uDomainTexture_stroke;
 
 vec3 scale_stroke(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_stroke, value);
+    if (slotId == 0u) return vec3(-1.0);
+    value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
     return getDiscreteColor(uRangeTexture_stroke, int(transformed));
@@ -6094,8 +6216,12 @@ vec3 accessor_fill_1() {
 // Channel: fill
 
 uniform sampler2D uRangeTexture_fill;
+uniform highp usampler2D uDomainTexture_fill;
 
 vec3 scale_fill(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_fill, value);
+    if (slotId == 0u) return vec3(-1.0);
+    value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
     return getDiscreteColor(uRangeTexture_fill, int(transformed));
@@ -6373,8 +6499,8 @@ void main(void) {
 
     vHalfStrokeWidth = strokeWidth / 2.0;
 
-    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
 
     setupPicking();
 }
@@ -6511,6 +6637,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     }
 
     return false;
+}
+
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
 }
 
 /**
@@ -6804,6 +6937,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -6843,6 +6983,12 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float hal
 uniform highp float uZero;
 
 // Utils ------------
+
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
 
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
@@ -6913,22 +7059,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;
@@ -7219,8 +7365,12 @@ uint accessor_fill_0() {
 // Channel: fill
 
 uniform sampler2D uRangeTexture_fill;
+uniform highp usampler2D uDomainTexture_fill;
 
 vec3 scale_fill(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_fill, value);
+    if (slotId == 0u) return vec3(-1.0);
+    value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
     return getDiscreteColor(uRangeTexture_fill, int(transformed));
@@ -7493,8 +7643,8 @@ void main(void) {
 
     vHalfStrokeWidth = strokeWidth / 2.0;
 
-    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
 
     setupPicking();
 }
@@ -7640,6 +7790,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     }
 
     return false;
+}
+
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
 }
 
 /**
@@ -8043,6 +8200,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */
@@ -8082,6 +8246,12 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float hal
 uniform highp float uZero;
 
 // Utils ------------
+
+uint getCategorySlot(highp usampler2D domainMap, uint id) {
+    uvec2 size = uvec2(textureSize(domainMap, 0));
+    if (id >= size.x * size.y) return 0u;
+    return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
+}
 
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
@@ -8152,22 +8322,22 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
-    // TODO: reverse
-    float start = range[0];
-    float stop = range[1];
+    bool reverse = range[1] < range[0];
+    float start = min(range[0], range[1]);
+    float stop = max(range[0], range[1]);
     float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
-    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
-    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    // Match the CPU's Vega bandSpace, including padded singleton domains.
+    float space = n - paddingInner + paddingOuter * 2.0;
+    float step = rangeSpan / (space > 0.0 ? space : 1.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+    float slot = float(value) - domainExtent[0];
+    if (reverse) slot = n - 1.0 - slot;
+    return start + slot * step + bandwidth * band;
 }
 
 const int lowBits = 12;
@@ -8375,8 +8545,12 @@ uint accessor_x_0() {
 // Channel: x
 
 const vec2 range_x = vec2(0.0, 1.0);
+uniform highp usampler2D uDomainTexture_x;
 
 float scale_x(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_x, value);
+    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
     float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 0.0);
@@ -8449,6 +8623,9 @@ uint accessor_x2_0() {
 
 
 float scale_x2(uint value) {
+    uint slotId = getCategorySlot(uDomainTexture_x, value);
+    if (slotId == 0u) return uintBitsToFloat(0x7fc00000u);
+    value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
     float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 1.0);
@@ -8751,13 +8928,13 @@ void main(void) {
 
     vCornerRadii = min(cornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
     vHalfStrokeWidth = strokeWidth / 2.0;
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 #endif
 
     gl_Position = unitToNdc(pos);
 
     float fillOpacity = getScaled_fillOpacity() * opaFactor;
-    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
 }

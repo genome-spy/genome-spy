@@ -3,6 +3,7 @@ import {
     hasGroupingGaps,
 } from "../../genome/indexGapMapping.js";
 import { createTexture } from "twgl.js";
+import { isDiscrete } from "vega-scale";
 import {
     findChannelDefWithScale,
     isChannelWithScale,
@@ -68,6 +69,56 @@ export default class WebGLRendererResources {
     /** @type {Map<import("../../scales/scaleResolution.js").default, {cuts: readonly number[], texture: WebGLTexture}>} */
     #gapTextures = new Map();
 
+    /** @type {Map<import("../../scales/scaleResolution.js").default, WebGLTexture>} */
+    #categoricalTextures = new Map();
+
+    /** @param {import("../../scales/scaleResolution.js").default} resolution */
+    getCategoricalTexture(resolution) {
+        return this.#categoricalTextures.get(resolution);
+    }
+
+    /** Stable Core IDs address dense active slots; zero denotes nonmembership.
+     * @param {import("../../scales/scaleResolution.js").default} resolution
+     */
+    #updateCategoricalTexture(resolution) {
+        const scale = resolution.getScale();
+        const previous = this.#categoricalTextures.get(resolution);
+        if (!isDiscrete(scale.type)) {
+            if (previous) this.glHelper.gl.deleteTexture(previous);
+            this.#categoricalTextures.delete(resolution);
+            return;
+        }
+        const indexer =
+            /** @type {ReturnType<import("../../utils/indexer.js").default>} */ (
+                /** @type {any} */ (scale.props).domainIndexer
+            );
+        const ids = scale.domain().map((value) => indexer(value));
+        const count = ids.reduce((max, id) => Math.max(max, id + 1), 1);
+        const gl = this.glHelper.gl;
+        const maxSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+        const width = Math.min(count, maxSize);
+        const height = Math.ceil(count / width);
+        if (height > maxSize)
+            throw new Error(
+                "Too many categorical IDs for a WebGL domain texture."
+            );
+        const data = new Uint32Array(width * height);
+        ids.forEach((id, slot) => {
+            data[id] = slot + 1;
+        });
+
+        const texture = previous ?? gl.createTexture();
+        this.#uploadIntegerTexture(
+            texture,
+            data,
+            width,
+            height,
+            gl.R32UI,
+            gl.RED_INTEGER
+        );
+        this.#categoricalTextures.set(resolution, texture);
+    }
+
     /** @param {import("../../scales/scaleResolution.js").default} resolution */
     getGapTexture(resolution) {
         const cuts =
@@ -90,6 +141,35 @@ export default class WebGLRendererResources {
             data[2 * i + 1] = cuts[i] % 4096;
         }
         const texture = previous?.texture ?? gl.createTexture();
+        this.#uploadIntegerTexture(
+            texture,
+            data,
+            width,
+            height,
+            gl.RG32UI,
+            gl.RG_INTEGER
+        );
+        this.#gapTextures.set(resolution, { cuts, texture });
+        return texture;
+    }
+
+    /**
+     * @param {WebGLTexture} texture
+     * @param {Uint32Array} data
+     * @param {number} width
+     * @param {number} height
+     * @param {number} internalFormat
+     * @param {number} format
+     */
+    #uploadIntegerTexture(
+        texture,
+        data,
+        width,
+        height,
+        internalFormat,
+        format
+    ) {
+        const gl = this.glHelper.gl;
         // Lazy uploads must preserve samplers already bound for another axis.
         const boundTexture = gl.getParameter(gl.TEXTURE_BINDING_2D);
         gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -100,17 +180,15 @@ export default class WebGLRendererResources {
         gl.texImage2D(
             gl.TEXTURE_2D,
             0,
-            gl.RG32UI,
+            internalFormat,
             width,
             height,
             0,
-            gl.RG_INTEGER,
+            format,
             gl.UNSIGNED_INT,
             data
         );
         gl.bindTexture(gl.TEXTURE_2D, boundTexture);
-        this.#gapTextures.set(resolution, { cuts, texture });
-        return texture;
     }
 
     /** @param {import("./gl/webGLHelper.js").default} glHelper */
@@ -416,11 +494,13 @@ export default class WebGLRendererResources {
             }
 
             this.glHelper.createRangeTexture(resolution);
+            this.#updateCategoricalTexture(resolution);
             this.#scaleResolutionRefs.set(resolution, {
                 count: 1,
                 dispose: resolution.observeMapping(() => {
                     this.#releaseDisabledGapTexture(resolution);
                     this.glHelper.createRangeTexture(resolution, true);
+                    this.#updateCategoricalTexture(resolution);
                 }),
             });
         }
@@ -451,6 +531,9 @@ export default class WebGLRendererResources {
                 const gaps = this.#gapTextures.get(resolution);
                 if (gaps) this.glHelper.gl.deleteTexture(gaps.texture);
                 this.#gapTextures.delete(resolution);
+                const categorical = this.#categoricalTextures.get(resolution);
+                if (categorical) this.glHelper.gl.deleteTexture(categorical);
+                this.#categoricalTextures.delete(resolution);
             }
         }
         entry.scaleResolutions.clear();

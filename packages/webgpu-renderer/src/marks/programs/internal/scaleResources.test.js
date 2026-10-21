@@ -110,6 +110,12 @@ describe("ScaleResourceManager", () => {
         manager.initializeScale("x", channels.x, channels.x.scale);
         const updater = manager.getScaleUpdater("x");
 
+        // Domain publication follows initialization; [] publishes empty membership.
+        expect(uniforms.get(DOMAIN_MAP_COUNT_PREFIX + "x")).toBe(-1);
+        updater.updateDomain([]);
+        expect(uniforms.get(DOMAIN_MAP_COUNT_PREFIX + "x")).toBe(0);
+        expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([0, 0]);
+
         const needsRebind = updater.updateDomain([
             10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
         ]);

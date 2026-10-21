@@ -1105,34 +1105,31 @@ test("scaleBand matches d3 at alignment extremes and fractional band positions",
     }
 });
 
-test("scaleBand ignores inner padding for a singleton domain by design", async ({
+test("scaleBand preserves singleton padding and alignment like Vega", async ({
     page,
 }) => {
     await ensureWebGPU(page);
 
     const input = [5];
     const range = [0, 100];
-    const paddingOuter = 0.2;
-    const align = 0.75;
-    const band = 0.5;
-    const reference = scaleBand()
-        .domain(["5"])
-        .range(range)
-        .paddingInner(0)
-        .paddingOuter(paddingOuter)
-        .align(align);
-    const result = await runBandScaleCompute(page, {
-        shaderCode: buildBandComputeShader(input.length),
-        input,
-        domain: [5, 6],
-        range,
-        paddingInner: 0.8,
-        paddingOuter,
-        align,
-        band,
-    });
+    // Vega retains inner padding and accepts positive band space below one.
+    const cases = [
+        { paddingInner: 0.3, paddingOuter: 0.3, expected: 40.76923076923077 },
+        { paddingInner: 0.3, paddingOuter: 0, expected: 50 },
+        { paddingInner: 1, paddingOuter: 0.3, expected: 30 },
+    ];
+    for (const { expected, ...padding } of cases) {
+        const result = await runBandScaleCompute(page, {
+            shaderCode: buildBandComputeShader(input.length),
+            input,
+            domain: [5, 6],
+            range,
+            ...padding,
+            align: 0.3,
+            band: 0.5,
+        });
 
-    const expected = (reference("5") ?? 0) + reference.bandwidth() * band;
-    expect(result).toHaveLength(1);
-    expect(result[0]).toBeCloseTo(expected, 5);
+        expect(result).toHaveLength(1);
+        expect(result[0]).toBeCloseTo(expected, 5);
+    }
 });

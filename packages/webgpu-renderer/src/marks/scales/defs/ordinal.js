@@ -64,17 +64,17 @@ function emitOrdinalScale({
 
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
     if (domainMapName) {
+        const missing =
+            outputComponents === 1 && outputScalarType === "f32"
+                ? "bitcast<f32>(raw | 0x7fc00000u)"
+                : zero;
         return `${makeFnHeader(name, returnType, functionName)} {
     let raw = ${valueExpr};
-    let mapCount = u32(params.${mapCountName});
-    if (mapCount == 0u) {
-        let count = u32(params.${RANGE_COUNT_PREFIX}${name});
-        if (count == 0u) { return ${zero}; }
-        let slot = raw % count;
-        return readRange_${name}(slot);
+    var idx = raw;
+    if (params.${mapCountName} >= 0.0) {
+        idx = ${hashLookupFunctionName(domainMapName)}(raw, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
+        if (idx == HASH_NOT_FOUND) { return ${missing}; }
     }
-    let idx = ${hashLookupFunctionName(domainMapName)}(raw, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
-    if (idx == HASH_NOT_FOUND) { return ${zero}; }
     let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }
     let slot = idx % count;
