@@ -108,7 +108,7 @@ parent table. Give categorical mode an explicit structural ordering input:
   "height": "height",
   "leaf": "sample",
   "siblingOrder": "childOrder",
-  "param": { "name": "sampleOrder", "owner": "clusteredHeatmap" }
+  "param": { "name": "sampleOrder", "push": "outer" }
 }
 ```
 
@@ -155,12 +155,12 @@ shared output, explicitly reserve a read-only output slot at the ancestor owner:
 }
 ```
 
-The transform's object-form `param` binds that existing slot. Here
-`clusteredHeatmap` is the authored `name` of the common surround containing the
-matrix and both tree views. Limit resolution to the producer's ancestry and
-existing import/name scope. Reject missing or ambiguous owners, undeclared slots,
-unrelated views, duplicate producers, and collisions with ordinary parameters.
-Implicit title or side-group wrappers must not change the requested owner.
+The transform's object-form `param` uses existing `push: "outer"` parameter
+scoping to bind the nearest ancestor declaration with the same name. The target
+must be a read-only output slot; reject missing targets, ordinary writable or
+derived parameters, duplicate producers, and collisions with ordinary parameters.
+No view name is needed for publication. Implicit title or side-group wrappers
+must not change lexical lookup, and a nearer declaration shadows farther ones.
 
 These are output declarations, not writable variable parameters. They reserve
 #575's `FlowOutput`, initially unready with an empty array, and accept no `value`,
@@ -190,7 +190,7 @@ arrays. Prefer this small, predictable contract over refactoring view constructi
 into a global declaration phase that must resolve all descendant imports first.
 
 Keep existing local string declarations compatible. If #575 has not acquired
-ancestor ownership when this branch is implemented, implement that capability
+output pushing when this branch is implemented, implement that capability
 first using its shared primitives; do not substitute a dendrogram-specific
 registry. Coordinate generic changes with the lower PR when practical.
 
@@ -347,7 +347,7 @@ not add arbitrary callbacks to every transform. No new global registry is needed
 
 Verification: a small real spec with two `values` publishers drives both band
 domains without clustering. Cover owner/center expressions that bind before side
-construction, declaration order, imports/wrappers, owner-name validation,
+construction, declaration order, imports/wrappers, nearest-ancestor lookup,
 undeclared/unbound slots, shadowing, duplicate writers, and read-only embedding/App
 access. Cover initially empty domains, source/domain arrival order, cached replay,
 required hidden producers without initializing unrelated hidden siblings, dataset
@@ -355,12 +355,12 @@ replacement on the same producer, rejection of structural producer removal or
 replacement, owner disposal, and direct/indirect feedback rejection. Reuse existing
 publication tests instead of duplicating their complete failure matrix.
 
-Docs/migration: extend output/`values` documentation with explicit ancestor targets
+Docs/migration: extend output/`values` documentation with output pushing
 and lifecycle limits using `write-genomespy-docs`; preserve string syntax. Coordinate
 shared changes with #575. Use `write-genomespy-changeset` for the cumulative release
 impact, keeping the lower branch's fragment separate from this feature's note.
 
-Tentative commit: `feat(core): support ancestor-owned transform outputs`
+Tentative commit: `feat(core): support pushing transform outputs to ancestor scopes`
 
 Review gate: shared public ownership contract, declaration/binding timing, hidden
 producer flow ownership, and downstream scale/App parameter consumers.
@@ -448,7 +448,7 @@ composition, initialization/disposal, and both new and existing examples.
       retained for draft review. Do not retire the lower branch's plan here.
 
 The first review must settle the names/shape of the read-only owner slots,
-ancestor target, and structural ordering input. Their semantics above are required;
+output-pushing form, and structural ordering input. Their semantics above are required;
 API spelling can change without reviving manual-domain boilerplate. Clustering
 implementation remains outside this plan, with the tree/output boundary available
 for that later increment.
