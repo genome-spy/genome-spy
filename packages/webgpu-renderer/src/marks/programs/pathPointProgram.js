@@ -236,7 +236,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     if (in.gradientStrength > 0.0) {
         let gradient = max(distance, 0.0) * in.gradientStrength /
             max(in.deviceRadius, 0.0001);
-        fillColor = mix(fillColor, vec4<f32>(1.0), gradient);
+        fillColor = mix(fillColor, vec4<f32>(vec3<f32>(1.0), fillColor.a), gradient);
     }
     fillColor = premultiplyAlpha(fillColor);
     strokeColor = premultiplyAlpha(strokeColor);

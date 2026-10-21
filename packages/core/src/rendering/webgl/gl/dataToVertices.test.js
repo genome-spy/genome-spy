@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import createIndexer from "../../../utils/indexer.js";
 import {
     LinkVertexBuilder,
     PointVertexBuilder,
@@ -37,6 +38,27 @@ function makeEncoder(field, buildIndex = false) {
 }
 
 describe("Vertex builders", () => {
+    test("categorical attributes preserve IDs beyond the 16-bit boundary", () => {
+        // Stable IDs can outgrow the active domain after repeated replacement.
+        const indexer = createIndexer();
+        indexer.addAll(Array.from({ length: 65537 }, (_, i) => "category" + i));
+        const encoder = makeEncoder("category");
+        encoder.scale = { type: "band", props: { domainIndexer: indexer } };
+        const builder = new PointVertexBuilder({
+            encoders: { x: encoder },
+            attributes: ["x"],
+            numItems: 2,
+        });
+        builder.addBatch(null, [
+            { category: "category0" },
+            { category: "category65536" },
+        ]);
+
+        expect(Array.from(builder.toArrays().arrays.attr_x.data)).toEqual([
+            0, 65536,
+        ]);
+    });
+
     test("RectVertexBuilder builds x-indexes from generated vertex buffers", () => {
         const builder = new RectVertexBuilder({
             encoders: {

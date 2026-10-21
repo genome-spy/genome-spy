@@ -104,7 +104,7 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
 
 		fragColor = distanceToColor(
 			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),

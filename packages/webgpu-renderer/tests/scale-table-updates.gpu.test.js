@@ -30,7 +30,7 @@ test("independent categorical scales keep rendering and picking after table relo
                 x: {
                     data: new Uint32Array([10, 42]),
                     type: "u32",
-                    scale: ordinalScale({ domain: [10, 42], range: [30, 90] }),
+                    scale: ordinalScale({ domain: [], range: [30, 90] }),
                 },
                 y: { value: 50, scale: identityScale() },
                 size: { value: 100, scale: identityScale() },
@@ -48,6 +48,12 @@ test("independent categorical scales keep rendering and picking after table relo
             },
         });
         const draw = () => renderer.render({ draws: [{ mark }] });
+        draw();
+        const initiallyEmpty = await Promise.all([
+            renderer.pick(30, 50),
+            renderer.pick(90, 50),
+        ]);
+        mark.scales.x.setDomain([10, 42]);
         draw();
         const before = await Promise.all([
             renderer.pick(30, 50),
@@ -76,13 +82,101 @@ test("independent categorical scales keep rendering and picking after table relo
             renderer.pick(50, 50),
             renderer.pick(110, 50),
         ]);
+        mark.scales.x.setDomain([]);
+        draw();
+        const empty = await Promise.all([
+            renderer.pick(50, 50),
+            renderer.pick(110, 50),
+        ]);
+        mark.scales.x.setDomain([10]);
+        draw();
+        const removed = await Promise.all([
+            renderer.pick(50, 50),
+            renderer.pick(110, 50),
+        ]);
+        mark.scales.x.setDomain([42, 10]);
+        draw();
+        const restored = await Promise.all([
+            renderer.pick(50, 50),
+            renderer.pick(110, 50),
+        ]);
         renderer.destroy();
         canvas.remove();
-        return { before, relocated, updated };
+        return {
+            initiallyEmpty,
+            before,
+            relocated,
+            updated,
+            empty,
+            removed,
+            restored,
+        };
     });
     expect(result).toEqual({
+        initiallyEmpty: [null, null],
         before: [17, 29],
         relocated: [29, 17],
         updated: [null, 29, 17],
+        empty: [null, null],
+        removed: [17, null],
+        restored: [29, 17],
     });
+});
+
+test("band membership stays empty until supplied and remains dense after removal", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { pointMark },
+            { bandScale },
+            { identityScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/point.js"),
+            import("/src/scales/band.js"),
+            import("/src/scales/identity.js"),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 160;
+        canvas.height = 100;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 160, height: 100, dpr: 1 });
+        const mark = renderer.createMark(pointMark, {
+            channels: {
+                uniqueId: { data: new Uint32Array([17, 29]), type: "u32" },
+                x: {
+                    data: new Uint32Array([10, 42]),
+                    type: "u32",
+                    scale: bandScale({ domain: [], range: [0, 160] }),
+                },
+                y: { value: 50, scale: identityScale() },
+                size: { value: 100, scale: identityScale() },
+                fill: { value: [0, 0, 1, 1] },
+            },
+        });
+        const snapshots = [];
+        for (const domain of [[], [42, 10], [10], [10, 42], []]) {
+            mark.scales.x.setDomain(domain);
+            renderer.render({ draws: [{ mark }] });
+            snapshots.push(
+                await Promise.all(
+                    [40, 80, 120].map((x) => renderer.pick(x, 50))
+                )
+            );
+        }
+        renderer.destroy();
+        canvas.remove();
+        return snapshots;
+    });
+    expect(result).toEqual([
+        [null, null, null],
+        [29, null, 17],
+        [null, 17, null],
+        [17, null, 29],
+        [null, null, null],
+    ]);
 });

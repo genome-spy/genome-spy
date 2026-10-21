@@ -147,8 +147,8 @@ void main(void) {
 
     vHalfStrokeWidth = strokeWidth / 2.0;
 
-    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
-    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
+    vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
+    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
 
     setupPicking();
 }

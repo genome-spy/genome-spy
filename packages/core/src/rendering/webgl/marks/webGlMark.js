@@ -25,6 +25,7 @@ import {
     PARAM_PREFIX,
     RANGE_PREFIX,
     RANGE_TEXTURE_PREFIX,
+    DOMAIN_TEXTURE_PREFIX,
     SELECTION_EMPTY_PREFIX,
     SELECTION_MEMBERSHIP_PREFIX,
     splitLargeHighPrecision,
@@ -586,12 +587,11 @@ export default class WebGLMark {
                  *
                  * @type {function(import("../../../spec/channel.js").Scalar):(number | number[])}
                  */
-                const adjuster =
-                    discrete && "domain" in scale
-                        ? (d) => scale.domain().indexOf(d)
-                        : largeHp
-                          ? splitLargeHighPrecision
-                          : (d) => +d;
+                const adjuster = discrete
+                    ? /** @type {any} */ (scale.props).domainIndexer
+                    : largeHp
+                      ? splitLargeHighPrecision
+                      : (d) => +d;
 
                 this.#callAfterShaderCompilation.push(() => {
                     this.registerMarkUniformValue(
@@ -1171,6 +1171,25 @@ export default class WebGLMark {
         });
 
         for (const [channel, encoder] of Object.entries(this.encoders)) {
+            if (encoder.scale && isDiscrete(encoder.scale.type)) {
+                const channelDef = findChannelDefWithScale(encoder.channelDef);
+                const resolutionChannel =
+                    channelDef.resolutionChannel ?? channel;
+                if (!isChannelWithScale(resolutionChannel))
+                    throw new Error(
+                        "Categorical encoding requires a scale channel."
+                    );
+                const resolution =
+                    this.unitView.getScaleResolution(resolutionChannel);
+                ops.push(() =>
+                    setUniforms(this.programInfo, {
+                        [DOMAIN_TEXTURE_PREFIX + channel]:
+                            this.rendererResources.getCategoricalTexture(
+                                resolution
+                            ),
+                    })
+                );
+            }
             if (
                 (channel === "x" || channel === "y") &&
                 encoder.scale &&

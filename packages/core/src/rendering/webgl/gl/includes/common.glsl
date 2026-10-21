@@ -94,6 +94,13 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
+/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
+vec4 premultiplyColor(vec3 rgb, float opacity) {
+    return all(equal(rgb, vec3(-1.0)))
+        ? vec4(0.0)
+        : vec4(rgb * opacity, opacity);
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */

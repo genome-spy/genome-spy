@@ -126,61 +126,104 @@ test("PathPoint keeps inward strokes inside the nominal shape", async ({
     expect(result.inward.outer.slice(0, 3)).toEqual([255, 255, 255]);
 });
 
-test("PathPoint applies the configured fill gradient", async ({ page }) => {
-    await ensureWebGPU(page);
+for (const shape of ["circle", "square"]) {
+    test(`${shape} point gradients preserve fill opacity and missing paint`, async ({
+        page,
+    }) => {
+        await ensureWebGPU(page);
 
-    const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pointMark }, { identityScale }] =
-            await Promise.all([
+        const result = await page.evaluate(async (shape) => {
+            const [
+                { createRenderer },
+                { pointMark },
+                { identityScale },
+                { ordinalScale },
+            ] = await Promise.all([
                 import("/src/index.js"),
                 import("/src/marks/point.js"),
                 import("/src/scales/identity.js"),
+                import("/src/scales/ordinal.js"),
             ]);
-        const dpr = 2;
-        const canvas = document.createElement("canvas");
-        canvas.width = 64 * dpr;
-        canvas.height = 64 * dpr;
-        document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas);
-        renderer.updateGlobals({ width: 64, height: 64, dpr });
-        const mark = renderer.createMark(pointMark, {
-            shape: "square",
-            channels: {
-                x: { value: 32, scale: identityScale() },
-                y: { value: 32, scale: identityScale() },
-                size: { value: 400 },
-                fill: { value: [0.2, 0.4, 0.8, 1] },
-                strokeOpacity: { value: 0 },
-                gradientStrength: { value: 1 },
-            },
-        });
-        renderer.render({ draws: [{ mark }] });
-        await renderer.device.queue.onSubmittedWorkDone();
-        const bitmap = await createImageBitmap(
-            await (await fetch(canvas.toDataURL("image/png"))).blob()
-        );
-        const copy = new OffscreenCanvas(canvas.width, canvas.height);
-        const context = copy.getContext("2d");
-        context.drawImage(bitmap, 0, 0);
-        const pixels = context.getImageData(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        ).data;
-        const sample = (x) => {
-            const offset = (32 * dpr * canvas.width + x * dpr) * 4;
-            return Array.from(pixels.slice(offset, offset + 4));
-        };
-        const samples = { center: sample(32), edge: sample(40) };
-        renderer.destroy();
-        canvas.remove();
-        return samples;
-    });
+            const dpr = 2;
+            const canvas = document.createElement("canvas");
+            canvas.width = 64 * dpr;
+            canvas.height = 64 * dpr;
+            document.body.appendChild(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width: 64, height: 64, dpr });
+            const mark = renderer.createMark(pointMark, {
+                shape,
+                channels: {
+                    x: { value: 32, scale: identityScale() },
+                    y: { value: 32, scale: identityScale() },
+                    size: { value: 400 },
+                    fill: {
+                        data: new Uint32Array([7]),
+                        type: "u32",
+                        scale: ordinalScale({
+                            domain: [7],
+                            range: [[0.2, 0.4, 0.8, 1]],
+                        }),
+                    },
+                    fillOpacity: { value: 1, dynamic: true },
+                    strokeOpacity: { value: 0 },
+                    gradientStrength: { value: 1 },
+                },
+            });
+            const samples = [];
+            // Both analytic circles and atlas paths must keep absent paint absent.
+            for (const { opacity, domain } of [
+                { opacity: 1, domain: [7] },
+                { opacity: 0.5, domain: [7] },
+                { opacity: 1, domain: [] },
+            ]) {
+                mark.values.fillOpacity.set(opacity);
+                mark.scales.fill.setDomain(domain);
+                renderer.render({
+                    draws: [{ mark }],
+                    clearColor: { r: 0, g: 0, b: 0, a: 0 },
+                });
+                await renderer.device.queue.onSubmittedWorkDone();
+                const bitmap = await createImageBitmap(
+                    await (await fetch(canvas.toDataURL("image/png"))).blob()
+                );
+                const copy = new OffscreenCanvas(canvas.width, canvas.height);
+                const context = copy.getContext("2d");
+                context.drawImage(bitmap, 0, 0);
+                const pixels = context.getImageData(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                ).data;
+                const sample = (x) => {
+                    const offset = (32 * dpr * canvas.width + x * dpr) * 4;
+                    return Array.from(pixels.slice(offset, offset + 4));
+                };
+                samples.push({
+                    center: sample(32),
+                    edge: sample(40),
+                    visible: pixels.some(
+                        (value, index) => index % 4 === 3 && value > 0
+                    ),
+                });
+                bitmap.close();
+            }
+            renderer.destroy();
+            canvas.remove();
+            return samples;
+        }, shape);
 
-    expect(result.center.slice(0, 3).every((value) => value > 240)).toBe(true);
-    expect(result.edge[2]).toBeGreaterThan(result.edge[0] + 80);
-});
+        expect(result[0].center.slice(0, 3).every((value) => value > 235)).toBe(
+            true
+        );
+        expect(result[0].edge[2]).toBeGreaterThan(result[0].edge[0] + 80);
+        expect(result[0].center[3]).toBe(255);
+        expect(result[1].center[3]).toBeCloseTo(128, 0);
+        expect(result[1].edge[3]).toBeCloseTo(128, 0);
+        expect(result[2].visible).toBe(false);
+    });
+}
 
 test("PathPoint ignores stroke color when stroke width is zero", async ({
     page,

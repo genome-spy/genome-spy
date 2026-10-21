@@ -124,7 +124,7 @@ void main(void) {
 
     gl_Position = unitToNdc(p);
 
-    vColor = vec4(getScaled_color() * opacity, opacity);
+    vColor = premultiplyColor(getScaled_color(), opacity);
     vSize = size;
     vNormalLengthInPixels = side * (size + aaPadding);
 

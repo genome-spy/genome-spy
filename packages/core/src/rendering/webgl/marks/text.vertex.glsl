@@ -238,7 +238,7 @@ void main(void) {
     vec3 color = getScaled_color();
 
     // Premultiply alpha
-    vColor = vec4(color * opacity, opacity);
+    vColor = premultiplyColor(color, opacity);
 
     // Do something like gamma correction for text when the color is close to black or white.
     vGamma = getGammaForColor(color);
