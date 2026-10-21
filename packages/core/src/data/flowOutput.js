@@ -4,6 +4,12 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
 
 /** A producer-owned value, independent of the rows flowing through its node. */
 export default class FlowOutput {
+    /** @type {import("../view/view.js").default | undefined} */
+    owner;
+
+    /** @type {import("../view/view.js").default | undefined} */
+    producerView;
+
     /** @type {import("./flowNode.js").default | undefined} */
     producer;
 
@@ -36,6 +42,21 @@ export default class FlowOutput {
         if (!shallowArrayEquals(this.value.get(), this.candidate))
             this.value.set(this.candidate);
     }
+}
+
+/** @param {import("../view/view.js").default} root */
+export function validateFlowOutputs(root) {
+    root.visit((view) => {
+        for (const output of view.paramRuntime.outputs) {
+            if (!output.producerView) {
+                throw new Error(
+                    "Output parameter has no producer in view " +
+                        view.name +
+                        "."
+                );
+            }
+        }
+    });
 }
 
 /**

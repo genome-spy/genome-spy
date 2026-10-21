@@ -668,4 +668,13 @@ export type RulerInitMapping = Partial<
     Record<PrimaryPositionalChannel, RulerChannelValue>
 >;
 
-export type Parameter = VariableParameter | SelectionParameter | RulerParameter;
+/** Reserves a read-only array published by one descendant transform. */
+export interface OutputParameter extends ParameterBase {
+    output: true;
+    value?: never;
+    push?: never;
+    persist?: never;
+}
+
+export type Parameter =
+    VariableParameter | SelectionParameter | RulerParameter | OutputParameter;

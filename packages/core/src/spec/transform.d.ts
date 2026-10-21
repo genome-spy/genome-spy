@@ -780,6 +780,9 @@ export interface CoverageParams extends TransformParamsBase {
     asEnd?: string;
 }
 
+/** A local output name, or a push to a declared ancestor output. */
+export type TransformOutput = string | { name: string; push: "outer" };
+
 /** Projects a completed row stream into a read-only parameter array. */
 export interface ValuesParams extends TransformParamsBase {
     type: "values";
@@ -787,8 +790,11 @@ export interface ValuesParams extends TransformParamsBase {
     /** Field whose scalar values form the output array, preserving order and duplicates. */
     field: Field;
 
-    /** Declares the output parameter in this view's scope. Starts with an empty array. */
-    param: string;
+    /**
+     * Declares a local output, or pushes to the nearest ancestor's same-named
+     * read-only output declaration. Outputs start with an empty array.
+     */
+    param: TransformOutput;
 }
 
 /** Forks the current input while the main pipeline continues unchanged. */

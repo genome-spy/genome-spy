@@ -104,6 +104,9 @@ export default class View {
     /** @type {NamedDataScope} */
     namedDataScope;
 
+    /** @type {Set<import("../data/flowOutput.js").default>} */
+    flowOutputs = new Set();
+
     /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
     #configScopes;
 
@@ -282,9 +285,20 @@ export default class View {
             );
         }
 
+        for (const param of spec.params ?? []) {
+            if ("output" in param) this.paramRuntime.registerParam(param);
+        }
+
         for (const output of getOutputDeclarations(spec.transform ?? [])) {
             try {
-                this.paramRuntime.registerOutput(output.param);
+                if (typeof output.param === "string") {
+                    this.paramRuntime.registerOutput(output.param);
+                }
+                const handle = this.paramRuntime.resolveOutput(output.param);
+                if (handle.producerView)
+                    throw new Error("Duplicate transform output producer.");
+                handle.producerView = this;
+                this.flowOutputs.add(handle);
             } catch (error) {
                 throw annotateSpecError(
                     error,
@@ -309,6 +323,7 @@ export default class View {
         }
 
         for (const param of params) {
+            if ("output" in param) continue;
             // TODO: If interval selection, validate `encodings` or provides defaults
             if ("expr" in param) {
                 const { usesScaleHelper, globals } = analyzeExpression(
@@ -1188,6 +1203,17 @@ export default class View {
      * Dispose owned scales before releasing views in post-order.
      */
     disposeSubtree() {
+        const subtree = new Set(this.getDescendants());
+        for (const view of subtree) {
+            for (const output of view.flowOutputs) {
+                if (output.owner && !subtree.has(output.owner)) {
+                    throw new Error(
+                        "Cannot remove a shared output producer while its owner survives."
+                    );
+                }
+            }
+        }
+
         /** @type {Visitor} */
         const visitor = (view) => {
             // Member removal must not reconfigure scales that are being torn down.

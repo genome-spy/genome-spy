@@ -11,9 +11,18 @@ SCHEMA ValuesParams
 
 ## Output parameters
 
-`param` declares a read-only parameter in the owning view's scope. Do not also
-declare it in `params`. Descendant views can read the output in expressions;
-ancestors and sibling views need the producer at their common ancestor.
+A string `param` declares a read-only parameter in the owning view's scope.
+Do not also declare that local output in `params`. Descendant views can read
+the output in expressions.
+
+To share a child transform's output with its ancestors and siblings, declare
+`{ "name": "categories", "output": true }` in the common ancestor's `params`
+and use `"param": { "name": "categories", "push": "outer" }` on the transform.
+This binds the nearest ancestor declaration with that name. The target must
+be a read-only output, with exactly one producer. It is available to expressions
+before the child is constructed, and its producer remains active when the
+child's presentation is hidden. Replace the producer's data to update the output;
+removing the producer requires disposing its owning composition as well.
 
 The output starts as an immutable `[]`. Each successfully completed input
 publishes an immutable array in input order, including duplicates. An empty

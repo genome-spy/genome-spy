@@ -271,7 +271,13 @@ export default class ViewParamRuntime {
      */
     registerOutput(name) {
         validateParameterName(name);
+        if (this.#paramConfigs.has(name)) {
+            throw new Error(
+                'Parameter "' + name + '" already registered in this scope.'
+            );
+        }
         const output = new FlowOutput(this, name);
+        output.owner = this.#selectionSource;
         const ref = this.computed(name, [output.value], () =>
             output.value.get()
         );
@@ -288,6 +294,27 @@ export default class ViewParamRuntime {
         if (!output)
             throw new Error('Output parameter "' + name + '" is not declared.');
         return output;
+    }
+
+    /** @param {import("../spec/transform.js").TransformOutput} target */
+    resolveOutput(target) {
+        if (typeof target === "string") return this.getOutput(target);
+        if (target.push !== "outer") {
+            throw new Error('Transform output pushing requires push: "outer".');
+        }
+        const ancestor = this.#parentFinder()?.findRuntimeForParam(target.name);
+        if (!ancestor) {
+            throw new Error(
+                'Output parameter "' +
+                    target.name +
+                    '" not found in outer scope.'
+            );
+        }
+        return ancestor.getOutput(target.name);
+    }
+
+    get outputs() {
+        return this.#outputs.values();
     }
 
     /** @param {string} name */
@@ -323,6 +350,25 @@ export default class ViewParamRuntime {
                 ),
                 this.getSpecLocation(param, ["name"])
             );
+        }
+
+        if ("output" in param) {
+            if (
+                param.output !== true ||
+                Object.keys(param).some(
+                    (key) => !["name", "description", "output"].includes(key)
+                )
+            ) {
+                throw new Error(
+                    'Output parameter "' +
+                        name +
+                        '" accepts only name, description, and output: true.'
+                );
+            }
+            this.registerOutput(name);
+            return () => {
+                throw new Error('Cannot set output parameter "' + name + '".');
+            };
         }
 
         validateParameterShape(param);
@@ -402,7 +448,7 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * @param {Parameter} param
+     * @param {Exclude<Parameter, import("../spec/parameter.js").OutputParameter>} param
      * @returns {ParameterSetter}
      */
     #registerParamValue(param) {
@@ -1239,7 +1285,7 @@ function getParamKind(config) {
 }
 
 /**
- * @param {import("../spec/parameter.js").Parameter} param
+ * @param {Exclude<import("../spec/parameter.js").Parameter, import("../spec/parameter.js").OutputParameter>} param
  */
 function validateParameterShape(param) {
     const name = param.name;

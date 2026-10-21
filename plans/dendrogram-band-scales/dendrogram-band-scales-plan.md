@@ -1,6 +1,6 @@
 # Dendrograms on categorical band scales
 
-Status: proposed; implementation has not started. This branch is stacked on
+Status: implementation underway; milestone 1 is complete. This branch is stacked on
 `codex/transform-value-outputs` ([PR #575](https://github.com/genome-spy/genome-spy/pull/575)).
 
 ## Goal and dependency
@@ -333,6 +333,10 @@ Retain the existing DepMap index example for zoom, pan, and group gaps.
 ## Implementation milestones
 
 ### 1. Resolve reusable output ownership and categorical-domain consumption
+
+Completed: output slots, `push: "outer"`, selective hidden producer initialization,
+read-only access, feedback guards, and disposal boundaries are implemented.
+Focused publication/parameter/initialization tests and workspace type checks pass.
 
 Outcome: two ordinary eager producers in side views can bind read-only outputs
 reserved at their common scale owner, independently of title wrappers and
