@@ -200,20 +200,12 @@ describe("C. elegans genome, chromosome names prefixed with 'chr'", () => {
 
 describe("Load chrom.sizes file from a URL", () => {
     const fetchSpy = vi.spyOn(global, "fetch");
-    fetchSpy.mockImplementation((/** @type {string} */ url) => {
+    fetchSpy.mockImplementation((url) => {
         if (url !== "http://example.com/chrom.sizes") {
             throw new Error(`Unexpected URL: ${url}`);
         }
         return Promise.resolve(
-            // @ts-expect-error
-            {
-                text() {
-                    return Promise.resolve(
-                        "chr1\t1000\nchr2\t2000\nchr3\t3000\nchrX\t4000"
-                    );
-                },
-                ok: true,
-            }
+            new Response("chr1\t1000\nchr2\t2000\nchr3\t3000\nchrX\t4000")
         );
     });
 

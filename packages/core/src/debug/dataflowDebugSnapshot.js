@@ -138,7 +138,9 @@ function visitFlowNode(
  * @returns {WeakMap<object, import("../view/view.js").default>}
  */
 function createFlowNodeViewLookup(root) {
+    /** @type {WeakMap<object, import("../view/view.js").default>} */
     const lookup = new WeakMap();
+
     if (!root) {
         return lookup;
     }

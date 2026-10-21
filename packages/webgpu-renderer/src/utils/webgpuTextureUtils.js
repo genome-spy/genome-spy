@@ -69,10 +69,10 @@ export function writeTextureData(device, texture, textureData) {
  * Mark an ArrayBuffer-backed view as safe for a WebGPU upload.
  *
  * @param {ArrayBufferView} data
- * @returns {GPUAllowSharedBufferSource}
+ * @returns {AllowSharedBufferSource}
  */
 export function asGpuBufferSource(data) {
-    return /** @type {GPUAllowSharedBufferSource} */ (
+    return /** @type {AllowSharedBufferSource} */ (
         /** @type {unknown} */ (data)
     );
 }

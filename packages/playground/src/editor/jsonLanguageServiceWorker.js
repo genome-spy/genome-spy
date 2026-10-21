@@ -1,5 +1,3 @@
-/// <reference lib="webworker" />
-
 /**
  * Runs JSON parsing and GenomeSpy schema queries outside the UI thread. The
  * language service implements JSON Schema behavior that CodeMirror does not
@@ -39,9 +37,11 @@ languageService.configure({
     ],
 });
 
-const workerScope = /** @type {DedicatedWorkerGlobalScope} */ (
-    /** @type {unknown} */ (self)
-);
+// Only the messaging surface is needed; mixing DOM and worker globals conflicts.
+const workerScope =
+    /** @type {Pick<MessagePort, "addEventListener" | "postMessage">} */ (
+        /** @type {unknown} */ (self)
+    );
 
 /**
  * @param {string} text

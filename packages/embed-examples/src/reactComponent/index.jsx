@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import GenomeSpy from "@genome-spy/react-component";
 
 const App = () => {
-    /** @type {import("packages/core/src/spec/root.js").RootSpec} */
+    /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
     const spec = {
         datasets: {
             dynamicData: [],

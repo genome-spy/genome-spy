@@ -140,7 +140,6 @@
     "test:gpu": "playwright test -c playwright.config.js"
   },
   "dependencies": {
-    "@webgpu/types": "^0.1.68",
     "d3-color": "^3.1.0",
     "d3-interpolate": "^3.0.1"
   },

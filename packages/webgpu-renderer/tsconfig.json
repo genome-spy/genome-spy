@@ -2,9 +2,5 @@
   "extends": "../../tsconfig.json",
 
   "include": ["src/**/*", "test-types/**/*", "../../external-typings/**/*"],
-  "exclude": ["node_modules"],
-
-  "compilerOptions": {
-    "types": ["@webgpu/types"]
-  }
+  "exclude": ["node_modules"]
 }

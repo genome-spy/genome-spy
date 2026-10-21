@@ -1,5 +1,3 @@
-/// <reference types="@webgpu/types" />
-
 export type MarkType = "rect" | "point" | "rule" | "link" | "arrow" | "text";
 export type MarkId = number & { __brand: "MarkId" };
 

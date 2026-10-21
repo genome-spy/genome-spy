@@ -1,17 +1,16 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@genome-spy/app": ["packages/app/src/index.d.ts"],
-      "@genome-spy/app/*": ["packages/app/src/*"],
-      "@genome-spy/app-agent": ["packages/app-agent/src/index.d.ts"],
-      "@genome-spy/app-agent/*": ["packages/app-agent/src/*"],
-      "@genome-spy/inspector": ["packages/inspector/src/index.d.ts"],
-      "@genome-spy/inspector/*": ["packages/inspector/src/*"],
-      "@genome-spy/app/schema.json": ["packages/app/dist/schema.json"],
-      "@genome-spy/core": ["packages/core/src/index.js"],
-      "@genome-spy/core/*": ["packages/core/src/*"],
-      "@genome-spy/core/schema.json": ["packages/core/dist/schema.json"]
+      "@genome-spy/app": ["./packages/app/src/index.d.ts"],
+      "@genome-spy/app/*": ["./packages/app/src/*"],
+      "@genome-spy/app-agent": ["./packages/app-agent/src/index.d.ts"],
+      "@genome-spy/app-agent/*": ["./packages/app-agent/src/*"],
+      "@genome-spy/inspector": ["./packages/inspector/src/index.d.ts"],
+      "@genome-spy/inspector/*": ["./packages/inspector/src/*"],
+      "@genome-spy/app/schema.json": ["./packages/app/dist/schema.json"],
+      "@genome-spy/core": ["./packages/core/src/index.js"],
+      "@genome-spy/core/*": ["./packages/core/src/*"],
+      "@genome-spy/core/schema.json": ["./packages/core/dist/schema.json"]
     },
     "resolveJsonModule": true,
     "module": "nodenext",
@@ -20,6 +19,7 @@
     "checkJs": true,
     "target": "esnext",
     "lib": ["esnext", "dom", "dom.iterable"],
+    "libReplacement": true,
     "strict": false,
     "noImplicitAny": true,
     "types": [],

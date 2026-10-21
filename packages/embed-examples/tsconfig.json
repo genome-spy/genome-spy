@@ -6,9 +6,9 @@
     "types": ["node"],
     "skipLibCheck": true,
     "paths": {
-      "@genome-spy/app": ["packages/app/src/index.d.ts"],
-      "@genome-spy/app/*": ["packages/app/src/*"],
-      "@genome-spy/react-component": ["packages/react-component/src"]
+      "@genome-spy/app": ["../app/src/index.d.ts"],
+      "@genome-spy/app/*": ["../app/src/*"],
+      "@genome-spy/react-component": ["../react-component/src"]
     }
   },
   "extends": "../../tsconfig.json"
