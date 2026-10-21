@@ -127,16 +127,17 @@ scale an explicit domain `[0, 1]` and range
 the full padded row step. See [offset channels](../mark/index.md#offset-channels)
 and the [`bandstep()` helper](../expressions.md#bandstep).
 
-Zoom, pan, and resize update scale mappings without recomputing the tree.
+On index scales, zoom and pan update scale mappings without recomputing the tree.
+Resize works in both modes.
 Grouping gaps can move parents away from their children's visual midpoints;
 branches remain connected and leaves remain aligned. With multifurcations,
 separate edges may overlap on a shared trunk, so transparency and picking follow
 ordinary paint order. Point selections and tooltips identify the child edge;
-interval selections retain the link mark's endpoint semantics. Heatmap selections
-continue to use integer rows.
+index-scale interval selections retain the link mark's endpoint semantics.
+Index heatmaps continue to select integer rows; band interval brushing is unsupported.
 
-A facet contains one complete tree and can span several physical files.
-Outside facets, each input file contains one tree. Empty input or a single leaf
+Without publication, a facet contains one complete tree and can span several
+physical files. Outside facets, each input file contains one tree. Empty input or a single leaf
 produces no edges. Heights are preserved, including linkage inversions. Very
 small derived fractions near large row indices retain JavaScript's floating-point
 precision limits.

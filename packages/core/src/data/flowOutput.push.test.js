@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from "vitest";
+import { expect, onTestFinished, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { resolveScopedEmbedParam } from "../paramRuntime/embedParamApi.js";
 import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
@@ -186,4 +186,123 @@ test("outer output provenance rejects indirect flow feedback", async () => {
         expr: "sampleCount > 0",
     });
     await expect(createHeadlessEngine(spec)).rejects.toThrow(/output/i);
+});
+
+test("dynamic insertion rejects unbound output slots before attaching or loading", async () => {
+    const { view, context } = await createHeadlessEngine({
+        hconcat: [{ data: { values: [{ x: 1 }] }, mark: "point" }],
+    });
+    onTestFinished(() => view.disposeSubtree());
+    const container = /** @type {import("../view/concatView.js").default} */ (
+        view
+    );
+    const before = container.children;
+    const sources = context.dataFlow.dataSources.length;
+    await expect(
+        container.addChildSpec({
+            params: [{ name: "unbound", output: true }],
+            data: { values: [] },
+            mark: "point",
+        })
+    ).rejects.toThrow("no producer");
+    expect(container.children).toEqual(before);
+    expect(context.dataFlow.dataSources).toHaveLength(sources);
+    const valid = await container.addChildSpec({
+        params: [{ name: "order", output: true }],
+        hconcat: [
+            {
+                data: { values: [{ id: "B" }, { id: "A" }] },
+                transform: [
+                    {
+                        type: "values",
+                        field: "id",
+                        param: { name: "order", push: "outer" },
+                    },
+                ],
+                mark: "point",
+            },
+        ],
+    });
+    expect(valid.paramRuntime.getValue("order")).toEqual(["B", "A"]);
+});
+
+test.each([false, true])(
+    "dynamic publishers load independent branch endpoints, branch-only=%s",
+    async (branchOnly) => {
+        const { view } = await createHeadlessEngine({
+            ...(branchOnly ? {} : { data: { values: [{ id: "main" }] } }),
+            hconcat: [{ data: { values: [] }, mark: "point" }],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const inserted =
+            await /** @type {import("../view/concatView.js").default} */ (
+                view
+            ).addChildSpec({
+                params: [{ name: "order", output: true }],
+                hconcat: [
+                    {
+                        ...(branchOnly
+                            ? { layer: [] }
+                            : { mark: /** @type {const} */ ("point") }),
+                        transform: [
+                            {
+                                type: "branch",
+                                data: { values: [{ id: "B" }, { id: "A" }] },
+                                transform: [
+                                    {
+                                        type: "values",
+                                        field: "id",
+                                        param: { name: "order", push: "outer" },
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            });
+        expect(inserted.paramRuntime.getValue("order")).toEqual(["B", "A"]);
+        expect(inserted.paramRuntime.getOutput("order").ready).toBe(true);
+    }
+);
+
+test("an independent publisher loads while inherited main data replays without a reload", async () => {
+    const { view, context } = await createHeadlessEngine({
+        hconcat: [
+            { name: "base", data: { values: [{ id: "main" }] }, mark: "point" },
+        ],
+    });
+    onTestFinished(() => view.disposeSubtree());
+    const parent = /** @type {import("../view/concatView.js").default} */ (
+        view
+    );
+    const base = parent.children[0];
+    const load = vi.spyOn(base.flowHandle.dataSource, "load");
+    const child = await context.createOrImportView(
+        {
+            transform: [
+                {
+                    type: "branch",
+                    data: { values: [{ id: "B" }, { id: "A" }] },
+                    transform: [
+                        { type: "values", field: "id", param: "order" },
+                    ],
+                },
+            ],
+            mark: "point",
+        },
+        parent,
+        base,
+        "summary"
+    );
+    parent.appendChildView(child);
+    await initializeVisibleViewData(
+        view,
+        context.dataFlow,
+        context.textMetrics
+    );
+    expect(child.paramRuntime.getValue("order")).toEqual(["B", "A"]);
+    expect(
+        Array.from(child.flowHandle.collector.getData(), (row) => row.id)
+    ).toEqual(["main"]);
+    expect(load).not.toHaveBeenCalled();
 });

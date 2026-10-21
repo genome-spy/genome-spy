@@ -1,5 +1,6 @@
 import {
     broadcastSubtreeDataReady,
+    collectViewSubtreeDataSources,
     findAncestorDataSource,
     initializeViewSubtree,
     loadViewSubtreeData,
@@ -121,7 +122,7 @@ export async function initializeViewDataForViews(
     ) => viewsToInitializeSet.has(view);
 
     /** @type {Set<import("../data/collector.js").default>} */
-    const collectorsToRepropagate = new Set();
+    const replayRoots = new Set();
     /** @type {import("../view/view.js").default[]} */
     const viewsNeedingLoad = [];
     for (const view of viewsToInitialize) {
@@ -134,7 +135,7 @@ export async function initializeViewDataForViews(
         }
         const collector = findCompletedAncestorCollector(view);
         if (collector) {
-            collectorsToRepropagate.add(collector);
+            replayRoots.add(collector);
         } else {
             viewsNeedingLoad.push(view);
         }
@@ -152,23 +153,48 @@ export async function initializeViewDataForViews(
     await textMetrics.waitUntilReady();
     viewRoot.invalidateSizeCache();
 
-    for (const collector of collectorsToRepropagate) {
+    for (const collector of replayRoots) {
         collector.repropagate();
     }
 
-    if (viewsNeedingLoad.length) {
-        const dataSourceRoots = collectDataSourceRoots(viewsNeedingLoad);
-        await Promise.all(
-            Array.from(dataSourceRoots.entries()).map(
-                ([subtreeRoot, dataSources]) =>
-                    loadViewSubtreeData(subtreeRoot, dataSources, undefined, {
-                        // If a source is already loading, schedule a reload so new branches
-                        // added during lazy init receive a complete data propagation.
-                        queueReload: true,
-                    })
-            )
+    const sourcesToLoad = collectViewSubtreeDataSources(viewsNeedingLoad);
+    const replayPaths =
+        /** @type {ReadonlySet<import("../data/flowNode.js").default>} */ (
+            replayRoots
         );
+    // An independent branch can need loading even when its main rows replay
+    // from a completed collector. Inherited branches use that same replay.
+    for (const view of viewsToInitialize) {
+        for (const endpoint of [
+            ...(view.flowHandle?.terminals ?? []),
+            ...(view.flowHandle?.auxiliaryCollectors ?? []),
+        ]) {
+            let ancestor = endpoint;
+            while (ancestor && !replayPaths.has(ancestor))
+                ancestor = ancestor.parent;
+            if (!ancestor) {
+                const source = findAncestorDataSource(endpoint);
+                if (source) sourcesToLoad.add(source);
+            }
+        }
     }
+
+    /** @type {Map<import("../view/view.js").default, Set<import("../data/sources/dataSource.js").default>>} */
+    const dataSourceRoots = new Map();
+    for (const source of sourcesToLoad) {
+        let sources = dataSourceRoots.get(source.view);
+        if (!sources) dataSourceRoots.set(source.view, (sources = new Set()));
+        sources.add(source);
+    }
+    await Promise.all(
+        Array.from(dataSourceRoots, ([subtreeRoot, dataSources]) =>
+            loadViewSubtreeData(subtreeRoot, dataSources, undefined, {
+                // Newly attached paths need a complete publication, including
+                // when an equivalent source is already loading.
+                queueReload: true,
+            })
+        )
+    );
     broadcastSubtreeDataReady(viewRoot);
 
     return builtDataFlow;
@@ -219,48 +245,6 @@ function collectVisibleViews(viewRoot, viewFilter) {
         views.push(view);
     });
     return views;
-}
-
-/**
- * @param {import("../view/view.js").default[]} views
- * @returns {Map<import("../view/view.js").default, Set<import("../data/sources/dataSource.js").default>>}
- */
-function collectDataSourceRoots(views) {
-    /** @type {Map<import("../view/view.js").default, Set<import("../data/sources/dataSource.js").default>>} */
-    const roots = new Map();
-
-    for (const view of views) {
-        let current = view;
-        while (current && !current.flowHandle?.dataSource) {
-            current = current.dataParent;
-        }
-
-        if (!current?.flowHandle?.dataSource) {
-            if (view.spec.data) {
-                throw new Error(
-                    "No data source found for view " + view.getPathString()
-                );
-            }
-            // Some views are data-less (constants or references); they don't
-            // participate in data loading but still need graphics init.
-            continue;
-        }
-
-        let dataSources = roots.get(current);
-        if (!dataSources) {
-            dataSources = new Set();
-            roots.set(current, dataSources);
-        }
-        dataSources.add(current.flowHandle.dataSource);
-        for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
-            const dataSource = findAncestorDataSource(collector);
-            if (dataSource) {
-                dataSources.add(dataSource);
-            }
-        }
-    }
-
-    return roots;
 }
 
 /**
