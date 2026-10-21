@@ -179,32 +179,36 @@ function getFileList(specRoot, dir, urlRoot) {
 
     const relativeDir = dir.split(path.sep).join("/");
 
-    return (
-        "<ul>" +
-        fs
-            .readdirSync(joinedPath, { withFileTypes: true })
-            .filter(
-                (f) =>
-                    !/^[_.]/.test(f.name) &&
-                    !(dir === "" && hiddenSharedDirs.has(f.name)) &&
-                    (path.extname(f.name) == ".json" || f.isDirectory())
-            )
-            .map((f) =>
-                f.isDirectory()
-                    ? `<li><span>${f.name}/</span>${getFileList(
-                          specRoot,
-                          path.join(dir, f.name),
-                          urlRoot
-                      )}</li>`
-                    : `<li><a href="/?spec=${path.posix.join(
-                          urlRoot,
-                          relativeDir,
-                          f.name
-                      )}">${f.name}</a></li>`
-            )
-            .join("\n") +
-        "</ul>"
-    );
+    const items = fs
+        .readdirSync(joinedPath, { withFileTypes: true })
+        .filter(
+            (f) =>
+                !/^[_.]/.test(f.name) &&
+                !(dir === "" && hiddenSharedDirs.has(f.name)) &&
+                (path.extname(f.name) == ".json" || f.isDirectory())
+        )
+        .map((f) => {
+            if (f.isDirectory()) {
+                const children = getFileList(
+                    specRoot,
+                    path.join(dir, f.name),
+                    urlRoot
+                );
+                return children
+                    ? `<li><span>${f.name}/</span>${children}</li>`
+                    : "";
+            }
+
+            return `<li><a href="/?spec=${path.posix.join(
+                urlRoot,
+                relativeDir,
+                f.name
+            )}">${f.name}</a></li>`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+    return items ? "<ul>" + items + "</ul>" : "";
 }
 
 /**
