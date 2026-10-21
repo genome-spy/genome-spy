@@ -26,6 +26,7 @@ export default defineConfig(({ command }) => ({
         },
     },
     test: {
+        root: packageDir,
         setupFiles: ["src/testSetup.js"],
     },
     plugins: [

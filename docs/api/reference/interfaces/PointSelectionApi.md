@@ -70,7 +70,7 @@ Membership refers to the current publication; clear/reapply after updates.
 
 | Parameter | Type |
 | ------ | ------ |
-| `keys` | readonly readonly `Scalar`[][] |
+| `keys` | readonly (readonly `Scalar`[])[] |
 
 #### Returns
 

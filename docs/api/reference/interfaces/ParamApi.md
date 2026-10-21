@@ -8,7 +8,7 @@ A handle for reading, writing, and subscribing to an explicit parameter.
 
 | Type Parameter | Default type |
 | ------ | ------ |
-| `T` | [`ParamValue`](../type-aliases/ParamValue.md) |
+| <a id="type-parameter-t"></a> `T` | [`ParamValue`](../type-aliases/ParamValue.md) |
 
 ## Properties
 

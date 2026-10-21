@@ -6,10 +6,8 @@ import { fileURLToPath } from "url";
 import { createCoreDevServerPlugin } from "../../devServerRoutes.mjs";
 
 const process = globalThis.process;
-const screenshotPagePath = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "screenshot.html"
-);
+const packageDir = path.dirname(fileURLToPath(import.meta.url));
+const screenshotPagePath = path.join(packageDir, "screenshot.html");
 
 export default defineConfig({
     root: "src",
@@ -20,6 +18,7 @@ export default defineConfig({
         strictPort: true,
     },
     test: {
+        root: packageDir,
         setupFiles: ["src/testSetup.js"],
     },
     plugins: [

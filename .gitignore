@@ -35,6 +35,7 @@ build/
 dist/
 /output/
 /coverage/
+.vitest/
 /site/
 /packages/*/stats.html
 

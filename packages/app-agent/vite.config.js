@@ -12,6 +12,9 @@ const repoRoot = dirname(packagesDir);
 export default defineConfig(({ command }) => ({
     envDir: packageDir,
     root: "src",
+    test: {
+        root: packageDir,
+    },
     resolve: {
         conditions: command === "serve" ? ["development"] : [],
     },
