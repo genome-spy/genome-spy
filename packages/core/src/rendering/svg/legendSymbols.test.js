@@ -11,7 +11,78 @@ import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createMultiPointSelection } from "../../selection/selection.js";
 import { intervalSelection } from "../../selection/index.js";
 import UnitView from "../../view/unitView.js";
+import { calculateCanvasSize } from "../../view/viewUtils.js";
 import { createSvg } from "./index.js";
+
+test.each(/** @type {const} */ (["left", "right"]))(
+    "exports every category in a multi-column %s legend",
+    async (orient) => {
+        const categories = Array.from(
+            { length: 12 },
+            (_, i) => `category-${i}`
+        );
+        let previousWidth = 300;
+        for (const columns of [1, 2, 3]) {
+            const { view } = await createHeadlessEngine(
+                {
+                    width: 300,
+                    height: 300,
+                    data: { values: categories.map((group) => ({ group })) },
+                    mark: "point",
+                    encoding: {
+                        color: {
+                            field: "group",
+                            type: "nominal",
+                            legend: {
+                                orient,
+                                columns,
+                                title: null,
+                                values: categories,
+                            },
+                        },
+                    },
+                    config: {
+                        legend: {
+                            disable: false,
+                            symbolSize: 64,
+                            labelFontSize: 12,
+                            rowPadding: 4,
+                            columnPadding: 16,
+                            layout: { anchor: "middle", wrap: false },
+                        },
+                    },
+                },
+                {
+                    contextOptions: {
+                        baseConfig: resolveBaseConfig({
+                            defaultConfig: INTERNAL_DEFAULT_CONFIG,
+                            builtInTheme:
+                                resolveThemeSelection(DEFAULT_THEME_NAME),
+                        }),
+                        viewFactoryOptions: { wrapRoot: true },
+                    },
+                }
+            );
+            // Spare canvas width would hide labels overflowing their legend.
+            const { width = 0, height = 0 } = calculateCanvasSize(view);
+            const { svg, warnings } = createSvg({
+                viewRoot: view,
+                logicalWidth: width,
+                logicalHeight: height,
+            });
+            const labels = Array.from(
+                svg.querySelectorAll("text"),
+                (el) => el.textContent
+            );
+
+            expect(labels).toEqual(categories);
+            expect(width).toBeGreaterThan(previousWidth);
+            previousWidth = width;
+            expect(warnings).toEqual([]);
+            view.disposeSubtree();
+        }
+    }
+);
 
 test("exports opaque category symbols while selections dim the data marks", async () => {
     const { view } = await createHeadlessEngine(
