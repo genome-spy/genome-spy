@@ -52,10 +52,7 @@
             "param": "brush",
             "field": "Species",
             "type": "nominal",
-            "scale": {
-              "domain": ["Chinstrap", "Adelie", "Gentoo"],
-              "range": ["#BF5CCA", "#FF6C02", "#0F7574"]
-            },
+            "scale": { "range": ["#BF5CCA", "#FF6C02", "#0F7574"] },
             "legend": { "orient": "top-right", "offset": 0 }
           },
           "value": "lightgrey"
@@ -87,10 +84,7 @@
             "x": {
               "field": "Species",
               "type": "nominal",
-              "scale": {
-                "domain": ["Chinstrap", "Adelie", "Gentoo"],
-                "padding": 0.3
-              },
+              "scale": { "padding": 0.3 },
               "axis": { "labelAngle": 0 }
             },
             "color": { "field": "Species", "type": "nominal", "legend": null }
@@ -110,7 +104,7 @@
             "x": {
               "field": "Sex",
               "type": "nominal",
-              "scale": { "domain": ["MALE", "FEMALE"], "padding": 0.3 },
+              "scale": { "padding": 0.3 },
               "axis": { "labelAngle": 0 }
             },
             "color": { "value": "gray" }
