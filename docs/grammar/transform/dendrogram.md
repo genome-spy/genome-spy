@@ -93,6 +93,9 @@ Loading or invalid input retains the last successful domain. Unchanged arrays
 retain identity and do not notify consumers again. See
 [output parameters](values.md#output-parameters) for pushing and lifecycle limits.
 
+See the [two-axis categorical heatmap](../../examples/generic/clustered-heatmap-band.md)
+for a complete example with imaginary z scores.
+
 ## Output and placement
 
 One output row represents each non-root node's incoming edge. Child metadata,

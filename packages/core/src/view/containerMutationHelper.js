@@ -38,7 +38,7 @@ export default class ContainerMutationHelper {
      */
 
     /**
-     * @param {import("./containerView.js").default} container
+     * @param {import("./containerView.js").default & { children: View[] }} container
      * @param {MutationOptions} options
      */
     constructor(container, options) {
@@ -146,6 +146,9 @@ export default class ContainerMutationHelper {
      * @param {{ requestLayout?: boolean }} [options]
      */
     async removeChildAt(index, options = {}) {
+        const child = this.container.children[index];
+        if (!child) throw new Error("Child index out of range!");
+        child.assertCanDisposeSubtree();
         clearViewLevelScaleProps(this.container);
         clearViewLevelGuideProps(this.container);
         this.options.removeView(index);

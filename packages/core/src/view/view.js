@@ -1199,10 +1199,8 @@ export default class View {
         this.#disposers.push(disposer);
     }
 
-    /**
-     * Dispose owned scales before releasing views in post-order.
-     */
-    disposeSubtree() {
+    /** Reject unsupported producer removal before any hierarchy or guide mutation. */
+    assertCanDisposeSubtree() {
         const subtree = new Set(this.getDescendants());
         for (const view of subtree) {
             for (const output of view.flowOutputs) {
@@ -1213,7 +1211,11 @@ export default class View {
                 }
             }
         }
+    }
 
+    /** Dispose owned scales before releasing views in post-order. */
+    disposeSubtree() {
+        this.assertCanDisposeSubtree();
         /** @type {Visitor} */
         const visitor = (view) => {
             // Member removal must not reconfigure scales that are being torn down.

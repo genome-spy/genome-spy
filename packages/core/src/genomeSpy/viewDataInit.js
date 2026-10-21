@@ -23,7 +23,8 @@ export async function initializeViewData(
     textMetrics,
     onDataFlowBuilt
 ) {
-    const visibilityPredicate = createInitializationPredicate(viewRoot);
+    const { predicate: visibilityPredicate } =
+        getInitializationDependencies(viewRoot);
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
         dataFlow,
@@ -64,7 +65,8 @@ export async function initializeVisibleViewData(
     dataFlow,
     textMetrics
 ) {
-    const visibilityPredicate = createInitializationPredicate(viewRoot);
+    const { predicate: visibilityPredicate } =
+        getInitializationDependencies(viewRoot);
     const visibleViews = collectVisibleViews(viewRoot, visibilityPredicate);
     const viewsToInitialize = visibleViews.filter(
         (view) => view.getDataInitializationState() === "none"
@@ -98,14 +100,16 @@ export async function initializeViewDataForViews(
     candidateViews
 ) {
     const candidates = new Set(candidateViews);
-    const visibilityPredicate = createInitializationPredicate(
-        viewRoot,
-        candidates
-    );
+    const { predicate: visibilityPredicate, producerPaths } =
+        getInitializationDependencies(viewRoot);
     const viewsToInitialize = collectVisibleViews(
         viewRoot,
         visibilityPredicate
-    ).filter((view) => view.getDataInitializationState() === "none");
+    ).filter(
+        (view) =>
+            (candidates.has(view) || producerPaths.has(view)) &&
+            view.getDataInitializationState() === "none"
+    );
 
     if (viewsToInitialize.length === 0) {
         return dataFlow;
@@ -174,30 +178,30 @@ export async function initializeViewDataForViews(
  * Visible consumers keep their output producers active, including hidden trees.
  * Include traversal/data ancestry without initializing unrelated hidden siblings.
  * @param {import("../view/view.js").default} root
- * @param {Set<import("../view/view.js").default>} [candidates]
  */
-function createInitializationPredicate(root, candidates) {
+function getInitializationDependencies(root) {
     const visible = collectVisibleViews(root, (view) =>
         view.isConfiguredVisible()
     );
-    const required = new Set(
-        visible.filter((view) => !candidates || candidates.has(view))
-    );
+    const required = new Set(visible);
+    const producerPaths = new Set();
     /** @param {import("../view/view.js").default | undefined} view */
     const include = (view) => {
-        if (!view || required.has(view)) return;
+        if (!view || producerPaths.has(view)) return;
+        producerPaths.add(view);
         required.add(view);
         include(view.layoutParent);
         include(view.dataParent);
     };
     for (const view of required) {
-        include(view.layoutParent);
-        include(view.dataParent);
         for (const output of view.paramRuntime.outputs)
             include(output.producerView);
     }
-    return (/** @type {import("../view/view.js").default} */ view) =>
-        required.has(view);
+    return {
+        predicate: (/** @type {import("../view/view.js").default} */ view) =>
+            required.has(view),
+        producerPaths,
+    };
 }
 
 /**

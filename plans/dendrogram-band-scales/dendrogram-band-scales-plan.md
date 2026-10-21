@@ -1,6 +1,6 @@
 # Dendrograms on categorical band scales
 
-Status: implementation underway; milestones 1 and 2 are complete. This branch is stacked on
+Status: implementation complete; final independent review pending. This branch is stacked on
 `codex/transform-value-outputs` ([PR #575](https://github.com/genome-spy/genome-spy/pull/575)).
 
 ## Goal and dependency
@@ -73,9 +73,9 @@ architectural references; no upstream code needs copying or adaptation.
 
 ## Public contract
 
-All new syntax below is proposed. Final spelling is an API review gate; the
-ownership, ordering, and lifecycle semantics must be resolved before implementing
-rendered examples.
+The syntax below is implemented. Local string outputs retain #575 compatibility;
+shared outputs use read-only ancestor slots and ordinary `push: "outer"` scoping.
+The final review checks the ownership, ordering, and lifecycle contracts together.
 
 ### Numeric compatibility and categorical mode
 
@@ -280,7 +280,7 @@ Shared scale configuration is:
 }
 ```
 
-This is a proposed configuration fragment, not a complete current specification.
+This is a configuration fragment; the complete specification is in the example.
 Verify actual scale ownership beneath titles and implicit wrappers, using explicit
 resolution boundaries where necessary as in #575's current heatmap.
 
@@ -399,6 +399,20 @@ Tentative commit: `feat(core): publish categorical dendrogram domains`
 
 ### 3. Deliver and verify the two-axis synthetic heatmap
 
+Completed: the offline 4-by-4 example, docs, screenshot, schemas, and generated
+schema consumers are synchronized. SVG and live Canvas2D/WebGL/WebGPU checks cover
+both axes, reordered datasets, padding variants, reversal, resize, edge selection,
+picking, raster coverage, and export. Required hidden producers stay active;
+hiding tree presentations after publication retains matrix domains. The existing
+index example, branch-values example, and DepMap heatmap also render and export.
+
+Final integration caught and fixed visibility regressions in App summaries and
+ensured producer-removal rejection happens before guide/hierarchy mutation.
+The complete suite passes: 548 files, 5,218 tests, one existing skip and two TODOs.
+Workspace type checks, lint, generated schemas, and the documentation build pass.
+`release:status` proposes the expected fixed-group minor release; `release:check`
+still fails on #575's inherited fragment missing its category marker, unchanged here.
+
 Outcome: the required example renders on Canvas2D, WebGL, WebGPU, and SVG without
 manual domain arrays or preprocessing of numeric matrix positions.
 
@@ -429,35 +443,33 @@ composition, initialization/disposal, and both new and existing examples.
 
 - [ ] Shared output ownership is explicitly resolved and reviewed using #575's
       machinery; no second publisher or expression scheduler is introduced.
-- [ ] Two precomputed trees independently publish sample/gene domains into one
+- [x] Two precomputed trees independently publish sample/gene domains into one
       common surround. Source order, titles, and hidden tree presentation do not
       alter ownership or prevent required domain publication.
-- [ ] The 4-by-4 example shows all 16 imaginary z scores, original sample/gene IDs,
+- [x] The 4-by-4 example shows all 16 imaginary z scores, original sample/gene IDs,
       categorical labels, and both trees. It has no separate domain arrays or
       numeric heatmap row/column fields.
-- [ ] Empty/single-leaf trees, successful dataset replacement through the same
+- [x] Empty/single-leaf trees, successful dataset replacement through the same
       producer, failed input, unchanged output, rejected structural producer
       removal/replacement, and owner disposal follow the stated contract.
-- [ ] Tree geometry and published domains agree before rendering effects, without
+- [x] Tree geometry and published domains agree before rendering effects, without
       reading an output/domain back into the producing dataflow.
-- [ ] Leaf alignment, fractional joins, heights, padding, reversal, resize, picking,
+- [x] Leaf alignment, fractional joins, heights, padding, reversal, resize, picking,
       and export agree across live backends and SVG within suitable tolerances.
-- [ ] Existing numeric outputs, index navigation/gaps, identities, file/facet
+- [x] Existing numeric outputs, index navigation/gaps, identities, file/facet
       behavior, and local output declarations retain their contracts.
-- [ ] Focused Vitest suites use `--reporter=agent`; applicable types, lint, schema,
-      example/docs, and release checks pass. Shared output/lifecycle changes also
+- [x] Focused Vitest suites use `--reporter=agent`; applicable types, lint, schema,
+      example/docs checks pass. The inherited release-check issue is recorded above. Shared output/lifecycle changes also
       warrant the complete unit suite before delivery.
-- [ ] Run `node packages/core/scripts/testDendrogramRenderers.mjs`; inspect the new
+- [x] Run `node packages/core/scripts/testDendrogramRenderers.mjs`; inspect the new
       synthetic example, `dendrogram-gaps.json`, #575's branch-values example,
       and the existing DepMap heatmap. Record unavailable checks explicitly.
-- [ ] Review related tests for duplication and report focused production-code
+- [x] Review related tests for duplication and report focused production-code
       growth, including changes made to the shared publication machinery.
 - [ ] Reconcile every task and commit the final record, then delete this temporary
       plan in a later commit before creating a PR or before merge if explicitly
       retained for draft review. Do not retire the lower branch's plan here.
 
-The first review must settle the names/shape of the read-only owner slots,
-output-pushing form, and structural ordering input. Their semantics above are required;
-API spelling can change without reviving manual-domain boilerplate. Clustering
-implementation remains outside this plan, with the tree/output boundary available
-for that later increment.
+The implementation uses read-only owner slots, `push: "outer"`, and explicit
+structural ordering. Clustering implementation remains outside this plan, with
+the tree/output boundary available for that later increment.

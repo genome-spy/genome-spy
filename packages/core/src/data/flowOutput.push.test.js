@@ -122,6 +122,17 @@ test("two side producers drive shared bands through outer outputs, including a h
         )
     ).toThrow("computed parameter");
     expect(() => producer.disposeSubtree()).toThrow("owner survives");
+    const parent = /** @type {import("../view/concatView.js").default} */ (
+        producer.layoutParent
+    );
+    await expect(
+        parent.removeChildAt(parent.children.indexOf(producer))
+    ).rejects.toThrow("owner survives");
+    expect(parent.children).toContain(producer);
+    expect(matrix.getScaleResolution("y").getScale().domain()).toEqual([
+        "A",
+        "B",
+    ]);
     view.disposeSubtree();
     expect(context.dataFlow.dataSources).toHaveLength(0);
 });

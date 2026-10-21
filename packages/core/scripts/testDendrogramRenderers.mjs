@@ -314,3 +314,293 @@ await testRenderers(
         );
     }
 );
+
+const bandFixture = JSON.parse(
+    await readFile(
+        new URL(
+            "../../../examples/docs/examples/generic/clustered-heatmap-band.json",
+            import.meta.url
+        ),
+        "utf8"
+    )
+);
+
+await testRenderers(
+    [
+        { deviceScaleFactor: 2, reverse: false, hidden: false },
+        { deviceScaleFactor: 2, reverse: true, hidden: false },
+        { deviceScaleFactor: 2, reverse: true, hidden: true },
+    ],
+    async (page, renderer, { reverse, hidden }) => {
+        const result = await page.evaluate(
+            async ({ fixture, renderer, reverse, hidden }) => {
+                const { embed } = await import("/index.js");
+                document.body.replaceChildren();
+                const host = document.createElement("div");
+                host.style.width = "650px";
+                host.style.height = "420px";
+                document.body.append(host);
+                delete fixture.spec.width;
+                delete fixture.spec.height;
+                fixture.spec.encoding.x.axis = null;
+                fixture.spec.encoding.y.axis = null;
+                fixture.spec.encoding.color.legend = null;
+                fixture.scales.x.reverse = reverse;
+                fixture.scales.y.reverse = reverse;
+                fixture.params.push({ name: "shape", value: "orthogonal" });
+                fixture.datasets = {
+                    sampleNodes: fixture.surround.left[0].data.values,
+                };
+                fixture.surround.left[0].data = { name: "sampleNodes" };
+                fixture.surround.left[0].visible = !hidden;
+                fixture.surround.top[0].visible = !hidden;
+                for (const tree of [
+                    fixture.surround.left[0],
+                    fixture.surround.top[0],
+                ]) {
+                    tree.params = [
+                        {
+                            name: "picked",
+                            persist: false,
+                            select: {
+                                type: "point",
+                                on: "click",
+                                toggle: false,
+                            },
+                        },
+                    ];
+                    tree.mark.linkShape = { expr: "shape" };
+                    tree.mark.tooltip = false;
+                }
+                const errors = [];
+                const api = await embed(host, fixture, {
+                    renderer,
+                    onError: (error) => errors.push(error.message),
+                });
+                await api.awaitVisibleLazyData(AbortSignal.timeout(5000));
+                errors.push(
+                    ...api.dataLoading
+                        .getSnapshot()
+                        .filter((entry) => entry.status === "error")
+                        .map((entry) => entry.error)
+                );
+                const frame = () =>
+                    new Promise((resolve) =>
+                        requestAnimationFrame(() =>
+                            requestAnimationFrame(resolve)
+                        )
+                    );
+                await frame();
+                const states = [];
+                const cells = fixture.spec.data.values;
+                for (const state of ["initial", "resize", "reorder"]) {
+                    if (state === "resize") {
+                        host.style.width = "780px";
+                        host.style.height = "510px";
+                    } else if (state === "reorder") {
+                        api.views.root().datasets.set(
+                            "sampleNodes",
+                            fixture.datasets.sampleNodes.map((node) =>
+                                node.parent === "sCA"
+                                    ? {
+                                          ...node,
+                                          childOrder: 1 - node.childOrder,
+                                      }
+                                    : node
+                            )
+                        );
+                    }
+                    await frame();
+                    const exported = await api.imageExport.svg();
+                    const svg = new DOMParser().parseFromString(
+                        await exported.blob.text(),
+                        "image/svg+xml"
+                    );
+                    const rects = Array.from(
+                        svg.querySelectorAll('[data-name="matrix"] rect')
+                    );
+                    const leafErrors = [];
+                    const joinErrors = [];
+                    const picks = [];
+                    const probes = [];
+                    for (const [name, axis, field] of [
+                        ["sampleTree", "y", "sample"],
+                        ["geneTree", "x", "gene"],
+                    ]) {
+                        const paths = Array.from(
+                            svg.querySelectorAll(
+                                '[data-name="' + name + '"] path'
+                            )
+                        );
+                        const ids =
+                            name === "sampleTree"
+                                ? fixture.datasets.sampleNodes
+                                : fixture.surround.top[0].data.values;
+                        const targets = ids.filter(
+                            (node) => node.parent !== null
+                        );
+                        const positions = new Map();
+                        for (const [i, path] of paths.entries()) {
+                            const [sx, sy, , , tx, ty] = path
+                                .getAttribute("d")
+                                .match(/-?\d+(?:\.\d+)?/g)
+                                .map(Number);
+                            const node = targets[i];
+                            for (const [id, point] of [
+                                [node.parent, [sx, sy]],
+                                [node.id, [tx, ty]],
+                            ]) {
+                                const previous = positions.get(id);
+                                if (previous)
+                                    joinErrors.push(
+                                        Math.hypot(
+                                            point[0] - previous[0],
+                                            point[1] - previous[1]
+                                        )
+                                    );
+                                positions.set(id, point);
+                            }
+                            if (node.height === 0) {
+                                const cell =
+                                    rects[
+                                        cells.findIndex(
+                                            (cell) =>
+                                                cell[field] === node[field]
+                                        )
+                                    ];
+                                const center =
+                                    +cell.getAttribute(axis) +
+                                    +cell.getAttribute(
+                                        axis === "y" ? "height" : "width"
+                                    ) /
+                                        2;
+                                leafErrors.push(
+                                    Math.abs((axis === "y" ? ty : tx) - center)
+                                );
+                                const probe =
+                                    axis === "y"
+                                        ? [(sx + tx) / 2, ty]
+                                        : [tx, (sy + ty) / 2];
+                                probes.push(probe);
+                                const pick = await api.views
+                                    .get({ scope: [], view: name })
+                                    .marks.pick({ x: probe[0], y: probe[1] });
+                                picks.push(
+                                    pick.status === "hit" &&
+                                        pick.hit.datum.targetId === node.id
+                                );
+                            }
+                        }
+                    }
+                    const raster = await api.imageExport.raster({
+                        background: null,
+                        pixelRatio: 2,
+                    });
+                    const bitmap = await createImageBitmap(raster.blob);
+                    const canvas = document.createElement("canvas");
+                    canvas.width = bitmap.width;
+                    canvas.height = bitmap.height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(bitmap, 0, 0);
+                    bitmap.close();
+                    const coverage = probes.map(([x, y]) =>
+                        ctx
+                            .getImageData(
+                                Math.round(x * 2) - 1,
+                                Math.round(y * 2) - 1,
+                                3,
+                                3
+                            )
+                            .data.some((value, i) => i % 4 === 3 && value > 0)
+                    );
+                    states.push({
+                        cells: rects.length,
+                        leafErrors,
+                        joinErrors,
+                        picks,
+                        coverage,
+                        warnings: exported.warnings,
+                    });
+                }
+                let selected = hidden;
+                if (!hidden) {
+                    const exported = await api.imageExport.svg();
+                    const svg = new DOMParser().parseFromString(
+                        await exported.blob.text(),
+                        "image/svg+xml"
+                    );
+                    const [sx, , , , tx, ty] = svg
+                        .querySelector('[data-name="sampleTree"] path')
+                        .getAttribute("d")
+                        .match(/-?\d+(?:\.\d+)?/g)
+                        .map(Number);
+                    const canvas = host.querySelector("canvas");
+                    const bounds = canvas.getBoundingClientRect();
+                    canvas.dispatchEvent(
+                        new MouseEvent("click", {
+                            bubbles: true,
+                            clientX: bounds.left + (sx + tx) / 2,
+                            clientY: bounds.top + ty,
+                        })
+                    );
+                    await frame();
+                    selected = api.views
+                        .get({ scope: [], view: "sampleTree" })
+                        .params.getSelection("picked")
+                        .getValue().active;
+                }
+                api.params.get("shape").setValue("diagonal");
+                await frame();
+                const curved = await api.imageExport.svg();
+                const curves =
+                    (await curved.blob.text()).match(/ d="M [^"]* C /g)
+                        ?.length ?? 0;
+                const order = api.params.get("sampleOrder").getValue();
+                api.finalize();
+                return { states, errors, curves, order, selected };
+            },
+            { fixture: structuredClone(bandFixture), renderer, reverse, hidden }
+        );
+        assert.deepEqual(
+            result.errors,
+            [],
+            `${renderer}: categorical loading errors`
+        );
+        assert.deepEqual(result.order, [
+            "Sample A",
+            "Sample C",
+            "Sample D",
+            "Sample B",
+        ]);
+        for (const state of result.states) {
+            assert.equal(state.cells, 16);
+            assert.equal(state.leafErrors.length, hidden ? 0 : 8);
+            assert.ok(
+                state.leafErrors.every((error) => error < 0.11),
+                `${renderer}: categorical leaf alignment ${state.leafErrors}`
+            );
+            assert.ok(
+                state.joinErrors.every((error) => error < 0.11),
+                `${renderer}: categorical joins`
+            );
+            assert.ok(
+                state.picks.every(Boolean),
+                `${renderer}: categorical picking`
+            );
+            assert.ok(
+                state.coverage.every(Boolean),
+                `${renderer}: categorical GPU/raster coverage`
+            );
+            assert.deepEqual(state.warnings, []);
+        }
+        assert.equal(result.curves, hidden ? 0 : 12);
+        assert.equal(
+            result.selected,
+            true,
+            `${renderer}: categorical edge selection`
+        );
+        console.log(
+            `${renderer}, reverse=${reverse}, hidden=${hidden}: categorical domains, both axes, updates, resize, picking, and exports passed.`
+        );
+    }
+);

@@ -154,7 +154,9 @@ arrangement.
   and lazy requests; readiness never gates creation of the scale itself.
 - Startup initialization is visibility-aware. Hidden subtrees skip dataflow and
   mark wiring until `initializeVisibleViewData` initializes them after a
-  visibility change.
+  visibility change. Read-only transform outputs pushed to an active ancestor
+  keep their producer paths initialized even when the producer presentation is
+  hidden. Other hidden siblings remain deferred.
 - Hidden views do not contribute to shared scale domains until initialized, so
   a domain may expand when a subtree becomes visible.
 - Collector observers update semantic mark data and schedule rendering. A
@@ -164,6 +166,8 @@ arrangement.
   duplicate flow nodes and collectors.
 - Disposing a subtree prunes its flow branches so orphaned nodes and unused data
   sources do not remain.
+  A shared output producer cannot be removed while its output owner survives;
+  mutation preflight rejects that operation before changing guides or hierarchy.
 
 ## Scale domain ownership
 
