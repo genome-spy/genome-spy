@@ -1,5 +1,5 @@
-/* The page opts into both modes and supplies a matching surface. */
-:root {
+/* Outrank the shared defaults even when the build reorders stylesheets. */
+:root[data-appearance] {
     color-scheme: light dark;
     --text: light-dark(#20252b, #e5ebf1);
     --muted-text: light-dark(#6a737d, #a0adba);
