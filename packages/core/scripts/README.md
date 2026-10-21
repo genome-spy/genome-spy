@@ -1,3 +1,19 @@
+# Browser rendering checks
+
+Run focused browser checks directly from the repository root:
+
+```sh
+node packages/core/scripts/testDefaultThemeStyles.mjs
+node packages/core/scripts/testArrowWebGL.mjs
+node packages/core/scripts/testOrthogonalLinks.mjs
+node packages/core/scripts/testDendrogramRenderers.mjs
+node packages/core/scripts/testCategoricalDomains.mjs
+```
+
+Each script manages its own development server on port 4174. Run them one at a
+time. The cross-renderer checks use installed Chrome with the native GPU; the
+arrow check uses Playwright Chromium with SwiftShader.
+
 # WebGPU example audit
 
 Run all shared Core and docs specifications with default WebGPU limits:
