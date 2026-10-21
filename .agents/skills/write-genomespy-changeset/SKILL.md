@@ -1,6 +1,6 @@
 ---
 name: write-genomespy-changeset
-description: Assess GenomeSpy release impact and write concise changelog entries for feature branches, pull requests, and direct commits to master or main. Reuse fragments for ongoing work and record contributions with no release impact once.
+description: Assess GenomeSpy release impact and write concise changelog entries for feature branches, pull requests, and direct commits to master or main. Reuse fragments for ongoing work; contributions with no release impact need no fragment.
 ---
 
 # Write a GenomeSpy changeset
@@ -33,14 +33,14 @@ earlier release notes or derive bump types from Conventional Commit subjects.
   Reuse the contribution's existing fragment. Add a separate note only for an
   independent user-visible change; leave unrelated fragments alone.
 - Tests, documentation, refactoring, and fixes to the same unreleased feature
-  do not need additional empty fragments. Leave an accurate note unchanged
+  do not need additional fragments. Leave an accurate note unchanged
   unless the final behavior, compatibility impact, or affected packages change.
-- Create one empty fragment only when the whole branch or PR has no release
-  impact and has no existing no-release marker. Independent direct commits to
-  `master` or `main` each need their own release/no-release decision.
+- Contributions with no release impact need no fragment. Existing empty
+  fragments remain valid. Assess independent direct commits to `master` or
+  `main` separately for release impact.
 - Use `npm run changeset` or write a descriptive `.changeset/<name>.md` with
-  YAML frontmatter. For an empty fragment, use `npm run changeset -- --empty`.
-  Creating these files does not authorize publishing or GitHub messages.
+  YAML frontmatter. Creating these files does not authorize publishing or
+  GitHub messages.
 
 ## Write a concise changelog entry
 
@@ -84,11 +84,11 @@ format, so the labels match the active formatting choice.
 ## Verify delivery
 
 - Run `npm run release:check` and `npm run release:status`; report the calculated
-  version and why that bump or no-release decision fits. With only empty
+  version and why that bump or no-release decision fits. Without releasable
   fragments, no release is expected.
-- Check the staged diff or PR diff again: the fragment must travel with the
-  change. For PR preparation, `npm run release:check -- <base-ref>` also checks
-  the note/no-release marker against that base, including working-tree edits.
+- Check the staged diff or PR diff again: user-visible changes need a fragment
+  included with the change. `release:check` validates existing fragments and
+  release policy; reviewers assess whether a contribution needs release notes.
 - Keep commit messages developer-facing. They are not copied to changelogs.
   Changesets consumes fragments when `npm run release:version` prepares the
   next release. Do not run it merely to validate a contribution, because it

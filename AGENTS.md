@@ -134,9 +134,9 @@ Common checks from the repository root:
   compatibility change and before preparing a PR or a direct commit to
   `master`/`main`. Assess the whole PR or the exact individual commit; commit
   types alone do not determine release impact. Update an existing fragment for
-  the same unreleased change. Use an empty changeset for intentionally
-  non-releasable contributions. See `.changeset/README.md` and the release
-  workflow in `CONTRIBUTING.md`.
+  the same unreleased change. Contributions with no release impact need no
+  fragment. See `.changeset/README.md` and the release workflow in
+  `CONTRIBUTING.md`.
 - Use the `write-genomespy-docs` skill for user-facing docs, specification JSDoc,
   schema macros, or docs builds.
 - Use the `plan-genomespy-change` skill for architecture or implementation

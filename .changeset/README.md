@@ -30,23 +30,19 @@ only the migration instructions necessary to update existing usage.
 One fragment covers a coherent change across packages and commits. Assess a
 feature branch or PR as a whole and reuse its existing fragment. Leave an
 accurate note unchanged for tests, documentation, refactoring, and refinements
-that do not change its release summary; these need no additional empty fragment.
+that do not change its release summary.
 When the final behavior changes, rewrite the note concisely instead of appending
 each development step. Use separate fragments for independent user-visible
 changes. For direct commits to `master` or `main`, assess each commit separately.
 
 When the whole contribution has no release impact, such as tests, refactoring,
-CI, internal documentation, or work limited to the private WebGPU prototype,
-record the decision once. If it has no existing no-release marker, run:
+CI, development dependency maintenance, internal documentation, or work limited
+to the private WebGPU prototype, no fragment is needed. Existing empty fragments
+remain valid and do not bump versions.
 
-```sh
-npm run changeset -- --empty
-```
-
-The empty fragment records an intentional no-release decision. It does not bump
-versions. PRs and direct pushes are checked for a new or updated fragment;
-release commits that consume fragments are checked separately. CI cannot judge
-whether a note or bump is appropriate: review that decision with the diff.
+CI validates existing fragments and the release plan without requiring a new or
+updated fragment. Reviewers check the diff for user-visible changes and assess
+whether release notes, affected packages, and version bumps are appropriate.
 
 Run `npm run release:status` to inspect planned versions and `npm run
 release:check` to validate the package topology and fragments. See the

@@ -224,13 +224,6 @@ describe("fixed post-1.0 releases", () => {
             ).toContain("Existing history.");
             expect(git(cwd, ["rev-parse", "HEAD"])).toBe(baseline);
             expect(git(cwd, ["tag"])).toBe("v1.0.0");
-            await expect(
-                checkChangesets(cwd, baseline)
-            ).resolves.toBeUndefined();
-            commit(cwd);
-            await expect(
-                checkChangesets(cwd, "v1.0.0")
-            ).resolves.toBeUndefined();
         }
     );
 
@@ -250,7 +243,7 @@ describe("fixed post-1.0 releases", () => {
             path.join(cwd, ".changeset/change.md"),
             '---\n"@genome-spy/missing": patch\n---\n\n<!-- category: fix -->\n\nFix it.\n'
         );
-        await expect(readReleasePlan(cwd)).rejects.toThrow();
+        await expect(checkChangesets(cwd)).rejects.toThrow();
         await rm(path.join(cwd, ".changeset/change.md"));
         const filename = path.join(
             cwd,
@@ -259,7 +252,7 @@ describe("fixed post-1.0 releases", () => {
         const manifest = await readJson(filename);
         manifest.private = false;
         await writeJson(filename, manifest);
-        await expect(readReleasePlan(cwd)).rejects.toThrow(
+        await expect(checkChangesets(cwd)).rejects.toThrow(
             "Only App, Core, Inspector, and React"
         );
     });
@@ -607,25 +600,21 @@ test("verifies public archives, Core's packing lifecycle, and missing build outp
     ).rejects.toMatchObject({ code: "ENOENT" });
 });
 
-test("PRs and direct commits need a note or an intentional no-release marker", async () => {
+test("release check accepts dependency maintenance without a fragment", async () => {
     const cwd = await fixture();
-    const base = git(cwd, ["rev-parse", "HEAD"]);
-    await writeFile(path.join(cwd, "internal.txt"), "A maintenance change.\n");
+    const manifestPath = path.join(cwd, "package.json");
+    const manifest = await readJson(manifestPath);
+    manifest.devDependencies = { vite: "^8.3.4" };
+    await writeJson(manifestPath, manifest);
     commit(cwd);
-    await expect(checkChangesets(cwd, base)).rejects.toThrow(
-        "Add or update a .changeset"
-    );
 
-    await addChangeset(cwd, "---\n---\n");
-    await expect(checkChangesets(cwd, base)).resolves.toBeUndefined();
-    const next = git(cwd, ["rev-parse", "HEAD"]);
-    await writeFile(
-        path.join(cwd, "internal.txt"),
-        "An independent maintenance change.\n"
+    const output = execFileSync(
+        process.execPath,
+        [path.join(repoRoot, "scripts/checkChangesets.mjs")],
+        { cwd, encoding: "utf8" }
     );
-    await expect(checkChangesets(cwd, next)).rejects.toThrow(
-        "Add or update a .changeset"
+    expect(output).toContain(
+        "Changesets and release package policy are valid."
     );
-    await writeFile(path.join(cwd, ".changeset/second.md"), "---\n---\n");
-    await expect(checkChangesets(cwd, next)).resolves.toBeUndefined();
+    expect((await readReleasePlan(cwd)).releases).toEqual([]);
 });

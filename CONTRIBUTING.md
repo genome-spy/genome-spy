@@ -231,27 +231,25 @@ no-release markers do not need a category.
 
 Reuse the feature's existing fragment as the implementation evolves, keeping
 its entry concise. Supporting tests, documentation, and refactoring need no
-additional empty fragments. Use separate notes for independent user-visible
+additional fragments. Use separate notes for independent user-visible
 changes. When the whole contribution has no release impact, such as tests, CI,
-pure refactoring, or internal documentation, record the decision once with an
-empty fragment:
+pure refactoring, development dependency maintenance, or internal documentation,
+no fragment is needed. Existing empty fragments remain valid and do not bump
+versions.
 
-```sh
-npm run changeset -- --empty
-```
-
-CI checks that the contribution includes a new or updated fragment and validates
-its category, package names, and release plan. Reviewers assess the bump and
-prose. See [.changeset/README.md](.changeset/README.md) for the complete note
-format and examples.
+CI validates existing fragments, including their categories, package names, and
+release plan, without requiring a new or updated fragment. Reviewers check that
+user-visible changes have release notes and assess the bumps and prose. See
+[.changeset/README.md](.changeset/README.md) for the complete note format and
+examples.
 
 ## Submitting Pull Requests
 
 Submit changes through a pull request with a description of the problem,
 motivation, and resulting behavior. Include the relevant tests, documentation,
-and [release-note fragment](#release-notes-for-contributions). Review your diff
-and commits before opening the PR. Maintainers will review the contribution and
-may request changes.
+and any required [release-note fragments](#release-notes-for-contributions).
+Review your diff and commits before opening the PR. Maintainers will review the
+contribution and may request changes.
 
 ## Community and Communication
 
@@ -264,8 +262,8 @@ please feel free to reach out through GitHub
 ## Releases
 
 This section is for maintainers preparing and publishing releases. Direct commits
-to `master` or `main` follow the same changeset/no-release convention as pull
-requests. Version commits consume fragments and need no additional empty marker.
+to `master` or `main` follow the same release-note policy as pull requests.
+Version commits consume fragments and need no additional fragment.
 
 The eight release packages share one fixed version, so selecting a single
 affected package propagates the bump to the group. Private applications are
@@ -518,7 +516,7 @@ releases must not replace the current major as the latest GitHub release. See
 
 Before activating this policy, complete the following work:
 
-- Extend `scripts/release.mjs` and the contribution gate for Changesets
+- Extend `scripts/release.mjs` and release validation for Changesets
   prerelease entry, repeated previews, and exit. Preserve the fixed/private
   package policy, handle archived `.changeset/pre/` notes in the final changelog,
   and check the expected version against the selected release channel.

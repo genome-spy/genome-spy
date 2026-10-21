@@ -18,11 +18,11 @@ description: Prepare GenomeSpy commits and pull requests for delivery. Use when 
 - Use `write-genomespy-changeset` before committing a complete change or
   preparing a PR. Inspect the full PR diff for PR notes and the exact staged
   diff for a direct commit to `master` or `main`.
-- Include a user-facing changeset for releasable changes, or an empty changeset
-  for intentionally non-releasable work. Update the fragment for an existing
+- Include a user-facing changeset for releasable changes. Contributions with no
+  release impact need no fragment. Update the fragment for an existing
   unreleased change instead of adding a note for each implementation commit.
-  Independent direct commits need their own release/no-release decision.
-- Confirm the fragment is included in the commit or PR and run
+  Assess independent direct commits separately for release impact.
+- Confirm any required fragment is included in the commit or PR and run
   `npm run release:check` and `npm run release:status`. Conventional Commit
   messages describe history; Changesets supplies release intent and prose.
 - Release preparation consumes the pending fragments. Use
