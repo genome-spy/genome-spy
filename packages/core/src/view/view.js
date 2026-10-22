@@ -284,6 +284,17 @@ export default class View {
             ...(spec.params ?? []),
             ...(getPostScaleParams(spec) ?? []),
         ];
+        if (this.options.layoutSizeParams !== "inherit") {
+            // Expressions declared here must bind this view's automatic size
+            // refs before child views can shadow them. Authored params take precedence.
+            if (!params.some((param) => param.name === "width")) {
+                this.#widthSetter = this.#createLayoutSizeSetter("width");
+            }
+            if (!params.some((param) => param.name === "height")) {
+                this.#heightSetter = this.#createLayoutSizeSetter("height");
+            }
+        }
+
         for (const param of params) {
             // TODO: If interval selection, validate `encodings` or provides defaults
             if ("expr" in param) {
@@ -305,13 +316,6 @@ export default class View {
             }
 
             this.paramRuntime.registerParam(param);
-        }
-
-        if (this.options.layoutSizeParams !== "inherit") {
-            // Layout-driven size params must exist before marks and child views
-            // bind expressions in subclass constructors.
-            this.#widthSetter = this.#createLayoutSizeSetter("width");
-            this.#heightSetter = this.#createLayoutSizeSetter("height");
         }
     }
 
