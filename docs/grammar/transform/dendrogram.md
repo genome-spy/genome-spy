@@ -84,7 +84,7 @@ output; no numeric heatmap positions or separate domain arrays are needed.
 The example below shows imaginary z scores for four samples and four genes,
 with a precomputed tree on each axis.
 
-EXAMPLE examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json height=470 spechidden
+EXAMPLE examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json height=420 spechidden
 
 To align the tree with an existing band domain, use `leafOrder` instead of
 `siblingOrder`. Each subtree must remain contiguous among the tree's leaves,

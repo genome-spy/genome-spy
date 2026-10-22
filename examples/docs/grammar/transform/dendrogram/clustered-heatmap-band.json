@@ -27,8 +27,6 @@
   "spacing": 10,
   "spec": {
     "name": "matrix",
-    "width": 360,
-    "height": 240,
     "data": {
       "values": [
         { "sample": "Sample C", "gene": "TP53", "z": 1.6 },
