@@ -101,6 +101,12 @@ arrangement.
   A URL change synchronously invalidates readiness, while one request signal
   guards normalization, handle acquisition, interval loading, publication, and
   status. Descriptor errors surface when a visible window is requested.
+- Transform output producers require the source's explicit
+  `supportsFlowOutputs` capability, including sources reached through side
+  inputs. Audited eager/sequence and interval sources publish complete snapshots;
+  lazy startup and invalidation use nonpublishing completion. A `branch` keeps
+  its owning view's parameter scope while tapping rows or preparing independent
+  input. See `reactivity.md` for publication and feedback boundaries.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
   `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and
   consumed revisions for declared collectors. It binds during `initializeOnce()`,

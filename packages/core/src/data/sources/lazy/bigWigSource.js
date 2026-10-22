@@ -64,6 +64,15 @@ export default class BigWigSource extends IntervalUrlSource {
         });
     }
 
+    initialize() {
+        super.initialize();
+        this.registerDisposer(
+            this.paramRuntime.guardFlowDependencies([
+                this.scaleResolution.getAxisLengthDependencyRef(),
+            ])
+        );
+    }
+
     get label() {
         return "bigWigSource";
     }

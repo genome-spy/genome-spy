@@ -51,8 +51,9 @@ The input table could contain `cut` values `2` and `4`. The scale then inserts
 gaps before indices 2 and 4. Sorting and deduplication of gap positions are scale
 behavior; `"values"` itself preserves the prepared rows' order and duplicates.
 
-Inline and named inputs are also supported. Lazy-source outputs are not
-implemented.
+Inline, named, sequence, and supported [lazy inputs](../data/lazy.md) can also
+publish outputs. Lazy outputs describe the last successfully loaded window,
+which may include prefetched data or summary bins.
 
 ## Deriving cuts in a branch
 
@@ -65,3 +66,31 @@ EXAMPLE examples/docs/grammar/transform/branch-values.json height=170
 The branch uses `window` to compare adjacent cluster labels, then filters
 boundaries by strength. The upstream `collect` caches metadata so changing the
 ordinary `minimumStrength` parameter replays the branch without reloading data.
+
+## Empty lazy data
+
+The [`"count"`](count.md) transform can distinguish a successfully empty result
+from data that has not loaded yet: its output starts at `null` and becomes `0`
+after an empty load. This BigWig example starts in an empty region. Change
+**Region** to see a region with signal.
+
+EXAMPLE examples/docs/grammar/transform/lazy-empty-data.json height=180
+
+The parent view counts incoming records and passes them to the signal layer.
+The message layer has its own singleton row, so it remains available when the
+signal input is empty. Its opacity reads the count; the source stays active.
+
+The message describes the last successfully loaded region. While a replacement
+is loading or has failed, the previous count and message remain. A record with
+a zero signal value still counts as data.
+
+!!! disclaimer ""
+
+    The Forebrain E12.5 R1 H3K27ac track derives from ENCODE file
+    [ENCFF549YDI](https://www.encodeproject.org/files/ENCFF549YDI/), experiment
+    [ENCSR966AIB](https://www.encodeproject.org/experiments/ENCSR966AIB/), produced
+    by the Bing Ren laboratory for [Gorkin et al.
+    (2020)](https://doi.org/10.1038/s41586-020-2093-3). The
+    [regional extract](https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/README.md)
+    retains four mm10 windows. The empty example region lies outside them;
+    missing data in this extract does not indicate biological absence of H3K27ac.

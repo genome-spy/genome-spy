@@ -189,6 +189,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * @param {(props: ReadonlySet<keyof T>) => void} [listener] Listener to be called when any of the expressions change
  * @param {(disposer: () => void) => void} [registerDisposer]
  * @param {{ key: keyof T, expr: import("../spec/parameter.js").ExprRef }[]} [additionalExpressions]
+ * @param {(dependencies: import("./types.js").ParamRef<any>[]) => void} [registerDependencies] Receives the reactive property group's bound inputs.
  * @returns T
  * @template {Record<string, any | import("../spec/parameter.js").ExprRef>} T
  */
@@ -197,7 +198,8 @@ export function activateExprRefProps(
     props,
     listener,
     registerDisposer,
-    additionalExpressions = []
+    additionalExpressions = [],
+    registerDependencies
 ) {
     /** @type {Record<string, any | import("../spec/parameter.js").ExprRef>} */
     const activatedProps = { ...props };
@@ -234,6 +236,7 @@ export function activateExprRefProps(
     const dependencies = Array.from(
         new Set(bindings.flatMap(({ fn }) => fn.dependencies))
     );
+    registerDependencies?.(dependencies);
     const values = paramRuntime.computed(
         "expression properties",
         dependencies,

@@ -1,0 +1,69 @@
+{
+  "description": [
+    "Empty lazy data",
+    "Publishes a BigWig record count to display a message after an empty load."
+  ],
+
+  "params": [
+    {
+      "name": "region",
+      "value": "Empty",
+      "bind": {
+        "input": "select",
+        "name": "Region: ",
+        "options": ["Empty", "Signal"]
+      }
+    }
+  ],
+
+  "scales": {
+    "x": {
+      "type": "locus",
+      "assembly": "mm10",
+      "domain": {
+        "expr": "region === 'Signal' ? [{chrom: 'chr10', pos: 82400000}, {chrom: 'chr10', pos: 82500000}] : [{chrom: 'chr10', pos: 100000000}, {chrom: 'chr10', pos: 100100000}]"
+      }
+    }
+  },
+
+  "vconcat": [
+    {
+      "height": 100,
+
+      "data": {
+        "lazy": {
+          "type": "bigwig",
+          "url": "https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/bigwigs/forebrain-e12-5-rep1.bigWig"
+        }
+      },
+      "transform": [{ "type": "count", "param": "recordCount" }],
+
+      "layer": [
+        {
+          "mark": { "type": "rect", "color": "#4c78a8", "minWidth": 0.5 },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+            "x2": { "chrom": "chrom", "pos": "end" },
+            "y": {
+              "field": "score",
+              "type": "quantitative",
+              "scale": { "zero": true },
+              "axis": { "title": "H3K27ac", "tickCount": 3 }
+            }
+          }
+        },
+
+        {
+          "data": { "values": [{}] },
+          "mark": {
+            "type": "text",
+            "text": "No data in the last loaded region",
+            "opacity": { "expr": "recordCount === 0 ? 1 : 0" },
+            "color": "#666"
+          },
+          "encoding": { "x": { "value": 0.5 }, "y": { "value": 0.5 } }
+        }
+      ]
+    }
+  ]
+}

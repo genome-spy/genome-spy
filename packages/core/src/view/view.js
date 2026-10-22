@@ -771,7 +771,13 @@ export default class View {
         const reader = this.#sizeExprRefReaders.get(
             dimension + (isStepSize(value) ? ".step" : "")
         );
-        const dependencies = [...(reader?.dependencies ?? [])];
+        const viewportReader = this.#sizeExprRefReaders.get(
+            dimension === "width" ? "viewportWidth" : "viewportHeight"
+        );
+        const dependencies = [
+            ...(reader?.dependencies ?? []),
+            ...(viewportReader?.dependencies ?? []),
+        ];
         if (isStepSize(value)) {
             const channel = dimension === "width" ? "x" : "y";
             const resolution = this.getScaleResolution(channel);

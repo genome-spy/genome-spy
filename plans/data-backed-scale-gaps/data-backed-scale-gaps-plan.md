@@ -1,8 +1,8 @@
 # Complete transform outputs and dataflow branches
 
 Status: completion plan for [PR #575](https://github.com/genome-spy/genome-spy/pull/575),
-on `codex/transform-value-outputs`. The eager foundation and scalar count milestone are implemented. Lazy-source
-publication and final integration are in progress. Base: `05045f01f`.
+on `codex/transform-value-outputs`. Implementation and final integration are complete. The reconciled record below
+is ready for retirement in the next commit. Base: `05045f01f`.
 
 ## Goal and completion boundary
 
@@ -306,17 +306,17 @@ checks. Do not pull #600's ownership/scoping changes into this completion task.
       feedback guards, and the initial independent prototype review are complete.
 - [x] Count publishes `null` before success and correct totals including zero;
       existing values and main rows retain their contracts.
-- [ ] Supported lazy sources publish coherent successful snapshots, with no
+- [x] Supported lazy sources publish coherent successful snapshots, with no
       false empty startup/warm reload, failed, stale, or disposed publication.
-- [ ] The single-BigWig message example in `values.md` demonstrates the verified
+- [x] The single-BigWig message example in `values.md` demonstrates the verified
       signal/empty windows, starts empty, and documents retained presentation
       and regional-extract provenance.
-- [ ] Cached replay, lazy side-input revisions, and implicit loading dependency
+- [x] Cached replay, lazy side-input revisions, and implicit loading dependency
       guards are verified without a new scheduler or per-row dependency work.
-- [ ] Existing heatmap navigation, gaps, source sharing, disposal, and supported
+- [x] Existing heatmap navigation, gaps, source sharing, disposal, and supported
       renderers pass final integration; applicable checks and review are clean.
-- [ ] Docs/schema/example and the existing minor changeset describe the final
-      API; all tasks are reconciled, and this plan is retired before merge.
+- [x] Docs/schema/example and the existing minor changeset describe the final
+      API; all implementation tasks are reconciled and this plan is ready for retirement.
 
 The main risks are accidentally treating dummy completion as success, admitting
 an untested source override, missing implicit scale/layout feedback, and confusing
@@ -331,9 +331,53 @@ The independent subagent reviewed the plan against the implementation and found
 no architectural blocker. Incorporated its suggestions to qualify the retained
 message visibly, name a representative file/facet count check, and document the
 source-capability inheritance obligation. It endorsed the bounded count API and
-reuse of existing publication machinery. Implementation acceptance and the final
-integration review remain outstanding.
+reuse of existing publication machinery. The completed implementation and final
+integration review are recorded below.
 
 The user's subsequent dataset/placement choice is incorporated above. Direct
 BigWig queries and the v4 provenance manifest verify the two example windows
 and selected ENCODE source; the publication API and review boundary are unchanged.
+
+## Completion record (2026-10-22)
+
+Milestone 1 is committed as `203f60509`. Milestone 2 and the final verification
+below accompany this record; the next commit removes this temporary plan.
+
+- Count uses the shared scalar/array binding, starts at `null`, and publishes
+  whole-result totals including first-empty zero. Values retain immutable array
+  semantics; both preserve rows, replay, ownership, and read-only access.
+- Audited eager/sequence and interval sources opt into snapshot publication.
+  Dummy load/invalidation, failed processing, superseded requests, and disposal
+  cannot publish false emptiness. Existing side-input revision/replay machinery
+  remains the publication ordering boundary.
+- Independent review found sibling viewport sizing, shadowed sibling width,
+  and legend visibility feedback into BigWig resolution. Semantic layout
+  dependencies now cover those routes and measured guides, including later
+  independent sibling additions. Paint-only consumers, fixed-extent axes, and
+  corner legends remain supported. The final independent review has no
+  remaining actionable findings.
+- The hosted BigWig example passes empty `0` -> signal `2842` -> empty `0` in
+  WebGL, Canvas, and WebGPU, with settled successful loads, no source/browser
+  errors, and successful SVG export. The positive count is observed evidence,
+  not a fixed renderer-independent assertion. Screenshots were visually checked.
+- Branch-values and DepMap pass all three renderers with both row directions.
+  Exact cuts, all 4,320 cells, 72 genes, 60 samples, labels, and three annotation
+  strips are preserved. SVG leaf alignment stays within 0.05 px during zoom,
+  pan, resize, and reset; five-pixel gaps invert correctly, native picking
+  identifies the expected cell, and both tree height domains fit and reset.
+  Raster exports were smoke checked; no pixel-equality claim is made.
+- The stable final tree passes 550 Vitest files and 5,224 tests, with one skip
+  and two TODOs; all workspace TypeScript and lint checks pass. Schema/example
+  validation, generated-doc consistency, docs build, formatting, diff checks,
+  and release checks pass. The existing Core changeset stays minor (fixed
+  package group to 1.3.0).
+- Affected runtime JavaScript measures 13,005 -> 13,213 physical lines across
+  20 files (+208), including the count producer and explicit source/layout
+  boundaries. The added layout provenance closes confirmed feedback paths;
+  there is no new scheduler, output registry, or per-row reactive work.
+
+Dedicated extent outputs, output-consuming dataflow, named datasets, exact
+viewport freshness/counting, and #599 remain outside this increment. Adapting
+and rebasing the #600 stack is explicitly deferred to that separate follow-up;
+it does not add ownership/scoping changes to #575. All tasks in this completion
+increment are complete; no unresolved implementation work is hidden by retirement.

@@ -339,6 +339,26 @@ export default class AxisView extends LayerView {
         );
     }
 
+    /** @param {"width" | "height"} dimension */
+    getSizeDependencies(dimension) {
+        const dependencies = super.getSizeDependencies(dimension);
+        const channel = orient2channel(this.axisProps.orient);
+        if (
+            this.axisProps.labels &&
+            this.axisProps.placement !== "inside" &&
+            !(
+                this.axisProps.maxExtent > 0 &&
+                this.axisProps.minExtent === this.axisProps.maxExtent
+            ) &&
+            dimension === (channel === "x" ? "height" : "width")
+        ) {
+            dependencies.push(
+                this.dataParent.getScaleResolution(channel).getDomainRef()
+            );
+        }
+        return dependencies;
+    }
+
     getSize() {
         /** @type {SizeDef} */
         const perpendicularSize = { px: this.getPerpendicularSize() };

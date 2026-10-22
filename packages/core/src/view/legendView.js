@@ -893,6 +893,13 @@ export class LegendRegionView extends ContainerView {
         return this.#legendViews.some((view) => view.isActive());
     }
 
+    /** @param {"width" | "height"} dimension */
+    getSizeDependencies(dimension) {
+        return this.#legendViews.flatMap((view) =>
+            view.getSizeDependencies(dimension)
+        );
+    }
+
     getSize() {
         // Reactive legend disable is separate from configured view visibility.
         const legendViews = this.#getVisibleLegendViews();
@@ -1104,6 +1111,9 @@ function sameLines(a, b) {
 
 /** @extends {ContainerView<LegendRootSpec>} */
 export default class LegendView extends ContainerView {
+    /** @type {import("../paramRuntime/types.js").ParamRef<any>[]} */
+    #layoutDependencies;
+
     #effectiveExtent;
 
     /** @type {import("./view.js").default | undefined} */
@@ -1133,6 +1143,7 @@ export default class LegendView extends ContainerView {
 
     /**
      * @param {object} props
+     * @param {import("../paramRuntime/types.js").ParamRef<any>[]} [props.layoutDependencies]
      * @param {LegendEntry[]} [props.entries]
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
@@ -1151,6 +1162,7 @@ export default class LegendView extends ContainerView {
         {
             entries,
             channel,
+            layoutDependencies = [],
             symbolChannels,
             symbolStyle,
             symbolGeometry,
@@ -1194,6 +1206,7 @@ export default class LegendView extends ContainerView {
         );
 
         this.needsAxes = { x: false, y: false };
+        this.#layoutDependencies = layoutDependencies;
         this.legendProps = legend;
         this.#type = type ?? "symbol";
         this.#effectiveExtent = getMinimumLegendExtent(
@@ -1274,6 +1287,17 @@ export default class LegendView extends ContainerView {
         if (this.#child) {
             yield this.#child;
         }
+    }
+
+    /** @param {"width" | "height"} dimension */
+    getSizeDependencies(dimension) {
+        const dependencies = super.getSizeDependencies(dimension);
+        const orient = this.legendProps.orient ?? "right";
+        // Corner legends overlay the plot instead of reserving layout space.
+        if (typeof orient === "string" && !orient.includes("-")) {
+            dependencies.push(...this.#layoutDependencies);
+        }
+        return dependencies;
     }
 
     getSize() {

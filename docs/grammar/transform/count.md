@@ -19,7 +19,11 @@ input publishes its total row count, including `0` for an empty result. A result
 can span multiple files or facets. Place `"count"` after any filters that define
 which rows to count.
 
-Loading or processing failures retain the last successful value.
+With a [lazy source](../data/lazy.md), the count describes the last successfully
+loaded window, which may include prefetched data or summary bins. It is not an
+exact viewport count. Loading, invalidation, cancellation, and failure retain
+the last successful value. Zero-valued signal records still count as data.
 
 Outputs can drive visual expressions but cannot be read by another data source
-or transform expression.
+or transform expression. See the [empty lazy data example](values.md#empty-lazy-data)
+for a BigWig track with a count-driven message.

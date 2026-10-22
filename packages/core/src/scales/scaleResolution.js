@@ -129,6 +129,9 @@ export default class ScaleResolution {
     /** @type {import("../paramRuntime/types.js").ComputedParamRef<{extent: readonly number[], ready: boolean}> | undefined} */
     #fullExtentRef;
 
+    /** @type {import("../paramRuntime/types.js").ParamRef<undefined> | undefined} */
+    #axisLengthDependencyRef;
+
     /** @type {ReturnType<typeof createDomainInputs> | undefined} */
     #domainInputs;
 
@@ -655,6 +658,7 @@ export default class ScaleResolution {
 
         this.#invalidateOrderedMembers();
         this.#invalidateMergedScaleProps();
+        this.#bindAxisLengthDependencies();
 
         if (
             this.#scaleManager.scale &&
@@ -994,6 +998,8 @@ export default class ScaleResolution {
      * @internal
      */
     bindDomainInputs() {
+        this.#bindAxisLengthDependencies();
+
         // Preserve only input history. Drop queued snapshots from the old binding
         // and its subscriptions; public navigation commands remain with the owner.
         const lastVisible = this.#domainInputs?.lastVisible;
@@ -1741,6 +1747,45 @@ export default class ScaleResolution {
     }
 
     /**
+     * Stable provenance for implicit lazy-resolution inputs. Actual pixel lengths
+     * remain layout-owned; this ref carries validation edges only.
+     */
+    getAxisLengthDependencyRef() {
+        if (!this.#axisLengthDependencyRef) {
+            this.#axisLengthDependencyRef = this.#runtime.signal(
+                "axis length dependencies",
+                undefined
+            );
+            this.#bindAxisLengthDependencies();
+        }
+        return this.#axisLengthDependencyRef;
+    }
+
+    #bindAxisLengthDependencies() {
+        if (!this.#axisLengthDependencyRef) return;
+        const dimension = this.channel === "x" ? "width" : "height";
+        /** @type {Set<import("../view/view.js").default>} */
+        const views = new Set();
+        for (const member of this.#members) {
+            for (
+                let view = /** @type {import("../view/view.js").default} */ (
+                    member.view
+                );
+                view;
+                view = view.layoutParent
+            ) {
+                views.add(view);
+            }
+        }
+        this.#runtime.setValidationDependencies(
+            this.#axisLengthDependencyRef,
+            Array.from(views).flatMap((view) =>
+                view.getSizeDependencies(dimension)
+            )
+        );
+    }
+
+    /**
      * Returns the length of the axis in pixels. Chooses the smallest of the views.
      * They should all be the same, but some exotic configuration might break that assumption.
      *
@@ -1749,6 +1794,9 @@ export default class ScaleResolution {
      * be configured as pixels, but that is yet to be materialized.
      */
     getAxisLength() {
+        // Independent sibling/guide mutations can change layout inputs without
+        // changing this resolution's members. Validate before lazy binning reads them.
+        this.#bindAxisLengthDependencies();
         if (this.channel !== "x" && this.channel !== "y") {
             throw new Error(
                 "Axis length is only defined for x and y channels!"

@@ -87,6 +87,19 @@ callbacks can observe pending output; consumers needing the updated rows use a
 propagation barrier or a graph effect. Coordinate coverage and asynchronous source
 completion remain governed by data-readiness APIs.
 
+Transform outputs use that same completion/replay boundary. `values` stages an
+immutable array; `count` stages a scalar, initially `null` until a successful
+snapshot distinguishes empty from unknown. `FlowOutput` publishes only after
+every primary and side dependency is ready and successful. Failed boundaries
+discard candidates and retain the previous parameter value. Equal arrays use
+shallow comparison; scalar outputs use identity comparison.
+
+These parameters are producer-owned, read-only, and excluded from persistence.
+Bound-provenance guards reject their consumption by source/transform expressions
+and implicit lazy loading inputs. Interval sources guard the requested domain;
+BigWig additionally guards the semantic layout inputs determining its pixel
+resolution. Visual expressions may consume outputs without scheduling dataflow.
+
 A failed flush or synchronous notification reports the original error through
 the shared runtime's optional reporter, rejects current propagation waiters,
 and stops automatic flushing. Reporting does not suppress the exception, including

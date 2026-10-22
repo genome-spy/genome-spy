@@ -3,6 +3,7 @@ import Collector from "../../collector.js";
 import { isDataReady } from "../../dataReadiness.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import BigWigSource from "./bigWigSource.js";
+import CountTransform from "../../transforms/count.js";
 
 /** @type {Map<string, { start: number, end: number, score: number }[]>} */
 const featuresByUrl = new Map();
@@ -185,8 +186,15 @@ describe("BigWigSource", () => {
             },
             /** @type {any} */ (view)
         );
+        const output = view.paramRuntime.registerOutput("recordCount", null);
+        const count = new CountTransform(
+            { type: "count", param: "recordCount" },
+            /** @type {any} */ (view)
+        );
         const collector = new Collector();
-        source.addChild(collector);
+        source.addChild(count);
+        count.addChild(collector);
+        count.initializeOnce();
 
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
 
@@ -197,6 +205,9 @@ describe("BigWigSource", () => {
             { sample: "B", chrom: "chr1", start: 4, end: 5, score: 6 },
         ]);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
+        expect(output.value.get()).toBe(2);
+        expect(output.revision).toBe(1);
+        source.disposeSubtree();
     });
 
     it("reloads when layout changes the effective window size", async () => {

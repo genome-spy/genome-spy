@@ -1318,8 +1318,8 @@ export default class GridView extends ContainerView {
     getSizeDependencies(dimension) {
         return [
             ...super.getSizeDependencies(dimension),
-            ...Array.from(this, (child) =>
-                child.paramRuntime.getParamRef(dimension)
+            ...Iterator.from(this).flatMap((child) =>
+                child.getSizeDependencies(dimension)
             ),
         ];
     }
