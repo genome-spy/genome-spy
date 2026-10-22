@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import Rectangle from "../view/layout/rectangle.js";
 import scaleIndex from "../genome/scaleIndex.js";
@@ -40,11 +40,17 @@ function createScaleResolution(type, toComplex) {
  * @param {ViewParamRuntime} [runtime]
  */
 function createController(ruler, scaleResolutions, runtime) {
+    if (!runtime) {
+        runtime = new ViewParamRuntime();
+        runtime.registerParam({ name: "cursor", ruler: {} });
+        onTestFinished(() => runtime.dispose());
+    }
+
     /** @type {Map<string, any>} */
     const listeners = new Map();
     /** @type {Map<string, any>} */
     const documentListeners = new Map();
-    const setValue = runtime ? vi.spyOn(runtime, "setValue") : vi.fn();
+    const setValue = vi.spyOn(runtime, "setValue");
     const view = {
         spec: {},
         coords: Rectangle.create(0, 0, 200, 100),
@@ -62,7 +68,7 @@ function createController(ruler, scaleResolutions, runtime) {
                 listeners.delete(type);
             }
         },
-        paramRuntime: runtime ?? { setValue, getSpecLocation: () => undefined },
+        paramRuntime: runtime,
     };
     const previousDocument = globalThis.document;
     installMockDocument(documentListeners);
@@ -209,6 +215,11 @@ describe("RulerMouseEventController", () => {
             { x: createScaleResolution("linear") }
         );
 
+        listeners.get("mousemove")({
+            point: { x: 50, y: 25 },
+            proxiedMouseEvent: createMouseEvent(),
+        });
+        setValue.mockClear();
         listeners.get("mouseleave")({ pointedViews: new Map() });
 
         expect(setValue).toHaveBeenCalledWith("cursor", {
