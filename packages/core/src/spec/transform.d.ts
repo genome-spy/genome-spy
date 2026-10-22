@@ -74,7 +74,13 @@ interface CategoricalDendrogramParamsBase extends DendrogramParamsBase {
     leaf: Field;
     leafIndex?: never;
 
-    /** Publish the ordered categories as a local output or push to an ancestor output. */
+    /**
+     * Publishes the ordered leaf categories as a read-only array parameter.
+     *
+     * A string such as `"sampleOrder"` creates the output in this view.
+     * Use `{ "name": "sampleOrder", "push": "outer" }` to publish into the nearest
+     * ancestor that declares `{ "name": "sampleOrder" }` in its `params`.
+     */
     param?: TransformOutput;
 }
 
@@ -834,8 +840,13 @@ export interface ValuesParams extends TransformParamsBase {
     field: Field;
 
     /**
-     * Declares a local output, or claims the nearest ancestor's same-named
-     * parameter containing only `name` and an optional `description`.
+     * Publishes the array as a read-only parameter.
+     *
+     * A string such as `"categories"` creates the output in this view.
+     * Use `{ "name": "categories", "push": "outer" }` to publish into the nearest
+     * ancestor that declares `{ "name": "categories" }` in its `params`.
+     * The ancestor declaration accepts only `name` and an optional `description`.
+     *
      * Claimed outputs are read-only and start with an empty array when the
      * producer view is constructed. Each output has exactly one producer.
      */
