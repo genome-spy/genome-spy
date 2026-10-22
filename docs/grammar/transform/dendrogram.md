@@ -80,6 +80,11 @@ sibling heatmap, declare `{ "name": "sampleOrder" }` in their common ancestor's
 `domain` to `{ "expr": "sampleOrder" }`. Each axis can have its own tree and
 output; no numeric heatmap positions or separate domain arrays are needed.
 
+The example below shows imaginary z scores for four samples and four genes,
+with a precomputed tree on each axis.
+
+EXAMPLE examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json height=470 spechidden
+
 Categories must be unique strings, finite numbers, or booleans. Numeric `1`
 and string `"1"` remain distinct. For intentional external alignment, replace
 `siblingOrder` with `leafOrder`: a complete domain array or an expression reading
@@ -92,9 +97,6 @@ A single leaf publishes its category with no edges; empty input publishes `[]`.
 Loading or invalid input retains the last successful domain. Unchanged arrays
 retain identity and do not notify consumers again. See
 [output parameters](values.md#output-parameters) for pushing and lifecycle limits.
-
-See the [two-axis categorical heatmap](../../examples/generic/clustered-heatmap-band.md)
-for a complete example with imaginary z scores.
 
 ## Output and placement
 

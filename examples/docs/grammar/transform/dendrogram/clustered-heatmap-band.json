@@ -67,8 +67,7 @@
         "scale": { "domain": [-2, 2], "scheme": "blueorange" },
         "legend": {
           "title": "Imaginary z score",
-          "orient": "bottom",
-          "direction": "horizontal"
+          "orient": "right"
         }
       }
     }

@@ -261,10 +261,12 @@ reversal update projection without recomputing the tree.
 
 ## Required example
 
-Create `examples/docs/examples/generic/clustered-heatmap-band.json` and its docs
-page. Use one named surround, `clusteredHeatmap`, with the matrix as `spec`, a
-sample tree on the left, and a gene tree above. Each tree owns its own input and
-single dendrogram transform, with `siblingOrder` and an ancestor-owned output.
+Keep `examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json`
+embedded in the dendrogram reference's categorical band scales section, outside
+the curated Examples gallery. Use one named surround, `clusteredHeatmap`, with the
+matrix as `spec`, a sample tree on the left, and a gene tree above. Each tree owns
+its own input and single dendrogram transform, with `siblingOrder` and an
+ancestor-owned output.
 Declare the two bare parameters in the surround's `params` as above. There
 is no root summary pipeline, duplicated tree layout, or extra order array.
 
@@ -449,8 +451,8 @@ hide either tree before initialization and after publication while retaining
 matrix/annotation alignment.
 Keep index navigation regressions. Band interval brushing remains unsupported.
 
-Docs/migration: publish the polished spec/page/screenshot, link it from the
-transform reference, and explain tree-owned domains. Build schemas before editing
+Docs/migration: embed the spec in the transform reference, retain its screenshot,
+and explain tree-owned domains. Build schemas before editing
 example specs and reuse the feature's changeset.
 
 Tentative commit: `docs(core): demonstrate tree-owned heatmap domains`

@@ -2,7 +2,7 @@
 
 import { expect, onTestFinished, test } from "vitest";
 import heatmapSpec from "../../../../../examples/core/marks/link/dendrogram-gaps.json" with { type: "json" };
-import bandHeatmapSpec from "../../../../../examples/docs/examples/generic/clustered-heatmap-band.json" with { type: "json" };
+import bandHeatmapSpec from "../../../../../examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json" with { type: "json" };
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";

@@ -318,7 +318,7 @@ await testRenderers(
 const bandFixture = JSON.parse(
     await readFile(
         new URL(
-            "../../../examples/docs/examples/generic/clustered-heatmap-band.json",
+            "../../../examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json",
             import.meta.url
         ),
         "utf8"
