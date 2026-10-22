@@ -474,7 +474,7 @@ The implementation uses read-only owner slots, `push: "outer"`, and explicit
 structural ordering. Clustering implementation remains outside this plan, with
 the tree/output boundary available for that later increment.
 
-## Final review and size record
+## Initial implementation review and size record
 
 The independent implementation review found and resolved three issues: dynamic
 insertion now validates output slots before attachment, independent branch
@@ -495,3 +495,18 @@ All milestones and review fixes are committed separately. Final verification:
 548 test files and 5,222 tests pass, with one existing skip and two TODOs; types,
 lint, schema generation, docs build, and live renderer checks pass. The inherited
 #575 changeset category-marker failure is the only outstanding release check.
+
+## Initialization cleanup
+
+Completed a focused simplification of dynamic initialization after the feature
+review. Load/replay selection now follows main, branch, and auxiliary endpoints
+in the optimized dataflow instead of combining specification predictions with a
+second graph check. Only pre-existing collectors can supply cached rows; side
+inputs load before cached primary paths replay. Paths covered by a source load
+skip redundant replay. The runtime file shrank from 266 to 245 lines.
+
+The independent reviewer reported no actionable findings. Regression coverage
+includes eager joins with cached primary data and insertion during an in-flight
+load that completes while awaiting fonts. All 548 test files and 5,223 tests pass;
+Core type checking and focused lint pass. The existing feature changeset remains
+accurate, and the inherited #575 category-marker issue remains unchanged.

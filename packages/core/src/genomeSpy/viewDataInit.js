@@ -1,11 +1,11 @@
 import {
     broadcastSubtreeDataReady,
-    collectViewSubtreeDataSources,
     findAncestorDataSource,
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
-import { hasAuxiliaryDataInput } from "../data/transforms/auxiliaryData.js";
+import Collector from "../data/collector.js";
+import DataSource from "../data/sources/dataSource.js";
 import { VISIT_SKIP } from "../view/view.js";
 
 /**
@@ -121,25 +121,9 @@ export async function initializeViewDataForViews(
         /** @type {import("../view/view.js").default} */ view
     ) => viewsToInitializeSet.has(view);
 
-    /** @type {Set<import("../data/collector.js").default>} */
-    const replayRoots = new Set();
-    /** @type {import("../view/view.js").default[]} */
-    const viewsNeedingLoad = [];
-    for (const view of viewsToInitialize) {
-        if (
-            view.spec.data ||
-            view.spec.transform?.some(hasAuxiliaryDataInput)
-        ) {
-            viewsNeedingLoad.push(view);
-            continue;
-        }
-        const collector = findCompletedAncestorCollector(view);
-        if (collector) {
-            replayRoots.add(collector);
-        } else {
-            viewsNeedingLoad.push(view);
-        }
-    }
+    // Only pre-existing materializations can provide a complete cache. A new
+    // collector may receive just the tail of an in-flight load while fonts wait.
+    const existingCollectors = new Set(dataFlow.collectors);
 
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
@@ -153,27 +137,32 @@ export async function initializeViewDataForViews(
     await textMetrics.waitUntilReady();
     viewRoot.invalidateSizeCache();
 
-    for (const collector of replayRoots) {
-        collector.repropagate();
-    }
-
-    const sourcesToLoad = collectViewSubtreeDataSources(viewsNeedingLoad);
-    const replayPaths =
-        /** @type {ReadonlySet<import("../data/flowNode.js").default>} */ (
-            replayRoots
-        );
-    // An independent branch can need loading even when its main rows replay
-    // from a completed collector. Inherited branches use that same replay.
+    /** @type {Set<Collector>} */
+    const replayRoots = new Set();
+    /** @type {Set<DataSource>} */
+    const sourcesToLoad = new Set();
     for (const view of viewsToInitialize) {
         for (const endpoint of [
+            view.flowHandle?.node,
             ...(view.flowHandle?.terminals ?? []),
             ...(view.flowHandle?.auxiliaryCollectors ?? []),
         ]) {
             let ancestor = endpoint;
-            while (ancestor && !replayPaths.has(ancestor))
+            while (
+                ancestor &&
+                !(ancestor instanceof DataSource) &&
+                !(
+                    ancestor instanceof Collector &&
+                    existingCollectors.has(ancestor)
+                )
+            ) {
                 ancestor = ancestor.parent;
-            if (!ancestor) {
-                const source = findAncestorDataSource(endpoint);
+            }
+
+            if (ancestor instanceof Collector && ancestor.completed) {
+                replayRoots.add(ancestor);
+            } else {
+                const source = findAncestorDataSource(ancestor);
                 if (source) sourcesToLoad.add(source);
             }
         }
@@ -195,6 +184,14 @@ export async function initializeViewDataForViews(
             })
         )
     );
+
+    // Load side inputs before replaying a cached primary. A source load already
+    // covers every replay root downstream of that source.
+    for (const collector of replayRoots) {
+        if (!sourcesToLoad.has(findAncestorDataSource(collector))) {
+            collector.repropagate();
+        }
+    }
     broadcastSubtreeDataReady(viewRoot);
 
     return builtDataFlow;
@@ -245,22 +242,4 @@ function collectVisibleViews(viewRoot, viewFilter) {
         views.push(view);
     });
     return views;
-}
-
-/**
- * Finds the nearest completed collector in the dataParent chain.
- *
- * @param {import("../view/view.js").default} view
- * @returns {import("../data/collector.js").default | undefined}
- */
-function findCompletedAncestorCollector(view) {
-    let current = view.dataParent;
-    while (current) {
-        const collector = current.flowHandle?.collector;
-        if (collector) {
-            return collector.completed ? collector : undefined;
-        }
-        current = current.dataParent;
-    }
-    return undefined;
 }
