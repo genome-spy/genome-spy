@@ -47,6 +47,7 @@ MANUAL_DOCUMENTATION: dict[str, tuple[str, str | None]] = {
     "Generator": ("grammar/data/eager.md", "Sequence Generator"),
     "LazyData": ("grammar/data/lazy.md", None),
     "IndexUrlTemplate": ("grammar/data/multi-url.md", "Indexed Files"),
+    "DendrogramParams": ("grammar/transform/dendrogram.md", "Parameters"),
 }
 
 

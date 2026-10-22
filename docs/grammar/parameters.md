@@ -85,6 +85,20 @@ This pattern is useful when a child interaction controls shared state, such as
 a [reactive shared scale](./scale.md#parameter-scope). The ancestor must declare
 the target parameter before a child can push to it.
 
+### Transform Outputs
+
+A child transform can publish a read-only array to an ancestor by using
+`"param": { "name": "categories", "push": "outer" }`. Declare the target
+on the ancestor with `{ "name": "categories" }` in `params`.
+This lets sibling plots share a data-derived scale domain without duplicating
+the producer.
+
+The target declaration accepts only `name` and an optional `description`.
+The transform makes it read-only and excludes it from bookmarks and provenance.
+Each output has one producer and cannot also receive interaction updates.
+See [values](./transform/values.md#output-parameters) for initialization and
+lifecycle details.
+
 ## Numeric Transitions
 
 Numeric value and expression parameters can use `transition` to smooth how the

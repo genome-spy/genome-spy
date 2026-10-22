@@ -18,7 +18,7 @@ export default class ValuesTransform extends Transform {
         super(params, view);
         this.params = params;
         this.field = this.createFieldAccessor(params, "field");
-        this.output = view.paramRuntime.getOutput(params.param);
+        this.output = view.paramRuntime.resolveOutput(params.param);
         if (this.output.producer)
             throw new Error('Duplicate producer for "' + params.param + '".');
         this.output.producer = this;

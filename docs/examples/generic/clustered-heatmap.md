@@ -38,6 +38,10 @@ Zooming and panning fit each tree's height scale to links whose two index
 anchors are inside the visible range. Local branches can then use the available
 panel space. Branches extending beyond the fitted height domain are clipped.
 
+For categorical IDs without numeric leaf positions, see the smaller
+[categorical heatmap](../../grammar/transform/dendrogram.md#categorical-band-scales),
+whose trees publish their band domains directly.
+
 ## Preparing the data
 
 GenomeSpy does not perform clustering. This visualization loads a wide

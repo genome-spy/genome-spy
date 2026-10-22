@@ -4,6 +4,12 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
 
 /** A producer-owned value, independent of the rows flowing through its node. */
 export default class FlowOutput {
+    /** @type {import("../view/view.js").default | undefined} */
+    owner;
+
+    /** @type {import("../view/view.js").default | undefined} */
+    producerView;
+
     /** @type {import("./flowNode.js").default | undefined} */
     producer;
 
@@ -11,16 +17,10 @@ export default class FlowOutput {
     candidate;
 
     /**
-     * @param {import("../paramRuntime/viewParamRuntime.js").default} runtime
-     * @param {string} name
+     * @param {import("../paramRuntime/types.js").WritableParamRef<readonly import("../spec/channel.js").Scalar[]>} value
      */
-    constructor(runtime, name) {
-        this.value = runtime.signal(
-            name,
-            /** @type {readonly import("../spec/channel.js").Scalar[]} */ (
-                Object.freeze([])
-            )
-        );
+    constructor(value) {
+        this.value = value;
     }
 
     publish() {
@@ -64,17 +64,4 @@ export function runFlowPublication(root, action, runtime, successful = true) {
         }
     };
     return runtime ? runtime.runInTransaction(run) : run();
-}
-
-/**
- * Branch declarations share their owning view's lexical scope.
- * @param {import("../spec/transform.js").TransformParams[]} transforms
- * @returns {Generator<import("../spec/transform.js").ValuesParams>}
- */
-export function* getOutputDeclarations(transforms) {
-    for (const transform of transforms) {
-        if (transform.type === "values") yield transform;
-        else if (transform.type === "branch")
-            yield* getOutputDeclarations(transform.transform);
-    }
 }

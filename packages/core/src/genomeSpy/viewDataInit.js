@@ -4,7 +4,8 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
-import { hasAuxiliaryDataInput } from "../data/transforms/auxiliaryData.js";
+import Collector from "../data/collector.js";
+import DataSource from "../data/sources/dataSource.js";
 import { VISIT_SKIP } from "../view/view.js";
 
 /**
@@ -23,9 +24,8 @@ export async function initializeViewData(
     textMetrics,
     onDataFlowBuilt
 ) {
-    const visibilityPredicate = (
-        /** @type {import("../view/view.js").default} */ view
-    ) => view.isConfiguredVisible();
+    const { predicate: visibilityPredicate } =
+        getInitializationDependencies(viewRoot);
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
         dataFlow,
@@ -66,19 +66,11 @@ export async function initializeVisibleViewData(
     dataFlow,
     textMetrics
 ) {
-    const visibilityPredicate = (
-        /** @type {import("../view/view.js").default} */ view
-    ) => view.isConfiguredVisible();
-    const visibleViews = collectVisibleViews(viewRoot, visibilityPredicate);
-    const viewsToInitialize = visibleViews.filter(
-        (view) => view.getDataInitializationState() === "none"
-    );
-
     return initializeViewDataForViews(
         viewRoot,
         dataFlow,
         textMetrics,
-        viewsToInitialize
+        viewRoot.getDescendants()
     );
 }
 
@@ -102,15 +94,15 @@ export async function initializeViewDataForViews(
     candidateViews
 ) {
     const candidates = new Set(candidateViews);
-    const visibilityPredicate = (
-        /** @type {import("../view/view.js").default} */ view
-    ) => view.isConfiguredVisible();
+    const { predicate: visibilityPredicate, producerPaths } =
+        getInitializationDependencies(viewRoot);
     const viewsToInitialize = collectVisibleViews(
         viewRoot,
         visibilityPredicate
     ).filter(
         (view) =>
-            candidates.has(view) && view.getDataInitializationState() === "none"
+            (candidates.has(view) || producerPaths.has(view)) &&
+            view.getDataInitializationState() === "none"
     );
 
     if (viewsToInitialize.length === 0) {
@@ -122,25 +114,9 @@ export async function initializeViewDataForViews(
         /** @type {import("../view/view.js").default} */ view
     ) => viewsToInitializeSet.has(view);
 
-    /** @type {Set<import("../data/collector.js").default>} */
-    const collectorsToRepropagate = new Set();
-    /** @type {import("../view/view.js").default[]} */
-    const viewsNeedingLoad = [];
-    for (const view of viewsToInitialize) {
-        if (
-            view.spec.data ||
-            view.spec.transform?.some(hasAuxiliaryDataInput)
-        ) {
-            viewsNeedingLoad.push(view);
-            continue;
-        }
-        const collector = findCompletedAncestorCollector(view);
-        if (collector) {
-            collectorsToRepropagate.add(collector);
-        } else {
-            viewsNeedingLoad.push(view);
-        }
-    }
+    // Only pre-existing materializations can provide a complete cache. A new
+    // collector may receive just the tail of an in-flight load while fonts wait.
+    const existingCollectors = new Set(dataFlow.collectors);
 
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
@@ -154,26 +130,83 @@ export async function initializeViewDataForViews(
     await textMetrics.waitUntilReady();
     viewRoot.invalidateSizeCache();
 
-    for (const collector of collectorsToRepropagate) {
-        collector.repropagate();
+    /** @type {Set<Collector>} */
+    const replayRoots = new Set();
+    /** @type {Set<DataSource>} */
+    const sourcesToLoad = new Set();
+    for (const view of viewsToInitialize) {
+        for (const endpoint of [
+            view.flowHandle?.node,
+            ...(view.flowHandle?.terminals ?? []),
+            ...(view.flowHandle?.auxiliaryCollectors ?? []),
+        ]) {
+            let ancestor = endpoint;
+            while (
+                ancestor &&
+                !(ancestor instanceof DataSource) &&
+                !(
+                    ancestor instanceof Collector &&
+                    existingCollectors.has(ancestor)
+                )
+            ) {
+                ancestor = ancestor.parent;
+            }
+
+            if (ancestor instanceof Collector && ancestor.completed) {
+                replayRoots.add(ancestor);
+            } else {
+                const source = findAncestorDataSource(ancestor);
+                if (source) sourcesToLoad.add(source);
+            }
+        }
     }
 
-    if (viewsNeedingLoad.length) {
-        const dataSourceRoots = collectDataSourceRoots(viewsNeedingLoad);
-        await Promise.all(
-            Array.from(dataSourceRoots.entries()).map(
-                ([subtreeRoot, dataSources]) =>
-                    loadViewSubtreeData(subtreeRoot, dataSources, undefined, {
-                        // If a source is already loading, schedule a reload so new branches
-                        // added during lazy init receive a complete data propagation.
-                        queueReload: true,
-                    })
-            )
-        );
+    await loadViewSubtreeData(viewRoot, sourcesToLoad, visibilityPredicate, {
+        // Newly attached paths need a complete publication, including
+        // when an equivalent source is already loading.
+        queueReload: true,
+    });
+
+    // Load side inputs before replaying a cached primary. A source load already
+    // covers every replay root downstream of that source.
+    for (const collector of replayRoots) {
+        if (!sourcesToLoad.has(findAncestorDataSource(collector))) {
+            collector.repropagate();
+        }
     }
     broadcastSubtreeDataReady(viewRoot);
 
     return builtDataFlow;
+}
+
+/**
+ * Visible consumers keep their output producers active, including hidden trees.
+ * Include traversal/data ancestry without initializing unrelated hidden siblings.
+ * @param {import("../view/view.js").default} root
+ */
+function getInitializationDependencies(root) {
+    const visible = collectVisibleViews(root, (view) =>
+        view.isConfiguredVisible()
+    );
+    const required = new Set(visible);
+    const producerPaths = new Set();
+    /** @param {import("../view/view.js").default | undefined} view */
+    const include = (view) => {
+        if (!view || producerPaths.has(view)) return;
+        producerPaths.add(view);
+        required.add(view);
+        include(view.layoutParent);
+        include(view.dataParent);
+    };
+    for (const view of required) {
+        for (const output of view.paramRuntime.outputs)
+            include(output.producerView);
+    }
+    return {
+        predicate: (/** @type {import("../view/view.js").default} */ view) =>
+            required.has(view),
+        producerPaths,
+    };
 }
 
 /**
@@ -191,64 +224,4 @@ function collectVisibleViews(viewRoot, viewFilter) {
         views.push(view);
     });
     return views;
-}
-
-/**
- * @param {import("../view/view.js").default[]} views
- * @returns {Map<import("../view/view.js").default, Set<import("../data/sources/dataSource.js").default>>}
- */
-function collectDataSourceRoots(views) {
-    /** @type {Map<import("../view/view.js").default, Set<import("../data/sources/dataSource.js").default>>} */
-    const roots = new Map();
-
-    for (const view of views) {
-        let current = view;
-        while (current && !current.flowHandle?.dataSource) {
-            current = current.dataParent;
-        }
-
-        if (!current?.flowHandle?.dataSource) {
-            if (view.spec.data) {
-                throw new Error(
-                    "No data source found for view " + view.getPathString()
-                );
-            }
-            // Some views are data-less (constants or references); they don't
-            // participate in data loading but still need graphics init.
-            continue;
-        }
-
-        let dataSources = roots.get(current);
-        if (!dataSources) {
-            dataSources = new Set();
-            roots.set(current, dataSources);
-        }
-        dataSources.add(current.flowHandle.dataSource);
-        for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
-            const dataSource = findAncestorDataSource(collector);
-            if (dataSource) {
-                dataSources.add(dataSource);
-            }
-        }
-    }
-
-    return roots;
-}
-
-/**
- * Finds the nearest completed collector in the dataParent chain.
- *
- * @param {import("../view/view.js").default} view
- * @returns {import("../data/collector.js").default | undefined}
- */
-function findCompletedAncestorCollector(view) {
-    let current = view.dataParent;
-    while (current) {
-        const collector = current.flowHandle?.collector;
-        if (collector) {
-            return collector.completed ? collector : undefined;
-        }
-        current = current.dataParent;
-    }
-    return undefined;
 }

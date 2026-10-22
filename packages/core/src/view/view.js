@@ -29,7 +29,7 @@ import {
 import { isInChromeSubtree, setChromeOverride } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
-import { getOutputDeclarations } from "../data/flowOutput.js";
+import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
 import { annotateSpecError } from "../utils/specError.js";
 import { warnOnce } from "../utils/warning.js";
@@ -103,6 +103,9 @@ export default class View {
 
     /** @type {NamedDataScope} */
     namedDataScope;
+
+    /** @type {Set<import("../data/flowOutput.js").default>} */
+    flowOutputs = new Set();
 
     /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
     #configScopes;
@@ -282,13 +285,22 @@ export default class View {
             );
         }
 
-        for (const output of getOutputDeclarations(spec.transform ?? [])) {
+        for (const { transform, property, param } of getOutputDeclarations(
+            spec.transform ?? []
+        )) {
             try {
-                this.paramRuntime.registerOutput(output.param);
+                if (typeof param === "string") {
+                    this.paramRuntime.registerOutput(param);
+                }
+                const handle = this.paramRuntime.resolveOutput(param);
+                if (handle.producerView)
+                    throw new Error("Duplicate transform output producer.");
+                handle.producerView = this;
+                this.flowOutputs.add(handle);
             } catch (error) {
                 throw annotateSpecError(
                     error,
-                    this.paramRuntime.getSpecLocation(output, ["param"])
+                    this.paramRuntime.getSpecLocation(transform, [property])
                 );
             }
         }
@@ -1184,10 +1196,23 @@ export default class View {
         this.#disposers.push(disposer);
     }
 
-    /**
-     * Dispose owned scales before releasing views in post-order.
-     */
+    /** Reject unsupported producer removal before any hierarchy or guide mutation. */
+    assertCanDisposeSubtree() {
+        const subtree = new Set(this.getDescendants());
+        for (const view of subtree) {
+            for (const output of view.flowOutputs) {
+                if (output.owner && !subtree.has(output.owner)) {
+                    throw new Error(
+                        "Cannot remove a shared output producer while its owner survives."
+                    );
+                }
+            }
+        }
+    }
+
+    /** Dispose owned scales before releasing views in post-order. */
     disposeSubtree() {
+        this.assertCanDisposeSubtree();
         /** @type {Visitor} */
         const visitor = (view) => {
             // Member removal must not reconfigure scales that are being torn down.

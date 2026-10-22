@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 
 import UnitView from "../view/unitView.js";
 import ConcatView from "../view/concatView.js";
@@ -13,6 +13,7 @@ import {
 } from "./viewDataInit.js";
 import { transforms } from "../data/transforms/transformFactory.js";
 import Transform from "../data/transforms/transform.js";
+import { loadViewSubtreeData } from "../data/flowInit.js";
 
 describe("viewDataInit", () => {
     test("skips hidden subtrees during initial data initialization", async () => {
@@ -438,7 +439,7 @@ describe("viewDataInit", () => {
         expect(initializeData).toHaveBeenCalledOnce();
     });
 
-    test("completed collectors repropagate to newly attached views", async () => {
+    test("new views join side inputs while replaying completed parent data", async () => {
         const context = createTestViewContext();
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
@@ -496,6 +497,20 @@ describe("viewDataInit", () => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const summarySpec = {
             name: "summary",
+            transform: [
+                {
+                    type: "lookup",
+                    from: {
+                        values: [
+                            { x: 1, label: "A" },
+                            { x: 2, label: "B" },
+                        ],
+                    },
+                    key: "x",
+                    fields: ["x"],
+                    values: ["label"],
+                },
+            ],
             mark: "point",
             encoding: {
                 x: { field: "x", type: "quantitative" },
@@ -523,15 +538,131 @@ describe("viewDataInit", () => {
         const summaryCollector = summaryView.flowHandle?.collector;
         expect(summaryCollector).toBeDefined();
         expect(summaryCollector?.completed).toBe(true);
-        let datumCount = 0;
-        for (const datum of summaryCollector?.getData() ?? []) {
-            void datum;
-            datumCount++;
-        }
-        expect(datumCount).toBeGreaterThan(0);
+        expect(Array.from(summaryCollector.getData())).toMatchObject([
+            { x: 1, label: "A" },
+            { x: 2, label: "B" },
+        ]);
         expect(loadSpy).not.toHaveBeenCalled();
 
         loadSpy.mockRestore();
+    });
+
+    test("new views load side inputs before reloading an uncached inherited source", async () => {
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
+        const fetch = vi
+            .spyOn(globalThis, "fetch")
+            .mockResolvedValue(
+                new Response(JSON.stringify([{ x: 1, label: "A" }]))
+            );
+        onTestFinished(() => fetch.mockRestore());
+        const root = /** @type {ConcatView} */ (
+            await context.createOrImportView(
+                {
+                    data: { values: [{ x: 1 }] },
+                    vconcat: [
+                        {
+                            visible: false,
+                            transform: [
+                                {
+                                    type: "lookup",
+                                    from: {
+                                        url: "https://example.test/lookup.json",
+                                    },
+                                    key: "x",
+                                    fields: ["x"],
+                                    values: ["label"],
+                                },
+                            ],
+                            mark: "point",
+                        },
+                    ],
+                },
+                null,
+                null,
+                "root"
+            )
+        );
+        onTestFinished(() => root.disposeSubtree());
+        await initializeViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics,
+            () => undefined
+        );
+
+        // The source loaded while its only consumer was hidden, so no cache exists.
+        root.children[0].spec.visible = true;
+        await initializeVisibleViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics
+        );
+
+        expect(
+            Array.from(root.children[0].flowHandle.collector.getData())
+        ).toMatchObject([{ x: 1, label: "A" }]);
+    });
+
+    test("a branch attached during a load receives all rows after the font wait", async () => {
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
+        const root = /** @type {ConcatView} */ (
+            await context.createOrImportView(
+                {
+                    data: { values: [{ x: 1 }, { x: 2 }] },
+                    vconcat: [
+                        { mark: "point" },
+                        { mark: "point", visible: false },
+                    ],
+                },
+                null,
+                null,
+                "root"
+            )
+        );
+        onTestFinished(() => root.disposeSubtree());
+        await initializeViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics,
+            () => undefined
+        );
+
+        // The inserted collector sees only the tail of this interrupted stream.
+        const started = Promise.withResolvers();
+        const finish = Promise.withResolvers();
+        const source = root.flowHandle.dataSource;
+        const load = vi
+            .spyOn(source, "load")
+            .mockImplementationOnce(async () => {
+                source.reset();
+                source.beginBatch({ type: "file" });
+                for (const child of source.children) child.handle({ x: 1 });
+                started.resolve(undefined);
+                await finish.promise;
+                for (const child of source.children) child.handle({ x: 2 });
+                source.complete();
+            });
+        const loading = loadViewSubtreeData(root, new Set([source]));
+        await started.promise;
+        vi.spyOn(context.textMetrics, "waitUntilReady").mockImplementationOnce(
+            async () => {
+                finish.resolve(undefined);
+                await loading;
+            }
+        );
+        root.children[1].spec.visible = true;
+        await initializeVisibleViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics
+        );
+
+        expect(
+            Array.from(root.children[1].flowHandle.collector.getData())
+        ).toMatchObject([{ x: 1 }, { x: 2 }]);
+        expect(load).toHaveBeenCalledTimes(2);
     });
 
     test("lazy init does not reinitialize existing flow nodes", async () => {

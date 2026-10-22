@@ -1,0 +1,289 @@
+{
+  "description": [
+    "Categorical Clustered Heatmap",
+    "Two supplied trees publish sample and gene orders to shared band scales. The z scores and trees are imaginary."
+  ],
+  "name": "clusteredHeatmap",
+  "params": [{ "name": "sampleOrder" }, { "name": "geneOrder" }],
+  "resolve": {
+    "scale": { "x": "excluded", "y": "excluded" },
+    "legend": { "color": "collected" }
+  },
+  "scales": {
+    "x": {
+      "type": "band",
+      "domain": { "expr": "geneOrder" },
+      "paddingInner": 0.08,
+      "paddingOuter": 0.12
+    },
+    "y": {
+      "type": "band",
+      "domain": { "expr": "sampleOrder" },
+      "paddingInner": 0.08,
+      "paddingOuter": 0.12,
+      "reverse": true
+    }
+  },
+  "spacing": 10,
+  "spec": {
+    "name": "matrix",
+    "data": {
+      "values": [
+        { "sample": "Sample C", "gene": "TP53", "z": 1.6 },
+        { "sample": "Sample C", "gene": "MYC", "z": 1.1 },
+        { "sample": "Sample C", "gene": "EGFR", "z": -0.9 },
+        { "sample": "Sample C", "gene": "BRCA1", "z": -1.4 },
+        { "sample": "Sample A", "gene": "TP53", "z": 1.2 },
+        { "sample": "Sample A", "gene": "MYC", "z": 0.8 },
+        { "sample": "Sample A", "gene": "EGFR", "z": -1.1 },
+        { "sample": "Sample A", "gene": "BRCA1", "z": -0.8 },
+        { "sample": "Sample D", "gene": "TP53", "z": -0.4 },
+        { "sample": "Sample D", "gene": "MYC", "z": -0.7 },
+        { "sample": "Sample D", "gene": "EGFR", "z": 1.3 },
+        { "sample": "Sample D", "gene": "BRCA1", "z": 0.9 },
+        { "sample": "Sample B", "gene": "TP53", "z": -1.5 },
+        { "sample": "Sample B", "gene": "MYC", "z": -1.2 },
+        { "sample": "Sample B", "gene": "EGFR", "z": 0.8 },
+        { "sample": "Sample B", "gene": "BRCA1", "z": 1.5 }
+      ]
+    },
+    "mark": "rect",
+    "encoding": {
+      "x": {
+        "field": "gene",
+        "type": "nominal",
+        "axis": { "title": "Gene", "labelAngle": 0 }
+      },
+      "y": {
+        "field": "sample",
+        "type": "nominal",
+        "axis": { "title": "Sample", "orient": "right" }
+      },
+      "color": {
+        "field": "z",
+        "type": "quantitative",
+        "scale": { "domain": [-2, 2], "scheme": "blueorange" },
+        "legend": {
+          "title": "Imaginary z score",
+          "orient": "right"
+        }
+      }
+    }
+  },
+  "surround": {
+    "top": [
+      {
+        "name": "geneTree",
+        "height": 90,
+        "data": {
+          "values": [
+            {
+              "id": "gEGFR",
+              "parent": "gEB",
+              "height": 0,
+              "gene": "EGFR",
+              "childOrder": 0
+            },
+            { "id": "geneRoot", "parent": null, "height": 2.2 },
+            {
+              "id": "gMYC",
+              "parent": "gTM",
+              "height": 0,
+              "gene": "MYC",
+              "childOrder": 1
+            },
+            {
+              "id": "gEB",
+              "parent": "geneRoot",
+              "height": 0.9,
+              "childOrder": 1
+            },
+            {
+              "id": "gBRCA1",
+              "parent": "gEB",
+              "height": 0,
+              "gene": "BRCA1",
+              "childOrder": 1
+            },
+            {
+              "id": "gTM",
+              "parent": "geneRoot",
+              "height": 0.7,
+              "childOrder": 0
+            },
+            {
+              "id": "gTP53",
+              "parent": "gTM",
+              "height": 0,
+              "gene": "TP53",
+              "childOrder": 0
+            }
+          ]
+        },
+        "transform": [
+          {
+            "type": "dendrogram",
+            "key": "id",
+            "parentKey": "parent",
+            "height": "height",
+            "leaf": "gene",
+            "siblingOrder": "childOrder",
+            "domainParam": { "name": "geneOrder", "push": "outer" }
+          }
+        ],
+        "mark": {
+          "type": "link",
+          "linkShape": "orthogonal",
+          "orient": "vertical",
+          "size": 1.3,
+          "minPickingSize": 6,
+          "color": "#334155"
+        },
+        "encoding": {
+          "x": {
+            "field": "sourceValue",
+            "type": "nominal",
+            "band": 0.5,
+            "axis": null
+          },
+          "x2": { "field": "targetValue", "band": 0.5 },
+          "xOffset": {
+            "field": "sourceOffset",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 1],
+              "range": [
+                0,
+                {
+                  "expr": "width * bandstep('x', width)"
+                }
+              ]
+            }
+          },
+          "x2Offset": { "field": "targetOffset" },
+          "y": {
+            "field": "sourceHeight",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 2.4],
+              "reverse": false,
+              "zoom": false,
+              "nice": false
+            },
+            "axis": null
+          },
+          "y2": { "field": "targetHeight" }
+        }
+      }
+    ],
+    "left": [
+      {
+        "name": "sampleTree",
+        "width": 90,
+        "data": {
+          "values": [
+            {
+              "id": "sD",
+              "parent": "sABC",
+              "height": 0,
+              "sample": "Sample D",
+              "childOrder": 1
+            },
+            {
+              "id": "sampleRoot",
+              "parent": null,
+              "height": 2.6
+            },
+            {
+              "id": "sA",
+              "parent": "sCA",
+              "height": 0,
+              "sample": "Sample A",
+              "childOrder": 1
+            },
+            {
+              "id": "sCA",
+              "parent": "sABC",
+              "height": 0.6,
+              "childOrder": 0
+            },
+            {
+              "id": "sB",
+              "parent": "sampleRoot",
+              "height": 0,
+              "sample": "Sample B",
+              "childOrder": 1
+            },
+            {
+              "id": "sC",
+              "parent": "sCA",
+              "height": 0,
+              "sample": "Sample C",
+              "childOrder": 0
+            },
+            {
+              "id": "sABC",
+              "parent": "sampleRoot",
+              "height": 1.4,
+              "childOrder": 0
+            }
+          ]
+        },
+        "transform": [
+          {
+            "type": "dendrogram",
+            "key": "id",
+            "parentKey": "parent",
+            "height": "height",
+            "leaf": "sample",
+            "siblingOrder": "childOrder",
+            "domainParam": { "name": "sampleOrder", "push": "outer" }
+          }
+        ],
+        "mark": {
+          "type": "link",
+          "linkShape": "orthogonal",
+          "orient": "horizontal",
+          "size": 1.3,
+          "minPickingSize": 6,
+          "color": "#334155"
+        },
+        "encoding": {
+          "y": {
+            "field": "sourceValue",
+            "type": "nominal",
+            "band": 0.5,
+            "axis": null
+          },
+          "y2": { "field": "targetValue", "band": 0.5 },
+          "yOffset": {
+            "field": "sourceOffset",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 1],
+              "range": [
+                0,
+                {
+                  "expr": "-height * bandstep('y', height)"
+                }
+              ]
+            }
+          },
+          "y2Offset": { "field": "targetOffset" },
+          "x": {
+            "field": "sourceHeight",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 2.8],
+              "reverse": true,
+              "zoom": false,
+              "nice": false
+            },
+            "axis": null
+          },
+          "x2": { "field": "targetHeight" }
+        }
+      }
+    ]
+  }
+}

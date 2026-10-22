@@ -13,6 +13,7 @@ import { configureViewsAfterScaleResolution } from "../genomeSpy/viewHierarchyCo
 import { isChromeView } from "./viewSelectors.js";
 import { isImportSpec } from "./viewSpecGuards.js";
 import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
+import { finalizeOutputDeclarations } from "./transformOutputDeclarations.js";
 
 /**
  * Shared helper for dynamic container mutations.
@@ -38,7 +39,7 @@ export default class ContainerMutationHelper {
      */
 
     /**
-     * @param {import("./containerView.js").default} container
+     * @param {import("./containerView.js").default & { children: View[] }} container
      * @param {MutationOptions} options
      */
     constructor(container, options) {
@@ -76,6 +77,7 @@ export default class ContainerMutationHelper {
         );
 
         try {
+            finalizeOutputDeclarations(childView);
             specs.splice(insertIndex, 0, childSpec);
             specInserted = true;
             const insertionResult = this.options.insertView(
@@ -114,8 +116,9 @@ export default class ContainerMutationHelper {
         } catch (error) {
             if (viewInserted) {
                 await this.#rollbackInsertedChild(insertIndex, error);
-            } else if (specInserted) {
-                specs.splice(insertIndex, 1);
+            } else {
+                if (specInserted) specs.splice(insertIndex, 1);
+                childView.disposeSubtree();
             }
 
             throw error;
@@ -146,6 +149,9 @@ export default class ContainerMutationHelper {
      * @param {{ requestLayout?: boolean }} [options]
      */
     async removeChildAt(index, options = {}) {
+        const child = this.container.children[index];
+        if (!child) throw new Error("Child index out of range!");
+        child.assertCanDisposeSubtree();
         clearViewLevelScaleProps(this.container);
         clearViewLevelGuideProps(this.container);
         this.options.removeView(index);

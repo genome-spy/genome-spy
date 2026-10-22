@@ -39,6 +39,7 @@ export class RulerMouseEventController {
         this.channels = channels;
         this.scaleResolutions = scaleResolutions;
         this.paramRuntime = paramRuntime;
+        this.#lastValue = paramRuntime.findValue(paramName);
         this.#viewListeners = new ViewInteractionListenerTracker(
             gridChild.view
         );
@@ -80,6 +81,12 @@ export class RulerMouseEventController {
     disabled = false;
 
     dragging = false;
+
+    /**
+     * The initial or last published value; another controller may have replaced it.
+     * @type {import("../spec/parameter.js").RulerValue}
+     */
+    #lastValue;
 
     /** @type {() => boolean} */
     #cancelActiveDrag = () => false;
@@ -123,7 +130,7 @@ export class RulerMouseEventController {
         if (this.clear === "mouseleave") {
             this.#addViewInteractionListener("mouseleave", (event) => {
                 if (!event.pointedViews.has(this.gridChild.view)) {
-                    this.#setValue(createRulerValue(this.channels));
+                    this.#clearValue();
                 }
             });
         } else if (this.clear !== false) {
@@ -172,7 +179,7 @@ export class RulerMouseEventController {
                 },
                 onRelease: () => {
                     if (this.clear === "mouseup") {
-                        this.#setValue(createRulerValue(this.channels));
+                        this.#clearValue();
                     }
                 },
             });
@@ -184,7 +191,7 @@ export class RulerMouseEventController {
                     !this.dragging &&
                     !event.pointedViews.has(this.gridChild.view)
                 ) {
-                    this.#setValue(createRulerValue(this.channels));
+                    this.#clearValue();
                 }
             });
         } else if (this.clear !== false && this.clear !== "mouseup") {
@@ -232,11 +239,19 @@ export class RulerMouseEventController {
         return value;
     }
 
+    #clearValue() {
+        // A previous view's leave can follow the new view's pointer update.
+        if (this.paramRuntime.findValue(this.paramName) === this.#lastValue) {
+            this.#setValue(createRulerValue(this.channels));
+        }
+    }
+
     /**
      * @param {ReturnType<typeof createRulerValue>} value
      */
     #setValue(value) {
         if (!this.disabled) {
+            this.#lastValue = value;
             this.paramRuntime.setValue(this.paramName, value);
         }
     }

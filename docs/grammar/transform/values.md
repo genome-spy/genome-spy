@@ -11,13 +11,34 @@ SCHEMA ValuesParams
 
 ## Output parameters
 
-`param` declares a read-only parameter in the owning view's scope. Do not also
-declare it in `params`. Descendant views can read the output in expressions;
-ancestors and sibling views need the producer at their common ancestor.
+A string `param` declares a read-only parameter in the owning view's scope.
+Do not also declare that local output in `params`. Descendant views can read
+the output in expressions.
 
-The output starts as an immutable `[]`. Each successfully completed input
-publishes an immutable array in input order, including duplicates. An empty
-result publishes `[]`, and unchanged arrays do not notify consumers again.
+To share a child transform's output with its ancestors and siblings, declare
+`{ "name": "categories" }` in the common ancestor's `params`
+and use `"param": { "name": "categories", "push": "outer" }` on the transform.
+This claims the nearest ancestor declaration with that name. The declaration
+accepts only `name` and an optional `description`, and cannot also receive
+updates from interactions or other pushed parameters. The transform makes it
+read-only, with exactly one producer. Its producer remains active when the
+child's presentation is hidden.
+
+Local outputs start as an immutable `[]`. A bare ancestor parameter starts as
+`null` and becomes `[]` when its child producer is constructed. Declare it before
+dependent parent expression parameters, and make those expressions tolerate
+`null`, for example `categories ? length(categories) : 0`. Existing expressions
+continue observing the same parameter. A bare parameter without a producer
+remains an ordinary writable parameter.
+
+Construct the owner and its pushed producer together. A dynamically inserted
+subtree can contain both, but cannot claim a parameter on an already configured
+ancestor. Replace the producer's data to update the output; removing the producer
+requires disposing its owning composition as well.
+
+Each successfully completed input publishes an immutable array in input order,
+including duplicates. An empty result publishes `[]`, and unchanged arrays do
+not notify consumers again.
 Loading or processing failures retain the last successful value. Missing fields,
 non-scalar values, and non-finite numbers cause an error.
 

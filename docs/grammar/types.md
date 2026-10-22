@@ -261,6 +261,10 @@ See the [Encoding documentation](mark/index.md#encoding).
 
 SCHEMA EventConfig
 
+## ExplicitlyOrderedDendrogramParams
+
+See the [ExplicitlyOrderedDendrogramParams documentation](transform/dendrogram.md#explicit-leaf-order).
+
 ## ExprDef
 
 SCHEMA ExprDef
@@ -396,6 +400,10 @@ SCHEMA IdentifierParams
 ## ImportSpec
 
 See the [ImportSpec documentation](import.md#properties).
+
+## IndexDendrogramParams
+
+See the [IndexDendrogramParams documentation](transform/dendrogram.md).
 
 ## IndexUrlSourceRef
 
@@ -897,6 +905,10 @@ See the [SetIntersectionParams documentation](transform/set-intersection.md#para
 
 SCHEMA ShapeDef
 
+## SiblingOrderedDendrogramParams
+
+See the [SiblingOrderedDendrogramParams documentation](transform/dendrogram.md).
+
 ## SingleUrlSourceRef
 
 SCHEMA SingleUrlSourceRef
@@ -1004,6 +1016,10 @@ SCHEMA Tooltip
 ## TooltipDef
 
 SCHEMA TooltipDef
+
+## TransformOutput
+
+SCHEMA TransformOutput
 
 ## TransformParams
 

@@ -1,4 +1,8 @@
-import { PositionalChannel, PrimaryPositionalChannel } from "./channel.js";
+import {
+    PositionalChannel,
+    PrimaryPositionalChannel,
+    Scalar,
+} from "./channel.js";
 import {
     DataSource,
     Generator,
@@ -28,7 +32,7 @@ export interface TransformParamsBase {
 }
 
 /** Lay out a precomputed tree and emit one parent-child edge per non-root node. */
-export interface DendrogramParams extends TransformParamsBase {
+interface DendrogramParamsBase extends TransformParamsBase {
     type: "dendrogram";
 
     /** Unique string or finite numeric node identifier. */
@@ -41,21 +45,65 @@ export interface DendrogramParams extends TransformParamsBase {
     height: Field;
 
     /**
+     * Output field names for source/target IDs, heights, anchors, and
+     * fractional offsets. Generated values overwrite copied child metadata.
+     * Names must be distinct and cannot use the reserved internal __uniqueId.
+     * Categorical mode defaults to sourceValue/targetValue for its anchor fields.
+     *
+     * __Default value:__ ["sourceId", "targetId", "sourceHeight", "targetHeight", "sourceIndex", "targetIndex", "sourceOffset", "targetOffset"]
+     */
+    as?: [string, string, string, string, string, string, string, string];
+}
+
+export interface IndexDendrogramParams extends DendrogramParamsBase {
+    /**
      * Integer row position for each leaf, matching the heatmap order. Indices
      * must be distinct and in [0, 2^44); each subtree's leaves must be contiguous
      * in the ordered leaf sequence. Internal nodes need no value in this field.
      */
     leafIndex: Field;
 
-    /**
-     * Output field names for source/target IDs, heights, integer anchors, and
-     * fractional offsets. Generated values overwrite copied child metadata.
-     * Names must be distinct and cannot use the reserved internal __uniqueId.
-     *
-     * __Default value:__ ["sourceId", "targetId", "sourceHeight", "targetHeight", "sourceIndex", "targetIndex", "sourceOffset", "targetOffset"]
-     */
-    as?: [string, string, string, string, string, string, string, string];
+    leaf?: never;
+    siblingOrder?: never;
+    leafOrder?: never;
+    domainParam?: never;
 }
+
+interface CategoricalDendrogramParamsBase extends DendrogramParamsBase {
+    /** Leaf category field. Values must be distinct strings, finite numbers, or booleans. */
+    leaf: Field;
+    leafIndex?: never;
+
+    /**
+     * Publishes the ordered band domain as a read-only array parameter.
+     *
+     * A string such as `"sampleOrder"` creates the output in this view.
+     * Use `{ "name": "sampleOrder", "push": "outer" }` to publish into the nearest
+     * ancestor that declares `{ "name": "sampleOrder" }` in its `params`.
+     */
+    domainParam?: TransformOutput;
+}
+
+export interface SiblingOrderedDendrogramParams extends CategoricalDendrogramParamsBase {
+    /** Finite numeric order on each non-root node, unique among its siblings. */
+    siblingOrder: Field;
+    leafOrder?: never;
+}
+
+export interface ExplicitlyOrderedDendrogramParams extends CategoricalDendrogramParamsBase {
+    /**
+     * Complete ordered band domain. Include every leaf category exactly once;
+     * extra categories reserve slots.
+     */
+    leafOrder: Scalar[] | ExprRef;
+    siblingOrder?: never;
+}
+
+/** Numeric index layout or categorical layout with exactly one ordering input. */
+export type DendrogramParams =
+    | IndexDendrogramParams
+    | SiblingOrderedDendrogramParams
+    | ExplicitlyOrderedDendrogramParams;
 
 /** Options for transforms whose predicates or expressions can trigger replay. */
 export interface ReactiveTransformParams {
@@ -780,6 +828,9 @@ export interface CoverageParams extends TransformParamsBase {
     asEnd?: string;
 }
 
+/** A local output name, or a push to the nearest ancestor's bare parameter. */
+export type TransformOutput = string | { name: string; push: "outer" };
+
 /** Projects a completed row stream into a read-only parameter array. */
 export interface ValuesParams extends TransformParamsBase {
     type: "values";
@@ -787,8 +838,18 @@ export interface ValuesParams extends TransformParamsBase {
     /** Field whose scalar values form the output array, preserving order and duplicates. */
     field: Field;
 
-    /** Declares the output parameter in this view's scope. Starts with an empty array. */
-    param: string;
+    /**
+     * Publishes the array as a read-only parameter.
+     *
+     * A string such as `"categories"` creates the output in this view.
+     * Use `{ "name": "categories", "push": "outer" }` to publish into the nearest
+     * ancestor that declares `{ "name": "categories" }` in its `params`.
+     * The ancestor declaration accepts only `name` and an optional `description`.
+     *
+     * Claimed outputs are read-only and start with an empty array when the
+     * producer view is constructed. Each output has exactly one producer.
+     */
+    param: TransformOutput;
 }
 
 /** Forks the current input while the main pipeline continues unchanged. */
