@@ -263,7 +263,7 @@ SCHEMA EventConfig
 
 ## ExplicitlyOrderedDendrogramParams
 
-SCHEMA ExplicitlyOrderedDendrogramParams
+See the [ExplicitlyOrderedDendrogramParams documentation](transform/dendrogram.md#explicit-leaf-order).
 
 ## ExprDef
 
@@ -403,7 +403,7 @@ See the [ImportSpec documentation](import.md#properties).
 
 ## IndexDendrogramParams
 
-SCHEMA IndexDendrogramParams
+See the [IndexDendrogramParams documentation](transform/dendrogram.md).
 
 ## IndexUrlSourceRef
 
@@ -907,7 +907,7 @@ SCHEMA ShapeDef
 
 ## SiblingOrderedDendrogramParams
 
-SCHEMA SiblingOrderedDendrogramParams
+See the [SiblingOrderedDendrogramParams documentation](transform/dendrogram.md).
 
 ## SingleUrlSourceRef
 

@@ -42,6 +42,9 @@ the indices themselves may have holes. Input row order is independent of leaf
 order. Missing parents, cycles, and incompatible leaf orders are rejected.
 The transform supports binary, unary, and multifurcating trees.
 
+With faceted data, each facet is processed as a separate tree. Otherwise, each
+input file is processed as a separate tree.
+
 Clustering is performed before supplying the tree. A
 [SciPy linkage matrix](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html)
 can be converted by numbering leaves `0…n−1` and merge nodes `n+i`, assigning
@@ -92,7 +95,7 @@ ordinary parameters. Include every leaf; extra categories reserve band slots.
 Subtree leaves must remain contiguous among actual tree leaves. Transform outputs
 and scales derived from them cannot feed `leafOrder`.
 
-Publication supports one unfaceted tree from an eager source per completed flow.
+Publishing an order with `param` requires a single tree and does not support facets.
 A single leaf publishes its category with no edges; empty input publishes `[]`.
 Loading or invalid input retains the last successful domain. Unchanged arrays
 retain identity and do not notify consumers again. See
@@ -138,12 +141,28 @@ ordinary paint order. Point selections and tooltips identify the child edge;
 index-scale interval selections retain the link mark's endpoint semantics.
 Index heatmaps continue to select integer rows; band interval brushing is unsupported.
 
-Without publication, a facet contains one complete tree and can span several
-physical files. Outside facets, each input file contains one tree. Empty input or a single leaf
-produces no edges. Heights are preserved, including linkage inversions. Very
-small derived fractions near large row indices retain JavaScript's floating-point
-precision limits.
+Empty input or a tree with a single node produces no edges.
 
 ## Parameters
 
-SCHEMA DendrogramParams
+### Common options
+
+SCHEMA IndexDendrogramParams key parentKey height as description
+
+### Index scales
+
+SCHEMA IndexDendrogramParams leafIndex
+
+### Band scales
+
+SCHEMA SiblingOrderedDendrogramParams leaf param
+
+Choose exactly one ordering option:
+
+#### Order from the tree
+
+SCHEMA SiblingOrderedDendrogramParams siblingOrder
+
+#### Explicit leaf order
+
+SCHEMA ExplicitlyOrderedDendrogramParams leafOrder
