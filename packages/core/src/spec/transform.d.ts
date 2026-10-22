@@ -1,6 +1,5 @@
 import { PositionalChannel, PrimaryPositionalChannel } from "./channel.js";
 import {
-    Data,
     DataSource,
     Generator,
     InlineData,
@@ -792,12 +791,9 @@ export interface ValuesParams extends TransformParamsBase {
     param: string;
 }
 
-/** Runs a side pipeline while the main pipeline continues unchanged. */
+/** Forks the current input while the main pipeline continues unchanged. */
 export interface BranchParams extends TransformParamsBase {
     type: "branch";
-
-    /** Optional independent input. Otherwise the branch receives the current rows. */
-    data?: Data;
 
     /** Side transforms in the same parameter scope as the owning view. */
     transform: TransformParams[];

@@ -78,6 +78,31 @@ test("a unit receives transformed rows", async () => {
     ]);
 });
 
+test("a branch requires input and cannot define its own source", async () => {
+    /** @type {import("../spec/transform.js").TransformParams[]} */
+    const transform = [{ type: "values", field: "x", param: "xs" }];
+    await expect(
+        createHeadlessEngine({
+            transform: [{ type: "branch", transform }],
+            mark,
+        })
+    ).rejects.toThrow("A branch requires input data.");
+
+    await expect(
+        createHeadlessEngine({
+            data: { values: [{ x: 1 }] },
+            transform: [
+                /** @type {any} */ ({
+                    type: "branch",
+                    data: { values: [{ x: 2 }] },
+                    transform,
+                }),
+            ],
+            mark,
+        })
+    ).rejects.toThrow("A branch does not accept data");
+});
+
 test("a modifying branch does not change sibling rows", async () => {
     const { view } = await createHeadlessEngine({
         data: { values: [3, 5] },

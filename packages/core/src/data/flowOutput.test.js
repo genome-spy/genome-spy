@@ -121,13 +121,13 @@ test("summary replay changes gaps while preserving main rows and equal output id
     expect(() => runtime.setValue("cuts", [1])).toThrow();
 });
 
-test("root-owned independent metadata is visible across children and is pruned on disposal", async () => {
+test("a root-owned branch updates child scales and is pruned on disposal", async () => {
     const { view, context } = await engine({
         datasets: { metadata: [{ cut: 2 }, { cut: 4 }] },
+        data: { name: "metadata" },
         transform: [
             {
                 type: "branch",
-                data: { name: "metadata" },
                 transform: [{ type: "values", field: "cut", param: "cuts" }],
             },
         ],
@@ -262,10 +262,10 @@ test.each([
 test("rejects output feedback through a child's composition size", async () => {
     await expect(
         createHeadlessEngine({
+            data: { values: [{ x: 1 }, { x: 2 }] },
             transform: [
                 {
                     type: "branch",
-                    data: { values: [{ x: 1 }, { x: 2 }] },
                     transform: [
                         { type: "filter", expr: "datum.x < width" },
                         { type: "values", field: "x", param: "cuts" },

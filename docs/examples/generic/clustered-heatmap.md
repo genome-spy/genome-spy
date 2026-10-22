@@ -77,13 +77,14 @@ The dendrogram's fractional offsets are converted to pixels with
 [`bandstep()`](../../grammar/expressions.md#bandstep), keeping branches connected
 as the view changes size or zoom level.
 
-Two root-owned [`branch`](../../grammar/transform/branch.md) pipelines load the
-gene and cell-line metadata. [`window`](../../grammar/transform/window.md)
-compares adjacent cluster labels in leaf-position order, and a filter keeps the
-first position of each subsequent cluster. [`values`](../../grammar/transform/values.md)
-publishes the sorted positions as `columnCuts` and `rowCuts`, which drive the
-index scales' `gapPositions`. The gaps follow the metadata's cluster assignments,
-and their loading is independent of label or annotation visibility.
+Two root-owned [`branch`](../../grammar/transform/branch.md) pipelines summarize
+the matrix rows into distinct genes and cell lines with
+[`aggregate`](../../grammar/transform/aggregate.md).
+[`window`](../../grammar/transform/window.md) compares adjacent cluster labels
+in leaf-position order, and a filter keeps the first position of each subsequent
+cluster. [`values`](../../grammar/transform/values.md) publishes the sorted
+positions as `columnCuts` and `rowCuts`, which drive the index scales'
+`gapPositions`.
 The root excludes its index scales from parent resolution, keeping scale
 expressions in the same scope as these outputs while descendants share the scales.
 

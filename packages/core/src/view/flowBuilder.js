@@ -120,25 +120,22 @@ export function buildDataFlow(
     function createTransforms(transforms, view) {
         for (const params of transforms) {
             if (params.type === "branch") {
-                const main = currentNode;
-                const depth = nodeStack.length;
-                if (!params.transform.length)
+                if ("data" in params) {
+                    throw new Error(
+                        "A branch does not accept data; it forks the current input."
+                    );
+                }
+                if (!currentNode) {
+                    throw new Error("A branch requires input data.");
+                }
+                if (!params.transform.length) {
                     throw new Error(
                         "A branch requires at least one transform."
                     );
-                if (params.data) {
-                    currentNode = isNamedData(params.data)
-                        ? new NamedSource(params.data, view)
-                        : createDataSource(params.data, view);
-                    dataFlow.addDataSource(
-                        /** @type {DataSource} */ (currentNode)
-                    );
-                    nodeStack.push(currentNode);
-                } else if (!currentNode) {
-                    throw new Error(
-                        "A branch requires inherited data or its own data source."
-                    );
                 }
+
+                const main = currentNode;
+                const depth = nodeStack.length;
                 createTransforms(params.transform, view);
                 view.flowHandle ??= {};
                 view.flowHandle.terminals ??= new Set();

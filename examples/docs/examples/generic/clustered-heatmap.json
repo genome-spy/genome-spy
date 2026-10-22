@@ -5,15 +5,57 @@
     "Data source: Broad DepMap (2024), DepMap 24Q4 Public, https://doi.org/10.25452/figshare.plus.27993248.v1. CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Processed subset of 60 cell lines and 72 genes; expression standardized per gene and clustered with Ward linkage."
   ],
 
+  "data": {
+    "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/expression-zscores.csv"
+  },
   "transform": [
     {
-      "type": "branch",
-      "description": "Derive gene-group boundaries from the ordered gene metadata.",
-      "data": {
-        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
-        "format": { "parse": { "column": "number" } }
+      "type": "regexFold",
+      "columnRegex": "^(gene\\d+)$",
+      "asKey": "feature",
+      "asValue": "value",
+      "description": "Unfold gene columns into one expression value per cell line and gene."
+    },
+    {
+      "type": "lookup",
+      "from": {
+        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
+        "format": { "parse": { "row": "number" } }
       },
+      "key": "sample",
+      "values": ["row", "cellLine", "lineage", "subtype", "cluster"],
+      "as": ["row", "cellLine", "lineage", "subtype", "sampleCluster"],
+      "description": "Attach clustered row positions and cell-line annotations to each matrix cell."
+    },
+    {
+      "type": "lookup",
+      "from": {
+        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
+        "format": {
+          "parse": {
+            "column": "number",
+            "entrezId": "number",
+            "meanLog2Tpm": "number",
+            "sdLog2Tpm": "number"
+          }
+        }
+      },
+      "key": "feature",
+      "values": [
+        "column",
+        "symbol",
+        "entrezId",
+        "cluster",
+        "meanLog2Tpm",
+        "sdLog2Tpm"
+      ],
+      "description": "Attach clustered column positions, gene metadata, and normalization statistics."
+    },
+    {
+      "type": "branch",
+      "description": "Derive gene-group boundaries from the matrix rows.",
       "transform": [
+        { "type": "aggregate", "groupby": ["column", "cluster"] },
         {
           "type": "window",
           "sort": { "field": "column" },
@@ -31,22 +73,19 @@
     },
     {
       "type": "branch",
-      "description": "Derive cell-line-group boundaries from the ordered cell-line metadata.",
-      "data": {
-        "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
-        "format": { "parse": { "row": "number" } }
-      },
+      "description": "Derive cell-line-group boundaries from the matrix rows.",
       "transform": [
+        { "type": "aggregate", "groupby": ["row", "sampleCluster"] },
         {
           "type": "window",
           "sort": { "field": "row" },
           "ops": ["lag", "row_number"],
-          "fields": ["cluster", null],
+          "fields": ["sampleCluster", null],
           "as": ["previousCluster", "leafRank"]
         },
         {
           "type": "filter",
-          "expr": "datum.leafRank > 1 && datum.cluster !== datum.previousCluster"
+          "expr": "datum.leafRank > 1 && datum.sampleCluster !== datum.previousCluster"
         },
         { "type": "collect", "sort": { "field": "row" } },
         { "type": "values", "field": "row", "param": "rowCuts" }
@@ -450,51 +489,7 @@
     "layer": [
       {
         "name": "cells",
-        "data": {
-          "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/expression-zscores.csv"
-        },
         "transform": [
-          {
-            "type": "regexFold",
-            "columnRegex": "^(gene\\d+)$",
-            "asKey": "feature",
-            "asValue": "value",
-            "description": "Unfold gene columns into one expression value per cell line and gene."
-          },
-          {
-            "type": "lookup",
-            "from": {
-              "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/cell-lines.csv",
-              "format": { "parse": { "row": "number" } }
-            },
-            "key": "sample",
-            "values": ["row", "cellLine", "lineage", "subtype"],
-            "description": "Attach clustered row positions and cell-line annotations to each matrix cell."
-          },
-          {
-            "type": "lookup",
-            "from": {
-              "url": "https://data.genomespy.app/datasets/depmap-cell-line-rna-seq/v1/genes.csv",
-              "format": {
-                "parse": {
-                  "column": "number",
-                  "entrezId": "number",
-                  "meanLog2Tpm": "number",
-                  "sdLog2Tpm": "number"
-                }
-              }
-            },
-            "key": "feature",
-            "values": [
-              "column",
-              "symbol",
-              "entrezId",
-              "cluster",
-              "meanLog2Tpm",
-              "sdLog2Tpm"
-            ],
-            "description": "Attach clustered column positions, gene metadata, and normalization statistics."
-          },
           {
             "type": "formula",
             "expr": "datum.value * datum.sdLog2Tpm + datum.meanLog2Tpm",

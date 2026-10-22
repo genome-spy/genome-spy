@@ -104,9 +104,10 @@ arrangement.
 - Transform output producers require the source's explicit
   `supportsFlowOutputs` capability, including sources reached through side
   inputs. Audited eager/sequence and interval sources publish complete snapshots;
-  lazy startup and invalidation use nonpublishing completion. A `branch` keeps
-  its owning view's parameter scope while tapping rows or preparing independent
-  input. See `reactivity.md` for publication and feedback boundaries.
+  lazy startup and invalidation use nonpublishing completion. A `branch` forks
+  the current input while keeping its owning view's parameter scope and
+  preserving the main rows. See `reactivity.md` for publication and feedback
+  boundaries.
 - `src/data/dataReadiness.js` walks the actual optimized primary path and
   `FlowNode.dataDependencies` side edges. `SideInputBinding` owns observation and
   consumed revisions for declared collectors. It binds during `initializeOnce()`,
