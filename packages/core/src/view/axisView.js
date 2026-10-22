@@ -10,6 +10,7 @@ import { getProjectedTextExtent } from "../fonts/textMetrics.js";
 import { hasEffectiveGroupingGaps } from "../genome/indexGapMapping.js";
 import { GAP_PEER } from "../marks/markUtils.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
+import { inheritSpecOrigin } from "../utils/specOrigin.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 const LABELS_LAYER_NAME = "labels_main";
@@ -72,7 +73,11 @@ export function orient2channel(slot) {
  */
 export function axisPartVisibility(visible) {
     return isExprRef(visible)
-        ? { opacity: { expr: `(${visible.expr}) ? 1 : 0` } }
+        ? {
+              opacity: inheritSpecOrigin(visible, {
+                  expr: `(${visible.expr}) ? 1 : 0`,
+              }),
+          }
         : {};
 }
 
