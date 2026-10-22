@@ -70,13 +70,13 @@ and `siblingOrder` for the order of children under each parent.
   "height": "height",
   "leaf": "sample",
   "siblingOrder": "childOrder",
-  "param": { "name": "sampleOrder", "push": "outer" }
+  "domainParam": { "name": "sampleOrder", "push": "outer" }
 }
 ```
 
-The transform traverses the ordered tree and can publish its leaf categories
-with `param`. A string declares a local output. To share the domain with a
-sibling heatmap, declare `{ "name": "sampleOrder" }` in their common ancestor's
+The transform can publish its ordered band domain with `domainParam`.
+A string declares a local output. To share the domain with a sibling heatmap,
+declare `{ "name": "sampleOrder" }` in their common ancestor's
 `params`, then push as above. Set the shared band scale's
 `domain` to `{ "expr": "sampleOrder" }`. Each axis can have its own tree and
 output; no numeric heatmap positions or separate domain arrays are needed.
@@ -90,8 +90,8 @@ To align the tree with an existing band domain, use `leafOrder` instead of
 `siblingOrder`. Each subtree must remain contiguous among the tree's leaves,
 even if the domain includes extra categories that reserve band slots.
 
-Publishing an order with `param` requires a single tree and does not support
-facets. See [output parameters](values.md#output-parameters) for scope and
+Publishing a domain with `domainParam` requires a single tree and does not
+support facets. See [output parameters](values.md#output-parameters) for scope and
 lifecycle rules.
 
 ## Output and placement
@@ -147,7 +147,7 @@ SCHEMA IndexDendrogramParams leafIndex
 
 ### Band scales
 
-SCHEMA SiblingOrderedDendrogramParams leaf param
+SCHEMA SiblingOrderedDendrogramParams leaf domainParam
 
 Choose exactly one ordering option:
 

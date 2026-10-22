@@ -79,7 +79,7 @@ export default class DendrogramTransform extends Transform {
                 );
             }
         } else if (
-            params.param !== undefined ||
+            params.domainParam !== undefined ||
             params.siblingOrder !== undefined ||
             params.leafOrder !== undefined
         ) {
@@ -97,8 +97,8 @@ export default class DendrogramTransform extends Transform {
                 : this.createFieldAccessor(params, "siblingOrder");
         if (Array.isArray(params.leafOrder))
             this.#leafOrder = () => params.leafOrder;
-        if (params.param !== undefined) {
-            this.output = this.paramRuntime.resolveOutput(params.param);
+        if (params.domainParam !== undefined) {
+            this.output = this.paramRuntime.resolveOutput(params.domainParam);
             if (this.output.producer)
                 throw new Error("Duplicate dendrogram output producer.");
             this.output.producer = this;

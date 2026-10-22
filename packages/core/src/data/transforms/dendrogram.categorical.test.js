@@ -137,7 +137,7 @@ test("publication, cached replay, failures, and zero-edge trees follow the real 
     const { view, context } = await createHeadlessEngine({
         datasets: { tree: tree() },
         data: { name: "tree" },
-        transform: [{ ...params, param: "order" }],
+        transform: [{ ...params, domainParam: "order" }],
         mark: "link",
         encoding: {
             y: {
@@ -196,7 +196,7 @@ test("ordinary parameter leaf orders replay, while output-driven ordering is rej
             {
                 ...fields,
                 leafOrder: { expr: "desired" },
-                param: "order",
+                domainParam: "order",
             },
         ],
         mark: "point",
@@ -217,7 +217,7 @@ test("ordinary parameter leaf orders replay, while output-driven ordering is rej
 test("publishing rejects multiple file trees and facets instead of publishing a partition", async () => {
     const { view } = await createHeadlessEngine({
         data: { values: tree() },
-        transform: [{ ...params, param: "order" }],
+        transform: [{ ...params, domainParam: "order" }],
         mark: "point",
     });
     onTestFinished(() => view.disposeSubtree());

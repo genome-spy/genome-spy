@@ -90,9 +90,9 @@ file/facet behavior. Do not require publication or a view runtime for pure numer
 layout.
 
 Categorical mode uses `leaf: Field`, an ordering input described below, and an
-optional `param` output declaration. Default anchor fields become `sourceValue`
-and `targetValue`; IDs, heights, offsets, child metadata, and fresh edge identity
-retain their meanings. The eight-element `as` tuple retains its slot semantics.
+optional `domainParam` output declaration. Default anchor fields become
+`sourceValue` and `targetValue`; IDs, heights, offsets, child metadata, and fresh
+edge identity retain their meanings. The eight-element `as` tuple retains its slot semantics.
 The presence of `leaf` selects categorical mode; reject conflicting numeric mode
 properties through a type union, generated schema, and runtime validation.
 
@@ -113,7 +113,7 @@ parent table. Give categorical mode an explicit structural ordering input:
   "height": "height",
   "leaf": "sample",
   "siblingOrder": "childOrder",
-  "param": { "name": "sampleOrder", "push": "outer" }
+  "domainParam": { "name": "sampleOrder", "push": "outer" }
 }
 ```
 
@@ -135,20 +135,21 @@ Retain an optional alternative for externally controlled alignment:
 ordered domain and may refer to ordinary parameters. Require unique valid values
 and include every leaf category. Extra categories reserve normal band slots, as
 holes do in numeric input. Use full-domain ranks and validate subtree contiguity
-in the sequence of actual leaves. Publish that same complete domain if `param`
-is present. Read expression inputs through existing batch-stable replay helpers.
+in the sequence of actual leaves. Publish that same complete domain if
+`domainParam` is present. Read expression inputs through existing batch-stable
+replay helpers.
 Do not allow outputs, including the transform's own output or `domain()` derived
 from it, to feed this input. This mode is optional; the primary example must use
 structural order and no hand-written domain arrays.
 
 Require exactly one categorical ordering input. Numeric mode retains its existing
-unordered-input contract. Categorical layout without `param` remains usable for
-standalone computation or externally supplied band domains.
+unordered-input contract. Categorical layout without `domainParam` remains usable
+for standalone computation or externally supplied band domains.
 
 ### Output ownership through parameter pushing
 
-A string `param: "sampleOrder"` keeps #575's local declaration semantics. For a
-shared output, declare a bare parameter at the ancestor owner:
+A string `domainParam: "sampleOrder"` uses #575's local declaration semantics.
+For a shared output, declare a bare parameter at the ancestor owner:
 
 ```json
 {
@@ -157,7 +158,7 @@ shared output, declare a bare parameter at the ancestor owner:
 }
 ```
 
-The transform's object-form `param` uses existing `push: "outer"` parameter
+The transform's object-form `domainParam` uses existing `push: "outer"` parameter
 scoping to claim the nearest ancestor declaration with the same name. The target
 declaration accepts only `name` and an optional `description`; reject missing
 targets, configured values or expressions, duplicate producers, and active pushed
@@ -233,9 +234,9 @@ or failure retains the last successful domain; successful empty input publishes
 `[]`. A single leaf publishes its category even though it emits no edges.
 
 Initially support publication for one unfaceted tree per completed eager flow.
-Reject facets and multiple logical trees when `param` is present; never silently
-publish only the last partition. Preserve existing file/facet behavior for numeric
-layout and nonpublishing categorical layout. Reuse #575's eager source allowlist,
+Reject facets and multiple logical trees when `domainParam` is present; never
+silently publish only the last partition. Preserve existing file/facet behavior
+for numeric layout and nonpublishing categorical layout. Reuse #575's eager source allowlist,
 including side-input dependencies, and reject unsupported lazy publishers.
 
 Compute midpoints with the existing numeric algorithm. For position `p`, emit

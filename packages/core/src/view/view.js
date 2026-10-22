@@ -285,12 +285,14 @@ export default class View {
             );
         }
 
-        for (const output of getOutputDeclarations(spec.transform ?? [])) {
+        for (const { transform, property, param } of getOutputDeclarations(
+            spec.transform ?? []
+        )) {
             try {
-                if (typeof output.param === "string") {
-                    this.paramRuntime.registerOutput(output.param);
+                if (typeof param === "string") {
+                    this.paramRuntime.registerOutput(param);
                 }
-                const handle = this.paramRuntime.resolveOutput(output.param);
+                const handle = this.paramRuntime.resolveOutput(param);
                 if (handle.producerView)
                     throw new Error("Duplicate transform output producer.");
                 handle.producerView = this;
@@ -298,7 +300,7 @@ export default class View {
             } catch (error) {
                 throw annotateSpecError(
                     error,
-                    this.paramRuntime.getSpecLocation(output, ["param"])
+                    this.paramRuntime.getSpecLocation(transform, [property])
                 );
             }
         }

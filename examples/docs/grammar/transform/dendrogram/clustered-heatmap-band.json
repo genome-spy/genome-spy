@@ -130,7 +130,7 @@
             "height": "height",
             "leaf": "gene",
             "siblingOrder": "childOrder",
-            "param": { "name": "geneOrder", "push": "outer" }
+            "domainParam": { "name": "geneOrder", "push": "outer" }
           }
         ],
         "mark": {
@@ -239,7 +239,7 @@
             "height": "height",
             "leaf": "sample",
             "siblingOrder": "childOrder",
-            "param": { "name": "sampleOrder", "push": "outer" }
+            "domainParam": { "name": "sampleOrder", "push": "outer" }
           }
         ],
         "mark": {

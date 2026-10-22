@@ -66,7 +66,7 @@ export interface IndexDendrogramParams extends DendrogramParamsBase {
     leaf?: never;
     siblingOrder?: never;
     leafOrder?: never;
-    param?: never;
+    domainParam?: never;
 }
 
 interface CategoricalDendrogramParamsBase extends DendrogramParamsBase {
@@ -75,13 +75,13 @@ interface CategoricalDendrogramParamsBase extends DendrogramParamsBase {
     leafIndex?: never;
 
     /**
-     * Publishes the ordered leaf categories as a read-only array parameter.
+     * Publishes the ordered band domain as a read-only array parameter.
      *
      * A string such as `"sampleOrder"` creates the output in this view.
      * Use `{ "name": "sampleOrder", "push": "outer" }` to publish into the nearest
      * ancestor that declares `{ "name": "sampleOrder" }` in its `params`.
      */
-    param?: TransformOutput;
+    domainParam?: TransformOutput;
 }
 
 export interface SiblingOrderedDendrogramParams extends CategoricalDendrogramParamsBase {
