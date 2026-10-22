@@ -44,7 +44,7 @@ export default class TabixSource extends IntervalUrlSource {
         super(view, channel);
 
         this.params = activateExprRefProps(
-            this.expressionRuntime,
+            view.paramRuntime,
             paramsWithDefaults,
             (props) => {
                 if (

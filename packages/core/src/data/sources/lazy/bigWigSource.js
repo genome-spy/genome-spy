@@ -40,7 +40,7 @@ export default class BigWigSource extends IntervalUrlSource {
         super(view, channel);
 
         this.params = activateExprRefProps(
-            this.expressionRuntime,
+            view.paramRuntime,
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
@@ -62,15 +62,6 @@ export default class BigWigSource extends IntervalUrlSource {
             createHandle: (descriptor, { BigWig, RemoteFile }) =>
                 this.#createHandle(descriptor, BigWig, RemoteFile),
         });
-    }
-
-    initialize() {
-        super.initialize();
-        this.registerDisposer(
-            this.paramRuntime.guardFlowDependencies([
-                this.scaleResolution.getAxisLengthDependencyRef(),
-            ])
-        );
     }
 
     get label() {

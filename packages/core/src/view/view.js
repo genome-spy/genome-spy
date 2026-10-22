@@ -742,51 +742,6 @@ export default class View {
         this.#registerSizeExprRefInvalidationFor("height");
         this.#registerSizeExprRefInvalidationFor("viewportWidth");
         this.#registerSizeExprRefInvalidationFor("viewportHeight");
-
-        for (const dimension of /** @type {const} */ (["width", "height"])) {
-            if (
-                !(dimension === "width"
-                    ? this.#widthSetter
-                    : this.#heightSetter)
-            ) {
-                continue;
-            }
-            this.paramRuntime.setValidationDependencies(
-                this.paramRuntime.getParamRef(dimension),
-                this.getSizeDependencies(dimension)
-            );
-        }
-    }
-
-    /**
-     * Semantic inputs of layout-owned size mirrors, used only for flow validation.
-     * @param {"width" | "height"} dimension
-     * @returns {import("../paramRuntime/types.js").ParamRef<any>[]}
-     */
-    getSizeDependencies(dimension) {
-        const { value } = this.#getDimensionValue(dimension);
-        const reader = this.#sizeExprRefReaders.get(
-            dimension + (isStepSize(value) ? ".step" : "")
-        );
-        const viewportReader = this.#sizeExprRefReaders.get(
-            dimension === "width" ? "viewportWidth" : "viewportHeight"
-        );
-        const dependencies = [
-            ...(reader?.dependencies ?? []),
-            ...(viewportReader?.dependencies ?? []),
-        ];
-        if (isStepSize(value)) {
-            const channel = dimension === "width" ? "x" : "y";
-            const resolution = this.getScaleResolution(channel);
-            if (resolution) dependencies.push(resolution.getDomainRef());
-            if (value.for !== "position") {
-                const offset = this.getScaleResolution(
-                    dimension === "width" ? "xOffset" : "yOffset"
-                );
-                if (offset) dependencies.push(offset.getDomainRef());
-            }
-        }
-        return dependencies;
     }
 
     /**

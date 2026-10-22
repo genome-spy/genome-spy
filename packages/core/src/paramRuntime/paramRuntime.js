@@ -99,16 +99,6 @@ export default class ParamRuntime {
         this.#paramStore.registerInitializer(scope, name, initialize);
     }
 
-    /** @param {import("./types.js").ParamRef<any>} ref @param {import("./types.js").ParamRef<any>[]} deps */
-    setValidationDependencies(ref, deps) {
-        this.#graphRuntime.setValidationDependencies(ref, deps);
-    }
-
-    /** @param {import("./types.js").ParamRef<any>[]} deps */
-    guardFlowDependencies(deps) {
-        return this.#graphRuntime.guardFlowDependencies(deps);
-    }
-
     /**
      * Binds an owner-created read-only output into the lexical store.
      * @param {ScopeId} scope

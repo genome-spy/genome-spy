@@ -275,22 +275,11 @@ export default class ViewParamRuntime {
         const ref = this.computed(name, [output.value], () =>
             output.value.get()
         );
-        ref.flowOutput = output;
         this.#runtime.registerRef(this.#scopeId, name, ref);
         this.#localRefs.set(name, ref);
         this.#outputs.set(name, output);
         this.#paramConfigs.set(name, { name, persist: false });
         return output;
-    }
-
-    /** @param {import("./types.js").ParamRef<any>} ref @param {import("./types.js").ParamRef<any>[]} deps */
-    setValidationDependencies(ref, deps) {
-        this.#runtime.setValidationDependencies(ref, deps);
-    }
-
-    /** @param {import("./types.js").ParamRef<any>[]} deps */
-    guardFlowDependencies(deps) {
-        return this.#runtime.guardFlowDependencies(deps);
     }
 
     /** @param {string} name */
@@ -1018,10 +1007,6 @@ export default class ViewParamRuntime {
             expression(null),
             transition
         );
-        this.setValidationDependencies(
-            this.#localRefs.get(name),
-            expression.dependencies
-        );
         const unsubscribe = expression.subscribe(() => {
             this.#setTransitionTarget(name, state, expression(null), {
                 animate: !this.#settleTemporalUpdatesImmediately,
@@ -1044,7 +1029,6 @@ export default class ViewParamRuntime {
             initialValue
         );
         this.#localRefs.set(name, ref);
-        this.setValidationDependencies(ref, expression.dependencies);
 
         /** @type {DebounceState} */
         const state = {

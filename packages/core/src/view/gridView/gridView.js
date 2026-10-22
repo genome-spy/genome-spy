@@ -1314,16 +1314,6 @@ export default class GridView extends ContainerView {
         return axes;
     }
 
-    /** @param {"width" | "height"} dimension */
-    getSizeDependencies(dimension) {
-        return [
-            ...super.getSizeDependencies(dimension),
-            ...Iterator.from(this).flatMap((child) =>
-                child.getSizeDependencies(dimension)
-            ),
-        ];
-    }
-
     /**
      * @returns {FlexDimensions}
      */

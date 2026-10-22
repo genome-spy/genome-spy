@@ -95,10 +95,10 @@ suppresses unchanged arrays. An `aggregate` branch can publish counts through
 `values`, distinguishing an initial `[]` from a successful empty count `[0]`.
 
 These parameters are producer-owned, read-only, and excluded from persistence.
-Bound-provenance guards reject their consumption by source/transform expressions
-and implicit lazy loading inputs. Interval sources guard the requested domain;
-BigWig additionally guards the semantic layout inputs determining its pixel
-resolution. Visual expressions may consume outputs without scheduling dataflow.
+Their consumers use ordinary reactive updates, with no separate output-consumer
+scheduler or provenance graph. Specifications must avoid feedback into the
+producing pipeline, including through lazy domains and layout-dependent loading
+resolution. Such cycles are not detected and may produce unstable updates.
 
 A failed flush or synchronous notification reports the original error through
 the shared runtime's optional reporter, rejects current propagation waiters,

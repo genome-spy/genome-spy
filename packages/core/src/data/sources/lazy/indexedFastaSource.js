@@ -25,7 +25,7 @@ export default class IndexedFastaSource extends IntervalUrlSource {
         super(view, withoutExprRef(paramsWithDefaults.channel));
 
         this.params = activateExprRefProps(
-            this.expressionRuntime,
+            view.paramRuntime,
             paramsWithDefaults,
             (props) => {
                 if (props.has("url") || props.has("indexUrl")) {

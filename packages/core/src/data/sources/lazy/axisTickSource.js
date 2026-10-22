@@ -84,11 +84,6 @@ export default class AxisTickSource extends SingleAxisLazySource {
                         this.registerDisposer(disposer),
                 }
             );
-            this.registerDisposer(
-                paramRuntime.guardFlowDependencies(
-                    this.#tickCountExpression.dependencies
-                )
-            );
             this.registerDisposer(() => paramRuntime.dispose());
         }
     }

@@ -39,7 +39,7 @@ export default class UrlSource extends DataSource {
         super(view);
 
         this.params = activateExprRefProps(
-            this.expressionRuntime,
+            view.paramRuntime,
             params,
             () => this.load(),
             (disposer) => this.registerDisposer(disposer),

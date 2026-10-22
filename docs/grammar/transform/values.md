@@ -22,8 +22,13 @@ Loading or processing failures retain the last successful value. Missing fields,
 non-scalar values, and non-finite numbers cause an error.
 
 Output parameters cannot be changed through the embedding API and are not saved
-in bookmarks. They can drive scale and visual expressions. Reading an output in
-another data source or transform expression is not supported yet.
+in bookmarks. They can drive scale and visual expressions. Outputs used by
+another data source or transform follow ordinary reactive updates; there is no
+special ordering guarantee between independent pipelines.
+
+Avoid feeding an output back into the pipeline that produces it. Feedback can
+also pass through a lazy source's domain or layout, causing repeated loading or
+unstable updates. GenomeSpy does not detect these cycles.
 
 ## Loading precomputed values
 

@@ -435,15 +435,9 @@ export async function createGridChildLegend(definition, layoutParent) {
         }
     }
 
-    const runtime = legendParent.paramRuntime;
-    /** @type {import("../../paramRuntime/types.js").ParamRef<any>[]} */
-    const layoutDependencies = [definition.scaleResolution.getDomainRef()];
-    if (definition.channel === "size") {
-        layoutDependencies.push(definition.scaleResolution.getMappingRef());
-    }
     const legendProps = Object.assign(
         activateExprRefProps(
-            runtime,
+            legendParent.paramRuntime,
             otherProps,
             (props) => {
                 if (props.has("disable")) {
@@ -455,9 +449,7 @@ export async function createGridChildLegend(definition, layoutParent) {
                     legend.context.requestLayoutReflow();
                 }
             },
-            (disposer) => legendDisposers.push(disposer),
-            undefined,
-            (dependencies) => layoutDependencies.push(...dependencies)
+            (disposer) => legendDisposers.push(disposer)
         ),
         paintProps
     );
@@ -496,7 +488,6 @@ export async function createGridChildLegend(definition, layoutParent) {
     legend = new LegendView(
         {
             channel: definition.channel,
-            layoutDependencies,
             type: definition.type,
             symbolChannels: definition.symbolChannels,
             symbolGeometry: definition.symbolGeometry,

@@ -143,7 +143,7 @@ export default class Displace2DTransform extends Transform {
         const props = hasReactiveProps
             ? /** @type {any} */ (
                   activateExprRefProps(
-                      this.expressionRuntime,
+                      this.paramRuntime,
                       placementProps,
                       placementChanged,
                       (disposer) => this.registerDisposer(disposer)

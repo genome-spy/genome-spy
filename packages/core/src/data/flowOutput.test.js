@@ -195,172 +195,59 @@ test("disposing a composition endpoint preserves sibling consumers of a merged s
     ).toEqual([2]);
 });
 
-test.each([
-    {
-        expr: "bandwidth('x') > 0",
-        scale: { domain: [0, 5], gapPositions: { expr: "cuts" }, gapWidth: 8 },
-    },
-    { expr: "domain('x')[0] >= 0", scale: { domain: { expr: "cuts" } } },
-])(
-    "rejects indirect scale-helper flow consumers: $expr",
-    async ({ expr, scale }) => {
-        await expect(
-            createHeadlessEngine({
-                data: { values: [{ x: 1 }, { x: 2 }] },
-                transform: [
-                    { type: "filter", expr },
-                    { type: "values", field: "x", param: "cuts" },
-                ],
-                mark: "point",
-                encoding: {
-                    x: { field: "x", type: "index", scale, axis: null },
-                },
-            })
-        ).rejects.toThrow('cannot consume transform output parameter "cuts"');
-    }
-);
-
-test.each([
-    { name: "direct", expr: "length(cuts) > 0", params: [] },
-    {
-        name: "computed",
-        expr: "derived > 0",
-        params: [{ name: "derived", expr: "length(cuts)" }],
-    },
-    {
-        name: "debounced",
-        expr: "derived > 0",
-        params: [{ name: "derived", expr: "length(cuts)", debounce: 10 }],
-    },
-    {
-        name: "transitioned",
-        expr: "derived > 0",
-        params: [
-            {
-                name: "derived",
-                expr: "length(cuts)",
-                transition: { type: "lerp" },
-            },
-        ],
-    },
-])("rejects $name flow consumers before loading", async ({ expr, params }) => {
+test("duplicate output declarations are rejected", async () => {
     await expect(
         createHeadlessEngine({
-            params: /** @type {import("../spec/parameter.js").Parameter[]} */ (
-                params
-            ),
+            params: [{ name: "cuts", value: [] }],
             data: { values: [{ x: 1 }] },
-            transform: [
-                { type: "filter", expr },
-                { type: "values", field: "x", param: "cuts" },
-            ],
+            transform: [{ type: "values", field: "x", param: "cuts" }],
             mark: "point",
         })
-    ).rejects.toThrow('cannot consume transform output parameter "cuts"');
+    ).rejects.toThrow(/already|Duplicate/);
 });
 
-test("rejects output feedback through a child's composition size", async () => {
-    await expect(
-        createHeadlessEngine({
-            data: { values: [{ x: 1 }, { x: 2 }] },
-            transform: [
-                {
-                    type: "branch",
-                    transform: [
-                        { type: "filter", expr: "datum.x < width" },
-                        { type: "values", field: "x", param: "cuts" },
-                    ],
-                },
-            ],
-            hconcat: [
-                {
-                    width: { expr: "100 + length(cuts) * 10" },
-                    data: { values: [{ x: 1 }] },
-                    mark: "point",
-                },
-            ],
-        })
-    ).rejects.toThrow('cannot consume transform output parameter "cuts"');
-});
-
-test("rejects output-dependent sources and duplicate declarations", async () => {
-    const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
-        data: { url: { expr: "cuts[0]" }, format: { type: "json" } },
-        transform: [{ type: "values", field: "x", param: "cuts" }],
-        mark: "point",
-    });
-    await expect(createHeadlessEngine(spec)).rejects.toThrow(
-        'cannot consume transform output parameter "cuts"'
-    );
-    spec.data = { values: [{ x: 1 }] };
-    spec.params = [{ name: "cuts", value: [] }];
-    await expect(createHeadlessEngine(spec)).rejects.toThrow(
-        /already|Duplicate/
-    );
-});
-
-test("flow guards validate bound identities and future operation inputs", async () => {
-    const { view } = await engine({
-        data: { values: [{ x: 1 }] },
-        transform: [{ type: "values", field: "x", param: "cuts" }],
-        hconcat: [
+test("a named-data output updates a separate pipeline's filter", async () => {
+    const { view, context } = await engine({
+        datasets: {
+            thresholds: [{ minimum: 2 }],
+            records: [{ x: 1 }, { x: 3 }],
+        },
+        data: { name: "thresholds" },
+        transform: [{ type: "values", field: "minimum", param: "minimums" }],
+        layer: [
             {
-                params: [{ name: "cuts", value: 1 }],
-                data: { values: [{ x: 0 }, { x: 2 }] },
-                transform: [{ type: "filter", expr: "datum.x > cuts" }],
+                data: { name: "records" },
+                transform: [
+                    { type: "collect" },
+                    { type: "filter", expr: "datum.x >= minimums[0]" },
+                ],
                 mark: "point",
             },
         ],
     });
-    const child = /** @type {import("../view/concatView.js").default} */ (view)
+    const child = /** @type {import("../view/layerView.js").default} */ (view)
         .children[0];
-    expect(
-        Array.from(child.flowHandle.collector.getData(), (row) => row.x)
-    ).toEqual([2]);
     const runtime = view.paramRuntime;
-    const input = runtime.signal("input", 1);
-    const operation = runtime.operation(
-        "bridge",
-        [input],
-        () => input.get(),
-        () => {}
-    );
-    const stop = runtime.guardFlowDependencies([operation]);
-    onTestFinished(() => {
-        stop();
-    });
-    const cuts = runtime.getParamRef("cuts");
-    expect(() => operation.rebind([cuts], () => 0)).toThrow(
-        "cannot consume transform output"
-    );
-    expect(() => runtime.setValidationDependencies(operation, [cuts])).toThrow(
-        "cannot consume transform output"
-    );
-    input.set(2);
-    await runtime.whenPropagated();
-    expect(operation.get()).toBe(2);
-});
+    const rows = () =>
+        Array.from(child.flowHandle.collector.getData(), (row) => row.x);
 
-test.each([
-    { expr: "100 + length(cuts) * 10" },
-    { step: { expr: "length(cuts) + 1" } },
-])(
-    "rejects output feedback through implicit layout width: %j",
-    async (width) => {
-        await expect(
-            createHeadlessEngine({
-                width,
-                data: { values: [{ x: 1 }, { x: 2 }] },
-                transform: [
-                    { type: "filter", expr: "datum.x < width" },
-                    { type: "values", field: "x", param: "cuts" },
-                ],
-                mark: "point",
-                encoding: { x: { field: "x", type: "index", axis: null } },
-            })
-        ).rejects.toThrow('cannot consume transform output parameter "cuts"');
-    }
-);
+    await runtime.whenPropagated();
+    expect(rows()).toEqual([3]);
+
+    context.dataFlow.updateNamedDataBinding(
+        view.namedDataScope.getLocalBinding("thresholds"),
+        [{ minimum: 4 }]
+    );
+    await runtime.whenPropagated();
+    expect(rows()).toEqual([]);
+
+    context.dataFlow.updateNamedDataBinding(
+        view.namedDataScope.getLocalBinding("records"),
+        [{ x: 3 }, { x: 5 }]
+    );
+    await runtime.whenPropagated();
+    expect(rows()).toEqual([5]);
+});
 
 test("failed URL revisions retain the previous output and disposed loads cannot publish", async () => {
     const fetch = vi

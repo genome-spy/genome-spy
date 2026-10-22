@@ -19,7 +19,7 @@ export default class MockLazySource extends SingleAxisLazySource {
         super(view, params.channel ?? "x");
 
         this.params = activateExprRefProps(
-            this.expressionRuntime,
+            view.paramRuntime,
             params,
             () => {
                 this.invalidateData();

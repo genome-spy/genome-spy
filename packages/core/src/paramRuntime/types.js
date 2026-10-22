@@ -11,7 +11,6 @@
  *   rank?: number,
  *   propagation?: "sync",
  *   batchStable?: boolean,
- *   flowOutput?: import("../data/flowOutput.js").default,
  *   get: () => T,
  *   subscribe: (listener: () => void) => () => void
  * }} ParamRef

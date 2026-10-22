@@ -190,7 +190,11 @@ export default class Transform extends FlowNode {
                     value
                 );
             return /** @type {ExprRefReader<T>} */ (
-                this.watchFlowExpression(exprRef, listener)
+                this.paramRuntime.watchExpression(exprRef, listener, {
+                    scopeOwned: false,
+                    registerDisposer: (disposer) =>
+                        this.registerDisposer(disposer),
+                })
             );
         }
 
@@ -210,12 +214,19 @@ export default class Transform extends FlowNode {
         /** @type {ReturnType<NonNullable<import("../../paramRuntime/types.js").ExprRefFunction["createSnapshotEvaluator"]>>} */
         let evaluator;
 
-        expression = this.watchFlowExpression(expr, () => {
-            // Make direct incoming batches observe the new value even if
-            // the requested replay is delayed by debounce.
-            evaluator.refresh();
-            this.requestReactiveRepropagate();
-        });
+        expression = this.paramRuntime.watchExpression(
+            expr,
+            () => {
+                // Make direct incoming batches observe the new value even if
+                // the requested replay is delayed by debounce.
+                evaluator.refresh();
+                this.requestReactiveRepropagate();
+            },
+            {
+                scopeOwned: false,
+                registerDisposer: (disposer) => this.registerDisposer(disposer),
+            }
+        );
         evaluator = expression.createSnapshotEvaluator();
         this.#expressionSnapshotRefreshers.push(evaluator.refresh);
         return evaluator;

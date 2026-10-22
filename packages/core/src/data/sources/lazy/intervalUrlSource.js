@@ -66,14 +66,6 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         });
     }
 
-    initialize() {
-        this.registerDisposer(
-            this.paramRuntime.guardFlowDependencies([
-                this.scaleResolution.getDomainRef(),
-            ])
-        );
-    }
-
     get supportsFlowOutputs() {
         return true;
     }
