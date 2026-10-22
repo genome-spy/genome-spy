@@ -14,7 +14,9 @@ express larger separators at selected group boundaries.
 Extend positional `band` scales with fixed CSS-pixel grouping gaps. Keep equal
 cell bandwidths, category identities, explicit domain ordering, aligned axes,
 shared annotation tracks, picking, and export consistent. Support gaps on both
-heat-map axes, fixed/stretch dimensions, and step-based dimensions.
+heat-map axes, fixed/stretch dimensions, and step-based dimensions. Nested
+categorical offsets in unequal shared placements require the explicit contract
+decision below; ordinary heat-map cells do not depend on that extension.
 
 Non-goals: categorical zoom/pan or interval brushing; grouping gaps on `point`,
 `ordinal`, color, or offset scales; automatic clustering/group discovery; group
@@ -141,6 +143,10 @@ cache placement-local geometry by CSS extent; invalidate on relevant setters.
 Rendering uses the actual occurrence extent, including repeated/faceted and
 export-sized placements, without mutating a shared scale for each draw. Ordinary
 scale calls and metadata use the resolution's existing default extent contract.
+That default is insufficient for automatically derived nested offset ranges:
+their pixel widths must be resolved per occurrence or the unsupported combination
+must be rejected explicitly. Do not claim arbitrary `scale()`/`bandwidth()`
+expressions become occurrence-local merely by updating renderer projection.
 
 For a nonempty domain of `n` categories, `m` effective internal cuts, pixel extent
 `E`, and normalized output span `R`:
@@ -183,10 +189,24 @@ For step-sized band dimensions add `m * gapWidth` after the existing effective
 step calculation, including `step.for = "offset"`. Observe the gap inputs and
 domain needed for this desired size, without causing size/range feedback loops
 or reflow on every mapping notification. Fixed/stretch dimensions instead reduce
-cell bandwidth. Verify that offset-scale ranges and `bandwidth()` dependencies
-settle after gap or layout changes. Extend `bandstep(channel, extent)` explicitly
-for band geometry; retain its signed base-step meaning and required extent for
-gapped scales. It cannot represent category-specific displacement across a cut.
+cell bandwidth. Verify that supported offset-scale ranges and `bandwidth()`
+dependencies settle after gap or layout changes. When a primary band is shared
+across unequal extents, its normalized bandwidth depends on the occurrence:
+`bandwidth(E) = (abs(R) - m * gapWidth / E) / space * (1 - paddingInner)`.
+Thus the current `bandwidth('x') * width` derived offset range cannot be reused
+unchanged. A correct extension must derive the nested range from the parent
+mapping at the same extent, consistently on every backend, without mutating
+shared scales. Keep this design gate open rather than hide the problem behind
+invalidation tests. Extend `bandstep(channel, extent)` explicitly for band
+geometry; retain its signed base-step meaning and required extent for gapped
+scales. It cannot represent category-specific displacement across a cut.
+
+Categorical dendrograms retain their existing dense-rank midpoint semantics:
+leaves align with cells and shared-node endpoints join, but internal branches
+are not necessarily centered between children in pixel space across gaps.
+Their category anchors plus fractional base-step offsets cannot express that
+stronger contract. Physical recentering would require hierarchy-aware projected
+layout and is outside this feature.
 
 ### Axes and scale groups
 
@@ -202,9 +222,14 @@ These categorical endpoints are inclusive cell identifiers, not half-open indice
 Update `ScaleGroupsData` JSDoc, source validation/publication, axis encodings, and
 lazy-source docs together. Depend on active domain, effective cuts, and range
 direction; keep guides domain-inert. Test mixed band/index axes and the Cartesian
-product. Ordinary ticks, labels, and grid lines use category encodings. Audit
-`axisLabelLayout.js` and its invalidation so reactive gap changes recalculate
-overlap/flush decisions even when domain and view dimensions stay unchanged.
+product. Ordinary ticks, labels, and grid lines use category encodings. Update
+`axisLabelLayout.js` both to use the actual axis occurrence's extent and
+`bandGapMapping(extent)` for CPU positions, and to invalidate on reactive gap
+changes. Using `resolution.getAxisLength()` (the smallest shared member) and
+resolution-default `scale(value)` would check different label positions from
+those rendered in a larger occurrence. Overlap/flush decisions must update even
+when domain and view dimensions stay unchanged. Verify axes for both small and
+large shared members, including aligned annotation axes.
 
 ### Backend responsibilities
 
@@ -256,33 +281,42 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 
 ## Implementation milestones and review gates
 
-### 1. Categorical scale contract and completed mapping
+### 1. Internal categorical scale geometry
 
-- [ ] Implement the band mapping, typed gap inputs, resolution validation,
-      expression binding, domain-relative normalization, copy/inversion behavior, and
-      disabled specialization. Keep index/locus behavior intact.
-- [ ] Verify through focused scale tests and a headless real spec: string,
-      numeric, and boolean categories; padded singleton/empty domains; reverse/align;
-      reorder/remove/reinsert; unchanged stable IDs; constant-disabled and reactive
-      enable/disable; exhaustion and recovery. Prefer representative behavior over
-      setter-shape assertions. Review adjacent categorical/index-gap tests for overlap.
-- [ ] Record the API semantics in specification JSDoc and add one Core minor
-      changeset for the implemented feature, reused by later milestones.
-- Tentative commit: `feat(core): add category-aware grouping gaps to band scales`
-- **Review gate:** public API, categorical identity, mapping settlement, geometry,
-  and the rounding boundary before downstream consumers are finalized.
+- [ ] Implement the internal band mapping, category-to-cut normalization, scale
+      composition, copy/inversion behavior, and disabled fast path. Keep public
+      band-gap validation and specification types unchanged until milestone 2;
+      ordinary consumers must never observe enabled gaps before they support them.
+- [ ] Verify direct scale behavior for string, numeric, and boolean categories;
+      padded singleton/empty domains; reverse/align; reordered cuts; gap inversion;
+      exhaustion and recovery. Retain existing headless categorical/index-gap
+      regressions. Prefer representative contracts over setter-shape assertions.
+- [ ] Document internal capability semantics; no changeset is needed for this
+      preparatory milestone without observable behavior changes.
+- Tentative commit: `refactor(core): prepare categorical band gap geometry`
+- **Review gate:** proposed public API, categorical identity, geometry, and the
+  rounding boundary before downstream consumers are finalized.
 
 ### 2. Heat-map rendering, guides, and sizing across backends
 
 - [ ] Integrate WebGL, immediate/SVG, and generic WebGPU band mapping/resources;
       update fit checks, picking, scaleGroups/axes, desired dimensions, nested offset
-      bandwidth, label-layout invalidation, and `bandstep` together.
+      bandwidth for the supported contract, occurrence-local label layout, and
+      `bandstep` together. Resolve the nested-offset gate or explicitly exclude
+      unsupported combinations before asserting parity.
+- [ ] Bind expressions, normalize category cuts against completed domain state,
+      update public specification types/JSDoc, and enable positional band-gap
+      validation only once the renderers and ordinary axes work together. Add one
+      Core minor changeset for the feature and reuse it through integration.
 - [ ] Extend existing focused tests in `scaleResolution.categorical.test.js`,
       `offsetScale.test.js`, `scaleGroupsSource.test.js`, SVG gap/axis suites, WebGL
       shader/resource suites, and WebGPU adapter/surface suites. Add structured SVG
       and layout tests using `test-genomespy-views`, including unequal shared-scale
       placements and reactive step sizing. Assert pixels/geometry and source rows,
       not only generated strings.
+- [ ] Exercise real headless gapped specs through reorder/remove/reinsert,
+      unchanged stable IDs, constant-disabled expressions, reactive enable/disable,
+      and completed mapping observers. Review related tests for overlapping coverage.
 - [ ] Add a renderer-generic band-gap story and GPU regression alongside
       `packages/webgpu-renderer/tests/index-gaps.gpu.test.js`, including reordered
       sparse IDs and table updates. Confirm changing order/cuts does not rebuild
@@ -306,8 +340,10 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 - [ ] Recheck real examples `examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json`,
       `examples/docs/grammar/scale/grouping-gaps.json`, and
       `examples/core/marks/link/dendrogram-gaps.json`. Categorical dendrogram leaves
-      must align after gaps/reorder; index navigation and half-open interval rendering
-      must retain current behavior. This does not add automatic dendrogram group cuts.
+      must align and branch joins remain connected after gaps/reorder; preserve
+      rank-space internal-node centering rather than asserting physical midpoints.
+      Index navigation and half-open interval rendering must retain current behavior.
+      This does not add automatic dendrogram group cuts.
 - [ ] Run relevant Vitest suites with the agent reporter, workspace type checks,
       lint, relevant GPU tests, docs/schema checks, and release checks. Broaden to the
       full unit suite because shared scale/rendering contracts cross packages.
@@ -320,8 +356,10 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 
 1. Named rows/columns display independent fixed CSS-pixel gaps with equal cell
    bandwidths, correct categorical labels, and aligned annotation tracks.
-2. Forward/reversed ranges, padding, explicit band anchors, nested offsets,
-   singleton groups, and full-cell rectangular coverage agree across CPU/GPU.
+2. Forward/reversed ranges, padding, explicit band anchors, singleton groups,
+   and full-cell rectangular coverage agree across CPU/GPU. Nested offsets have
+   either an agreed occurrence-local contract with matching tests or a clear
+   unsupported boundary; no silently incorrect sub-band widths are accepted.
 3. Resize, reactive cuts/width, and domain reorder/filtering publish settled
    geometry, size, and guides while preserving domain values and stable IDs.
 4. Picking and point selection identify cells beside gaps and no cell in a gap;
@@ -333,6 +371,16 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 
 ## Risks and questions to confirm before implementation
 
+- **Nested offsets in shared placements:** choose between introducing a
+  renderer-neutral per-occurrence parent-bandwidth contract and explicitly
+  rejecting nested categorical offsets where the parent extent differs from
+  its resolution default. This also affects export-sized layouts. The current
+  `bandwidth('x') * width` expression does not solve it. No general solution for
+  arbitrary extent-sensitive expressions is proposed by this plan. The smallest
+  initial scope would reject all automatically inferred categorical offset ranges
+  on statically gapped primary bands, keeping explicit numeric pixel offsets under
+  their existing owner-size semantics. Adding an extent argument to `bandwidth()`
+  alone cannot make a shared offset scale placement-aware.
 - **Boundary ownership:** category-anchored cuts disappear when the named category
   is filtered out. The proposal deliberately chooses this simple rule. Confirm
   whether heat maps instead need persistent group membership through filtering;
@@ -349,3 +397,20 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
   code size and representative heat-map update behavior before and after any
   shared-helper refactor; accept added machinery only for the explicit contracts
   above. Do not introduce navigation/rollback infrastructure for band scales.
+
+## Plan review record
+
+- Initial proposal committed as `ce89ed08e`.
+- Independent subagent review identified missing occurrence-local geometry in
+  CPU axis-label overlap/flush calculations. Addressed above with explicit
+  geometry, invalidation, and unequal-member verification requirements.
+- The review also identified the nested-offset bandwidth mismatch across unequal
+  shared placements. Recorded as an unresolved contract decision, with the
+  incorrect existing expression and two possible scope choices stated above.
+  The initial unconditional nested-offset acceptance promise has been removed.
+- Public enablement originally preceded working renderer/axis consumers.
+  Corrected the milestones to keep preparation internal and defer public types,
+  validation, expression wiring, and release notes until integrated support.
+- Follow-up investigation clarified dendrogram scope: preserve rank-space
+  internal-node centering, leaf alignment, and branch connectivity. Pixel-space
+  recentering is separate work rather than an implied promise of band gaps.
