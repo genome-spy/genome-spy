@@ -66,18 +66,11 @@ export async function initializeVisibleViewData(
     dataFlow,
     textMetrics
 ) {
-    const { predicate: visibilityPredicate } =
-        getInitializationDependencies(viewRoot);
-    const visibleViews = collectVisibleViews(viewRoot, visibilityPredicate);
-    const viewsToInitialize = visibleViews.filter(
-        (view) => view.getDataInitializationState() === "none"
-    );
-
     return initializeViewDataForViews(
         viewRoot,
         dataFlow,
         textMetrics,
-        viewsToInitialize
+        viewRoot.getDescendants()
     );
 }
 

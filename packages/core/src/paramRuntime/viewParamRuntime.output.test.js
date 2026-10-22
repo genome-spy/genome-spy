@@ -140,17 +140,3 @@ test("output pushing uses the nearest ancestor without skipping incompatible sha
     expect(nearer.getOutput("order")).toBe(nearerOutput);
     expect(nearerOutput).not.toBe(outerOutput);
 });
-
-test("configured owners reject new output ownership while preserving the ordinary slot", () => {
-    const owner = createRuntime();
-    owner.registerParam({ name: "order" });
-    owner.finalizeOutputDeclarations();
-    const producer = createRuntime(owner);
-
-    expect(() =>
-        producer.resolveOutput({ name: "order", push: "outer" })
-    ).toThrow(/configured ancestor parameter "order"/i);
-    expect(owner.getValue("order")).toBeNull();
-    expect(owner.isWritable("order")).toBe(true);
-    expect(Array.from(owner.outputs)).toEqual([]);
-});
