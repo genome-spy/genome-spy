@@ -5,7 +5,6 @@ import {
     resolveConfiguredDomain,
     resolveDataDomain,
     resolveDefaultDomain,
-    getConfiguredDomainSources,
 } from "./domainPlanner.js";
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import {
@@ -49,7 +48,7 @@ import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
  * @param {Set<import("./scaleResolution.js").ScaleResolutionMember>} options.members
  * @param {Set<import("./scaleResolution.js").ScaleResolutionMember>} options.dataMembers
  * @param {import("./domainPlanner.js").ConfiguredDomainSource | undefined} options.viewLevelDomain
- * @param {import("./domainPlanner.js").DomainExpressionBinder} options.createExpression
+ * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
  * @param {import("./domainPlanner.js").SelectionBindingResolver} options.resolveSelectionBinding
  * @param {import("./domainPlanner.js").FromComplexInterval} options.fromComplexInterval
  * @param {import("./domainPlanner.js").GetLocusExtent} options.getLocusExtent
@@ -104,24 +103,23 @@ export default function createDomainInputs({
     const disposers = [];
 
     try {
-        /** @type {Map<import("../view/view.js").default | undefined, Map<import("../spec/parameter.js").ExprRef, import("../paramRuntime/types.js").ExprRefFunction>>} */
+        /** @type {Map<string, import("../paramRuntime/types.js").ExprRefFunction>} */
         const expressions = new Map();
-        for (const { domain, view } of getConfiguredDomainSources(
-            members,
-            viewLevelDomain
-        )) {
-            let scoped = expressions.get(view);
-            if (!scoped) expressions.set(view, (scoped = new Map()));
+        for (const domain of [
+            viewLevelDomain?.domain,
+            ...Array.from(members, (member) =>
+                member.contributesToDomain
+                    ? member.channelDef.scale?.domain
+                    : undefined
+            ),
+        ]) {
             for (const ref of collectConfiguredDomainExprRefs(domain)) {
-                if (!scoped.has(ref))
-                    scoped.set(ref, createExpression(ref, view));
+                if (!expressions.has(ref.expr))
+                    expressions.set(ref.expr, createExpression(ref));
             }
         }
-        const boundExpressions = Array.from(expressions.values()).flatMap(
-            (scope) => Array.from(scope.values())
-        );
         const zoomLevelResolutions = new Set(
-            boundExpressions.flatMap((expression) =>
+            Array.from(expressions.values()).flatMap((expression) =>
                 (expression.zoomLevelResolutions ?? []).filter((resolution) =>
                     resolution.isZoomable()
                 )
@@ -193,13 +191,15 @@ export default function createDomainInputs({
             "configured domain",
             [
                 selection,
-                ...boundExpressions.flatMap((expr) => expr.dependencies),
+                ...Array.from(expressions.values()).flatMap(
+                    (expr) => expr.dependencies
+                ),
             ],
             () =>
                 resolveConfiguredDomain(
                     members,
                     viewLevelDomain,
-                    (expr, view) => expressions.get(view).get(expr),
+                    (expr) => expressions.get(expr.expr),
                     link
                         ? () => ({
                               runtime: link.runtime,

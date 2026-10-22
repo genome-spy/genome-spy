@@ -368,6 +368,7 @@ describe("scale-dependent parameters in scale expressions", () => {
             /** @type {import("../view/layerView.js").default} */ (
                 view
             ).addChildSpec({
+                params: [{ name: "childOnly", value: 20 }],
                 mark: "point",
                 encoding: {
                     x: {
@@ -378,11 +379,11 @@ describe("scale-dependent parameters in scale expressions", () => {
                     y: {
                         field: "cn",
                         type: "quantitative",
-                        scale: { domain: { expr: "[0, missingDomainBound]" } },
+                        scale: { domain: { expr: "[0, childOnly]" } },
                     },
                 },
             })
-        ).rejects.toThrow(/missingDomainBound/);
+        ).rejects.toThrow('Parameter "childOnly" is not visible');
         expect(x.getDomain()).toEqual(before);
         expect(y.getDomain()).toEqual([0, 5]);
         expect(listener).not.toHaveBeenCalled();

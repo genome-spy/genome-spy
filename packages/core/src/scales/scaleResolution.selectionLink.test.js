@@ -3,7 +3,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { describe, expect, onTestFinished, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import {
     initializeViewSubtree,
@@ -246,7 +246,7 @@ describe("Scale resolution selection-linked domains", () => {
         );
     });
 
-    test("shared selection domains resolve the declaring child's parameter", async () => {
+    test("shared selection domains resolve owner parameters instead of child shadows", async () => {
         const view = await initView(
             createSharedSelectionScopeSpec({
                 ownerParam: {
@@ -260,10 +260,9 @@ describe("Scale resolution selection-linked domains", () => {
             }),
             LayerView
         );
-        onTestFinished(() => view.disposeSubtree());
 
         expect(getRequiredScaleResolution(view, "x").scale.domain()).toEqual([
-            6, 8,
+            2, 4,
         ]);
     });
 
@@ -299,25 +298,21 @@ describe("Scale resolution selection-linked domains", () => {
         ]);
     });
 
-    test("child-local selection parameters control shared domains reactively", async () => {
-        const view = await initView(
-            createSharedSelectionScopeSpec({
-                childParam: {
-                    name: "brush",
-                    value: createIntervalValue([2, 4]),
-                },
-            }),
-            LayerView
+    test("child-local selection parameters cannot control shared scales", async () => {
+        await expect(
+            initView(
+                createSharedSelectionScopeSpec({
+                    childParam: {
+                        name: "brush",
+                        value: createIntervalValue([2, 4]),
+                    },
+                }),
+                LayerView
+            )
+        ).rejects.toThrow(
+            'Parameter "brush" is not visible from the shared x scale resolution. ' +
+                'Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.'
         );
-        onTestFinished(() => view.disposeSubtree());
-        const resolution = getRequiredScaleResolution(view, "x");
-        expect(resolution.getDomain()).toEqual([2, 4]);
-        view.children[0].paramRuntime.setValue(
-            "brush",
-            createIntervalValue([6, 8])
-        );
-        await view.paramRuntime.whenPropagated();
-        expect(resolution.getDomain()).toEqual([6, 8]);
     });
 
     test("children can push selection-domain updates to a shared owner", async () => {

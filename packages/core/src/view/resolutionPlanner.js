@@ -10,7 +10,6 @@ import {
     isOffsetChannel,
 } from "../encoder/encoder.js";
 import { isInChromeSubtree } from "./viewChrome.js";
-import { getSpecDeclarationView } from "../utils/specOrigin.js";
 
 /**
  * @typedef {object} ResolutionMember
@@ -324,7 +323,6 @@ const registerScaleResolutionMembers = (view, scaleMembersByResolution) => {
                 const contributesToDomain = !view.isDomainInert();
                 const unregister = resolution.registerMember({
                     view,
-                    declaringView: getSpecDeclarationView(channelDef) ?? view,
                     channel:
                         /** @type {import("../spec/channel.js").ChannelWithScale} */ (
                             channel

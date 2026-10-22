@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
 import { createTestEmbed, getPointSelection } from "./embedTestUtils.js";
 import GenomeStore from "../genome/genomeStore.js";
@@ -256,27 +256,23 @@ test.each(["removed", "finalized"])(
     }
 );
 
-test.each([true, false])(
-    "rejects unready writes and allows clearing, keyed=%s",
-    async (keyed) => {
-        const { view } = await createHeadlessViewHierarchy({
-            params: [{ name: "selected", select: "point" }],
-            data: { values: [{ id: "A" }] },
-            mark: "point",
-            encoding: keyed ? { key: { field: "id" } } : {},
-        });
-        onTestFinished(() => view.disposeSubtree());
-        const handle = createViewMutationApi({ viewRoot: view }).root();
-        const selected = getPointSelection(handle);
-        expect(() => handle.data.read({ scope: "viewport", limit: 1 })).toThrow(
-            "not ready"
-        );
-        expect(() => selected.setValue([["A"]])).toThrow(
-            keyed ? "not ready" : "encoding.key"
-        );
-        selected.setValue([]);
-    }
-);
+test("rejects unready or unkeyed writes, but allows clearing before data is ready", async () => {
+    const { view } = await createHeadlessViewHierarchy({
+        params: [{ name: "selected", select: "point" }],
+        data: { values: [{ id: "A" }] },
+        mark: "point",
+        encoding: { key: { field: "id" } },
+    });
+    const handle = createViewMutationApi({ viewRoot: view }).root();
+    const selected = getPointSelection(handle);
+    expect(() => handle.data.read({ scope: "viewport", limit: 1 })).toThrow(
+        "not ready"
+    );
+    expect(() => selected.setValue([["A"]])).toThrow("not ready");
+    selected.setValue([]);
+    delete view.spec.encoding.key;
+    expect(() => selected.setValue([["A"]])).toThrow("encoding.key");
+});
 
 test("reads brush membership independently of viewport, before limiting matches", async () => {
     const { root, unit, handle } = await setup();

@@ -88,10 +88,9 @@ export interface Scale {
      * For _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values.
 
      * The domain can also be defined by an expression reference that evaluates to the domain array.
-     * Array elements may also be expression references. Domain expressions and selection-domain
-     * parameters resolve in the view that originally declares the encoding channel. Inherited
-     * channels retain that scope; a channel declared in a child uses the child's scope. A domain
-     * in view-level `scales` uses the declaring view's parameter scope.
+     * Array elements may also be expression references. All parameter names referenced by a scale,
+     * including selection-domain parameters, resolve from the view that owns the scale resolution.
+     * For a shared scale, declare controlling parameters on that owning composed view or an ancestor.
      *
      */
     domain?:
@@ -297,8 +296,7 @@ export type DomainValueArray = DomainValue[];
 export interface SelectionDomainRef {
     /**
      * Name of an interval selection parameter that provides the domain.
-     * The name resolves in the domain declaration's parameter scope. Inherited encoding channels
-     * retain their original declaring view's scope; view-level domains use their declaring view.
+     * The name resolves from the view that owns the scale resolution.
      */
     param: string;
 

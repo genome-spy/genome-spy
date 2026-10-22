@@ -74,7 +74,6 @@ export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
  * @prop {T} channel
  * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
  * @prop {boolean} contributesToDomain
- * @prop {import("../view/view.js").default} [declaringView] Original encoding declaration, preserved through inheritance.
  */
 /**
  * Resolves a shared scale for a channel by merging scale properties and domains
@@ -295,8 +294,8 @@ export default class ScaleResolution {
             }
 
             if (memberView) {
-                // Retain singleton compatibility for range and grouping-gap
-                // expressions; domain expressions use their declaration scope.
+                // TODO(v2.0): Remove this compatibility fallback and always
+                // bind scale expressions to the resolution owner's scope.
                 return memberView;
             }
         }
@@ -329,14 +328,6 @@ export default class ScaleResolution {
         }
     }
 
-    /**
-     * @param {import("../spec/parameter.js").ExprRef} expr
-     * @param {import("../view/view.js").default} [view]
-     */
-    #createDomainExpression(expr, view = this.#resolutionView) {
-        return view.paramRuntime.createExpression(expr);
-    }
-
     // TODO: Replace this scale-specific traversal with generic graph cycle
     // validation if zoom publication becomes an ordinary graph dependency.
     /**
@@ -355,15 +346,14 @@ export default class ScaleResolution {
     /**
      * @param {string} paramName
      * @param {"x" | "y"} encoding
-     * @param {import("../view/view.js").default} [view]
      */
-    #resolveSelectionBinding(
-        paramName,
-        encoding,
-        view = this.#expressionScopeView
-    ) {
+    #resolveSelectionBinding(paramName, encoding) {
         try {
-            return resolveIntervalSelectionBinding(view, paramName, encoding);
+            return resolveIntervalSelectionBinding(
+                this.#expressionScopeView,
+                paramName,
+                encoding
+            );
         } catch (error) {
             if (
                 !(error instanceof Error) ||
@@ -508,8 +498,7 @@ export default class ScaleResolution {
         const link = resolveSelectionDomainInfo(
             this.#getActiveMembers(),
             this.#getViewLevelDomainSource(),
-            (param, encoding, view) =>
-                this.#resolveSelectionBinding(param, encoding, view)
+            (param, encoding) => this.#resolveSelectionBinding(param, encoding)
         );
         validateSharedSelectionDomain(this.#members, link);
         return link;
@@ -538,9 +527,9 @@ export default class ScaleResolution {
             resolveConfiguredDomain(
                 this.#getActiveMembers(),
                 this.#getViewLevelDomainSource(),
-                (expr, view) => this.#createDomainExpression(expr, view),
-                (param, encoding, view) =>
-                    this.#resolveSelectionBinding(param, encoding, view),
+                (expr) => this.#createExpression(expr),
+                (param, encoding) =>
+                    this.#resolveSelectionBinding(param, encoding),
                 this.fromComplexInterval.bind(this),
                 this.#shouldIncludeSelectionInitial()
             ).domain ??
@@ -901,7 +890,6 @@ export default class ScaleResolution {
                 ),
             type: this.type,
             domain: viewLevelScaleProps.props.domain,
-            view: viewLevelScaleProps.view,
         };
     }
 
@@ -1052,10 +1040,9 @@ export default class ScaleResolution {
             members,
             dataMembers,
             viewLevelDomain: this.#getViewLevelDomainSource(),
-            createExpression: (expr, view) =>
-                this.#createDomainExpression(expr, view),
-            resolveSelectionBinding: (param, encoding, view) =>
-                this.#resolveSelectionBinding(param, encoding, view),
+            createExpression: (expr) => this.#createExpression(expr),
+            resolveSelectionBinding: (param, encoding) =>
+                this.#resolveSelectionBinding(param, encoding),
             fromComplexInterval: this.fromComplexInterval.bind(this),
             getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             link,

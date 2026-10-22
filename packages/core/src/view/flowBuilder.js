@@ -27,7 +27,6 @@ import { invalidate } from "../utils/propertyCacher.js";
 import NamedSource, { isNamedData } from "../data/sources/namedSource.js";
 import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
 import { isFacetSpec } from "./viewSpecGuards.js";
-import { inheritSpecOrigin } from "../utils/specOrigin.js";
 
 /**
  * @param {View} root
@@ -526,15 +525,20 @@ export function linearizeLocusAccess(view) {
                     strip(chromPosDef.pos),
                 ].join("");
 
+                // Prefer using the spec directly because getEncoding() returns inherited props too.
+                // TODO: I think this is not robust enough. Needs more work...
                 /** @type {Record<string, any>} */
                 const currentEncoding =
-                    configuredEncoding[channel] ?? encoding[channel] ?? {};
+                    view.spec.encoding?.[channel] ??
+                    configuredEncoding[channel] ??
+                    encoding[channel] ??
+                    {};
 
                 /** @type {Record<string, any>} */
-                const newFieldDef = inheritSpecOrigin(currentEncoding, {
+                const newFieldDef = {
                     ...currentEncoding,
                     field: linearizedField,
-                });
+                };
                 delete newFieldDef.chrom;
                 delete newFieldDef.pos;
                 if (!newFieldDef.type && chromPosDef.type) {
@@ -574,7 +578,11 @@ export function linearizeLocusAccess(view) {
                * not disrupt inheritance of encodings
                */
               rewrite: () => {
-                  view.updateEncoding(rewrittenEncoding);
+                  view.spec.encoding = {
+                      ...view.spec.encoding,
+                      ...rewrittenEncoding,
+                  };
+                  // This is so ugly...
                   // @ts-ignore
                   invalidate(view.mark, "encoding");
               },

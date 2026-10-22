@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { describe, expect, onTestFinished, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
@@ -224,7 +224,7 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getScale().range()).toEqual([0, 20]);
     });
 
-    test("configured domain arrays retain the declaring child's scope", async () => {
+    test("configured domain arrays use the shared owner scope", async () => {
         const view = await initView(
             sharedPointScale(
                 "y",
@@ -239,196 +239,35 @@ describe("scale resolution expression scope", () => {
             ),
             LayerView
         );
-        onTestFinished(() => view.disposeSubtree());
         const resolution = getRequiredScaleResolution(view, "y");
 
-        expect(resolution.getScale().domain()).toEqual([0, 2]);
+        expect(resolution.getScale().domain()).toEqual([0, 10]);
 
         view.paramRuntime.setValue("upperBound", 20);
         await view.paramRuntime.whenPropagated();
-        expect(resolution.getScale().domain()).toEqual([0, 2]);
 
-        view.children[0].paramRuntime.setValue("upperBound", 4);
-        await view.paramRuntime.whenPropagated();
-        expect(resolution.getScale().domain()).toEqual([0, 4]);
+        expect(resolution.getScale().domain()).toEqual([0, 20]);
     });
 
-    test("a child-local parameter controls a shared domain", async () => {
-        const view = await initView(
-            sharedPointScale(
-                "y",
-                { domain: [0, { expr: "upperBound" }] },
-                {
-                    childParams: [{ name: "upperBound", value: 10 }],
-                    values: [],
-                }
-            ),
-            LayerView
-        );
-        onTestFinished(() => view.disposeSubtree());
-        const resolution = getRequiredScaleResolution(view, "y");
-        expect(resolution.getDomain()).toEqual([0, 10]);
-        view.children[0].paramRuntime.setValue("upperBound", 20);
-        await view.paramRuntime.whenPropagated();
-        expect(resolution.getDomain()).toEqual([0, 20]);
-    });
-
-    test.each(["shared", "independent"])(
-        "inherited domains retain their original scope with %s scales",
-        async (sharing) => {
-            const view = await initView(
-                {
-                    params: [{ name: "upperBound", value: 10 }],
-                    data: { values: [] },
-                    encoding: {
-                        x: quantitative("value", {
-                            domain: { expr: "[0, upperBound]" },
-                        }),
-                    },
-                    resolve: { scale: { x: sharing } },
-                    vconcat: [
-                        {
-                            mark: "point",
-                            params: [{ name: "upperBound", value: 2 }],
-                        },
-                        {
-                            mark: "point",
-                            params: [{ name: "upperBound", value: 3 }],
-                        },
-                    ],
-                },
-                ConcatView
-            );
-            onTestFinished(() => view.disposeSubtree());
-            const resolutions = view.children.map((child) =>
-                child.getScaleResolution("x")
-            );
-            for (const resolution of resolutions)
-                expect(resolution.getDomain()).toEqual([0, 10]);
-            view.children[0].paramRuntime.setValue("upperBound", 30);
-            await view.paramRuntime.whenPropagated();
-            for (const resolution of resolutions)
-                expect(resolution.getDomain()).toEqual([0, 10]);
-            view.paramRuntime.setValue("upperBound", 12);
-            await view.paramRuntime.whenPropagated();
-            for (const resolution of resolutions)
-                expect(resolution.getDomain()).toEqual([0, 12]);
-        }
-    );
-
-    test("reused expression objects bind independently in each declaration and engine", async () => {
-        const domain = { expr: "[0, upperBound]" };
-        const spec = {
-            params: [{ name: "upperBound", value: 100 }],
-            data: { values: [] },
-            layer: [2, 3].map((upperBound) =>
-                point("x", {
-                    params: [{ name: "upperBound", value: upperBound }],
-                    scale: { domain },
-                })
-            ),
-        };
-        const first = await initView(spec, LayerView);
-        const second = await initView(spec, LayerView);
-        onTestFinished(() => first.disposeSubtree());
-        onTestFinished(() => second.disposeSubtree());
-        const x1 = first.getScaleResolution("x");
-        const x2 = second.getScaleResolution("x");
-        expect(x1.getDomain()).toEqual([0, 3]);
-        expect(x2.getDomain()).toEqual([0, 3]);
-
-        first.children[0].paramRuntime.setValue("upperBound", 10);
-        await first.paramRuntime.whenPropagated();
-        expect(x1.getDomain()).toEqual([0, 10]);
-        expect(x2.getDomain()).toEqual([0, 3]);
-        second.children[1].paramRuntime.setValue("upperBound", 20);
-        await second.paramRuntime.whenPropagated();
-        expect(x1.getDomain()).toEqual([0, 10]);
-        expect(x2.getDomain()).toEqual([0, 20]);
-    });
-
-    test("dynamic overrides introduce their own scope and removal restores inherited domains", async () => {
-        const view = await initView(
-            {
-                params: [{ name: "upperBound", value: 10 }],
-                data: { values: [] },
-                encoding: {
-                    x: quantitative("value", {
-                        domain: { expr: "[0, upperBound]" },
-                    }),
-                },
-                layer: [
+    test("child-local parameters cannot control shared domains", async () => {
+        await expect(
+            initView(
+                sharedPointScale(
+                    "y",
+                    { domain: [0, { expr: "upperBound" }] },
                     {
-                        mark: "point",
-                        params: [{ name: "upperBound", value: 2 }],
-                    },
-                ],
-            },
-            LayerView
+                        childParams: [{ name: "upperBound", value: 10 }],
+                        firstField: "a",
+                        secondField: "b",
+                        values: [],
+                    }
+                ),
+                LayerView
+            )
+        ).rejects.toThrow(
+            'Parameter "upperBound" is not visible from the shared y scale resolution. ' +
+                'Move the parameter to the resolution-owning view and use push: "outer" if a child must update it.'
         );
-        onTestFinished(() => view.disposeSubtree());
-        const x = view.getScaleResolution("x");
-        expect(x.getDomain()).toEqual([0, 10]);
-
-        const inserted = await view.addChildSpec(
-            point("x", {
-                params: [{ name: "upperBound", value: 20 }],
-                scale: { domain: { expr: "[0, upperBound]" } },
-            })
-        );
-        expect(inserted.getScaleResolution("x")).toBe(x);
-        expect(x.getDomain()).toEqual([0, 20]);
-        inserted.paramRuntime.setValue("upperBound", 30);
-        await view.paramRuntime.whenPropagated();
-        expect(x.getDomain()).toEqual([0, 30]);
-
-        await view.removeChildAt(1);
-        expect(x.getDomain()).toEqual([0, 10]);
-        view.paramRuntime.setValue("upperBound", 12);
-        await view.paramRuntime.whenPropagated();
-        expect(x.getDomain()).toEqual([0, 12]);
-    });
-
-    test("selection domain inheritance retains the author and explicit overrides use the child", async () => {
-        const interval = (x) => ({ type: "interval", intervals: { x } });
-        const view = await initView(
-            {
-                params: [{ name: "brush", value: interval([1, 5]) }],
-                data: { values: [] },
-                encoding: {
-                    x: quantitative("value", {
-                        domain: { param: "brush" },
-                        zero: false,
-                        nice: false,
-                    }),
-                },
-                resolve: { scale: { x: "independent" } },
-                vconcat: [
-                    {
-                        mark: "point",
-                        params: [{ name: "brush", value: interval([2, 3]) }],
-                    },
-                    point("x", {
-                        params: [{ name: "brush", value: interval([7, 9]) }],
-                        scale: {
-                            domain: { param: "brush" },
-                            zero: false,
-                            nice: false,
-                        },
-                    }),
-                ],
-            },
-            ConcatView
-        );
-        onTestFinished(() => view.disposeSubtree());
-        const inherited = view.children[0].getScaleResolution("x");
-        const overridden = view.children[1].getScaleResolution("x");
-        expect(inherited.getDomain()).toEqual([1, 5]);
-        expect(overridden.getDomain()).toEqual([7, 9]);
-        view.paramRuntime.setValue("brush", interval([3, 6]));
-        await view.paramRuntime.whenPropagated();
-        expect(inherited.getDomain()).toEqual([3, 6]);
-        expect(overridden.getDomain()).toEqual([7, 9]);
     });
 
     test("dynamic members rebind range expressions to the effective scope", async () => {
