@@ -79,15 +79,6 @@ export default class DataFlow {
     }
 
     /**
-     * Prune a collector branch from the flow graph, removing empty ancestors.
-     *
-     * @param {import("./collector.js").default} collector
-     */
-    pruneCollectorBranch(collector) {
-        this.pruneBranch(collector);
-    }
-
-    /**
      * Remove an owned endpoint and orphaned ancestors, preserving shared inputs.
      * @param {import("./flowNode.js").default} endpoint
      */

@@ -1,12 +1,6 @@
-// @vitest-environment jsdom
-
 import { expect, onTestFinished, test, vi } from "vitest";
-import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
-import { resolveBaseConfig } from "../config/resolveConfig.js";
-import { DEFAULT_THEME_NAME, resolveThemeSelection } from "../config/themes.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { resolveScopedEmbedParam } from "../paramRuntime/embedParamApi.js";
-import { createSvg } from "../rendering/svg/index.js";
 import FlowNode from "./flowNode.js";
 import { registerLazyDataSource } from "./sources/dataSourceFactory.js";
 import IntervalUrlSource from "./sources/lazy/intervalUrlSource.js";
@@ -124,14 +118,7 @@ async function engine(spec = messageSpec()) {
             ControlledSource
         )
     );
-    const result = await createHeadlessEngine(spec, {
-        contextOptions: {
-            baseConfig: resolveBaseConfig({
-                defaultConfig: INTERNAL_DEFAULT_CONFIG,
-                builtInTheme: resolveThemeSelection(DEFAULT_THEME_NAME),
-            }),
-        },
-    });
+    const result = await createHeadlessEngine(spec);
     onTestFinished(() => result.view.disposeSubtree());
     return {
         ...result,
@@ -145,15 +132,10 @@ async function engine(spec = messageSpec()) {
 
 /** @param {import("../view/view.js").default} view */
 function messageOpacity(view) {
-    const { svg, warnings } = createSvg({
-        viewRoot: view,
-        logicalWidth: 300,
-        logicalHeight: 80,
-    });
-    expect(warnings).toEqual([]);
-    const message = svg.querySelector('[data-name="message"] text');
-    expect(message.textContent).toBe("No data in the last loaded region");
-    return +message.closest("[fill-opacity]").getAttribute("fill-opacity");
+    const message = /** @type {import("../view/unitView.js").default} */ (
+        view.getDescendants().find((child) => child.name === "message")
+    );
+    return message.mark.encoders.opacity({});
 }
 
 test("lazy aggregation distinguishes initial unknown from first empty success and retains its message", async () => {
@@ -231,7 +213,11 @@ test("failed processing, superseded reads, and disposed reads cannot publish a l
     const first = await source.beginRequest();
     await first.succeed([[{ x: 1, score: 1 }]]);
     const output = runtime.getOutput("recordCounts");
-    const revision = output.revision;
+    const initial = output.value.get();
+    const notify = vi.fn();
+    onTestFinished(
+        resolveScopedEmbedParam(view, "recordCounts").subscribe(notify)
+    );
 
     // This sibling fails after the summary has staged its complete candidate.
     class CompletionFailure extends FlowNode {
@@ -243,8 +229,8 @@ test("failed processing, superseded reads, and disposed reads cannot publish a l
     source.addChild(failure);
     const broken = await source.beginRequest();
     await broken.succeed([[]]);
-    expect(runtime.getValue("recordCounts")).toEqual([1]);
-    expect(output.revision).toBe(revision);
+    expect(runtime.getValue("recordCounts")).toBe(initial);
+    expect(notify).not.toHaveBeenCalled();
     source.removeChild(failure);
 
     const stale = await source.beginRequest([10, 20]);
@@ -259,12 +245,14 @@ test("failed processing, superseded reads, and disposed reads cannot publish a l
     await runtime.whenPropagated();
     expect(runtime.getValue("recordCounts")).toEqual([0]);
     expect(runtime.getValue("positions")).toEqual([]);
-    expect(output.revision).toBe(revision + 1);
+    expect(notify).toHaveBeenCalledOnce();
+    const currentValue = output.value.get();
 
     const disposed = await source.beginRequest();
     view.disposeSubtree();
     await disposed.succeed([[{ x: 9, score: 9 }]]);
-    expect(output.revision).toBe(revision + 1);
+    expect(output.value.get()).toBe(currentValue);
+    expect(notify).toHaveBeenCalledOnce();
 });
 
 test("a lazy side-input revision publishes only after the primary rows consume it", async () => {

@@ -101,10 +101,9 @@ arrangement.
   A URL change synchronously invalidates readiness, while one request signal
   guards normalization, handle acquisition, interval loading, publication, and
   status. Descriptor errors surface when a visible window is requested.
-- Transform output producers require the source's explicit
-  `supportsFlowOutputs` capability, including sources reached through side
-  inputs. Audited eager/sequence and interval sources publish complete snapshots;
-  lazy startup and invalidation use nonpublishing completion. A `branch` forks
+- Sources publish transform outputs when `complete()` finishes a successful
+  snapshot. Completion that only clears rows or finishes a failed load uses
+  `complete(false)`; publication also requires ready and successful side inputs. A `branch` forks
   the current input while keeping its owning view's parameter scope and
   preserving the main rows. See `reactivity.md` for publication and feedback
   boundaries.

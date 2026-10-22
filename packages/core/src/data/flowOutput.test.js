@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { expect, onTestFinished, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import FlowNode from "./flowNode.js";
+import DataSource from "./sources/dataSource.js";
+import { registerLazyDataSource } from "./sources/dataSourceFactory.js";
 import {
     resolveEmbedParam,
     resolveScopedEmbedParam,
@@ -81,7 +83,6 @@ test("summary replay changes gaps while preserving main rows and equal output id
     spec.params.unshift({ name: "cutCount", expr: "length(cuts)" });
     const { view } = await engine(spec);
     const runtime = view.paramRuntime;
-    const output = runtime.getOutput("cuts");
     const api = resolveScopedEmbedParam(view, "cuts");
     const notify = vi.fn();
     onTestFinished(api.subscribe(notify));
@@ -91,7 +92,6 @@ test("summary replay changes gaps while preserving main rows and equal output id
     );
 
     expect(api.getValue()).toEqual([2, 4]);
-    expect(output.ready).toBe(true);
     expect(scale.gapPositions()).toEqual([2, 4]);
     const initial = runtime.getValue("cuts");
     runtime.setValue("minimumStrength", 0.1);
@@ -112,7 +112,6 @@ test("summary replay changes gaps while preserving main rows and equal output id
     runtime.setValue("minimumStrength", 1);
     await runtime.whenPropagated();
     expect(scale.gapPositions()).toEqual([]);
-    expect(output.ready).toBe(true);
     for (const readOnlyApi of [api, resolveEmbedParam(view, "cuts")]) {
         expect(() => readOnlyApi.setValue(/** @type {any} */ ([1]))).toThrow(
             "computed parameter"
@@ -206,6 +205,41 @@ test("duplicate output declarations are rejected", async () => {
     ).rejects.toThrow(/already|Duplicate/);
 });
 
+test("custom sources publish successful completion without feature-specific configuration", async () => {
+    class SnapshotSource extends DataSource {
+        /** @param {object} _params @param {import("../view/view.js").default} view */
+        constructor(_params, view) {
+            super(view);
+        }
+
+        async load() {
+            this.reset();
+            this.beginBatch({ type: "file" });
+            this._propagate({ x: 2 });
+            this.complete();
+        }
+    }
+
+    onTestFinished(
+        registerLazyDataSource(
+            (params) => /** @type {any} */ (params).type === "snapshotTest",
+            SnapshotSource
+        )
+    );
+    const { view } = await engine({
+        data: { lazy: /** @type {any} */ ({ type: "snapshotTest" }) },
+        transform: [{ type: "values", field: "x", param: "positions" }],
+        mark: "point",
+    });
+    const source = view.flowHandle.dataSource;
+    const initial = view.paramRuntime.getValue("positions");
+    expect(initial).toEqual([2]);
+
+    source.reset();
+    source.complete(false);
+    expect(view.paramRuntime.getValue("positions")).toBe(initial);
+});
+
 test("a named-data output updates a separate pipeline's filter", async () => {
     const { view, context } = await engine({
         datasets: {
@@ -274,20 +308,19 @@ test("failed URL revisions retain the previous output and disposed loads cannot 
     const source = view.flowHandle.dataSource;
     const output = view.paramRuntime.getOutput("cuts");
     const initial = view.paramRuntime.getValue("cuts");
-    const revision = output.revision;
+    const notify = vi.fn();
+    onTestFinished(resolveScopedEmbedParam(view, "cuts").subscribe(notify));
     fetch.mockResolvedValue(new Response(JSON.stringify([{ x: 3 }, {}])));
     await source.load();
     expect(view.paramRuntime.getValue("cuts")).toBe(initial);
-    expect(output.revision).toBe(revision);
-    expect(output.ready).toBe(false);
+    expect(notify).not.toHaveBeenCalled();
 
     fetch.mockResolvedValue(new Response("unavailable", { status: 503 }));
     await source.load();
     view.paramRuntime.setValue("minimum", 1);
     await view.paramRuntime.whenPropagated();
     expect(view.paramRuntime.getValue("cuts")).toBe(initial);
-    expect(output.ready).toBe(false);
-    expect(output.revision).toBe(revision);
+    expect(notify).not.toHaveBeenCalled();
 
     // A later sibling fails after this producer stages a complete candidate.
     class CompletionFailure extends FlowNode {
@@ -299,7 +332,7 @@ test("failed URL revisions retain the previous output and disposed loads cannot 
     fetch.mockResolvedValue(new Response(JSON.stringify([{ x: 3 }])));
     await source.load();
     expect(view.paramRuntime.getValue("cuts")).toBe(initial);
-    expect(output.revision).toBe(revision);
+    expect(notify).not.toHaveBeenCalled();
 
     /** @type {(response: Response) => void} */
     let finish;
@@ -311,5 +344,6 @@ test("failed URL revisions retain the previous output and disposed loads cannot 
     view.disposeSubtree();
     finish(new Response(JSON.stringify([{ x: 9 }])));
     await pending;
-    expect(output.revision).toBe(revision);
+    expect(output.value.get()).toBe(initial);
+    expect(notify).not.toHaveBeenCalled();
 });

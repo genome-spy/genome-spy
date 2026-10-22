@@ -27,10 +27,6 @@ export default class InlineSource extends DataSource {
         }
     }
 
-    get supportsFlowOutputs() {
-        return true;
-    }
-
     get label() {
         return "inlineSource";
     }

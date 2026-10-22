@@ -10,10 +10,6 @@ export default class FlowOutput {
     /** @type {readonly import("../spec/channel.js").Scalar[] | undefined} */
     candidate;
 
-    ready = false;
-
-    revision = 0;
-
     /**
      * @param {import("../paramRuntime/viewParamRuntime.js").default} runtime
      * @param {string} name
@@ -37,23 +33,8 @@ export default class FlowOutput {
                 return;
         }
 
-        this.ready = true;
-        this.revision++;
         if (!shallowArrayEquals(this.value.get(), this.candidate))
             this.value.set(this.candidate);
-    }
-}
-
-/**
- * Publishers require complete successful snapshots from every primary and side source.
- * @param {import("./flowNode.js").default} producer
- */
-export function validateOutputSources(producer) {
-    for (const node of iterateDataDependencies(producer)) {
-        if (node instanceof DataSource && !node.supportsFlowOutputs)
-            throw new Error(
-                "Transform outputs do not support source: " + node.label
-            );
     }
 }
 

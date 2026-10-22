@@ -56,7 +56,7 @@ The input table could contain `cut` values `2` and `4`. The scale then inserts
 gaps before indices 2 and 4. Sorting and deduplication of gap positions are scale
 behavior; `"values"` itself preserves the prepared rows' order and duplicates.
 
-Inline, named, sequence, and supported [lazy inputs](../data/lazy.md) can also
+Inline, named, sequence, and [lazy inputs](../data/lazy.md) can also
 publish outputs. Lazy outputs describe the last successfully loaded window,
 which may include prefetched data or summary bins.
 

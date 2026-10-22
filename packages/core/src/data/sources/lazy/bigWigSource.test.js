@@ -209,7 +209,6 @@ describe("BigWigSource", () => {
         ]);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
         expect(output.value.get()).toEqual([2]);
-        expect(output.revision).toBe(1);
         source.disposeSubtree();
     });
 

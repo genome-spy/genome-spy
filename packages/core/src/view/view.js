@@ -1158,7 +1158,7 @@ export default class View {
         }
 
         if (handle?.collector) {
-            this.context.dataFlow.pruneCollectorBranch(handle.collector);
+            this.context.dataFlow.pruneBranch(handle.collector);
             this.context.dataFlow.removeCollector(handle.collector);
         }
 

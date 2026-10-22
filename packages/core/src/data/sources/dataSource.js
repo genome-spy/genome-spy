@@ -2,15 +2,6 @@ import { runFlowPublication } from "../flowOutput.js";
 import FlowNode from "../flowNode.js";
 
 export default class DataSource extends FlowNode {
-    /**
-     * Whether successful completion publishes a whole snapshot suitable for
-     * transform outputs. Subclasses inheriting this capability must preserve
-     * that boundary; startup, invalidation, and failed loads are not results.
-     */
-    get supportsFlowOutputs() {
-        return false;
-    }
-
     /** Whether the current rows came from a successful completion fan-out. */
     resultSuccessful = false;
 
@@ -85,7 +76,11 @@ export default class DataSource extends FlowNode {
         // override
     }
 
-    /** @param {boolean} [successful] */
+    /**
+     * Completes a snapshot and publishes transform outputs on success.
+     * Completion that only clears rows or finishes a failed load must pass false.
+     * @param {boolean} [successful]
+     */
     complete(successful = true) {
         const runtime = this.view?.paramRuntime;
         // Standalone dataflow tests can omit a view runtime. A live source's

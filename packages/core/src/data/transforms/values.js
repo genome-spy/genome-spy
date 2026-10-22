@@ -1,4 +1,3 @@
-import { validateOutputSources } from "../flowOutput.js";
 import Transform from "./transform.js";
 import { annotateSpecError } from "../../utils/specError.js";
 
@@ -25,13 +24,8 @@ export default class ValuesTransform extends Transform {
         this.output.producer = this;
     }
 
-    initialize() {
-        validateOutputSources(this);
-    }
-
     reset() {
         this.#values = [];
-        this.output.ready = false;
         this.output.candidate = undefined;
         super.reset();
     }

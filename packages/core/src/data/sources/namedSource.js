@@ -32,10 +32,6 @@ export default class NamedSource extends DataSource {
         return this.binding;
     }
 
-    get supportsFlowOutputs() {
-        return true;
-    }
-
     get label() {
         return "namedSource";
     }

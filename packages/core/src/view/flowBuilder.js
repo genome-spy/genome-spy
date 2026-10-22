@@ -251,7 +251,7 @@ export function buildDataFlow(
      */
     function releaseAuxiliaryCollector(view, collector) {
         view.flowHandle?.auxiliaryCollectors?.delete(collector);
-        dataFlow.pruneCollectorBranch(collector);
+        dataFlow.pruneBranch(collector);
         dataFlow.removeCollector(collector);
     }
 

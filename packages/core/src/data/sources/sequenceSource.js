@@ -36,10 +36,6 @@ export default class SequenceSource extends DataSource {
         }
     }
 
-    get supportsFlowOutputs() {
-        return true;
-    }
-
     get label() {
         return "sequenceSource";
     }
