@@ -2,6 +2,15 @@ import { runFlowPublication } from "../flowOutput.js";
 import FlowNode from "../flowNode.js";
 
 export default class DataSource extends FlowNode {
+    /**
+     * Whether successful completion publishes a whole snapshot suitable for
+     * transform outputs. Subclasses inheriting this capability must preserve
+     * that boundary; startup, invalidation, and failed loads are not results.
+     */
+    get supportsFlowOutputs() {
+        return false;
+    }
+
     /** Whether the current rows came from a successful completion fan-out. */
     resultSuccessful = false;
 

@@ -268,10 +268,11 @@ export default class ViewParamRuntime {
      * Reserves a producer-owned, read-only parameter in this lexical scope.
      *
      * @param {string} name
+     * @param {import("../data/flowOutput.js").FlowOutputValue} initialValue
      */
-    registerOutput(name) {
+    registerOutput(name, initialValue) {
         validateParameterName(name);
-        const output = new FlowOutput(this, name);
+        const output = new FlowOutput(this, name, initialValue);
         const ref = this.computed(name, [output.value], () =>
             output.value.get()
         );

@@ -53,6 +53,10 @@ export default class UrlSource extends DataSource {
         return JSON.stringify({ params: this.params, baseUrl: this.baseUrl });
     }
 
+    get supportsFlowOutputs() {
+        return true;
+    }
+
     get label() {
         return "urlSource";
     }

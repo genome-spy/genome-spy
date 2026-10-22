@@ -22,6 +22,7 @@ nav = [
             "grammar/transform/alignment-mismatches.md",
             "grammar/transform/branch.md",
             "grammar/transform/collect.md",
+            "grammar/transform/count.md",
             "grammar/transform/coverage.md",
             "grammar/transform/cross.md",
             "grammar/transform/dendrogram.md",

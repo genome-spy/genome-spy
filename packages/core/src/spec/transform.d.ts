@@ -792,6 +792,18 @@ export interface ValuesParams extends TransformParamsBase {
     param: string;
 }
 
+/** Counts incoming rows while passing them onward unchanged. */
+export interface CountParams extends TransformParamsBase {
+    type: "count";
+
+    /**
+     * Declares a read-only output parameter in this view's scope. Starts at
+     * null; each successful completed result publishes its row count, including
+     * zero for empty data. Loading and failed results retain the previous value.
+     */
+    param: string;
+}
+
 /** Runs a side pipeline while the main pipeline continues unchanged. */
 export interface BranchParams extends TransformParamsBase {
     type: "branch";
@@ -1290,6 +1302,7 @@ export type TransformParams =
     | AggregateParams
     | CollectParams
     | ValuesParams
+    | CountParams
     | BranchParams
     | CoverageParams
     | CoordinateLookupParams

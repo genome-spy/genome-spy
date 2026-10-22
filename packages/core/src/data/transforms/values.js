@@ -1,5 +1,4 @@
-import { iterateDataDependencies } from "../dataReadiness.js";
-import DataSource from "../sources/dataSource.js";
+import { validateOutputSources } from "../flowOutput.js";
 import Transform from "./transform.js";
 import { annotateSpecError } from "../../utils/specError.js";
 
@@ -27,17 +26,7 @@ export default class ValuesTransform extends Transform {
     }
 
     initialize() {
-        for (const node of iterateDataDependencies(this)) {
-            if (
-                node instanceof DataSource &&
-                !["urlSource", "inlineSource", "namedSource"].includes(
-                    node.label
-                )
-            )
-                throw new Error(
-                    "Transform outputs do not support source: " + node.label
-                );
-        }
+        validateOutputSources(this);
     }
 
     reset() {

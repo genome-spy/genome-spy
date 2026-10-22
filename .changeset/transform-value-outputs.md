@@ -4,14 +4,8 @@
 
 <!-- category: feature -->
 
-Derive scale settings from data with the new `values` transform, which publishes
-a field as a read-only array parameter. For example, index-scale `gapPositions`
-can now use cluster boundaries loaded from a file or calculated from metadata.
-
-The new `branch` declaration runs a side pipeline without filtering or mutating
-the main rows. Branches can tap the current input or use an independent eager
-source, and ordinary parameter changes can update their outputs through cached
-replay.
-
-The clustered heatmap example now derives both axes' group gaps from its gene
-and cell-line metadata instead of hardcoding boundary positions.
+Publish read-only parameters from data with the new `values` and `count`
+transforms, for example to derive index-scale gaps from metadata or summarize a
+result without removing its rows. The new `branch` declaration prepares outputs
+in side pipelines while preserving the main rows, and ordinary parameter changes
+can update outputs through cached replay.

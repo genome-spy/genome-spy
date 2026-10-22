@@ -1,8 +1,8 @@
 # Complete transform outputs and dataflow branches
 
 Status: completion plan for [PR #575](https://github.com/genome-spy/genome-spy/pull/575),
-on `codex/transform-value-outputs`. The eager prototype is implemented; the work
-below is proposed and has not been implemented. Base: `05045f01f`.
+on `codex/transform-value-outputs`. The eager foundation and scalar count milestone are implemented. Lazy-source
+publication and final integration are in progress. Base: `05045f01f`.
 
 ## Goal and completion boundary
 
@@ -304,7 +304,7 @@ checks. Do not pull #600's ownership/scoping changes into this completion task.
 
 - [x] Eager value publication, branches, metadata-derived heatmap gaps, existing
       feedback guards, and the initial independent prototype review are complete.
-- [ ] Count publishes `null` before success and correct totals including zero;
+- [x] Count publishes `null` before success and correct totals including zero;
       existing values and main rows retain their contracts.
 - [ ] Supported lazy sources publish coherent successful snapshots, with no
       false empty startup/warm reload, failed, stale, or disposed publication.
