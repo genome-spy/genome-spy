@@ -29,7 +29,7 @@ import {
 import { isInChromeSubtree, setChromeOverride } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
-import { getOutputDeclarations } from "../data/flowOutput.js";
+import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
 import { annotateSpecError } from "../utils/specError.js";
 import { warnOnce } from "../utils/warning.js";

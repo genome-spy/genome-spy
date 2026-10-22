@@ -2,13 +2,13 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
 } from "../view/viewUtils.js";
-import { finalizeFlowOutputs } from "../data/flowOutput.js";
+import { finalizeOutputDeclarations } from "../view/transformOutputDeclarations.js";
 
 /**
  * @param {import("../view/view.js").default} viewRoot
  */
 export function configureViewHierarchy(viewRoot) {
-    finalizeFlowOutputs(viewRoot);
+    finalizeOutputDeclarations(viewRoot);
     checkForDuplicateScaleNames(viewRoot);
     setImplicitScaleNames(viewRoot);
 }

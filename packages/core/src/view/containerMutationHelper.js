@@ -13,7 +13,7 @@ import { configureViewsAfterScaleResolution } from "../genomeSpy/viewHierarchyCo
 import { isChromeView } from "./viewSelectors.js";
 import { isImportSpec } from "./viewSpecGuards.js";
 import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
-import { finalizeFlowOutputs } from "../data/flowOutput.js";
+import { finalizeOutputDeclarations } from "./transformOutputDeclarations.js";
 
 /**
  * Shared helper for dynamic container mutations.
@@ -77,7 +77,7 @@ export default class ContainerMutationHelper {
         );
 
         try {
-            finalizeFlowOutputs(childView);
+            finalizeOutputDeclarations(childView);
             specs.splice(insertIndex, 0, childSpec);
             specInserted = true;
             const insertionResult = this.options.insertView(
