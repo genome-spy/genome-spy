@@ -780,6 +780,25 @@ export interface CoverageParams extends TransformParamsBase {
     asEnd?: string;
 }
 
+/** Projects a completed row stream into a read-only parameter array. */
+export interface ValuesParams extends TransformParamsBase {
+    type: "values";
+
+    /** Field whose scalar values form the output array, preserving order and duplicates. */
+    field: Field;
+
+    /** Declares the output parameter in this view's scope. Starts with an empty array. */
+    param: string;
+}
+
+/** Forks the current input while the main pipeline continues unchanged. */
+export interface BranchParams extends TransformParamsBase {
+    type: "branch";
+
+    /** Side transforms in the same parameter scope as the owning view. */
+    transform: TransformParams[];
+}
+
 export interface CollectParams extends TransformParamsBase {
     type: "collect";
 
@@ -1266,6 +1285,8 @@ export type TransformParams =
     | AlignmentMismatchesParams
     | AggregateParams
     | CollectParams
+    | ValuesParams
+    | BranchParams
     | CoverageParams
     | CoordinateLookupParams
     | CrossParams

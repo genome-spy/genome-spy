@@ -164,7 +164,7 @@ test("rejects input overflow before executing transforms and follows viewport na
     ).toEqual({ rows: [{ count: 2 }], truncated: false });
 });
 
-test("retains existing empty-input transform semantics and detached results", async () => {
+test("empty global aggregates produce a summary, grouped aggregates stay empty, and results are detached", async () => {
     const { handle } = await setup();
     const scope = { selection: "brush" };
     expect(
@@ -174,7 +174,7 @@ test("retains existing empty-input transform semantics and detached results", as
             limit: 1,
             transform: [{ type: "aggregate" }],
         })
-    ).toEqual({ rows: [], truncated: false });
+    ).toEqual({ rows: [{ count: 0 }], truncated: false });
     expect(
         handle.data.transform({
             scope,

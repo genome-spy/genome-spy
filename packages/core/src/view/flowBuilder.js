@@ -119,6 +119,31 @@ export function buildDataFlow(
      */
     function createTransforms(transforms, view) {
         for (const params of transforms) {
+            if (params.type === "branch") {
+                if ("data" in params) {
+                    throw new Error(
+                        "A branch does not accept data; it forks the current input."
+                    );
+                }
+                if (!currentNode) {
+                    throw new Error("A branch requires input data.");
+                }
+                if (!params.transform.length) {
+                    throw new Error(
+                        "A branch requires at least one transform."
+                    );
+                }
+
+                const main = currentNode;
+                const depth = nodeStack.length;
+                createTransforms(params.transform, view);
+                view.flowHandle ??= {};
+                view.flowHandle.terminals ??= new Set();
+                view.flowHandle.terminals.add(currentNode);
+                currentNode = main;
+                nodeStack.length = depth;
+                continue;
+            }
             if (inheritsFacetData(view)) {
                 if (params.type === "collect" && params.groupby?.length) {
                     throw new Error(
@@ -226,7 +251,7 @@ export function buildDataFlow(
      */
     function releaseAuxiliaryCollector(view, collector) {
         view.flowHandle?.auxiliaryCollectors?.delete(collector);
-        dataFlow.pruneCollectorBranch(collector);
+        dataFlow.pruneBranch(collector);
         dataFlow.removeCollector(collector);
     }
 
@@ -375,6 +400,13 @@ export function buildDataFlow(
         if (currentNode) {
             view.flowHandle ??= {};
             view.flowHandle.node = currentNode;
+            if (
+                !(view instanceof UnitView) &&
+                (view.spec.data || view.spec.transform)
+            ) {
+                view.flowHandle.terminals ??= new Set();
+                view.flowHandle.terminals.add(currentNode);
+            }
         }
     };
 

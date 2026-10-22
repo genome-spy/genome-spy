@@ -22,6 +22,33 @@ describe("Aggregate transform", () => {
         expect(transform({ type: "aggregate" }, input)).toEqual([{ count: 3 }]);
     });
 
+    test("empty input has a zero-count summary without creating empty groups", () => {
+        expect(transform({ type: "aggregate" }, [])).toEqual([{ count: 0 }]);
+        expect(
+            transform({ type: "aggregate", groupby: ["sample"] }, [])
+        ).toEqual([]);
+    });
+
+    test("physical files share one global reduction, including empty replacements", () => {
+        const aggregate = new AggregateTransform({ type: "aggregate" });
+        const collector = new Collector();
+        aggregate.addChild(collector);
+
+        aggregate.beginBatch({ type: "file", url: "first.json" });
+        aggregate.handle({ value: 1 });
+        aggregate.beginBatch({ type: "file", url: "second.json" });
+        aggregate.handle({ value: 2 });
+        aggregate.handle({ value: 3 });
+        aggregate.beginBatch({ type: "file", url: "empty.json" });
+        aggregate.complete();
+        expect(Array.from(collector.getData())).toEqual([{ count: 3 }]);
+
+        aggregate.reset();
+        aggregate.beginBatch({ type: "file", url: "empty.json" });
+        aggregate.complete();
+        expect(Array.from(collector.getData())).toEqual([{ count: 0 }]);
+    });
+
     test("Default to count when no data fields fields are specified", () => {
         const input = [
             { name: "alpha", data: 123 },
@@ -177,10 +204,13 @@ describe("Aggregate transform", () => {
 
         // BeginBatch is what closes the previous facet in faceted flows.
         aggregate.beginBatch({ type: "facet", facetId: ["A"] });
+        aggregate.beginBatch({ type: "file", url: "first.json" });
         aggregate.handle({ sample: "x", value: 1 });
         aggregate.handle({ sample: "y", value: 2 });
+        aggregate.beginBatch({ type: "file", url: "second.json" });
         aggregate.handle({ sample: "x", value: 3 });
 
+        aggregate.beginBatch({ type: "facet", facetId: ["empty"] });
         aggregate.beginBatch({ type: "facet", facetId: ["B"] });
         aggregate.handle({ sample: "x", value: 4 });
         aggregate.handle({ sample: "y", value: 5 });
@@ -195,5 +225,6 @@ describe("Aggregate transform", () => {
             { sample: "x", total: 4 },
             { sample: "y", total: 5 },
         ]);
+        expect(collector.facetBatches.get(["empty"])).toEqual([]);
     });
 });

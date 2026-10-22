@@ -87,6 +87,19 @@ callbacks can observe pending output; consumers needing the updated rows use a
 propagation barrier or a graph effect. Coordinate coverage and asynchronous source
 completion remain governed by data-readiness APIs.
 
+Transform outputs use that same completion/replay boundary. `values` stages an
+immutable array, initially `[]`. `FlowOutput` publishes only after every primary
+and side dependency is ready and successful. Failed boundaries discard
+candidates and retain the previous parameter value; shallow comparison
+suppresses unchanged arrays. An `aggregate` branch can publish counts through
+`values`, distinguishing an initial `[]` from a successful empty count `[0]`.
+
+These parameters are producer-owned, read-only, and excluded from persistence.
+Their consumers use ordinary reactive updates, with no separate output-consumer
+scheduler or provenance graph. Specifications must avoid feedback into the
+producing pipeline, including through lazy domains and layout-dependent loading
+resolution. Such cycles are not detected and may produce unstable updates.
+
 A failed flush or synchronous notification reports the original error through
 the shared runtime's optional reporter, rejects current propagation waiters,
 and stops automatic flushing. Reporting does not suppress the exception, including

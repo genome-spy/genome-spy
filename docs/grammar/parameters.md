@@ -9,6 +9,10 @@ templates. Parameters in GenomeSpy are heavily inspired by the
 [parameters](https://vega.github.io/vega-lite/docs/parameter.html) concept of
 Vega-Lite.
 
+The [`"values"`](./transform/values.md) transform can also declare a read-only
+array parameter from data. Its output is available to scale and visual
+expressions without a separate `params` entry.
+
 ## Using Input Bindings
 
 Parameters can be bound to input elements, such as sliders, dropdowns, and

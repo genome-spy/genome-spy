@@ -153,7 +153,7 @@ export default class SingleAxisLazySource extends DataSource {
     async load() {
         // Dummy initialization cycle. TODO: Figure out why this is needed.
         this.reset();
-        this.complete();
+        this.complete(false);
     }
 
     /**
@@ -163,7 +163,7 @@ export default class SingleAxisLazySource extends DataSource {
     invalidateData() {
         this._lastLoadedDomain = undefined;
         this.reset();
-        this.complete();
+        this.complete(false);
     }
 
     /**

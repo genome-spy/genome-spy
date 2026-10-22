@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, onTestFinished, test } from "vitest";
 import {
     createHeadlessEngine,
     createHeadlessViewContext,
@@ -7,6 +7,7 @@ import { getSpecErrorLocation } from "../../utils/specError.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { createAndInitialize, renderToLayout } from "../../view/testUtils.js";
 import UnitView from "../../view/unitView.js";
+import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import Collector from "../collector.js";
 import Displace1DTransform from "./displace1d.js";
 
@@ -272,22 +273,8 @@ describe("Displace1DTransform", () => {
     });
 
     test("replays an upstream collector when the position factor changes", async () => {
-        let factor = 100;
-        /** @type {() => void} */
-        let listener;
-        const disposer = vi.fn();
-        const paramRuntime = {
-            getSpecLocation: vi.fn(),
-            watchExpression: (
-                /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
-                /** @type {() => void} */ callback,
-                /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
-            ) => {
-                listener = callback;
-                options.registerDisposer(disposer);
-                return () => factor;
-            },
-        };
+        const paramRuntime = new ViewParamRuntime();
+        paramRuntime.registerParam({ name: "factor", value: 100 });
         const source = new Collector();
         const transform = new Displace1DTransform(
             {
@@ -297,58 +284,43 @@ describe("Displace1DTransform", () => {
                 positionFactor: { expr: "factor" },
                 as: "offset",
             },
-            /** @type {any} */ ({ paramRuntime })
+            { paramRuntime }
         );
         const output = new Collector();
         source.addChild(transform);
         transform.addChild(output);
+        onTestFinished(() => {
+            source.disposeSubtree();
+            paramRuntime.dispose();
+        });
         source.handle({ pos: 0 });
         source.handle({ pos: 0.1 });
 
-        const repropagate = vi.spyOn(source, "repropagate");
         source.complete();
-        expect(repropagate).not.toHaveBeenCalled();
-
+        // Expression-backed placement calibrates after the initial completion.
         await Promise.resolve();
-        expect(repropagate).toHaveBeenCalledOnce();
-        repropagate.mockClear();
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            -5, 5,
+        ]);
 
-        const initialPlacement = [...output.getData()];
-        expect(initialPlacement.map((datum) => datum.offset)).toEqual([-5, 5]);
-
-        listener();
-        expect(repropagate).not.toHaveBeenCalled();
-
-        factor = 300;
-        listener();
-        expect(repropagate).toHaveBeenCalledOnce();
-        const expandedPlacement = [...output.getData()];
-        expect(expandedPlacement.map((datum) => datum.offset)).toEqual([0, 0]);
+        paramRuntime.setValue("factor", 300);
+        await paramRuntime.whenPropagated();
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            0, 0,
+        ]);
 
         transform.dispose();
-        expect(disposer).toHaveBeenCalledOnce();
+        paramRuntime.setValue("factor", 100);
+        await paramRuntime.whenPropagated();
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            0, 0,
+        ]);
     });
 
     test("reacts to expression-backed length and extent", async () => {
-        let length = 20;
-        let extent = [0, 1];
-        /** @type {Map<string, () => void>} */
-        const listeners = new Map();
-        const disposer = vi.fn();
-        const paramRuntime = {
-            getSpecLocation: vi.fn(),
-            watchExpression: (
-                /** @type {import("../../spec/parameter.js").ExprRef} */ expression,
-                /** @type {() => void} */ callback,
-                /** @type {{ registerDisposer: (disposer: () => void) => void }} */ options
-            ) => {
-                listeners.set(expression.expr, callback);
-                options.registerDisposer(disposer);
-                return expression.expr == "length"
-                    ? () => length
-                    : () => extent;
-            },
-        };
+        const paramRuntime = new ViewParamRuntime();
+        paramRuntime.registerParam({ name: "length", value: 20 });
+        paramRuntime.registerParam({ name: "extent", value: [0, 1] });
         const source = new Collector();
         const transform = new Displace1DTransform(
             {
@@ -359,41 +331,44 @@ describe("Displace1DTransform", () => {
                 extent: { expr: "extent" },
                 as: "offset",
             },
-            /** @type {any} */ ({ paramRuntime })
+            { paramRuntime }
         );
         const output = new Collector();
         source.addChild(transform);
         transform.addChild(output);
+        onTestFinished(() => {
+            source.disposeSubtree();
+            paramRuntime.dispose();
+        });
         source.handle({ pos: 0.8 });
         source.handle({ pos: 0.9 });
 
-        const repropagate = vi.spyOn(source, "repropagate");
-        extent = [1, 0];
-        expect(() =>
-            /** @type {() => void} */ (listeners.get("extent"))()
-        ).not.toThrow();
-        extent = [0, 1];
+        // Placement inputs are not consumed until the first calibration.
+        expect(() => paramRuntime.setValue("extent", [1, 0])).not.toThrow();
+        paramRuntime.setValue("extent", [0, 1]);
         source.complete();
         await Promise.resolve();
 
-        expect(repropagate).toHaveBeenCalledOnce();
         expect([...output.getData()].map((datum) => datum.offset)).toEqual([
             -10, 0,
         ]);
-        repropagate.mockClear();
 
-        length = 10;
-        extent = [0, 2];
-        /** @type {() => void} */ (listeners.get("length"))();
-        /** @type {() => void} */ (listeners.get("extent"))();
-
-        expect(repropagate).toHaveBeenCalledOnce();
+        paramRuntime.runInTransaction(() => {
+            paramRuntime.setValue("length", 10);
+            paramRuntime.setValue("extent", [0, 2]);
+        });
+        await paramRuntime.whenPropagated();
         expect([...output.getData()].map((datum) => datum.offset)).toEqual([
             0, 0,
         ]);
 
         transform.dispose();
-        expect(disposer).toHaveBeenCalledTimes(2);
+        paramRuntime.setValue("length", 30);
+        paramRuntime.setValue("extent", [0, 1]);
+        await paramRuntime.whenPropagated();
+        expect([...output.getData()].map((datum) => datum.offset)).toEqual([
+            0, 0,
+        ]);
     });
 
     test("rejects invalid expression-backed placement parameters", () => {
@@ -402,10 +377,8 @@ describe("Displace1DTransform", () => {
          * @param {unknown} value
          */
         const createTransform = (expression, value) => {
-            const paramRuntime = {
-                getSpecLocation: vi.fn(),
-                watchExpression: () => () => value,
-            };
+            const paramRuntime = new ViewParamRuntime();
+            paramRuntime.registerParam({ name: expression, value });
             const transform = new Displace1DTransform(
                 {
                     type: "displace1d",
@@ -416,8 +389,12 @@ describe("Displace1DTransform", () => {
                             ? { expr: expression }
                             : undefined,
                 },
-                /** @type {any} */ ({ paramRuntime })
+                { paramRuntime }
             );
+            onTestFinished(() => {
+                transform.dispose();
+                paramRuntime.dispose();
+            });
             transform.handle({ pos: 0 });
             return transform;
         };

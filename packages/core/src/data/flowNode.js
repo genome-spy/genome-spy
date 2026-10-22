@@ -46,6 +46,9 @@ export const BEHAVIOR_COLLECTS = 1 << 2;
  * @typedef {Datum[]} Data
  */
 export default class FlowNode {
+    /** @type {import("./flowOutput.js").default | undefined} */
+    output;
+
     stats = {
         count: 0,
         /** @type {Datum} */

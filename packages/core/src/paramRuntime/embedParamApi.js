@@ -75,13 +75,13 @@ function resolveScopedEmbedDeclaration(view, name, kind, lifecycle) {
  * @returns {ParamApi}
  */
 export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
-    const { config, runtime, valueRuntime } = resolveScopedEmbedDeclaration(
+    const { runtime, valueRuntime } = resolveScopedEmbedDeclaration(
         view,
         name,
         "Parameter",
         lifecycle
     );
-    const readOnly = "expr" in config;
+    const readOnly = !valueRuntime.isWritable(name);
     return createParamApi(valueRuntime, name, lifecycle, (value) => {
         if (readOnly) {
             throw new Error('Cannot set computed parameter "' + name + '".');
@@ -417,7 +417,7 @@ export function resolveEmbedParam(root, name) {
         const previous = effectiveMatches.get(runtime);
         effectiveMatches.set(runtime, {
             runtime,
-            readOnly: Boolean(previous?.readOnly || "expr" in param),
+            readOnly: Boolean(previous?.readOnly || !runtime.isWritable(name)),
             pointSelection: Boolean(
                 previous?.pointSelection ||
                 ("select" in param &&

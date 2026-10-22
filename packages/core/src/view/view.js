@@ -29,7 +29,9 @@ import {
 import { isInChromeSubtree, setChromeOverride } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
+import { getOutputDeclarations } from "../data/flowOutput.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
+import { annotateSpecError } from "../utils/specError.js";
 import { warnOnce } from "../utils/warning.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
@@ -278,6 +280,17 @@ export default class View {
                         'The automatic zoomLevel parameter is deprecated. Use zoomLevel() or an explicit channel such as zoomLevel("x") instead.'
                     )
             );
+        }
+
+        for (const output of getOutputDeclarations(spec.transform ?? [])) {
+            try {
+                this.paramRuntime.registerOutput(output.param);
+            } catch (error) {
+                throw annotateSpecError(
+                    error,
+                    this.paramRuntime.getSpecLocation(output, ["param"])
+                );
+            }
         }
 
         const params = [
@@ -1137,8 +1150,15 @@ export default class View {
 
         const handle = this.flowHandle;
 
+        for (const terminal of handle?.terminals ?? []) {
+            // Descendants may still use this endpoint, including merged sources.
+            if (terminal.children.length === 0) {
+                this.context.dataFlow.pruneBranch(terminal);
+            }
+        }
+
         if (handle?.collector) {
-            this.context.dataFlow.pruneCollectorBranch(handle.collector);
+            this.context.dataFlow.pruneBranch(handle.collector);
             this.context.dataFlow.removeCollector(handle.collector);
         }
 

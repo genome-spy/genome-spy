@@ -113,6 +113,10 @@ SCHEMA BindRange
 
 SCHEMA Binding
 
+## BranchParams
+
+See the [BranchParams documentation](transform/branch.md#parameters).
+
 ## BrushConfig
 
 SCHEMA BrushConfig
@@ -1068,6 +1072,10 @@ SCHEMA VConcatSpec
 ## ValueParameter
 
 SCHEMA ValueParameter
+
+## ValuesParams
+
+See the [ValuesParams documentation](transform/values.md#parameters).
 
 ## VariableParameter
 

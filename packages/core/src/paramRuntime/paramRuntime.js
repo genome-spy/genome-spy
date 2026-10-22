@@ -100,6 +100,16 @@ export default class ParamRuntime {
     }
 
     /**
+     * Binds an owner-created read-only output into the lexical store.
+     * @param {ScopeId} scope
+     * @param {string} name
+     * @param {import("./types.js").ParamRef<any>} ref
+     */
+    registerRef(scope, name, ref) {
+        return this.#paramStore.register(scope, name, ref);
+    }
+
+    /**
      * Registers a writable base parameter in `scope`.
      *
      * @template T

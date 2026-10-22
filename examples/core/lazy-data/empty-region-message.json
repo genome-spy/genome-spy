@@ -1,0 +1,73 @@
+{
+  "description": [
+    "Empty-region message",
+    "Shows a message when a lazy BigWig track has no records, using aggregate and filter in the text layer.",
+    "Data source: ENCODE H3K27ac file ENCFF549YDI, experiment ENCSR966AIB, Bing Ren laboratory, Gorkin et al. (2020), https://doi.org/10.1038/s41586-020-2093-3. Regional mm10 extract retaining four windows; missing data outside them does not indicate biological absence of H3K27ac. Provenance: https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/README.md"
+  ],
+
+  "params": [
+    {
+      "name": "region",
+      "value": "Empty",
+      "bind": {
+        "input": "select",
+        "name": "Region: ",
+        "options": ["Empty", "Signal"]
+      }
+    }
+  ],
+
+  "scales": {
+    "x": {
+      "type": "locus",
+      "assembly": "mm10",
+      "domain": {
+        "expr": "region === 'Signal' ? [{chrom: 'chr10', pos: 82400000}, {chrom: 'chr10', pos: 82500000}] : [{chrom: 'chr10', pos: 100000000}, {chrom: 'chr10', pos: 100100000}]"
+      }
+    }
+  },
+
+  "vconcat": [
+    {
+      "height": 100,
+
+      "data": {
+        "lazy": {
+          "type": "bigwig",
+          "url": "https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/bigwigs/forebrain-e12-5-rep1.bigWig"
+        }
+      },
+
+      "layer": [
+        {
+          "name": "signal",
+          "mark": { "type": "rect", "color": "#4c78a8", "minWidth": 0.5 },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+            "x2": { "chrom": "chrom", "pos": "end" },
+            "y": {
+              "field": "score",
+              "type": "quantitative",
+              "scale": { "zero": true },
+              "axis": { "title": "H3K27ac", "tickCount": 3 }
+            }
+          }
+        },
+
+        {
+          "name": "emptyMessage",
+          "transform": [
+            { "type": "aggregate" },
+            { "type": "filter", "expr": "datum.count === 0" }
+          ],
+          "mark": {
+            "type": "text",
+            "text": "No data in the loaded region",
+            "color": "#666"
+          },
+          "encoding": { "x": { "value": 0.5 }, "y": { "value": 0.5 } }
+        }
+      ]
+    }
+  ]
+}

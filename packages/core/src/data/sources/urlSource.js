@@ -170,7 +170,7 @@ export default class UrlSource extends DataSource {
 
         // Finish failed/empty streams too, but never retry completion if it throws.
         try {
-            this.complete();
+            this.complete(!error);
         } catch (cause) {
             error ??= cause;
         }

@@ -148,8 +148,9 @@ EXAMPLE examples/app/multi-url-bigwig.json runtime=app height=260 spechidden
     These regional BigWigs retain H3K27ac values from [five released ENCODE
     files](https://www.encodeproject.org/search/?type=File&accession=ENCFF549YDI&accession=ENCFF539MQF&accession=ENCFF587ZRD&accession=ENCFF724HYE&accession=ENCFF896KSI)
     produced by the Bing Ren laboratory for [Gorkin et al.
-    (2020)](https://doi.org/10.1038/s41586-020-2093-3). Only the displayed 10 Mb
-    mm10 region was retained.
+    (2020)](https://doi.org/10.1038/s41586-020-2093-3). The
+    [regional extracts](https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/README.md)
+    retain four mm10 windows, including the displayed 10 Mb region.
 
 ## Indexed Files
 

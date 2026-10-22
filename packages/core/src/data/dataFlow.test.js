@@ -64,7 +64,7 @@ describe("DataFlow", () => {
         expect(source.children).toEqual([]);
     });
 
-    test("pruneCollectorBranch disposes orphaned ancestors", () => {
+    test("pruneBranch disposes orphaned ancestors", () => {
         const flow = new DataFlow();
         const source = new DataSource(/** @type {any} */ ({}));
         const middle = new FlowNode();
@@ -80,7 +80,7 @@ describe("DataFlow", () => {
             middleDisposed += 1;
         });
 
-        flow.pruneCollectorBranch(collector);
+        flow.pruneBranch(collector);
 
         expect(middleDisposed).toBe(1);
         expect(flow.dataSources).not.toContain(source);

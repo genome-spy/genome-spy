@@ -50,6 +50,10 @@ A new list of rows is created:
 | first  | 2     |
 | second | 1     |
 
+With empty input, an aggregation without `groupby` still produces one summary
+row (`{ "count": 0 }` for the default count aggregation). Grouped aggregation
+produces no rows.
+
 ### Calculating min and max
 
 EXAMPLE examples/docs/grammar/transform/aggregate/aggregate-min-max.json height=152
