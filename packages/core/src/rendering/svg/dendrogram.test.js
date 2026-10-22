@@ -25,8 +25,6 @@ test.each([false, true])(
             /** @type {import("../../spec/root.js").RootSpec & typeof bandHeatmapSpec} */ (
                 structuredClone(bandHeatmapSpec)
             );
-        delete spec.spec.width;
-        delete spec.spec.height;
         spec.spec.encoding.x.axis = null;
         spec.spec.encoding.y.axis = null;
         spec.spec.encoding.color.legend = null;
