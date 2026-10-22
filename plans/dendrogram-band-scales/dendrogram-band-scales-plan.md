@@ -510,3 +510,22 @@ includes eager joins with cached primary data and insertion during an in-flight
 load that completes while awaiting fonts. All 548 test files and 5,223 tests pass;
 Core type checking and focused lint pass. The existing feature changeset remains
 accurate, and the inherited #575 category-marker issue remains unchanged.
+
+## Scope rollback and pushed-parameter restoration
+
+Master reverts the domain-only declaration-scoping experiment in `e9861e780`
+while retaining the independent width/height initialization fix `bdf3bcc08`.
+The transform-output prototype is rebased onto that master, and this branch is
+rebased onto the prototype with local-domain integration removed. The previous
+experiment remains recoverable through Git history and backup refs.
+
+The categorical example again declares explicit output slots and view-level band
+domains on the shared owner. Each tree publishes through `push: "outer"`.
+Matching docs, tests, changeset, and renderer harness are restored with it; the
+feature changeset remains minor. Broader expression-scope design is deferred.
+
+The active Core source and tests match `6fe2a641a` plus the retained dimension
+fix. Verification passes all 549 test files and 5,226 tests, workspace type
+checks, lint, schema generation, docs build, release policy, and all dendrogram
+renderer checks. Independent rollback and scope-reproduction review found no
+remaining issues.
