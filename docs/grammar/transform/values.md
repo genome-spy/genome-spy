@@ -66,31 +66,3 @@ EXAMPLE examples/docs/grammar/transform/branch-values.json height=170
 The branch uses `window` to compare adjacent cluster labels, then filters
 boundaries by strength. The upstream `collect` caches metadata so changing the
 ordinary `minimumStrength` parameter replays the branch without reloading data.
-
-## Empty lazy data
-
-A branch can count rows with [`"aggregate"`](aggregate.md), then publish the
-count with `"values"`. The output starts at `[]` before any successful load;
-`[0]` means a successfully empty result. This BigWig example starts in an empty
-region. Change **Region** to see a region with signal.
-
-EXAMPLE examples/docs/grammar/transform/lazy-empty-data.json height=180
-
-The branch summarizes incoming records while the signal layer keeps the
-original rows. The message layer has its own singleton row and reads
-`recordCounts[0]`, so it remains available when the signal input is empty.
-
-The message describes the last successfully loaded region. While a replacement
-is loading or has failed, the previous count and message remain. A record with
-a zero signal value still counts as data.
-
-!!! disclaimer ""
-
-    The Forebrain E12.5 R1 H3K27ac track derives from ENCODE file
-    [ENCFF549YDI](https://www.encodeproject.org/files/ENCFF549YDI/), experiment
-    [ENCSR966AIB](https://www.encodeproject.org/experiments/ENCSR966AIB/), produced
-    by the Bing Ren laboratory for [Gorkin et al.
-    (2020)](https://doi.org/10.1038/s41586-020-2093-3). The
-    [regional extract](https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/README.md)
-    retains four mm10 windows. The empty example region lies outside them;
-    missing data in this extract does not indicate biological absence of H3K27ac.
