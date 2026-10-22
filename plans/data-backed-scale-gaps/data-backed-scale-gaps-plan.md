@@ -80,7 +80,7 @@ duplicates, scalar-field validation, and array equality stay unchanged.
 Add a pass-through transform:
 
 ```json
-{ "type": "count", "param": "featureCount" }
+{ "type": "count", "param": "recordCount" }
 ```
 
 `count` counts its incoming rows with O(1) accumulator state and passes every row
@@ -110,21 +110,22 @@ stays `null`. They must not publish a synthetic zero.
 ### Empty-track presentation
 
 Keep lazy data and `count` on an always-configured-visible parent layer. One
-child draws inherited feature rows. A second child has independent singleton
+child draws inherited signal rows. A second child has independent singleton
 input (`data: { values: [{}] }`) and a text mark with:
 
 ```json
 {
   "type": "text",
-  "text": "No features found in the last loaded region",
-  "opacity": { "expr": "featureCount === 0 ? 1 : 0" }
+  "text": "No data in the last loaded region",
+  "opacity": { "expr": "recordCount === 0 ? 1 : 0" }
 }
 ```
 
 No `filter` or `formula` reads the output. Only the message presentation changes;
 the parent producer stays active, so an empty result cannot stop future loads.
 The complete example must supply its genomic scale, placement, and a real
-supported lazy source; the fragment above only illustrates the consumer.
+supported lazy source; the fragment above only illustrates the consumer. Give
+the message view-relative positions instead of inherited signal-field encodings.
 
 The message describes the last successfully published window. During a pending
 or failed replacement it retains that previous message state, alongside existing
@@ -132,6 +133,42 @@ loading/error presentation; it must not be documented as proof that a newly
 requested, unfinished viewport is empty. Current-request-only readiness exposure
 is a separate feature. #513 permits window/bin counting; retaining the previous
 message is an explicit presentation choice, qualified by the visible wording.
+
+### BigWig example in the Values documentation
+
+Embed `examples/docs/grammar/transform/lazy-empty-data.json` in
+`docs/grammar/transform/values.md`, in a section demonstrating empty lazy data.
+Link the count reference to this workflow rather than duplicating the example.
+
+Use one file from the existing multi-URL BigWig example: **Forebrain E12.5 R1**,
+the H3K27ac track at
+`https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/bigwigs/forebrain-e12-5-rep1.bigWig`.
+No facet or multi-URL selection is needed.
+
+| State       | mm10 domain, zero-based half-open |
+| ----------- | --------------------------------- |
+| Signal data | `chr10:82400000–82500000`         |
+| Empty data  | `chr10:100000000–100100000`       |
+
+Direct full-resolution queries verify records in the first window and no
+records in the second. Start in the empty window so the message appears after
+the first successful load. Add an ordinary region-selector parameter for easy
+switching between the two domains; it drives the scale, while the count only
+drives the message. Verify that prefetching and zoom-level selection retain the
+intended empty/nonempty distinction. Count records/bins, including zero-valued
+records; do not interpret zero signal as missing data or assert a fixed positive
+record count across rendering resolutions.
+
+Credit ENCODE, the Bing Ren laboratory, and Gorkin et al. (2020), identifying
+source file `ENCFF549YDI` and experiment `ENCSR966AIB`. The versioned
+[dataset README](https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/README.md)
+and [provenance](https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/provenance.json)
+confirm this is a regional derivative retaining four mm10 windows, not a
+whole-genome signal track. Missing records outside those windows demonstrate
+empty data in the extract, not biological absence of H3K27ac. Add concise
+provenance beside the rendered example and correct the existing v4 BigWig
+disclaimers in `docs/grammar/facet.md` and `docs/grammar/data/multi-url.md`, which
+still claim only the displayed ten-megabase region was retained.
 
 ## Source lifecycle and dependency boundaries
 
@@ -197,10 +234,11 @@ one real lazy track drives the message with the semantics above.
 
 Affected areas: source capability/validation, `SingleAxisLazySource`,
 `IntervalUrlSource`, relevant source overrides, existing completion/replay and
-provenance boundaries, headless integration tests, and a maintained example
-under `examples/docs/grammar/transform/`. Follow `examples/README.md`; use a
-small GenomeSpy-owned indexed fixture with both populated and empty windows.
-Reuse or adapt the existing Tabix fixtures without duplicating large assets.
+provenance boundaries, headless integration tests, and the single-BigWig example
+and Values documentation specified above. Follow `examples/README.md`. Keep
+offline lifecycle tests deterministic with controlled sources and the existing
+small indexed fixtures; public documentation uses the hosted BigWig. Do not
+make offline tests depend on that external service or duplicate large assets.
 
 Verification:
 
@@ -220,8 +258,9 @@ Verification:
   length, including indirect and rebound inputs; independent outputs still work.
 
 Use `test-genomespy-views` for SVG message/presentation assertions and
-`debug-genomespy-web` for the actual indexed example. Docs explain loaded-window
-and retained-value semantics. Tentative commit:
+`debug-genomespy-web` for the actual hosted BigWig example, including both region
+choices and the first empty publication. Docs explain loaded-window and
+retained-value semantics. Tentative commit:
 `feat(core): publish transform outputs from lazy windows`.
 
 Review gate: public count/initialization contract, lazy completion/failure and
@@ -269,8 +308,9 @@ checks. Do not pull #600's ownership/scoping changes into this completion task.
       existing values and main rows retain their contracts.
 - [ ] Supported lazy sources publish coherent successful snapshots, with no
       false empty startup/warm reload, failed, stale, or disposed publication.
-- [ ] The real lazy message example demonstrates both populated and empty
-      windows and documents retained last-successful-window presentation.
+- [ ] The single-BigWig message example in `values.md` demonstrates the verified
+      signal/empty windows, starts empty, and documents retained presentation
+      and regional-extract provenance.
 - [ ] Cached replay, lazy side-input revisions, and implicit loading dependency
       guards are verified without a new scheduler or per-row dependency work.
 - [ ] Existing heatmap navigation, gaps, source sharing, disposal, and supported
@@ -293,3 +333,7 @@ message visibly, name a representative file/facet count check, and document the
 source-capability inheritance obligation. It endorsed the bounded count API and
 reuse of existing publication machinery. Implementation acceptance and the final
 integration review remain outstanding.
+
+The user's subsequent dataset/placement choice is incorporated above. Direct
+BigWig queries and the v4 provenance manifest verify the two example windows
+and selected ENCODE source; the publication API and review boundary are unchanged.
