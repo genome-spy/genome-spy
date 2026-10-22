@@ -520,3 +520,16 @@ with main-path formula and side-path window/filter/collect transforms through th
 existing optimizer: all main rows remained present, original input was unchanged,
 and both child orders produced the same A/B/A cuts. The prototype now implements
 the grammar and verifies the synthetic pipeline through headless and WebGL paths.
+
+## Rebase after the scope rollback
+
+The independent automatic width/height initialization fix remains on master.
+The domain-only declaration-scoping change is reverted until the full expression
+scope model is resolved. This prototype is rebased onto that master; its diff
+continues to contain only the value-output/branch foundation and example work.
+The pending feature changeset includes its required category marker.
+
+The rebased prototype passes all 547 test files and 5,199 tests, Core type checks,
+and release policy checks. Its Core source and tests match the original prototype
+plus the independent width/height fix. The draft and remaining design/acceptance
+tasks above remain in place; rebasing does not mark the prototype ready to merge.

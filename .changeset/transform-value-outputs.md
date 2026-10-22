@@ -2,6 +2,8 @@
 "@genome-spy/core": minor
 ---
 
+<!-- category: feature -->
+
 Derive scale settings from data with the new `values` transform, which publishes
 a field as a read-only array parameter. For example, index-scale `gapPositions`
 can now use cluster boundaries loaded from a file or calculated from metadata.
