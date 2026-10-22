@@ -6,24 +6,21 @@ and computes node positions along an index or categorical band scale.
 
 EXAMPLE examples/docs/grammar/transform/dendrogram/dendrogram.json height=320
 
-This index-scale example uses supplied merge heights and a single link mark.
-The offset scale converts each derived fraction to part of the current row step.
-Clustering and leaf ordering happen before the specification is rendered.
+This index-scale example uses an offset scale to keep branches aligned with
+rows while zooming.
 
 ## Choosing a scale
 
-|                    | Index scale                                             | Band scale                                          |
+|                    | [Index scale](../scale.md#index-scale)                  | [Band scale](#categorical-band-scales)              |
 | ------------------ | ------------------------------------------------------- | --------------------------------------------------- |
 | Leaf values        | Integer positions, typically dense: `0, 1, 2, …`        | Category IDs, such as `"Sample A"` or `"TP53"`      |
 | Order              | Determined by the numeric indices                       | Determined by the order of categories in the domain |
 | Sample/gene labels | Require separate metadata or a mapping from the indices | Can use the category values directly                |
-| Navigation         | Supports zooming and panning                            | Zooming and panning are currently unsupported       |
+| Navigation         | Zooming and panning                                     | Currently unsupported                               |
+| Interval brushing  | Supported                                               | Currently unsupported                               |
 
-Use an [index scale](../scale.md#index-scale) for heatmaps that need zooming.
-[Band scales](#categorical-band-scales) are convenient when the data already
-contains sample or gene IDs: the matrix keeps those IDs while the tree supplies
-their display order. In encodings, `"nominal"` and `"ordinal"` describe categorical
-data; `"band"` is the positional scale type used to place those categories.
+In encodings, `"nominal"` and `"ordinal"` describe categorical data; `"band"` is the
+positional scale type used to place those categories.
 
 ## Input tree
 
@@ -51,33 +48,19 @@ positions along the scale. Internal nodes need no row position.
 }
 ```
 
-Node IDs may be strings or finite numbers. IDs and leaf indices must be unique.
 Each subtree's leaves must form a contiguous run in the ordered leaf sequence;
-the indices themselves may have holes. Input row order is independent of leaf
-order. Missing parents, cycles, and incompatible leaf orders are rejected.
-The transform supports binary, unary, and multifurcating trees.
+indices may have gaps. Input row order does not determine leaf order.
 
 With faceted data, each facet is processed as a separate tree. Otherwise, each
 input file is processed as a separate tree.
 
-Clustering is performed before supplying the tree. A
-[SciPy linkage matrix](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html)
-can be converted by numbering leaves `0…n−1` and merge nodes `n+i`, assigning
-each merge's two children their parent ID, and copying the third matrix column
-to the merge height. Give leaves height zero and use a chosen leaf permutation
-to assign their row positions. In an
-[R `hclust` object](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/hclust.html),
-negative `merge` references identify leaves and positive references identify
-earlier merges; copy `height` and use `order` to assign zero-based row positions.
-Keep labels as separate metadata, so node identity remains independent of order.
+For a data-preparation workflow, see the
+[clustered heatmap example](../../examples/generic/clustered-heatmap.md#preparing-the-data).
 
 ## Categorical band scales
 
-Categorical heatmaps can encode their original sample and gene IDs directly.
-Use `leaf` for the category field and `siblingOrder` for a numeric ordering field
-on every non-root node. Sibling ranks must be distinct within each parent; they
-may repeat under different parents. Internal nodes need no category and the
-root needs no rank. Input row order does not determine orientation.
+To generate a category order from the tree, use `leaf` for sample or gene IDs
+and `siblingOrder` for the order of children under each parent.
 
 ```json
 {
@@ -103,18 +86,13 @@ with a precomputed tree on each axis.
 
 EXAMPLE examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json height=470 spechidden
 
-Categories must be unique strings, finite numbers, or booleans. Numeric `1`
-and string `"1"` remain distinct. For intentional external alignment, replace
-`siblingOrder` with `leafOrder`: a complete domain array or an expression reading
-ordinary parameters. Include every leaf; extra categories reserve band slots.
-Subtree leaves must remain contiguous among actual tree leaves. Transform outputs
-and scales derived from them cannot feed `leafOrder`.
+To align the tree with an existing band domain, use `leafOrder` instead of
+`siblingOrder`. Each subtree must remain contiguous among the tree's leaves,
+even if the domain includes extra categories that reserve band slots.
 
-Publishing an order with `param` requires a single tree and does not support facets.
-A single leaf publishes its category with no edges; empty input publishes `[]`.
-Loading or invalid input retains the last successful domain. Unchanged arrays
-retain identity and do not notify consumers again. See
-[output parameters](values.md#output-parameters) for pushing and lifecycle limits.
+Publishing an order with `param` requires a single tree and does not support
+facets. See [output parameters](values.md#output-parameters) for scope and
+lifecycle rules.
 
 ## Output and placement
 
@@ -144,15 +122,9 @@ Each column is one output row; copied child metadata is omitted.
 | `sourceOffset` | 0.5        | 0.5        | 0.25         | 0.25          |
 | `targetOffset` | 0          | 0          | 0            | 0.5           |
 
-An internal node is placed midway between its extreme direct children. For an
-unbalanced tree, positions may include quarters or eighths of a row. The
-transform separates each position into an integer anchor and a fraction, so the
-index scale continues to receive integers.
-
-Categorical mode emits `sourceValue` and `targetValue` instead of the index
-fields. Each names the category at the integer part of the node's leaf rank;
-the offset fields contain the remaining fraction. The same padded-step offsets
-work on band scales, including reversal and resize, without recomputing layout.
+Internal positions are midpoints of the outermost child positions, split into
+an anchor and a fractional offset. Band scales use `sourceValue` and `targetValue`
+category anchors instead of `sourceIndex` and `targetIndex`.
 
 For a horizontal dendrogram, encode heights on `x`/`x2`, anchors on `y`/`y2`
 with `band: 0.5`, and fractions on `yOffset`/`y2Offset`. Give the primary offset
@@ -160,15 +132,6 @@ scale an explicit domain `[0, 1]` and range
 `[0, { "expr": "-height * bandstep('y', height)" }]`. Both offset channels then use
 the full padded row step. See [offset channels](../mark/index.md#offset-channels)
 and the [`bandstep()` helper](../expressions.md#bandstep).
-
-On index scales, zoom and pan update scale mappings without recomputing the tree.
-Resize works in both modes.
-Grouping gaps can move parents away from their children's visual midpoints;
-branches remain connected and leaves remain aligned. With multifurcations,
-separate edges may overlap on a shared trunk, so transparency and picking follow
-ordinary paint order. Point selections and tooltips identify the child edge;
-index-scale interval selections retain the link mark's endpoint semantics.
-Index heatmaps continue to select integer rows; band interval brushing is unsupported.
 
 Empty input or a tree with a single node produces no edges.
 
