@@ -6,15 +6,30 @@ and computes node positions along an index or categorical band scale.
 
 EXAMPLE examples/docs/grammar/transform/dendrogram/dendrogram.json height=320
 
-The example uses supplied merge heights and a single link mark. The offset scale
-converts each derived fraction to part of the current row step. Clustering and
-leaf ordering happen before the specification is rendered.
+This index-scale example uses supplied merge heights and a single link mark.
+The offset scale converts each derived fraction to part of the current row step.
+Clustering and leaf ordering happen before the specification is rendered.
+
+## Choosing a scale
+
+|                    | Index scale                                             | Band scale                                          |
+| ------------------ | ------------------------------------------------------- | --------------------------------------------------- |
+| Leaf values        | Integer positions, typically dense: `0, 1, 2, …`        | Category IDs, such as `"Sample A"` or `"TP53"`      |
+| Order              | Determined by the numeric indices                       | Determined by the order of categories in the domain |
+| Sample/gene labels | Require separate metadata or a mapping from the indices | Can use the category values directly                |
+| Navigation         | Supports zooming and panning                            | Zooming and panning are currently unsupported       |
+
+Use an [index scale](../scale.md#index-scale) for heatmaps that need zooming.
+[Band scales](#categorical-band-scales) are convenient when the data already
+contains sample or gene IDs: the matrix keeps those IDs while the tree supplies
+their display order. In encodings, `"nominal"` and `"ordinal"` describe categorical
+data; `"band"` is the positional scale type used to place those categories.
 
 ## Input tree
 
 Each input row describes a node. The root's parent is `null`; every other parent
-identifies another node. Leaves have explicit integer positions along the index
-scale. Internal nodes need no row position.
+identifies another node. For an index scale, leaves have explicit integer
+positions along the scale. Internal nodes need no row position.
 
 ```json
 [
