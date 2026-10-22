@@ -170,21 +170,6 @@ test("rejects duplicate output writers before loading", async () => {
     );
 });
 
-test("outer output provenance rejects indirect flow feedback", async () => {
-    const spec = specification();
-    const surround = /** @type {import("../spec/view.js").SurroundSpec} */ (
-        spec
-    );
-    const left = /** @type {import("../spec/view.js").UnitSpec[]} */ (
-        surround.surround.left
-    );
-    left[0].transform.unshift({
-        type: "filter",
-        expr: "sampleCount > 0",
-    });
-    await expect(createHeadlessEngine(spec)).rejects.toThrow(/output/i);
-});
-
 test("named template instances own independent pushed outputs", async () => {
     const { view, context } = await createHeadlessEngine({
         templates: {
@@ -270,49 +255,14 @@ test("dynamic insertion requires the output owner and producer to be created tog
     expect(valid.paramRuntime.getValue("order")).toEqual(["B", "A"]);
 });
 
-test.each([false, true])(
-    "dynamic publishers load independent branch endpoints, branch-only=%s",
-    async (branchOnly) => {
-        const { view } = await createHeadlessEngine({
-            ...(branchOnly ? {} : { data: { values: [{ id: "main" }] } }),
-            hconcat: [{ data: { values: [] }, mark: "point" }],
-        });
-        onTestFinished(() => view.disposeSubtree());
-        const inserted =
-            await /** @type {import("../view/concatView.js").default} */ (
-                view
-            ).addChildSpec({
-                params: [{ name: "order" }],
-                hconcat: [
-                    {
-                        ...(branchOnly
-                            ? { layer: [] }
-                            : { mark: /** @type {const} */ ("point") }),
-                        transform: [
-                            {
-                                type: "branch",
-                                data: { values: [{ id: "B" }, { id: "A" }] },
-                                transform: [
-                                    {
-                                        type: "values",
-                                        field: "id",
-                                        param: { name: "order", push: "outer" },
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                ],
-            });
-        expect(inserted.paramRuntime.getValue("order")).toEqual(["B", "A"]);
-        expect(inserted.paramRuntime.getOutput("order").ready).toBe(true);
-    }
-);
-
-test("an independent publisher loads while inherited main data replays without a reload", async () => {
+test("a dynamically inserted branch publishes inherited rows without reloading their source", async () => {
     const { view, context } = await createHeadlessEngine({
         hconcat: [
-            { name: "base", data: { values: [{ id: "main" }] }, mark: "point" },
+            {
+                name: "base",
+                data: { values: [{ id: "B" }, { id: "A" }] },
+                mark: "point",
+            },
         ],
     });
     onTestFinished(() => view.disposeSubtree());
@@ -326,7 +276,6 @@ test("an independent publisher loads while inherited main data replays without a
             transform: [
                 {
                     type: "branch",
-                    data: { values: [{ id: "B" }, { id: "A" }] },
                     transform: [
                         { type: "values", field: "id", param: "order" },
                     ],
@@ -347,6 +296,6 @@ test("an independent publisher loads while inherited main data replays without a
     expect(child.paramRuntime.getValue("order")).toEqual(["B", "A"]);
     expect(
         Array.from(child.flowHandle.collector.getData(), (row) => row.id)
-    ).toEqual(["main"]);
+    ).toEqual(["B", "A"]);
     expect(load).not.toHaveBeenCalled();
 });

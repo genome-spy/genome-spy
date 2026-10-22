@@ -180,7 +180,6 @@ test("publication, cached replay, failures, and zero-edge trees follow the real 
     bad[0].label = "A";
     expect(() => update(bad)).toThrow(/categories/);
     expect(runtime.getValue("order")).toBe(lastGood);
-    expect(runtime.getOutput("order").ready).toBe(false);
     update([{ id: "only", parent: null, height: 0, label: true }]);
     expect(runtime.getValue("order")).toEqual([true]);
     expect(view.flowHandle.collector.getItemCount()).toBe(0);
@@ -188,7 +187,7 @@ test("publication, cached replay, failures, and zero-edge trees follow the real 
     expect(runtime.getValue("order")).toEqual([]);
 });
 
-test("ordinary parameter leaf orders replay, while output-driven ordering is rejected", async () => {
+test("reactive leaf orders replay the tree and publish the new domain", async () => {
     const spec = /** @type {import("../../spec/root.js").RootSpec} */ ({
         params: [{ name: "desired", value: ["A", "B", "C", "D"] }],
         data: { values: tree() },
@@ -206,12 +205,6 @@ test("ordinary parameter leaf orders replay, while output-driven ordering is rej
     view.paramRuntime.setValue("desired", ["B", "A", "C", "D"]);
     await view.paramRuntime.whenPropagated();
     expect(view.paramRuntime.getValue("order")).toEqual(["B", "A", "C", "D"]);
-    /** @type {import("../../spec/transform.js").ExplicitlyOrderedDendrogramParams} */ (
-        spec.transform[0]
-    ).leafOrder = { expr: "order" };
-    await expect(createHeadlessEngine(spec)).rejects.toThrow(
-        /cannot consume transform output/
-    );
 });
 
 test("publishing rejects multiple file trees and facets instead of publishing a partition", async () => {

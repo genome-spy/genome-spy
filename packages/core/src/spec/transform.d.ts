@@ -93,8 +93,7 @@ export interface SiblingOrderedDendrogramParams extends CategoricalDendrogramPar
 export interface ExplicitlyOrderedDendrogramParams extends CategoricalDendrogramParamsBase {
     /**
      * Complete ordered band domain. Include every leaf category exactly once;
-     * extra categories reserve slots. Expressions may read ordinary parameters,
-     * but cannot read transform outputs or scales derived from those outputs.
+     * extra categories reserve slots.
      */
     leafOrder: Scalar[] | ExprRef;
     siblingOrder?: never;

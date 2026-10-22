@@ -48,7 +48,7 @@ test("claiming a bare slot preserves bound refs and makes ordinary setters read-
 
     expect(owner.getParamRef("order")).toBe(ref);
     expect(producer.getParamRef("order")).toBe(ref);
-    expect(ref.flowOutput).toBe(output);
+    expect(owner.getOutput("order")).toBe(output);
     expect(owner.getValue("order")).toEqual([]);
     expect(owner.getValue("count")).toBe(0);
     expect(observe).toHaveReturnedWith(0);

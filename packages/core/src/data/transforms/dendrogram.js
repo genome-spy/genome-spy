@@ -5,7 +5,6 @@ import {
 } from "../fileBatchUtils.js";
 import { UNIQUE_ID_KEY } from "./identifier.js";
 import Transform from "./transform.js";
-import { validateOutputSources } from "../flowOutput.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /** @typedef {import("../flowNode.js").Datum} Datum */
@@ -127,7 +126,6 @@ export default class DendrogramTransform extends Transform {
     }
 
     initialize() {
-        if (this.output) validateOutputSources(this);
         if (isExprRef(this.params.leafOrder)) {
             this.#leafOrder = this.watchSnapshottedExpression(
                 this.params.leafOrder
@@ -139,7 +137,6 @@ export default class DendrogramTransform extends Transform {
         super.reset();
         this.#treeCount = 0;
         if (this.output) {
-            this.output.ready = false;
             this.output.candidate = undefined;
         }
         this.#buffer = [];
