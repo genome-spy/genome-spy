@@ -168,22 +168,11 @@ export async function initializeViewDataForViews(
         }
     }
 
-    /** @type {Map<import("../view/view.js").default, Set<import("../data/sources/dataSource.js").default>>} */
-    const dataSourceRoots = new Map();
-    for (const source of sourcesToLoad) {
-        let sources = dataSourceRoots.get(source.view);
-        if (!sources) dataSourceRoots.set(source.view, (sources = new Set()));
-        sources.add(source);
-    }
-    await Promise.all(
-        Array.from(dataSourceRoots, ([subtreeRoot, dataSources]) =>
-            loadViewSubtreeData(subtreeRoot, dataSources, undefined, {
-                // Newly attached paths need a complete publication, including
-                // when an equivalent source is already loading.
-                queueReload: true,
-            })
-        )
-    );
+    await loadViewSubtreeData(viewRoot, sourcesToLoad, visibilityPredicate, {
+        // Newly attached paths need a complete publication, including
+        // when an equivalent source is already loading.
+        queueReload: true,
+    });
 
     // Load side inputs before replaying a cached primary. A source load already
     // covers every replay root downstream of that source.

@@ -547,6 +547,63 @@ describe("viewDataInit", () => {
         loadSpy.mockRestore();
     });
 
+    test("new views load side inputs before reloading an uncached inherited source", async () => {
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
+        const fetch = vi
+            .spyOn(globalThis, "fetch")
+            .mockResolvedValue(
+                new Response(JSON.stringify([{ x: 1, label: "A" }]))
+            );
+        onTestFinished(() => fetch.mockRestore());
+        const root = /** @type {ConcatView} */ (
+            await context.createOrImportView(
+                {
+                    data: { values: [{ x: 1 }] },
+                    vconcat: [
+                        {
+                            visible: false,
+                            transform: [
+                                {
+                                    type: "lookup",
+                                    from: {
+                                        url: "https://example.test/lookup.json",
+                                    },
+                                    key: "x",
+                                    fields: ["x"],
+                                    values: ["label"],
+                                },
+                            ],
+                            mark: "point",
+                        },
+                    ],
+                },
+                null,
+                null,
+                "root"
+            )
+        );
+        onTestFinished(() => root.disposeSubtree());
+        await initializeViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics,
+            () => undefined
+        );
+
+        // The source loaded while its only consumer was hidden, so no cache exists.
+        root.children[0].spec.visible = true;
+        await initializeVisibleViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics
+        );
+
+        expect(
+            Array.from(root.children[0].flowHandle.collector.getData())
+        ).toMatchObject([{ x: 1, label: "A" }]);
+    });
+
     test("a branch attached during a load receives all rows after the font wait", async () => {
         const context = createTestViewContext();
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
