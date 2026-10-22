@@ -108,11 +108,22 @@ that ref instead of a synthetic event dependency. Source/selection/zoom inputs
 settle before terminal domain notifications and rendering. Viewport debounce and
 coverage remain explicit input policy, with immediate initial calibration.
 
+Authored scale domains retain their declaring view's lexical scope through
+encoding inheritance, normalization, and genomic-coordinate rewriting. Each view
+owns an internal encoding copy; existing origin metadata carries its declaration
+scope through normalization and rewrites without changing the authored spec. An
+explicit child channel replaces the inherited definition and binds its own
+domain in the child scope. View-level domains use the declaring view's scope.
+Domain expressions and selection references resolve before shared-scale
+aggregation; expression bindings distinguish declarations in different scopes.
+Ordinary inherited encoding expressions still bind in the consuming unit's
+scope.
+
 `ScaleInstanceManager` binds range and grouping-gap expressions into one mapping
 operation that depends on the displayed domain and mapping configuration. Binding
 uses the effective resolution scope, preserving shared-scale ownership and the
-single-member compatibility lookup. It validates static configuration on a copy,
-applies the live configuration, and publishes a stable mapping ref. Range-array
+single-member compatibility lookup for these mapping properties. It validates
+static configuration on a copy, applies the live configuration, and publishes a stable mapping ref. Range-array
 and domain equality suppress redundant application. `range()`, `bandwidth()`,
 `scale()` and `invert()` consume this native producer; `linearize()` instead
 consumes the resolution's assembly-configuration ref. Domain-to-range expressions

@@ -1,5 +1,13 @@
-/** @type {WeakMap<object, {source: object, path?: readonly (string | number)[]}>} */
+/** @type {WeakMap<object, {source: object, path?: readonly (string | number)[], declaringView?: import("../view/view.js").default}>} */
 const originals = new WeakMap();
+
+/**
+ * Returns the lexical scope carried by an internal encoding definition.
+ * @param {object} fragment
+ */
+export function getSpecDeclarationView(fragment) {
+    return originals.get(fragment)?.declaringView;
+}
 
 /**
  * Associates a normalized or generated declaration with its authored source.
@@ -15,6 +23,7 @@ export function inheritSpecOrigin(source, copy, path) {
     originals.set(copy, {
         source: original?.source ?? source,
         path: path ?? original?.path,
+        declaringView: original?.declaringView,
     });
     return copy;
 }
@@ -24,18 +33,22 @@ export function inheritSpecOrigin(source, copy, path) {
  * Only use for copies that retain authored field/expression meanings.
  * @template T
  * @param {T} source
+ * @param {import("../view/view.js").default} [declaringView] Scope for a new view-owned encoding copy.
  * @returns {T}
  */
-export function cloneWithSpecOrigin(source) {
+export function cloneWithSpecOrigin(source, declaringView) {
     const copy = structuredClone(source);
-    /** @param {any} source @param {any} copy */
-    function link(source, copy) {
+    /** @param {any} source @param {any} copy @param {import("../view/view.js").default | undefined} scope */
+    function link(source, copy, scope) {
         if (!source || typeof source !== "object" || originals.has(copy))
             return;
         inheritSpecOrigin(source, copy);
-        for (const key of Object.keys(source)) link(source[key], copy[key]);
+        const origin = originals.get(copy);
+        origin.declaringView = scope ?? origin.declaringView;
+        for (const key of Object.keys(source))
+            link(source[key], copy[key], origin.declaringView);
     }
-    link(source, copy);
+    link(source, copy, declaringView);
     return copy;
 }
 

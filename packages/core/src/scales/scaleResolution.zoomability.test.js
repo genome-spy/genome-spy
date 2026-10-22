@@ -50,7 +50,7 @@ describe("scale resolution zoomability", () => {
         const { view } = await createHeadlessEngine(spec);
         const resolution = view.getScaleResolution("x");
         const x = /** @type {import("../spec/channel.js").PositionFieldDef} */ (
-            spec.encoding.x
+            view.getEncoding().x
         );
         const scale = /** @type {import("../spec/scale.js").Scale} */ (x.scale);
 

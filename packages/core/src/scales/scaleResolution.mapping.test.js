@@ -153,11 +153,9 @@ describe("graph-owned scale mapping", () => {
         const { view } = await createHeadlessEngine(mappingSpec());
         const resolution = view.getScaleResolution("size");
         const originalRef = resolution.getMappingRef();
-        const specification =
-            /** @type {import("../spec/view.js").UnitSpec} */ (view.spec);
         const scale =
             /** @type {import("../spec/channel.js").MarkPropFieldDef} */ (
-                specification.encoding.size
+                view.getEncoding().size
             ).scale;
 
         scale.range = [0, { expr: "high * 3" }];
@@ -185,7 +183,7 @@ describe("graph-owned scale mapping", () => {
             const resolution = view.getScaleResolution("size");
             const size =
                 /** @type {import("../spec/channel.js").MarkPropFieldDef} */ (
-                    spec.encoding.size
+                    view.getEncoding().size
                 );
             size.scale.range = [0, { expr: "feedback" }];
 

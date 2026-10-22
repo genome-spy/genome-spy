@@ -505,12 +505,40 @@ example, the upper end of this size range follows the `maxSize` parameter:
 
 ### Parameter scope
 
-An independent scale resolves parameter names from its unit view or an ancestor.
-A shared scale resolves them from the composed view that owns the scale
-resolution or an ancestor of that view. Parameters declared only in a child are
-not visible to the scale.
+Scale domains resolve parameters where the domain is declared. A domain in
+`encoding.<channel>.scale.domain` uses the scope of the view that originally
+declares that channel. Inheriting the channel preserves its scope, so a
+same-named child parameter does not change the inherited domain expression.
+Replacing the channel in a child establishes a new declaration in that child's
+scope. A view-level `scales.<channel>.domain` uses its declaring view's scope.
 
-Declare reactive shared-scale properties and their controlling parameters on
+A shared scale combines domain contributions after resolving their parameters.
+
+This declaration scope applies to domain expressions and selection-domain
+references. Other inherited encoding expressions, such as mark-property values,
+evaluate in the consuming unit view's scope.
+
+To reference an ancestor's dimension when `width` or `height` is shadowed,
+declare a computed alias in that ancestor and reference the alias in the domain
+expression:
+
+```json
+{
+  "params": [{ "name": "sharedWidth", "expr": "width" }]
+}
+```
+
+If an inherited domain should use child-local parameters, declare the encoding
+channel in that child.
+
+#### Range and grouping-gap expressions
+
+Range and grouping-gap expressions use the scale resolution's scope. An
+independent scale resolves their parameter names from its unit view or an
+ancestor. A shared scale resolves them from the composed view that owns the
+scale resolution or an ancestor of that view.
+
+Declare reactive shared ranges and their controlling parameters on
 the owning view. If an interaction or input in a child needs to update the
 parameter, declare a same-named child parameter with `"push": "outer"`:
 
@@ -518,17 +546,16 @@ EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
 
 !!! note "Compatibility behavior"
 
-    A composed scale resolution used by only one plot unit and with no
-    view-level `scales.<channel>` declaration currently uses that unit's
-    parameter scope. Do not rely on this fallback in new specifications. Make
-    the scale independent or declare the parameter on the resolution owner. The
-    fallback is planned for removal in GenomeSpy 2.0.
+    Range and grouping-gap expressions in a composed scale resolution used by
+    only one plot unit and with no view-level `scales.<channel>` declaration
+    currently use that unit's parameter scope. Make the scale independent or
+    use view-level `scales.<channel>` to choose the declaring view's scope
+    explicitly.
 
 ### Domain from Selection Parameters
 
 A scale domain can link directly to an interval selection parameter. The named
-selection must be visible from the scale owner according to the scope rule
-above:
+selection must be visible from the domain declaration's scope:
 
 ```json
 {

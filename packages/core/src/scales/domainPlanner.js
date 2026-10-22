@@ -31,8 +31,9 @@ import {
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
  * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
- * @typedef {{ channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
- * @typedef {(paramName: string, encoding: "x" | "y") => { runtime: any, selection: import("../types/selectionTypes.js").IntervalSelection | undefined }} SelectionBindingResolver
+ * @typedef {{ channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"], view?: import("../view/view.js").default }} ConfiguredDomainSource
+ * @typedef {(expr: ExprRef, view?: import("../view/view.js").default) => import("../paramRuntime/types.js").ExprRefFunction} DomainExpressionBinder
+ * @typedef {(paramName: string, encoding: "x" | "y", view?: import("../view/view.js").default) => { runtime: any, selection: import("../types/selectionTypes.js").IntervalSelection | undefined }} SelectionBindingResolver
  * @typedef {(member: ScaleResolutionMember) => import("../data/viewportDomain.js").ViewportConstraint[]} ViewportConstraintsGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
  * @typedef {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} GetLocusExtent
@@ -66,7 +67,7 @@ import {
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {ConfiguredDomainSource | undefined} viewLevelDomain
- * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
+ * @param {DomainExpressionBinder} createExpression
  * @param {SelectionBindingResolver} resolveSelectionBinding
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
@@ -83,13 +84,6 @@ export function resolveConfiguredDomain(
     fromComplexInterval,
     includeSelectionInitial
 ) {
-    const domainMembers = Array.from(members)
-        .filter((member) => member.contributesToDomain)
-        .filter((member) => {
-            const domain = member.channelDef.scale?.domain;
-            return domain && !isViewportDomainRef(domain);
-        });
-
     /** @type {ConfiguredDomainResolutionState} */
     const state = {
         domains: [],
@@ -99,27 +93,9 @@ export function resolveConfiguredDomain(
         hasLiteralDomain: false,
     };
 
-    if (
-        viewLevelDomain?.domain !== undefined &&
-        !isViewportDomainRef(viewLevelDomain.domain)
-    ) {
+    for (const source of getConfiguredDomainSources(members, viewLevelDomain)) {
         const resolved = resolveConfiguredDomainSource(
-            viewLevelDomain,
-            createExpression,
-            resolveSelectionBinding,
-            fromComplexInterval,
-            includeSelectionInitial
-        );
-        mergeConfiguredDomainResolution(state, resolved);
-    }
-
-    for (const member of domainMembers) {
-        const resolved = resolveConfiguredDomainSource(
-            {
-                channel: member.channel,
-                type: member.channelDef.type,
-                domain: member.channelDef.scale.domain,
-            },
+            source,
             createExpression,
             resolveSelectionBinding,
             fromComplexInterval,
@@ -130,6 +106,28 @@ export function resolveConfiguredDomain(
     }
 
     return finishConfiguredDomainResolution(state);
+}
+
+/**
+ * Preserve each configured domain's declaration scope through shared planning.
+ * @param {Set<ScaleResolutionMember>} members
+ * @param {ConfiguredDomainSource | undefined} viewLevelDomain
+ * @returns {ConfiguredDomainSource[]}
+ */
+export function getConfiguredDomainSources(members, viewLevelDomain) {
+    const sources = viewLevelDomain ? [viewLevelDomain] : [];
+    for (const member of members) {
+        if (member.contributesToDomain)
+            sources.push({
+                channel: member.channel,
+                type: member.channelDef.type,
+                domain: member.channelDef.scale?.domain,
+                view: member.declaringView ?? member.view,
+            });
+    }
+    return sources.filter(
+        ({ domain }) => domain !== undefined && !isViewportDomainRef(domain)
+    );
 }
 
 /**
@@ -145,17 +143,11 @@ export function resolveSelectionDomainInfo(
     viewLevelDomain,
     resolveBinding
 ) {
-    const sources = Array.from(members)
-        .filter((member) => member.contributesToDomain)
-        .map((member) => ({
-            channel: member.channel,
-            domain: member.channelDef.scale?.domain,
-        }));
-    if (viewLevelDomain) sources.push(viewLevelDomain);
+    const sources = getConfiguredDomainSources(members, viewLevelDomain);
     let literal = false;
     /** @type {SelectionDomainLinkInfo | undefined} */
     let link;
-    for (const { channel, domain } of sources) {
+    for (const { channel, domain, view } of sources) {
         if (domain === undefined || isViewportDomainRef(domain)) continue;
         if (!isSelectionDomainRef(domain)) {
             literal = true;
@@ -166,7 +158,7 @@ export function resolveSelectionDomainInfo(
             domain,
             domain.param
         );
-        const { runtime } = resolveBinding(domain.param, encoding);
+        const { runtime } = resolveBinding(domain.param, encoding, view);
         if (
             link &&
             (link.runtime !== runtime ||
@@ -214,7 +206,7 @@ function mergeConfiguredDomainResolution(state, resolved) {
 
 /**
  * @param {ConfiguredDomainSource} source
- * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} createExpression
+ * @param {DomainExpressionBinder} createExpression
  * @param {SelectionBindingResolver} resolveSelectionBinding
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
@@ -245,7 +237,9 @@ function resolveConfiguredDomainSource(
         kind: "literal",
         domain: resolveConfiguredIntervalDomain(
             source.type,
-            resolveConfiguredDomainValue(domainDef, createExpression),
+            resolveConfiguredDomainValue(domainDef, (expr) =>
+                createExpression(expr, source.view)
+            ),
             fromComplexInterval
         ),
     };
@@ -361,7 +355,11 @@ function resolveSelectionDomain(
         paramName
     );
 
-    const binding = resolveSelectionBinding(paramName, resolvedChannel);
+    const binding = resolveSelectionBinding(
+        paramName,
+        resolvedChannel,
+        source.view
+    );
     const hasInitial = domainRef.initial !== undefined;
     const interval = binding.selection?.intervals[resolvedChannel];
     const description = paramName + "." + resolvedChannel;

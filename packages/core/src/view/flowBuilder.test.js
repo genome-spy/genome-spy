@@ -158,9 +158,10 @@ test("Linearize does not rewrite synthesized secondary locus channels", async ()
     expect(linearize).toBeDefined();
     linearize?.rewrite();
 
-    // x2 is synthesized by mark encoding and should not be materialized in the spec.
-    expect(unit?.spec.encoding?.x2).toBeUndefined();
-    expect(unit?.spec.encoding?.x).toMatchObject({
+    // Coordinate rewrites stay internal, including inherited definitions.
+    expect(unit?.spec.encoding).toBeUndefined();
+    expect(unit?.getEncoding().x2).toBeUndefined();
+    expect(unit?.getEncoding().x).toMatchObject({
         field: "_linearized_chrom_pos",
         type: "locus",
     });

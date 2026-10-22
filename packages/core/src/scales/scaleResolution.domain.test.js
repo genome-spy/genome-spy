@@ -634,20 +634,28 @@ describe("Scale resolution domain handling", () => {
         const view = await initView(spec, UnitView);
         const xResolution = getRequiredScaleResolution(view, "x");
         const yResolution = getRequiredScaleResolution(view, "y");
+        // Reconfigure the live encoding, keeping the authored spec unchanged.
+        const encoding = view.getEncoding();
+        const x = /** @type {import("../spec/channel.js").PositionFieldDef} */ (
+            encoding.x
+        );
+        const y = /** @type {import("../spec/channel.js").PositionFieldDef} */ (
+            encoding.y
+        );
 
-        spec.encoding.x.scale.domain = {
+        x.scale.domain = {
             expr: "[0, 10 / zoomLevel('y')]",
         };
         xResolution.reconfigure();
 
-        spec.encoding.y.scale.domain = {
+        y.scale.domain = {
             expr: "[0, 10 / zoomLevel('x')]",
         };
         expect(() => yResolution.reconfigure()).toThrow(
             "Scale zoom dependency cycle"
         );
 
-        spec.encoding.x.scale.domain = {
+        x.scale.domain = {
             expr: "[0, 10 / zoomLevel('x')]",
         };
         expect(() => xResolution.reconfigure()).toThrow(

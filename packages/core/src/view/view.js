@@ -31,6 +31,7 @@ import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
 import { warnOnce } from "../utils/warning.js";
+import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -98,6 +99,12 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
 export default class View {
     /** @type {TSpec} */
     spec;
+
+    /**
+     * View-owned encoding definitions, retaining authored scope through rewrites.
+     * @type {import("../spec/channel.js").Encoding}
+     */
+    #encoding;
 
     /** @type {NamedDataScope} */
     namedDataScope;
@@ -199,6 +206,7 @@ export default class View {
 
         this.#defaultName = name;
         this.spec = spec;
+        this.#encoding = cloneWithSpecOrigin(spec.encoding ?? {}, this);
         this.namedDataScope = new NamedDataScope(this);
 
         if (dataParent && /** @type {any} */ (spec).theme !== undefined) {
@@ -1311,7 +1319,7 @@ export default class View {
             this.dataParent && this.options.inheritEncoding
                 ? this.dataParent.getEncoding()
                 : {};
-        const te = this.spec.encoding || {};
+        const te = this.#encoding;
 
         /** @type {import("../spec/channel.js").Encoding} */
         const combined = {
@@ -1327,6 +1335,15 @@ export default class View {
         }
 
         return combined;
+    }
+
+    /**
+     * Applies internal coordinate rewrites without modifying the authored spec.
+     * Rewritten definitions retain the scope of their inputs.
+     * @param {import("../spec/channel.js").Encoding} encoding
+     */
+    updateEncoding(encoding) {
+        Object.assign(this.#encoding, encoding);
     }
 
     /**

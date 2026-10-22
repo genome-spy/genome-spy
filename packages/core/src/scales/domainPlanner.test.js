@@ -442,7 +442,7 @@ describe("selection domain metadata", () => {
                 resolve
             )
         ).toMatchObject({ param: "brush", encoding: "y" });
-        expect(resolve).toHaveBeenCalledWith("brush", "y");
+        expect(resolve).toHaveBeenCalledWith("brush", "y", undefined);
     });
 
     test("equal parameter names in different scopes conflict", () => {
