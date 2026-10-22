@@ -130,6 +130,20 @@ same-named metadata. The optional `as` array changes the output field names.
 | `sourceValue`, `targetValue`   | Category anchors in categorical mode        |
 | `sourceOffset`, `targetOffset` | Relative displacements from the row anchors |
 
+For the [input tree](#input-tree) above, the generated fields are shown below.
+Each column is one output row; copied child metadata is omitted.
+
+| Field          | `AB` → `A` | `AB` → `B` | `root` → `C` | `root` → `AB` |
+| -------------- | ---------- | ---------- | ------------ | ------------- |
+| `sourceId`     | `"AB"`     | `"AB"`     | `"root"`     | `"root"`      |
+| `targetId`     | `"A"`      | `"B"`      | `"C"`        | `"AB"`        |
+| `sourceHeight` | 1          | 1          | 3            | 3             |
+| `targetHeight` | 0          | 0          | 0            | 1             |
+| `sourceIndex`  | 0          | 0          | 1            | 1             |
+| `targetIndex`  | 0          | 1          | 2            | 0             |
+| `sourceOffset` | 0.5        | 0.5        | 0.25         | 0.25          |
+| `targetOffset` | 0          | 0          | 0            | 0.5           |
+
 An internal node is placed midway between its extreme direct children. For an
 unbalanced tree, positions may include quarters or eighths of a row. The
 transform separates each position into an integer anchor and a fraction, so the
