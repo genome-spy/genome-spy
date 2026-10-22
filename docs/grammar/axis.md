@@ -107,6 +107,25 @@ at a configured bounded zoom extent are flushed, avoiding label snapping during
 zooming. These behaviors support axis-aligned labels; culling a label does not
 remove its tick mark.
 
+### Interactive visibility
+
+`ticks`, `labels`, `domain` and `grid` accept either booleans or expression
+references. A parameter can control each part independently, letting users
+reduce clutter without rebuilding the visualization or changing its scale.
+
+EXAMPLE examples/docs/grammar/axis/parameter-visibility.json height=220
+
+An embedded application or agent can use the same parameter:
+
+```js
+api.getParam("showLabels").setValue(false);
+```
+
+Expression-controlled ticks and labels keep their reserved axis space when
+hidden, so toggling them does not shift the plot. Static `false` retains its
+existing layout behavior. These properties do not hide the axis title or the
+chromosome-specific decorations on a locus axis.
+
 ## Resolution
 
 Axes participate in view

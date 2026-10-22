@@ -9,6 +9,7 @@ import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { getProjectedTextExtent } from "../fonts/textMetrics.js";
 import { hasEffectiveGroupingGaps } from "../genome/indexGapMapping.js";
 import { GAP_PEER } from "../marks/markUtils.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 const LABELS_LAYER_NAME = "labels_main";
@@ -59,6 +60,20 @@ export const ORIENT_CHANNELS = {
  */
 export function orient2channel(slot) {
     return ORIENT_CHANNELS[slot];
+}
+
+/**
+ * Turn a boolean expression into native view opacity. Keeping the view mounted
+ * preserves axis space and scale state while its decorations are hidden.
+ * Static booleans keep the existing construction and layout behavior.
+ *
+ * @param {boolean | import("../spec/parameter.js").ExprRef | undefined} visible
+ * @returns {Pick<import("../spec/view.js").UnitSpec, "opacity">}
+ */
+export function axisPartVisibility(visible) {
+    return isExprRef(visible)
+        ? { opacity: { expr: `(${visible.expr}) ? 1 : 0` } }
+        : {};
 }
 
 /**
@@ -443,6 +458,9 @@ function hasMeasurableDomain(scale) {
 }
 
 /**
+ * Expression-controlled parts reserve space even while hidden, so toggling
+ * their opacity cannot shift the plot. Their labels remain measurable.
+ *
  * @param {Axis} axisProps
  * @param {number} [measuredLabelExtent]
  */
@@ -824,6 +842,7 @@ function createAxis(
     if (ap.domain) {
         axisSpec.layer.push({
             name: "domain",
+            ...axisPartVisibility(ap.domain),
             data: { values: [{}] },
             mark: {
                 type: "rule",
@@ -851,6 +870,7 @@ function createAxis(
         if (ap.ticks) {
             ticksAndLabels.layer.push({
                 name: "ticks",
+                ...axisPartVisibility(ap.ticks),
                 mark: {
                     type: "rule",
                     clip: false,
@@ -875,6 +895,7 @@ function createAxis(
         if (ap.labels) {
             ticksAndLabels.layer.push({
                 name: LABELS_LAYER_NAME,
+                ...axisPartVisibility(ap.labels),
                 transform: layoutLabels
                     ? [
                           {

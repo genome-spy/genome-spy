@@ -1,0 +1,51 @@
+{
+  "description": "Toggle axis decorations without changing the scale or plot layout.",
+
+  "params": [
+    {
+      "name": "showTicks",
+      "value": true,
+      "bind": { "input": "checkbox", "name": "Ticks " }
+    },
+    {
+      "name": "showLabels",
+      "value": true,
+      "bind": { "input": "checkbox", "name": "Labels " }
+    },
+    {
+      "name": "showDomain",
+      "value": true,
+      "bind": { "input": "checkbox", "name": "Axis line " }
+    },
+    {
+      "name": "showGrid",
+      "value": false,
+      "bind": { "input": "checkbox", "name": "Grid " }
+    }
+  ],
+
+  "data": {
+    "values": [
+      { "x": 0, "y": 1 },
+      { "x": 1, "y": 3 },
+      { "x": 2, "y": 2 },
+      { "x": 3, "y": 5 }
+    ]
+  },
+  "mark": "point",
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "axis": {
+        "title": "Position",
+        "ticks": { "expr": "showTicks" },
+        "labels": { "expr": "showLabels" },
+        "domain": { "expr": "showDomain" },
+        "grid": { "expr": "showGrid" }
+      }
+    },
+    "y": { "field": "y", "type": "quantitative" }
+  }
+}
