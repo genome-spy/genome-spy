@@ -5,6 +5,11 @@ such as `"sum"`, `"median"`, `"q1"`, or `"max"`. The data can be grouped by
 one or more fields, which results in a list of objects with the grouped fields
 and the aggregate values.
 
+Physical input files contribute to the same aggregation; facets are summarized
+independently. Without `groupby`, empty input still produces one summary row,
+with `count: 0` for the default count aggregation. With `groupby`, empty input
+produces no groups.
+
 ## Parameters
 
 SCHEMA AggregateParams

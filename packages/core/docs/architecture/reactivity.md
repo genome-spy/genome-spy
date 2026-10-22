@@ -88,11 +88,11 @@ propagation barrier or a graph effect. Coordinate coverage and asynchronous sour
 completion remain governed by data-readiness APIs.
 
 Transform outputs use that same completion/replay boundary. `values` stages an
-immutable array; `count` stages a scalar, initially `null` until a successful
-snapshot distinguishes empty from unknown. `FlowOutput` publishes only after
-every primary and side dependency is ready and successful. Failed boundaries
-discard candidates and retain the previous parameter value. Equal arrays use
-shallow comparison; scalar outputs use identity comparison.
+immutable array, initially `[]`. `FlowOutput` publishes only after every primary
+and side dependency is ready and successful. Failed boundaries discard
+candidates and retain the previous parameter value; shallow comparison
+suppresses unchanged arrays. An `aggregate` branch can publish counts through
+`values`, distinguishing an initial `[]` from a successful empty count `[0]`.
 
 These parameters are producer-owned, read-only, and excluded from persistence.
 Bound-provenance guards reject their consumption by source/transform expressions

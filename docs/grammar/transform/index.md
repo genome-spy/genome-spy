@@ -12,9 +12,8 @@ filtered and mutated in a different way for each child layer.
 The [`"branch"`](branch.md) declaration adds a side pipeline within a view.
 It can prepare a summary without changing the main rows. The
 [`"values"`](values.md) transform publishes a field as a read-only array
-parameter, for example to derive scale gaps from metadata. The
-[`"count"`](count.md) transform publishes the number of rows, for example to
-display a message when a result is empty.
+parameter, for example to derive scale gaps from metadata or publish counts
+calculated with [`"aggregate"`](aggregate.md).
 
 !!! warning "Departure from Vega-Lite"
 

@@ -177,10 +177,6 @@ See the [CoordinateLookupParams documentation](transform/coordinate-lookup.md#pa
 
 SCHEMA CoreRootSpec
 
-## CountParams
-
-See the [CountParams documentation](transform/count.md#parameters).
-
 ## CoverageParams
 
 See the [CoverageParams documentation](transform/coverage.md#parameters).

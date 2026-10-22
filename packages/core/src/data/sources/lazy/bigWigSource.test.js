@@ -3,7 +3,8 @@ import Collector from "../../collector.js";
 import { isDataReady } from "../../dataReadiness.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import BigWigSource from "./bigWigSource.js";
-import CountTransform from "../../transforms/count.js";
+import AggregateTransform from "../../transforms/aggregate.js";
+import ValuesTransform from "../../transforms/values.js";
 
 /** @type {Map<string, { start: number, end: number, score: number }[]>} */
 const featuresByUrl = new Map();
@@ -186,15 +187,17 @@ describe("BigWigSource", () => {
             },
             /** @type {any} */ (view)
         );
-        const output = view.paramRuntime.registerOutput("recordCount", null);
-        const count = new CountTransform(
-            { type: "count", param: "recordCount" },
+        const output = view.paramRuntime.registerOutput("recordCounts");
+        const aggregate = new AggregateTransform({ type: "aggregate" });
+        const values = new ValuesTransform(
+            { type: "values", field: "count", param: "recordCounts" },
             /** @type {any} */ (view)
         );
         const collector = new Collector();
-        source.addChild(count);
-        count.addChild(collector);
-        count.initializeOnce();
+        source.addChild(collector);
+        source.addChild(aggregate);
+        aggregate.addChild(values);
+        values.initializeOnce();
 
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
 
@@ -205,7 +208,7 @@ describe("BigWigSource", () => {
             { sample: "B", chrom: "chr1", start: 4, end: 5, score: 6 },
         ]);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
-        expect(output.value.get()).toBe(2);
+        expect(output.value.get()).toEqual([2]);
         expect(output.revision).toBe(1);
         source.disposeSubtree();
     });

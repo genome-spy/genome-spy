@@ -79,7 +79,13 @@ function messageSpec() {
         transform: [
             { type: "collect" },
             { type: "filter", expr: "datum.score >= minimum" },
-            { type: "count", param: "recordCount" },
+            {
+                type: "branch",
+                transform: [
+                    { type: "aggregate" },
+                    { type: "values", field: "count", param: "recordCounts" },
+                ],
+            },
             { type: "values", field: "x", param: "positions" },
         ],
         layer: [
@@ -102,7 +108,7 @@ function messageSpec() {
                 mark: {
                     type: "text",
                     text: "No data in the last loaded region",
-                    opacity: { expr: "recordCount === 0 ? 1 : 0" },
+                    opacity: { expr: "recordCounts[0] === 0 ? 1 : 0" },
                 },
                 encoding: { x: { value: 0.5 }, y: { value: 0.5 } },
             },
@@ -150,20 +156,20 @@ function messageOpacity(view) {
     return +message.closest("[fill-opacity]").getAttribute("fill-opacity");
 }
 
-test("lazy count distinguishes initial unknown from first empty success and retains its message", async () => {
+test("lazy aggregation distinguishes initial unknown from first empty success and retains its message", async () => {
     const { view, source } = await engine();
     const runtime = view.paramRuntime;
-    const api = resolveScopedEmbedParam(view, "recordCount");
+    const api = resolveScopedEmbedParam(view, "recordCounts");
     const notify = vi.fn();
     onTestFinished(api.subscribe(notify));
 
-    expect(api.getValue()).toBeNull();
+    expect(api.getValue()).toEqual([]);
     expect(messageOpacity(view)).toBe(0);
     const first = await source.beginRequest();
-    expect(api.getValue()).toBeNull();
+    expect(api.getValue()).toEqual([]);
     await first.succeed([[]]);
     await runtime.whenPropagated();
-    expect(api.getValue()).toBe(0);
+    expect(api.getValue()).toEqual([0]);
     expect(notify).toHaveBeenCalledOnce();
     expect(messageOpacity(view)).toBe(1);
 
@@ -171,7 +177,7 @@ test("lazy count distinguishes initial unknown from first empty success and reta
     await source.load();
     source.invalidateData();
     await runtime.whenPropagated();
-    expect(api.getValue()).toBe(0);
+    expect(api.getValue()).toEqual([0]);
     expect(notify).toHaveBeenCalledOnce();
     expect(messageOpacity(view)).toBe(1);
 
@@ -180,13 +186,13 @@ test("lazy count distinguishes initial unknown from first empty success and reta
     const failed = await source.beginRequest();
     expect(messageOpacity(view)).toBe(1);
     await failed.fail();
-    expect(api.getValue()).toBe(0);
+    expect(api.getValue()).toEqual([0]);
     expect(messageOpacity(view)).toBe(1);
 
     const populated = await source.beginRequest();
     await populated.succeed([[{ x: 1, score: 0 }], [{ x: 2, score: 2 }]]);
     await runtime.whenPropagated();
-    expect(api.getValue()).toBe(2);
+    expect(api.getValue()).toEqual([2]);
     expect(runtime.getValue("positions")).toEqual([1, 2]);
     expect(messageOpacity(view)).toBe(0);
     const signal = view
@@ -197,7 +203,7 @@ test("lazy count distinguishes initial unknown from first empty success and reta
         { x: 2, score: 2 },
     ]);
     await source.load();
-    expect(api.getValue()).toBe(2);
+    expect(api.getValue()).toEqual([2]);
 
     const same = await source.beginRequest();
     await same.succeed([
@@ -212,7 +218,7 @@ test("lazy count distinguishes initial unknown from first empty success and reta
 
     runtime.setValue("minimum", 4);
     await runtime.whenPropagated();
-    expect(api.getValue()).toBe(1);
+    expect(api.getValue()).toEqual([1]);
     expect(runtime.getValue("positions")).toEqual([4]);
     expect(source.requests).toHaveLength(4);
 });
@@ -224,10 +230,10 @@ test("failed processing, superseded reads, and disposed reads cannot publish a l
     const runtime = view.paramRuntime;
     const first = await source.beginRequest();
     await first.succeed([[{ x: 1, score: 1 }]]);
-    const output = runtime.getOutput("recordCount");
+    const output = runtime.getOutput("recordCounts");
     const revision = output.revision;
 
-    // This sibling fails after count has staged its complete candidate.
+    // This sibling fails after the summary has staged its complete candidate.
     class CompletionFailure extends FlowNode {
         complete() {
             throw new Error("late completion failure");
@@ -237,7 +243,7 @@ test("failed processing, superseded reads, and disposed reads cannot publish a l
     source.addChild(failure);
     const broken = await source.beginRequest();
     await broken.succeed([[]]);
-    expect(runtime.getValue("recordCount")).toBe(1);
+    expect(runtime.getValue("recordCounts")).toEqual([1]);
     expect(output.revision).toBe(revision);
     source.removeChild(failure);
 
@@ -251,7 +257,7 @@ test("failed processing, superseded reads, and disposed reads cannot publish a l
         ],
     ]);
     await runtime.whenPropagated();
-    expect(runtime.getValue("recordCount")).toBe(0);
+    expect(runtime.getValue("recordCounts")).toEqual([0]);
     expect(runtime.getValue("positions")).toEqual([]);
     expect(output.revision).toBe(revision + 1);
 
@@ -274,14 +280,20 @@ test("a lazy side-input revision publishes only after the primary rows consume i
             values: ["score"],
         },
         { type: "filter", expr: "datum.score >= minimum" },
-        { type: "count", param: "recordCount" },
+        {
+            type: "branch",
+            transform: [
+                { type: "aggregate" },
+                { type: "values", field: "count", param: "recordCounts" },
+            ],
+        },
     ];
     const { view, source } = await engine(spec);
     const runtime = view.paramRuntime;
-    expect(runtime.getValue("recordCount")).toBeNull();
+    expect(runtime.getValue("recordCounts")).toEqual([]);
     const notify = vi.fn();
     onTestFinished(
-        resolveScopedEmbedParam(view, "recordCount").subscribe(notify)
+        resolveScopedEmbedParam(view, "recordCounts").subscribe(notify)
     );
 
     const first = await source.beginRequest();
@@ -292,11 +304,11 @@ test("a lazy side-input revision publishes only after the primary rows consume i
         ],
     ]);
     await runtime.whenPropagated();
-    expect(runtime.getValue("recordCount")).toBe(2);
+    expect(runtime.getValue("recordCounts")).toEqual([2]);
 
     runtime.setValue("minimum", 2);
     await runtime.whenPropagated();
-    expect(runtime.getValue("recordCount")).toBe(1);
+    expect(runtime.getValue("recordCounts")).toEqual([1]);
     const updated = await source.beginRequest();
     await updated.succeed([
         [
@@ -305,7 +317,7 @@ test("a lazy side-input revision publishes only after the primary rows consume i
         ],
     ]);
     await runtime.whenPropagated();
-    expect(runtime.getValue("recordCount")).toBe(2);
+    expect(runtime.getValue("recordCounts")).toEqual([2]);
     const signal = view
         .getDescendants()
         .find((child) => child.name === "signal");
@@ -313,5 +325,5 @@ test("a lazy side-input revision publishes only after the primary rows consume i
         { x: 1, score: 3 },
         { x: 2, score: 4 },
     ]);
-    expect(notify.mock.calls.map(([value]) => value)).toEqual([2, 1, 2]);
+    expect(notify.mock.calls.map(([value]) => value)).toEqual([[2], [1], [2]]);
 });

@@ -122,7 +122,9 @@ export default class AggregateTransform extends Transform {
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
-        if (flowBatch.type == "file" && this.inFacet) {
+        // Physical files do not partition a logical reduction. Summary rows
+        // also have their own homogeneous shape, independent of file provenance.
+        if (flowBatch.type == "file") {
             return;
         }
         if (this.buffer.length > 0 || this.inFacet) {
@@ -134,9 +136,7 @@ export default class AggregateTransform extends Transform {
     }
 
     complete() {
-        if (this.buffer.length > 0 || this.inFacet) {
-            this.#flushBuffer();
-        }
+        this.#flushBuffer();
 
         super.complete();
     }

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Collector from "../../collector.js";
-import CountTransform from "../../transforms/count.js";
+import AggregateTransform from "../../transforms/aggregate.js";
+import ValuesTransform from "../../transforms/values.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import RegexFoldTransform from "../../transforms/regexFold.js";
 import TabixTsvSource from "./tabixTsvSource.js";
@@ -207,27 +208,29 @@ describe("TabixSource", () => {
             },
             /** @type {any} */ (view)
         );
-        const output = view.paramRuntime.registerOutput("recordCount", null);
-        const count = new CountTransform(
-            { type: "count", param: "recordCount" },
+        const output = view.paramRuntime.registerOutput("recordCounts");
+        const aggregate = new AggregateTransform({ type: "aggregate" });
+        const values = new ValuesTransform(
+            { type: "values", field: "count", param: "recordCounts" },
             /** @type {any} */ (view)
         );
         const collector = new Collector();
-        source.addChild(count);
-        count.addChild(collector);
-        count.initializeOnce();
+        source.addChild(collector);
+        source.addChild(aggregate);
+        aggregate.addChild(values);
+        values.initializeOnce();
         const published = vi.fn();
         output.value.subscribe(published);
 
         await source.requestInterval([0, 100]);
         expect(Array.from(collector.getData())).toHaveLength(4);
-        expect(output.value.get()).toBe(4);
+        expect(output.value.get()).toEqual([4]);
         expect(published).toHaveBeenCalledOnce();
 
         linesByUrl.clear();
         await source.requestInterval([100, 200]);
         expect(Array.from(collector.getData())).toEqual([]);
-        expect(output.value.get()).toBe(0);
+        expect(output.value.get()).toEqual([0]);
         expect(published).toHaveBeenCalledTimes(2);
         source.disposeSubtree();
     });

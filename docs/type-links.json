@@ -14,7 +14,6 @@
   "CollectParams": "/grammar/transform/collect/#parameters",
   "ColumnIdentifierField": "/sample-collections/metadata-sources/#zarr-identifier-helpers",
   "CoordinateLookupParams": "/grammar/transform/coordinate-lookup/#parameters",
-  "CountParams": "/grammar/transform/count/#parameters",
   "CoverageParams": "/grammar/transform/coverage/#parameters",
   "CrossParams": "/grammar/transform/cross/#parameters",
   "DataBackendDef": "/sample-collections/metadata-sources/#data-backend",

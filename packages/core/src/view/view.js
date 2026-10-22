@@ -284,10 +284,7 @@ export default class View {
 
         for (const output of getOutputDeclarations(spec.transform ?? [])) {
             try {
-                this.paramRuntime.registerOutput(
-                    output.param,
-                    output.type === "count" ? null : Object.freeze([])
-                );
+                this.paramRuntime.registerOutput(output.param);
             } catch (error) {
                 throw annotateSpecError(
                     error,

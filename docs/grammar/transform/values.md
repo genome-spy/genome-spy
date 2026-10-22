@@ -69,16 +69,16 @@ ordinary `minimumStrength` parameter replays the branch without reloading data.
 
 ## Empty lazy data
 
-The [`"count"`](count.md) transform can distinguish a successfully empty result
-from data that has not loaded yet: its output starts at `null` and becomes `0`
-after an empty load. This BigWig example starts in an empty region. Change
-**Region** to see a region with signal.
+A branch can count rows with [`"aggregate"`](aggregate.md), then publish the
+count with `"values"`. The output starts at `[]` before any successful load;
+`[0]` means a successfully empty result. This BigWig example starts in an empty
+region. Change **Region** to see a region with signal.
 
 EXAMPLE examples/docs/grammar/transform/lazy-empty-data.json height=180
 
-The parent view counts incoming records and passes them to the signal layer.
-The message layer has its own singleton row, so it remains available when the
-signal input is empty. Its opacity reads the count; the source stays active.
+The branch summarizes incoming records while the signal layer keeps the
+original rows. The message layer has its own singleton row and reads
+`recordCounts[0]`, so it remains available when the signal input is empty.
 
 The message describes the last successfully loaded region. While a replacement
 is loading or has failed, the previous count and message remain. A record with

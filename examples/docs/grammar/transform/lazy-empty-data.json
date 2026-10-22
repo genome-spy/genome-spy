@@ -36,7 +36,15 @@
           "url": "https://data.genomespy.app/datasets/encode-mouse-fetal-development-mm10/v4/bigwigs/forebrain-e12-5-rep1.bigWig"
         }
       },
-      "transform": [{ "type": "count", "param": "recordCount" }],
+      "transform": [
+        {
+          "type": "branch",
+          "transform": [
+            { "type": "aggregate" },
+            { "type": "values", "field": "count", "param": "recordCounts" }
+          ]
+        }
+      ],
 
       "layer": [
         {
@@ -58,7 +66,7 @@
           "mark": {
             "type": "text",
             "text": "No data in the last loaded region",
-            "opacity": { "expr": "recordCount === 0 ? 1 : 0" },
+            "opacity": { "expr": "recordCounts[0] === 0 ? 1 : 0" },
             "color": "#666"
           },
           "encoding": { "x": { "value": 0.5 }, "y": { "value": 0.5 } }

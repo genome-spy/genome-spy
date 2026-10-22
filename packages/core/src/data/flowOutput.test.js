@@ -27,6 +27,54 @@ async function engine(spec) {
     return result;
 }
 
+test("an aggregate branch publishes zero and replays its summary without removing main rows", async () => {
+    const { view } = await engine({
+        params: [{ name: "minimum", value: 4 }],
+        data: { sequence: { start: 0, stop: 4 } },
+        transform: [
+            { type: "collect" },
+            {
+                type: "branch",
+                transform: [
+                    { type: "filter", expr: "datum.data >= minimum" },
+                    { type: "aggregate" },
+                    { type: "values", field: "count", param: "recordCounts" },
+                ],
+            },
+        ],
+        mark: {
+            type: "text",
+            text: { expr: "recordCounts[0] + ' records'" },
+        },
+    });
+    const runtime = view.paramRuntime;
+    const mark = /** @type {import("../view/unitView.js").default} */ (view)
+        .mark;
+    const load = vi.spyOn(view.flowHandle.dataSource, "load");
+    const notify = vi.fn();
+    onTestFinished(
+        resolveScopedEmbedParam(view, "recordCounts").subscribe(notify)
+    );
+    const empty = runtime.getValue("recordCounts");
+    expect(empty).toEqual([0]);
+    expect(mark.encoders.text({})).toBe("0 records");
+
+    runtime.setValue("minimum", 5);
+    await runtime.whenPropagated();
+    expect(runtime.getValue("recordCounts")).toBe(empty);
+    expect(notify).not.toHaveBeenCalled();
+
+    runtime.setValue("minimum", 1);
+    await runtime.whenPropagated();
+    expect(runtime.getValue("recordCounts")).toEqual([3]);
+    expect(mark.encoders.text({})).toBe("3 records");
+    expect(notify).toHaveBeenCalledOnce();
+    expect(load).not.toHaveBeenCalled();
+    expect(
+        Array.from(view.flowHandle.collector.getData(), (row) => row.data)
+    ).toEqual([0, 1, 2, 3]);
+});
+
 test("summary replay changes gaps while preserving main rows and equal output identity", async () => {
     const spec = example();
     // An earlier ordinary declaration must resolve the producer-owned output.
