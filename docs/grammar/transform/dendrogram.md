@@ -75,8 +75,8 @@ root needs no rank. Input row order does not determine orientation.
 
 The transform traverses the ordered tree and can publish its leaf categories
 with `param`. A string declares a local output. To share the domain with a
-sibling heatmap, reserve `{ "name": "sampleOrder", "output": true }` in their
-common ancestor's `params`, then push as above. Set the shared band scale's
+sibling heatmap, declare `{ "name": "sampleOrder" }` in their common ancestor's
+`params`, then push as above. Set the shared band scale's
 `domain` to `{ "expr": "sampleOrder" }`. Each axis can have its own tree and
 output; no numeric heatmap positions or separate domain arrays are needed.
 

@@ -17,16 +17,10 @@ export default class FlowOutput {
     candidate;
 
     /**
-     * @param {import("../paramRuntime/viewParamRuntime.js").default} runtime
-     * @param {string} name
+     * @param {import("../paramRuntime/types.js").WritableParamRef<readonly import("../spec/channel.js").Scalar[]>} value
      */
-    constructor(runtime, name) {
-        this.value = runtime.signal(
-            name,
-            /** @type {readonly import("../spec/channel.js").Scalar[]} */ (
-                Object.freeze([])
-            )
-        );
+    constructor(value) {
+        this.value = value;
     }
 
     publish() {
@@ -45,17 +39,9 @@ export default class FlowOutput {
 }
 
 /** @param {import("../view/view.js").default} root */
-export function validateFlowOutputs(root) {
+export function finalizeFlowOutputs(root) {
     root.visit((view) => {
-        for (const output of view.paramRuntime.outputs) {
-            if (!output.producerView) {
-                throw new Error(
-                    "Output parameter has no producer in view " +
-                        view.name +
-                        "."
-                );
-            }
-        }
+        view.paramRuntime.finalizeOutputDeclarations();
     });
 }
 

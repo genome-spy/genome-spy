@@ -823,7 +823,7 @@ export interface CoverageParams extends TransformParamsBase {
     asEnd?: string;
 }
 
-/** A local output name, or a push to a declared ancestor output. */
+/** A local output name, or a push to the nearest ancestor's bare parameter. */
 export type TransformOutput = string | { name: string; push: "outer" };
 
 /** Projects a completed row stream into a read-only parameter array. */
@@ -834,8 +834,10 @@ export interface ValuesParams extends TransformParamsBase {
     field: Field;
 
     /**
-     * Declares a local output, or pushes to the nearest ancestor's same-named
-     * read-only output declaration. Outputs start with an empty array.
+     * Declares a local output, or claims the nearest ancestor's same-named
+     * parameter containing only `name` and an optional `description`.
+     * Claimed outputs are read-only and start with an empty array when the
+     * producer view is constructed. Each output has exactly one producer.
      */
     param: TransformOutput;
 }

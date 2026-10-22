@@ -57,7 +57,6 @@
   "MetadataSourceEntry": "/sample-collections/metadata-sources/#source-entries",
   "MultiscaleSpec": "/grammar/composition/multiscale/#properties",
   "NamedData": "/grammar/data/eager/#named-data",
-  "OutputParameter": "/grammar/parameters/#transform-outputs",
   "ParamTransition": "/grammar/parameters/#transition-properties",
   "PileupParams": "/grammar/transform/pileup/#parameters",
   "PointConfig": "/grammar/mark/point/#properties",

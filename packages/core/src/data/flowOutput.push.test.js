@@ -7,9 +7,12 @@ import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
 function specification() {
     return {
         params: [
-            { name: "sampleCount", expr: "length(sampleOrder)" },
-            { name: "sampleOrder", output: /** @type {const} */ (true) },
-            { name: "geneOrder", output: /** @type {const} */ (true) },
+            { name: "sampleOrder" },
+            { name: "geneOrder" },
+            {
+                name: "sampleCount",
+                expr: "sampleOrder ? length(sampleOrder) : 0",
+            },
         ],
         datasets: {
             samples: [{ id: "B" }, { id: "A" }],
@@ -138,11 +141,11 @@ test("two side producers drive shared bands through outer outputs, including a h
 });
 
 test.each([
-    [{ name: "sampleOrder", value: [] }, "not declared"],
-    [{ name: "sampleOrder", expr: "[]" }, "not declared"],
+    [{ name: "sampleOrder", value: [] }, "bare parameter"],
+    [{ name: "sampleOrder", expr: "[]" }, "bare parameter"],
     [undefined, "not found in outer scope"],
 ])(
-    "pushing requires an existing read-only ancestor output",
+    "pushing requires an existing bare ancestor parameter",
     async (replacement, message) => {
         const spec = specification();
         spec.params = spec.params.filter(
@@ -153,13 +156,7 @@ test.each([
     }
 );
 
-test("rejects outputs without producers and duplicate writers before loading", async () => {
-    await expect(
-        createHeadlessEngine({
-            params: [{ name: "unused", output: /** @type {const} */ (true) }],
-            mark: "point",
-        })
-    ).rejects.toThrow("no producer");
+test("rejects duplicate output writers before loading", async () => {
     const spec = specification();
     const surround = /** @type {import("../spec/view.js").SurroundSpec} */ (
         spec
@@ -188,8 +185,47 @@ test("outer output provenance rejects indirect flow feedback", async () => {
     await expect(createHeadlessEngine(spec)).rejects.toThrow(/output/i);
 });
 
-test("dynamic insertion rejects unbound output slots before attaching or loading", async () => {
+test("named template instances own independent pushed outputs", async () => {
     const { view, context } = await createHeadlessEngine({
+        templates: {
+            panel: {
+                params: [{ name: "order" }],
+                datasets: { rows: [{ id: "A" }] },
+                hconcat: [
+                    {
+                        data: { name: "rows" },
+                        transform: [
+                            {
+                                type: "values",
+                                field: "id",
+                                param: { name: "order", push: "outer" },
+                            },
+                        ],
+                        mark: "point",
+                    },
+                ],
+            },
+        },
+        vconcat: [
+            { name: "first", import: { template: "panel" } },
+            { name: "second", import: { template: "panel" } },
+        ],
+    });
+    onTestFinished(() => view.disposeSubtree());
+    const [first, second] =
+        /** @type {import("../view/concatView.js").default} */ (view).children;
+    context.dataFlow.updateNamedDataBinding(
+        first.namedDataScope.getLocalBinding("rows"),
+        [{ id: "B" }]
+    );
+    await view.paramRuntime.whenPropagated();
+    expect(first.paramRuntime.getValue("order")).toEqual(["B"]);
+    expect(second.paramRuntime.getValue("order")).toEqual(["A"]);
+});
+
+test("dynamic insertion requires the output owner and producer to be created together", async () => {
+    const { view, context } = await createHeadlessEngine({
+        params: [{ name: "unbound" }],
         hconcat: [{ data: { values: [{ x: 1 }] }, mark: "point" }],
     });
     onTestFinished(() => view.disposeSubtree());
@@ -200,15 +236,23 @@ test("dynamic insertion rejects unbound output slots before attaching or loading
     const sources = context.dataFlow.dataSources.length;
     await expect(
         container.addChildSpec({
-            params: [{ name: "unbound", output: true }],
             data: { values: [] },
+            transform: [
+                {
+                    type: "values",
+                    field: "id",
+                    param: { name: "unbound", push: "outer" },
+                },
+            ],
             mark: "point",
         })
-    ).rejects.toThrow("no producer");
+    ).rejects.toThrow("configured ancestor");
     expect(container.children).toEqual(before);
     expect(context.dataFlow.dataSources).toHaveLength(sources);
+    expect(view.paramRuntime.getValue("unbound")).toBeNull();
+    expect(view.paramRuntime.isWritable("unbound")).toBe(true);
     const valid = await container.addChildSpec({
-        params: [{ name: "order", output: true }],
+        params: [{ name: "order" }],
         hconcat: [
             {
                 data: { values: [{ id: "B" }, { id: "A" }] },
@@ -238,7 +282,7 @@ test.each([false, true])(
             await /** @type {import("../view/concatView.js").default} */ (
                 view
             ).addChildSpec({
-                params: [{ name: "order", output: true }],
+                params: [{ name: "order" }],
                 hconcat: [
                     {
                         ...(branchOnly

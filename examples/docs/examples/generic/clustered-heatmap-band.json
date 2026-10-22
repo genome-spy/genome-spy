@@ -4,10 +4,7 @@
     "Two supplied trees publish sample and gene orders to shared band scales. The z scores and trees are imaginary."
   ],
   "name": "clusteredHeatmap",
-  "params": [
-    { "name": "sampleOrder", "output": true },
-    { "name": "geneOrder", "output": true }
-  ],
+  "params": [{ "name": "sampleOrder" }, { "name": "geneOrder" }],
   "resolve": {
     "scale": { "x": "excluded", "y": "excluded" },
     "legend": { "color": "collected" }

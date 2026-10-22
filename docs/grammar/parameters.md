@@ -88,15 +88,16 @@ the target parameter before a child can push to it.
 ### Transform Outputs
 
 A child transform can publish a read-only array to an ancestor by using
-`"param": { "name": "categories", "push": "outer" }`. Reserve the target
-on the ancestor with `{ "name": "categories", "output": true }` in `params`.
+`"param": { "name": "categories", "push": "outer" }`. Declare the target
+on the ancestor with `{ "name": "categories" }` in `params`.
 This lets sibling plots share a data-derived scale domain without duplicating
-the producer. See [values](./transform/values.md#output-parameters).
+the producer.
 
-Output declarations accept no initial value, expression, input binding, or
-selection. They are read-only and excluded from bookmarks and provenance.
-
-SCHEMA OutputParameter
+The target declaration accepts only `name` and an optional `description`.
+The transform makes it read-only and excludes it from bookmarks and provenance.
+Each output has one producer and cannot also receive interaction updates.
+See [values](./transform/values.md#output-parameters) for initialization and
+lifecycle details.
 
 ## Numeric Transitions
 

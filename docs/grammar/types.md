@@ -613,10 +613,6 @@ SCHEMA OrderDef
 
 SCHEMA OtherDataFormat
 
-## OutputParameter
-
-See the [OutputParameter documentation](parameters.md#transform-outputs).
-
 ## OverhangConfig
 
 SCHEMA OverhangConfig

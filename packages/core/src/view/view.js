@@ -285,10 +285,6 @@ export default class View {
             );
         }
 
-        for (const param of spec.params ?? []) {
-            if ("output" in param) this.paramRuntime.registerParam(param);
-        }
-
         for (const output of getOutputDeclarations(spec.transform ?? [])) {
             try {
                 if (typeof output.param === "string") {
@@ -323,7 +319,6 @@ export default class View {
         }
 
         for (const param of params) {
-            if ("output" in param) continue;
             // TODO: If interval selection, validate `encodings` or provides defaults
             if ("expr" in param) {
                 const { usesScaleHelper, globals } = analyzeExpression(

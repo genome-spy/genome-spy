@@ -90,6 +90,11 @@ export default class ViewParamRuntime {
     /** @type {Map<string, FlowOutput>} */
     #outputs = new Map();
 
+    #outputDeclarationsOpen = true;
+
+    /** @type {Map<string, Set<ViewParamRuntime>>} */
+    #pushSources = new Map();
+
     /** @type {Map<string, import("./types.js").ParamRef<any>>} */
     #localRefs = new Map();
 
@@ -270,22 +275,54 @@ export default class ViewParamRuntime {
      * @param {string} name
      */
     registerOutput(name) {
-        validateParameterName(name);
-        if (this.#paramConfigs.has(name)) {
+        this.registerParam({ name });
+        return this.#claimOutput(name);
+    }
+
+    /** @param {string} name */
+    #claimOutput(name) {
+        const existing = this.#outputs.get(name);
+        if (existing) return existing;
+
+        if (!this.#outputDeclarationsOpen) {
             throw new Error(
-                'Parameter "' + name + '" already registered in this scope.'
+                'Cannot add a transform output to configured ancestor parameter "' +
+                    name +
+                    '". Create its owner and producer together.'
             );
         }
-        const output = new FlowOutput(this, name);
+        const config = this.#paramConfigs.get(name);
+        if (
+            !config ||
+            Object.keys(config).some(
+                (key) => key !== "name" && key !== "description"
+            ) ||
+            this.#pushSources.get(name)?.size
+        ) {
+            throw new Error(
+                'Transform output target "' +
+                    name +
+                    '" must be a bare parameter with no other writers.'
+            );
+        }
+
+        const ref =
+            /** @type {import("./types.js").WritableParamRef<readonly import("../spec/channel.js").Scalar[]>} */ (
+                this.#localRefs.get(name)
+            );
+        const output = new FlowOutput(ref);
         output.owner = this.#selectionSource;
-        const ref = this.computed(name, [output.value], () =>
-            output.value.get()
-        );
-        this.#runtime.registerRef(this.#scopeId, name, ref);
-        this.#localRefs.set(name, ref);
+        this.#allocatedSetters.delete(name);
         this.#outputs.set(name, output);
-        this.#paramConfigs.set(name, { name, persist: false });
+        this.#paramConfigs.set(name, { ...config, persist: false });
+        ref.set(Object.freeze([]));
+        this.#runtime.flushNow();
         return output;
+    }
+
+    /** Fix output ownership once a composition's descendants have been constructed. */
+    finalizeOutputDeclarations() {
+        this.#outputDeclarationsOpen = false;
     }
 
     /** @param {string} name */
@@ -310,7 +347,7 @@ export default class ViewParamRuntime {
                     '" not found in outer scope.'
             );
         }
-        return ancestor.getOutput(target.name);
+        return ancestor.#claimOutput(target.name);
     }
 
     get outputs() {
@@ -350,25 +387,6 @@ export default class ViewParamRuntime {
                 ),
                 this.getSpecLocation(param, ["name"])
             );
-        }
-
-        if ("output" in param) {
-            if (
-                param.output !== true ||
-                Object.keys(param).some(
-                    (key) => !["name", "description", "output"].includes(key)
-                )
-            ) {
-                throw new Error(
-                    'Output parameter "' +
-                        name +
-                        '" accepts only name, description, and output: true.'
-                );
-            }
-            this.registerOutput(name);
-            return () => {
-                throw new Error('Cannot set output parameter "' + name + '".');
-            };
         }
 
         validateParameterShape(param);
@@ -448,7 +466,7 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * @param {Exclude<Parameter, import("../spec/parameter.js").OutputParameter>} param
+     * @param {Parameter} param
      * @returns {ParameterSetter}
      */
     #registerParamValue(param) {
@@ -489,9 +507,13 @@ export default class ViewParamRuntime {
             ) => {
                 outerRuntime.setValue(name, value);
             };
-            // The following will become a bit fragile if the view hierarchy is going to
-            // support mutation (i.e. adding/removing children) in future.
             this.#allocatedSetters.set(name, setter);
+            const sources = outerRuntime.#pushSources.get(name) ?? new Set();
+            sources.add(this);
+            outerRuntime.#pushSources.set(name, sources);
+            this.#runtime.addScopeDisposer(this.#scopeId, () => {
+                sources.delete(this);
+            });
             if ("ruler" in param) {
                 defaultValue = getDefaultParamValue(param, this);
                 setter(defaultValue);
@@ -505,7 +527,7 @@ export default class ViewParamRuntime {
                     param.transition
                 );
             } else {
-                setter = this.#registerBaseSetter(name, defaultValue);
+                setter = this.allocateSetter(name, defaultValue);
             }
         } else if (isExprRef(param)) {
             if ("transition" in param) {
@@ -530,7 +552,7 @@ export default class ViewParamRuntime {
             };
         } else {
             defaultValue = getDefaultParamValue(param, this);
-            setter = this.#registerBaseSetter(name, defaultValue);
+            setter = this.allocateSetter(name, defaultValue);
         }
 
         if ("select" in param) {
@@ -589,6 +611,11 @@ export default class ViewParamRuntime {
             /** @type {T} */
             value
         ) => {
+            if (this.#outputs.has(paramName)) {
+                throw new Error(
+                    'Cannot set output parameter "' + paramName + '".'
+                );
+            }
             ref.set(value);
             this.#runtime.flushNow();
         };
@@ -993,30 +1020,6 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * @template T
-     * @param {string} name
-     * @param {T} defaultValue
-     * @returns {(value: T) => void}
-     */
-    #registerBaseSetter(name, defaultValue) {
-        const ref = this.#runtime.registerBase(
-            this.#scopeId,
-            name,
-            defaultValue
-        );
-        this.#localRefs.set(name, ref);
-        const setter = (
-            /** @type {T} */
-            value
-        ) => {
-            ref.set(value);
-            this.#runtime.flushNow();
-        };
-        this.#allocatedSetters.set(name, setter);
-        return setter;
-    }
-
-    /**
      * @param {string} name
      * @param {any} defaultValue
      * @param {import("../spec/parameter.js").ParamTransition} transition
@@ -1225,6 +1228,7 @@ export default class ViewParamRuntime {
         this.#allocatedSetters.clear();
         this.#localRefs.clear();
         this.#outputs.clear();
+        this.#pushSources.clear();
         this.#paramConfigs.clear();
         this.#lazyExpressionNames.clear();
         this.#selectionControllers.clear();
@@ -1285,7 +1289,7 @@ function getParamKind(config) {
 }
 
 /**
- * @param {Exclude<import("../spec/parameter.js").Parameter, import("../spec/parameter.js").OutputParameter>} param
+ * @param {import("../spec/parameter.js").Parameter} param
  */
 function validateParameterShape(param) {
     const name = param.name;

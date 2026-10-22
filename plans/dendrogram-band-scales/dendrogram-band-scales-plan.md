@@ -1,6 +1,7 @@
 # Dendrograms on categorical band scales
 
-Status: complete; independent implementation review and follow-up verification passed. This branch is stacked on
+Status: complete; the bare-output declaration refinement, independent review,
+and final verification passed. This branch is stacked on
 `codex/transform-value-outputs` ([PR #575](https://github.com/genome-spy/genome-spy/pull/575)).
 
 ## Goal and dependency
@@ -24,23 +25,25 @@ categorical domains are now a supported foundation, including data arriving
 before its explicit domain. Keep that behavior in integration verification.
 When #575 merges, rebase this branch onto `master` and retarget any stacked PR.
 
-## Current implementation and architectural boundaries
+## Implementation foundations and architectural boundaries
 
 Abbreviated source paths are relative to `packages/core/src/`; other paths are
 repository-relative.
 
 - `packages/core/src/data/transforms/dendrogram.js` buffers a tree, validates
-  integer leaf positions, and computes internal midpoints. Its eight output
-  fields describe edge IDs, heights, integer anchors, and fractional offsets.
+  leaf positions, and computes internal midpoints. Numeric mode retains its eight
+  output fields for edge IDs, heights, integer anchors, and fractional offsets;
+  categorical mode adds category anchors and direct order publication.
 - `packages/core/src/data/flowOutput.js` and
   `packages/core/src/paramRuntime/viewParamRuntime.js` provide #575's read-only
   array outputs and successful source/replay publication boundary. Declaration
-  discovery currently recognizes `values`; output ownership is local to a view.
+  discovery recognizes `values`, categorical dendrogram outputs, and nested
+  branches. Outputs can be owned locally or pushed to a declared ancestor.
 - `packages/core/src/data/transforms/values.js` projects a scalar field into an
   array. It must not become an obligatory adapter for another transform that
   already computes an ordered array. Dendrogram edge rows repeat anchors and
   cannot reconstruct the complete leaf domain, especially for a single leaf.
-- `packages/core/src/view/view.js` reserves output declarations, while
+- `packages/core/src/view/view.js` binds output declarations, while
   `view/flowBuilder.js`, `data/flowHandle.js`, and dataflow initialization/pruning
   own producer paths and lifetimes. Extend those existing boundaries when
   resolving an ancestor-owned output; do not equate layout ancestry with a data
@@ -55,9 +58,10 @@ repository-relative.
 - #575 rejects published outputs as source/transform inputs. This feature needs
   only tree-to-scale publication and must preserve that rejection.
 
-The existing implementation is 258 lines; its transform tests are 285 and its
-SVG dendrogram tests 141. Record the focused production-code delta during
-implementation and justify growth in shared publication/lifecycle code.
+Before categorical support, the transform was 258 lines; its transform tests were
+285 and its SVG tests 141. Historical implementation measurements are recorded
+below. Measure the bare-declaration refinement separately and justify growth in
+shared publication/lifecycle code.
 
 ## Design references
 
@@ -74,7 +78,8 @@ architectural references; no upstream code needs copying or adaptation.
 ## Public contract
 
 The syntax below is implemented. Local string outputs retain #575 compatibility;
-shared outputs use read-only ancestor slots and ordinary `push: "outer"` scoping.
+shared outputs claim bare ancestor parameters through ordinary `push: "outer"`
+scoping. No explicit parameter-kind property is required.
 The final review checks the ownership, ordering, and lifecycle contracts together.
 
 ### Numeric compatibility and categorical mode
@@ -140,59 +145,64 @@ Require exactly one categorical ordering input. Numeric mode retains its existin
 unordered-input contract. Categorical layout without `param` remains usable for
 standalone computation or externally supplied band domains.
 
-### Explicit output ownership
+### Output ownership through parameter pushing
 
 A string `param: "sampleOrder"` keeps #575's local declaration semantics. For a
-shared output, explicitly reserve a read-only output slot at the ancestor owner:
+shared output, declare a bare parameter at the ancestor owner:
 
 ```json
 {
   "name": "clusteredHeatmap",
-  "params": [
-    { "name": "sampleOrder", "output": true },
-    { "name": "geneOrder", "output": true }
-  ]
+  "params": [{ "name": "sampleOrder" }, { "name": "geneOrder" }]
 }
 ```
 
 The transform's object-form `param` uses existing `push: "outer"` parameter
-scoping to bind the nearest ancestor declaration with the same name. The target
-must be a read-only output slot; reject missing targets, ordinary writable or
-derived parameters, duplicate producers, and collisions with ordinary parameters.
+scoping to claim the nearest ancestor declaration with the same name. The target
+declaration accepts only `name` and an optional `description`; reject missing
+targets, configured values or expressions, duplicate producers, and active pushed
+variable/selection/ruler writers. A conflicting nearer declaration shadows a
+farther bare declaration and causes an error rather than being skipped.
 No view name is needed for publication. Implicit title or side-group wrappers
-must not change lexical lookup, and a nearer declaration shadows farther ones.
+must not change lexical lookup.
 
-These are output declarations, not writable variable parameters. They reserve
-#575's `FlowOutput`, initially unready with an empty array, and accept no `value`,
-`expr`, binding, selection, transition, debounce, or `push` configuration. They
-cannot be set through embedding APIs or restored from App provenance. The same
-binding form must work for `values` and dendrogram outputs. Do not add an
-imperative `setValue()` path or a dendrogram-specific registry.
+A bare declaration starts as an ordinary writable parameter with value `null`.
+When its child producer is constructed, attach #575's `FlowOutput` to the existing
+reference, initialize an immutable `[]`, disable ordinary writes, and exclude the
+parameter from provenance. Existing expressions retain their bound reference and
+observe the initialization and later successful publications. A bare parameter
+without a producer remains an ordinary writable parameter; there is no separate
+missing-producer validation. The same binding form works for `values` and
+dendrogram outputs without an imperative publication path or a new registry.
 
 Use a concrete construction boundary:
 
-1. In the owner's `View` constructor, reserve its explicit output slots and local
-   string-form transform outputs before registering ordinary parameters. Thus an
-   owner expression such as `length(sampleOrder)` and an earlier center view can
-   bind before the side views exist. Declaration order within `params` does not
-   matter; imports and wrappers need no whole-hierarchy declaration scan.
-2. As descendant views are constructed, resolve each object-form target and record
-   its unique producer declaration/view on the existing output handle. This
-   identifies the required flow even when its presentation is hidden. After
-   hierarchy construction, reject shared slots without exactly one producer
-   declaration. Bind each required producer's real `FlowNode` to that same handle
-   when its flow is built, before loading its sources. Inactive owners retain
-   normal deferred initialization. Preserve #575's output-input guards and producer
-   provenance, including rejection of unready outputs as flow inputs.
+1. In the owner's `View` constructor, register local string-form outputs before
+   ordinary parameters, preserving their immediate `[]` value. Bare ancestor
+   declarations follow normal parameter registration order. Declare them before
+   dependent expression parameters. Those eager expressions must tolerate `null`
+   until the child claims the output, for example
+   `sampleOrder ? length(sampleOrder) : 0`.
+2. As descendant views are constructed, claim each object-form target and record
+   its unique producer declaration/view. This identifies required flows even
+   when their presentation is hidden. The producer's real `FlowNode` binds to the
+   same handle when its flow is built, before loading sources. Preserve #575's
+   output-input guards and producer provenance, including rejection of unready
+   outputs as flow inputs.
+3. Finalize output declarations after the composition's descendants are built,
+   reusing the traversal previously used to validate explicit output slots.
+   A configured ancestor cannot acquire a new output publisher. Dynamic insertion
+   remains supported when the inserted subtree contains both owner and producers.
+   This fixes capability and ownership before scale/dataflow configuration, without
+   introducing conversion of live parameter consumers or rollback machinery.
 
-Explicit owner declarations repeat two names in the example but require no domain
-arrays. Prefer this small, predictable contract over refactoring view construction
-into a global declaration phase that must resolve all descendant imports first.
+Bare owner declarations repeat two names in the example but require no domain
+arrays or parameter-kind flags. Prefer this contract over a global declaration
+phase that must resolve all descendant imports before parent expressions bind.
 
-Keep existing local string declarations compatible. If #575 has not acquired
-output pushing when this branch is implemented, implement that capability
-first using its shared primitives; do not substitute a dendrogram-specific
-registry. Coordinate generic changes with the lower PR when practical.
+Keep existing local string declarations compatible. Shared output pushing extends
+#575's primitives; it does not use a dendrogram-specific registry. Coordinate
+generic changes with the lower PR when practical.
 
 Each shared output has one producer for its owner's lifetime. Support replacing
 the tree/dataset through that same producer; keep its output ref and last
@@ -255,7 +265,7 @@ Create `examples/docs/examples/generic/clustered-heatmap-band.json` and its docs
 page. Use one named surround, `clusteredHeatmap`, with the matrix as `spec`, a
 sample tree on the left, and a gene tree above. Each tree owns its own input and
 single dendrogram transform, with `siblingOrder` and an ancestor-owned output.
-Reserve the two read-only output slots in the surround's `params` as above. There
+Declare the two bare parameters in the surround's `params` as above. There
 is no root summary pipeline, duplicated tree layout, or extra order array.
 
 Shared scale configuration is:
@@ -319,31 +329,37 @@ Retain the existing DepMap index example for zoom, pan, and group gaps.
 - Do not make externally authored `leafOrder` arrays the main workflow. They remain
   an alternative for intentional external alignment, without a second layout path.
 - Reject scope repairs that restructure the plot solely to expose parameters or
-  recompute each tree in a root branch. Explicit output ownership is shared runtime
+  recompute each tree in a root branch. Output ownership is shared runtime
   work and must receive its own review gate.
 - Guard against feedback through owner scale/layout/visibility expressions while
   supporting ordinary order-output-to-scale consumers. Preserve #575's bound
   producer provenance rather than adding broad expression bans.
-- Hidden-producer initialization, output-slot binding, and owner disposal are the
+- Hidden-producer initialization, bare-parameter claiming, and owner disposal are the
   main cross-subsystem risks. Test them before polishing the complete example.
   Generic support should stay small enough to review with the existing output
   lifecycle rather than become a new resource framework. Replacing producer
   objects under a surviving output owner is outside this increment.
+- Bare parent parameters have a construction-time `null` value before a child
+  claims them. Preserve reference identity, require normal declaration order, and
+  document null-safe eager expressions rather than adding hierarchy-wide scans.
+  Prevent writer conflicts regardless of child construction order.
+- Keep current scale/expression scope rules. Their broader consistency and named
+  import-template semantics belong to #599, deferred to GenomeSpy v2.0.
 
 ## Implementation milestones
 
 ### 1. Resolve reusable output ownership and categorical-domain consumption
 
-Completed: output slots, `push: "outer"`, selective hidden producer initialization,
-read-only access, feedback guards, and disposal boundaries are implemented.
-Focused publication/parameter/initialization tests and workspace type checks pass.
+Completed: `push: "outer"`, selective hidden producer initialization, read-only
+access, feedback guards, and disposal boundaries. Bare-parameter claiming replaces
+the initial explicit output declarations; its final verification is recorded below.
 
-Outcome: two ordinary eager producers in side views can bind read-only outputs
-reserved at their common scale owner, independently of title wrappers and
+Outcome: two ordinary eager producers in side views can claim bare parameters
+at their common scale owner, independently of title wrappers and
 presentation visibility. Existing local `values.param` specifications keep working.
 
-Affected areas: `spec/parameter.d.ts`, #575's `data/flowOutput.js`, owner-slot
-reservation in `view/view.js`, parameter output binding, `view/flowBuilder.js`,
+Affected areas: `spec/parameter.d.ts`, #575's `data/flowOutput.js`, local declaration
+binding in `view/view.js`, ancestor parameter claiming, `view/flowBuilder.js`,
 `data/flowHandle.js`, `data/flowInit.js`, `genomeSpy/viewDataInit.js`, and producer
 initialization/readiness/disposal. Reuse current `FlowOutput` and flow-input guards.
 Generalize declaration discovery only for known output-producing transforms; do
@@ -351,9 +367,12 @@ not add arbitrary callbacks to every transform. No new global registry is needed
 
 Verification: a small real spec with two `values` publishers drives both band
 domains without clustering. Cover owner/center expressions that bind before side
-construction, declaration order, imports/wrappers, nearest-ancestor lookup,
-undeclared/unbound slots, shadowing, duplicate writers, and read-only embedding/App
-access. Cover initially empty domains, source/domain arrival order, cached replay,
+construction, null-safe declaration order, stable reference identity,
+imports/wrappers, nearest-ancestor lookup, missing targets, shadowing, duplicate
+producers, active pushed writers in either construction order, ordinary unclaimed
+parameters, and read-only embedding/App access. Cover finalization of declarations,
+self-contained dynamic insertion and rejected claims on configured ancestors,
+initially empty domains, source/domain arrival order, cached replay,
 required hidden producers without initializing unrelated hidden siblings, dataset
 replacement on the same producer, rejection of structural producer removal or
 replacement, owner disposal, and direct/indirect feedback rejection. Reuse existing
@@ -408,10 +427,10 @@ index example, branch-values example, and DepMap heatmap also render and export.
 
 Final integration caught and fixed visibility regressions in App summaries and
 ensured producer-removal rejection happens before guide/hierarchy mutation.
-The complete suite passes: 548 files, 5,222 tests, one existing skip and two TODOs.
-Workspace type checks, lint, generated schemas, and the documentation build pass.
-`release:status` proposes the expected fixed-group minor release; `release:check`
-still fails on #575's inherited fragment missing its category marker, unchanged here.
+The initial integration passed the complete suite, workspace type checks, lint,
+schema generation, the documentation build, and live renderer verification.
+Historical counts and the subsequently resolved inherited release-check issue
+are recorded below. Reverify the bare-declaration refinement before delivery.
 
 Outcome: the required example renders on Canvas2D, WebGL, WebGPU, and SVG without
 manual domain arrays or preprocessing of numeric matrix positions.
@@ -441,7 +460,9 @@ composition, initialization/disposal, and both new and existing examples.
 
 ## Acceptance and final verification
 
-- [x] Shared output ownership is explicitly resolved and reviewed using #575's
+- [x] Bare ancestor parameters become outputs through their unique pushed
+      producer, preserving reference identity, read-only access, and ownership
+      finalization. Independently review the shared contract using #575's
       machinery; no second publisher or expression scheduler is introduced.
 - [x] Two precomputed trees independently publish sample/gene domains into one
       common surround. Source order, titles, and hidden tree presentation do not
@@ -459,8 +480,8 @@ composition, initialization/disposal, and both new and existing examples.
 - [x] Existing numeric outputs, index navigation/gaps, identities, file/facet
       behavior, and local output declarations retain their contracts.
 - [x] Focused Vitest suites use `--reporter=agent`; applicable types, lint, schema,
-      example/docs checks pass. The inherited release-check issue is recorded above. Shared output/lifecycle changes also
-      warrant the complete unit suite before delivery.
+      example/docs checks pass after the bare-declaration refinement. Shared
+      output/lifecycle changes also warrant the complete unit suite before delivery.
 - [x] Run `node packages/core/scripts/testDendrogramRenderers.mjs`; inspect the new
       synthetic example, `dendrogram-gaps.json`, #575's branch-values example,
       and the existing DepMap heatmap. Record unavailable checks explicitly.
@@ -470,11 +491,14 @@ composition, initialization/disposal, and both new and existing examples.
       Retire this temporary plan in a later commit before preparing a PR; no PR
       is being created in this task. Do not retire the lower branch's plan here.
 
-The implementation uses read-only owner slots, `push: "outer"`, and explicit
-structural ordering. Clustering implementation remains outside this plan, with
-the tree/output boundary available for that later increment.
+The implementation uses bare ancestor parameters claimed through `push: "outer"`
+and explicit structural ordering. Clustering implementation remains outside this
+plan, with the tree/output boundary available for that later increment.
 
-## Initial implementation review and size record
+## Historical initial implementation review and size record
+
+This record describes the initial explicit-output declaration design, before the
+bare-parameter refinement below.
 
 The independent implementation review found and resolved three issues: dynamic
 insertion now validates output slots before attachment, independent branch
@@ -496,7 +520,7 @@ All milestones and review fixes are committed separately. Final verification:
 lint, schema generation, docs build, and live renderer checks pass. The inherited
 #575 changeset category-marker failure is the only outstanding release check.
 
-## Initialization cleanup
+## Historical initialization cleanup
 
 Completed a focused simplification of dynamic initialization after the feature
 review. Load/replay selection now follows main, branch, and auxiliary endpoints
@@ -511,7 +535,7 @@ load that completes while awaiting fonts. All 548 test files and 5,223 tests pas
 Core type checking and focused lint pass. The existing feature changeset remains
 accurate, and the inherited #575 category-marker issue remains unchanged.
 
-## Scope rollback and pushed-parameter restoration
+## Historical scope rollback and pushed-parameter restoration
 
 Master reverts the domain-only declaration-scoping experiment in `e9861e780`
 while retaining the independent width/height initialization fix `bdf3bcc08`.
@@ -529,3 +553,52 @@ fix. Verification passes all 549 test files and 5,226 tests, workspace type
 checks, lint, schema generation, docs build, release policy, and all dendrogram
 renderer checks. Independent rollback and scope-reproduction review found no
 remaining issues.
+
+## Bare-parameter output refinement
+
+The explicit `output: true` parameter kind is removed. A transform's pushed output
+claims an ordinary bare ancestor parameter, following the existing pattern where a
+pushed selection supplies the capability of its ancestor parameter. The claim
+retains the existing graph reference, adds output provenance, initializes `[]`,
+blocks ordinary writes, and disables persistence. Configured declarations and
+active pushed writers are rejected. The existing finalization traversal fixes
+output ownership before consumers are configured; dynamic owner/producer subtrees
+remain supported, while new claims on an existing configured ancestor fail.
+
+The deliberate tradeoff is construction-time initialization: parent expressions
+can see `null` before the child exists, so dependent expressions follow normal
+declaration order and must tolerate `null`. Local string-form outputs preserve
+their earlier registration and initial `[]` contract. No scale-scope change or
+new global scan/scheduler is introduced.
+
+- [x] Verify stable references, null-safe eager expressions, writer conflicts in
+      both orders, finalization, and the existing publication/lifecycle contracts.
+- [x] Run applicable full tests, type checks, lint, schema/docs/release checks,
+      and representative renderer integration.
+- [x] Record measured production-code delta and independent review findings;
+      assess whether the runtime change is cleaner and predictable.
+- [x] Commit the refinement and completed verification record.
+
+Against the pre-refinement commit `56bd55bbf`, the six affected runtime JavaScript
+files shrink from 4,048 to 4,023 lines: 74 added, 99 deleted, net -25, including
+comments and blank lines and excluding tests and specification declarations.
+The change removes the explicit parameter kind, output pre-registration loop,
+signal/computed mirror, and duplicate base-setter implementation. It adds one
+claim path, active pushed-writer tracking, and an explicit ownership finalization
+boundary. No graph scheduler or parameter lookup rule changes.
+
+The independent reviewer found no actionable issues and judged the runtime
+cleaner and predictable within its documented construction boundary. The review
+verified embedding, persistence, flow feedback, writer conflicts, and template
+isolation. The tests protect distinct contracts without duplicating publication
+internals. The null-before-claim behavior is the remaining API rough edge; the
+docs show the required null guard for eager parent expressions.
+
+Final verification passes 550 test files and 5,235 tests, with one existing skip
+and two TODOs, workspace type checks, lint, schema generation, docs type links,
+the documentation build, and all 15 Canvas/WebGL/WebGPU renderer scenarios.
+The renderer scenarios include both categorical axes, hidden producers, reordered
+data, reversal, resize, picking, and export, plus existing numeric behavior.
+Release policy checks pass; the existing feature fragment stays minor and the
+fixed group is calculated to advance from 1.2.0 to 1.3.0. The example retains
+view-level shared scale configuration; issue #599 remains deferred to v2.0.
