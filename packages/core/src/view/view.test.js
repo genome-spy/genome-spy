@@ -1250,6 +1250,39 @@ describe("Step sizing and domain updates", () => {
         expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
     });
 
+    test.each([
+        [
+            "width",
+            { px: 100, anchor: "end" },
+            "Anchors are supported only on viewport sizes.",
+        ],
+        [
+            "height",
+            { px: 100, anchor: "end" },
+            "Anchors are supported only on viewport sizes.",
+        ],
+        [
+            "viewportWidth",
+            { anchor: "end" },
+            "An anchored viewport must define a size.",
+        ],
+        [
+            "viewportHeight",
+            { anchor: "end" },
+            "An anchored viewport must define a size.",
+        ],
+    ])("rejects invalid anchors in %s", async (dimension, size, message) => {
+        const spec = {
+            data: { values: [{}] },
+            mark: "point",
+            [dimension]: size,
+        };
+
+        const { view } = await createHeadlessEngine(/** @type {any} */ (spec));
+
+        expect(() => view.getViewportSize()).toThrow(message);
+    });
+
     test("ExprRef viewport size updates when the parameter changes", async () => {
         const requestLayoutReflow = vi.fn();
         /** @type {import("../spec/view.js").UnitSpec} */

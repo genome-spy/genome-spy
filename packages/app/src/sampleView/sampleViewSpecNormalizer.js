@@ -126,6 +126,18 @@ function createLegacyMetadataSource(sampleDef) {
  * @returns {{ spec: SampleSpec; warnings: string[] }}
  */
 export function normalizeSampleViewSpec(spec) {
+    for (const dimension of /** @type {const} */ ([
+        "viewportWidth",
+        "viewportHeight",
+    ])) {
+        const value = spec[dimension];
+        if (value && typeof value === "object" && "anchor" in value) {
+            throw new Error(
+                dimension + " anchors are not supported on sample views."
+            );
+        }
+    }
+
     const sampleDef = /** @type {Record<string, unknown>} */ (
         spec.samples ?? {}
     );

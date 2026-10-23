@@ -18,24 +18,6 @@ describe("GenomeSpy destruction", () => {
     });
 });
 
-describe("GenomeSpy layout reflow", () => {
-    test("requestLayoutReflow schedules layout as a render transition", () => {
-        const layoutReflowTransition = vi.fn();
-        const requestTransition = vi.fn();
-
-        /** @type {any} */ (GenomeSpy.prototype.requestLayoutReflow).call({
-            _layoutReflowTransition: layoutReflowTransition,
-            animator: {
-                requestTransition,
-            },
-        });
-
-        expect(layoutReflowTransition).not.toHaveBeenCalled();
-        expect(requestTransition).toHaveBeenCalledOnce();
-        expect(requestTransition).toHaveBeenCalledWith(layoutReflowTransition);
-    });
-});
-
 describe("GenomeSpy legacy named data updates", () => {
     test("warns when registering a named data provider", () => {
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

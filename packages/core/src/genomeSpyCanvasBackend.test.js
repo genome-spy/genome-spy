@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import {
+    afterEach,
+    beforeEach,
+    expect,
+    onTestFinished,
+    test,
+    vi,
+} from "vitest";
 
 const mocks = vi.hoisted(() => ({
     createRenderingBackend: vi.fn(),
@@ -19,6 +26,7 @@ vi.mock("./genomeSpy/defaultThemeStyle.js", () => ({
 import GenomeSpy from "./genomeSpyBase.js";
 import { createEmbed } from "./embedFactory.js";
 import { annotateSpecError } from "./utils/specError.js";
+import { renderToLayout } from "./view/testUtils.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
@@ -326,6 +334,87 @@ test("waits for startup fonts before resize or scheduled rendering", async () =>
     expect(onError).not.toHaveBeenCalled();
 
     genomeSpy.destroy();
+});
+
+test("coalesces step-size changes inside an animation before drawing the same frame", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    /** @type {[string, number][]} */
+    const events = [];
+    const coordinator = { computeLayout: vi.fn(), renderAll: vi.fn() };
+    mocks.createRenderingBackend.mockImplementation((options) => ({
+        ...createMockBackend(options),
+        createRenderCoordinator: (
+            /** @type {{ viewRoot: import("./view/view.js").default }} */ {
+                viewRoot,
+            }
+        ) => {
+            const labels = viewRoot
+                .getDescendants()
+                .find((view) => view.name === "labels");
+            coordinator.computeLayout.mockImplementation(() => {
+                renderToLayout(viewRoot);
+                events.push(["layout", labels.layoutCoords.height]);
+            });
+            coordinator.renderAll.mockImplementation(() => {
+                events.push(["draw", labels.layoutCoords.height]);
+            });
+            return coordinator;
+        },
+    }));
+    const genomeSpy = new GenomeSpy(
+        container,
+        {
+            params: [{ name: "lanes", value: 2 }],
+            data: { values: [{ lane: 0 }] },
+            vconcat: [
+                {
+                    name: "labels",
+                    width: 100,
+                    height: { step: 20 },
+                    mark: "point",
+                    encoding: {
+                        y: {
+                            field: "lane",
+                            type: "index",
+                            scale: {
+                                domain: { expr: "[0, lanes - 1]" },
+                                domainTransition: false,
+                                padding: 0,
+                                zoom: false,
+                            },
+                            axis: null,
+                        },
+                    },
+                },
+            ],
+        },
+        { renderer: "canvas" }
+    );
+    onTestFinished(() => genomeSpy.destroy());
+    expect(await genomeSpy.launch()).toBe(true);
+    vi.mocked(window.requestAnimationFrame).mock.lastCall[0](0);
+    coordinator.computeLayout.mockClear();
+    coordinator.renderAll.mockClear();
+    events.length = 0;
+
+    // Like pileup during zoom, a transition changes the index domain after the
+    // frame has begun. Both invalidations must reach layout before this draw.
+    genomeSpy.animator.requestTransition(() => {
+        genomeSpy.getParam("lanes").setValue(4);
+        genomeSpy.getParam("lanes").setValue(5);
+    });
+    vi.mocked(window.requestAnimationFrame).mock.lastCall[0](1);
+    expect(events).toEqual([
+        ["layout", 100],
+        ["draw", 100],
+    ]);
+    expect(coordinator.computeLayout).toHaveBeenCalledOnce();
+
+    genomeSpy.animator.requestRender();
+    vi.mocked(window.requestAnimationFrame).mock.lastCall[0](2);
+    expect(coordinator.computeLayout).toHaveBeenCalledOnce();
+    expect(coordinator.renderAll).toHaveBeenCalledTimes(2);
 });
 
 test("reports an early resize error once and fails launch", async () => {

@@ -322,7 +322,6 @@ export function queueGridChild(
 
     for (const scrollbar of Object.values(gridChild.scrollbars)) {
         queueDecoration(1, DECORATION_ORDER.scrollbar, () => {
-            scrollbar.updateScrollbar(viewportCoords, viewCoords);
             scrollbar.arrange(context, coords, options);
         });
     }

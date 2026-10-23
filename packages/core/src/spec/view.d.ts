@@ -42,6 +42,19 @@ export interface SizeDef {
     maxPx?: number;
 }
 
+/** A viewport size with a scroll anchor independent of scale direction. */
+export type ViewportSizeDef = (SizeDef | ExprRef) & {
+    /**
+     * Edge used for initial placement and preserved when content or viewport
+     * dimensions change. `"start"` means left for width and top for height;
+     * `"end"` means right or bottom. Content smaller than the viewport aligns
+     * to that edge too. Manual scrolling changes the pixel distance from it.
+     *
+     * __Default value:__ `"start"`
+     */
+    anchor?: "start" | "end";
+};
+
 // TODO: Perhaps this should be in "utils"
 export type GeometricDimension = "width" | "height";
 
@@ -234,7 +247,7 @@ export interface ViewSpecBase extends ResolveSpec {
      *
      * **Default:** `null` (same as `height`)
      */
-    viewportHeight?: SizeDef | number | ExprRef | "container";
+    viewportHeight?: ViewportSizeDef | number | "container";
 
     /**
      * Optional viewport width of the view. If the view size exceeds the viewport width,
@@ -244,7 +257,7 @@ export interface ViewSpecBase extends ResolveSpec {
      *
      * **Default:** `null` (same as `width`)
      */
-    viewportWidth?: SizeDef | number | ExprRef | "container";
+    viewportWidth?: ViewportSizeDef | number | "container";
 
     /**
      * Padding applied to the view. Accepts either a number representing pixels or an

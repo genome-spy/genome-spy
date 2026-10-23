@@ -232,11 +232,15 @@ export default class GridChild {
 
         // TODO: More specific getter for this
         if (view.spec.viewportWidth != null) {
-            this.scrollbars.horizontal = new Scrollbar(this, "horizontal");
+            this.scrollbars.horizontal = new Scrollbar(this, "horizontal", {
+                anchor: view.getViewportAnchor("viewportWidth"),
+            });
         }
 
         if (view.spec.viewportHeight != null) {
-            this.scrollbars.vertical = new Scrollbar(this, "vertical");
+            this.scrollbars.vertical = new Scrollbar(this, "vertical", {
+                anchor: view.getViewportAnchor("viewportHeight"),
+            });
         }
 
         if (!hasChromeAncestor(view)) {

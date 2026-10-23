@@ -97,7 +97,7 @@ a second scale whose steps determine the view size.
 
 ### Scrollable viewports
 
-Sometimes the concents of a view are so large that they do not fit into the
+Sometimes the contents of a view are so large that they do not fit into the
 available space. In such cases, the view can be made scrollable by setting an
 explicit size for the view using the `viewportWidth` and `viewportHeight`
 properties. They accept the same values as `width` and `height` properties except
@@ -117,6 +117,27 @@ Once a drag can scroll, it follows its main direction after the first few
 pixels, so scrolling vertically does not also pan horizontally.
 
 EXAMPLE examples/docs/grammar/composition/concat/scrollable-viewports.json height=200
+
+To keep content next to a lower track, set `anchor: "end"` in the
+`viewportHeight` size object. For `viewportWidth`, `"end"` selects the right
+edge. The default `"start"` selects the top or left edge. For example:
+
+```json
+{
+  "height": { "step": 20 },
+  "viewportHeight": { "px": 200, "anchor": "end" }
+}
+```
+
+The view opens at the selected edge and preserves its pixel distance from that
+edge when content or viewport dimensions change. Manual scrolling changes that
+distance. Content smaller than the viewport aligns to the same edge; if the
+scroll range disappears, subsequent growth starts at that edge again. Anchors
+do not reverse data or scale order. They apply only to viewport dimensions.
+
+The following grid opens at its bottom-right corner:
+
+EXAMPLE examples/docs/grammar/composition/concat/viewport-anchors.json height=200
 
 ## Collapsed overhang
 

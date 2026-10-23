@@ -1517,10 +1517,15 @@ export default class GridView extends ContainerView {
                 ? viewportCoords
                       .modify({ width: viewWidth, height: viewHeight })
                       .translate(
-                          () => -round(hScrollbar?.viewportOffset ?? 0),
-                          () => -round(vScrollbar?.viewportOffset ?? 0)
+                          () => round(hScrollbar?.contentTranslation ?? 0),
+                          () => round(vScrollbar?.contentTranslation ?? 0)
                       )
                 : viewportCoords;
+
+            // Bind dimensions before nested layout or unions materialize positions.
+            for (const scrollbar of Object.values(gridChild.scrollbars)) {
+                scrollbar.updateScrollbar(viewportCoords, viewCoords);
+            }
 
             gridChild.coords = viewportCoords;
             gridChild.plotCoords = viewCoords;

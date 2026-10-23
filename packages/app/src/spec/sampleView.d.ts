@@ -2,7 +2,12 @@ import { Data, InlineData, UrlData } from "@genome-spy/core/spec/data.js";
 import { Align, FontStyle, FontWeight } from "@genome-spy/core/spec/font.js";
 import { Scale } from "@genome-spy/core/spec/scale.js";
 import { Title } from "@genome-spy/core/spec/title.js";
-import { ViewSpecBase, ViewBackground } from "@genome-spy/core/spec/view.js";
+import { ExprRef } from "@genome-spy/core/spec/parameter.js";
+import {
+    ViewSpecBase,
+    ViewBackground,
+    SizeDef,
+} from "@genome-spy/core/spec/view.js";
 import {
     AppConfigurableVisibilitySpec,
     AppLayerSpec,
@@ -13,7 +18,16 @@ import {
 /**
  * A view specification for a SampleView.
  */
-export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
+export interface SampleSpec extends Omit<
+    ViewSpecBase,
+    "templates" | "viewportWidth" | "viewportHeight"
+> {
+    /** Visible width. Sample views do not support viewport anchors. */
+    viewportWidth?: SizeDef | number | ExprRef | "container";
+
+    /** Visible height. Sample views do not support viewport anchors. */
+    viewportHeight?: SizeDef | number | ExprRef | "container";
+
     /**
      * Is the SampleView visibility configurable from the GenomeSpy App toolbar.
      *
@@ -95,11 +109,7 @@ export interface SampleYAxisDef {
 export type SampleAttributeType = "nominal" | "ordinal" | "quantitative";
 
 export type SampleAttributeSemanticType =
-    | "subjectId"
-    | "modelSystemId"
-    | "timeToEvent"
-    | "eventStatus"
-    | "category";
+    "subjectId" | "modelSystemId" | "timeToEvent" | "eventStatus" | "category";
 
 export interface SampleAttributeDef {
     /**
@@ -308,10 +318,7 @@ export interface ArrowBackendDef {
 }
 
 export type MetadataBackendDef =
-    | DataBackendDef
-    | ZarrBackendDef
-    | ParquetBackendDef
-    | ArrowBackendDef;
+    DataBackendDef | ZarrBackendDef | ParquetBackendDef | ArrowBackendDef;
 
 export interface MetadataSourceDef {
     /**
@@ -405,8 +412,7 @@ export interface MetadataSourceImportDef {
 }
 
 export type MetadataSourceEntry =
-    | MetadataSourceDef
-    | { import: MetadataSourceImportDef };
+    MetadataSourceDef | { import: MetadataSourceImportDef };
 
 export interface MetadataDef {
     /**

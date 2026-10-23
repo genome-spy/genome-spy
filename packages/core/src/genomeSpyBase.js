@@ -89,6 +89,7 @@ export default class GenomeSpy {
 
     #destroyed = false;
     #launchPending = false;
+    #layoutReflowRequested = false;
     /** @type {unknown} */
     #launchRuntimeError;
     /** @type {Set<unknown>} */
@@ -139,11 +140,6 @@ export default class GenomeSpy {
             () => this.renderAll(),
             (error) => this.#reportRuntimeError(error)
         );
-
-        // Use a stable callback identity so repeated layout requests coalesce
-        // in Animator's transition queue before the next render.
-        /** @type {(timestamp?: number) => void} */
-        this._layoutReflowTransition = () => this.computeLayout();
 
         /** @type {GenomeStore} */
         this.genomeStore = undefined;
@@ -956,6 +952,7 @@ export default class GenomeSpy {
     }
 
     computeLayout() {
+        this.#layoutReflowRequested = false;
         this.#renderCoordinator.computeLayout();
     }
 
@@ -963,7 +960,8 @@ export default class GenomeSpy {
      * Recomputes layout and schedules the buffered render commands to be drawn.
      */
     requestLayoutReflow() {
-        this.animator.requestTransition(this._layoutReflowTransition);
+        this.#layoutReflowRequested = true;
+        this.animator.requestRender();
     }
 
     renderAll() {
@@ -971,6 +969,12 @@ export default class GenomeSpy {
         // Launch schedules a fresh frame after preparation has completed.
         if (this.#launchPending) {
             return;
+        }
+
+        // Animation callbacks can change step-sized views during this frame.
+        // Apply their latest geometry before drawing with the new scale domains.
+        if (this.#layoutReflowRequested) {
+            this.computeLayout();
         }
 
         this.#interactionController?.invalidatePendingPicks();

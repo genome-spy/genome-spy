@@ -3,6 +3,36 @@ import { describe, expect, it } from "vitest";
 import { normalizeSampleViewSpec } from "./sampleViewSpecNormalizer.js";
 
 describe("normalizeSampleViewSpec", () => {
+    it.each(["viewportWidth", "viewportHeight"])(
+        "rejects an anchored %s on the App-owned sample scroller",
+        (dimension) => {
+            const spec = {
+                samples: {},
+                spec: { mark: "point" },
+                [dimension]: { px: 200, anchor: "end" },
+            };
+
+            expect(() =>
+                normalizeSampleViewSpec(/** @type {any} */ (spec))
+            ).toThrow(
+                dimension + " anchors are not supported on sample views."
+            );
+        }
+    );
+
+    it("preserves unanchored object and expression viewport sizes", () => {
+        const spec = {
+            samples: {},
+            spec: { mark: "point" },
+            viewportWidth: { grow: 1 },
+            viewportHeight: { expr: "height" },
+        };
+
+        expect(normalizeSampleViewSpec(/** @type {any} */ (spec)).spec).toBe(
+            spec
+        );
+    });
+
     it("returns canonical metadata config unchanged", () => {
         const spec = {
             samples: {

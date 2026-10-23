@@ -1,0 +1,46 @@
+{
+  "description": [
+    "Bottom and Right Anchored Viewports",
+    "Keeps a scrollable grid aligned to the bottom-right edges of its viewport."
+  ],
+
+  "width": 360,
+  "height": 240,
+  "viewportWidth": { "px": 240, "anchor": "end" },
+  "viewportHeight": { "px": 140, "anchor": "end" },
+
+  "data": { "sequence": { "start": 0, "stop": 12 } },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.data % 4", "as": "column" },
+    { "type": "formula", "expr": "floor(datum.data / 4)", "as": "row" }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "column",
+      "type": "index",
+      "scale": { "domain": [0, 3], "zoom": false, "padding": 0.08 },
+      "axis": null
+    },
+    "y": {
+      "field": "row",
+      "type": "index",
+      "scale": {
+        "domain": [0, 2],
+        "zoom": false,
+        "reverse": true,
+        "padding": 0.08
+      },
+      "axis": null
+    }
+  },
+
+  "layer": [
+    { "mark": { "type": "rect", "color": "#55a3c7" } },
+    {
+      "mark": { "type": "text", "size": 18, "color": "white" },
+      "encoding": { "text": { "field": "data" } }
+    }
+  ]
+}

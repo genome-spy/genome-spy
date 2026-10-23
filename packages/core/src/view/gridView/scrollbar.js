@@ -13,8 +13,8 @@ import { normalizeWheelScrollDelta } from "../../utils/interactionEvent.js";
  * @typedef {"horizontal" | "vertical"} ScrollDirection
  */
 export default class Scrollbar extends UnitView {
-    /** @type {ScrollDirection} */
-    #scrollDirection;
+    /** @type {"width" | "height"} */
+    #dimension;
 
     // NOTE: Keep this Rectangle instance stable. Buffered rendering caches
     // a reference to coords; replacing it breaks dynamic updates.
@@ -24,14 +24,13 @@ export default class Scrollbar extends UnitView {
 
     #contentCoords = Rectangle.ZERO;
 
-    /**
-     * The actual state of the scrollbar.
-     *
-     * It's better to keep track of the viewport offset rather than the
-     * scrollbar offset because the former is more stable when the
-     * viewport size changes.
-     */
-    viewportOffset = 0;
+    // Distance from the authored edge survives content and viewport size changes.
+    #anchorDistance = 0;
+
+    /** @type {"start" | "end"} */
+    #anchor;
+
+    #smootherMaxOffset = 0;
 
     /** @type {(offset: number) => void} */
     #onViewportOffsetChange;
@@ -42,7 +41,7 @@ export default class Scrollbar extends UnitView {
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {ScrollDirection} scrollDirection
-     * @param {{ onViewportOffsetChange?: (offset: number) => void }} [options]
+     * @param {{ anchor?: "start" | "end", onViewportOffsetChange?: (offset: number) => void }} [options]
      */
     constructor(gridChild, scrollDirection, options = {}) {
         // TODO: Configurable per view
@@ -83,15 +82,15 @@ export default class Scrollbar extends UnitView {
         markViewAsNonAddressable(this, { skipSubtree: true });
 
         this.config = config;
-        this.#scrollDirection = scrollDirection;
+        this.#dimension = scrollDirection === "horizontal" ? "width" : "height";
+        this.#anchor = options.anchor ?? "start";
         this.#onViewportOffsetChange = options.onViewportOffsetChange;
-        this.registerDisposer(() => this.#cancelActiveDrag());
 
         const sPad = this.config.scrollbarPadding;
         const sSize = this.config.scrollbarSize;
 
         this.#scrollbarCoords =
-            this.#scrollDirection == "vertical"
+            scrollDirection == "vertical"
                 ? new Rectangle(
                       () =>
                           this.#viewportCoords.x +
@@ -113,8 +112,11 @@ export default class Scrollbar extends UnitView {
                       () => sSize
                   );
 
-        // Smooth viewport offset updates
-        this.#initViewportOffsetSmoother(this.viewportOffset);
+        this.interpolateViewportOffset = this.#createOffsetSmoother();
+        this.registerDisposer(() => {
+            this.#cancelActiveDrag();
+            this.interpolateViewportOffset.stop();
+        });
 
         this.addInteractionListener("mousedown", (event) => {
             event.stopPropagation();
@@ -160,6 +162,23 @@ export default class Scrollbar extends UnitView {
         });
     }
 
+    get viewportOffset() {
+        return this.#convertOffset(this.#anchorDistance);
+    }
+
+    /** Signed content translation also aligns content that fits inside the viewport. */
+    get contentTranslation() {
+        const alignment =
+            this.#anchor === "end"
+                ? Math.max(
+                      0,
+                      this.#viewportCoords[this.#dimension] -
+                          this.#contentCoords[this.#dimension]
+                  )
+                : 0;
+        return alignment - this.viewportOffset;
+    }
+
     get scrollOffset() {
         return this.#getScrollOffsetFromViewportOffset(this.viewportOffset);
     }
@@ -203,10 +222,19 @@ export default class Scrollbar extends UnitView {
      * @param {{ notify?: boolean, syncSmoother?: boolean }} [options]
      */
     setViewportOffset(value, { notify = true, syncSmoother = false } = {}) {
-        this.viewportOffset = clamp(value, 0, this.#getMaxViewportOffset());
+        const distance = this.#convertOffset(value);
+        const changed = distance !== this.#anchorDistance;
+        this.#anchorDistance = distance;
 
-        if (syncSmoother) {
-            this.#initViewportOffsetSmoother(this.viewportOffset);
+        // App sample views publish their current offset every frame. Preserve an
+        // active target unless the owner changes that offset or its scroll range.
+        if (
+            syncSmoother &&
+            (changed ||
+                this.#smootherMaxOffset !== this.#getMaxViewportOffset())
+        ) {
+            this.interpolateViewportOffset.stop();
+            this.interpolateViewportOffset = this.#createOffsetSmoother();
         }
 
         if (notify && this.#onViewportOffsetChange) {
@@ -214,23 +242,28 @@ export default class Scrollbar extends UnitView {
         }
     }
 
-    #getVisibleFraction() {
-        const dimension =
-            this.#scrollDirection == "horizontal" ? "width" : "height";
+    /**
+     * Conversion is symmetric between physical offsets and edge-relative distances.
+     * @param {number} value
+     */
+    #convertOffset(value) {
+        const max = this.#getMaxViewportOffset();
+        const clamped = clamp(value, 0, max);
+        return this.#anchor === "end" ? max - clamped : clamped;
+    }
 
-        const viewportSize = this.#viewportCoords[dimension];
-        const contentSize = this.#contentCoords[dimension];
+    #getVisibleFraction() {
+        const viewportSize = this.#viewportCoords[this.#dimension];
+        const contentSize = this.#contentCoords[this.#dimension];
 
         return contentSize > 0 ? Math.min(1, viewportSize / contentSize) : 1;
     }
 
     #getMaxScrollLength() {
-        const dimension =
-            this.#scrollDirection == "horizontal" ? "width" : "height";
-
         return Math.max(
             0,
-            this.#viewportCoords[dimension] - 2 * this.config.scrollbarPadding
+            this.#viewportCoords[this.#dimension] -
+                2 * this.config.scrollbarPadding
         );
     }
 
@@ -278,12 +311,10 @@ export default class Scrollbar extends UnitView {
     }
 
     #getMaxViewportOffset() {
-        const dimension =
-            this.#scrollDirection == "horizontal" ? "width" : "height";
-
         return Math.max(
             0,
-            this.#contentCoords[dimension] - this.#viewportCoords[dimension]
+            this.#contentCoords[this.#dimension] -
+                this.#viewportCoords[this.#dimension]
         );
     }
 
@@ -316,21 +347,14 @@ export default class Scrollbar extends UnitView {
         });
     }
 
-    /**
-     * @param {number} value
-     */
-    #initViewportOffsetSmoother(value) {
-        this.interpolateViewportOffset = makeLerpSmoother(
+    #createOffsetSmoother() {
+        this.#smootherMaxOffset = this.#getMaxViewportOffset();
+        return makeLerpSmoother(
             this.context.animator,
-            (current) => {
-                this.setViewportOffset(current.x, {
-                    notify: true,
-                    syncSmoother: false,
-                });
-            },
+            (current) => this.setViewportOffset(current.x),
             35,
             0.4,
-            { x: value }
+            { x: this.viewportOffset }
         );
     }
 }

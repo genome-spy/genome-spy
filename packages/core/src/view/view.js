@@ -1,5 +1,6 @@
 import {
     parseSizeDef,
+    isSizeDef,
     FlexDimensions,
     concreteSizeDefEquals,
     ZERO_FLEXDIMENSIONS,
@@ -561,6 +562,39 @@ export default class View {
 
     /**
      * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
+     * @returns {"start" | "end"}
+     */
+    getViewportAnchor(dimension) {
+        const value = this.spec[dimension];
+        if (!value || typeof value !== "object" || !("anchor" in value)) {
+            return "start";
+        }
+
+        if (dimension !== "viewportWidth" && dimension !== "viewportHeight") {
+            throw new ViewError(
+                "Anchors are supported only on viewport sizes.",
+                this
+            );
+        }
+        if (!isSizeDef(value) && !isExprRef(value)) {
+            throw new ViewError(
+                "An anchored viewport must define a size.",
+                this
+            );
+        }
+
+        const anchor = value.anchor === undefined ? "start" : value.anchor;
+        if (anchor !== "start" && anchor !== "end") {
+            throw new ViewError(
+                'Viewport anchor must be "start" or "end".',
+                this
+            );
+        }
+        return anchor;
+    }
+
+    /**
+     * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
      * @return {import("./layout/flexLayout.js").SizeDef}
      */
     #getDimensionSize(dimension) {
@@ -731,6 +765,7 @@ export default class View {
      * @returns {"container" | number | import("../spec/view.js").SizeDef | import("../spec/view.js").Step | undefined}
      */
     resolveSizeValue(dimension, value) {
+        this.getViewportAnchor(dimension);
         if (!isExprRef(value)) {
             return value;
         }
