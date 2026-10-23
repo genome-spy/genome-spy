@@ -1,5 +1,5 @@
 import LayerView from "./layerView.js";
-import { orient2channel } from "./axisView.js";
+import { axisPartVisibility, orient2channel } from "./axisView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 /**
@@ -59,6 +59,7 @@ function createRegularAxisGrid(axisProps, type) {
 
     return {
         name: "grid_lines",
+        ...axisPartVisibility(ap.grid),
         data: {
             lazy: {
                 type: "axisTicks",

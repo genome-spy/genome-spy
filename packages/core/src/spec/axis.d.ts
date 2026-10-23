@@ -336,11 +336,12 @@ export interface BaseAxis {
 
     // ---------- Domain ----------
     /**
-     * A boolean flag indicating if the domain (the axis baseline) should be included as part of the axis.
+     * Whether to draw the domain line (the axis baseline). An expression can
+     * toggle the line without rebuilding the axis or changing its reserved space.
      *
      * __Default value:__ `true`
      */
-    domain?: boolean;
+    domain?: boolean | ExprRef;
 
     /**
      * The stroke cap for the domain line's ending style. One of `"butt"`, `"round"` or `"square"`.
@@ -375,11 +376,12 @@ export interface BaseAxis {
 
     // ---------- Ticks ----------
     /**
-     * Boolean value that determines whether the axis should include ticks.
+     * Whether to draw tick marks. An expression can toggle ticks without
+     * rebuilding the axis or changing its reserved space.
      *
      * __Default value:__ `true`
      */
-    ticks?: boolean;
+    ticks?: boolean | ExprRef;
 
     /**
      * The stroke cap for the tick lines' ending style. One of `"butt"`, `"round"` or `"square"`.
@@ -423,11 +425,12 @@ export interface BaseAxis {
 
     // ---------- Labels ----------
     /**
-     * A boolean flag indicating if labels should be included as part of the axis.
+     * Whether to draw tick labels. An expression can toggle labels without
+     * rebuilding the axis or changing its reserved space.
      *
      * __Default value:__ `true`.
      */
-    labels?: boolean;
+    labels?: boolean | ExprRef;
 
     /**
      * Horizontal text alignment of axis tick labels, overriding the default setting for the current axis orientation.
@@ -539,11 +542,12 @@ export interface BaseAxis {
     labelPadding?: number;
 
     /**
-     * A boolean flag indicating if grid lines should be included as part of the axis.
+     * Whether to draw grid lines. An expression can toggle them without
+     * rebuilding the axis.
      *
      * __Default value:__ `false`
      */
-    grid?: boolean;
+    grid?: boolean | ExprRef;
 
     /**
      * Color of grid lines.

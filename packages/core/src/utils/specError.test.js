@@ -433,6 +433,38 @@ test.each(
     });
 });
 
+test.each(["ticks", "labels", "domain", "grid"])(
+    "locates invalid %s visibility expressions at the authored axis property",
+    async (part) => {
+        const declaration = { expr: "missingParam" };
+        const spec = /** @type {import("../spec/root.js").RootSpec} */ ({
+            data: { values: [{ present: 1 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "present",
+                    type: "quantitative",
+                    axis: { [part]: declaration },
+                },
+            },
+        });
+
+        // The generated opacity must still point to the authored axis expression.
+        await expect(
+            createHeadlessEngine(spec, {
+                context: locatedContext(declaration, true),
+            })
+        ).rejects.toSatisfy((error) => {
+            expect(error.message).toContain('Unknown variable "missingParam"');
+            expect(getSpecErrorLocation(error)).toEqual({
+                origin: "declaration",
+                path: ["expr"],
+            });
+            return true;
+        });
+    }
+);
+
 test.each(
     [
         ["point", "on", "click"],
