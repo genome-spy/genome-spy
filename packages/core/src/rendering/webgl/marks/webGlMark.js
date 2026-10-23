@@ -1042,9 +1042,10 @@ export default class WebGLMark {
     updateBufferInfo(vertexData) {
         this.gl.bindVertexArray(null);
 
+        // Attribute uploads include reserved capacity, not just drawn vertices.
         if (
             this.bufferInfo &&
-            vertexData.vertexCount <= this.bufferInfo.allocatedVertices
+            vertexData.allocatedVertices <= this.bufferInfo.allocatedVertices
         ) {
             this.bufferInfo.numElements = vertexData.vertexCount;
             for (const [attribute, attributeData] of Object.entries(
