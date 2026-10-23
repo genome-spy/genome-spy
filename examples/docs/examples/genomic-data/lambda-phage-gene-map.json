@@ -1,0 +1,343 @@
+{
+  "description": [
+    "Lambda Phage Gene Map",
+    "Recreates a gbdraw gene map with strand-directed arrows and product labels in a bottom-anchored scrollable track.",
+    "Data source: NCBI/NLM RefSeq NC_001416.1; coordinate-normalized CDS extract."
+  ],
+
+  "title": "Lambda phage (NC_001416.1, 48,502 bp)",
+
+  "data": {
+    "url": "https://data.genomespy.app/datasets/refseq-lambda-phage-cds/v1/lambda-cds.json"
+  },
+
+  "params": [
+    { "name": "labelFontSize", "value": 12 },
+    { "name": "laneStep", "value": 20 },
+    { "name": "underlineClearance", "value": 4 },
+    {
+      "name": "pixelsPerBase",
+      "expr": "width * abs(scale('x', 1) - scale('x', 0))"
+    }
+  ],
+
+  "transform": [
+    {
+      "type": "formula",
+      "description": "Anchor labels and leaders at the gene midpoint.",
+      "expr": "(datum.start + datum.end) / 2",
+      "as": "mid"
+    },
+    { "type": "formula", "expr": "datum.start + 1", "as": "start1" }
+  ],
+
+  "background": "white",
+
+  "scales": {
+    "x": {
+      "name": "genome",
+      "domain": [5000, 32000],
+      "zoom": { "extent": [0, 48501] }
+    }
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "index",
+      "band": 0,
+      "axis": {
+        "title": "Genome position (bp)",
+        "tickCount": 10,
+        "extraValues": [0],
+        "grid": false,
+        "domainColor": "#222222",
+        "domainWidth": 1.5,
+        "tickColor": "#222222",
+        "tickSize": 6,
+        "labelFontSize": 13,
+        "labelPadding": 7,
+        "titleFontSize": 13
+      }
+    }
+  },
+
+  "spacing": 0,
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "independent" },
+    "axis": { "x": "shared" }
+  },
+
+  "vconcat": [
+    {
+      "name": "labelPanel",
+      "description": "Fill the container above the arrow track with a bottom-anchored viewport. Content grows upward as pileup needs more rows.",
+      "transform": [
+        {
+          "type": "measureText",
+          "description": "Measure label widths using the same font and size as the text marks.",
+          "field": "product",
+          "fontSize": { "expr": "labelFontSize" },
+          "font": "Lato",
+          "as": "labelWidth"
+        },
+        {
+          "type": "collect",
+          "description": "Cache measurements so zooming and resizing replay only the layout steps below."
+        },
+        {
+          "type": "filter",
+          "description": "Label only genes whose midpoint is visible.",
+          "expr": "datum.mid >= invert('x', 0) && datum.mid <= invert('x', 1)"
+        },
+        {
+          "type": "formula",
+          "expr": "clamp(width * scale('x', datum.mid) + (datum.mid - floor(datum.mid)) * pixelsPerBase - datum.labelWidth / 2, 0, width - datum.labelWidth)",
+          "description": "Clamp actual label bounds around the exact gene midpoint; keep spacing out of clamping and flushed starts exactly zero.",
+          "as": "labelStart"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelStart + datum.labelWidth",
+          "description": "Use the actual clamped text bounds; pileup adds spacing separately.",
+          "as": "labelEnd"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.labelStart + datum.labelWidth / 2 - width * scale('x', datum.mid)",
+          "description": "Position the label center relative to its genomic anchor using only pixel offsets.",
+          "as": "labelOffset"
+        },
+        {
+          "type": "collect",
+          "sort": {
+            "field": ["labelStart", "mid", "locusTag"],
+            "order": ["ascending", "ascending", "ascending"]
+          },
+          "description": "Sort occupied starts for pileup; break ties by genomic position and ID to keep flushed labels in stable order."
+        },
+        {
+          "type": "pileup",
+          "description": "Assign collision-free label lanes with an eight-pixel gap between actual label bounds.",
+          "start": "labelStart",
+          "end": "labelEnd",
+          "spacing": 8,
+          "as": "lane"
+        }
+      ],
+      "encoding": {
+        "x": { "field": "mid", "type": "index", "band": 0 },
+        "y": { "field": "lane", "type": "index", "band": 0, "axis": null }
+      },
+      "layer": [
+        {
+          "name": "labelLeaders",
+          "mark": {
+            "type": "rule",
+            "color": "#929292",
+            "size": 0.8,
+            "clip": "x",
+            "tooltip": null
+          },
+          "encoding": {
+            "x": { "field": "mid", "type": "index", "band": 0 },
+            "xOffset": {
+              "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
+              "type": "quantitative",
+              "scale": null
+            },
+            "y2": { "value": 0 }
+          },
+          "description": "Leaders stop at the lower edge of the label track; the arrow track continues them."
+        },
+        {
+          "name": "labelBackgrounds",
+          "mark": {
+            "type": "rect",
+            "fill": "white",
+            "tooltip": null,
+            "yOffset": { "expr": "underlineClearance" },
+            "y2Offset": { "expr": "-4 - labelFontSize" }
+          },
+          "encoding": {
+            "x": { "field": "mid", "type": "index", "band": 0 },
+            "x2": { "field": "mid", "band": 0 },
+            "xOffset": {
+              "expr": "datum.labelOffset - datum.labelWidth / 2",
+              "type": "quantitative",
+              "scale": null
+            },
+            "x2Offset": { "expr": "datum.labelOffset + datum.labelWidth / 2" },
+            "y2": { "field": "lane", "band": 0 }
+          }
+        },
+        {
+          "name": "labelConnectors",
+          "description": "Restore only the owning leader across the white clearance below its underline. The extra pixel overlaps the long leader beyond the mask.",
+          "mark": {
+            "type": "rule",
+            "color": "#929292",
+            "size": 0.8,
+            "clip": "x",
+            "tooltip": null,
+            "y2Offset": { "expr": "underlineClearance + 1" }
+          },
+          "encoding": {
+            "x": { "field": "mid", "type": "index", "band": 0 },
+            "xOffset": {
+              "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
+              "type": "quantitative",
+              "scale": null
+            },
+            "y2": { "field": "lane", "band": 0 }
+          }
+        },
+        {
+          "name": "labelUnderlines",
+          "mark": {
+            "type": "rule",
+            "color": "#929292",
+            "size": 0.8,
+            "tooltip": null
+          },
+          "encoding": {
+            "x": { "field": "mid", "type": "index", "band": 0 },
+            "x2": { "field": "mid", "band": 0 },
+            "xOffset": {
+              "expr": "datum.labelOffset - datum.labelWidth / 2",
+              "type": "quantitative",
+              "scale": null
+            },
+            "x2Offset": { "expr": "datum.labelOffset + datum.labelWidth / 2" }
+          }
+        },
+        {
+          "name": "labelText",
+          "mark": {
+            "type": "text",
+            "font": "Lato",
+            "size": { "expr": "labelFontSize" },
+            "align": "center",
+            "baseline": "bottom",
+            "dy": -4,
+            "color": "#171717",
+            "clip": true,
+            "tooltip": null
+          },
+          "encoding": {
+            "x": { "field": "mid", "type": "index", "band": 0 },
+            "xOffset": {
+              "field": "labelOffset",
+              "type": "quantitative",
+              "scale": null
+            },
+            "text": { "field": "product" }
+          }
+        }
+      ],
+      "height": { "step": { "expr": "laneStep" } },
+      "scales": {
+        "y": {
+          "name": "labelLanes",
+          "type": "index",
+          "zoom": false,
+          "domainMin": -1,
+          "domainTransition": false,
+          "padding": 0
+        }
+      },
+      "viewportHeight": { "grow": 1, "anchor": "end" }
+    },
+
+    {
+      "name": "arrowPanel",
+      "description": "Two fixed strand bands replace pixel expressions for arrow positions.",
+      "height": { "step": 30 },
+      "encoding": {
+        "y": {
+          "field": "strand",
+          "type": "nominal",
+          "scale": {
+            "name": "strandRows",
+            "type": "band",
+            "domain": ["+", "-"],
+            "reverse": true,
+            "padding": 0
+          },
+          "axis": null
+        }
+      },
+      "layer": [
+        {
+          "name": "backbone",
+          "data": { "values": [{}] },
+          "mark": {
+            "type": "rule",
+            "color": "#d0d0d0",
+            "size": 3,
+            "tooltip": null
+          },
+          "encoding": {
+            "x": { "datum": 0, "type": "index", "band": 0 },
+            "x2": { "datum": 48502, "band": 0 },
+            "y": { "value": 0.5 }
+          }
+        },
+        {
+          "name": "arrowLeaders",
+          "description": "Continue midpoint leaders from the top edge to the strand row; arrows cover the endpoints.",
+          "mark": {
+            "type": "rule",
+            "color": "#929292",
+            "size": 0.8,
+            "tooltip": null,
+            "clip": "x"
+          },
+          "encoding": {
+            "x": { "field": "mid", "type": "index", "band": 0 },
+            "xOffset": {
+              "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
+              "type": "quantitative",
+              "scale": null
+            },
+            "y2": { "value": 1 }
+          }
+        },
+        {
+          "name": "geneArrows",
+          "zindex": 1,
+          "mark": {
+            "type": "arrow",
+            "size": { "band": 0.7 },
+            "headWidth": 1,
+            "headAngle": 56,
+            "headPlacement": "inside",
+            "minStemLength": 0,
+            "fill": "#55b9e9",
+            "stroke": "#8b8b8b",
+            "strokeWidth": 1,
+            "clip": true
+          },
+          "encoding": {
+            "x2": { "field": "end", "band": 0 },
+            "direction": {
+              "field": "strand",
+              "type": "nominal",
+              "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
+            },
+            "tooltip": [
+              { "field": "product", "title": "Product" },
+              { "field": "gene", "title": "Gene" },
+              { "field": "locusTag", "title": "Locus tag" },
+              { "field": "start1", "title": "Start (1-based)", "format": ",d" },
+              { "field": "end", "title": "End (inclusive)", "format": ",d" },
+              { "field": "strand", "title": "Strand" },
+              { "field": "proteinId", "title": "Protein" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

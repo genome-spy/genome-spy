@@ -107,6 +107,7 @@ nav = [
         "examples/genomic-data/indexed-fasta-six-frame-translation.md",
         "examples/genomic-data/refseq-genes.md",
         "examples/genomic-data/gencode-gff3-gene-annotations.md",
+        "examples/genomic-data/lambda-phage-gene-map.md",
         "examples/genomic-data/ascat.md",
         "examples/genomic-data/ascat-algorithm.md",
         { "HCC1954 SV/CNV" = "examples/genomic-data/hcc1954-sv-cnv.md" },

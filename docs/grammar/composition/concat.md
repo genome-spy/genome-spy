@@ -135,6 +135,10 @@ distance. Content smaller than the viewport aligns to the same edge; if the
 scroll range disappears, subsequent growth starts at that edge again. Anchors
 do not reverse data or scale order. They apply only to viewport dimensions.
 
+The [Lambda phage gene map](../../examples/genomic-data/lambda-phage-gene-map.md)
+uses bottom anchoring to keep product labels next to the gene arrows as zooming
+changes the number of label lanes.
+
 The following grid opens at its bottom-right corner:
 
 EXAMPLE examples/docs/grammar/composition/concat/viewport-anchors.json height=200

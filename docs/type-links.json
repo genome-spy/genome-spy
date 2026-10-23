@@ -295,6 +295,7 @@
   "ViewBackground": "/grammar/types/#viewbackground",
   "ViewOpacityDef": "/grammar/types/#viewopacitydef",
   "ViewSpec": "/grammar/types/#viewspec",
+  "ViewportSizeDef": "/grammar/types/#viewportsizedef",
   "WigDataFormat": "/grammar/types/#wigdataformat",
   "WindowOnlyOp": "/grammar/types/#windowonlyop",
   "WindowOp": "/grammar/types/#windowop"

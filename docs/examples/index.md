@@ -22,6 +22,7 @@ EXAMPLE_GALLERY examples/docs/examples/genomic-data
 - [PIK3CA Mutation Lollipop Plot](genomic-data/pik3ca-tcga-brca-lollipop.md) pik3ca-tcga-brca-lollipop.json
 - [ClinVar Small-Variant Classifications](genomic-data/clinvar-variants.md) clinvar-variants.json
 - [GENCODE Gene Annotations from GFF3](genomic-data/gencode-gff3-gene-annotations.md) gff3-gene-annotations.json
+- [Lambda Phage Gene Map](genomic-data/lambda-phage-gene-map.md) lambda-phage-gene-map.json
 - [Indexed FASTA Six-Frame Translation](genomic-data/indexed-fasta-six-frame-translation.md) indexed-fasta-six-frame-translation.json
 - [BAM Read Alignments](genomic-data/bam-read-alignments.md) bam-read-alignments.json
 - [Multiple Sequence Alignment](genomic-data/multiple-sequence-alignment.md) msa.json
