@@ -50,6 +50,11 @@ const int HEAD_PLACEMENT_OUTSIDE = 1;
 
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
@@ -209,7 +214,6 @@ flat in float vDirection;
 out lowp vec4 fragColor;
 
 const int N = 6;
-const float FAR_OUTSIDE = 1e20;
 
 // Adapted from: https://iquilezles.org/articles/distfunctions2d/
 float sdPolygon(vec2[N] v, vec2 p) {
@@ -235,7 +239,7 @@ float sdStem(
     bool bidirectional
 ) {
     if (halfWidth < 0.0) {
-        return FAR_OUTSIDE;
+        return INFINITY_SUBSTITUTE;
     }
 
     float headSideLength = halfWidth * rHeadSlope;
@@ -335,7 +339,7 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
     bool headRepeat = vHeadSpacing >= 0.0;
     float spacing = headRepeat
         ? max(vHeadSpacing, vHeadRepeatFootprintLength)
-        : 1.0 / 0.0;
+        : INFINITY_SUBSTITUTE;
     float distanceFromStart = arrowPos.x + arrowHalfLength;
 
     // Keep the stroked tip inside the repeated head's local window.
@@ -371,7 +375,7 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
             - vHalfStrokeWidth;
 
         if (headTipDistance > 0.0 && headEndDistance > arrowHalfLength * 2.0) {
-            headDistance = FAR_OUTSIDE;
+            headDistance = INFINITY_SUBSTITUTE;
         }
     }
 
@@ -454,6 +458,11 @@ const int HEAD_PLACEMENT_OUTSIDE = 1;
 
 
 #define PI 3.141593
+
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
 
 uniform View {
     /** Offset in "unit" units */
@@ -1501,6 +1510,11 @@ const int HEAD_PLACEMENT_OUTSIDE = 1;
 
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
@@ -1660,7 +1674,6 @@ flat in float vDirection;
 out lowp vec4 fragColor;
 
 const int N = 6;
-const float FAR_OUTSIDE = 1e20;
 
 // Adapted from: https://iquilezles.org/articles/distfunctions2d/
 float sdPolygon(vec2[N] v, vec2 p) {
@@ -1686,7 +1699,7 @@ float sdStem(
     bool bidirectional
 ) {
     if (halfWidth < 0.0) {
-        return FAR_OUTSIDE;
+        return INFINITY_SUBSTITUTE;
     }
 
     float headSideLength = halfWidth * rHeadSlope;
@@ -1786,7 +1799,7 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
     bool headRepeat = vHeadSpacing >= 0.0;
     float spacing = headRepeat
         ? max(vHeadSpacing, vHeadRepeatFootprintLength)
-        : 1.0 / 0.0;
+        : INFINITY_SUBSTITUTE;
     float distanceFromStart = arrowPos.x + arrowHalfLength;
 
     // Keep the stroked tip inside the repeated head's local window.
@@ -1822,7 +1835,7 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
             - vHalfStrokeWidth;
 
         if (headTipDistance > 0.0 && headEndDistance > arrowHalfLength * 2.0) {
-            headDistance = FAR_OUTSIDE;
+            headDistance = INFINITY_SUBSTITUTE;
         }
     }
 
@@ -1909,6 +1922,11 @@ const int HEAD_PLACEMENT_OUTSIDE = 1;
 
 
 #define PI 3.141593
+
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
 
 uniform View {
     /** Offset in "unit" units */
@@ -2922,6 +2940,11 @@ layout(std140) uniform Mark {
 
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
@@ -3219,6 +3242,11 @@ layout(std140) uniform Mark {
 
 
 #define PI 3.141593
+
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
 
 uniform View {
     /** Offset in "unit" units */
@@ -4106,6 +4134,11 @@ float orthogonalDistance(vec2 p, vec4 bounds) {
 
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
@@ -4369,6 +4402,11 @@ float orthogonalDistance(vec2 p, vec4 bounds) {
 
 
 #define PI 3.141593
+
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
 
 uniform View {
     /** Offset in "unit" units */
@@ -5352,6 +5390,11 @@ layout(std140) uniform Mark {
 
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
@@ -5655,6 +5698,11 @@ layout(std140) uniform Mark {
 
 
 #define PI 3.141593
+
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
 
 uniform View {
     /** Offset in "unit" units */
@@ -6545,6 +6593,11 @@ layout(std140) uniform Mark {
 
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
@@ -6842,6 +6895,11 @@ layout(std140) uniform Mark {
 
 
 #define PI 3.141593
+
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
 
 uniform View {
     /** Offset in "unit" units */
@@ -7698,6 +7756,11 @@ layout(std140) uniform Mark {
 
 #define PI 3.141593
 
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
+
 uniform View {
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
@@ -8002,7 +8065,7 @@ float pattern() {
             break;
     }
 #endif
-    return 1.0 / 0.0; // Infinity
+    return INFINITY_SUBSTITUTE;
 }
 
 void main(void) {
@@ -8105,6 +8168,11 @@ layout(std140) uniform Mark {
 #define STROKED
 
 #define PI 3.141593
+
+// Finite infinity substitute for pixel distances and spacing, far beyond any viewport.
+// Constant infinity can make Firefox/ANGLE emit unsupported uintBitsToFloat calls.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2078276
+const highp float INFINITY_SUBSTITUTE = 1e20;
 
 uniform View {
     /** Offset in "unit" units */
