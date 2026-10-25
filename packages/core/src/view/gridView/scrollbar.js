@@ -58,8 +58,12 @@ export default class Scrollbar extends UnitView {
                         name: "scrollbarOpacity",
                         value: 1,
                     },
+                    {
+                        name: "scrollbarVisible",
+                        value: false,
+                    },
                 ],
-                opacity: { expr: "scrollbarOpacity" },
+                opacity: { expr: "scrollbarVisible ? scrollbarOpacity : 0" },
                 data: { values: [{}] },
                 mark: {
                     type: "rect",
@@ -341,6 +345,8 @@ export default class Scrollbar extends UnitView {
     updateScrollbar(viewportCoords, contentCoords) {
         this.#viewportCoords = viewportCoords.flatten();
         this.#contentCoords = contentCoords;
+        this.paramRuntime.setValue("scrollbarVisible", this.canScroll());
+
         this.setViewportOffset(this.viewportOffset, {
             notify: false,
             syncSmoother: true,

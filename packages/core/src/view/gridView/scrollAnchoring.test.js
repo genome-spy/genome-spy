@@ -110,7 +110,37 @@ test.each(/** @type {const} */ (["x", "y"]))(
                 contentSize === 600 && anchor === "end" ? 400 : 0
             );
             expect(scrollbar.canScroll()).toBe(contentSize > 200);
+            expect(scrollbar.getOpacity()).toBe(contentSize > 200 ? 1 : 0);
         }
+    }
+);
+
+test.each(/** @type {const} */ (["x", "y"]))(
+    "%s scrollbar visibility follows resizing and preserves caller opacity",
+    async (axis) => {
+        const { view, scrollbar, render } = await initialize(axis, "end");
+
+        // SampleView independently controls this multiplier during peek transitions.
+        scrollbar.paramRuntime.setValue("scrollbarOpacity", 0.5);
+        expect(scrollbar.getOpacity()).toBe(0.5);
+
+        view.paramRuntime.setValue("viewportSize", 600);
+        render();
+        expect(scrollbar.getOpacity()).toBe(0);
+
+        scrollbar.paramRuntime.setValue("scrollbarOpacity", 0.8);
+        expect(scrollbar.getOpacity()).toBe(0);
+
+        view.paramRuntime.setValue("viewportSize", 800);
+        render();
+        expect(scrollbar.getOpacity()).toBe(0);
+
+        view.paramRuntime.setValue("contentSize", 1000);
+        render();
+        expect(scrollbar.getOpacity()).toBe(0.8);
+
+        scrollbar.paramRuntime.setValue("scrollbarOpacity", 0);
+        expect(scrollbar.getOpacity()).toBe(0);
     }
 );
 
