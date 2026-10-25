@@ -291,6 +291,7 @@
             "type": "rule",
             "color": "#929292",
             "size": 0.8,
+            "y2Offset": -0.5,
             "tooltip": null,
             "clip": "x"
           },
