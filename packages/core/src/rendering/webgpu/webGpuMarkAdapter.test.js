@@ -55,6 +55,15 @@ function expectedActiveMatch(selection, type, empty) {
 }
 
 describe("WebGPU mark adapter", () => {
+    test.each([1, { expr: "border" }])(
+        "rejects unsupported rule outlines (%j)",
+        (outlineWidth) => {
+            const mark = createMark("rule", [{}], {}, { outlineWidth });
+            expect(() =>
+                createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)
+            ).toThrow("Rule outlines are not supported");
+        }
+    );
     test("translates conditional order into declarative renderer config", () => {
         const mark = createMark("point", [{ id: 17 }], {
             uniqueId: createConstantEncoder(17),

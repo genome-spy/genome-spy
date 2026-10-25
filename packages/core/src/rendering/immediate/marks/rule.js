@@ -15,11 +15,22 @@ import {
  * @prop {number} x2
  * @prop {number} y2
  * @prop {number} strokeWidth
+ * @prop {number} outerWidth
  */
 
 /** @param {import("../../../marks/rule.js").default} mark */
 export function resolveRuleProperties(mark) {
-    return { minLength: resolveMarkProperty(mark, mark.properties.minLength) };
+    const props = /** @type {import("../../../spec/mark.js").RuleProps} */ (
+        mark.properties
+    );
+    return {
+        minLength: resolveMarkProperty(mark, props.minLength),
+        outlineWidth: Math.max(
+            0,
+            resolveMarkProperty(mark, props.outlineWidth) ?? 0
+        ),
+        outlineColor: resolveMarkProperty(mark, props.outlineColor) ?? "black",
+    };
 }
 
 /**
@@ -59,6 +70,7 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         x2: 0,
         y2: 0,
         strokeWidth: 0,
+        outerWidth: 0,
     };
     const clampX = isMarkClamped(mark, "x");
     const clampY = isMarkClamped(mark, "y");
@@ -72,7 +84,9 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         let [x1, x2] = xRange;
         let [y1, y2] = yRange;
         const strokeWidth = encodeNumber(encoders.size, datum);
-        const padding = strokeWidth + properties.minLength + 1;
+        if (properties.outlineWidth > 0 && strokeWidth <= 0) continue;
+        const outerWidth = strokeWidth + 2 * properties.outlineWidth;
+        const padding = outerWidth + properties.minLength + 1;
         const marginX = Math.max(visibleBounds.x2 - visibleBounds.x1, padding);
         const marginY = Math.max(visibleBounds.y2 - visibleBounds.y1, padding);
         if (
@@ -105,7 +119,7 @@ export function visitRuleInstances(mark, properties, options, visitor) {
             x2 += ux * expansion;
             y2 += uy * expansion;
         }
-        if (!intersectsBounds(visibleBounds, x1, y1, x2, y2, strokeWidth / 2)) {
+        if (!intersectsBounds(visibleBounds, x1, y1, x2, y2, outerWidth / 2)) {
             continue;
         }
 
@@ -116,6 +130,7 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         instance.x2 = x2;
         instance.y2 = y2;
         instance.strokeWidth = strokeWidth;
+        instance.outerWidth = outerWidth;
         visitor(instance);
     }
     return instanceCount;

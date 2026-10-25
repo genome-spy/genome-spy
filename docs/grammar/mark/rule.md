@@ -10,6 +10,13 @@ EXAMPLE examples/docs/grammar/mark/rule/rule-mark.json height=150
 Rule mark supports the primary and secondary [position](./index.md#channels)
 channels and the `color`, `opacity`, and `size` channels.
 
+An optional `outlineColor` and `outlineWidth` separate overlapping rules. For
+example, `"mark": {"type": "rule", "outlineColor": "white", "outlineWidth": 1}`
+adds one pixel to each side of the line without changing its encoded `size`.
+Each outline is painted with its rule, so later rules cover earlier ones.
+Outlines are supported by WebGL, Canvas2D, and SVG export. The experimental
+WebGPU renderer rejects outlined rules.
+
 ## Properties
 
 SCHEMA RuleProps

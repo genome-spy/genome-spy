@@ -7,6 +7,7 @@ uniform sampler2D uDashTexture;
 
 flat in vec4 vColor;
 flat in float vSize;
+flat in float vOuterSize;
 
 /** Position on the rule along its length in pixels */
 in highp vec2 vPosInPixels;
@@ -27,7 +28,16 @@ void main(void) {
     }
 
     // Use a signed distance field to implement edge antialiasing
-    float opacity = clamp(((vSize / 2.0 - distance) * dpr), -0.5, 0.5) + 0.5;
+    float opacity = clamp(((vOuterSize / 2.0 - distance) * dpr), -0.5, 0.5) + 0.5;
+    vec4 color = vColor;
+    if (uOutlineWidth > 0.0 && opacity > 0.0) {
+        float innerDistance = uStrokeCap == SQUARE
+            ? max(abs(vNormalLengthInPixels), distanceFromEnd)
+            : distance;
+        float inner = min(opacity, clamp((vSize / 2.0 - innerDistance) * dpr + 0.5, 0.0, 1.0));
+        // Mix disjoint coverage so translucent rules do not paint themselves twice.
+        color = mix(vec4(uOutlineColor * vColor.a, vColor.a), vColor, inner / opacity);
+    }
 
     if (uDashTextureSize > 0.0) {
         highp float pos = (vPosInPixels[0] + uStrokeDashOffset) * dpr;
@@ -41,9 +51,10 @@ void main(void) {
             clamp((pos - floored), 0.0, 1.0));
     }
 
-    fragColor = vColor * opacity;
+    fragColor = color * opacity;
 
     if (uPickingEnabled) {
+        if (uOutlineWidth > 0.0 && opacity <= 0.0) discard;
         fragColor = vPickingColor;
     }
 }

@@ -8,6 +8,29 @@ import SoftwarePickingRasterizer from "./softwarePickingRasterizer.js";
 import SoftwarePickingViewRenderingContext from "./softwarePickingViewRenderingContext.js";
 
 describe("SoftwarePickingViewRenderingContext", () => {
+    test("picks the visible outline and follows live width changes", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "border", value: 4 }],
+            data: { values: [{}] },
+            mark: {
+                type: "rule",
+                size: 2,
+                outlineWidth: { expr: "border" },
+                tooltip: false,
+            },
+            encoding: {
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.5 },
+            },
+        });
+        const buffer = render(view);
+        expect(buffer.read(50, 50)).toBeGreaterThan(0);
+        expect(buffer.read(50, 46)).toBe(buffer.read(50, 50));
+        expect(buffer.read(50, 44)).toBe(0);
+        view.paramRuntime.setValue("border", 0);
+        expect(render(view).read(50, 46)).toBe(0);
+    });
     test("uses indexed source-row bounds for picking", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.1 }, { x: 0.5 }, { x: 0.9 }] },
