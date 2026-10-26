@@ -158,6 +158,77 @@ describe("UnitView point selections", () => {
         expect(selectedNames()).toEqual(["second"]);
     });
 
+    test.each([false, true])(
+        "shared hover follows marks and clears on exit (layered: %s)",
+        async (layered) => {
+            /** @type {import("../spec/view.js").UnitSpec[]} */
+            const marks = ["first", "second"].map((name) => ({
+                name,
+                height: 100,
+                params: [
+                    {
+                        name: "highlight",
+                        select: { type: "point", on: "pointerover" },
+                        push: "outer",
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            }));
+            const view = await createAndInitialize(
+                {
+                    params: [{ name: "highlight", value: null }],
+                    data: { values: [{ name: "gene", x: 1, y: 1 }] },
+                    // Both marks deliberately receive the same tuple object.
+                    transform: [{ type: "identifier" }],
+                    vconcat: [layered ? { layer: marks } : { vconcat: marks }],
+                },
+                ConcatView
+            );
+            renderToLayout(view, Rectangle.create(0, 0, 300, 240));
+            const [first, second] =
+                /** @type {import("./unitView.js").default[]} */ (
+                    Array.from(view.getDescendants()).filter((v) =>
+                        ["first", "second"].includes(v.name)
+                    )
+                );
+            const [datum] = first.getCollector().getData();
+            expect(Array.from(second.getCollector().getData())[0]).toBe(datum);
+
+            const dispatcher = new InteractionDispatcher({ viewRoot: view });
+            const hover = (
+                /** @type {import("./unitView.js").default} */ unit,
+                picked = true
+            ) => {
+                view.context.getCurrentHover = () =>
+                    picked ? { mark: unit.mark, datum } : undefined;
+                dispatcher.dispatch(
+                    center(unit),
+                    /** @type {MouseEvent} */ (new FakeMouseEvent("mousemove"))
+                );
+            };
+            const selected = () =>
+                first.paramRuntime.findValue("highlight").datum;
+
+            hover(first);
+            expect(selected()).toBe(datum);
+            hover(second);
+            expect(selected()).toBe(datum);
+            hover(first);
+            expect(selected()).toBe(datum);
+            hover(second, false);
+            expect(selected()).toBeNull();
+            hover(first);
+            dispatcher.handlePointerLeave(
+                /** @type {MouseEvent} */ (new FakeMouseEvent("mouseout"))
+            );
+            expect(selected()).toBeNull();
+        }
+    );
+
     test("clears a hover selection when the pointer enters a sibling view", async () => {
         const view = await createAndInitialize(
             {

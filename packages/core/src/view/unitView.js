@@ -128,10 +128,17 @@ export default class UnitView extends View {
             if (isPointSelectionConfig(select)) {
                 // Handle projection-free point selections
 
+                const hoverSelection = ["mouseover", "pointerover"].includes(
+                    eventConfig.type
+                );
+                /** @type {import("../types/selectionTypes.js").Selection | undefined} */
+                let lastSelection;
+
                 const setter = (
                     /** @type {any} */
                     selection
                 ) => {
+                    lastSelection = selection;
                     this.paramRuntime.setValue(name, selection);
                 };
 
@@ -163,6 +170,14 @@ export default class UnitView extends View {
                         return;
                     }
                     const datum = getHoveredDatum();
+                    // Other layers may receive this move after the picked mark.
+                    if (
+                        hoverSelection &&
+                        !datum &&
+                        this.paramRuntime.findValue(name) !== lastSelection
+                    ) {
+                        return;
+                    }
 
                     /** @type {any} */
                     let selection;
@@ -191,7 +206,11 @@ export default class UnitView extends View {
                         // have replaced or cleared the last interactive choice.
                         const previousSelection =
                             this.paramRuntime.findValue(name);
-                        if (datum !== previousSelection.datum) {
+                        if (
+                            datum !== previousSelection.datum ||
+                            (hoverSelection &&
+                                previousSelection !== lastSelection)
+                        ) {
                             selection = createSinglePointSelection(datum);
                         }
                     }
@@ -201,9 +220,6 @@ export default class UnitView extends View {
                     }
                 };
 
-                const hoverSelection = ["mouseover", "pointerover"].includes(
-                    eventConfig.type
-                );
                 this.addInteractionListener(
                     hoverSelection ? "mousemove" : eventConfig.type,
                     listener
@@ -232,7 +248,12 @@ export default class UnitView extends View {
                     // pointed subtree has been left.
                     this.addInteractionListener("mouseleave", (event) => {
                         // Crossing cells keeps the shared view's hover selection.
-                        if (!event.pointedViews.has(this)) {
+                        // A new binding may already have published to the same
+                        // outer parameter before this leave event is dispatched.
+                        if (
+                            !event.pointedViews.has(this) &&
+                            this.paramRuntime.findValue(name) === lastSelection
+                        ) {
                             clearSelection();
                         }
                     });
