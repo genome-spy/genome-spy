@@ -12,6 +12,7 @@
   },
 
   "params": [
+    { "name": "highlight", "value": null, "persist": false },
     { "name": "labelFontSize", "value": 12 },
     { "name": "laneStep", "value": 20 },
     { "name": "underlineClearance", "value": 4 },
@@ -22,6 +23,10 @@
   ],
 
   "transform": [
+    {
+      "type": "identifier",
+      "description": "Share gene identity across labels, connectors, and arrows for coordinated hover highlighting."
+    },
     {
       "type": "formula",
       "description": "Anchor labels and leaders at the gene midpoint.",
@@ -135,12 +140,19 @@
           "name": "labelLeaders",
           "mark": {
             "type": "rule",
-            "color": "#929292",
             "size": 0.8,
             "clip": "x",
             "tooltip": null
           },
           "encoding": {
+            "color": {
+              "condition": {
+                "param": "highlight",
+                "empty": false,
+                "value": "red"
+              },
+              "value": "#929292"
+            },
             "x": { "field": "mid", "type": "index", "band": 0 },
             "xOffset": {
               "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
@@ -177,13 +189,20 @@
           "description": "Restore only the owning leader across the white clearance below its underline. The extra pixel overlaps the long leader beyond the mask.",
           "mark": {
             "type": "rule",
-            "color": "#929292",
             "size": 0.8,
             "clip": "x",
             "tooltip": null,
             "y2Offset": { "expr": "underlineClearance + 1" }
           },
           "encoding": {
+            "color": {
+              "condition": {
+                "param": "highlight",
+                "empty": false,
+                "value": "red"
+              },
+              "value": "#929292"
+            },
             "x": { "field": "mid", "type": "index", "band": 0 },
             "xOffset": {
               "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
@@ -197,11 +216,18 @@
           "name": "labelUnderlines",
           "mark": {
             "type": "rule",
-            "color": "#929292",
             "size": 0.8,
             "tooltip": null
           },
           "encoding": {
+            "color": {
+              "condition": {
+                "param": "highlight",
+                "empty": false,
+                "value": "red"
+              },
+              "value": "#929292"
+            },
             "x": { "field": "mid", "type": "index", "band": 0 },
             "x2": { "field": "mid", "band": 0 },
             "xOffset": {
@@ -214,6 +240,18 @@
         },
         {
           "name": "labelText",
+          "params": [
+            {
+              "name": "highlight",
+              "select": {
+                "type": "point",
+                "on": "pointerover",
+                "clear": "mouseout"
+              },
+              "push": "outer",
+              "persist": false
+            }
+          ],
           "mark": {
             "type": "text",
             "font": "Lato",
@@ -221,11 +259,18 @@
             "align": "center",
             "baseline": "bottom",
             "dy": -4,
-            "color": "#171717",
             "clip": true,
             "tooltip": null
           },
           "encoding": {
+            "color": {
+              "condition": {
+                "param": "highlight",
+                "empty": false,
+                "value": "red"
+              },
+              "value": "#171717"
+            },
             "x": { "field": "mid", "type": "index", "band": 0 },
             "xOffset": {
               "field": "labelOffset",
@@ -289,13 +334,20 @@
           "description": "Continue midpoint leaders from the top edge to the strand row; arrows cover the endpoints.",
           "mark": {
             "type": "rule",
-            "color": "#929292",
             "size": 0.8,
             "y2Offset": -0.5,
             "tooltip": null,
             "clip": "x"
           },
           "encoding": {
+            "color": {
+              "condition": {
+                "param": "highlight",
+                "empty": false,
+                "value": "red"
+              },
+              "value": "#929292"
+            },
             "x": { "field": "mid", "type": "index", "band": 0 },
             "xOffset": {
               "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
@@ -307,6 +359,18 @@
         },
         {
           "name": "geneArrows",
+          "params": [
+            {
+              "name": "highlight",
+              "select": {
+                "type": "point",
+                "on": "pointerover",
+                "clear": "mouseout"
+              },
+              "push": "outer",
+              "persist": false
+            }
+          ],
           "zindex": 1,
           "mark": {
             "type": "arrow",
@@ -316,11 +380,22 @@
             "headPlacement": "inside",
             "minStemLength": 0,
             "fill": "#55b9e9",
-            "stroke": "#8b8b8b",
             "strokeWidth": 1,
             "clip": true
           },
           "encoding": {
+            "order": {
+              "condition": { "param": "highlight", "empty": false, "value": 1 },
+              "value": 0
+            },
+            "stroke": {
+              "condition": {
+                "param": "highlight",
+                "empty": false,
+                "value": "red"
+              },
+              "value": "#8b8b8b"
+            },
             "x2": { "field": "end", "band": 0 },
             "direction": {
               "field": "strand",

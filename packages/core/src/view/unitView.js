@@ -117,10 +117,18 @@ export default class UnitView extends View {
                 typeof param.select === "object" ? param.select : undefined;
             const select = asSelectionConfig(param.select);
             if (isPointSelectionConfig(select)) {
+                const hoverSelection = ["mouseover", "pointerover"].includes(
+                    /** @type {import("../spec/parameter.js").EventConfig} */ (
+                        select.on
+                    ).type
+                );
+                /** @type {import("../types/selectionTypes.js").Selection | undefined} */
+                let lastSelection;
                 const setter = (
                     /** @type {any} */
                     selection
                 ) => {
+                    lastSelection = selection;
                     this.paramRuntime.setValue(name, selection);
                 };
 
@@ -142,13 +150,20 @@ export default class UnitView extends View {
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) => {
                     const datum = getHoveredDatum();
+                    // A picked sibling may have published to the shared parameter first.
+                    if (
+                        hoverSelection &&
+                        !datum &&
+                        this.paramRuntime.findValue(name) !== lastSelection
+                    )
+                        return;
 
                     /** @type {any} */
                     let selection;
 
                     if (select.fields) {
                         selection = updateProjectedSelection(
-                            this.paramRuntime.getValue(name),
+                            this.paramRuntime.findValue(name),
                             datum ? field(select.fields[0])(datum) : undefined,
                             !!select.toggle && event.mouseEvent.shiftKey
                         );
@@ -175,8 +190,12 @@ export default class UnitView extends View {
                         // Compare with current membership: an API write may
                         // have replaced or cleared the last interactive choice.
                         const previousSelection =
-                            this.paramRuntime.getValue(name);
-                        if (datum !== previousSelection.datum) {
+                            this.paramRuntime.findValue(name);
+                        if (
+                            datum !== previousSelection.datum ||
+                            (hoverSelection &&
+                                previousSelection !== lastSelection)
+                        ) {
                             selection = createSinglePointSelection(datum);
                         }
                     }
@@ -191,7 +210,13 @@ export default class UnitView extends View {
                     select,
                     source,
                     listener,
-                    clearSelection
+                    (event, isHoverExit) => {
+                        if (
+                            !isHoverExit ||
+                            this.paramRuntime.findValue(name) === lastSelection
+                        )
+                            clearSelection();
+                    }
                 );
             }
         }

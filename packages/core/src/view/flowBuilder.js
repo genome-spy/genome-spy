@@ -342,6 +342,8 @@ export function buildDataFlow(
                 );
             }
 
+            view.mark.initializeRecordIdentity();
+
             // Support chrom/pos channelDefs
             const linearize = linearizeLocusAccess(view);
             if (linearize) {

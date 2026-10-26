@@ -786,6 +786,7 @@ describe("Scale resolution domain handling", () => {
     test("shared collectors de-duplicate domain extraction for conditional encodings", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
+            params: [{ name: "selected", select: "point" }],
             data: {
                 values: [{ a: 1 }, { a: 2 }],
             },
@@ -799,7 +800,7 @@ describe("Scale resolution domain handling", () => {
                         x: {
                             field: "a",
                             type: "quantitative",
-                            condition: { value: 0 },
+                            condition: { param: "selected", value: 0 },
                         },
                     },
                 },
@@ -809,7 +810,7 @@ describe("Scale resolution domain handling", () => {
                         x: {
                             field: "a",
                             type: "quantitative",
-                            condition: { value: 0 },
+                            condition: { param: "selected", value: 0 },
                         },
                     },
                 },

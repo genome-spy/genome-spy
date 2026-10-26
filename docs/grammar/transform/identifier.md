@@ -5,7 +5,9 @@ each row.
 
 GenomeSpy uses these identifiers internally for picking, including tooltips and
 point selections. It inserts an identifier transform automatically when a mark
-participates in picking and the dataflow branch does not already contain one.
+participates in picking or uses a point-selection condition and the dataflow
+branch does not already contain one. The required `uniqueId` encoding is
+inferred automatically, including on marks with picking disabled.
 
 Identifiers are runtime values. Do not use them as persistent record keys. For
 point selections that need to survive state persistence, use `encoding.key`, as
