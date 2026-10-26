@@ -34,7 +34,7 @@ describe("generated core schema", () => {
             params: [
                 {
                     name: "focus",
-                    value: [],
+                    value: /** @type {string[]} */ ([]),
                     bind: { legend: "color" },
                     ...param,
                 },
