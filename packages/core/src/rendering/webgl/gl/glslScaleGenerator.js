@@ -426,12 +426,10 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     /** @type {string} */
     let rangeUniform;
 
-    if (range && channel == primary) {
+    if (range && channel == primary && scale.type !== "ordinal") {
         const rangeProp = scale.props.range ?? [];
         // Maybe the scale could be annotated with a "dynamicRange" property or something
         if (isExprRef(rangeProp) || rangeProp.some(isExprRef)) {
-            // TODO: should check that we don't have an ordinal range here as it should be
-            // handled using a texture.
             if (range.length < 1 || range.length > 4) {
                 // TODO: Use an array instead of (float|vec[234]). This is likely to be a rare case, however.
                 throw new Error(
