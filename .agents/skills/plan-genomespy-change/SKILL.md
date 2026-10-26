@@ -1,17 +1,15 @@
 ---
 name: plan-genomespy-change
-description: Create, revise, reconcile, or retire GenomeSpy design proposals and implementation plans. Use when the user asks for a design, architecture proposal, migration plan, implementation plan, or work on plan files under `plans/`; do not use for a brief conversational plan for a routine edit.
+description: Create, revise, reconcile, or retire GenomeSpy design proposals and implementation plans. Use before implementing a substantial new feature or when the user asks for a design, architecture proposal, migration plan, implementation plan, or work on plan files under `plans/`; do not use for a brief conversational plan for a routine edit.
 ---
 
 # Plan a GenomeSpy change
 
-## Choose the delivery workflow
+Always create or update a written plan before implementing a substantial new
+feature, even when the user has not explicitly asked for a plan.
 
-- Use a feature branch and PR for non-trivial features and fixes unless the
-  user explicitly chooses another route.
-- Small, clearly scoped changes may go directly to `master` or `main`. If
-  unsure whether to use a direct commit or a branch and PR, ask before
-  proceeding. The current checkout alone does not determine the route.
+For implementation work, use the
+[delivery workflow](../prepare-genomespy-change/SKILL.md#choose-the-delivery-workflow).
 
 ## Write the plan
 
@@ -24,9 +22,8 @@ description: Create, revise, reconcile, or retire GenomeSpy design proposals and
    Preserve provenance in the proposal and nearby code comments with wording
    such as `Adapted from ...` or `Based on the design of ...`, a durable source
    link, and any required copyright or license notice.
-4. Put a requested proposal at
-   `plans/<feature-name>/<feature-name>-plan.md`. Split a large proposal into
-   focused files in the same directory.
+4. Put the plan at `plans/<feature-name>/<feature-name>-plan.md`. Split a large
+   proposal into focused files in the same directory.
 5. Ground the proposal in current files, types, and architectural constraints.
 6. State goals, non-goals, key decisions, alternatives considered, risks,
    unresolved questions, and acceptance criteria.
@@ -49,17 +46,24 @@ description: Create, revise, reconcile, or retire GenomeSpy design proposals and
 Keep design documents about the current or intended design. Mention discarded
 approaches only when their rationale helps explain the selected design.
 
-## Review and commit strategy
+## Review the plan
 
-- Define review gates around risk boundaries, not every numbered milestone.
-  Normally review shared contracts, architecture, public APIs, persistent
-  state, performance-critical changes with meaningful complexity, and the
-  final integration of a cross-cutting project.
-- Combine adjacent low-risk milestones into one review. Do not require separate
-  reviews for measurements, plan wording, documentation-only updates, or
-  trivial review fixes.
-- Do not require a subagent review after every step. When independent reviews
-  are requested, use them for substantial milestones and final integration.
+- When the user explicitly requests a plan, do not review it automatically,
+  even for a substantial feature. Review it only when the user asks; otherwise,
+  gently offer a subagent review when delivering the plan.
+- Otherwise, have an independent subagent review plans for substantial new
+  features before implementation and address worthwhile findings.
+
+## Implementation review and commits
+
+Apply this strategy when implementation and commits are authorized.
+
+- Define review gates around risk boundaries: shared contracts, architecture,
+  public APIs, persistent state, complex performance-critical paths, and final
+  integration. Combine adjacent low-risk milestones; avoid separate reviews
+  for measurements, wording, documentation-only updates, or trivial fixes.
+- When independent implementation reviews are requested, use them for
+  substantial milestones and final integration, not every step.
 - Ask reviewers to inspect downstream consumers and interactions, not only the
   local diff. Shared mark or encoding changes, for example, must consider every
   applicable renderer, picking path, and export path.
@@ -67,19 +71,19 @@ approaches only when their rationale helps explain the selected design.
   worthwhile correctness and KISS fixes, verify again, and create one clean
   commit. Use separate review-fix commits only when explicitly requested or
   when the fix is independently meaningful.
-- Re-review a fix only when it materially changes behavior, architecture, or
-  risk. Do not create recursive review gates for wording or small test
-  improvements.
+- Re-review fixes only when they materially change behavior, architecture, or
+  risk.
 
 ## Retire the plan
 
-- Treat files under `plans/` as temporary working artifacts.
+- Plans are temporary working artifacts. Retain and update them in draft PRs
+  for discussion; unfinished tasks and open questions are expected.
 - Before deleting a plan, review every incomplete task. Complete it or explicitly
   mark it as discarded in the plan.
 - For direct commits to `master` or `main`, exclude temporary plans from
   every commit and do not create separate plan-retirement commits. Reconcile
-  and remove the task's temporary plan before staging the deliverable.
+  and remove the task's temporary plan before staging the deliverable; leave
+  unrelated plans alone.
 - For branch/PR work, commit the reconciled plan so completed and discarded
-  tasks remain in branch history, then delete it in a later commit. Delete
-  plan files before creating a PR, or before merge if a PR already exists.
-  Never merge temporary plan files.
+  tasks remain in branch history, then delete it in a later commit before
+  merge. Never merge temporary plan files.
