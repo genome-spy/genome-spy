@@ -26,6 +26,9 @@ the 48,502 bp reference genome. Arrowheads stay inside their intervals, so
 genuine overlaps between adjacent genes remain visible. Hovering a gene shows
 its product, identifiers, strand, and source coordinates.
 
+Hover a label or arrow to highlight that gene's label, connectors, and arrow
+outline in red. Hovered arrows are drawn above overlapping neighbors.
+
 Label placement responds to the visible region and plot width. The spec
 measures product names, clamps their text bounds to the viewport, and uses
 `pileup` spacing to leave eight pixels between labels. Sorting those
