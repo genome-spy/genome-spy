@@ -54,6 +54,8 @@ export function createAppTestContext(options = {}) {
                     /** @type {(callback: () => void) => void} */ (
                         (callback) => callback()
                     ),
+                // Callbacks run synchronously, so none remain to cancel.
+                cancelTransition: /** @type {() => void} */ (() => undefined),
                 requestRender: /** @type {() => void} */ (() => undefined),
             })
         );
