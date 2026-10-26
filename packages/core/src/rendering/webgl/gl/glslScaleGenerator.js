@@ -628,9 +628,11 @@ ${ifElseGlsl(conditions, statements)}
  */
 export function emitSelectionPredicateGlsl(predicate, emitLeaf) {
     if ("all" in predicate) {
+        if (!predicate.all.length) return "true";
         return `(${predicate.all.map((child) => emitSelectionPredicateGlsl(child, emitLeaf)).join(" && ")})`;
     }
     if ("any" in predicate) {
+        if (!predicate.any.length) return "false";
         return `(${predicate.any.map((child) => emitSelectionPredicateGlsl(child, emitLeaf)).join(" || ")})`;
     }
     if ("not" in predicate) {

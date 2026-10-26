@@ -525,3 +525,45 @@ describe("logical selection predicates", () => {
         expect(matches({ x: 25, y: 100 })).toBe(false);
     });
 });
+
+test("category focus never exempts rows from semantic thinning, including mixed predicates", () => {
+    const category =
+        /** @type {import("./selectionPredicateTree.js").ResolvedSelectionPredicate} */ ({
+            param: "category",
+            type: "projected",
+            empty: true,
+            projections: [
+                { component: "group", input: "group", field: "group" },
+            ],
+        });
+    const record =
+        /** @type {import("./selectionPredicateTree.js").ResolvedSelectionPredicate} */ ({
+            param: "record",
+            type: "single",
+            empty: false,
+        });
+    /** @type {Record<string, any>} */
+    const values = {
+        category: { type: "projected", fields: ["group"], values: [["A"]] },
+        record: { type: "single", uniqueId: 7 },
+    };
+    const matches = (
+        /** @type {import("./selectionPredicateTree.js").ResolvedSelectionPredicate} */ tree
+    ) =>
+        compileSelectionPredicateTree(
+            activeMatchResolvedSelectionPredicate(tree),
+            (name) => values[name]
+        );
+    const selectedCategory = { group: "A", [UNIQUE_ID_KEY]: 8 };
+    const selectedRecord = { group: "B", [UNIQUE_ID_KEY]: 7 };
+    expect(matches(category)(selectedCategory)).toBe(false);
+    for (const tree of [
+        { any: [category, record] },
+        { all: [category, record] },
+    ]) {
+        expect(matches(tree)(selectedCategory)).toBe(false);
+        expect(matches(tree)(selectedRecord)).toBe(true);
+    }
+    values.record.uniqueId = null;
+    expect(matches({ any: [category, record] })(selectedCategory)).toBe(false);
+});

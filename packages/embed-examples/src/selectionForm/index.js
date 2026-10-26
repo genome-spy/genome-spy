@@ -129,7 +129,7 @@ function setFormEnabled(enabled) {
         : "Brush a region to enable the annotation form.";
 }
 
-/** @param {SelectionSnapshot} snapshot */
+/** @param {import("@genome-spy/core/types/embedApi.js").IntervalSnapshot | import("@genome-spy/core/types/embedApi.js").PointSnapshot} snapshot */
 function showSelection(snapshot) {
     if (snapshot.type === "interval") {
         const interval = snapshot.intervals.x;

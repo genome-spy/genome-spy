@@ -174,12 +174,17 @@ export function getSelectionPredicateTreeParams(tree) {
     return Array.from(names);
 }
 
-/** @param {ResolvedSelectionPredicate} tree @returns {ResolvedSelectionPredicate} */
+/**
+ * Match active record selections for semantic zoom without changing category sampling.
+ * @param {ResolvedSelectionPredicate} tree
+ * @returns {ResolvedSelectionPredicate}
+ */
 export function activeMatchResolvedSelectionPredicate(tree) {
     const activities = new Map();
-    /** @param {ResolvedSelectionPredicate} node */
+    /** @param {ResolvedSelectionPredicate} node @returns {ResolvedSelectionPredicate | undefined} */
     const visit = (node) => {
         if ("param" in node) {
+            if (node.type === "projected") return;
             activities.set(node.param, {
                 selectionActive: {
                     param: node.param,
@@ -189,18 +194,29 @@ export function activeMatchResolvedSelectionPredicate(tree) {
                         [],
                 },
             });
+            return node;
         } else if ("selectionActive" in node) {
+            if (node.selectionActive.type === "projected") return;
             activities.set(node.selectionActive.param, node);
+            return node;
         } else if ("not" in node) {
-            visit(node.not);
+            const child = visit(node.not);
+            return child ? { not: child } : undefined;
         } else {
-            for (const child of "all" in node ? node.all : node.any) {
-                visit(child);
-            }
+            const children = ("all" in node ? node.all : node.any)
+                .map(visit)
+                .filter((child) => child !== undefined);
+            return children.length
+                ? "all" in node
+                    ? { all: children }
+                    : { any: children }
+                : undefined;
         }
     };
-    visit(tree);
-    return { all: [tree, { any: Array.from(activities.values()) }] };
+    const records = visit(tree);
+    return records
+        ? { all: [records, { any: Array.from(activities.values()) }] }
+        : { any: [] };
 }
 
 /** @param {SelectionPredicateTree} tree @returns {boolean} */
@@ -316,7 +332,7 @@ export function resolveSelectionPredicateTree(
             if (
                 node.project &&
                 (Object.keys(node.project).length !== 1 ||
-                    !(component.component in node.project))
+                    !Object.hasOwn(node.project, component.component))
             ) {
                 throw new Error(
                     `Selection "${name}" project must map its declared field "${component.component}".`

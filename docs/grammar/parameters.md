@@ -179,7 +179,8 @@ selection.
 Like [Vega-Lite's interactive legend](https://vega.github.io/vega-lite/examples/interactive_legend.html),
 the selection can drive a conditional opacity encoding across linked views.
 An empty selection matches all points by default. The legend dims unselected
-entries while preserving their labels and colors.
+entries while preserving their labels and colors. Category focus retains the
+current semantic-zoom sample; it does not reveal additional hidden points.
 
 EXAMPLE examples/docs/grammar/parameters/interactive-legend.json height=350
 

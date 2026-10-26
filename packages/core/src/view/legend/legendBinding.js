@@ -12,6 +12,8 @@ import { isLegendBound } from "../../selection/projectedSelection.js";
  * @param {import("../../spec/channel.js").Type} dataType
  */
 export function findLegendBinding(view, field, channel, type, dataType) {
+    if (!["color", "fill", "stroke"].includes(channel)) return;
+
     const seen = new Set();
     const bindings = [];
     for (const ancestor of view.getDataAncestors()) {
@@ -23,7 +25,6 @@ export function findLegendBinding(view, field, channel, type, dataType) {
             if (select.type !== "point" || select.fields?.[0] !== field)
                 continue;
             if (
-                !["color", "fill", "stroke"].includes(channel) ||
                 type !== "symbol" ||
                 !["nominal", "ordinal"].includes(dataType)
             ) {

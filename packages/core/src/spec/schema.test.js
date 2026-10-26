@@ -28,6 +28,33 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("selection filters accept field projections and reject non-field targets", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            params: [
+                {
+                    name: "focus",
+                    select: { type: "point", fields: ["group"] },
+                    bind: "legend",
+                },
+            ],
+            data: { values: [{ alias: "A" }] },
+            mark: "point",
+            transform: [
+                { type: "filter", param: "focus", fields: { group: "alias" } },
+            ],
+        };
+        expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        expect(
+            validate({
+                ...spec,
+                transform: [
+                    { type: "filter", param: "focus", fields: { group: 1 } },
+                ],
+            })
+        ).toBe(false);
+    });
+
     test("surround restricts plot kinds while accepting scoped and nested sides", () => {
         const validate = createCoreValidator();
         const spec = {

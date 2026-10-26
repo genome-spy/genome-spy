@@ -180,12 +180,17 @@ export function makeSelectionTestExpression(params, selection) {
     const fields = params.fields ?? {};
 
     if (isProjectedSelection(selection)) {
-        const input =
-            /** @type {Record<string,string>} */ (fields)[
-                selection.fields[0]
-            ] ?? selection.fields[0];
+        const selectedField = selection.fields[0];
+        const input = Object.hasOwn(fields, selectedField)
+            ? fields[selectedField]
+            : selectedField;
+        // Dot access avoids Vega's inherited-name literal parsing.
         const access = splitAccessPath(input)
-            .map((part) => `[${JSON.stringify(part)}]`)
+            .map((part) =>
+                /^[a-zA-Z_$][\w$]*$/.test(part)
+                    ? `.${part}`
+                    : `[${JSON.stringify(part)}]`
+            )
             .join("");
         return `projectedSelectionTest(${paramName}, datum${access}, ${empty})`;
     }
