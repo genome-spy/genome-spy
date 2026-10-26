@@ -1,5 +1,42 @@
 import { describe, expect, test } from "vitest";
-import { generateConditionalEncoderGlsl } from "./glslScaleGenerator.js";
+import { scaleOrdinal, scaleLinear } from "d3-scale";
+import {
+    generateConditionalEncoderGlsl,
+    generateScaleGlsl,
+} from "./glslScaleGenerator.js";
+
+test("ordinal expression ranges use a texture beyond four entries", () => {
+    const values = [0.1, 0.2, 0.3, 0.4, 0.5];
+    const ordinal = Object.assign(
+        scaleOrdinal().domain(["A", "B", "C", "D", "E"]).range(values),
+        {
+            type: "ordinal",
+            props: { range: values.map((value) => ({ expr: String(value) })) },
+        }
+    );
+    const result = generateScaleGlsl("fillOpacity", ordinal, {
+        field: "group",
+        type: "nominal",
+    });
+    expect(result.rangeUniform).toBeUndefined();
+    expect(result.glsl).toContain(
+        "uniform sampler2D uRangeTexture_fillOpacity"
+    );
+    expect(result.glsl).toContain("getDiscreteColor(uRangeTexture_fillOpacity");
+});
+
+test("continuous expression ranges retain their numeric uniform", () => {
+    const linear = Object.assign(scaleLinear().range([0.1, 0.8]), {
+        type: "linear",
+        props: { range: [{ expr: "low" }, { expr: "high" }] },
+    });
+    const result = generateScaleGlsl("fillOpacity", linear, {
+        field: "value",
+        type: "quantitative",
+    });
+    expect(result.rangeUniform).toContain("uniform vec2 range_fillOpacity");
+    expect(result.glsl).not.toContain("uRangeTexture_fillOpacity");
+});
 
 describe("GLSL conditional selection encoders", () => {
     test("emit union membership and group emptiness checks", () => {
