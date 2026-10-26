@@ -1,17 +1,20 @@
 ---
 name: plan-genomespy-change
-description: Plan and check architectural fit for GenomeSpy changes before implementation or design revisions. Create, review or retire written plans for substantial features and requested proposals.
+description: Create, revise, reconcile, or retire GenomeSpy design proposals and implementation plans. Use before implementing a substantial new feature or when the user asks for a design, architecture proposal, migration plan, implementation plan, or work on plan files under `plans/`; do not use for a brief conversational plan for a routine edit.
 ---
 
 # Plan a GenomeSpy change
 
-Check architectural fit before implementing or revising a PR's design. For routine
-fixes and docs, a few sentences in existing notes suffice. Substantial features
-need a written plan before implementation. A request for a plan does not authorize
-implementation. Use [prepare-genomespy-change](../prepare-genomespy-change/SKILL.md)
-for delivery mechanics.
+Always create or update a written plan before implementing a substantial new
+feature, even when the user has not explicitly asked for a plan.
+
+For implementation work, use the
+[delivery workflow](../prepare-genomespy-change/SKILL.md#choose-the-delivery-workflow).
 
 ## Check architectural fit
+
+Before implementation or design revisions, record a brief architecture check in
+existing notes or the plan. Routine fixes and docs do not need a formal plan.
 
 - Read `ARCHITECTURE.md`, applicable package instructions and current linked
   issues/reviews. Understand the package responsibility map, then trace affected
@@ -31,35 +34,77 @@ for delivery mechanics.
 
 ## Write the plan
 
-Put it at `plans/<feature-name>/<feature-name>-plan.md`, splitting only when useful.
-Reuse the architecture findings; state goals, non-goals, decisions, alternatives,
-risks, open questions and acceptance criteria grounded in current files/types.
-Study established designs where relevant. Before copying/adapting code, verify
-license compatibility and retain durable provenance and required notices.
+1. Study the current implementation and start at `ARCHITECTURE.md`. Follow only
+   the subsystem references relevant to the proposed change.
+2. When designing a feature or architecture, study comparable established
+   projects. Prefer proven patterns when they fit GenomeSpy and document the
+   tradeoffs when a custom design is better.
+3. Verify license compatibility before copying or closely adapting code.
+   Preserve provenance in the proposal and nearby code comments with wording
+   such as `Adapted from ...` or `Based on the design of ...`, a durable source
+   link, and any required copyright or license notice.
+4. Put the plan at `plans/<feature-name>/<feature-name>-plan.md`. Split a large
+   proposal into focused files in the same directory.
+5. Ground the proposal in current files, types, and architectural constraints.
+6. State goals, non-goals, key decisions, alternatives considered, risks,
+   unresolved questions, and acceptance criteria.
+7. Divide implementation into coherent milestones that produce meaningful,
+   verifiable outcomes. Do not create separate steps solely for measurements,
+   plan updates, minor tests, or review fixes unless they materially change
+   scope or risk. For each milestone, include:
 
-Organize meaningful milestones with outcomes, affected consumers, verification,
-docs/migration work and tentative Conventional Commit messages. Include final
-integration checks using representative examples and interactions across affected
-subsystems/backends. Do not create milestones solely for minor tests, measurements
-or bookkeeping. Mention discarded approaches only to explain a design choice.
+   - Intended outcome
+   - Affected areas and downstream consumers
+   - Verification, including cross-subsystem or cross-backend compatibility
+     where shared contracts are involved
+   - Documentation or migration work
+   - A tentative Conventional Commit message
 
-## Review and implementation
+8. Add final integration verification for changes that cross milestone
+   boundaries or span multiple subsystems or renderers. Name representative
+   real examples and interactions that isolated unit tests cannot cover.
 
-- For an explicitly requested plan, offer independent review; do not run it unless
-  asked. Otherwise, obtain independent review before implementing substantial
-  features and address worthwhile findings.
-- Review at architectural/public API/persistent-state/performance boundaries and
-  final integration. Check downstream consumers, applicable renderers, picking and
-  export; challenge the chosen abstraction before polishing its implementation.
-- When implementation is authorized, verify each coherent milestone, review it,
-  fix worthwhile findings, verify again and commit. Independent implementation
-  reviews, when requested, belong at substantial boundaries rather than every edit.
-  Re-review fixes only when behavior, architecture or risk changes materially.
+Keep design documents about the current or intended design. Mention discarded
+approaches only when their rationale helps explain the selected design.
+
+## Review the plan
+
+- When the user explicitly requests a plan, do not review it automatically,
+  even for a substantial feature. Review it only when the user asks; otherwise,
+  gently offer a subagent review when delivering the plan.
+- Otherwise, have an independent subagent review plans for substantial new
+  features before implementation and address worthwhile findings.
+
+## Implementation review and commits
+
+Apply this strategy when implementation and commits are authorized.
+
+- Define review gates around risk boundaries: shared contracts, architecture,
+  public APIs, persistent state, complex performance-critical paths, and final
+  integration. Combine adjacent low-risk milestones; avoid separate reviews
+  for measurements, wording, documentation-only updates, or trivial fixes.
+- When independent implementation reviews are requested, use them for
+  substantial milestones and final integration, not every step.
+- Ask reviewers to inspect downstream consumers and interactions, not only the
+  local diff. Shared mark or encoding changes, for example, must consider every
+  applicable renderer, picking path, and export path.
+- By default, implement and verify a coherent milestone, review it, apply
+  worthwhile correctness and KISS fixes, verify again, and create one clean
+  commit. Use separate review-fix commits only when explicitly requested or
+  when the fix is independently meaningful.
+- Re-review fixes only when they materially change behavior, architecture, or
+  risk.
 
 ## Retire the plan
 
-Keep active plans updated in draft PRs. Complete or explicitly discard every
-remaining task before removal. On a feature branch, commit the reconciled plan,
-then delete it in a later commit before merge. For direct master/main delivery,
-reconcile/remove it before staging; exclude temporary plans from every commit and
-make no separate retirement commit. Leave unrelated plans alone.
+- Plans are temporary working artifacts. Retain and update them in draft PRs
+  for discussion; unfinished tasks and open questions are expected.
+- Before deleting a plan, review every incomplete task. Complete it or explicitly
+  mark it as discarded in the plan.
+- For direct commits to `master` or `main`, exclude temporary plans from
+  every commit and do not create separate plan-retirement commits. Reconcile
+  and remove the task's temporary plan before staging the deliverable; leave
+  unrelated plans alone.
+- For branch/PR work, commit the reconciled plan so completed and discarded
+  tasks remain in branch history, then delete it in a later commit before
+  merge. Never merge temporary plan files.
