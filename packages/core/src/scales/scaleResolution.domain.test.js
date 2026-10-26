@@ -789,6 +789,7 @@ describe("Scale resolution domain handling", () => {
             data: {
                 values: [{ a: 1 }, { a: 2 }],
             },
+            params: [{ name: "selected", select: "point" }],
             resolve: {
                 scale: { x: "shared" },
             },
@@ -799,7 +800,7 @@ describe("Scale resolution domain handling", () => {
                         x: {
                             field: "a",
                             type: "quantitative",
-                            condition: { value: 0 },
+                            condition: { param: "selected", value: 0 },
                         },
                     },
                 },
@@ -809,7 +810,7 @@ describe("Scale resolution domain handling", () => {
                         x: {
                             field: "a",
                             type: "quantitative",
-                            condition: { value: 0 },
+                            condition: { param: "selected", value: 0 },
                         },
                     },
                 },
