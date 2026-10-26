@@ -133,6 +133,14 @@ existing parameter boundary, without introducing a second state model.
   transparent-rectangle picking and asynchronous click-ordering limitations. No
   renderer workaround or unrelated picking refactor is retained. Documented the
   supported Canvas/WebGL scope; a native WebGPU fix needs separate work.
-- Remaining: push the simplified head, update PR scope/base, and check its CI.
+- Completed: pushed the replacement as c79657e1 and verified all three hosted CI
+  checks. The build log confirms 555 passing files and 5,286 passing tests.
+- Completed: added the reviewer-requested five-category native-slider example in
+  prerequisite PR #606 (7ecba2da), verified its schema, initialization and WebGL
+  updates, and merged that dependency update into #605.
+- PR #605 targets master because the existing CI workflows only run for that
+  target. Merge #606 first; its files then drop out of the feature diff.
+- Remaining: verify hosted CI on the updated head and remove this temporary plan
+  before merge. Current check results are recorded in the PR description.
 - Deferred outside Core delivery: Python/notebook adoption after a published Core
   release, as requested. No Python source or tracked notebook is changed here.
