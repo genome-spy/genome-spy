@@ -8,7 +8,9 @@ import {
 test("ordinal expression ranges use a texture beyond four entries", () => {
     const values = [0.1, 0.2, 0.3, 0.4, 0.5];
     const ordinal = Object.assign(
-        scale("ordinal")().domain(["A", "B", "C", "D", "E"]).range(values),
+        scale("ordinal", undefined, undefined)()
+            .domain(["A", "B", "C", "D", "E"])
+            .range(values),
         { props: { range: values.map((value) => ({ expr: String(value) })) } }
     );
     const result = generateScaleGlsl("fillOpacity", ordinal, {
@@ -23,9 +25,12 @@ test("ordinal expression ranges use a texture beyond four entries", () => {
 });
 
 test("continuous expression ranges retain their numeric uniform", () => {
-    const linear = Object.assign(scale("linear")().range([0.1, 0.8]), {
-        props: { range: [{ expr: "low" }, { expr: "high" }] },
-    });
+    const linear = Object.assign(
+        scale("linear", undefined, undefined)().range([0.1, 0.8]),
+        {
+            props: { range: [{ expr: "low" }, { expr: "high" }] },
+        }
+    );
     const result = generateScaleGlsl("fillOpacity", linear, {
         field: "value",
         type: "quantitative",
