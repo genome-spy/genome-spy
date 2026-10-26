@@ -54,6 +54,8 @@ export function createAppTestContext(options = {}) {
                     /** @type {(callback: () => void) => void} */ (
                         (callback) => callback()
                     ),
+                // Transitions run immediately, so none remain queued to cancel.
+                cancelTransition: /** @type {() => void} */ (() => undefined),
                 requestRender: /** @type {() => void} */ (() => undefined),
             })
         );
