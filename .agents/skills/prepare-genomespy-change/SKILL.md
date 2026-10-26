@@ -18,8 +18,10 @@ description: Prepare GenomeSpy commits and pull requests for delivery. Use when 
 - Inspect the exact diff the message describes: staged changes for a commit,
   working-tree changes for an uncommitted proposal, or the branch diff for a PR.
 - Base the message on everything included, not only the latest edits.
-- Verify required plans and reviews using
-  [plan-genomespy-change](../plan-genomespy-change/SKILL.md).
+- Recheck [architectural fit](../plan-genomespy-change/SKILL.md#check-architectural-fit)
+  against the final diff: native contract, ownership, affected consumers and
+  composition evidence. Resolve mismatches; passing CI or fewer files is not proof.
+- Verify required plans and reviews using the same planning skill.
 - Keep commits focused. Casual intermediate commits are acceptable on feature
   branches when the user wants them.
 
