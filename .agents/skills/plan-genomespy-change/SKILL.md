@@ -5,6 +5,16 @@ description: Create, revise, reconcile, or retire GenomeSpy design proposals and
 
 # Plan a GenomeSpy change
 
+## Choose the delivery workflow
+
+- Use a feature branch and PR for non-trivial features and fixes unless the
+  user explicitly chooses another route.
+- Small, clearly scoped changes may go directly to `master` or `main`. If
+  unsure whether to use a direct commit or a branch and PR, ask before
+  proceeding. The current checkout alone does not determine the route.
+
+## Write the plan
+
 1. Study the current implementation and start at `ARCHITECTURE.md`. Follow only
    the subsystem references relevant to the proposed change.
 2. When designing a feature or architecture, study comparable established
@@ -31,6 +41,7 @@ description: Create, revise, reconcile, or retire GenomeSpy design proposals and
      where shared contracts are involved
    - Documentation or migration work
    - A tentative Conventional Commit message
+
 8. Add final integration verification for changes that cross milestone
    boundaries or span multiple subsystems or renderers. Name representative
    real examples and interactions that isolated unit tests cannot cover.
@@ -65,7 +76,10 @@ approaches only when their rationale helps explain the selected design.
 - Treat files under `plans/` as temporary working artifacts.
 - Before deleting a plan, review every incomplete task. Complete it or explicitly
   mark it as discarded in the plan.
-- Commit the reconciled plan so completed and discarded tasks remain in Git
-  history. Only then delete the plan in a later commit.
-- Delete the plan files before creating a PR. If a PR already exists, delete
-  them before merge. Do not merge temporary plan files.
+- For direct commits to `master` or `main`, exclude temporary plans from
+  every commit and do not create separate plan-retirement commits. Reconcile
+  and remove the task's temporary plan before staging the deliverable.
+- For branch/PR work, commit the reconciled plan so completed and discarded
+  tasks remain in branch history, then delete it in a later commit. Delete
+  plan files before creating a PR, or before merge if a PR already exists.
+  Never merge temporary plan files.

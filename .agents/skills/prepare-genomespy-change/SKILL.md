@@ -5,6 +5,14 @@ description: Prepare GenomeSpy commits and pull requests for delivery. Use when 
 
 # Prepare a GenomeSpy change
 
+## Choose the delivery workflow
+
+- Use a feature branch and PR for non-trivial features and fixes unless the
+  user explicitly chooses another route. Direct commits to `master` or
+  `main` are suitable for small, clearly scoped changes.
+- If unsure which route is appropriate, ask before proceeding. Do not infer
+  that a change should go directly to `master` just because it is checked out.
+
 ## Inspect the change
 
 - Inspect the exact diff the message describes: staged changes for a commit,
@@ -54,14 +62,13 @@ description: Prepare GenomeSpy commits and pull requests for delivery. Use when 
 
 ## Retire implementation plans
 
-- Before creating a PR or preparing a branch for merge, check for relevant plan
-  files under `plans/`.
-- Review every incomplete task in those plans. Complete it or explicitly mark it
-  as discarded in the plan.
-- Commit the reconciled plan so its final task status remains in Git history.
-  Delete the plan files in a later commit.
-- Do not create a PR with temporary plan files. If a PR already exists, delete
-  them before merge.
+- For direct commits to `master` or `main`, do not stage temporary plans or
+  create separate plan-retirement commits. Reconcile and remove the task's
+  temporary plan before staging the deliverable; leave unrelated plans alone.
+- For branch/PR work, follow the
+  [plan retirement workflow](../plan-genomespy-change/SKILL.md#retire-the-plan):
+  commit the reconciled plan, then delete it in a later commit before creating
+  the PR, or before merge if the PR already exists.
 
 ## Draft pull request metadata
 
