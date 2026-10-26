@@ -32,10 +32,12 @@ an early browser-side LLM agent with a thin Python relay.
 
 ## Workflow expectations
 
-- Before non-trivial edits, make a brief working plan. Use the
-  `plan-genomespy-change` skill for requested design or implementation
-  proposals; routine edits do not need a formal plan file. Do not infer
-  permission to edit from a question or review request.
+- Before non-trivial edits, make a brief working plan. Substantial new features
+  always need a written plan under `plans/` before implementation. Use
+  `plan-genomespy-change` for these features and requested design or
+  implementation proposals, following its plan review rules. Routine edits do
+  not need a formal plan file. Do not infer permission to edit from a question
+  or review request.
 - Consider `docs/` for user-visible Core or App features. Refactors usually do
   not require documentation changes.
 - For refactors and simplification, measure relevant size before and after with
@@ -139,8 +141,6 @@ Common checks from the repository root:
   `CONTRIBUTING.md`.
 - Use the `write-genomespy-docs` skill for user-facing docs, specification JSDoc,
   schema macros, or docs builds.
-- Use the `plan-genomespy-change` skill for architecture or implementation
-  proposals.
 - Use the `debug-genomespy-web` skill for browser reproduction and UI smoke
   testing.
 - For GitHub reads and writes, including PRs, reviews, comments, and issues,
@@ -153,14 +153,8 @@ Common checks from the repository root:
   Do not append attribution to issue or PR titles. Omit the footer only when
   posting the user's wording verbatim, and never present agent-authored text as
   if the user wrote it.
-- Before creating a PR or merging, reconcile every incomplete task in relevant
-  `plans/` files by completing it or marking it discarded, commit that record,
-  and delete the plan files in a later commit. Never merge temporary plan files.
-- Commits use Conventional Commits. The complete header and every body/footer
-  line must be at most 100 characters. Include a brief body by default, focused
-  on the rationale for the change; omit it only for genuinely trivial commits.
-  Reserve `docs` for user-facing documentation that belongs in changelogs. Use
-  `chore` for internal documentation such as agent instructions and architecture
-  maintenance.
-  Use the `prepare-genomespy-change` skill when writing commits, commit messages,
-  PR titles, or PR notes.
+- Follow `plan-genomespy-change` for plan retention and retirement when
+  preparing draft PRs, direct commits, and merges.
+- Use `prepare-genomespy-change` when writing commits, commit messages, PR
+  titles, or PR notes. It defines Conventional Commit conventions and message
+  formatting.
