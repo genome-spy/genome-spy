@@ -5,11 +5,192 @@ import IdentifierTransform, {
 } from "../data/transforms/identifier.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 import UnitView from "./unitView.js";
+import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
 
 /** @param {import("./view.js").default} root */
 function units(root) {
     return root.getDescendants().filter((view) => view instanceof UnitView);
 }
+
+test.each([false, true])(
+    "non-picking selection consumers infer IDs regardless of source order (source first: %s)",
+    async (sourceFirst) => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const source = {
+            name: "source",
+            params: [
+                {
+                    name: "selected",
+                    select: { type: "point", on: "pointerover" },
+                    push: "outer",
+                },
+            ],
+            mark: "point",
+        };
+        /** @type {import("../spec/view.js").UnitSpec[]} */
+        const consumers = [
+            {
+                name: "colored",
+                mark: { type: "rule", tooltip: null },
+                encoding: {
+                    color: {
+                        condition: {
+                            param: "selected",
+                            empty: false,
+                            value: "red",
+                        },
+                        value: "gray",
+                    },
+                },
+            },
+            {
+                name: "ordered",
+                mark: { type: "rule", tooltip: null },
+                predicates: {
+                    picked: { or: [{ param: "selected", empty: false }] },
+                },
+                encoding: {
+                    order: {
+                        condition: { test: { ref: "picked" }, value: 1 },
+                        value: 0,
+                    },
+                },
+            },
+            {
+                name: "inertOrder",
+                mark: { type: "rule", tooltip: null },
+                encoding: {
+                    order: {
+                        condition: { param: "selected", value: 0 },
+                        value: 0,
+                    },
+                },
+            },
+        ];
+        const { root, views } = await createTestEmbed({
+            params: [{ name: "selected", value: null }],
+            data: {
+                values: [
+                    { id: "A", chrom: "chr1", x: 1 },
+                    { id: "B", chrom: "chr1", x: 2 },
+                ],
+            },
+            // Match IDs across branches while leaving channel inference to Core.
+            transform: [{ type: "identifier" }],
+            encoding: {
+                key: { field: "id" },
+                x: { chrom: "chrom", pos: "x", type: "locus", axis: null },
+            },
+            vconcat: sourceFirst
+                ? [source, ...consumers]
+                : [...consumers, source],
+        });
+        const [colored, ordered, inertOrder] = Array.from(units(root)).filter(
+            (v) => v.name !== "source"
+        );
+        for (const unit of [colored, ordered]) {
+            expect(unit.mark.isPickingParticipant()).toBe(false);
+            expect(unit.mark.encoders.uniqueId).toBeDefined();
+        }
+        expect(inertOrder.mark.getOrder()).toBeUndefined();
+        expect(inertOrder.mark.encoders.uniqueId).toBeUndefined();
+        getPointSelection(views.get({ scope: [], view: "source" })).setValue([
+            ["A"],
+        ]);
+        const [picked, other] = colored.getCollector().getData();
+        expect(colored.mark.encoders.color(picked)).toBe("red");
+        expect(colored.mark.encoders.color(other)).toBe("gray");
+        expect(ordered.mark.getOrder().predicate(picked)).toBe(true);
+        expect(ordered.mark.getOrder().predicate(other)).toBe(false);
+    }
+);
+
+test("inserted and newly visible consumers infer IDs while preserving explicit ID channels", async () => {
+    const { root, views, context } = await createTestEmbed(
+        {
+            params: [{ name: "selected", value: null }],
+            layer: [
+                {
+                    name: "source",
+                    params: [
+                        { name: "selected", select: "point", push: "outer" },
+                    ],
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative", axis: null },
+                    },
+                },
+            ],
+        },
+        {
+            contextOptions: {
+                isViewConfiguredVisible: (view) => view.spec.visible ?? true,
+            },
+        }
+    );
+    /** @type {import("../spec/view.js").UnitSpec} */
+    const spec = {
+        name: "consumer",
+        visible: false,
+        data: { values: [{ x: 2, customId: 42 }] },
+        mark: { type: "rule", tooltip: null },
+        encoding: {
+            x: { field: "x", type: "quantitative", axis: null },
+            color: {
+                condition: { param: "selected", empty: false, value: "red" },
+                value: "gray",
+            },
+        },
+    };
+    await views.insert(views.root(), spec);
+    const consumer = units(root).find((v) => v.name === "consumer");
+    expect(consumer.getCollector()).toBeUndefined();
+    consumer.spec.visible = true;
+    await initializeVisibleViewData(
+        root,
+        context.dataFlow,
+        context.textMetrics
+    );
+    const [row] = consumer.getCollector().getData();
+    expect(Number.isSafeInteger(row[UNIQUE_ID_KEY])).toBe(true);
+    expect(consumer.mark.encoders.uniqueId(row)).toBe(row[UNIQUE_ID_KEY]);
+
+    await views.insert(views.root(), {
+        ...spec,
+        name: "explicit",
+        visible: true,
+        encoding: { ...spec.encoding, uniqueId: { field: "customId" } },
+    });
+    const explicit = units(root).find((v) => v.name === "explicit");
+    expect(
+        explicit.mark.encoders.uniqueId(
+            Array.from(explicit.getCollector().getData())[0]
+        )
+    ).toBe(42);
+});
+
+test("interval-only conditions do not allocate record identity", async () => {
+    const { root } = await createTestEmbed({
+        params: [
+            { name: "brush", select: { type: "interval", encodings: ["x"] } },
+        ],
+        data: { values: [{ x: 1 }] },
+        mark: { type: "rule", tooltip: null },
+        encoding: {
+            x: { field: "x", type: "quantitative", axis: null },
+            color: {
+                condition: { param: "brush", value: "red" },
+                value: "gray",
+            },
+        },
+    });
+    const [unit] = units(root);
+    expect(unit.mark.encoders.uniqueId).toBeUndefined();
+    expect(Array.from(unit.getCollector().getData())[0]).not.toHaveProperty(
+        UNIQUE_ID_KEY
+    );
+});
 
 test("inherited point selection does not assign identities to generated axes and legends", async () => {
     // Include the implicit grid: an unwrapped unit has no generated guides.

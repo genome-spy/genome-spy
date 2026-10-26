@@ -16,7 +16,11 @@ import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
 import { getSelectionPredicateParams } from "../selection/selection.js";
 import { normalizeOrderDefinition } from "../selection/order.js";
-import { expandNamedPredicateCondition } from "../selection/selectionPredicateTree.js";
+import {
+    expandNamedPredicateCondition,
+    getSelectionPredicateTreeParams,
+    normalizeSelectionPredicateTree,
+} from "../selection/selectionPredicateTree.js";
 import { asArray } from "../utils/arrayUtils.js";
 import { isInChromeSubtree } from "../view/viewChrome.js";
 
@@ -57,6 +61,8 @@ export default class Mark {
     #order;
 
     #orderInitialized = false;
+
+    #requiresSelectionIdentity = false;
 
     /**
      * Creates the semantic mark owned by a unit view and resolves its configured
@@ -607,6 +613,37 @@ export default class Mark {
     }
 
     /**
+     * Finalizes identity after sibling selection declarations are registered.
+     * Only the unscaled ID channel changes; positional encodings remain intact.
+     */
+    initializeRecordIdentity() {
+        const runtime = this.unitView.paramRuntime;
+        this.#requiresSelectionIdentity =
+            !isInChromeSubtree(this.unitView) &&
+            Object.entries(this.encoding).some(
+                ([channel, definition]) =>
+                    definition &&
+                    "condition" in definition &&
+                    (channel !== "order" ||
+                        definition.condition?.value !== definition.value) &&
+                    asArray(definition.condition).some((condition) =>
+                        getSelectionPredicateTreeParams(
+                            normalizeSelectionPredicateTree(condition)
+                        ).some((name) => {
+                            const type =
+                                runtime.findSelectionCapability(name)?.type ??
+                                runtime.findValue(name)?.type;
+                            return type === "single" || type === "multi";
+                        })
+                    )
+            );
+
+        if (this.requiresRecordIdentity() && !("uniqueId" in this.encoding)) {
+            this.encoding.uniqueId = { field: UNIQUE_ID_KEY };
+        }
+    }
+
+    /**
      * Native point selections store membership by internal row ID, even when
      * picking is disabled. Generated guides inherit parameters for formatting,
      * but must not acquire selection-only clones, indexes, or GPU attributes.
@@ -617,9 +654,10 @@ export default class Mark {
         return (
             this.isPickingParticipant() ||
             (!isInChromeSubtree(this.unitView) &&
-                this.unitView.paramRuntime.hasPointSelections({
-                    inherited: true,
-                }))
+                (this.#requiresSelectionIdentity ||
+                    this.unitView.paramRuntime.hasPointSelections({
+                        inherited: true,
+                    })))
         );
     }
 
