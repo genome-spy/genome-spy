@@ -32,11 +32,11 @@ an early browser-side LLM agent with a thin Python relay.
 
 ## Workflow expectations
 
-- Before non-trivial edits, make a brief working plan. Substantial new features
-  always need a written plan under `plans/` before implementation. Use
-  `plan-genomespy-change` for these features and requested design or
-  implementation proposals, following its plan review rules. Routine edits do
-  not need a formal plan file. Do not infer permission to edit from a question
+- For every PR, use `plan-genomespy-change` to check architectural fit before
+  implementation or design revisions, and `prepare-genomespy-change` before
+  preparing the PR. Scale the work to the change: routine edits need a brief
+  check; substantial features need a written plan under `plans/`. Follow the
+  planning skill's review rules. Do not infer permission to edit from a question
   or review request.
 - Consider `docs/` for user-visible Core or App features. Refactors usually do
   not require documentation changes.

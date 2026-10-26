@@ -11,6 +11,27 @@ feature, even when the user has not explicitly asked for a plan.
 For implementation work, use the
 [delivery workflow](../prepare-genomespy-change/SKILL.md#choose-the-delivery-workflow).
 
+## Check architectural fit
+
+Before implementation or design revisions, record a brief architecture check in
+existing notes or the plan. Routine fixes and docs do not need a formal plan.
+
+- Read `ARCHITECTURE.md`, applicable package instructions and current linked
+  issues/reviews. Understand the package responsibility map, then trace affected
+  paths in depth; distinguish agreed requirements from a PoC or open proposal.
+- Identify the native contract and owning subsystem. Trace relevant grammar,
+  normalization, state, scopes/scales, renderers, interaction, API and persistence.
+  Keep value identity, dependency/resource ownership and disposal consistent.
+- Prefer extending existing semantics over parallel vocabulary, state, expressions
+  or rendering paths. Reusing helpers alone does not prove architectural fit.
+  Generalize across supported uses without inventing speculative frameworks.
+- Record the owner, reuse decision, affected consumers and compatibility impact
+  with source references. For behavior changes, name a composed or neighboring case
+  beyond the demo and how it verifies required backends, inputs and semantics.
+- Choose the smallest coherent PR. Split reusable foundations from UI consumers
+  when independently useful; do not shrink a diff by moving engine logic into
+  specs or omitting required consumers.
+
 ## Write the plan
 
 1. Study the current implementation and start at `ARCHITECTURE.md`. Follow only
