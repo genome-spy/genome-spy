@@ -1,3 +1,4 @@
+import { findLegendBinding } from "../legend/legendBinding.js";
 import { findChannelDefWithScale, isValueDef } from "../../encoder/encoder.js";
 import {
     expandNamedPredicateCondition,
@@ -488,6 +489,13 @@ export async function createGridChildLegend(definition, layoutParent) {
     legend = new LegendView(
         {
             channel: definition.channel,
+            binding: findLegendBinding(
+                legendParent,
+                definition.field,
+                definition.channel,
+                definition.type,
+                definition.dataType
+            ),
             type: definition.type,
             symbolChannels: definition.symbolChannels,
             symbolGeometry: definition.symbolGeometry,

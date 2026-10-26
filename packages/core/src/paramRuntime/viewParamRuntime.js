@@ -1,3 +1,4 @@
+import { isLegendBound } from "../selection/projectedSelection.js";
 import { getSpecLocation } from "../utils/specOrigin.js";
 import { annotateSpecError } from "../utils/specError.js";
 import ParamRuntime from "./paramRuntime.js";
@@ -110,7 +111,7 @@ export default class ViewParamRuntime {
     /** @type {import("../view/view.js").default | undefined} */
     #selectionSource;
 
-    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval", components: string[], source: import("../view/view.js").default | undefined}>>} */
+    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval" | "projected", components: string[], source: import("../view/view.js").default | undefined}>>} */
     #selectionDeclarations = new Map();
 
     /** @type {Map<string, TransitionState>} */
@@ -196,9 +197,12 @@ export default class ViewParamRuntime {
             type: declaration.kind,
             components: declaration.components.map((component) => ({
                 component,
-                type: declaration.source?.getScaleResolution(
-                    /** @type {"x" | "y"} */ (component)
-                )?.type,
+                type:
+                    declaration.kind === "interval"
+                        ? declaration.source?.getScaleResolution(
+                              /** @type {"x" | "y"} */ (component)
+                          )?.type
+                        : undefined,
             })),
             location: declaration.source?.name ?? name,
         }));
@@ -221,17 +225,19 @@ export default class ViewParamRuntime {
             return;
         }
         const select = asSelectionConfig(param.select);
-        /** @type {"single" | "multi" | "interval"} */
+        /** @type {"single" | "multi" | "interval" | "projected"} */
         const kind =
             select.type === "interval"
                 ? "interval"
-                : select.toggle
-                  ? "multi"
-                  : "single";
+                : select.fields
+                  ? "projected"
+                  : select.toggle
+                    ? "multi"
+                    : "single";
         const components =
             select.type === "interval"
                 ? Array.from(new Set(select.encodings)).sort()
-                : [];
+                : (select.fields ?? []);
         const owner =
             param.push === "outer"
                 ? this.findRuntimeForParam(param.name)
@@ -1252,6 +1258,7 @@ export default class ViewParamRuntime {
             for (const param of runtime.#paramConfigs.values()) {
                 if (
                     isSelectionParameter(param) &&
+                    !isLegendBound(param) &&
                     (param.select === "point" ||
                         (typeof param.select === "object" &&
                             param.select.type === "point")) &&

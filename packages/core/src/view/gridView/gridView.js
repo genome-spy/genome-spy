@@ -1695,11 +1695,29 @@ export default class GridView extends ContainerView {
         this.#containerOverlays = [];
     }
 
+    *#interactiveLegendRegions() {
+        for (const legend of Object.values(this.#sharedLegends)) {
+            if (legend.isActive() && legend.isPickingSupported()) yield legend;
+        }
+        for (const child of this.#children) {
+            for (const legend of Object.values(child.legends)) {
+                if (legend.isActive() && legend.isPickingSupported())
+                    yield legend;
+            }
+        }
+    }
+
     /**
      * @param {import("../../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
         propagateInteraction(this, event, () => {
+            for (const legend of this.#interactiveLegendRegions()) {
+                if (legend.coords.containsPoint(event.point.x, event.point.y)) {
+                    legend.propagateInteraction(event);
+                    return;
+                }
+            }
             const pointedChild = this.findPointedChild(event.point);
             const pointedView = pointedChild?.view;
 

@@ -33,10 +33,16 @@ export class GeometryBuilder {
      * @param {object} object
      * @param {Record<import("../../../spec/channel.js").Channel, Encoder>} object.encoders
      * @param {string[]} [object.attributes]
+     * @param {{name: string, f: (datum: any) => number}[]} [object.projectedAttributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
      */
-    constructor({ encoders, numVertices = undefined, attributes = [] }) {
+    constructor({
+        encoders,
+        numVertices = undefined,
+        attributes = [],
+        projectedAttributes = [],
+    }) {
         this.encoders = encoders;
 
         // Encoders for variable channels
@@ -120,6 +126,14 @@ export class GeometryBuilder {
                 numComponents,
                 arrayReference: largeHp ? largeHpArray : undefined,
                 targetArrayType: arrayConstructor,
+            });
+        }
+
+        for (const { name, f } of projectedAttributes) {
+            this.variableBuilder.addConverter(name, {
+                f,
+                numComponents: 1,
+                targetArrayType: Uint32Array,
             });
         }
 
@@ -274,12 +288,14 @@ export class RectVertexBuilder extends GeometryBuilder {
      * @param {Object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
+     * @param {{name: string, f: (datum: any) => number}[]} [object.projectedAttributes]
      * @param {number} [object.numItems] Number of data items
      */
-    constructor({ encoders, attributes, numItems }) {
+    constructor({ encoders, attributes, projectedAttributes, numItems }) {
         super({
             encoders,
             attributes,
+            projectedAttributes,
             numVertices: numItems * 6,
         });
         this.variableBuilder.configure();
@@ -338,6 +354,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
      * @param {Object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
+     * @param {{name: string, f: (datum: any) => number}[]} [object.projectedAttributes]
      * @param {number} [object.tessellationThreshold]
      *     If the rule is wider than the threshold, tessellate it into pieces
      * @param {number[]} [object.visibleRange]
@@ -346,6 +363,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
     constructor({
         encoders,
         attributes,
+        projectedAttributes,
         tessellationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
         numItems,
@@ -353,6 +371,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
         super({
             encoders,
             attributes,
+            projectedAttributes,
             numVertices:
                 tessellationThreshold == Infinity ? numItems * 6 : undefined,
         });
@@ -411,12 +430,19 @@ export class PointVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
+     * @param {{name: string, f: (datum: any) => number}[]} [object.projectedAttributes]
      * @param {number} [object.numItems] Number of points if known, uses TypedArray
      */
-    constructor({ encoders, attributes, numItems = undefined }) {
+    constructor({
+        encoders,
+        attributes,
+        projectedAttributes,
+        numItems = undefined,
+    }) {
         super({
             encoders,
             attributes,
+            projectedAttributes,
             numVertices: numItems,
         });
         this.variableBuilder.configure();
@@ -442,12 +468,19 @@ export class LinkVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
+     * @param {{name: string, f: (datum: any) => number}[]} [object.projectedAttributes]
      * @param {number} [object.numItems ] Number of points if known, uses TypedArray
      */
-    constructor({ encoders, attributes, numItems = undefined }) {
+    constructor({
+        encoders,
+        attributes,
+        projectedAttributes,
+        numItems = undefined,
+    }) {
         super({
             encoders,
             attributes,
+            projectedAttributes,
             numVertices: numItems,
         });
         this.variableBuilder.configure();
@@ -485,6 +518,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
+     * @param {{name: string, f: (datum: any) => number}[]} [object.projectedAttributes]
      * @param {import("../fonts/bmFontMetrics.js").BMFontMetrics} object.fontMetrics
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
@@ -493,6 +527,7 @@ export class TextVertexBuilder extends GeometryBuilder {
     constructor({
         encoders,
         attributes,
+        projectedAttributes,
         fontMetrics,
         properties,
         numCharacters = undefined,
@@ -500,6 +535,7 @@ export class TextVertexBuilder extends GeometryBuilder {
         super({
             encoders,
             attributes,
+            projectedAttributes,
             numVertices: numCharacters * 6, // six vertices per quad (character)
         });
 

@@ -42,7 +42,7 @@ array value.
 
 > **getSelection**: (`name`) => [`SelectionApi`](../type-aliases/SelectionApi.md)
 
-Returns a capability for a named point or interval selection.
+Returns a capability for a named row, field, or interval selection.
 
 Throws when the name is not declared as a supported selection in this
 scope.

@@ -1,3 +1,4 @@
+import { testProjectedSelection } from "../selection/projectedSelection.js";
 import { parseExpression, codegenExpression, functions } from "vega-expression";
 import {
     isArray,
@@ -39,6 +40,7 @@ function sequence(value) {
 }
 
 const functionContext = {
+    projectedSelectionTest: testProjectedSelection,
     clamp,
     tickStep,
     format(/** @type {number} */ value, /** @type {string} */ format) {

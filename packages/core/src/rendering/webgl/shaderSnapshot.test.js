@@ -112,8 +112,8 @@ function createFakeGlHelper() {
         gl,
         rangeTextures: new WeakMap(),
         selectionTextures: new WeakMap(),
-        createSelectionTexture(selection) {
-            this.selectionTextures.set(selection, { selection });
+        createSelectionTexture(selection, owner = selection) {
+            this.selectionTextures.set(owner, { selection });
         },
         compileShader(type, glsl) {
             const source = Array.isArray(glsl) ? glsl.join("\n\n") : glsl;

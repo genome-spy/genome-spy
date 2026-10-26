@@ -251,8 +251,17 @@ export interface PointSnapshot {
     data: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 
-/** A detached snapshot of either an interval or point selection. */
-export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
+/** Detached category values, without enumerating matching records. */
+export interface ProjectedSnapshot {
+    type: "projected";
+    active: boolean;
+    fields: readonly string[];
+    values: readonly (readonly Scalar[])[];
+}
+
+/** A detached selection snapshot. */
+export type SelectionSnapshot =
+    IntervalSnapshot | PointSnapshot | ProjectedSnapshot;
 
 /**
  * Capability for reading, replacing, and clearing a row-backed point selection.
@@ -295,6 +304,19 @@ export interface PointSelectionApi {
     clear: () => void;
 }
 
+/** Capability for a point selection projected onto one categorical field. */
+export interface ProjectedSelectionApi {
+    readonly type: "projected";
+    getValue: () => ProjectedSnapshot;
+    subscribe: (
+        listener: (value: ProjectedSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+    /** Sets one-scalar tuples in field order, without resolving matching rows. */
+    setValue: (values: readonly (readonly Scalar[])[]) => void;
+    clear: () => void;
+}
+
 /**
  * Capability for reading, clearing, and testing membership in an interval
  * selection.
@@ -326,8 +348,9 @@ export interface IntervalSelectionApi {
     contains: (point: { x: number; y: number }) => boolean;
 }
 
-/** A public capability for either a point or interval selection. */
-export type SelectionApi = PointSelectionApi | IntervalSelectionApi;
+/** A public capability for a row, field, or interval selection. */
+export type SelectionApi =
+    PointSelectionApi | IntervalSelectionApi | ProjectedSelectionApi;
 
 /**
  * Parameters and selections resolved from one view's lexical scope.
@@ -347,7 +370,7 @@ export interface ParamNamespace {
     get: <T = ParamValue>(name: string) => ParamApi<T>;
 
     /**
-     * Returns a capability for a named point or interval selection.
+     * Returns a capability for a named row, field, or interval selection.
      *
      * Throws when the name is not declared as a supported selection in this
      * scope.

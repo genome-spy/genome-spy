@@ -337,6 +337,9 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
     type: "point";
 
+    /** Select all records with matching values of this field. Initially supports one field. */
+    fields?: [string];
+
     /**
      * Controls whether data values should be toggled (inserted or removed from a point selection)
      * when clicking with the shift key pressed.
@@ -484,6 +487,9 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
               : T extends "interval"
                 ? IntervalSelectionConfig
                 : never);
+
+    /** Bind a single-field point selection to its categorical color legend. */
+    bind?: T extends "point" ? "legend" : never;
 
     /**
      * Initial value for the selection.

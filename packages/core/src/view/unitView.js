@@ -1,3 +1,8 @@
+import {
+    isLegendBound,
+    createProjectedSelection,
+    updateProjectedSelection,
+} from "../selection/projectedSelection.js";
 import RectMark from "../marks/rect.js";
 import ArrowMark from "../marks/arrow.js";
 import PointMark from "../marks/point.js";
@@ -107,7 +112,7 @@ export default class UnitView extends View {
 
     #setupPointSelection() {
         for (const [name, param] of this.paramRuntime.paramConfigs) {
-            if (!("select" in param)) {
+            if (!("select" in param) || isLegendBound(param)) {
                 continue;
             }
 
@@ -150,9 +155,11 @@ export default class UnitView extends View {
                 );
 
                 const clearSelection = () => {
-                    const selection = select.toggle
-                        ? createMultiPointSelection()
-                        : createSinglePointSelection(null);
+                    const selection = select.fields
+                        ? createProjectedSelection(select.fields)
+                        : select.toggle
+                          ? createMultiPointSelection()
+                          : createSinglePointSelection(null);
                     setter(selection);
                 };
 
@@ -167,7 +174,13 @@ export default class UnitView extends View {
                     /** @type {any} */
                     let selection;
 
-                    if (select.toggle) {
+                    if (select.fields) {
+                        selection = updateProjectedSelection(
+                            this.paramRuntime.getValue(name),
+                            datum ? field(select.fields[0])(datum) : undefined,
+                            !!select.toggle && event.mouseEvent.shiftKey
+                        );
+                    } else if (select.toggle) {
                         const toggle = event.mouseEvent.shiftKey;
 
                         if (toggle) {

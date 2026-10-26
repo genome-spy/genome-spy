@@ -392,6 +392,10 @@ function createSelectionCondition(mark, predicate) {
     }
     if ("selectionActive" in predicate) {
         const { param, type, components } = predicate.selectionActive;
+        if (type === "projected")
+            throw new Error(
+                "Projected point selections are not supported by the WebGPU preview."
+            );
         return {
             selectionActive:
                 type === "interval"
@@ -405,6 +409,10 @@ function createSelectionCondition(mark, predicate) {
                     : { selection: param, type },
         };
     }
+    if (predicate.type === "projected")
+        throw new Error(
+            "Projected point selections are not supported by the WebGPU preview."
+        );
     if (predicate.type === "interval") {
         return {
             selection: predicate.param,

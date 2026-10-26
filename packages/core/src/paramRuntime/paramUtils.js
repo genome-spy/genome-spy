@@ -1,3 +1,4 @@
+import { createProjectedSelection } from "../selection/projectedSelection.js";
 import { isString } from "vega-util";
 import {
     asSelectionConfig,
@@ -90,7 +91,7 @@ export function isVariableParameter(param) {
  * @returns {param is import("../spec/parameter.js").SelectionParameter}
  */
 export function isSelectionParameter(param) {
-    return !("expr" in param || "bind" in param) && "select" in param;
+    return !("expr" in param) && "select" in param;
 }
 
 /**
@@ -134,7 +135,16 @@ export function validateParameterName(name) {
 export function getDefaultParamValue(param, paramRuntime, exprFn) {
     if ("select" in param) {
         const select = asSelectionConfig(param.select);
+        if (
+            param.bind === "legend" &&
+            (!isPointSelectionConfig(select) || !select.fields)
+        ) {
+            throw new Error(
+                "Legend binding requires a single-field point selection."
+            );
+        }
         if (isPointSelectionConfig(select)) {
+            if (select.fields) return createProjectedSelection(select.fields);
             return select.toggle
                 ? createMultiPointSelection()
                 : createSinglePointSelection(null);

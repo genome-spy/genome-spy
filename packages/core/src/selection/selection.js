@@ -1,3 +1,4 @@
+import { splitAccessPath } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
     getSecondaryChannel,
@@ -178,6 +179,16 @@ export function makeSelectionTestExpression(params, selection) {
     const paramName = validateParameterName(params.param);
     const fields = params.fields ?? {};
 
+    if (isProjectedSelection(selection)) {
+        const input =
+            /** @type {Record<string,string>} */ (fields)[
+                selection.fields[0]
+            ] ?? selection.fields[0];
+        const access = splitAccessPath(input)
+            .map((part) => `[${JSON.stringify(part)}]`)
+            .join("");
+        return `projectedSelectionTest(${paramName}, datum${access}, ${empty})`;
+    }
     if (isSinglePointSelection(selection)) {
         return `${paramName}.uniqueId == null ? ${empty} : ${paramName}.uniqueId === datum[${JSON.stringify(
             UNIQUE_ID_KEY
@@ -382,6 +393,7 @@ export function isIntervalSelectionConfig(config) {
  * @returns {boolean}
  */
 export function isSelectionActive(selection) {
+    if (isProjectedSelection(selection)) return selection.values.length > 0;
     if (isSinglePointSelection(selection)) {
         return selection.uniqueId != null;
     }
@@ -391,7 +403,7 @@ export function isSelectionActive(selection) {
     if (isIntervalSelection(selection)) {
         return isActiveIntervalSelection(selection);
     }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
+    throw new Error("Unsupported selection type.");
 }
 
 /**

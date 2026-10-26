@@ -1,3 +1,6 @@
+import createIndexer from "../../../utils/indexer.js";
+import { isProjectedSelection } from "../../../selection/selection.js";
+import { isSelectionValue } from "../../../selection/projectedSelection.js";
 import {
     addExtensionsToContext,
     createFramebufferInfo,
@@ -91,9 +94,13 @@ export default class WebGLHelper {
         this.placementTextures = new WeakMap();
 
         /**
-         * @type {WeakMap<import("../../../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
+         * @type {WeakMap<object, WebGLTexture>}
          */
         this.selectionTextures = new WeakMap();
+        const indexer = createIndexer();
+        /** @param {unknown} value */
+        this.projectedValueId = (value) =>
+            isSelectionValue(value) ? indexer(value) + 1 : 0;
 
         // --------------------------------------------------------
 
@@ -466,22 +473,29 @@ export default class WebGLHelper {
     }
 
     /**
-     * @param {import("../../../types/selectionTypes.js").MultiPointSelection} selection
+     * @param {import("../../../types/selectionTypes.js").MultiPointSelection | import("../../../types/selectionTypes.js").ProjectedSelection} selection
+     * @param {object} [owner]
      */
-    createSelectionTexture(selection, update = true) {
-        if (!isMultiPointSelection(selection)) {
+    createSelectionTexture(selection, owner = selection) {
+        if (
+            !isMultiPointSelection(selection) &&
+            !isProjectedSelection(selection)
+        ) {
             throw new Error(
                 "Not a multi-point selection, cannot create texture"
             );
         }
 
-        const { table, capacity } = buildHashTableSet(selection.data.keys());
+        const keys = isProjectedSelection(selection)
+            ? selection.values.map(([value]) => this.projectedValueId(value))
+            : selection.data.keys();
+        const { table, capacity } = buildHashTableSet(keys);
         const { width, height } = computeHashTextureDimensions(
             capacity,
             this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE)
         );
 
-        const existingTexture = this.selectionTextures.get(selection);
+        const existingTexture = this.selectionTextures.get(owner);
 
         const gl = this.gl;
         const texture = createOrUpdateTexture(
@@ -498,14 +512,14 @@ export default class WebGLHelper {
                 height,
             },
             table,
-            update ? existingTexture : false
+            existingTexture
         );
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_BASE_LEVEL, 0);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, 0);
         gl.bindTexture(gl.TEXTURE_2D, null);
 
-        this.selectionTextures.set(selection, texture);
+        this.selectionTextures.set(owner, texture);
         this._ownedTextures.add(texture);
     }
 }

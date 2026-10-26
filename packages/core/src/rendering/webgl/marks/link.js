@@ -114,6 +114,7 @@ export default class WebGLLinkMark extends WebGLMark {
         const builder = new LinkVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
+            projectedAttributes: this.getProjectedAttributes(),
             numItems: itemCount,
         });
 

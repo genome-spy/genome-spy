@@ -156,6 +156,7 @@ export type ParamValue =
     | ParamValueLiteral
     | ParamValueInterval
     | ParamValuePoint
+    | import("@genome-spy/core/types/selectionTypes.js").ProjectedSelection
     | ParamValuePointExpand;
 
 /**

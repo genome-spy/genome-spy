@@ -29,12 +29,13 @@ this is necessary for bookmarkable state in the GenomeSpy App.
 By default, selection parameters and parameters with input bindings are
 persisted in the GenomeSpy App's bookmarks and provenance history. Use
 `persist: false` to opt out of persistence for ephemeral params (such as hover
-selections) or when `encoding.key` is not defined for point selections.
+selections) or when `encoding.key` is not defined for row-based point selections.
 
-For point selections, `encoding.key` should uniquely identify rows.
+For row-based point selections, `encoding.key` should uniquely identify rows.
 You can use either a single field or a composite key (an array of field
 definitions). When using a composite key, keep the field order stable across
-bookmark creation and restore.
+bookmark creation and restore. Field-projected selections store category values
+directly and do not require keys.
 
 The following example shows how to bind parameters to input elements and use
 them to control the size, angle, and text of a text mark.
@@ -165,6 +166,28 @@ specification below is fully compatible with Vega-Lite. You can select multiple
 bars by holding down the `Shift` key.
 
 EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
+
+### Interactive Legends
+
+Bind a point selection to a categorical color, fill, or stroke legend with
+`bind: "legend"` and `select.fields: ["field_name"]`. Exactly one field is
+supported. Click a legend entry to focus its category, Shift-click to toggle
+categories, and double-click the legend to clear. With `toggle: false`, clicks
+always replace the selected category. Plot clicks do not change a legend-bound
+selection.
+
+Like [Vega-Lite's interactive legend](https://vega.github.io/vega-lite/examples/interactive_legend.html),
+the selection can drive a conditional opacity encoding across linked views.
+An empty selection matches all points by default. The legend dims unselected
+entries while preserving their labels and colors.
+
+EXAMPLE examples/docs/grammar/parameters/interactive-legend.json height=350
+
+Highlighting retains the data and scale domain. If you instead use the selection
+in a filter transform, give the color scale an explicit domain containing all
+categories. Otherwise filtering can remove categories from the legend, leaving
+no entry to select them again. A rectangular brush can use a separate parameter
+and remains independent of legend focus.
 
 ### Interval Selection
 

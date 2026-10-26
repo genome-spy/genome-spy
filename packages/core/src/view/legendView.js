@@ -17,6 +17,12 @@
  * stacked legend regions.
  */
 
+import {
+    createProjectedSelection,
+    updateProjectedSelection,
+} from "../selection/projectedSelection.js";
+import { createEventPredicate } from "../utils/interactionConfig.js";
+
 import ContainerView from "./containerView.js";
 import {
     FlexDimensions,
@@ -176,6 +182,7 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
     return {
         name: "legend_" + (legend.orient ?? "right"),
         padding: legend.padding,
+        config: { mark: { tooltip: null } },
         resolve: {
             scale: Object.fromEntries(
                 forcedScaleChannels.map((channel) => [channel, "forced"])
@@ -321,6 +328,7 @@ function createStrokeSymbolLayer({
 /**
  * @param {object} options
  * @param {LegendEntry[]} [options.entries]
+ * @param {ReturnType<import("./legend/legendBinding.js").findLegendBinding>} [options.binding]
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [options.symbolChannels]
  * @param {SymbolLegendStyle} [options.symbolStyle]
@@ -334,6 +342,7 @@ function createStrokeSymbolLayer({
 export function createSymbolLegendSpec({
     entries,
     channel,
+    binding,
     symbolChannels = {},
     symbolStyle = {},
     symbolGeometry = "point",
@@ -510,6 +519,58 @@ export function createSymbolLegendSpec({
             text: { field: "label" },
         },
     });
+
+    if (binding) {
+        for (const unit of layer) {
+            const mark = /** @type {import("../spec/mark.js").MarkProps} */ (
+                unit.mark
+            );
+            const opacity = mark.opacity ?? 1;
+            unit.encoding.opacity = {
+                condition: {
+                    param: binding.name,
+                    project: { [binding.field]: "value" },
+                    value: opacity,
+                },
+                value: 0.35,
+            };
+            mark.tooltip = null;
+        }
+        layer.push({
+            name: "entries",
+            mark: {
+                type: "rect",
+                tooltip: false,
+                cursor: "pointer",
+                clip: false,
+                fillOpacity: 0,
+                strokeWidth: 0,
+                cullByVisibleRange: false,
+            },
+            encoding: {
+                x: {
+                    field: "symbolX",
+                    type: "quantitative",
+                    scale: horizontalPixelScale,
+                },
+                x2: {
+                    expr: "datum.symbolX + datum.entryWidth",
+                    type: "quantitative",
+                    scale: horizontalPixelScale,
+                },
+                y: {
+                    field: "entryY2",
+                    type: "quantitative",
+                    scale: verticalPixelScale,
+                },
+                y2: {
+                    expr: "datum.entryY2 - datum.entryHeight",
+                    type: "quantitative",
+                    scale: verticalPixelScale,
+                },
+            },
+        });
+    }
 
     return createLegendRootSpec(
         legend,
@@ -991,7 +1052,7 @@ export class LegendRegionView extends ContainerView {
     }
 
     isPickingSupported() {
-        return false;
+        return this.#legendViews.some((legend) => legend.isPickingSupported());
     }
 
     /**
@@ -1106,6 +1167,9 @@ function sameLines(a, b) {
 export default class LegendView extends ContainerView {
     #effectiveExtent;
 
+    /** @type {ReturnType<import("./legend/legendBinding.js").findLegendBinding>} */
+    #binding;
+
     /** @type {import("./view.js").default | undefined} */
     #child;
 
@@ -1134,6 +1198,7 @@ export default class LegendView extends ContainerView {
     /**
      * @param {object} props
      * @param {LegendEntry[]} [props.entries]
+     * @param {ReturnType<import("./legend/legendBinding.js").findLegendBinding>} [props.binding]
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
      * @param {SymbolLegendStyle} [props.symbolStyle]
@@ -1150,6 +1215,7 @@ export default class LegendView extends ContainerView {
     constructor(
         {
             entries,
+            binding,
             channel,
             symbolChannels,
             symbolStyle,
@@ -1174,6 +1240,7 @@ export default class LegendView extends ContainerView {
                   })
                 : createSymbolLegendSpec({
                       entries,
+                      binding,
                       channel,
                       symbolChannels,
                       symbolStyle,
@@ -1195,6 +1262,7 @@ export default class LegendView extends ContainerView {
 
         this.needsAxes = { x: false, y: false };
         this.legendProps = legend;
+        this.#binding = binding;
         this.#type = type ?? "symbol";
         this.#effectiveExtent = getMinimumLegendExtent(
             this.#type,
@@ -1244,6 +1312,49 @@ export default class LegendView extends ContainerView {
 
         markViewAsNonAddressable(this.#child, { skipSubtree: true });
         markViewAsChrome(this.#child, { skipSubtree: true });
+
+        if (this.#binding) {
+            const { name, select } = this.#binding;
+            const runtime = this.paramRuntime.findRuntimeForParam(name);
+            const on =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.on
+                );
+            const clear =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.clear
+                );
+            const matches = createEventPredicate(on);
+            this.addInteractionListener(on.type, (event) => {
+                if (!matches(event.proxiedMouseEvent)) return;
+                const hover = this.context.getCurrentHover();
+                if (
+                    hover?.mark.unitView.name !== "entries" ||
+                    !hover.mark.unitView.getLayoutAncestors().includes(this)
+                )
+                    return;
+                runtime.setValue(
+                    name,
+                    updateProjectedSelection(
+                        runtime.getValue(name),
+                        hover.datum.value,
+                        !!select.toggle && event.mouseEvent.shiftKey
+                    )
+                );
+                event.stopPropagation();
+            });
+            if (clear) {
+                const matchesClear = createEventPredicate(clear);
+                this.addInteractionListener(clear.type, (event) => {
+                    if (!matchesClear(event.proxiedMouseEvent)) return;
+                    runtime.setValue(
+                        name,
+                        createProjectedSelection(select.fields)
+                    );
+                    event.stopPropagation();
+                });
+            }
+        }
 
         this.#labelViews = [];
         for (const view of this.getDescendants()) {
@@ -1464,7 +1575,7 @@ export default class LegendView extends ContainerView {
     }
 
     isPickingSupported() {
-        return false;
+        return !!this.#binding;
     }
 
     /** Legend chrome is owned and painted here rather than by a parent grid. */

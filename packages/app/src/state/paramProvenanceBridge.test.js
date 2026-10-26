@@ -6,6 +6,7 @@ import {
     createIntervalSelection,
     createMultiPointSelection,
 } from "@genome-spy/core/selection/selection.js";
+import { createProjectedSelection } from "@genome-spy/core/selection/projectedSelection.js";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import ParamProvenanceBridge from "./paramProvenanceBridge.js";
@@ -169,6 +170,58 @@ async function getShowMessageDialogMock() {
 }
 
 describe("ParamProvenanceBridge", () => {
+    it("captures and restores legend category values without row keys or data lookup", async () => {
+        const view = new FakeView();
+        const setter = view.paramRuntime.registerParam({
+            name: "classes",
+            select: { type: "point", fields: ["class"] },
+            bind: "legend",
+        });
+        const lookup = vi.fn(() => {
+            throw new Error("Must not enumerate cells");
+        });
+        view.getCollector = lookup;
+        const store = createStore();
+        createBridge(view, store, new IntentExecutor(store));
+        setter(createProjectedSelection(["class"], [["A"], [false]]));
+        await flushMicrotasks();
+        const selector = { scope: [], param: "classes" };
+        const key = makeParamSelectorKey(selector);
+        expect(
+            store.getState().provenance.present.paramProvenance.entries[key]
+                .value
+        ).toEqual({
+            type: "projected",
+            fields: ["class"],
+            values: [["A"], [false]],
+        });
+        store.dispatch(
+            paramProvenanceSlice.actions.paramChange({
+                selector,
+                value: {
+                    type: "projected",
+                    fields: ["class"],
+                    values: [["B"]],
+                },
+            })
+        );
+        await flushMicrotasks();
+        expect(view.paramRuntime.getValue("classes").values).toEqual([["B"]]);
+        expect(lookup).not.toHaveBeenCalled();
+        store.dispatch(
+            paramProvenanceSlice.actions.paramChange({
+                selector,
+                value: {
+                    type: "projected",
+                    fields: ["changed"],
+                    values: [["B"]],
+                },
+            })
+        );
+        await flushMicrotasks();
+        expect(view.paramRuntime.getValue("classes").values).toEqual([]);
+    });
+
     it("captures param changes into provenance", () => {
         const view = new FakeView();
         const setter = view.paramRuntime.registerParam({

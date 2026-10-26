@@ -409,7 +409,7 @@ describe("generated core schema", () => {
         condition.test.or = [{ param: "brush" }];
         expect(validate(base)).toBe(false);
         delete condition.test.or;
-        condition.test.and[0].project = { x: "y" };
+        condition.test.and[0].project = { x: 1 };
         expect(validate(base)).toBe(false);
         delete condition.test;
         condition.param = { or: ["selected"] };

@@ -13,6 +13,7 @@ import {
     isSinglePointSelection,
     resolvePointSelectionFromKeyTuples,
 } from "@genome-spy/core/selection/selection.js";
+import { createProjectedSelection } from "@genome-spy/core/selection/projectedSelection.js";
 import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import {
     getBookmarkableParams,
@@ -315,6 +316,10 @@ export default class ParamProvenanceBridge {
             return true;
         }
 
+        if (value.type === "projected") {
+            return value.values.length === 0;
+        }
+
         if (value.type === "point") {
             return value.keys.length === 0;
         }
@@ -514,6 +519,12 @@ export default class ParamProvenanceBridge {
             const select = asSelectionConfig(param.select);
 
             if (isPointSelectionConfig(select)) {
+                if (select.fields) {
+                    return createProjectedSelection(
+                        select.fields,
+                        value.values
+                    );
+                }
                 const keyFields = this.#getPointSelectionKeyFields(
                     entry,
                     "persist"
@@ -693,6 +704,33 @@ export default class ParamProvenanceBridge {
             const select = asSelectionConfig(param.select);
 
             if (isPointSelectionConfig(select)) {
+                if (select.fields) {
+                    try {
+                        if (
+                            storedValue.type !== "projected" ||
+                            storedValue.fields?.length !==
+                                select.fields.length ||
+                            storedValue.fields.some(
+                                (name, i) => name !== select.fields[i]
+                            ) ||
+                            !Array.isArray(storedValue.values) ||
+                            (!select.toggle && storedValue.values.length > 1)
+                        ) {
+                            throw new Error(
+                                "Projection fields or values do not match."
+                            );
+                        }
+                        return createProjectedSelection(
+                            select.fields,
+                            storedValue.values
+                        );
+                    } catch {
+                        return this.#warnSelectionAndUseDefault(
+                            entry,
+                            "cannot be restored because the bookmark stores an invalid field selection."
+                        );
+                    }
+                }
                 if (storedValue.type === "pointExpand") {
                     return this.#resolvePointExpansionSelection(
                         entry,
@@ -1180,7 +1218,7 @@ export default class ParamProvenanceBridge {
         }
 
         const select = asSelectionConfig(param.select);
-        if (!isPointSelectionConfig(select)) {
+        if (!isPointSelectionConfig(select) || select.fields) {
             return;
         }
 
@@ -1200,6 +1238,9 @@ export default class ParamProvenanceBridge {
     #isSelectionCleared(param, value) {
         const select = asSelectionConfig(param.select);
         if (isPointSelectionConfig(select)) {
+            if (value?.type === "projected") {
+                return value.values.length === 0;
+            }
             if (isSinglePointSelection(value)) {
                 return !value.datum;
             }

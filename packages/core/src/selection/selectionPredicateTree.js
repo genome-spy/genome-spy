@@ -1,13 +1,14 @@
+import { testProjectedSelection } from "./projectedSelection.js";
 import { validateParameterName } from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { field } from "../utils/field.js";
 
 /**
- * @typedef {{param: string, empty: boolean, project?: {x?: "x" | "x2", y?: "y" | "y2"}}} SelectionLeaf
+ * @typedef {{param: string, empty: boolean, project?: Record<string, string>}} SelectionLeaf
  * @typedef {{selectionActive: string}} SelectionActivity
  * @typedef {SelectionLeaf | SelectionActivity | {all: readonly SelectionPredicateTree[]} | {any: readonly SelectionPredicateTree[]} | {not: SelectionPredicateTree}} SelectionPredicateTree
  * @typedef {{component: string, input: string, field: string, secondaryInput?: string, secondaryField?: string, hitTest?: "intersects" | "encloses" | "endpoints"}} SelectionProjection
- * @typedef {{param: string, type: "single" | "multi" | "interval", empty: boolean, projections?: SelectionProjection[]} | {selectionActive: {param: string, type: "single" | "multi" | "interval", components: string[]}} | {all: readonly ResolvedSelectionPredicate[]} | {any: readonly ResolvedSelectionPredicate[]} | {not: ResolvedSelectionPredicate}} ResolvedSelectionPredicate
+ * @typedef {{param: string, type: "single" | "multi" | "interval" | "projected", empty: boolean, projections?: SelectionProjection[]} | {selectionActive: {param: string, type: "single" | "multi" | "interval" | "projected", components: string[]}} | {all: readonly ResolvedSelectionPredicate[]} | {any: readonly ResolvedSelectionPredicate[]} | {not: ResolvedSelectionPredicate}} ResolvedSelectionPredicate
  */
 
 /**
@@ -80,9 +81,9 @@ export function normalizeSelectionPredicateTree(condition) {
                         Object.keys(project).length === 0 ||
                         Object.entries(project).some(
                             ([component, target]) =>
-                                !["x", "y"].includes(component) ||
-                                (target !== component &&
-                                    target !== component + "2")
+                                !component ||
+                                typeof target !== "string" ||
+                                !target
                         )
                     ) {
                         throw new Error(
@@ -225,7 +226,7 @@ export function selectionPredicateMatchesWhenEmpty(tree) {
  *
  * @param {SelectionPredicateTree} tree
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
+ * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "interval" | "projected", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
  * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @returns {ResolvedSelectionPredicate}
@@ -237,24 +238,33 @@ export function resolveSelectionPredicateTree(
     hitTestMode,
     getType
 ) {
-    /** @param {string} name @returns {{type: "single" | "multi" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]}} */
+    /** @param {string} name @returns {{type: "single" | "multi" | "interval" | "projected", components: {component: string, type?: import("../spec/channel.js").Type}[]}} */
     const capability = (name) => {
         const registered = runtime.findSelectionCapability?.(name);
         if (registered) {
             return registered;
         }
         const value = runtime.findValue(name);
-        if (!value || !["single", "multi", "interval"].includes(value.type)) {
+        if (
+            !value ||
+            !["single", "multi", "interval", "projected"].includes(value.type)
+        ) {
             throw new Error(`Selection parameter "${name}" was not found.`);
         }
         return {
-            type: /** @type {"single" | "multi" | "interval"} */ (value.type),
+            type: /** @type {"single" | "multi" | "interval" | "projected"} */ (
+                value.type
+            ),
             components:
                 value.type === "interval"
                     ? Object.keys(/** @type {object} */ (value.intervals)).map(
                           (component) => ({ component })
                       )
-                    : [],
+                    : value.type === "projected"
+                      ? value.fields.map((/** @type {string} */ component) => ({
+                            component,
+                        }))
+                      : [],
         };
     };
 
@@ -300,6 +310,43 @@ export function resolveSelectionPredicateTree(
                     ),
                 },
             };
+        }
+        if (declared.type === "projected") {
+            const [component] = declared.components;
+            if (
+                node.project &&
+                (Object.keys(node.project).length !== 1 ||
+                    !(component.component in node.project))
+            ) {
+                throw new Error(
+                    `Selection "${name}" project must map its declared field "${component.component}".`
+                );
+            }
+            return {
+                param: name,
+                type: "projected",
+                empty: node.empty,
+                projections: [
+                    {
+                        component: component.component,
+                        input: component.component,
+                        field:
+                            node.project?.[component.component] ??
+                            component.component,
+                    },
+                ],
+            };
+        }
+        if (
+            node.project &&
+            declared.type === "interval" &&
+            Object.entries(node.project).some(
+                ([component, target]) =>
+                    !["x", "y"].includes(component) ||
+                    (target !== component && target !== component + "2")
+            )
+        ) {
+            throw new Error("Invalid interval selection projection.");
         }
         if (node.project && declared.type !== "interval") {
             throw new Error(
@@ -410,6 +457,17 @@ export function compileSelectionPredicateTree(tree, getSelection) {
         return () => isActive(getSelection(param));
     }
     const { param, type, empty } = tree;
+    if (type === "projected") {
+        const read = field(tree.projections[0].field);
+        return (datum) =>
+            testProjectedSelection(
+                /** @type {import("../types/selectionTypes.js").ProjectedSelection} */ (
+                    getSelection(param)
+                ),
+                read(datum),
+                empty
+            );
+    }
     if (type === "single") {
         return (datum) => {
             const selection =
@@ -483,10 +541,11 @@ function isActive(selection) {
     if (selection.type === "multi") {
         return selection.data.size !== 0;
     }
+    if (selection.type === "projected") return selection.values.length !== 0;
     if (selection.type === "interval") {
         return Object.values(selection.intervals).every(
             (interval) => !!interval
         );
     }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
+    throw new Error("Unsupported selection type.");
 }
