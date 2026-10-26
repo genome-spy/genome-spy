@@ -1,41 +1,65 @@
-import { asSelectionConfig } from "../../selection/selection.js";
-import { isLegendBound } from "../../selection/projectedSelection.js";
+import { isLegendBindingParameter } from "../../paramRuntime/paramUtils.js";
+import { hasChromeAncestor } from "../viewSelectors.js";
 
 /**
- * Bind one categorical color legend using Vega-Lite's single-field contract.
- * https://github.com/vega/vega-lite/blob/main/src/compile/selection/legends.ts
- *
- * @param {import("../view.js").default} view
- * @param {string | undefined} field
- * @param {import("../../spec/channel.js").ChannelWithScale} channel
- * @param {"symbol" | "gradient"} type
- * @param {import("../../spec/channel.js").Type} dataType
+ * @typedef {{name: string, runtime: import("../../paramRuntime/viewParamRuntime.js").default}} LegendBinding
  */
-export function findLegendBinding(view, field, channel, type, dataType) {
-    if (!["color", "fill", "stroke"].includes(channel)) return;
 
-    const seen = new Set();
-    const bindings = [];
-    for (const ancestor of view.getDataAncestors()) {
-        for (const [name, param] of ancestor.paramRuntime.paramConfigs) {
-            if (seen.has(name)) continue;
-            seen.add(name);
-            if (!isLegendBound(param) || !("select" in param)) continue;
-            const select = asSelectionConfig(param.select);
-            if (select.type !== "point" || select.fields?.[0] !== field)
-                continue;
-            if (
-                type !== "symbol" ||
-                !["nominal", "ordinal"].includes(dataType)
-            ) {
+/**
+ * Resolve authored bindings independently of where generated legends are placed.
+ * @param {import("../view.js").default} root
+ * @returns {Map<import("../../scales/scaleResolution.js").default, LegendBinding>}
+ */
+export function resolveLegendBindings(root) {
+    const bindings = new Map();
+    for (const view of root.getDescendants()) {
+        if (hasChromeAncestor(view)) continue;
+        for (const param of view.paramRuntime.paramConfigs.values()) {
+            if (!isLegendBindingParameter(param)) continue;
+            const resolution = view.getScaleResolution(param.bind.legend);
+            if (!resolution) {
                 throw new Error(
-                    `Legend binding "${name}" requires a categorical color symbol legend.`
+                    `Legend binding "${param.name}" has no color scale in its scope.`
                 );
             }
-            bindings.push({ name, field, select });
+            if (!["nominal", "ordinal"].includes(resolution.type)) {
+                throw new Error(
+                    `Legend binding "${param.name}" requires a categorical color scale.`
+                );
+            }
+            if (bindings.has(resolution)) {
+                throw new Error(
+                    "A color scale can bind only one legend parameter."
+                );
+            }
+            const runtime = view.paramRuntime;
+            const ref = runtime.getParamRef(param.name);
+            for (const member of resolution.getOrderedMembers()) {
+                if (
+                    !hasChromeAncestor(member.view) &&
+                    member.view.paramRuntime.getParamRef(param.name) !== ref
+                ) {
+                    throw new Error(
+                        `Legend binding "${param.name}" must share one parameter across all scale contributors.`
+                    );
+                }
+            }
+            bindings.set(resolution, { name: param.name, runtime });
         }
     }
-    if (bindings.length > 1)
-        throw new Error("A legend can bind only one selection.");
-    return bindings[0];
+    return bindings;
+}
+
+/**
+ * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
+ */
+export function findLegendBinding(definition) {
+    const root = definition.view.getDataAncestors().at(-1);
+    const binding = resolveLegendBindings(root).get(definition.scaleResolution);
+    if (binding && definition.type !== "symbol") {
+        throw new Error(
+            `Legend binding "${binding.name}" requires a symbol legend.`
+        );
+    }
+    return binding;
 }

@@ -1,8 +1,3 @@
-import {
-    isLegendBound,
-    createProjectedSelection,
-    updateProjectedSelection,
-} from "../selection/projectedSelection.js";
 import RectMark from "../marks/rect.js";
 import ArrowMark from "../marks/arrow.js";
 import PointMark from "../marks/point.js";
@@ -23,7 +18,10 @@ import {
     updateMultiPointSelection,
 } from "../selection/selection.js";
 import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
-import { registerPointSelectionEvents } from "./pointSelectionEvents.js";
+import {
+    createEventPredicate,
+    getEventFilterLocation,
+} from "../utils/interactionConfig.js";
 import { field } from "../utils/field.js";
 import { resolveViewResolutions } from "./resolutionPlanner.js";
 
@@ -109,21 +107,33 @@ export default class UnitView extends View {
 
     #setupPointSelection() {
         for (const [name, param] of this.paramRuntime.paramConfigs) {
-            if (!("select" in param) || isLegendBound(param)) {
+            if (!("select" in param)) {
                 continue;
             }
 
             const source =
                 typeof param.select === "object" ? param.select : undefined;
             const select = asSelectionConfig(param.select);
+            // Normalized config has eventConfig in "on"
+            const eventConfig =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.on
+                );
+
+            const clearEventConfig =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.clear
+                );
+
             if (isPointSelectionConfig(select)) {
+                // Handle projection-free point selections
+
                 const hoverSelection = ["mouseover", "pointerover"].includes(
-                    /** @type {import("../spec/parameter.js").EventConfig} */ (
-                        select.on
-                    ).type
+                    eventConfig.type
                 );
                 /** @type {import("../types/selectionTypes.js").Selection | undefined} */
                 let lastSelection;
+
                 const setter = (
                     /** @type {any} */
                     selection
@@ -137,37 +147,42 @@ export default class UnitView extends View {
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
+                const eventPredicate = createEventPredicate(
+                    eventConfig,
+                    getEventFilterLocation(this.paramRuntime, source, "on")
+                );
+                const clearPredicate = createEventPredicate(
+                    clearEventConfig,
+                    getEventFilterLocation(this.paramRuntime, source, "clear")
+                );
+
                 const clearSelection = () => {
-                    const selection = select.fields
-                        ? createProjectedSelection(select.fields)
-                        : select.toggle
-                          ? createMultiPointSelection()
-                          : createSinglePointSelection(null);
+                    const selection = select.toggle
+                        ? createMultiPointSelection()
+                        : createSinglePointSelection(null);
                     setter(selection);
                 };
 
                 const listener = (
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) => {
+                    if (!eventPredicate(event.proxiedMouseEvent)) {
+                        return;
+                    }
                     const datum = getHoveredDatum();
-                    // A picked sibling may have published to the shared parameter first.
+                    // Other layers may receive this move after the picked mark.
                     if (
                         hoverSelection &&
                         !datum &&
                         this.paramRuntime.findValue(name) !== lastSelection
-                    )
+                    ) {
                         return;
+                    }
 
                     /** @type {any} */
                     let selection;
 
-                    if (select.fields) {
-                        selection = updateProjectedSelection(
-                            this.paramRuntime.findValue(name),
-                            datum ? field(select.fields[0])(datum) : undefined,
-                            !!select.toggle && event.mouseEvent.shiftKey
-                        );
-                    } else if (select.toggle) {
+                    if (select.toggle) {
                         const toggle = event.mouseEvent.shiftKey;
 
                         if (toggle) {
@@ -205,19 +220,62 @@ export default class UnitView extends View {
                     }
                 };
 
-                registerPointSelectionEvents(
-                    this,
-                    select,
-                    source,
-                    listener,
-                    (event, isHoverExit) => {
-                        if (
-                            !isHoverExit ||
-                            this.paramRuntime.findValue(name) === lastSelection
-                        )
-                            clearSelection();
-                    }
+                this.addInteractionListener(
+                    hoverSelection ? "mousemove" : eventConfig.type,
+                    listener
                 );
+                if (
+                    eventConfig.type === "wheel" ||
+                    clearEventConfig?.type === "wheel"
+                ) {
+                    this.addInteractionListener("wheelclaimprobe", (event) => {
+                        if (
+                            event.wheelIntent !== "scroll" &&
+                            ((eventConfig.type === "wheel" &&
+                                eventPredicate(event.proxiedMouseEvent)) ||
+                                (clearEventConfig?.type === "wheel" &&
+                                    clearPredicate(event.proxiedMouseEvent)))
+                        ) {
+                            event.claimWheel(this, { smooth: false });
+                        }
+                    });
+                }
+
+                if (hoverSelection) {
+                    // Hover selections are continuously derived from the picked
+                    // mark. A sibling view receives subsequent mousemove events,
+                    // so clear this view when the dispatcher detects that its
+                    // pointed subtree has been left.
+                    this.addInteractionListener("mouseleave", (event) => {
+                        // Crossing cells keeps the shared view's hover selection.
+                        // A new binding may already have published to the same
+                        // outer parameter before this leave event is dispatched.
+                        if (
+                            !event.pointedViews.has(this) &&
+                            this.paramRuntime.findValue(name) === lastSelection
+                        ) {
+                            clearSelection();
+                        }
+                    });
+                }
+
+                const clearHandledByHoverExit =
+                    hoverSelection && clearEventConfig?.type === "mouseleave";
+                if (clearEventConfig && !clearHandledByHoverExit) {
+                    const clearListener = (
+                        /** @type {import("../utils/interaction.js").default} */ event
+                    ) => {
+                        if (!clearPredicate(event.proxiedMouseEvent)) {
+                            return;
+                        }
+                        clearSelection();
+                    };
+
+                    this.addInteractionListener(
+                        clearEventConfig.type,
+                        clearListener
+                    );
+                }
             }
         }
     }

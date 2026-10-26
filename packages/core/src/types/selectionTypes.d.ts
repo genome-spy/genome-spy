@@ -1,5 +1,9 @@
 import { Datum } from "../data/flowNode.js";
-import { PositionalChannel, Scalar } from "../spec/channel.js";
+import {
+    ChannelWithScale,
+    PositionalChannel,
+    Scalar,
+} from "../spec/channel.js";
 
 export interface SelectionBase {
     type: string;
@@ -14,7 +18,8 @@ export interface IntervalSelection extends SelectionBase {
 export interface ProjectedSelection extends SelectionBase {
     type: "projected";
 
-    fields: string[];
+    fields?: string[];
+    channels?: ChannelWithScale[];
 
     values: Scalar[][];
 }

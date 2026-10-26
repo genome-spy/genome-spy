@@ -1,4 +1,3 @@
-import type { ProjectedSelection } from "@genome-spy/core/types/selectionTypes.js";
 import type { Scalar } from "@genome-spy/core/spec/channel.js";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import type {
@@ -157,7 +156,6 @@ export type ParamValue =
     | ParamValueLiteral
     | ParamValueInterval
     | ParamValuePoint
-    | ProjectedSelection
     | ParamValuePointExpand;
 
 /**

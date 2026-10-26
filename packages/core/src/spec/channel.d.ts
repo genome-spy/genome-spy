@@ -347,10 +347,11 @@ export interface ParameterPredicate {
      * For example, `{ "x": "x2" }` tests the selected x interval against x2
      * alone. Each selected component must be mapped when this is provided.
      * The target must be an unconditional field encoding of the same data type.
-     * For field-projected point selections, maps selected fields to datum fields,
-     * for example `{ "cell_type": "value" }` in a legend.
      */
-    project?: Record<string, string>;
+    project?: {
+        x?: "x" | "x2";
+        y?: "y" | "y2";
+    };
 
     /**
      * For selection parameters, the predicate of empty selections returns true by default.

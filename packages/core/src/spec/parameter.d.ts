@@ -63,9 +63,9 @@ export interface PlainValueParameter extends ParameterBase, PersistedParameter {
     value?: any;
 
     /**
-     * Binds the parameter to an external input element such as a slider, selection list or radio button group.
+     * Binds the parameter to an input control or a categorical color legend.
      */
-    bind?: Binding;
+    bind?: Binding | LegendBinding;
 
     expr?: never;
 
@@ -268,6 +268,16 @@ export interface BindDirect {
 
 export type Binding = BindCheckbox | BindRadioSelect | BindRange | BindInput;
 
+/** Binds an array-valued parameter to a categorical color symbol legend. */
+export interface LegendBinding {
+    /**
+     * The color scale in the declaring view's scope. Click replaces the array,
+     * Shift-click toggles a category, and double-click clears it. An empty array
+     * represents no focus. The chart defines how the array affects its marks.
+     */
+    legend: "color";
+}
+
 // ----------------------------------------------------------------------------
 // Adapted from: https://github.com/vega/vega-lite/blob/main/src/selection.ts
 
@@ -336,9 +346,6 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 
 export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
     type: "point";
-
-    /** Select all records with matching values of this field. Initially supports one field. */
-    fields?: [string];
 
     /**
      * Controls whether data values should be toggled (inserted or removed from a point selection)
@@ -487,9 +494,6 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
               : T extends "interval"
                 ? IntervalSelectionConfig
                 : never);
-
-    /** Bind a single-field point selection to its categorical color legend. */
-    bind?: T extends "point" ? "legend" : never;
 
     /**
      * Initial value for the selection.

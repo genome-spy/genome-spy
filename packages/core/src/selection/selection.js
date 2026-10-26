@@ -1,4 +1,3 @@
-import { splitAccessPath } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
     getSecondaryChannel,
@@ -179,21 +178,6 @@ export function makeSelectionTestExpression(params, selection) {
     const paramName = validateParameterName(params.param);
     const fields = params.fields ?? {};
 
-    if (isProjectedSelection(selection)) {
-        const selectedField = selection.fields[0];
-        const input = Object.hasOwn(fields, selectedField)
-            ? fields[selectedField]
-            : selectedField;
-        // Dot access avoids Vega's inherited-name literal parsing.
-        const access = splitAccessPath(input)
-            .map((part) =>
-                /^[a-zA-Z_$][\w$]*$/.test(part)
-                    ? `.${part}`
-                    : `[${JSON.stringify(part)}]`
-            )
-            .join("");
-        return `projectedSelectionTest(${paramName}, datum${access}, ${empty})`;
-    }
     if (isSinglePointSelection(selection)) {
         return `${paramName}.uniqueId == null ? ${empty} : ${paramName}.uniqueId === datum[${JSON.stringify(
             UNIQUE_ID_KEY
@@ -398,7 +382,6 @@ export function isIntervalSelectionConfig(config) {
  * @returns {boolean}
  */
 export function isSelectionActive(selection) {
-    if (isProjectedSelection(selection)) return selection.values.length > 0;
     if (isSinglePointSelection(selection)) {
         return selection.uniqueId != null;
     }
@@ -408,7 +391,7 @@ export function isSelectionActive(selection) {
     if (isIntervalSelection(selection)) {
         return isActiveIntervalSelection(selection);
     }
-    throw new Error("Unsupported selection type.");
+    throw new Error(`Unsupported selection type: ${selection.type}`);
 }
 
 /**

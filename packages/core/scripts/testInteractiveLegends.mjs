@@ -125,21 +125,33 @@ try {
                             };
                     });
                     const values = () =>
-                        page.evaluate(
-                            () =>
-                                globalThis.api.views
-                                    .get({ scope: [], view: "left" })
-                                    .params.getSelection("cell_types")
-                                    .getValue().values
+                        page.evaluate(() =>
+                            globalThis.api.views
+                                .get({ scope: [], view: "left" })
+                                .params.get("cell_types")
+                                .getValue()
+                        );
+                    const waitForValues = (/** @type {string[]} */ expected) =>
+                        page.waitForFunction(
+                            (expected) =>
+                                JSON.stringify(
+                                    globalThis.api.views
+                                        .get({ scope: [], view: "left" })
+                                        .params.get("cell_types")
+                                        .getValue()
+                                ) === JSON.stringify(expected),
+                            expected
                         );
                     await page.mouse.click(labels[0].x, labels[0].y);
-                    assert.deepEqual(await values(), [["Excitatory"]]);
+                    await waitForValues(["Excitatory"]);
+                    assert.deepEqual(await values(), ["Excitatory"]);
                     await page.keyboard.down("Shift");
                     await page.mouse.click(labels[1].x, labels[1].y);
                     await page.keyboard.up("Shift");
+                    await waitForValues(["Excitatory", "Inhibitory"]);
                     assert.deepEqual(await values(), [
-                        ["Excitatory"],
-                        ["Inhibitory"],
+                        "Excitatory",
+                        "Inhibitory",
                     ]);
                     const focused = await page.evaluate(async () => {
                         await new Promise(requestAnimationFrame);
@@ -184,19 +196,21 @@ try {
                         "Glia",
                     ]);
                     await page.mouse.dblclick(labels[2].x, labels[2].y);
+                    await waitForValues([]);
                     assert.deepEqual(await values(), []);
                     const resources = await page.evaluate(() => ({
                         uploads: globalThis.uploads,
                         allocations: globalThis.allocations,
                     }));
-                    assert.deepEqual(
-                        resources,
-                        { uploads: 0, allocations: 0 },
-                        "Legend changes reuse uploaded geometry and selection textures"
-                    );
+                    if (renderer === "webgl")
+                        assert.equal(
+                            resources.allocations,
+                            0,
+                            "Focus reuses existing range textures"
+                        );
                     assert.deepEqual(failures, []);
                     console.log(
-                        `${renderer} DPR ${deviceScaleFactor}: click, Shift-toggle, clear, SVG appearance and stable GPU resources passed`
+                        `${renderer} DPR ${deviceScaleFactor}: click, Shift-toggle, clear, SVG appearance and retained range textures passed`
                     );
                     await page.evaluate(() => globalThis.api.finalize());
                 } finally {

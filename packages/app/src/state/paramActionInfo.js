@@ -114,25 +114,24 @@ function formatParamActionTitle(action, view, selector, value, origin, root) {
             )}`;
     }
 
-    if (value.type === "point" || value.type === "projected") {
-        const tuples = value.type === "point" ? value.keys : value.values;
-        if (tuples.length === 0) {
+    if (value.type === "point") {
+        if (value.keys.length === 0) {
             return html`Clear selection
                 <strong>${paramLabel}</strong> ${formatOriginSuffix(
                     origin,
                     root
                 )}`;
         }
-        if (tuples.length === 1) {
+        if (value.keys.length === 1) {
             return html`Select <strong>${paramLabel}</strong> =
                 ${formatStrong(
-                    formatPointKeyTuple(tuples[0])
+                    formatPointKeyTuple(value.keys[0])
                 )}${formatOriginSuffix(origin, root)}`;
         }
         return html`Select <strong>${paramLabel}</strong> (${formatStrong(
-                tuples.length
+                value.keys.length
             )}
-            ${value.type === "point" ? "points" : "categories"})${formatOriginSuffix(origin, root)}`;
+            points)${formatOriginSuffix(origin, root)}`;
     }
 
     if (value.type === "pointExpand") {
@@ -285,7 +284,6 @@ function formatIntervalSummary(xLabel, yLabel) {
  */
 function getParamActionIcon(value) {
     switch (value.type) {
-        case "projected":
         case "point":
         case "pointExpand":
             return faArrowPointer;

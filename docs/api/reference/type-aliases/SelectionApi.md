@@ -2,6 +2,6 @@
 
 # Type Alias: SelectionApi
 
-> **SelectionApi** = [`PointSelectionApi`](../interfaces/PointSelectionApi.md) \| [`IntervalSelectionApi`](../interfaces/IntervalSelectionApi.md) \| [`ProjectedSelectionApi`](../interfaces/ProjectedSelectionApi.md)
+> **SelectionApi** = [`PointSelectionApi`](../interfaces/PointSelectionApi.md) \| [`IntervalSelectionApi`](../interfaces/IntervalSelectionApi.md)
 
-A public capability for a row, field, or interval selection.
+A public capability for either a point or interval selection.

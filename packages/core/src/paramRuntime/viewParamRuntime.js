@@ -1,4 +1,3 @@
-import { isLegendBound } from "../selection/projectedSelection.js";
 import { getSpecLocation } from "../utils/specOrigin.js";
 import { annotateSpecError } from "../utils/specError.js";
 import ParamRuntime from "./paramRuntime.js";
@@ -7,8 +6,10 @@ import { makeLerpSmoother } from "../utils/animator.js";
 import {
     getDefaultParamValue,
     isExprRef,
+    isLegendBindingParameter,
     isSelectionParameter,
     validateParameterName,
+    validateLegendValue,
 } from "./paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
 
@@ -111,7 +112,7 @@ export default class ViewParamRuntime {
     /** @type {import("../view/view.js").default | undefined} */
     #selectionSource;
 
-    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval" | "projected", components: string[], source: import("../view/view.js").default | undefined}>>} */
+    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval", components: string[], source: import("../view/view.js").default | undefined}>>} */
     #selectionDeclarations = new Map();
 
     /** @type {Map<string, TransitionState>} */
@@ -197,12 +198,9 @@ export default class ViewParamRuntime {
             type: declaration.kind,
             components: declaration.components.map((component) => ({
                 component,
-                type:
-                    declaration.kind === "interval"
-                        ? declaration.source?.getScaleResolution(
-                              /** @type {"x" | "y"} */ (component)
-                          )?.type
-                        : undefined,
+                type: declaration.source?.getScaleResolution(
+                    /** @type {"x" | "y"} */ (component)
+                )?.type,
             })),
             location: declaration.source?.name ?? name,
         }));
@@ -225,19 +223,17 @@ export default class ViewParamRuntime {
             return;
         }
         const select = asSelectionConfig(param.select);
-        /** @type {"single" | "multi" | "interval" | "projected"} */
+        /** @type {"single" | "multi" | "interval"} */
         const kind =
             select.type === "interval"
                 ? "interval"
-                : select.fields
-                  ? "projected"
-                  : select.toggle
-                    ? "multi"
-                    : "single";
+                : select.toggle
+                  ? "multi"
+                  : "single";
         const components =
             select.type === "interval"
                 ? Array.from(new Set(select.encodings)).sort()
-                : (select.fields ?? []);
+                : [];
         const owner =
             param.push === "outer"
                 ? this.findRuntimeForParam(param.name)
@@ -580,6 +576,14 @@ export default class ViewParamRuntime {
             setter(defaultValue);
         }
 
+        if (isLegendBindingParameter(param)) {
+            const write = setter;
+            setter = (value) => {
+                validateLegendValue(value);
+                write(value);
+            };
+            this.#allocatedSetters.set(name, setter);
+        }
         this.#paramConfigs.set(name, param);
 
         this.#registerSelectionCapability(param);
@@ -1258,7 +1262,6 @@ export default class ViewParamRuntime {
             for (const param of runtime.#paramConfigs.values()) {
                 if (
                     isSelectionParameter(param) &&
-                    !isLegendBound(param) &&
                     (param.select === "point" ||
                         (typeof param.select === "object" &&
                             param.select.type === "point")) &&
@@ -1300,6 +1303,22 @@ function getParamKind(config) {
  */
 function validateParameterShape(param) {
     const name = param.name;
+
+    if (isLegendBindingParameter(param)) {
+        if (
+            param.bind.legend !== "color" ||
+            "select" in param ||
+            "ruler" in param ||
+            "expr" in param ||
+            "transition" in param ||
+            param.push
+        ) {
+            throw new Error(
+                `Legend binding "${name}" requires a plain value parameter and the color channel.`
+            );
+        }
+        validateLegendValue(param.value);
+    }
 
     if ("value" in param && "expr" in param) {
         throw new Error(

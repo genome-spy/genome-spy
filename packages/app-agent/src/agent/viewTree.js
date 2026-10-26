@@ -877,20 +877,24 @@ function summarizeParameterDeclarations(root, view) {
         }
 
         const bind = param.bind;
-        if (!("input" in bind)) {
-            continue;
-        }
-
+        if (!("input" in bind) && !("legend" in bind)) continue;
         declarations.push({
             parameterType: "variable",
-            label: bind.name ?? formatScopedParamName(root, selector),
+            label:
+                ("input" in bind ? bind.name : undefined) ??
+                formatScopedParamName(root, selector),
             description:
                 normalizeDescription(param.description) ??
-                normalizeDescription(bind.description) ??
+                ("input" in bind
+                    ? normalizeDescription(bind.description)
+                    : undefined) ??
                 "",
             selector,
             persist: param.persist !== false,
-            bind: summarizeInputBinding(bind),
+            bind:
+                "legend" in bind
+                    ? { legend: bind.legend }
+                    : summarizeInputBinding(bind),
         });
     }
 

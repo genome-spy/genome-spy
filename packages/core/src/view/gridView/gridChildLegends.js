@@ -489,13 +489,7 @@ export async function createGridChildLegend(definition, layoutParent) {
     legend = new LegendView(
         {
             channel: definition.channel,
-            binding: findLegendBinding(
-                legendParent,
-                definition.field,
-                definition.channel,
-                definition.type,
-                definition.dataType
-            ),
+            binding: findLegendBinding(definition),
             type: definition.type,
             symbolChannels: definition.symbolChannels,
             symbolGeometry: definition.symbolGeometry,

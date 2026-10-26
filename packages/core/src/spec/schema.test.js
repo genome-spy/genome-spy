@@ -28,30 +28,24 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
-    test("selection filters accept field projections and reject non-field targets", () => {
+    test("legend bindings use plain array values and a color channel", () => {
         const validate = createCoreValidator();
-        const spec = {
+        const makeSpec = (/** @type {Record<string, unknown>} */ param) => ({
             params: [
                 {
                     name: "focus",
-                    select: { type: "point", fields: ["group"] },
-                    bind: "legend",
+                    value: [],
+                    bind: { legend: "color" },
+                    ...param,
                 },
             ],
-            data: { values: [{ alias: "A" }] },
             mark: "point",
-            transform: [
-                { type: "filter", param: "focus", fields: { group: "alias" } },
-            ],
-        };
-        expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        });
+        expect(validate(makeSpec({}))).toBe(true);
+        expect(validate(makeSpec({ bind: { legend: "fill" } }))).toBe(false);
+        expect(validate(makeSpec({ select: "point" }))).toBe(false);
         expect(
-            validate({
-                ...spec,
-                transform: [
-                    { type: "filter", param: "focus", fields: { group: 1 } },
-                ],
-            })
+            validate(makeSpec({ value: 1, transition: { type: "lerp" } }))
         ).toBe(false);
     });
 
@@ -436,7 +430,7 @@ describe("generated core schema", () => {
         condition.test.or = [{ param: "brush" }];
         expect(validate(base)).toBe(false);
         delete condition.test.or;
-        condition.test.and[0].project = { x: 1 };
+        condition.test.and[0].project = { x: "y" };
         expect(validate(base)).toBe(false);
         delete condition.test;
         condition.param = { or: ["selected"] };

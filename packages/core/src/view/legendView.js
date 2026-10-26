@@ -17,12 +17,6 @@
  * stacked legend regions.
  */
 
-import {
-    createProjectedSelection,
-    updateProjectedSelection,
-} from "../selection/projectedSelection.js";
-import { registerPointSelectionEvents } from "./pointSelectionEvents.js";
-
 import { isValueDef } from "../encoder/encoder.js";
 import ContainerView from "./containerView.js";
 import {
@@ -533,17 +527,12 @@ export function createSymbolLegendSpec({
                         ? opacityDef.value
                         : (mark.opacity ?? 1)
                 );
-            const dimmedOpacity =
-                typeof opacity === "number"
-                    ? opacity * 0.35
-                    : { expr: `(${opacity.expr}) * 0.35` };
+            const baseOpacity =
+                typeof opacity === "number" ? String(opacity) : opacity.expr;
             unit.encoding.opacity = {
-                condition: {
-                    param: binding.name,
-                    project: { [binding.field]: "value" },
-                    value: opacity,
-                },
-                value: dimmedOpacity,
+                expr: `(${baseOpacity}) * (!length(__legend_focus) || indexof(__legend_focus, datum.value) >= 0 ? 1 : 0.35)`,
+                type: "quantitative",
+                scale: null,
             };
             mark.tooltip = null;
         }
@@ -1325,45 +1314,46 @@ export default class LegendView extends ContainerView {
         markViewAsChrome(this.#child, { skipSubtree: true });
 
         if (this.#binding) {
-            const { name, select } = this.#binding;
-            const runtime = this.paramRuntime.findRuntimeForParam(name);
-            const param =
-                /** @type {import("../spec/parameter.js").SelectionParameter} */ (
-                    runtime.paramConfigs.get(name)
-                );
-            const source =
-                typeof param.select === "object" ? param.select : undefined;
-            let lastSelection = runtime.getValue(name);
-            registerPointSelectionEvents(
-                this,
-                select,
-                source,
-                (event) => {
+            const { name, runtime } = this.#binding;
+            this.paramRuntime.registerScopedExpression(
+                "__legend_focus",
+                name,
+                runtime
+            );
+            for (const type of ["click", "dblclick"]) {
+                const listener = (
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) => {
                     const hover = this.context.getCurrentHover();
                     if (
                         hover?.mark.unitView.name !== "entries" ||
                         !hover.mark.unitView.getLayoutAncestors().includes(this)
                     )
                         return;
-                    lastSelection = updateProjectedSelection(
-                        runtime.getValue(name),
-                        hover.datum.value,
-                        !!select.toggle && event.mouseEvent.shiftKey
-                    );
-                    runtime.setValue(name, lastSelection);
+                    const value = hover.datum.value;
+                    const current =
+                        /** @type {import("../spec/channel.js").Scalar[]} */ (
+                            runtime.getValue(name)
+                        );
+                    /** @type {import("../spec/channel.js").Scalar[]} */
+                    let next;
+                    if (type === "dblclick") {
+                        next = [];
+                    } else if (event.mouseEvent.shiftKey) {
+                        next = current.includes(value)
+                            ? current.filter((item) => item !== value)
+                            : [...current, value];
+                    } else {
+                        next = [value];
+                    }
+                    runtime.setValue(name, next);
                     event.stopPropagation();
-                },
-                (event, isHoverExit) => {
-                    // A destination legend may already have published its hover value.
-                    if (isHoverExit && runtime.getValue(name) !== lastSelection)
-                        return;
-                    runtime.setValue(
-                        name,
-                        createProjectedSelection(select.fields)
-                    );
-                    event.stopPropagation();
-                }
-            );
+                };
+                this.addInteractionListener(type, listener);
+                this.registerDisposer(() =>
+                    this.removeInteractionListener(type, listener)
+                );
+            }
         }
 
         this.#labelViews = [];

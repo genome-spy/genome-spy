@@ -1,96 +1,124 @@
 {
   "description": [
     "Interactive categorical legend",
-    "Click a cell class to highlight matching points in both views. Shift-click toggles classes; double-click clears focus. Coordinates and classes are illustrative."
+    "Click a cell class to focus matching points. Shift-click toggles classes; double-click an entry clears focus. Coordinates and classes are illustrative."
   ],
-
   "params": [
     {
       "name": "cell_types",
-      "select": {"type": "point", "fields": ["cell_type"]},
-      "bind": "legend"
+      "value": [],
+      "bind": {
+        "legend": "color"
+      }
     }
   ],
-
   "data": {
     "values": [
-      {"x": 0.15, "y": 0.2, "cell_type": "Excitatory"},
-      {"x": 0.22, "y": 0.3, "cell_type": "Excitatory"},
-      {"x": 0.32, "y": 0.18, "cell_type": "Excitatory"},
-      {"x": 0.6, "y": 0.55, "cell_type": "Inhibitory"},
-      {"x": 0.67, "y": 0.7, "cell_type": "Inhibitory"},
-      {"x": 0.8, "y": 0.3, "cell_type": "Glia"},
-      {"x": 0.88, "y": 0.4, "cell_type": "Glia"}
+      {
+        "x": 0.15,
+        "y": 0.2,
+        "cell_type": "Excitatory"
+      },
+      {
+        "x": 0.22,
+        "y": 0.3,
+        "cell_type": "Excitatory"
+      },
+      {
+        "x": 0.32,
+        "y": 0.18,
+        "cell_type": "Excitatory"
+      },
+      {
+        "x": 0.6,
+        "y": 0.55,
+        "cell_type": "Inhibitory"
+      },
+      {
+        "x": 0.67,
+        "y": 0.7,
+        "cell_type": "Inhibitory"
+      },
+      {
+        "x": 0.8,
+        "y": 0.3,
+        "cell_type": "Glia"
+      },
+      {
+        "x": 0.88,
+        "y": 0.4,
+        "cell_type": "Glia"
+      }
     ]
   },
-
-  "hconcat": [
-    {
-      "name": "left",
-      "title": "Embedding",
-      "width": 280,
-      "height": 250,
-      "mark": {"type": "point", "filled": true, "size": 100, "tooltip": false},
-      "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "axis": null,
-          "scale": {"domain": [0, 1], "nice": false}
-        },
-        "y": {
-          "field": "y",
-          "type": "quantitative",
-          "axis": null,
-          "scale": {"domain": [0, 1], "nice": false}
-        },
-        "color": {
-          "field": "cell_type",
-          "type": "nominal",
-          "scale": {
-            "domain": ["Excitatory", "Inhibitory", "Glia"],
-            "range": ["#d45087", "#3c8dba", "#54a24b"]
-          },
-          "legend": {"orient": "bottom", "title": "Cell class", "columns": 3}
-        },
-        "fillOpacity": {"condition": {"param": "cell_types", "value": 0.85}, "value": 0.12}
+  "config": {
+    "view": {
+      "strokeWidth": 0
+    }
+  },
+  "name": "left",
+  "title": "Embedding",
+  "width": 280,
+  "height": 250,
+  "mark": {
+    "type": "point",
+    "filled": true,
+    "size": 100,
+    "tooltip": false
+  },
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "axis": null,
+      "scale": {
+        "domain": [0, 1],
+        "nice": false
       }
     },
-
-    {
-      "name": "right",
-      "title": "Linked view",
-      "width": 280,
-      "height": 250,
-      "mark": {"type": "point", "filled": true, "size": 100, "tooltip": false},
-      "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "axis": null,
-          "scale": {"domain": [0, 1], "nice": false}
-        },
-        "y": {
-          "field": "y",
-          "type": "quantitative",
-          "axis": null,
-          "scale": {"domain": [0, 1], "nice": false}
-        },
-        "color": {
-          "field": "cell_type",
-          "type": "nominal",
-          "scale": {
-            "domain": ["Excitatory", "Inhibitory", "Glia"],
-            "range": ["#d45087", "#3c8dba", "#54a24b"]
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "axis": null,
+      "scale": {
+        "domain": [0, 1],
+        "nice": false
+      }
+    },
+    "color": {
+      "field": "cell_type",
+      "type": "nominal",
+      "legend": {
+        "orient": "bottom",
+        "title": "Cell class",
+        "columns": 3
+      },
+      "scale": {
+        "type": "ordinal",
+        "domain": ["Excitatory", "Inhibitory", "Glia"],
+        "range": ["#d45087", "#3c8dba", "#54a24b"]
+      }
+    },
+    "fillOpacity": {
+      "field": "cell_type",
+      "type": "nominal",
+      "legend": null,
+      "scale": {
+        "type": "ordinal",
+        "domain": ["Excitatory", "Inhibitory", "Glia"],
+        "reverse": false,
+        "range": [
+          {
+            "expr": "!length(cell_types) || indexof(cell_types, domain('fillOpacity')[0]) >= 0 ? 0.85 : 0.12"
           },
-          "legend": {"orient": "bottom", "title": "Cell class", "columns": 3}
-        },
-        "fillOpacity": {"condition": {"param": "cell_types", "value": 0.85}, "value": 0.12}
+          {
+            "expr": "!length(cell_types) || indexof(cell_types, domain('fillOpacity')[1]) >= 0 ? 0.85 : 0.12"
+          },
+          {
+            "expr": "!length(cell_types) || indexof(cell_types, domain('fillOpacity')[2]) >= 0 ? 0.85 : 0.12"
+          }
+        ]
       }
     }
-  ],
-
-  "resolve": {"scale": {"color": "shared"}, "legend": {"color": "collected"}},
-
-  "config": {"view": {"strokeWidth": 0}}
+  }
 }

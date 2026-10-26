@@ -1,4 +1,8 @@
-import { PrimaryPositionalChannel, Scalar } from "./channel.js";
+import {
+    PositionalChannel,
+    PrimaryPositionalChannel,
+    Scalar,
+} from "./channel.js";
 import {
     DataSource,
     Generator,
@@ -190,10 +194,10 @@ export interface SelectionFilterParams
     empty?: boolean;
 
     /**
-     * Maps interval selection channels to datum fields, or projected selection
-     * fields to fields in this data source. Unmapped fields use their original names.
+     * An optional mapping of positional channels to fields. Used to determine which fields
+     * are checked against the selection intervals.
      */
-    fields?: Record<string, Field>;
+    fields?: Partial<Record<PositionalChannel, Field>>;
 }
 
 export type FilterParams = ExprFilterParams | SelectionFilterParams;

@@ -1,12 +1,12 @@
 // @ts-check
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { ActionCreators } from "redux-undo";
 import { describe, expect, it, vi } from "vitest";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import {
     createIntervalSelection,
     createMultiPointSelection,
 } from "@genome-spy/core/selection/selection.js";
-import { createProjectedSelection } from "@genome-spy/core/selection/projectedSelection.js";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import ParamProvenanceBridge from "./paramProvenanceBridge.js";
@@ -170,56 +170,38 @@ async function getShowMessageDialogMock() {
 }
 
 describe("ParamProvenanceBridge", () => {
-    it("captures and restores legend category values without row keys or data lookup", async () => {
+    it("captures and restores legend arrays through ordinary bound-value state", async () => {
         const view = new FakeView();
-        const setter = view.paramRuntime.registerParam({
+        const write = view.paramRuntime.registerParam({
             name: "classes",
-            select: { type: "point", fields: ["class"] },
-            bind: "legend",
+            value: [],
+            bind: { legend: "color" },
         });
-        const lookup = vi.fn(() => {
-            throw new Error("Must not enumerate cells");
-        });
-        view.getCollector = lookup;
         const store = createStore();
-        createBridge(view, store, new IntentExecutor(store));
-        setter(createProjectedSelection(["class"], [["A"], [false]]));
-        await flushMicrotasks();
+        const bridge = createBridge(view, store, new IntentExecutor(store));
+        write(["A", 1, "1"]);
+        await bridge.whenApplied();
         const selector = { scope: [], param: "classes" };
         const key = makeParamSelectorKey(selector);
         expect(
             store.getState().provenance.present.paramProvenance.entries[key]
                 .value
-        ).toEqual({
-            type: "projected",
-            fields: ["class"],
-            values: [["A"], [false]],
-        });
+        ).toEqual({ type: "value", value: ["A", 1, "1"] });
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
                 selector,
-                value: {
-                    type: "projected",
-                    fields: ["class"],
-                    values: [["B"]],
-                },
+                value: { type: "value", value: ["B"] },
             })
         );
-        await flushMicrotasks();
-        expect(view.paramRuntime.getValue("classes").values).toEqual([["B"]]);
-        expect(lookup).not.toHaveBeenCalled();
-        store.dispatch(
-            paramProvenanceSlice.actions.paramChange({
-                selector,
-                value: {
-                    type: "projected",
-                    fields: ["changed"],
-                    values: [["B"]],
-                },
-            })
-        );
-        await flushMicrotasks();
-        expect(view.paramRuntime.getValue("classes").values).toEqual([]);
+        await bridge.whenApplied();
+        expect(view.paramRuntime.getValue("classes")).toEqual(["B"]);
+        store.dispatch(ActionCreators.undo());
+        await bridge.whenApplied();
+        expect(view.paramRuntime.getValue("classes")).toEqual(["A", 1, "1"]);
+        store.dispatch(ActionCreators.redo());
+        await bridge.whenApplied();
+        expect(view.paramRuntime.getValue("classes")).toEqual(["B"]);
+        bridge.dispose();
     });
 
     it("captures param changes into provenance", () => {

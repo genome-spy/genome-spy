@@ -1,4 +1,3 @@
-import { field } from "../../../utils/field.js";
 import {
     bindUniformBlock,
     createAttribsFromArrays,
@@ -58,7 +57,6 @@ import {
 import {
     isIntervalSelection,
     isMultiPointSelection,
-    isProjectedSelection,
     isSinglePointSelection,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
@@ -186,13 +184,6 @@ export default class WebGLMark {
         return this.mark.getType();
     }
 
-    /** @type {Map<string, {name: string, f: (datum: import("../../../data/flowNode.js").Datum) => number}>} */
-    projectedAttributes = new Map();
-
-    getProjectedAttributes() {
-        return Array.from(this.projectedAttributes.values());
-    }
-
     /** @returns {Channel[]} */
     getAttributes() {
         throw new Error("Not implemented.");
@@ -226,7 +217,6 @@ export default class WebGLMark {
                 extraHeaders.push("#define CLAMP_" + axis.toUpperCase());
             }
         }
-        this.projectedAttributes.clear();
         const shaderChannels = this.getAttributes();
         const encoders = this.encoders;
         const order = this.mark.getOrder();
@@ -355,11 +345,9 @@ export default class WebGLMark {
                         `    return ${PARAM_PREFIX}${param} == 0u;\n` +
                         `}`
                 );
-            } else if (
-                isMultiPointSelection(selection) ||
-                isProjectedSelection(selection)
-            ) {
-                // Reuse the GPU hash texture for selected record or category IDs.
+            } else if (isMultiPointSelection(selection)) {
+                // We need a texture for each multi-selection parameter.
+                // The texture stores an open-addressing hash table of selected uniqueIds.
 
                 const uniformName =
                     SELECTION_TEXTURE_PREFIX + validateParameterName(param);
@@ -372,7 +360,8 @@ export default class WebGLMark {
 
                 this.selectionTextureOps.push(() => {
                     // Texture is set in the prepareRender method
-                    const texture = selectionTextures.get(selectionRef);
+                    const selection = selectionRef.get();
+                    const texture = selectionTextures.get(selection);
                     if (!texture) {
                         throw new Error(
                             `Bug: no selection texture found for "${param}"!`
@@ -386,8 +375,8 @@ export default class WebGLMark {
 
                 const texName = SELECTION_TEXTURE_PREFIX + param;
                 scaleCode.push(
-                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}(${isProjectedSelection(selection) ? "uint value" : ""}) {\n` +
-                        `    return hashContainsTexture(${texName}, ${isProjectedSelection(selection) ? "value" : uniqueIdAttr});\n` +
+                    `bool ${SELECTION_MEMBERSHIP_PREFIX}${param}() {\n` +
+                        `    return hashContainsTexture(${texName}, ${uniqueIdAttr});\n` +
                         `}`
                 );
                 scaleCode.push(
@@ -397,14 +386,14 @@ export default class WebGLMark {
                 );
 
                 // Create the initial texture
-                glHelper.createSelectionTexture(selection, selectionRef);
+                glHelper.createSelectionTexture(selection);
 
                 paramRuntime.watchExpression(param, () => {
                     const selection =
-                        /** @type {import("../../../types/selectionTypes.js").MultiPointSelection | import("../../../types/selectionTypes.js").ProjectedSelection} */ (
+                        /** @type {import("../../../types/selectionTypes.js").MultiPointSelection} */ (
                             selectionRef.get()
                         );
-                    glHelper.createSelectionTexture(selection, selectionRef);
+                    glHelper.createSelectionTexture(selection);
                     this.unitView.context.animator.requestRender();
                 });
             } else if (isIntervalSelection(selection)) {
@@ -482,23 +471,6 @@ export default class WebGLMark {
          */
         const emitSelectionLeaf = (leaf) => {
             const { param, empty } = leaf;
-            if (leaf.type === "projected") {
-                const input = leaf.projections[0].field;
-                let attribute = this.projectedAttributes.get(input);
-                if (!attribute) {
-                    const name =
-                        "aSelectionField" + this.projectedAttributes.size;
-                    const read = field(input);
-                    attribute = {
-                        name,
-                        f: (datum) =>
-                            this.glHelper.projectedValueId(read(datum)),
-                    };
-                    this.projectedAttributes.set(input, attribute);
-                    attributeCode.add(`in highp uint ${name};`);
-                }
-                return `(${SELECTION_MEMBERSHIP_PREFIX}${param}(${attribute.name}) || (${empty} && ${SELECTION_EMPTY_PREFIX}${param}()))`;
-            }
             if (leaf.type !== "interval") {
                 return `(${SELECTION_MEMBERSHIP_PREFIX}${param}() || (${empty} && ${SELECTION_EMPTY_PREFIX}${param}()))`;
             }

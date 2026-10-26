@@ -1,4 +1,3 @@
-import { createProjectedSelection } from "../selection/projectedSelection.js";
 import { isString } from "vega-util";
 import {
     asSelectionConfig,
@@ -91,7 +90,37 @@ export function isVariableParameter(param) {
  * @returns {param is import("../spec/parameter.js").SelectionParameter}
  */
 export function isSelectionParameter(param) {
-    return !("expr" in param) && "select" in param;
+    return !("expr" in param || "bind" in param) && "select" in param;
+}
+
+/**
+ * @param {import("../spec/parameter.js").Parameter} param
+ * @returns {param is import("../spec/parameter.js").PlainValueParameter & {bind: import("../spec/parameter.js").LegendBinding}}
+ */
+export function isLegendBindingParameter(param) {
+    return (
+        "bind" in param &&
+        !!param.bind &&
+        typeof param.bind === "object" &&
+        "legend" in param.bind
+    );
+}
+
+/** @param {unknown} value */
+export function validateLegendValue(value) {
+    if (
+        !Array.isArray(value) ||
+        !value.every(
+            (item) =>
+                typeof item === "string" ||
+                typeof item === "boolean" ||
+                (typeof item === "number" && Number.isFinite(item))
+        )
+    ) {
+        throw new Error(
+            "A legend-bound parameter requires an array of finite scalar category values."
+        );
+    }
 }
 
 /**
@@ -135,16 +164,7 @@ export function validateParameterName(name) {
 export function getDefaultParamValue(param, paramRuntime, exprFn) {
     if ("select" in param) {
         const select = asSelectionConfig(param.select);
-        if (
-            param.bind === "legend" &&
-            (!isPointSelectionConfig(select) || !select.fields)
-        ) {
-            throw new Error(
-                "Legend binding requires a single-field point selection."
-            );
-        }
         if (isPointSelectionConfig(select)) {
-            if (select.fields) return createProjectedSelection(select.fields);
             return select.toggle
                 ? createMultiPointSelection()
                 : createSinglePointSelection(null);

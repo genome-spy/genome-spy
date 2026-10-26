@@ -1,12 +1,13 @@
 ---
 "@genome-spy/core": minor
 "@genome-spy/app": patch
+"@genome-spy/app-agent": patch
 ---
 
 <!-- category: feature -->
 
-Add native interactive categorical legends with single-field point selections.
-Click to focus a category, Shift-click to toggle categories, and double-click to
-clear. Legend focus can dim marks across linked views without filtering data or
-rebuilding point buffers. GenomeSpy App preserves category selections in history
-and bookmarks without requiring row keys.
+Bind categorical color legends to array-valued parameters. Click to focus a
+category, Shift-click to toggle categories, and double-click to clear. Charts
+can use ordinary opacity scales to dim other categories across linked views
+while retaining all data and legend entries. Existing parameter APIs, App
+history and bookmarks, and agent discovery support the bound arrays.

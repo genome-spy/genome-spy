@@ -49,7 +49,6 @@ function loadSpec(relativePath) {
  *   rangeTextures: WeakMap<object, object>,
  *   selectionTextures: WeakMap<object, object>,
  *   createSelectionTexture: (selection: object) => void,
- *   projectedValueId: (value: unknown) => number,
  *   compileShader: (type: number, glsl: string | string[]) => FakeShader,
  *   getCapturedSources: () => { vertex: string | undefined, fragment: string | undefined },
  * }}
@@ -113,9 +112,8 @@ function createFakeGlHelper() {
         gl,
         rangeTextures: new WeakMap(),
         selectionTextures: new WeakMap(),
-        projectedValueId: () => 1,
-        createSelectionTexture(selection, owner = selection) {
-            this.selectionTextures.set(owner, { selection });
+        createSelectionTexture(selection) {
+            this.selectionTextures.set(selection, { selection });
         },
         compileShader(type, glsl) {
             const source = Array.isArray(glsl) ? glsl.join("\n\n") : glsl;
@@ -677,40 +675,3 @@ describe("generated shader snapshots", () => {
         expect(sources).toMatchSnapshot();
     });
 });
-
-test.each(/** @type {const} */ ([null, false]))(
-    "legend focus preserves semantic sampling regardless of picking (%s)",
-    async (tooltip) => {
-        const sources = await captureShaderSources({
-            data: {
-                values: [
-                    { group: "A", score: 0 },
-                    { group: "B", score: 1 },
-                ],
-            },
-            params: [
-                {
-                    name: "focus",
-                    select: { type: "point", fields: ["group"] },
-                    bind: "legend",
-                },
-            ],
-            mark: { type: "point", tooltip, semanticZoomFraction: 0.5 },
-            encoding: {
-                x: { value: 0.5 },
-                y: { value: 0.5 },
-                semanticScore: { field: "score" },
-                fillOpacity: {
-                    condition: { param: "focus", value: 1 },
-                    value: 0.1,
-                },
-            },
-        });
-        expect(sources.vertex).toContain("isSelectionMember_focus(");
-        const selected = sources.vertex.match(
-            /bool isDatumSelected\(\) \{([^}]+)\}/
-        )?.[1];
-        expect(selected).toContain("false");
-        expect(selected).not.toContain("isSelectionMember_focus");
-    }
-);

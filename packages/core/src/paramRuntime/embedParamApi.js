@@ -1,4 +1,3 @@
-import { createProjectedSelection } from "../selection/projectedSelection.js";
 import UnitView from "../view/unitView.js";
 import { getEncodingKeyFields } from "../encoder/metadataChannels.js";
 import { isDataReady } from "../data/dataReadiness.js";
@@ -9,7 +8,6 @@ import {
     isIntervalSelection,
     isIntervalSelectionConfig,
     isMultiPointSelection,
-    isProjectedSelection,
     isPointSelectionConfig,
     isSinglePointSelection,
     resolvePointSelectionFromKeyTuples,
@@ -127,10 +125,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
     }
 
     return /** @type {SelectionApi} */ ({
-        type:
-            isPointSelectionConfig(select) && select.fields
-                ? "projected"
-                : select.type,
+        type: select.type,
 
         getValue() {
             ensureParamApiIsLive(lifecycle);
@@ -168,8 +163,6 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             ensureParamApiIsLive(lifecycle);
             if (controller) {
                 controller.clear();
-            } else if (isPointSelectionConfig(select) && select.fields) {
-                runtime.setValue(name, createProjectedSelection(select.fields));
             } else if (isPointSelectionConfig(select) && select.toggle) {
                 runtime.setValue(name, createMultiPointSelection());
             } else {
@@ -210,13 +203,6 @@ function resolvePointSelectionKeys(view, select, keys) {
     if (!Array.isArray(keys))
         throw new Error("Expected an array of key tuples.");
 
-    if (select.fields) {
-        if (!select.toggle && keys.length > 1)
-            throw new Error(
-                "Single-value selections accept at most one tuple."
-            );
-        return createProjectedSelection(select.fields, keys);
-    }
     const type = select.toggle ? "multi" : "single";
     if (!keys.length) {
         return type === "multi"
@@ -269,14 +255,6 @@ function resolvePointSelectionKeys(view, select, keys) {
  * @returns {import("../types/embedApi.js").SelectionSnapshot}
  */
 function copySelection(selection, intervalController) {
-    if (isProjectedSelection(selection)) {
-        return {
-            type: "projected",
-            active: selection.values.length > 0,
-            fields: [...selection.fields],
-            values: selection.values.map((tuple) => [...tuple]),
-        };
-    }
     if (isIntervalSelection(selection)) {
         // Capability creation requires a controller for interval selections.
         return {
@@ -306,7 +284,9 @@ function copySelection(selection, intervalController) {
     } else if (isMultiPointSelection(selection)) {
         data = Array.from(selection.data.values());
     } else {
-        throw new Error("Unsupported selection snapshot.");
+        throw new Error(
+            `Selection snapshot does not support "${selection.type}" selections.`
+        );
     }
 
     return {
