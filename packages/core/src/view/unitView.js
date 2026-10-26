@@ -190,7 +190,7 @@ export default class UnitView extends View {
                         // Compare with current membership: an API write may
                         // have replaced or cleared the last interactive choice.
                         const previousSelection =
-                            this.paramRuntime.getValue(name);
+                            this.paramRuntime.findValue(name);
                         if (datum !== previousSelection.datum) {
                             selection = createSinglePointSelection(datum);
                         }

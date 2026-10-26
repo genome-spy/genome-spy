@@ -35,65 +35,77 @@ describe("UnitView point selections", () => {
         }
     });
 
-    test("single selection picking observes membership replaced or cleared through the API", async () => {
-        const view = await createAndInitialize(
-            {
-                vconcat: [
-                    {
-                        ...makeUnitSpec("records"),
-                        params: [
-                            {
-                                name: "selected",
-                                select: {
-                                    type: "point",
-                                    toggle: false,
-                                    on: "click",
+    test.each([
+        { on: "click", outer: false },
+        { on: "pointerover", outer: true },
+    ])(
+        "single selection on $on (outer: $outer) observes API replacement and clearing",
+        async ({ on, outer }) => {
+            const view = await createAndInitialize(
+                {
+                    params: outer ? [{ name: "selected", value: null }] : [],
+                    vconcat: [
+                        {
+                            ...makeUnitSpec("records"),
+                            params: [
+                                {
+                                    name: "selected",
+                                    select: {
+                                        type: "point",
+                                        toggle: false,
+                                        on,
+                                    },
+                                    push: outer ? "outer" : undefined,
                                 },
-                            },
-                        ],
-                        data: {
-                            values: [
-                                { name: "A", x: 1, y: 1 },
-                                { name: "B", x: 2, y: 2 },
                             ],
+                            data: {
+                                values: [
+                                    { name: "A", x: 1, y: 1 },
+                                    { name: "B", x: 2, y: 2 },
+                                ],
+                            },
+                            encoding: {
+                                key: { field: "name" },
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                            },
                         },
-                        encoding: {
-                            key: { field: "name" },
-                            x: { field: "x", type: "quantitative" },
-                            y: { field: "y", type: "quantitative" },
-                        },
-                    },
-                ],
-            },
-            ConcatView
-        );
-        renderToLayout(view, Rectangle.create(0, 0, 300, 240));
-        const unit = /** @type {import("./unitView.js").default} */ (
-            view.children[0]
-        );
-        const [datum] = unit.getCollector().getData();
-        view.context.getCurrentHover = () => ({ mark: unit.mark, datum });
-        const dispatcher = new InteractionDispatcher({ viewRoot: view });
-        const click = () =>
-            dispatcher.dispatch(
-                center(unit),
-                /** @type {MouseEvent} */ (new FakeMouseEvent("click"))
+                    ],
+                },
+                ConcatView
             );
-        const selected = createViewMutationApi({ viewRoot: view })
-            .get({ scope: [], view: "records" })
-            .params.getSelection("selected");
-        if (selected.type !== "point")
-            throw new Error("Expected point selection.");
+            renderToLayout(view, Rectangle.create(0, 0, 300, 240));
+            const unit = /** @type {import("./unitView.js").default} */ (
+                view.children[0]
+            );
+            const [datum] = unit.getCollector().getData();
+            view.context.getCurrentHover = () => ({ mark: unit.mark, datum });
+            const dispatcher = new InteractionDispatcher({ viewRoot: view });
+            const interact = () =>
+                dispatcher.dispatch(
+                    center(unit),
+                    /** @type {MouseEvent} */ (
+                        new FakeMouseEvent(
+                            on === "pointerover" ? "mousemove" : on
+                        )
+                    )
+                );
+            const selected = createViewMutationApi({ viewRoot: view })
+                .get({ scope: [], view: "records" })
+                .params.getSelection("selected");
+            if (selected.type !== "point")
+                throw new Error("Expected point selection.");
 
-        click();
-        expect(selected.getValue().data[0].name).toBe("A");
-        selected.setValue([["B"]]);
-        click();
-        expect(selected.getValue().data[0].name).toBe("A");
-        selected.clear();
-        click();
-        expect(selected.getValue().data[0].name).toBe("A");
-    });
+            interact();
+            expect(selected.getValue().data[0].name).toBe("A");
+            selected.setValue([["B"]]);
+            interact();
+            expect(selected.getValue().data[0].name).toBe("A");
+            selected.clear();
+            interact();
+            expect(selected.getValue().data[0].name).toBe("A");
+        }
+    );
 
     test("Shift-click updates a shared outer point selection across views", async () => {
         const view = await createAndInitialize(
