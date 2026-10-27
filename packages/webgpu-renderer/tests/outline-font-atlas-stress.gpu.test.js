@@ -253,3 +253,127 @@ test("outline text reuses its atlas while replacing twelve thousand labels", asy
     expect(result.before.entries).toBe(32);
     expect(result.after).toEqual(result.before);
 });
+
+test("outline aliases share atlas storage while retaining label identity", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const { createRenderer } = await import("/src/index.js");
+        const { textMark } = await import("/src/marks/text.js");
+        const { identityScale } = await import("/src/scales/identity.js");
+        const { loadDefaultFont } = await import("/src/fonts/defaultFont.js");
+        const original = await loadDefaultFont();
+        const outline = original.getGlyph("H");
+        // Fonts can contain distinct glyph IDs with identical outlines and
+        // different advances. The generic generator deduplicates exact paths.
+        const font = {
+            ...original,
+            glyphCount: 128,
+            getGlyph(character) {
+                return {
+                    ...outline,
+                    glyphId: character.codePointAt(0),
+                    advanceWidth:
+                        outline.advanceWidth + character.codePointAt(0) * 2,
+                };
+            },
+            getPairAdjustment: () => ({
+                firstPlacement: 0,
+                firstAdvance: 0,
+                secondPlacement: 0,
+                secondAdvance: 0,
+            }),
+        };
+        const canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 128, height: 64, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
+        let batches = 0;
+        const createTexture = renderer.device.createTexture.bind(
+            renderer.device
+        );
+        renderer.device.createTexture = (descriptor) => {
+            if (descriptor.label == "outline glyph batch") batches++;
+            return createTexture(descriptor);
+        };
+        const create = (text, ids) =>
+            renderer.createMark(textMark, {
+                font,
+                fontSize: 32,
+                channels: {
+                    text: { data: text },
+                    uniqueId: { data: new Uint32Array(ids), type: "u32" },
+                    size: { value: 32 },
+                    align: { value: 0, type: "u32" },
+                    x: {
+                        data: new Float32Array([16, 80]),
+                        scale: identityScale(),
+                        type: "f32",
+                    },
+                    y: { value: 32, scale: identityScale() },
+                    stroke: { value: [0, 0, 1, 1] },
+                    strokeWidth: { value: 2 },
+                },
+            });
+        const mark = create(["A", "B"], [11, 12]);
+        const atlas = renderer._marks.get(mark.markId)._outlineAtlas;
+        const before = {
+            version: atlas.version,
+            width: atlas.width,
+            height: atlas.height,
+            entries: atlas.entryCount,
+        };
+        const hits = async (mark) => {
+            renderer.render({ draws: [{ mark }] });
+            await renderer.device.queue.onSubmittedWorkDone();
+            const ids = [];
+            for (const left of [16, 80]) {
+                let hit = null;
+                for (let y = 24; y < 40 && hit == null; y += 2) {
+                    for (let x = left; x < left + 24 && hit == null; x += 2)
+                        hit = await renderer.pick(x, y);
+                }
+                ids.push(hit);
+            }
+            return ids;
+        };
+        const initial = await hits(mark);
+        mark.series.replace({
+            text: ["C", "D"],
+            uniqueId: new Uint32Array([13, 14]),
+            x: new Float32Array([16, 80]),
+        });
+        const replaced = await hits(mark);
+        const second = create(["E", "F"], [15, 16]);
+        const shared = await hits(second);
+        const after = {
+            version: atlas.version,
+            width: atlas.width,
+            height: atlas.height,
+            entries: atlas.entryCount,
+        };
+        const validation = await renderer.device.popErrorScope();
+        renderer.destroy();
+        canvas.remove();
+        return {
+            initial,
+            replaced,
+            shared,
+            batches,
+            before,
+            after,
+            validation: validation?.message,
+        };
+    });
+    expect(result.validation).toBeUndefined();
+    expect(result.initial).toEqual([11, 12]);
+    expect(result.replaced).toEqual([13, 14]);
+    expect(result.shared).toEqual([15, 16]);
+    expect(result.batches).toBe(1);
+    expect(result.before.entries).toBe(1);
+    expect(result.after).toEqual(result.before);
+});

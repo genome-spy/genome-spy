@@ -17,7 +17,6 @@ const MAX_GLYPHS_PER_BATCH = 32;
 
 /**
  * @typedef {object} OutlineAtlasGlyph
- * @property {number} glyphId
  * @property {string} path
  */
 
@@ -41,10 +40,8 @@ export class OutlineFontAtlas {
     /** @type {MsdfAtlasTexture} */
     #storage;
 
-    /** @type {Array<OutlineAtlasEntry | undefined>} */
-    #entryByGlyphId;
-
-    #entryCount = 0;
+    /** @type {Map<string, OutlineAtlasEntry>} */
+    #entryByPath = new Map();
 
     #shelfX = 0;
 
@@ -75,7 +72,6 @@ export class OutlineFontAtlas {
             magFilter: "linear",
             minFilter: "linear",
         });
-        this.#entryByGlyphId = new Array(font.glyphCount);
     }
 
     get texture() {
@@ -95,7 +91,7 @@ export class OutlineFontAtlas {
     }
 
     get entryCount() {
-        return this.#entryCount;
+        return this.#entryByPath.size;
     }
 
     /**
@@ -107,7 +103,8 @@ export class OutlineFontAtlas {
     }
 
     /**
-     * Ensure all glyphs have stable final-atlas entries.
+     * Ensure all outlines have stable final-atlas entries. Distinct glyph IDs
+     * can share a path without sharing their logical font metrics.
      *
      * @param {OutlineAtlasGlyph[]} glyphs
      * @returns {OutlineAtlasEntry[]}
@@ -118,13 +115,10 @@ export class OutlineFontAtlas {
         }
         const seen = new Set();
         const missing = glyphs.filter((glyph) => {
-            if (
-                this.#entryByGlyphId[glyph.glyphId] !== undefined ||
-                seen.has(glyph.glyphId)
-            ) {
+            if (this.#entryByPath.has(glyph.path) || seen.has(glyph.path)) {
                 return false;
             }
-            seen.add(glyph.glyphId);
+            seen.add(glyph.path);
             return true;
         });
         for (
@@ -139,7 +133,7 @@ export class OutlineFontAtlas {
         return glyphs.map(
             (glyph) =>
                 /** @type {OutlineAtlasEntry} */ (
-                    this.#entryByGlyphId[glyph.glyphId]
+                    this.#entryByPath.get(glyph.path)
                 )
         );
     }
@@ -175,13 +169,12 @@ export class OutlineFontAtlas {
                 },
                 [job.slotWidth, job.slotHeight, 1]
             );
-            this.#entryByGlyphId[glyphs[index].glyphId] = {
+            this.#entryByPath.set(paths[index], {
                 x: placement.x + job.gutter + 0.5,
                 y: placement.y + job.gutter + 0.5,
                 width: job.tileWidth - 1,
                 height: job.tileHeight - 1,
-            };
-            this.#entryCount++;
+            });
         }
 
         this.#device.queue.submit([encoder.finish()]);
@@ -230,8 +223,7 @@ export class OutlineFontAtlas {
             return;
         }
         this.#destroyed = true;
-        this.#entryByGlyphId.length = 0;
-        this.#entryCount = 0;
+        this.#entryByPath.clear();
         this.#storage.destroy();
     }
 }
