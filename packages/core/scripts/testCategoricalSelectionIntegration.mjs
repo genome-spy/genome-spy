@@ -401,13 +401,14 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         const { embed } = await import("/index.js");
         document.body.replaceChildren();
         const host = document.createElement("div");
-        host.style.cssText = "width:800px;height:440px";
+        host.style.cssText = "width:600px;height:340px";
         document.body.append(host);
         const spec = await (
             await fetch(
                 "/examples/docs/grammar/parameters/categorical-point-selection.json"
             )
         ).json();
+        spec.name = "activation";
         spec.baseUrl = new URL("/examples/", location.href).href;
         const api = await embed(host, spec, { renderer });
         await api.awaitVisibleLazyData(AbortSignal.timeout(5000));
@@ -425,20 +426,19 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
                 await blob.text(),
                 "image/svg+xml"
             );
-            return ["activation-source", "activation-reader"].map(
-                (name) =>
-                    Array.from(
-                        svg.querySelectorAll(
-                            `[data-name="${name}"] [data-mark-type="point"] > *`
-                        )
-                    ).filter(
-                        (node) =>
-                            Number(node.getAttribute("fill-opacity") ?? 1) === 1
-                    ).length
-            );
+            return Array.from(
+                svg.querySelectorAll(
+                    '[data-name="activation"] [data-mark-type="point"] > *'
+                )
+            ).filter(
+                (node) => Number(node.getAttribute("fill-opacity") ?? 1) === 1
+            ).length;
         };
-        const point = (view) => {
-            const bounds = api.views.getLayoutBounds({ scope: [], view });
+        const point = () => {
+            const bounds = api.views.getLayoutBounds({
+                scope: [],
+                view: "activation",
+            });
             const canvas = host.querySelector("canvas").getBoundingClientRect();
             return {
                 x: canvas.x + bounds.x + (3.5 / 9) * bounds.width,
@@ -449,11 +449,10 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
 
         return { initial: await snapshot() };
     }, renderer);
-    assert.deepEqual(points.initial, [6, 6]);
-    const clickView = async (view) => {
-        const point = await page.evaluate(
-            (view) => globalThis.__categoryDemo.point(view),
-            view
+    assert.equal(points.initial, 6);
+    const clickPoint = async () => {
+        const point = await page.evaluate(() =>
+            globalThis.__categoryDemo.point()
         );
         await page.mouse.move(point.x, point.y);
         await page.evaluate(
@@ -464,39 +463,31 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         );
         await page.mouse.click(point.x, point.y);
     };
-    await clickView("activation-reader");
-    assert.deepEqual(
-        await page.evaluate(
-            () => globalThis.__categoryDemo.focus.getValue().values
-        ),
-        [["resting"]],
-        `${renderer}: read-only consumer`
-    );
-    await clickView("activation-source");
+    await clickPoint();
     await page.waitForFunction(
         () =>
             globalThis.__categoryDemo.focus.getValue().values[0]?.[0] ===
             "activated"
     );
-    assert.deepEqual(
+    assert.equal(
         await page.evaluate(() => globalThis.__categoryDemo.snapshot()),
-        [6, 6]
+        6
     );
     await page.keyboard.down("Shift");
-    await clickView("activation-source");
+    await clickPoint();
     await page.keyboard.up("Shift");
     await page.waitForFunction(
         () => !globalThis.__categoryDemo.focus.getValue().active
     );
-    assert.deepEqual(
+    assert.equal(
         await page.evaluate(() => globalThis.__categoryDemo.snapshot()),
-        [18, 18]
+        18
     );
     await page.evaluate(() =>
         globalThis.__categoryDemo.focus.setValue([["activated"]])
     );
     const sourcePoint = await page.evaluate(() =>
-        globalThis.__categoryDemo.point("activation-source")
+        globalThis.__categoryDemo.point()
     );
     await page.mouse.dblclick(sourcePoint.x, sourcePoint.y);
     await page.waitForFunction(
@@ -507,6 +498,6 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         delete globalThis.__categoryDemo;
     });
     console.log(
-        `${renderer}: linked demo gestures, asynchronous picking, and SVG parity passed.`
+        `${renderer}: category demo gestures, asynchronous picking, and SVG parity passed.`
     );
 });

@@ -181,13 +181,7 @@ See the [selection API](../api/runtime-state.md#setting-categorical-point-select
 for value rules and programmatic updates, and
 [selection functions](expressions.md#selection-functions) for expression access.
 
-To share a selection, declare it on an ancestor. Only views with a compatible
-local declaration using `push: "outer"` handle gestures.
-
-The example links `activation_state` in the left view with `activation` in the
-right view.
-
-EXAMPLE examples/docs/grammar/parameters/categorical-point-selection.json height=440
+EXAMPLE examples/docs/grammar/parameters/categorical-point-selection.json height=300
 
 !!! disclaimer ""
 
