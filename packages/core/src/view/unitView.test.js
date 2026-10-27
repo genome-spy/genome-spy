@@ -93,7 +93,7 @@ describe("UnitView point selections", () => {
             const selected = createViewMutationApi({ viewRoot: view })
                 .get({ scope: [], view: "records" })
                 .params.getSelection("selected");
-            if (selected.type !== "point")
+            if (selected.type !== "point" || selected.membership !== "records")
                 throw new Error("Expected point selection.");
 
             interact();
@@ -142,7 +142,7 @@ describe("UnitView point selections", () => {
         };
         const selectedNames = () => {
             const snapshot = selection.getValue();
-            if (snapshot.type !== "point")
+            if (snapshot.type !== "point" || snapshot.membership !== "records")
                 throw new Error("Expected point selection.");
             return snapshot.data.map((row) => row.name);
         };

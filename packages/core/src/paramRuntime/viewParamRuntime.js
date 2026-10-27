@@ -110,7 +110,7 @@ export default class ViewParamRuntime {
     /** @type {import("../view/view.js").default | undefined} */
     #selectionSource;
 
-    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval", components: string[], source: import("../view/view.js").default | undefined}>>} */
+    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval", membership: "records" | "categories" | undefined, components: string[], source: import("../view/view.js").default | undefined}>>} */
     #selectionDeclarations = new Map();
 
     /** @type {Map<string, TransitionState>} */
@@ -194,11 +194,15 @@ export default class ViewParamRuntime {
 
         const capabilities = Array.from(declarations, (declaration) => ({
             type: declaration.kind,
+            membership: declaration.membership,
             components: declaration.components.map((component) => ({
                 component,
-                type: declaration.source?.getScaleResolution(
-                    /** @type {"x" | "y"} */ (component)
-                )?.type,
+                type:
+                    declaration.kind === "interval"
+                        ? declaration.source?.getScaleResolution(
+                              /** @type {"x" | "y"} */ (component)
+                          )?.type
+                        : undefined,
             })),
             location: declaration.source?.name ?? name,
         }));
@@ -228,16 +232,23 @@ export default class ViewParamRuntime {
                 : select.toggle
                   ? "multi"
                   : "single";
-        const components =
-            select.type === "interval"
-                ? Array.from(new Set(select.encodings)).sort()
-                : [];
+        const components = select.encodings
+            ? Array.from(new Set(select.encodings)).sort()
+            : [];
+        /** @type {"records" | "categories" | undefined} */
+        const membership =
+            select.type === "point"
+                ? select.encodings
+                    ? "categories"
+                    : "records"
+                : undefined;
         const owner =
             param.push === "outer"
                 ? this.findRuntimeForParam(param.name)
                 : this;
         const declaration = {
             kind,
+            membership,
             components,
             source: this.#selectionSource,
         };
@@ -247,6 +258,7 @@ export default class ViewParamRuntime {
         if (
             existing &&
             (existing.kind !== kind ||
+                existing.membership !== membership ||
                 JSON.stringify(existing.components) !==
                     JSON.stringify(components))
         ) {
@@ -493,7 +505,7 @@ export default class ViewParamRuntime {
             }
             if (
                 "expr" in outerProps ||
-                "select" in outerProps ||
+                ("select" in outerProps && !("select" in param)) ||
                 "ruler" in outerProps ||
                 !outerRuntime.isWritable(name)
             ) {
@@ -556,6 +568,18 @@ export default class ViewParamRuntime {
         }
 
         if ("select" in param) {
+            if (param.push === "outer") {
+                const current = this.findValue(name);
+                // Compatible aliases join existing membership, including initial values.
+                if (
+                    current &&
+                    ["single", "multi", "categories", "interval"].includes(
+                        current.type
+                    )
+                ) {
+                    defaultValue = current;
+                }
+            }
             defaultValue ??= getDefaultParamValue(param, this);
             if (!this.#allocatedSetters.has(name)) {
                 const ref = this.#runtime.registerSelection(
@@ -1240,10 +1264,10 @@ export default class ViewParamRuntime {
      * Returns whether an authored point-selection declaration is accessible.
      * When inherited declarations are included, nearer declarations shadow names.
      *
-     * @param {{ inherited?: boolean }} [options]
+     * @param {{ inherited?: boolean, recordsOnly?: boolean }} [options]
      * @returns {boolean}
      */
-    hasPointSelections({ inherited = false } = {}) {
+    hasPointSelections({ inherited = false, recordsOnly = false } = {}) {
         for (
             let runtime = /** @type {ViewParamRuntime} */ (this);
             runtime;
@@ -1255,6 +1279,9 @@ export default class ViewParamRuntime {
                     (param.select === "point" ||
                         (typeof param.select === "object" &&
                             param.select.type === "point")) &&
+                    (!recordsOnly ||
+                        typeof param.select === "string" ||
+                        !("encodings" in param.select)) &&
                     (!inherited ||
                         this.findConfiguredParam(param.name).config === param)
                 ) {

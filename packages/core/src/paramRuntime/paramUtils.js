@@ -8,6 +8,7 @@ import {
     isPointSelectionConfig,
 } from "../selection/selection.js";
 import { createRulerValue } from "../ruler/rulerValue.js";
+import { createCategorySelection } from "../selection/categorySelection.js";
 
 /**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
@@ -135,6 +136,18 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
     if ("select" in param) {
         const select = asSelectionConfig(param.select);
         if (isPointSelectionConfig(select)) {
+            if (select.encodings) {
+                const component = select.encodings[0];
+                const values =
+                    /** @type {Record<string, import("../spec/channel.js").Scalar>[]} */ (
+                        param.value ?? []
+                    );
+                return createCategorySelection(
+                    component,
+                    values.map((value) => value[component]),
+                    !!select.toggle
+                );
+            }
             return select.toggle
                 ? createMultiPointSelection()
                 : createSinglePointSelection(null);

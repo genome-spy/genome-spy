@@ -448,21 +448,21 @@ describe("embed param API", () => {
         const selection = resolveEmbedSelection(root, "selected");
         expect(selection.getValue()).toEqual({
             type: "point",
+            membership: "records",
             active: false,
             data: [],
         });
 
         const datum = /** @type {any} */ (root).getCollector().getData()[0];
-        /** @type {any} */ (resolveScopedEmbedParam(root, "selected")).setValue(
-            {
-                type: "single",
-                datum,
-                uniqueId: datum.__uniqueId,
-            }
-        );
+        root.paramRuntime.setValue("selected", {
+            type: "single",
+            datum,
+            uniqueId: datum.__uniqueId,
+        });
 
         expect(selection.getValue()).toEqual({
             type: "point",
+            membership: "records",
             active: true,
             data: [{ x: 1, y: 2 }],
         });

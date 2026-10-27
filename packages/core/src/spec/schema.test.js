@@ -73,6 +73,32 @@ describe("generated core schema", () => {
         }
     });
 
+    test("categorical point projections and channel-keyed initializers have precise shapes", () => {
+        const validate = createCoreValidator();
+        const param = {
+            name: "focus",
+            select: { type: "point", encodings: ["color"] },
+            value: [{ color: "A" }],
+        };
+        const spec = { mark: "point", params: [param] };
+        expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        for (const invalid of [
+            { ...param, select: { type: "point", encodings: [] } },
+            {
+                ...param,
+                select: { type: "point", encodings: ["color", "shape"] },
+            },
+            { ...param, select: { type: "point", encodings: ["x"] } },
+            { ...param, select: { type: "point", encoding: "color" } },
+            { ...param, select: { type: "point", fields: ["state"] } },
+            { ...param, value: [["A"]] },
+            { ...param, value: [{ state: "A" }] },
+            { ...param, value: [{ color: "A", shape: "B" }] },
+            { ...param, value: [{ color: null }] },
+        ])
+            expect(validate({ ...spec, params: [invalid] })).toBe(false);
+    });
+
     test("surround restricts plot kinds while accepting scoped and nested sides", () => {
         const validate = createCoreValidator();
         const spec = {

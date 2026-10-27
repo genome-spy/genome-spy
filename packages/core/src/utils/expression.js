@@ -19,6 +19,11 @@ import linearstep from "./linearstep.js";
 import { annotateSpecError } from "./specError.js";
 import compileDatumAccessor from "./compileDatumAccessor.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
+import {
+    isSelectionActive,
+    selectionValues,
+    selectionBounds,
+} from "../selection/selection.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -39,6 +44,9 @@ function sequence(value) {
 }
 
 const functionContext = {
+    selectionActive: isSelectionActive,
+    selectionValues,
+    selectionBounds,
     clamp,
     tickStep,
     format(/** @type {number} */ value, /** @type {string} */ format) {

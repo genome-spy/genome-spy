@@ -258,6 +258,34 @@ configuration cannot read that same scale's zoom level. Cross-scale dependency
 cycles are also rejected. A scale range may read its own zoom level because
 range changes do not determine magnification.
 
+### Selection Functions
+
+Selection functions take the selection parameter itself, for example
+`selectionActive(picked)`. They follow ordinary expression scope and reactive
+updates. Use native `param` predicates to test row membership.
+
+<a name="selectionActive" href="#selectionActive">#</a>
+<b>selectionActive</b>(<i>selection</i>)<br/>
+Returns whether a record point selection, category point selection, or interval
+selection has stored membership. Empty selections return `false`. Selected
+categories remain active while their values are absent from loaded data.
+
+<a name="selectionValues" href="#selectionValues">#</a>
+<b>selectionValues</b>(<i>selection</i>, <i>component</i>)<br/>
+Returns a detached array of selected raw category values in selection order,
+such as `selectionValues(activation_states, 'color')`. An empty category
+selection returns `[]`. Record and interval selections do not support this
+operation.
+
+<a name="selectionBounds" href="#selectionBounds">#</a>
+<b>selectionBounds</b>(<i>selection</i>, <i>component</i>)<br/>
+Returns a detached numeric `[start, end]` pair for a declared interval component,
+such as `selectionBounds(brush, 'x')`, or `null` when cleared. Locus bounds use
+linearized genomic coordinates. Point selections do not support this operation.
+
+All three functions reject non-selection arguments. Component functions reject
+undeclared components. They read stored values without scanning matching rows.
+
 ### Other functions
 
 <a name="tickStep" href="#tickStep">#</a>

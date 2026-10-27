@@ -165,7 +165,6 @@ export interface SpecLocation {
  * - Computed `expr` parameters are readable but cannot be written.
  * - Point selections are exposed through `ParamNamespace.getSelection()`;
  *   they are not writable through the generic parameter API.
- * - Projected selections are not supported.
  */
 export type ParamValue = Scalar | null | undefined | IntervalSelection;
 
@@ -240,9 +239,12 @@ export interface IntervalSnapshot {
  * Each row in `data` is a shallow copy of the selected datum without
  * GenomeSpy's internal picking identifier.
  */
-export interface PointSnapshot {
+export interface RecordPointSnapshot {
     /** Discriminator for point selection snapshots. */
     type: "point";
+
+    /** Membership identifies individual records. */
+    membership: "records";
 
     /** Whether at least one row is currently selected. */
     active: boolean;
@@ -250,6 +252,19 @@ export interface PointSnapshot {
     /** Selected data rows, in selection order. */
     data: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
+
+/** Detached raw category membership; values need not occur in loaded data. */
+export interface CategoryPointSnapshot {
+    type: "point";
+    membership: "categories";
+    active: boolean;
+    encodings: readonly [
+        import("../spec/parameter.js").CategorySelectionChannel,
+    ];
+    values: readonly (readonly [Scalar])[];
+}
+
+export type PointSnapshot = RecordPointSnapshot | CategoryPointSnapshot;
 
 /** A detached snapshot of either an interval or point selection. */
 export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
@@ -264,12 +279,14 @@ export type SelectionSnapshot = IntervalSnapshot | PointSnapshot;
  * lasso. For the current point-selection implementation, it has the same
  * delivery behavior as `"change"`.
  */
-export interface PointSelectionApi {
+export interface RecordPointSelectionApi {
     /** Discriminator for this selection capability. */
     readonly type: "point";
 
+    readonly membership: "records";
+
     /** Returns the current detached selection snapshot. */
-    getValue: () => PointSnapshot;
+    getValue: () => RecordPointSnapshot;
 
     /**
      * Subscribes to future selection updates and returns an unsubscribe
@@ -278,7 +295,7 @@ export interface PointSelectionApi {
      * normal update delivery.
      */
     subscribe: (
-        listener: (value: PointSnapshot) => void,
+        listener: (value: RecordPointSnapshot) => void,
         options?: { delivery?: "change" | "commit" }
     ) => () => void;
 
@@ -294,6 +311,24 @@ export interface PointSelectionApi {
     /** Clears the selection and publishes the cleared state when it changed. */
     clear: () => void;
 }
+
+/** Scoped raw category membership. Writes require neither row keys nor data readiness. */
+export interface CategoryPointSelectionApi {
+    readonly type: "point";
+    readonly membership: "categories";
+    getValue: () => CategoryPointSnapshot;
+    /** Point change and commit delivery are equivalent. */
+    subscribe: (
+        listener: (value: CategoryPointSnapshot) => void,
+        options?: { delivery?: "change" | "commit" }
+    ) => () => void;
+    /** Replace the complete membership with detached one-value tuples. */
+    setValue: (values: readonly (readonly Scalar[])[]) => void;
+    clear: () => void;
+}
+
+export type PointSelectionApi =
+    RecordPointSelectionApi | CategoryPointSelectionApi;
 
 /**
  * Capability for reading, clearing, and testing membership in an interval

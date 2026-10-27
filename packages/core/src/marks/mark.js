@@ -458,6 +458,7 @@ export default class Mark {
      * @returns {void}
      */
     initializeEncoders() {
+        this.unitView.validatePointSelectionSources();
         this.encoders = createEncoders(this.unitView, this.encoding);
     }
 
@@ -657,6 +658,7 @@ export default class Mark {
                 (this.#requiresSelectionIdentity ||
                     this.unitView.paramRuntime.hasPointSelections({
                         inherited: true,
+                        recordsOnly: true,
                     })))
         );
     }

@@ -158,6 +158,21 @@ interactions in very large data sets.
 
 ### Point Selection
 
+Ordinary `select: "point"` selects individual records. A point selection with
+`select: {"type": "point", "encodings": ["color"]}` instead stores raw
+categories from one nominal or ordinal field encoding with a discrete scale.
+The supported components are `color`, `fill`, `stroke`, and `shape`. Initial
+categories use channel-keyed objects, for example `value: [{"color": "activated"}]`.
+Values are typed: numeric `1` and string `"1"` are distinct. Selected categories
+remain stored when data or scale domains change.
+
+Click replaces membership, Shift-click toggles when enabled, and double-click
+clears. `toggle: false` permits one distinct category. Shared state can live on
+an ancestor; each descendant writer opts in with a compatible local selection
+and `push: "outer"`. An inherited selection does not enable interaction by
+itself. [Selection functions](expressions.md#selection-functions) provide
+activity, category values, and interval bounds without inspecting storage.
+
 The following example has been adapted from Vega-Lite's [example
 gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
 with slight modifications (GenomeSpy provides no `"bar"` mark). The
@@ -165,6 +180,22 @@ specification below is fully compatible with Vega-Lite. You can select multiple
 bars by holding down the `Shift` key.
 
 EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
+
+#### Selection and Semantic Zoom
+
+Category selections affect appearance only as authored; they do not make every
+matching row bypass semantic-zoom sampling. An active record selection or
+positional brush referenced by an appearance condition preserves its own
+matching rows, including when referenced under `and`, `or`, or `not`. Empty
+selections preserve no extra rows, regardless of a predicate's `empty` fallback.
+Conditions used only for ordering do not preserve sampled rows.
+
+This rule applies independently of the appearance condition's Boolean result.
+For example, a record selected by `picked` remains visible when an opacity
+condition tests `picked AND activation_states`, even if its category is not
+selected. The opacity still follows the complete condition. Existing compound
+record/brush conditions may therefore retain more sampled rows than before;
+negating a selection does not preserve its entire complement.
 
 ### Interval Selection
 

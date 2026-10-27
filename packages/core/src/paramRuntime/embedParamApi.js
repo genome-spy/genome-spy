@@ -11,7 +11,10 @@ import {
     isPointSelectionConfig,
     isSinglePointSelection,
     resolvePointSelectionFromKeyTuples,
+    clearPointSelection,
+    isCategorySelection,
 } from "../selection/selection.js";
+import { categorySelectionFromTuples } from "../selection/categorySelection.js";
 import { bindDisposer } from "../utils/bindDisposer.js";
 
 /**
@@ -75,7 +78,7 @@ function resolveScopedEmbedDeclaration(view, name, kind, lifecycle) {
  * @returns {ParamApi}
  */
 export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
-    const { runtime, valueRuntime } = resolveScopedEmbedDeclaration(
+    const { config, runtime, valueRuntime } = resolveScopedEmbedDeclaration(
         view,
         name,
         "Parameter",
@@ -85,6 +88,12 @@ export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
     return createParamApi(valueRuntime, name, lifecycle, (value) => {
         if (readOnly) {
             throw new Error('Cannot set computed parameter "' + name + '".');
+        }
+        if (
+            "select" in config &&
+            asSelectionConfig(config.select).type === "point"
+        ) {
+            throw new Error("Set point selections through getSelection().");
         }
         runtime.setValue(name, value);
     });
@@ -126,6 +135,9 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
 
     return /** @type {SelectionApi} */ ({
         type: select.type,
+        ...(select.type === "point"
+            ? { membership: select.encodings ? "categories" : "records" }
+            : {}),
 
         getValue() {
             ensureParamApiIsLive(lifecycle);
@@ -163,10 +175,15 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             ensureParamApiIsLive(lifecycle);
             if (controller) {
                 controller.clear();
-            } else if (isPointSelectionConfig(select) && select.toggle) {
-                runtime.setValue(name, createMultiPointSelection());
             } else {
-                runtime.setValue(name, createSinglePointSelection(null));
+                runtime.setValue(
+                    name,
+                    clearPointSelection(
+                        /** @type {import("../spec/parameter.js").PointSelectionConfig} */ (
+                            select
+                        )
+                    )
+                );
             }
         },
 
@@ -177,7 +194,9 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                       // Resolve the entire write before publishing membership.
                       runtime.setValue(
                           name,
-                          resolvePointSelectionKeys(view, select, keys)
+                          select.encodings
+                              ? categorySelectionFromTuples(select, keys)
+                              : resolvePointSelectionKeys(view, select, keys)
                       );
                   },
               }
@@ -255,6 +274,15 @@ function resolvePointSelectionKeys(view, select, keys) {
  * @returns {import("../types/embedApi.js").SelectionSnapshot}
  */
 function copySelection(selection, intervalController) {
+    if (isCategorySelection(selection)) {
+        return {
+            type: "point",
+            membership: "categories",
+            active: selection.values.size > 0,
+            encodings: [selection.component],
+            values: Array.from(selection.values, (value) => [value]),
+        };
+    }
     if (isIntervalSelection(selection)) {
         // Capability creation requires a controller for interval selections.
         return {
@@ -284,13 +312,12 @@ function copySelection(selection, intervalController) {
     } else if (isMultiPointSelection(selection)) {
         data = Array.from(selection.data.values());
     } else {
-        throw new Error(
-            `Selection snapshot does not support "${selection.type}" selections.`
-        );
+        throw new Error("Unsupported selection snapshot value.");
     }
 
     return {
         type: "point",
+        membership: "records",
         active: data.length > 0,
         data: data.map(copyDatum),
     };
@@ -397,7 +424,6 @@ function registerParamDisposer(lifecycle, unsubscribe) {
  * - Computed `expr` parameters are readable but cannot be written.
  * - Point selection parameters remain read-only through the legacy parameter
  *   API; use `getSelection()` for snapshots and clearing.
- * - Projected selections are not supported.
  *
  * @param {View} root
  * @param {string} name

@@ -1,9 +1,6 @@
 import { Datum } from "../data/flowNode.js";
-import {
-    ChannelWithScale,
-    PositionalChannel,
-    Scalar,
-} from "../spec/channel.js";
+import { PositionalChannel, Scalar } from "../spec/channel.js";
+import { CategorySelectionChannel } from "../spec/parameter.js";
 
 export interface SelectionBase {
     type: string;
@@ -15,13 +12,12 @@ export interface IntervalSelection extends SelectionBase {
     intervals: Partial<Record<PositionalChannel, number[] | null>>;
 }
 
-export interface ProjectedSelection extends SelectionBase {
-    type: "projected";
+export interface CategoryPointSelection extends SelectionBase {
+    type: "categories";
 
-    fields?: string[];
-    channels?: ChannelWithScale[];
+    component: CategorySelectionChannel;
 
-    values: Scalar[][];
+    values: Set<Scalar>;
 }
 
 export interface SinglePointSelection extends SelectionBase {
@@ -40,6 +36,6 @@ export interface MultiPointSelection extends SelectionBase {
 
 export type Selection =
     | IntervalSelection
-    | ProjectedSelection
+    | CategoryPointSelection
     | SinglePointSelection
     | MultiPointSelection;

@@ -1,6 +1,6 @@
 # Categorical projections for point selections
 
-Status: proposed implementation plan; implementation has not started.
+Status: implementation in progress; commit after each verified milestone.
 
 Source: [issue #608](https://github.com/genome-spy/genome-spy/issues/608), read
 2026-10-27. Repository baseline: `085674617` on `master`, with a clean working
@@ -98,10 +98,9 @@ do not meet #608. Do not cherry-pick the subsystem wholesale.
 
 ## Contract decisions
 
-The following are this plan's concrete recommendations, not APIs already
-accepted in the issue. Before implementing the helpers or sampling change,
-record the chosen rules in #608 and the relevant grammar/expression docs.
-Publishing that issue update is outside this planning task.
+The helper signatures and direct sampling rule below are the implementation
+decisions. Their contracts are recorded in the expression/parameter docs before
+implementation; the same decisions are recorded in #608.
 
 ### Authoring, initialization, and validation
 
@@ -350,6 +349,12 @@ source/domain changes update or rebind the appropriate resources without
 rewriting shared semantic state. Release textures/buffers/subscriptions with the
 owning backend/view. No backend handles enter semantic marks or parameter state.
 
+## Milestone progress
+
+- Milestone 1: implemented native category state, source validation, scoped API,
+  helpers, and precise initializer schema. Focused schema/state/interaction/API
+  suites cover the new contracts alongside existing record behavior.
+
 ## Implementation milestones
 
 Each milestone includes its meaningful tests and documentation. Tentative
@@ -502,7 +507,7 @@ correctness or buffer-reuse performance.
 
 Completion checklist:
 
-- [ ] Helper and sampling decisions are recorded in #608 and docs before their
+- [x] Helper and sampling decisions are recorded in #608 and docs before their
       respective implementations; deviations from this proposal are reconciled.
 - [ ] One-category grammar/schema, object initializers, runtime input validation,
       and typed detached normalization satisfy the issue.

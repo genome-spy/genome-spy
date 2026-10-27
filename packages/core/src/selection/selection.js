@@ -10,6 +10,7 @@ import {
     getSelectionPredicateTreeParams,
     normalizeSelectionPredicateTree,
 } from "./selectionPredicateTree.js";
+import { createCategorySelection } from "./categorySelection.js";
 
 /**
  * @param {import("../data/flowNode.js").Datum} datum
@@ -314,10 +315,48 @@ export function isMultiPointSelection(selection) {
 
 /**
  * @param {import("../types/selectionTypes.js").Selection} selection
- * @returns {selection is import("../types/selectionTypes.js").ProjectedSelection}
+ * @returns {selection is import("../types/selectionTypes.js").CategoryPointSelection}
  */
-export function isProjectedSelection(selection) {
-    return selection.type === "projected";
+export function isCategorySelection(selection) {
+    return selection.type === "categories";
+}
+
+/** @param {import("../spec/parameter.js").PointSelectionConfig} select */
+export function clearPointSelection(select) {
+    return select.encodings
+        ? createCategorySelection(select.encodings[0])
+        : select.toggle
+          ? createMultiPointSelection()
+          : createSinglePointSelection(null);
+}
+
+/**
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {string} component
+ */
+export function selectionValues(selection, component) {
+    if (!isCategorySelection(selection)) {
+        throw new Error("selectionValues requires a category point selection.");
+    }
+    if (selection.component !== component) {
+        throw new Error(`Undeclared selection component "${component}".`);
+    }
+    return Array.from(selection.values);
+}
+
+/**
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {string} component
+ */
+export function selectionBounds(selection, component) {
+    if (!isIntervalSelection(selection)) {
+        throw new Error("selectionBounds requires an interval selection.");
+    }
+    if (!Object.hasOwn(selection.intervals, component)) {
+        throw new Error(`Undeclared selection component "${component}".`);
+    }
+    const bounds = selection.intervals[/** @type {"x" | "y"} */ (component)];
+    return bounds ? bounds.slice() : null;
 }
 
 /**
@@ -388,10 +427,13 @@ export function isSelectionActive(selection) {
     if (isMultiPointSelection(selection)) {
         return selection.data.size > 0;
     }
+    if (isCategorySelection(selection)) {
+        return selection.values.size > 0;
+    }
     if (isIntervalSelection(selection)) {
         return isActiveIntervalSelection(selection);
     }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
+    throw new Error("Unsupported selection value.");
 }
 
 /**
