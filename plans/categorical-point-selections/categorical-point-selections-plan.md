@@ -399,6 +399,13 @@ and variable shadowing. The eight focused suites pass 177 tests; Core TypeScript
 and lint checks pass. These fixes reduce the combined API/runtime implementation
 from 1,904 to 1,885 lines.
 
+Follow-up simplification routes empty point initialization through the existing
+clear factory, removes the second Set copy/validation from category gestures,
+and limits category input resolution to the input/field metadata callers use.
+Validation remains at initialization/API boundaries; gesture tests also preserve
+previously published membership. The two affected source files shrink from
+469 to 462 lines.
+
 - Root build, documentation build, all workspace TypeScript checks, lint, and
   release policy checks pass. The final full unit run passed 5,299 tests in 556 files, including the
   owner/legacy-controller regression coverage (one skipped and two todo).
@@ -690,8 +697,8 @@ Raw `wc -l` baseline for focused existing implementation files:
 | Renderer `selectionResources.js` + `visibilityPredicate.js`               |                  987 |
 | Total                                                                     |               10,947 |
 
-Final focused source count: 11,338 lines in the same 13 existing files, plus
-130 lines in the new `categorySelection.js`, for 11,468 lines: +521 from the
+Final focused source count: 11,335 lines in the same 13 existing files, plus
+126 lines in the new `categorySelection.js`, for 11,461 lines: +514 from the
 10,947-line baseline. The added ownership, normalization, retained bindings,
 and persistence behavior account for this growth. The old projected scaffold,
 compound activity wrapper, and duplicate App state declarations were removed.

@@ -72,7 +72,7 @@ export function updateCategorySelection(selection, value, toggle) {
     } else {
         values.add(value);
     }
-    return createCategorySelection(selection.component, values);
+    return { ...selection, values };
 }
 
 /**
@@ -111,14 +111,10 @@ export function resolveCategoryInput(encoding, component, getScale) {
             `Category selection input "${component}" must be an unconditional field encoding.`
         );
     }
-    const channelDef =
-        /** @type {import("../spec/channel.js").MarkPropFieldDef} */ (
-            definition
-        );
-    const scaleChannel = channelDef.resolutionChannel ?? component;
+    const scaleChannel = definition.resolutionChannel ?? component;
     const scale = getScale(scaleChannel);
     if (
-        !["nominal", "ordinal"].includes(channelDef.type) ||
+        !["nominal", "ordinal"].includes(definition.type) ||
         !scale ||
         !isDiscrete(scale.type)
     ) {
@@ -126,5 +122,5 @@ export function resolveCategoryInput(encoding, component, getScale) {
             `Category selection input "${component}" requires a nominal or ordinal field with a discrete scale.`
         );
     }
-    return { input, field: channelDef.field, scale, type: channelDef.type };
+    return { input, field: definition.field };
 }

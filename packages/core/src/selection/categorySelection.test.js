@@ -123,7 +123,10 @@ test.each([true, false])(
             );
         };
         api.setValue([["B"]]);
+        const previous = root.paramRuntime.getValue("focus");
         click(0, true);
+        // Gesture updates must leave previously published membership intact.
+        expect(Array.from(previous.values)).toEqual(["B"]);
         expect(api.getValue().values).toEqual(
             toggle ? [["B"], ["A"]] : [["A"]]
         );
