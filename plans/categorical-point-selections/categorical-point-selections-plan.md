@@ -326,11 +326,15 @@ output. Never compare RGB values, shape codes, dense domain ranks, or IDs from
 another scale. Typed values that render identically must remain distinguishable.
 
 WebGL can reuse its integer hash-set texture machinery for selected input IDs.
-WebGPU should gain a renderer-generic integer-set predicate bound to an existing
-raw input and a retained set slot, with explicit activity/empty semantics.
-Extend the public predicate/input/slot contract, validation, WGSL, and resource
-layer together. The low-level renderer knows integer inputs/sets, not Core
-channels, parameter scopes, raw category types, or the GenomeSpy grammar.
+WebGPU's existing `multi` selection already owns a retained `Uint32Array` hash
+set, activity/count state, replacement, and disposal. Generalize its public
+input binding so membership can read an existing raw integer input instead of
+being fixed to `uniqueId`, preserving record-ID behavior. If the public contract
+needs refactoring, share one integer-set primitive between records and
+categories rather than adding a parallel predicate/resource family. Extend
+only the missing predicate/input/slot contract, validation, and WGSL wiring.
+The low-level renderer knows integer inputs/sets, not Core channels, parameter
+scopes, raw category types, or the GenomeSpy grammar.
 
 The Core adapter converts selected raw scalars to the consuming input's IDs and
 updates that slot. Binding/resource identity must include selection value owner
@@ -398,13 +402,16 @@ messages describe future implementation commits, not changes made by this plan.
 - **Outcome:** standalone renderer users can predicate appearance/order against
   retained integer input membership and update the small set independently.
 - **Areas/consumers:** public renderer types/slots, predicate validation and
-  shader analysis, selection resources, packed-series alias reuse, built-in mark
-  consumers. Keep Core imports and grammar out of the renderer.
+  shader analysis, existing `multi` selection resources, packed-series alias
+  reuse, built-in mark consumers. Generalize the retained set's input binding
+  and reuse its update/lifetime path for record and category IDs. Keep Core
+  imports and grammar out of the renderer.
 - **Verification:** public API type checks plus actual GPU output for membership,
   empty/active state, multiple bindings, alias reuse, duplicate visual outputs,
-  retained set replacement, and disposal. Extend existing predicate/order GPU
-  tests and add one generic retained-update Storybook scene. Assert no series
-  upload or pipeline rebuild on a membership-only update.
+  retained set replacement, and disposal. Preserve existing record-ID tests and
+  extend predicate/order GPU tests for explicit raw inputs. Add one generic
+  retained-update Storybook scene. Assert no series upload or pipeline rebuild
+  on a membership-only update.
 - **Docs/migration:** document the generic contract in the renderer README,
   update its migration plan, and build Storybook. The renderer is unpublished;
   improve its API directly where necessary.
@@ -512,31 +519,38 @@ Completion checklist:
 - [ ] Demo, helpers migration, API/grammar compatibility guidance, generated
       artifacts, changeset, and related-test cleanup are complete.
 
-Suggested final commands, with focused suites during each milestone:
+Use focused suites during each milestone. For final integration, run the root
+build first: it generates Core/App schemas and agent artifacts through the
+existing workspace build scripts before dependent tests and type checks.
 
 ```sh
+npm run build
 npx vitest run <affected-test-files> --reporter=agent
 npm -w @genome-spy/webgpu-renderer run test:gpu -- <affected-gpu-tests>
 npm --workspaces run test:tsc --if-present
 npm test -- --reporter=agent
 npm run lint
-npm run build:schemas
-npm -w @genome-spy/app-agent run generate:agent
 npm -w @genome-spy/app-agent run check:agent
-npm run build
-npm run check:api-docs
-npm run check:doc-types
 npm run build:docs
+git diff --exit-code -- docs/api/reference
+npm run check:doc-types
 npm -w @genome-spy/webgpu-renderer run build-storybook
 npm run release:check
 npm run release:status
 ```
 
-Run generation before its consumers/checks; use the existing browser harnesses
-for targeted examples rather than requiring unrelated network-heavy examples.
-Run the full suite at final integration because this crosses selection,
-rendering, API, and persistence contracts. Do not change timeouts merely to
-accommodate regressions.
+Do not separately repeat `build:schemas` or `generate:agent` in this final run;
+the root build already performs them. The docs build owns its asset preparation,
+API reference generation, and doc-type generation, so check its generated API
+output directly instead of invoking another generation through `check:api-docs`.
+Keep reviewed generated artifacts committed before checking freshness. Existing
+build scripts may repeat prerequisite work internally; changing their
+orchestration is outside this feature.
+
+Use the existing browser harnesses for targeted examples rather than requiring
+unrelated network-heavy examples. Run the full suite at final integration
+because this crosses selection, rendering, API, and persistence contracts. Do
+not change timeouts merely to accommodate regressions.
 
 ## Compatibility, risks, and delivery
 
@@ -613,8 +627,8 @@ overlapping tests instead of accumulating parallel mechanisms.
 The important implementation review boundaries are native state/API/scoping,
 the renderer public contract and retained resources, then integrated
 App/agent/output behavior. Avoid separate review steps just for measurements or
-wording. This explicitly requested plan has not received an automatic subagent
-review; an independent review can be requested before implementation.
+wording. The requested subagent KISS/YAGNI review found no blockers; its
+renderer-reuse and verification-order recommendations are incorporated.
 
 When implementation is authorized, use a feature branch and one coherent PR
 for #608, preserving #609/#610's separate boundaries. Keep and reconcile this
