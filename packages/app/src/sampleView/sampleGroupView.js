@@ -355,10 +355,8 @@ export default class SampleGroupView extends LayerView {
             attribute: attributeTitles[g.key.depth],
             // Name identifies a group
             name: g.key.group.name,
-            // Title is shown in the vis, defaults to name
-            ...(g.key.group.name != g.key.group.title
-                ? { title: g.key.group.title }
-                : {}),
+            // Formulas require a consistent row shape even when title equals name.
+            title: g.key.group.title,
             ...(g.key.group.generatedTitle
                 ? { interval: g.key.group.generatedTitle }
                 : {}),

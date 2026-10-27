@@ -924,7 +924,7 @@ describe("sample label column", () => {
                             depth: 1,
                             n: 1,
                             group: {
-                                name: "group",
+                                name: "Group",
                                 title: "Group",
                                 samples: ["A"],
                             },
@@ -938,6 +938,11 @@ describe("sample label column", () => {
             expect(view.sampleGroupView.isVisibleInSpec()).toBe(true);
             expect(view.sampleGroupView.isConfiguredVisible()).toBe(true);
             expect(view.sampleGroupView.getSize().width.px).toBeGreaterThan(0);
+            expect(
+                Array.from(
+                    view.sampleGroupView.children[1].flowHandle.collector.getData()
+                )
+            ).toMatchObject([{ name: "Group", _title: "Group" }]);
         } finally {
             vi.unstubAllGlobals();
         }
