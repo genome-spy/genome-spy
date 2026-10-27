@@ -29,9 +29,9 @@ this is necessary for bookmarkable state in the GenomeSpy App.
 By default, selection parameters and parameters with input bindings are
 persisted in the GenomeSpy App's bookmarks and provenance history. Use
 `persist: false` to opt out of persistence for ephemeral params (such as hover
-selections) or when `encoding.key` is not defined for point selections.
+selections) or when `encoding.key` is not defined for record point selections.
 
-For point selections, `encoding.key` should uniquely identify rows.
+For record point selections, `encoding.key` should uniquely identify rows.
 You can use either a single field or a composite key (an array of field
 definitions). When using a composite key, keep the field order stable across
 bookmark creation and restore.
@@ -169,63 +169,37 @@ EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 
 #### Categorical Point Selection
 
-Categorical point selections implement a subset of
-[Vega-Lite's selection projections](https://vega.github.io/vega-lite/docs/selection.html#project).
-For example, `select: {"type": "point", "encodings": ["color"]}` projects
-membership onto the raw values of the field encoded as color, so all records
-with matching values belong to the selection.
-
+`select: {"type": "point", "encodings": ["color"]}` selects all records with
+matching raw values in the color field. This is a subset of
+[Vega-Lite's selection projections](https://vega.github.io/vega-lite/docs/selection.html#project):
 GenomeSpy supports one unconditional nominal or ordinal field encoding with a
-discrete scale, using `color`, `fill`, `stroke`, or `shape`. Vega-Lite also
-supports direct field projection with `fields` and projections over multiple
-fields or channels; GenomeSpy's categorical point selections do not support
-these forms.
+discrete scale, using `color`, `fill`, `stroke`, or `shape`. Direct `fields`
+projection and multi-channel projections are not supported.
 
-Initial categories use channel-keyed objects, for example
-`value: [{"color": "activated"}]`.
-Values are typed: numeric `1` and string `"1"` are distinct. Selected categories
-remain stored when data or scale domains change.
+Initial values use channel-keyed objects such as `value: [{"color": "activated"}]`.
+See the [selection API](../api/runtime-state.md#setting-categorical-point-selections)
+for value rules and programmatic updates, and
+[selection functions](expressions.md#selection-functions) for expression access.
 
-Categorical membership works in WebGL, WebGPU, Canvas, and SVG export. GPU
-renderers reuse the encoded category inputs, so changing membership updates
-only the small selected-value set.
+To share a selection, declare it on an ancestor. Only views with a compatible
+local declaration using `push: "outer"` handle gestures.
 
-Click replaces membership, Shift-click toggles when enabled, and double-click
-clears. `toggle: false` permits one distinct category. Shared state can live on
-an ancestor; each descendant writer opts in with a compatible local selection
-and `push: "outer"`. An inherited selection does not enable interaction by
-itself. [Selection functions](expressions.md#selection-functions) provide
-activity, category values, and interval bounds without inspecting storage.
-
-Selecting a category highlights every matching record across linked views, even
-when their field names differ. In the example below, the left view writes
-activation states to `focus`, and the right view reads them through its
-`activation` color encoding. Shape represents T and B cells independently. The
-encodings and color scale are shared by the parent composition. Only views with
-a local selection declaration handle gestures; the right view is read-only.
+The example links `activation_state` in the left view with `activation` in the
+right view.
 
 EXAMPLE examples/docs/grammar/parameters/categorical-point-selection.json height=440
 
 !!! disclaimer ""
 
-    Coordinates, cell types, and activation states are synthetic and illustrative;
-    this is not an analysis of measured immune cells.
+    Coordinates, cell types, and activation states are synthetic.
 
 #### Selection and Semantic Zoom
 
-Category selections affect appearance only as authored; they do not make every
-matching row bypass semantic-zoom sampling. An active record selection or
-positional brush referenced by an appearance condition preserves its own
-matching rows, including when referenced under `and`, `or`, or `not`. Empty
-selections preserve no extra rows, regardless of a predicate's `empty` fallback.
-Conditions used only for ordering do not preserve sampled rows.
-
-This rule applies independently of the appearance condition's Boolean result.
-For example, a record selected by `picked` remains visible when an opacity
-condition tests `picked AND activation_states`, even if its category is not
-selected. The opacity still follows the complete condition. Existing compound
-record/brush conditions may therefore retain more sampled rows than before;
-negating a selection does not preserve its entire complement.
+Active record selections and positional brushes referenced by appearance
+conditions preserve their matching rows during semantic-zoom sampling,
+independently of enclosing `and`, `or`, or `not` operators. Category selections,
+empty selections, and conditions used only for drawing order preserve no extra
+rows.
 
 ### Interval Selection
 
