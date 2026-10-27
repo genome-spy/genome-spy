@@ -169,11 +169,20 @@ EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 
 #### Categorical Point Selection
 
-A point selection with
-`select: {"type": "point", "encodings": ["color"]}` instead stores raw
-categories from one nominal or ordinal field encoding with a discrete scale.
-The supported components are `color`, `fill`, `stroke`, and `shape`. Initial
-categories use channel-keyed objects, for example `value: [{"color": "activated"}]`.
+Categorical point selections implement a subset of
+[Vega-Lite's selection projections](https://vega.github.io/vega-lite/docs/selection.html#project).
+For example, `select: {"type": "point", "encodings": ["color"]}` projects
+membership onto the raw values of the field encoded as color, so all records
+with matching values belong to the selection.
+
+GenomeSpy supports one unconditional nominal or ordinal field encoding with a
+discrete scale, using `color`, `fill`, `stroke`, or `shape`. Vega-Lite also
+supports direct field projection with `fields` and projections over multiple
+fields or channels; GenomeSpy's categorical point selections do not support
+these forms.
+
+Initial categories use channel-keyed objects, for example
+`value: [{"color": "activated"}]`.
 Values are typed: numeric `1` and string `"1"` are distinct. Selected categories
 remain stored when data or scale domains change.
 
