@@ -622,6 +622,21 @@ Supported selection types are:
 - `interval`: one or more retained components whose projections test numeric
   inputs.
 
+A `multi` predicate can bind its set to any existing raw scalar `u32` channel or
+non-visual input. The default input is `uniqueId`. Every membership predicate
+using the same set name must keep the same input binding; use separate set
+names for inputs with independent identifiers. Set values include zero and
+compare before visual scales, so identical rendered colors/shapes can remain
+distinct. Updating membership reuses the existing set resource and retained
+series:
+
+```js
+// In a channel condition, visibility predicate, or conditional order:
+{ selection: "groups", type: "multi", input: "group", empty: false }
+
+mark.selections.groups.set(new Uint32Array([0, 2]));
+```
+
 An interval predicate binds a retained component to an input through
 `projections`. A projection can also name a second ranged-datum endpoint and
 use `intersects`, `encloses`, or `endpoints` hit testing. The same component can

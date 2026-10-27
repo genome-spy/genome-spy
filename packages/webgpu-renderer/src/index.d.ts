@@ -49,8 +49,14 @@ export type SelectionStateReference =
       }>;
 
 export type SelectionPredicateLeaf =
-    | (Extract<SelectionStateReference, { type: "single" | "multi" }> &
-          Readonly<{ empty?: boolean }>)
+    | Readonly<{ selection: string; type: "single"; empty?: boolean }>
+    | Readonly<{
+          selection: string;
+          type: "multi";
+          /** Raw scalar u32 input bound to this set; defaults to uniqueId. */
+          input?: string;
+          empty?: boolean;
+      }>
     | Readonly<{
           selection: string;
           type: "interval";

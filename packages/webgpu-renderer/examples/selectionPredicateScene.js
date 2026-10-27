@@ -13,6 +13,7 @@ import { linearScale } from "../src/scales/linear.js";
  * @prop {boolean} [useYRange]
  * @prop {number} [yFrom]
  * @prop {number} [yTo]
+ * @prop {number} [group] Integer input group to highlight; -1 clears it.
  */
 
 /**
@@ -28,8 +29,10 @@ export default async function runSelectionPredicateScene(canvas, options = {}) {
         Math.floor(i / 10)
     );
     const ids = Uint32Array.from({ length: count }, (_, i) => i + 1);
+    const groups = Uint32Array.from({ length: count }, (_, i) => i % 3);
 
     const mark = renderer.createMark(pointMark, {
+        inputs: { group: { data: groups, type: "u32" } },
         channels: {
             uniqueId: { data: ids, type: "u32" },
             x: {
@@ -48,6 +51,12 @@ export default async function runSelectionPredicateScene(canvas, options = {}) {
                     {
                         when: {
                             any: [
+                                {
+                                    selection: "grouped",
+                                    type: "multi",
+                                    input: "group",
+                                    empty: false,
+                                },
                                 {
                                     selection: "picked",
                                     type: "single",
@@ -82,6 +91,9 @@ export default async function runSelectionPredicateScene(canvas, options = {}) {
 
     /** @param {SelectionPredicateOptions} next */
     const setSelections = (next) => {
+        mark.selections.grouped.set(
+            next.group >= 0 ? new Uint32Array([next.group]) : new Uint32Array()
+        );
         mark.selections.picked.set(
             next.pickEnabled === false
                 ? 0

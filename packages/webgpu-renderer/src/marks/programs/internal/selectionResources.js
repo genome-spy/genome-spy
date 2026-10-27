@@ -45,7 +45,7 @@ const INACTIVE_PACKED_BOUNDS = [0, 0, 0, 0];
 /**
  * @typedef {{ scalarType: ScalarType, inputComponents: 1 | 2 }} IntervalRepresentation
  * @typedef {import("../../../index.d.ts").IntervalSelectionProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
- * @typedef {{ name: string, type: SelectionType, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean }} SelectionDef
+ * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean }} SelectionDef
  */
 
 /**
@@ -219,6 +219,24 @@ function collectSelections(node, defs, getAnalysis) {
     } else if ("selection" in node) {
         const def = addSelectionReference(defs, node);
         def.membershipUsed = true;
+        if (node.type === "multi") {
+            const input = node.input ?? "uniqueId";
+            const analysis = getAnalysis(input);
+            if (
+                analysis.scalarType !== "u32" ||
+                analysis.inputComponents !== 1
+            ) {
+                throw new Error(
+                    `Multi selection "${node.selection}" requires a scalar u32 input "${input}".`
+                );
+            }
+            if (def.input && def.input !== input) {
+                throw new Error(
+                    `Multi selection "${node.selection}" must keep one input binding.`
+                );
+            }
+            def.input = input;
+        }
         if (node.type !== "interval") {
             return;
         }
@@ -308,13 +326,11 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen, order) {
     if (
         !channels.uniqueId &&
         Array.from(defs.values()).some(
-            (def) =>
-                def.membershipUsed &&
-                (def.type === "single" || def.type === "multi")
+            (def) => def.membershipUsed && def.type === "single"
         )
     ) {
         throw new Error(
-            'Selections of type "single" or "multi" require the "uniqueId" channel.'
+            'Selections of type "single" require the "uniqueId" channel.'
         );
     }
     return defs;

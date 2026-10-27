@@ -360,6 +360,11 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
   focused behavior suites, all 35 schema tests, and schema generation pass.
   GPU translation is completed in milestones 3 and 4.
 
+- Milestone 3: generalized the existing WebGPU multi-set input binding and
+  reused retained resources. Renderer type checks, focused resource/shader
+  tests, actual GPU membership/order tests, and Storybook build pass. The GPU
+  probe verifies ID zero, clearing, and no series uploads on membership changes.
+
 ## Implementation milestones
 
 Each milestone includes its meaningful tests and documentation. Tentative

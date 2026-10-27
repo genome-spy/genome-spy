@@ -129,7 +129,16 @@ function validatePredicate(predicate, allowComparison) {
         }
         const allowed = interval
             ? ["selection", "type", "projections", "empty"]
-            : ["selection", "type", "empty"];
+            : node.type === "multi"
+              ? ["selection", "type", "input", "empty"]
+              : ["selection", "type", "empty"];
+        if (
+            node.type === "multi" &&
+            node.input !== undefined &&
+            (typeof node.input !== "string" || !node.input)
+        ) {
+            throw new Error("Multi selection input must be a nonempty string.");
+        }
         if (keys.some((key) => !allowed.includes(key))) {
             throw new Error(
                 interval
