@@ -190,10 +190,10 @@ activity, category values, and interval bounds without inspecting storage.
 
 Selecting a category highlights every matching record across linked views, even
 when their field names differ. In the example below, the left view writes
-activation states to `focus`, and the middle view reads them through its
+activation states to `focus`, and the right view reads them through its
 `activation` color encoding. Shape represents T and B cells independently. The
-right view compares ordinary record selection. Only views with a local selection
-declaration handle gestures; the middle view is read-only.
+encodings and color scale are shared by the parent composition. Only views with
+a local selection declaration handle gestures; the right view is read-only.
 
 EXAMPLE examples/docs/grammar/parameters/categorical-point-selection.json height=440
 

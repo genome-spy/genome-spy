@@ -1,7 +1,7 @@
 {
   "description": [
     "Categorical focus across immune-cell views",
-    "Compare selecting an activation state with selecting an individual cell. All coordinates, cell types, and activation states are synthetic and illustrative."
+    "Select an activation state to highlight matching cells across linked views. All coordinates, cell types, and activation states are synthetic and illustrative."
   ],
 
   "title": {
@@ -11,21 +11,59 @@
   },
 
   "params": [
-    { "name": "focus", "select": { "type": "point", "encodings": ["color"] } },
-    { "name": "picked", "select": "point" }
+    { "name": "focus", "select": { "type": "point", "encodings": ["color"] } }
   ],
 
   "data": { "url": "data/immune-cell-activation.csv" },
-
-  "config": {
-    "point": { "size": 110, "filled": true, "tooltip": null },
-    "axis": { "grid": false }
-  },
 
   "spacing": 18,
   "vconcat": [
     {
       "spacing": 26,
+      "resolve": { "scale": { "color": "shared", "shape": "shared" } },
+      "config": {
+        "view": { "continuousWidth": 210, "continuousHeight": 210 },
+        "point": { "size": 110, "filled": true, "tooltip": null }
+      },
+
+      "scales": {
+        "color": {
+          "domain": ["resting", "intermediate", "activated"],
+          "range": ["#b8d4df", "#4099b3", "#075875"]
+        }
+      },
+      "legends": { "color": { "title": "Activation", "orient": "bottom" } },
+
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 9] },
+          "axis": null
+        },
+        "y": {
+          "field": "y",
+          "type": "quantitative",
+          "scale": { "domain": [0, 7] },
+          "axis": null
+        },
+        "color": { "field": "activation_state", "type": "ordinal" },
+        "shape": {
+          "field": "cell_type",
+          "type": "nominal",
+          "scale": {
+            "domain": ["T cell", "B cell"],
+            "range": ["circle", "diamond"]
+          },
+          "legend": { "title": "Cell type", "orient": "bottom" }
+        },
+        "opacity": {
+          "condition": { "param": "focus", "value": 1 },
+          "value": 0.12
+        },
+        "order": { "condition": { "param": "focus", "value": 1 }, "value": 0 }
+      },
+
       "hconcat": [
         {
           "name": "activation-source",
@@ -33,8 +71,6 @@
             "text": "Select an activation state",
             "subtitle": "All cells in that state are highlighted"
           },
-          "width": 210,
-          "height": 210,
           "params": [
             {
               "name": "focus",
@@ -42,47 +78,7 @@
               "push": "outer"
             }
           ],
-          "mark": "point",
-          "encoding": {
-            "x": {
-              "field": "x",
-              "type": "quantitative",
-              "scale": { "domain": [0, 9] },
-              "axis": null
-            },
-            "y": {
-              "field": "y",
-              "type": "quantitative",
-              "scale": { "domain": [0, 7] },
-              "axis": null
-            },
-            "color": {
-              "field": "activation_state",
-              "type": "ordinal",
-              "scale": {
-                "domain": ["resting", "intermediate", "activated"],
-                "range": ["#b8d4df", "#4099b3", "#075875"]
-              },
-              "legend": { "title": "Activation", "orient": "bottom" }
-            },
-            "shape": {
-              "field": "cell_type",
-              "type": "nominal",
-              "scale": {
-                "domain": ["T cell", "B cell"],
-                "range": ["circle", "diamond"]
-              },
-              "legend": { "title": "Cell type", "orient": "bottom" }
-            },
-            "opacity": {
-              "condition": { "param": "focus", "value": 1 },
-              "value": 0.12
-            },
-            "order": {
-              "condition": { "param": "focus", "value": 1 },
-              "value": 0
-            }
-          }
+          "mark": "point"
         },
 
         {
@@ -91,8 +87,6 @@
             "text": "Linked category focus",
             "subtitle": "The field is renamed to activation"
           },
-          "width": 210,
-          "height": 210,
           "transform": [
             {
               "type": "formula",
@@ -101,99 +95,7 @@
             }
           ],
           "mark": "point",
-          "encoding": {
-            "x": {
-              "field": "x",
-              "type": "quantitative",
-              "scale": { "domain": [0, 9] },
-              "axis": null
-            },
-            "y": {
-              "field": "y",
-              "type": "quantitative",
-              "scale": { "domain": [0, 7] },
-              "axis": null
-            },
-            "color": {
-              "field": "activation",
-              "type": "ordinal",
-              "scale": {
-                "domain": ["resting", "intermediate", "activated"],
-                "range": ["#b8d4df", "#4099b3", "#075875"]
-              },
-              "legend": null
-            },
-            "shape": {
-              "field": "cell_type",
-              "type": "nominal",
-              "scale": {
-                "domain": ["T cell", "B cell"],
-                "range": ["circle", "diamond"]
-              },
-              "legend": null
-            },
-            "opacity": {
-              "condition": { "param": "focus", "value": 1 },
-              "value": 0.12
-            },
-            "order": {
-              "condition": { "param": "focus", "value": 1 },
-              "value": 0
-            }
-          }
-        },
-
-        {
-          "name": "record-source",
-          "title": {
-            "text": "Select individual cells",
-            "subtitle": "Only the clicked records are highlighted"
-          },
-          "width": 210,
-          "height": 210,
-          "params": [{ "name": "picked", "select": "point", "push": "outer" }],
-          "mark": "point",
-          "encoding": {
-            "key": { "field": "id" },
-            "x": {
-              "field": "x",
-              "type": "quantitative",
-              "scale": { "domain": [0, 9] },
-              "axis": null
-            },
-            "y": {
-              "field": "y",
-              "type": "quantitative",
-              "scale": { "domain": [0, 7] },
-              "axis": null
-            },
-            "color": {
-              "field": "activation_state",
-              "type": "ordinal",
-              "scale": {
-                "domain": ["resting", "intermediate", "activated"],
-                "range": ["#b8d4df", "#4099b3", "#075875"]
-              },
-              "legend": null
-            },
-            "shape": {
-              "field": "cell_type",
-              "type": "nominal",
-              "scale": {
-                "domain": ["T cell", "B cell"],
-                "range": ["circle", "diamond"]
-              },
-              "legend": null
-            },
-            "opacity": {
-              "condition": { "param": "picked", "value": 1 },
-              "value": 0.12
-            },
-            "order": {
-              "condition": { "param": "picked", "value": 1 },
-              "value": 0
-            }
-          }
+          "encoding": { "color": { "field": "activation", "type": "ordinal" } }
         }
       ]
     },
@@ -208,7 +110,7 @@
         "size": 12,
         "tooltip": null,
         "text": {
-          "expr": "'Activation focus: ' + (selectionActive(focus) ? join(selectionValues(focus, 'color'), ', ') : 'all states') + '   |   Individual cells: ' + (selectionActive(picked) ? 'selection active' : 'all cells')"
+          "expr": "'Activation focus: ' + (selectionActive(focus) ? join(selectionValues(focus, 'color'), ', ') : 'all states')"
         }
       },
       "encoding": { "x": { "value": 0 }, "y": { "value": 0.5 } }

@@ -380,7 +380,7 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
   remain unchanged; duplicate App state types now re-export the source contract.
   Generated agent schemas, App/agent type checks, and related tests pass.
 
-- Milestone 6: published the synthetic immune-cell comparison and helper-based
+- Milestone 6: published the synthetic immune-cell linked views and helper-based
   genomic decoration, completed grammar/API migration guidance, generated the
   API/type documentation, and migrated record-only embedding consumers. Final
   integration found and fixed duplicate bookmark diagnostics for explicit
@@ -399,7 +399,7 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
 - Final browser integration passes on Canvas, WebGL, and WebGPU for independent
   color-to-shape mappings, previously unknown values arriving with data/domains,
   interval-only sampling without picking IDs, and the published example's
-  click/Shift/clear/record comparison and SVG output.
+  click/Shift/clear and SVG output.
 - On 100,000 scored points and 128 categories, 12 membership changes write 96
   bytes in WebGL and 192 bytes in WebGPU. Both perform zero series uploads,
   collector completions, series extractions, or resource/pipeline creations.
@@ -532,9 +532,11 @@ commit subjects below match the six implementation commits.
   changeset for the feature. Focused core specs may carry additional probes.
 - **Demo:** a readable illustrative immune-cell embedding uses T/B cell types
   on shape and resting/intermediate/activated states on ordinal color. Two
-  linked views use `activation_state` and `activation`; compare category clicks
-  with individual-record selection, show clear/Shift instructions and semantic
-  helper feedback. Keep shape as cell type in the main example; demonstrate
+  linked views use `activation_state` and `activation`, with clear/Shift
+  instructions and semantic helper feedback. The individual-record comparison
+  panel was discarded at the user's request to keep the example focused.
+  Shared encodings, scale/legend settings, and point dimensions live on the
+  parent composition. Keep shape as cell type in the main example; demonstrate
   activation-color-to-activation-shape mapping in a separate focused case.
   Clearly label coordinates and states synthetic/illustrative. Follow
   `examples/README.md`, use inline/small shared data, and keep docs URLs portable.

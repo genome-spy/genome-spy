@@ -425,11 +425,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
                 await blob.text(),
                 "image/svg+xml"
             );
-            return [
-                "activation-source",
-                "activation-reader",
-                "record-source",
-            ].map(
+            return ["activation-source", "activation-reader"].map(
                 (name) =>
                     Array.from(
                         svg.querySelectorAll(
@@ -453,7 +449,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
 
         return { initial: await snapshot() };
     }, renderer);
-    assert.deepEqual(points.initial, [6, 6, 18]);
+    assert.deepEqual(points.initial, [6, 6]);
     const clickView = async (view) => {
         const point = await page.evaluate(
             (view) => globalThis.__categoryDemo.point(view),
@@ -484,7 +480,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     );
     assert.deepEqual(
         await page.evaluate(() => globalThis.__categoryDemo.snapshot()),
-        [6, 6, 18]
+        [6, 6]
     );
     await page.keyboard.down("Shift");
     await clickView("activation-source");
@@ -492,16 +488,9 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
     await page.waitForFunction(
         () => !globalThis.__categoryDemo.focus.getValue().active
     );
-    await clickView("record-source");
-    await page.waitForFunction(
-        () =>
-            globalThis.__categoryDemo.api.params
-                .getSelection("picked")
-                .getValue().active
-    );
     assert.deepEqual(
         await page.evaluate(() => globalThis.__categoryDemo.snapshot()),
-        [18, 18, 1]
+        [18, 18]
     );
     await page.evaluate(() =>
         globalThis.__categoryDemo.focus.setValue([["activated"]])
