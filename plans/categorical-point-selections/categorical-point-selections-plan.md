@@ -365,6 +365,15 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
   tests, actual GPU membership/order tests, and Storybook build pass. The GPU
   probe verifies ID zero, clearing, and no series uploads on membership changes.
 
+- Milestone 4: integrated native category membership into WebGL and WebGPU using
+  retained raw inputs and small integer sets; Canvas/SVG use the same resolved
+  predicates. Browser checks at DPR 1 and 2 cover all categorical components,
+  typed values, domain reorder, source replacement, API-to-gesture updates,
+  export, neighboring mark families, and compound sampling parity. Membership
+  updates perform no data-buffer uploads. Core type checks, focused suites,
+  lint, and reviewed shader snapshots pass. Final integration adds the larger
+  retained-update fixture and independent mapped-consumer output probes.
+
 ## Implementation milestones
 
 Each milestone includes its meaningful tests and documentation. Tentative

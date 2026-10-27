@@ -44,14 +44,9 @@ function mockFlatUnion(names, empty) {
     };
 }
 
-/** @param {string} selection @param {"single" | "multi"} type @param {boolean} empty */
-function expectedActiveMatch(selection, type, empty) {
-    return {
-        all: [
-            { selection, type, empty },
-            { any: [{ selectionActive: { selection, type } }] },
-        ],
-    };
+/** @param {string} selection @param {"single" | "multi"} type */
+function expectedSamplingMatch(selection, type) {
+    return { selection, type, empty: false };
 }
 
 describe("WebGPU mark adapter", () => {
@@ -1414,7 +1409,7 @@ describe("WebGPU mark adapter", () => {
         });
         expect(config.visibleWhen).toEqual({
             any: [
-                expectedActiveMatch("selected", "multi", true),
+                expectedSamplingMatch("selected", "multi"),
                 {
                     compare: ">=",
                     left: { input: "semanticScoreInput" },
@@ -1485,8 +1480,8 @@ describe("WebGPU mark adapter", () => {
 
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
         expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
-            expectedActiveMatch("first", "single", false),
-            expectedActiveMatch("second", "single", false),
+            expectedSamplingMatch("first", "single"),
+            expectedSamplingMatch("second", "single"),
             {
                 compare: ">=",
                 left: { input: "semanticScoreInput" },
@@ -1542,24 +1537,9 @@ describe("WebGPU mark adapter", () => {
 
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
 
-        const activities = ["first", "second"].map((selection) => ({
-            selectionActive: { selection, type: "single" },
-        }));
         expect(/** @type {any} */ (translated).config.visibleWhen.any).toEqual([
-            expectedActiveMatch("first", "single", false),
-            {
-                all: [
-                    {
-                        any: ["first", "second"].map((selection, index) => ({
-                            all: [
-                                { selection, type: "single", empty: true },
-                                activities[index],
-                            ],
-                        })),
-                    },
-                    { any: activities },
-                ],
-            },
+            expectedSamplingMatch("first", "single"),
+            expectedSamplingMatch("second", "single"),
             {
                 compare: ">=",
                 left: { input: "semanticScoreInput" },

@@ -58,10 +58,11 @@ import {
     isIntervalSelection,
     isMultiPointSelection,
     isSinglePointSelection,
+    isCategorySelection,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
 import {
-    activeMatchResolvedSelectionPredicate,
+    collectSamplingSelections,
     getSelectionPredicateTreeParams,
 } from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
@@ -396,6 +397,23 @@ export default class WebGLMark {
                     glHelper.createSelectionTexture(selection);
                     this.unitView.context.animator.requestRender();
                 });
+            } else if (isCategorySelection(selection)) {
+                const uniformName = PARAM_PREFIX + param + "_categoryCount";
+                dynamicMarkUniforms.push(
+                    `    uniform highp uint ${uniformName};`
+                );
+                this.#callAfterShaderCompilation.push(() =>
+                    this.registerMarkUniformValue(
+                        uniformName,
+                        { expr: param },
+                        (
+                            /** @type {import("../../../types/selectionTypes.js").CategoryPointSelection} */ value
+                        ) => value.values.size
+                    )
+                );
+                scaleCode.push(
+                    `bool ${SELECTION_EMPTY_PREFIX}${param}() { return ${uniformName} == 0u; }`
+                );
             } else if (isIntervalSelection(selection)) {
                 const intervalChannels = Object.keys(
                     selection.intervals
@@ -466,11 +484,63 @@ export default class WebGLMark {
             }
         }
 
+        /** @type {Map<string, string>} */
+        const categoryBindings = new Map();
         /**
          * @param {Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>} leaf
          */
         const emitSelectionLeaf = (leaf) => {
             const { param, empty } = leaf;
+            if (leaf.type === "categories") {
+                const input = leaf.projections[0].input;
+                const key = param + "/" + input;
+                let uniform = categoryBindings.get(key);
+                if (!uniform) {
+                    uniform =
+                        SELECTION_TEXTURE_PREFIX +
+                        param +
+                        "_category" +
+                        categoryBindings.size;
+                    categoryBindings.set(key, uniform);
+                    scaleCode.push(`uniform highp usampler2D ${uniform};`);
+                    const encoder =
+                        this.encoders[/** @type {Channel} */ (input)];
+                    const resolution = this.unitView.getScaleResolution(
+                        encoder.branches[0].accessor.scaleChannel
+                    );
+                    const runtime = this.unitView.paramRuntime;
+                    const ref = runtime.getParamRef(param);
+                    /** @type {WebGLTexture | undefined} */
+                    let texture;
+                    const update = () => {
+                        const indexer = /** @type {any} */ (
+                            resolution.getScale().props
+                        ).domainIndexer;
+                        texture = this.glHelper.createIntegerSetTexture(
+                            /** @type {import("../../../types/selectionTypes.js").CategoryPointSelection} */ (
+                                ref.get()
+                            ).values
+                                .values()
+                                .map((value) => indexer(value)),
+                            texture
+                        );
+                        this.unitView.context.animator.requestRender();
+                    };
+                    update();
+                    this.scaleResolutionDisposers.push(
+                        runtime.effect(
+                            [ref, resolution.getMappingRef()],
+                            update
+                        ),
+                        () => this.gl.deleteTexture(texture)
+                    );
+                    const sampler = uniform;
+                    this.selectionTextureOps.push(() =>
+                        setUniforms(this.programInfo, { [sampler]: texture })
+                    );
+                }
+                return `(hashContainsTexture(${uniform}, ${getSelectionAttributeName(input)}) || (${empty} && ${SELECTION_EMPTY_PREFIX}${param}()))`;
+            }
             if (leaf.type !== "interval") {
                 return `(${SELECTION_MEMBERSHIP_PREFIX}${param}() || (${empty} && ${SELECTION_EMPTY_PREFIX}${param}()))`;
             }
@@ -737,16 +807,13 @@ export default class WebGLMark {
         }
 
         // Check membership in any selection referenced by conditional encoders.
-        const conditions = appearanceSelections.map((root) =>
-            emitSelectionPredicateGlsl(
-                activeMatchResolvedSelectionPredicate(root),
-                emitSelectionLeaf
-            )
+        const conditions = collectSamplingSelections(appearanceSelections).map(
+            (leaf) => emitSelectionPredicateGlsl(leaf, emitSelectionLeaf)
         );
 
         scaleCode.push(
             "bool isDatumSelected() {\n" +
-                (this.encoders.uniqueId && conditions.length > 0
+                (conditions.length > 0
                     ? `    return ${conditions.join(" || ")};`
                     : "    return false;") +
                 "\n}"

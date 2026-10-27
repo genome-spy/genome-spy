@@ -5,8 +5,85 @@ import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
 import SvgViewRenderingContext from "../svgViewRenderingContext.js";
+import { createEmbedParamNamespace } from "../../../paramRuntime/embedParamApi.js";
+import { intervalSelection } from "../../../selection/index.js";
 
 describe("SVG point renderer", () => {
+    test("category focus preserves the sample while record and brush leaves retain their matches", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"] },
+                },
+                { name: "picked", select: "point" },
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            data: {
+                values: [
+                    { id: "A", x: 0.25, state: "A", score: 0 },
+                    { id: "B", x: 0.75, state: "B", score: 0 },
+                ],
+            },
+            mark: { type: "point", semanticZoomFraction: 0 },
+            encoding: {
+                key: { field: "id" },
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 1] },
+                    axis: null,
+                },
+                y: { value: 0.5 },
+                color: {
+                    field: "state",
+                    type: "ordinal",
+                    legend: null,
+                    scale: { domain: ["A", "B"] },
+                },
+                semanticScore: { field: "score", type: "quantitative" },
+                opacity: {
+                    condition: {
+                        test: {
+                            not: {
+                                and: [
+                                    { param: "picked" },
+                                    { param: "brush" },
+                                    { param: "focus" },
+                                ],
+                            },
+                        },
+                        value: 1,
+                    },
+                    value: 0.2,
+                },
+            },
+        });
+        const params = createEmbedParamNamespace(view);
+        const symbols = () =>
+            createSvg({
+                viewRoot: view,
+                logicalWidth: 200,
+                logicalHeight: 100,
+            }).svg.querySelectorAll('[data-mark-type="point"] circle');
+        const focus = params.getSelection("focus");
+        const picked = params.getSelection("picked");
+        if (focus.type !== "point" || picked.type !== "point")
+            throw new Error("Expected point selections.");
+        focus.setValue([["A"]]);
+        expect(symbols()).toHaveLength(0);
+        picked.setValue([["B"]]);
+        expect(symbols()).toHaveLength(1);
+        params.get("brush").setValue(intervalSelection({ x: [0.2, 0.3] }));
+        expect(symbols()).toHaveLength(2);
+        params.getSelection("picked").clear();
+        expect(symbols()).toHaveLength(1);
+        view.disposeSubtree();
+    });
+
     test("exports every point shape with encoded rotation", async () => {
         const shapes = [
             "circle",

@@ -159,35 +159,6 @@ export function getSelectionPredicateTreeParams(tree) {
     return Array.from(names);
 }
 
-/** @param {ResolvedSelectionPredicate} tree @returns {ResolvedSelectionPredicate} */
-export function activeMatchResolvedSelectionPredicate(tree) {
-    const activities = new Map();
-    /** @param {ResolvedSelectionPredicate} node */
-    const visit = (node) => {
-        if ("param" in node) {
-            activities.set(node.param, {
-                selectionActive: {
-                    param: node.param,
-                    type: node.type,
-                    components:
-                        node.projections?.map(({ component }) => component) ??
-                        [],
-                },
-            });
-        } else if ("selectionActive" in node) {
-            activities.set(node.selectionActive.param, node);
-        } else if ("not" in node) {
-            visit(node.not);
-        } else {
-            for (const child of "all" in node ? node.all : node.any) {
-                visit(child);
-            }
-        }
-    };
-    visit(tree);
-    return { all: [tree, { any: Array.from(activities.values()) }] };
-}
-
 /**
  * Appearance references preserve each active record/positional match independently
  * of Boolean operators. Category and activity-only leaves do not bypass sampling.

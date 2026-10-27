@@ -166,6 +166,10 @@ categories use channel-keyed objects, for example `value: [{"color": "activated"
 Values are typed: numeric `1` and string `"1"` are distinct. Selected categories
 remain stored when data or scale domains change.
 
+Categorical membership works in WebGL, WebGPU, Canvas, and SVG export. GPU
+renderers reuse the encoded category inputs, so changing membership updates
+only the small selected-value set.
+
 Click replaces membership, Shift-click toggles when enabled, and double-click
 clears. `toggle: false` permits one distinct category. Shared state can live on
 an ancestor; each descendant writer opts in with a compatible local selection
