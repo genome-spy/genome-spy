@@ -347,6 +347,7 @@ export type LazyDataParams =
     | AxisGenomeData
     | IndexedFastaData
     | BigWigData
+    | FigWigData
     | BigBedData
     | BamData
     | TabixTsvData
@@ -539,6 +540,41 @@ export interface BigWigData extends DebouncedData {
 
     /**
      * The approximate minimum width of each data bin, in pixels.
+     *
+     * __Default value:__ `2`
+     */
+    pixelsPerBin?: number | ExprRef;
+}
+
+/** Experimental multitrack signal data from a single Figwig file. */
+export interface FigWigData extends DebouncedData {
+    type: "figwig";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * URL of one Figwig file. URL templates must resolve to exactly one URL.
+     * Loaded rows contain `chrom`, `start`, `end`, `score`, and `sampleId`.
+     * Track names supply `sampleId`; conflicting URL-template fields are errors.
+     */
+    url: SingleUrlSourceRef;
+
+    /**
+     * Track names to load, or an expression returning an array of track names.
+     * Omit to load all tracks. An empty array produces empty data.
+     */
+    tracks?: string[] | ExprRef;
+
+    /**
+     * Approximate minimum bin width in pixels; must be positive. Bins contain
+     * means of observed bases, omitting NaNs. Finite values, including zero,
+     * are preserved. Unwritten Figwig bases are zeros; encode gaps as NaNs to
+     * preserve missingness. Stored approximate summaries are not used.
      *
      * __Default value:__ `2`
      */

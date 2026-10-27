@@ -104,6 +104,46 @@ EXAMPLE examples/docs/grammar/data/lazy/bigwig-gc-content.json height=120 spechi
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js 9.2.1](https://github.com/GMOD/bbi-js/tree/v9.2.1) library.
 
+## Figwig (experimental)
+
+The `"figwig"` source loads multiple signal tracks from one
+[Figwig](https://github.com/genome-spy/figwig-js) file. Each row contains `chrom`,
+`start`, `end`, `score`, and `sampleId`; `sampleId` is the track name stored in
+the file. These rows work with ordinary marks and the App's sample encoding.
+
+```json
+{
+  "data": {
+    "lazy": {
+      "type": "figwig",
+      "url": "signals.fw",
+      "tracks": { "expr": "visibleSamples" },
+      "pixelsPerBin": 1
+    }
+  }
+}
+```
+
+Omit `tracks` to load all tracks, or provide an array of track names. An empty
+array produces no rows. Reactive selection reuses the file reader and its
+caches. Exactly one URL must resolve for each source instance.
+
+Bin widths follow the viewport resolution. Scores are means over non-NaN bases;
+bins with no valid bases produce no rows. Measured zeros are retained. Figwig's
+implicit unwritten values are zeros: convert missing observations to NaN when
+creating the file if gaps must remain distinct from measured zero signal.
+Rounded tile and zoom summaries are not used, so broad queries may require
+more decoding than BigWig zoom queries. Bin boundaries and coarse means can
+differ from BigWig rendering.
+
+This experiment uses an unpublished reader package. See the
+[experiment report](../../development/figwig-experiment.md) for the pinned
+revision, local installation instructions and measured limitations.
+
+### Parameters {#figwig-parameters}
+
+SCHEMA FigWigData
+
 ## BigBed
 
 The `"bigbed"` source enables the retrieval of segmented data, such as annotated

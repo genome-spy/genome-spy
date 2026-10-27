@@ -317,6 +317,10 @@ SCHEMA FieldDefWithoutScale
 
 SCHEMA FieldName
 
+## FigWigData
+
+See the [FigWigData documentation](data/lazy.md#figwig-parameters).
+
 ## FilterParams
 
 SCHEMA FilterParams

@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import {
+    copyFile,
     mkdtemp,
     mkdir,
     readFile,
@@ -120,9 +121,26 @@ export default {
                 ([name]) => name.startsWith("@genome-spy/")
             );
             if (internal.length) {
+                // Keep unpublished readers local in the offline workspace fixture.
+                for (const [, version] of internal) {
+                    if (version.startsWith("file:")) {
+                        const relative = path.join(
+                            "packages",
+                            directory,
+                            version.slice(5)
+                        );
+                        const target = path.join(cwd, relative);
+                        await mkdir(path.dirname(target), { recursive: true });
+                        await copyFile(path.join(repoRoot, relative), target);
+                    }
+                }
+
                 // Match the fixture baseline even after the checkout is versioned.
                 manifest[field] = Object.fromEntries(
-                    internal.map(([name]) => [name, "^1.0.0"])
+                    internal.map(([name, version]) => [
+                        name,
+                        version.startsWith("file:") ? version : "^1.0.0",
+                    ])
                 );
             }
         }
