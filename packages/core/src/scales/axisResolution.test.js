@@ -199,7 +199,7 @@ describe("Axes resolve properly", () => {
     test("Conditional positional field branches contribute axis titles", async () => {
         /** @type {any} */
         const spec = {
-            params: [{ name: "p" }],
+            params: [{ name: "p", select: "point" }],
             data: { values: [{ a: 1 }, { a: 2 }] },
             mark: "point",
             encoding: {
@@ -244,7 +244,10 @@ describe("Axes resolve properly", () => {
     test("Conditional positional field arrays contribute axis titles", async () => {
         /** @type {any} */
         const spec = {
-            params: [{ name: "p" }, { name: "q" }],
+            params: [
+                { name: "p", select: "point" },
+                { name: "q", select: "point" },
+            ],
             data: { values: [{ a: 1 }, { a: 2 }] },
             mark: "point",
             encoding: {

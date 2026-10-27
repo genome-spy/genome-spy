@@ -158,7 +158,18 @@ interactions in very large data sets.
 
 ### Point Selection
 
-Ordinary `select: "point"` selects individual records. A point selection with
+Ordinary `select: "point"` selects individual records. The following example has
+been adapted from Vega-Lite's [example
+gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
+with slight modifications (GenomeSpy provides no `"bar"` mark). The
+specification below is fully compatible with Vega-Lite. You can select multiple
+bars by holding down the `Shift` key.
+
+EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
+
+#### Categorical Point Selection
+
+A point selection with
 `select: {"type": "point", "encodings": ["color"]}` instead stores raw
 categories from one nominal or ordinal field encoding with a discrete scale.
 The supported components are `color`, `fill`, `stroke`, and `shape`. Initial
@@ -177,13 +188,19 @@ and `push: "outer"`. An inherited selection does not enable interaction by
 itself. [Selection functions](expressions.md#selection-functions) provide
 activity, category values, and interval bounds without inspecting storage.
 
-The following example has been adapted from Vega-Lite's [example
-gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
-with slight modifications (GenomeSpy provides no `"bar"` mark). The
-specification below is fully compatible with Vega-Lite. You can select multiple
-bars by holding down the `Shift` key.
+Selecting a category highlights every matching record across linked views, even
+when their field names differ. In the example below, the left view writes
+activation states to `focus`, and the middle view reads them through its
+`activation` color encoding. Shape represents T and B cells independently. The
+right view compares ordinary record selection. Only views with a local selection
+declaration handle gestures; the middle view is read-only.
 
-EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
+EXAMPLE examples/docs/grammar/parameters/categorical-point-selection.json height=440
+
+!!! disclaimer ""
+
+    Coordinates, cell types, and activation states are synthetic and illustrative;
+    this is not an analysis of measured immune cells.
 
 #### Selection and Semantic Zoom
 

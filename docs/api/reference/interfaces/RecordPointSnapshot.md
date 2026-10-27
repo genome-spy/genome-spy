@@ -1,6 +1,6 @@
-[GenomeSpy Core API](../index.md) / PointSnapshot
+[GenomeSpy Core API](../index.md) / RecordPointSnapshot
 
-# Interface: PointSnapshot
+# Interface: RecordPointSnapshot
 
 Detached value of a point selection.
 
@@ -14,6 +14,14 @@ GenomeSpy's internal picking identifier.
 > **type**: `"point"`
 
 Discriminator for point selection snapshots.
+
+***
+
+### membership
+
+> **membership**: `"records"`
+
+Membership identifies individual records.
 
 ***
 

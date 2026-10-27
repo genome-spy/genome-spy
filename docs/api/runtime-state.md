@@ -308,7 +308,6 @@ Current limitations:
 - Computed `expr` parameters are readable but cannot be written.
 - Point selection snapshots are available through `api.params.getSelection()`;
   the generic `getParam()` handle does not write point selections.
-- Projected selections are not supported.
 
 For spec-side parameter behavior, including input bindings, selections, and
 `push: "outer"` for linking scale domains, see
@@ -320,12 +319,12 @@ package.
 
 To read a selection, use `api.params.getSelection(name)` or the corresponding
 `view.params` namespace. It provides detached point and interval snapshots,
-future-only subscriptions, interval containment, keyed point-selection writes,
+future-only subscriptions, interval containment, point-selection writes,
 and `clear()`. See
 [Marks and scoped interaction](./views.md#marks-and-scoped-interaction) for the
 selection and lifecycle rules shared by these handles.
 
-### Setting point selections
+### Setting record point selections
 
 Obtain a point selection through the unit view supplying its records, including
 when the parameter is declared in an ancestor. `setValue(keys)` replaces native
@@ -334,7 +333,10 @@ membership and drives the same subscriptions and conditional encodings as pickin
 ```js
 const track = api.views.get({ scope: [], view: "observations" });
 const selected = track.params.getSelection("selected");
-if (selected.type === "point") selected.setValue([["B"], ["D"]]);
+if (selected.type === "point" && selected.membership === "records") {
+  selected.setValue([["B"], ["D"]]);
+  console.log(selected.getValue().data);
+}
 ```
 
 Tuples follow `encoding.key` order: `{field: "id"}` takes `["B"]`; a composite
@@ -345,6 +347,40 @@ membership. Single selections (`toggle: false`) accept at most one tuple; `[]`
 clears without requiring data or a key. The setter works across mark types,
 including text and rectangles. Membership binds the current publication; apps
 clear or reapply it after replacing datasets.
+
+### Setting categorical point selections
+
+Selections declared with `select: {type: "point", encodings: ["color"]}` store
+raw categories. Their capabilities and snapshots have `type: "point"` and
+`membership: "categories"`. After narrowing to point, check `membership` before
+reading record `data` or category `encodings` and `values`.
+
+```js
+const focus = api.params.getSelection("focus");
+if (focus.type === "point" && focus.membership === "categories") {
+  focus.setValue([["resting"], ["activated"]]);
+  console.log(focus.getValue());
+  // {type: "point", membership: "categories", active: true,
+  //  encodings: ["color"], values: [["resting"], ["activated"]]}
+}
+```
+
+Each tuple contains one string, boolean, or finite number. Numeric `1` and string
+`"1"` are distinct; duplicates are removed in insertion order. Invalid tuples or
+more than one distinct value with `toggle: false` reject the entire write.
+Snapshots and subscriptions return detached tuples. Both `change` and `commit`
+subscriptions receive the settled point update.
+
+The owner can be a container or an ancestor of the source mark. Category writes
+and `clear()` require no loaded data or `encoding.key`. Selected values stay
+active when absent from the current data or scale domain, and match again when
+they return. GenomeSpy App history and bookmarks preserve these raw values;
+record expansion remains specific to record selections.
+
+Specification initializers use channel-keyed objects such as
+`value: [{color: "activated"}]`, rather than the API's tuples. See
+[categorical point selection](../grammar/parameters.md#categorical-point-selection)
+for linked views and source declarations.
 
 ## Updating appearance
 

@@ -43,7 +43,8 @@ const spec = {
 export const api = await embed(document.getElementById("plot"), spec);
 const view = api.views.get({ scope: [], view: "observations" });
 const capability = view.params.getSelection("selected");
-if (capability.type !== "point") throw new Error("Expected a point selection.");
+if (capability.type !== "point" || capability.membership !== "records")
+    throw new Error("Expected a record point selection.");
 const selected = capability;
 const scope = /** @type {HTMLSelectElement} */ (
     document.getElementById("scope")

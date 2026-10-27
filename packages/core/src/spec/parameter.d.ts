@@ -489,7 +489,7 @@ export interface CategorySelectionParameter<C extends CategorySelectionChannel>
     select: PointSelectionConfig & { encodings: [C] };
 
     /** Initial raw categories, keyed by the declared encoding channel. */
-    value?: { [K in C]: Scalar }[];
+    value?: Record<C, Scalar>[];
 }
 
 export interface IntervalSelectionParameter

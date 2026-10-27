@@ -1,6 +1,6 @@
 # Categorical projections for point selections
 
-Status: implementation in progress; commit after each verified milestone.
+Status: implemented and verified in six milestone commits; retained on the feature branch until pre-merge retirement.
 
 Source: [issue #608](https://github.com/genome-spy/genome-spy/issues/608), read
 2026-10-27. Repository baseline: `085674617` on `master`, with a clean working
@@ -261,20 +261,18 @@ sampling. Keep one direct implementation rule with backend translation.
 | Flat union containing an empty member                        | Existing group-empty semantics         | Matches of active eligible members only    |
 | Empty `R` with active `C`                                    | Existing empty fallback for appearance | None from `R` or `C`                       |
 
-Compatibility assessment: the current GPU code uses
-`activeMatchResolvedSelectionPredicate(root)`, effectively combining the entire
-appearance result with any referenced activity. Therefore eligible-only
+Compatibility assessment: before this change, GPU code used
+`activeMatchResolvedSelectionPredicate(root)`, combining the entire appearance
+result with any referenced activity. Therefore eligible-only
 compound `and`/`not` cases can change visible sampled rows under this rule, even
 without a new category selection. Direct record/brush predicates and simple
-positive unions retain their intended behavior. The current GPU implementation
-also gates bypass on a unique-ID input; intervals do not intrinsically need that
-input. Canvas/SVG currently have no equivalent bypass. Correct these limitations
-as part of the documented common default, with focused before/after fixtures.
+positive unions retain their intended behavior. The old GPU implementation
+also gated bypass on a unique-ID input, and Canvas/SVG had no equivalent bypass.
+These limitations are corrected under the documented common default and verified
+with focused output fixtures, including interval-only consumers.
 
-Treat this as an intentional compatibility change, not an incidental refactor.
-If preserving the old eligible-only compound behavior is chosen instead before
-implementation, replace this table and its tests/docs with that one explicit
-default; do not add a policy interface or configuration switch.
+This is an intentional compatibility change. The table is the implemented
+default; no policy interface or configuration switch was added.
 
 ### Scoped API and durable state
 
@@ -382,10 +380,44 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
   remain unchanged; duplicate App state types now re-export the source contract.
   Generated agent schemas, App/agent type checks, and related tests pass.
 
+- Milestone 6: published the synthetic immune-cell comparison and helper-based
+  genomic decoration, completed grammar/API migration guidance, generated the
+  API/type documentation, and migrated record-only embedding consumers. Final
+  integration found and fixed duplicate bookmark diagnostics for explicit
+  selection aliases while retaining legacy interval controllers on untyped
+  outer slots. Related fixtures now declare real selections and module mocks
+  preserve unmocked selection exports.
+
+### Final verification evidence
+
+- Root build, documentation build, all workspace TypeScript checks, lint, and
+  release policy checks pass. The final full unit run passed 5,299 tests in 556 files, including the
+  owner/legacy-controller regression coverage (one skipped and two todo).
+- Browser output at DPR 1 and 2 covers categorical color/fill/stroke/shape,
+  typed raw values, domain/source lifecycle, gestures, order, compound sampling,
+  SVG output, and neighboring point/rect/rule/link/arrow/text marks.
+- Final browser integration passes on Canvas, WebGL, and WebGPU for independent
+  color-to-shape mappings, previously unknown values arriving with data/domains,
+  interval-only sampling without picking IDs, and the published example's
+  click/Shift/clear/record comparison and SVG output.
+- On 100,000 scored points and 128 categories, 12 membership changes write 96
+  bytes in WebGL and 192 bytes in WebGPU. Both perform zero series uploads,
+  collector completions, series extractions, or resource/pipeline creations.
+  A separate explicit-filter update replays one collector and uploads chart
+  data, verifying that the instrumentation distinguishes the two paths.
+- Native WebGPU/WebGL smoke checks pass for the published example,
+  `selection_union.json`, and `genome-overview-detail.json`. The comparison
+  harness reports a 2-pixel intrinsic-height difference for the new example
+  (font metrics, 409 versus 407); fixed-size interaction fixtures and SVG
+  membership checks pass. Existing neighboring examples pass pixel comparison.
+- The one changeset directly names Core major plus App/agent minor. The fixed
+  release group consequently calculates a major bump for all eight packages
+  (1.2.0 to 2.0.0); no versioning or publishing was performed.
+
 ## Implementation milestones
 
-Each milestone includes its meaningful tests and documentation. Tentative
-messages describe future implementation commits, not changes made by this plan.
+Each completed milestone includes its meaningful tests and documentation. The
+commit subjects below match the six implementation commits.
 
 ### 1. Native category point state, grammar, and scoped value API
 
@@ -536,19 +568,19 @@ Completion checklist:
 
 - [x] Helper and sampling decisions are recorded in #608 and docs before their
       respective implementations; deviations from this proposal are reconciled.
-- [ ] One-category grammar/schema, object initializers, runtime input validation,
+- [x] One-category grammar/schema, object initializers, runtime input validation,
       and typed detached normalization satisfy the issue.
-- [ ] Explicit scoped writers, shared operations, settled API subscriptions, and
+- [x] Explicit scoped writers, shared operations, settled API subscriptions, and
       lifetime/disposal contracts work in both point modes.
-- [ ] All native predicate forms, order, and explicit filters use the agreed
+- [x] All native predicate forms, order, and explicit filters use the agreed
       membership and emptiness semantics without relaxing interval contracts.
-- [ ] All four backends pass output checks; GPU updates reuse inputs and avoid
+- [x] All four backends pass output checks; GPU updates reuse inputs and avoid
       matching-row scans and chart-buffer uploads.
-- [ ] Category focus preserves the semantic sample; documented record/brush
+- [x] Category focus preserves the semantic sample; documented record/brush
       compound behavior is verified across backends.
-- [ ] App and agent contracts distinguish categories, preserve record behavior,
+- [x] App and agent contracts distinguish categories, preserve record behavior,
       and restore raw values without readiness or keys.
-- [ ] Demo, helpers migration, API/grammar compatibility guidance, generated
+- [x] Demo, helpers migration, API/grammar compatibility guidance, generated
       artifacts, changeset, and related-test cleanup are complete.
 
 Use focused suites during each milestone. For final integration, run the root
@@ -559,6 +591,8 @@ existing workspace build scripts before dependent tests and type checks.
 npm run build
 npx vitest run <affected-test-files> --reporter=agent
 npm -w @genome-spy/webgpu-renderer run test:gpu -- <affected-gpu-tests>
+node packages/core/scripts/testCategoricalSelections.mjs
+node packages/core/scripts/testCategoricalSelectionIntegration.mjs
 npm --workspaces run test:tsc --if-present
 npm test -- --reporter=agent
 npm run lint
@@ -589,9 +623,8 @@ not change timeouts merely to accommodate regressions.
 ### Release assessment
 
 This plan alone has no release impact and needs no changeset. The implemented
-feature needs one fragment covering directly affected packages. Current
-recommendation: Core **major**, App **minor**, and App Agent **minor** if its
-user-visible action contract changes as planned. Core's broadened public point
+feature has one fragment covering the directly affected packages: Core
+**major**, App **minor**, and App Agent **minor** for its action contract. Core's broadened public point
 union invalidates the existing `type === "point"` implies `.data` assumption;
 the selected compound sampling rule also changes existing behavior. Both need
 explicit migration guidance. Under the current fixed group, the highest bump
@@ -606,11 +639,11 @@ require record membership. Spec authors use native predicates and the helpers.
 Document the sampling table for existing compound appearance conditions; do not
 claim this is wholly backward-compatible functionality.
 
-### Risks and remaining decisions
+### Resolved decisions and covered risks
 
-- **Two pre-implementation gates:** helper names/numeric bounds and the sampling
-  compatibility rule are recommended above. They must be settled and recorded,
-  rather than inferred from illustrative issue names or PoC behavior.
+- **Pre-implementation gates resolved:** helper names/numeric bounds and the
+  sampling compatibility rule were settled in #608 and the grammar docs before
+  their implementation. The implemented contracts follow those decisions.
 - **Normalized color and deduplicated inputs:** keep the logical component
   separate from physical fill/stroke attributes and resolve through current
   metadata. Test explicit overrides, filled/unfilled marks, and shared inputs.
@@ -630,10 +663,8 @@ claim this is wholly backward-compatible functionality.
   Category membership tests alone cannot establish retained-input reuse or
   sampling independence.
 
-No additional product-scope question blocks drafting this plan. Exact helper
-spelling and the compatibility policy remain visible decision gates for
-implementation; low-level set-slot naming may be settled within milestone 3
-without broadening the public Core contract.
+No product-scope questions remain. Low-level renderer slots use private stable
+names per mark and mapped input without broadening the public Core contract.
 
 ### Size and review boundaries
 
@@ -647,6 +678,13 @@ Raw `wc -l` baseline for focused existing implementation files:
 | App `paramProvenanceBridge.js`                                            |                1,323 |
 | Renderer `selectionResources.js` + `visibilityPredicate.js`               |                  987 |
 | Total                                                                     |               10,947 |
+
+Final focused source count: 11,357 lines in the same 13 existing files, plus
+130 lines in the new `categorySelection.js`, for 11,487 lines: +540 from the
+10,947-line baseline. The added ownership, normalization, retained bindings,
+and persistence behavior account for this growth. The old projected scaffold,
+compound activity wrapper, and duplicate App state declarations were removed.
+Tests and generated documentation are measured separately by the branch diff.
 
 These are source-size baselines, not non-comment production counts or targets.
 Compare the same files plus new production files at delivery with `wc -l` and

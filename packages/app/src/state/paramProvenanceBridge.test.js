@@ -14,7 +14,11 @@ import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import ParamProvenanceBridge from "./paramProvenanceBridge.js";
 import IntentExecutor from "./intentExecutor.js";
-import { makeParamSelectorKey } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    makeParamSelectorKey,
+    getBookmarkableParams,
+    validateSelectorConstraints,
+} from "@genome-spy/core/view/viewSelectors.js";
 import { flushMicrotasks } from "./testUtils.js";
 import templateResultToString from "../utils/templateResultToString.js";
 import { compressToUrlHash, decompressFromUrlHash } from "../utils/urlHash.js";
@@ -212,6 +216,10 @@ describe("ParamProvenanceBridge", () => {
         if (!(source instanceof UnitView))
             throw new Error("Expected source unit");
         // Category persistence must work even when no source collector is ready.
+        expect(
+            getBookmarkableParams(root).map((entry) => entry.param.name)
+        ).toEqual(["focus"]);
+        expect(validateSelectorConstraints(root)).toEqual([]);
         const lookup = vi
             .spyOn(source, "getCollector")
             .mockImplementation(() => {

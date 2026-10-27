@@ -125,6 +125,10 @@ SCHEMA BrushConfig
 
 SCHEMA BuiltInThemeName
 
+## CategorySelectionChannel
+
+SCHEMA CategorySelectionChannel
+
 ## ChannelWithScale
 
 SCHEMA ChannelWithScale
@@ -449,6 +453,10 @@ SCHEMA InteractionEventType
 
 SCHEMA IntervalSelectionConfig
 
+## IntervalSelectionParameter
+
+SCHEMA IntervalSelectionParameter
+
 ## JsonDataFormat
 
 SCHEMA JsonDataFormat
@@ -673,10 +681,6 @@ See the [PointConfig documentation](mark/point.md#properties).
 
 See the [PointProps documentation](mark/point.md#properties).
 
-## PointSelectionConfig
-
-SCHEMA PointSelectionConfig
-
 ## Position2Def
 
 SCHEMA Position2Def
@@ -716,6 +720,10 @@ See the [ProjectParams documentation](transform/project.md#parameters).
 ## RangeConfig
 
 See the [RangeConfig documentation](config.md#scale-defaults).
+
+## RecordSelectionParameter
+
+SCHEMA RecordSelectionParameter
 
 ## RectConfig
 
@@ -880,10 +888,6 @@ SCHEMA SelectionPredicateDefinition
 ## SelectionPredicateOperand
 
 SCHEMA SelectionPredicateOperand
-
-## SelectionType
-
-SCHEMA SelectionType
 
 ## SelectionUnionTest
 

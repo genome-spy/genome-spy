@@ -937,7 +937,7 @@ describe("Test domain handling", () => {
     test("Extracts domain from conditional encoding", () =>
         createAndInitialize(
             {
-                params: [{ name: "p" }],
+                params: [{ name: "p", select: "point" }],
                 data: dataSpec,
                 mark: "point",
                 encoding: {

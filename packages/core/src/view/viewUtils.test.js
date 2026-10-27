@@ -83,7 +83,7 @@ describe("findEncodedFields", () => {
     test("includes conditional field branches", async () => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
-            params: [{ name: "p" }],
+            params: [{ name: "p", select: "point" }],
             data: {
                 values: [{ a: 1, group: "x" }],
             },

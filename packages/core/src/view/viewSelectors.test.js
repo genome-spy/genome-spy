@@ -572,4 +572,30 @@ describe("view selectors", () => {
             issues.some((issue) => issue.message.includes("hover"))
         ).toBeFalsy();
     });
+
+    test("keeps legacy interval controllers pushing into untyped slots bookmarkable", async () => {
+        const { view: root } = await createHeadlessEngine({
+            params: [{ name: "brush" }],
+            vconcat: [
+                makeUnitSpecWithParams("source", [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                        push: "outer",
+                    },
+                ]),
+            ],
+        });
+        try {
+            const entries = getBookmarkableParams(root);
+            expect(entries).toHaveLength(1);
+            expect(entries[0].view.explicitName).toBe("source");
+            expect(
+                resolveParamSelector(root, { scope: [], param: "brush" }).view
+            ).toBe(entries[0].view);
+            expect(validateSelectorConstraints(root)).toEqual([]);
+        } finally {
+            root.disposeSubtree();
+        }
+    });
 });
