@@ -32,6 +32,22 @@ function createMockUnitView(config) {
 }
 
 describe("selectionExpansionContext", () => {
+    test("offers record expansion when a categorical selection also exists", () => {
+        const view = createMockUnitView({
+            encoding: { key: { field: "id" } },
+            params: [
+                ["focus", { select: { type: "point", encodings: ["color"] } }],
+                ["picked", { select: "point" }],
+            ],
+        });
+        const result = resolveSelectionExpansionContext(view, {
+            mark: { unitView: view },
+            datum: { id: "A" },
+        });
+        expect(result.status).toBe("available");
+        if (result.status === "available")
+            expect(result.context.selector.param).toBe("picked");
+    });
     test("resolves context for a single multi-point selection parameter", () => {
         const hoveredView = createMockUnitView({
             encoding: {

@@ -61,7 +61,11 @@ export function resolveSelectionExpansionContext(rootView, hover) {
         }
 
         const select = asSelectionConfig(param.select);
-        if (isPointSelectionConfig(select) && select.toggle) {
+        if (
+            isPointSelectionConfig(select) &&
+            !select.encodings &&
+            select.toggle
+        ) {
             pointParamNames.push(name);
         }
     }

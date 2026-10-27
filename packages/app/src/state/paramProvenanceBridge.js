@@ -11,8 +11,10 @@ import {
     isMultiPointSelection,
     isPointSelectionConfig,
     isSinglePointSelection,
+    isCategorySelection,
     resolvePointSelectionFromKeyTuples,
 } from "@genome-spy/core/selection/selection.js";
+import { categorySelectionFromTuples } from "@genome-spy/core/selection/categorySelection.js";
 import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import {
     getBookmarkableParams,
@@ -64,7 +66,7 @@ export default class ParamProvenanceBridge {
      *
      * Constraints:
      * - Only bookmarkable params are tracked (selection + bound variable params).
-     * - Point selections use stable data keys (`encoding.key`), not `_uniqueId`.
+     * - Record selections use stable data keys; categories retain raw values.
      * - If resolution fails (missing params/keys/data), warn and fall back to
      *   defaults so the visualization remains usable.
      */
@@ -316,7 +318,10 @@ export default class ParamProvenanceBridge {
         }
 
         if (value.type === "point") {
-            return value.keys.length === 0;
+            return (
+                (value.membership === "categories" ? value.values : value.keys)
+                    .length === 0
+            );
         }
 
         if (value.type === "pointExpand") {
@@ -514,6 +519,17 @@ export default class ParamProvenanceBridge {
             const select = asSelectionConfig(param.select);
 
             if (isPointSelectionConfig(select)) {
+                if (select.encodings) {
+                    return {
+                        type: "point",
+                        membership: "categories",
+                        encodings: [value.component],
+                        values: Array.from(value.values, (category) => [
+                            category,
+                        ]),
+                    };
+                }
+
                 const keyFields = this.#getPointSelectionKeyFields(
                     entry,
                     "persist"
@@ -693,6 +709,32 @@ export default class ParamProvenanceBridge {
             const select = asSelectionConfig(param.select);
 
             if (isPointSelectionConfig(select)) {
+                if (select.encodings) {
+                    if (
+                        storedValue.type !== "point" ||
+                        storedValue.membership !== "categories" ||
+                        !Array.isArray(storedValue.encodings) ||
+                        storedValue.encodings.length !== 1 ||
+                        storedValue.encodings[0] !== select.encodings[0]
+                    ) {
+                        return this.#warnSelectionAndUseDefault(
+                            entry,
+                            "cannot be restored because the bookmark stored different categorical membership."
+                        );
+                    }
+                    try {
+                        return categorySelectionFromTuples(
+                            select,
+                            storedValue.values
+                        );
+                    } catch (error) {
+                        return this.#warnSelectionAndUseDefault(
+                            entry,
+                            "cannot be restored: " + error
+                        );
+                    }
+                }
+
                 if (storedValue.type === "pointExpand") {
                     return this.#resolvePointExpansionSelection(
                         entry,
@@ -701,7 +743,10 @@ export default class ParamProvenanceBridge {
                     );
                 }
 
-                if (storedValue.type !== "point") {
+                if (
+                    storedValue.type !== "point" ||
+                    storedValue.membership === "categories"
+                ) {
                     return this.#warnSelectionAndUseDefault(
                         entry,
                         "cannot be restored because the bookmark stored a different selection type."
@@ -848,7 +893,7 @@ export default class ParamProvenanceBridge {
      * @param {import("@genome-spy/core/spec/parameter.js").PointSelectionConfig} select
      */
     #resolvePointExpansionSelection(entry, storedValue, select) {
-        if (!select.toggle) {
+        if (!select.toggle || select.encodings) {
             this.#warnSelection(
                 entry.param,
                 "cannot apply expansion because the target selection is not multi-point."
@@ -1180,7 +1225,7 @@ export default class ParamProvenanceBridge {
         }
 
         const select = asSelectionConfig(param.select);
-        if (!isPointSelectionConfig(select)) {
+        if (!isPointSelectionConfig(select) || select.encodings) {
             return;
         }
 
@@ -1200,6 +1245,9 @@ export default class ParamProvenanceBridge {
     #isSelectionCleared(param, value) {
         const select = asSelectionConfig(param.select);
         if (isPointSelectionConfig(select)) {
+            if (isCategorySelection(value)) {
+                return value.values.size === 0;
+            }
             if (isSinglePointSelection(value)) {
                 return !value.datum;
             }

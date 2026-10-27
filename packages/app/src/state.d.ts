@@ -1,55 +1,18 @@
 import { StateWithHistory } from "redux-undo";
 import { SampleHierarchy } from "./sampleView/state/sampleState.js";
-import {
-    ParamSelector,
-    ViewSelector,
-} from "@genome-spy/core/view/viewUtilTypes.d.ts";
-import { Scalar } from "@genome-spy/core/spec/channel.js";
-import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
+import type { ParamProvenanceState } from "./state/paramProvenanceTypes.d.ts";
 
-export interface ParamValueLiteral {
-    type: "value";
-    value: any;
-}
-
-export interface ParamValueInterval {
-    type: "interval";
-    intervals: Partial<
-        Record<
-            "x" | "y",
-            [number, number] | [ChromosomalLocus, ChromosomalLocus] | null
-        >
-    >;
-}
-
-export interface ParamValuePoint {
-    type: "point";
-    keyFields: string[];
-    keys: Scalar[][];
-}
-
-export type ParamValue =
-    | ParamValueLiteral
-    | ParamValueInterval
-    | ParamValuePoint;
-
-export interface ParamOrigin {
-    type: "datum";
-    view: ViewSelector;
-    keyField: string;
-    key: Scalar;
-    intervalSources?: Record<string, { start?: string; end?: string }>;
-}
-
-export interface ParamProvenanceEntry {
-    selector: ParamSelector;
-    value: ParamValue;
-    origin?: ParamOrigin;
-}
-
-export interface ParamProvenanceState {
-    entries: Record<string, ParamProvenanceEntry>;
-}
+export type {
+    ParamValueLiteral,
+    ParamValueInterval,
+    ParamValuePoint,
+    ParamValueRecordPoint,
+    ParamValueCategoryPoint,
+    ParamValue,
+    ParamOrigin,
+    ParamProvenanceEntry,
+    ParamProvenanceState,
+} from "./state/paramProvenanceTypes.d.ts";
 
 export interface ViewSettings {
     /**
@@ -66,8 +29,7 @@ export interface ViewVisibilityEntry {
 }
 
 export type ViewVisibilityWire =
-    | ViewVisibilityEntry[]
-    | Record<string, boolean>;
+    ViewVisibilityEntry[] | Record<string, boolean>;
 
 export interface ViewSettingsPayload {
     visibilities?: ViewVisibilityWire;

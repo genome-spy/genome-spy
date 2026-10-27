@@ -4,6 +4,7 @@ import {
     isIntervalSelectionConfig,
     isPointSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
+import { categorySelectionFromTuples } from "@genome-spy/core/selection/categorySelection.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
 import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
@@ -120,6 +121,44 @@ export function validateIntentBatch(agentApi, batch) {
                     );
                 }
 
+                if (
+                    payload.value.type === "point" &&
+                    "select" in resolved.param
+                ) {
+                    const select = asSelectionConfig(resolved.param.select);
+                    if (isPointSelectionConfig(select)) {
+                        const value = payload.value;
+                        const prefix = "$.steps[" + index + "].payload.value: ";
+                        if (select.encodings) {
+                            if (
+                                value.membership !== "categories" ||
+                                value.encodings[0] !== select.encodings[0]
+                            ) {
+                                errors.push(
+                                    prefix +
+                                        'expected categorical membership projected on "' +
+                                        select.encodings[0] +
+                                        '".'
+                                );
+                            } else {
+                                try {
+                                    categorySelectionFromTuples(
+                                        select,
+                                        value.values
+                                    );
+                                } catch (error) {
+                                    errors.push(prefix + error);
+                                }
+                            }
+                        } else if (value.membership === "categories") {
+                            errors.push(
+                                prefix +
+                                    "expected record keys for this point selection."
+                            );
+                        }
+                    }
+                }
+
                 if (payload.value.type !== "interval") {
                     continue;
                 }
@@ -185,7 +224,7 @@ function getParamValueTypes(param) {
             return ["interval"];
         }
         if (isPointSelectionConfig(select)) {
-            return ["point", "pointExpand"];
+            return select.encodings ? ["point"] : ["point", "pointExpand"];
         }
     }
 

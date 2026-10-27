@@ -180,6 +180,24 @@ describe("getParamActionInfo", () => {
         expect(multiTitle).toContain("Select selected (2 points) in points");
     });
 
+    it("summarizes category membership without record keys", () => {
+        const view = new FakeView();
+        const action = paramProvenanceSlice.actions.paramChange({
+            selector: { scope: [], param: "focus" },
+            value: {
+                type: "point",
+                membership: "categories",
+                encodings: ["color"],
+                values: [["resting"], ["activated"]],
+            },
+        });
+        expect(
+            normalizeTitle(
+                getParamActionInfo(action, /** @type {any} */ (view))
+            )
+        ).toContain("Select focus (2 categories)");
+    });
+
     it("formats point expansion titles using rule formatting", () => {
         const view = new FakeView({ explicitName: "points" });
         view.encoding = { key: { field: "id" } };

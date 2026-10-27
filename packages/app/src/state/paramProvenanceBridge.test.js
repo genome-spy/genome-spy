@@ -1,6 +1,10 @@
 // @ts-check
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it, vi } from "vitest";
+import { ActionCreators } from "redux-undo";
+import { createTestEmbed } from "@genome-spy/core/view/embedTestUtils.js";
+import UnitView from "@genome-spy/core/view/unitView.js";
+import { createCategorySelection } from "@genome-spy/core/selection/categorySelection.js";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import {
     createIntervalSelection,
@@ -13,6 +17,7 @@ import IntentExecutor from "./intentExecutor.js";
 import { makeParamSelectorKey } from "@genome-spy/core/view/viewSelectors.js";
 import { flushMicrotasks } from "./testUtils.js";
 import templateResultToString from "../utils/templateResultToString.js";
+import { compressToUrlHash, decompressFromUrlHash } from "../utils/urlHash.js";
 
 vi.mock("../components/generic/messageDialog.js", () => ({
     showMessageDialog: vi.fn(),
@@ -169,6 +174,182 @@ async function getShowMessageDialogMock() {
 }
 
 describe("ParamProvenanceBridge", () => {
+    it("captures shared raw categories and replays URL state, clear, undo, and redo without data lookup", async () => {
+        vi.useFakeTimers();
+        const { root, views } = await createTestEmbed({
+            params: [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"] },
+                },
+            ],
+            hconcat: [
+                {
+                    name: "source",
+                    params: [
+                        {
+                            name: "focus",
+                            select: { type: "point", encodings: ["color"] },
+                            push: "outer",
+                        },
+                    ],
+                    mark: "point",
+                    data: { values: [{ state: 1 }] },
+                    encoding: {
+                        color: {
+                            field: "state",
+                            type: "ordinal",
+                            legend: null,
+                            scale: { domain: [1, "1", false] },
+                        },
+                    },
+                },
+            ],
+        });
+        const source = root
+            .getDescendants()
+            .find((view) => view instanceof UnitView && view.name === "source");
+        if (!(source instanceof UnitView))
+            throw new Error("Expected source unit");
+        // Category persistence must work even when no source collector is ready.
+        const lookup = vi
+            .spyOn(source, "getCollector")
+            .mockImplementation(() => {
+                throw new Error("Unexpected row lookup");
+            });
+        const store = createStore();
+        const bridge = new ParamProvenanceBridge({
+            root,
+            store,
+            intentExecutor: new IntentExecutor(store),
+        });
+        try {
+            const selection = views.root().params.getSelection("focus");
+            if (
+                selection.type !== "point" ||
+                selection.membership !== "categories"
+            )
+                throw new Error("Expected categories");
+            const selector = { scope: [], param: "focus" };
+            const key = makeParamSelectorKey(selector);
+            const settle = async () => {
+                await root.paramRuntime.whenPropagated();
+                vi.advanceTimersByTime(200);
+                await bridge.whenApplied();
+            };
+            selection.setValue([[1], ["1"], [false], ["not loaded"]]);
+            await settle();
+            const entry =
+                store.getState().provenance.present.paramProvenance.entries[
+                    key
+                ];
+            expect(entry).toEqual({
+                selector,
+                value: {
+                    type: "point",
+                    membership: "categories",
+                    encodings: ["color"],
+                    values: [[1], ["1"], [false], ["not loaded"]],
+                },
+            });
+            expect(
+                Object.keys(
+                    store.getState().provenance.present.paramProvenance.entries
+                )
+            ).toHaveLength(1);
+
+            selection.clear();
+            await settle();
+            expect(selection.getValue().values).toEqual([]);
+            store.dispatch(ActionCreators.undo());
+            await settle();
+            expect(selection.getValue().values).toEqual(entry.value.values);
+            store.dispatch(ActionCreators.redo());
+            await settle();
+            expect(selection.getValue().active).toBe(false);
+
+            const bookmark = decompressFromUrlHash(
+                compressToUrlHash({
+                    actions: [paramProvenanceSlice.actions.paramChange(entry)],
+                })
+            );
+            store.dispatch(bookmark.actions[0]);
+            await settle();
+            expect(selection.getValue().values).toEqual(entry.value.values);
+            expect(lookup).not.toHaveBeenCalled();
+        } finally {
+            bridge.dispose();
+            lookup.mockRestore();
+            vi.useRealTimers();
+        }
+    });
+
+    it("rejects incompatible category restores atomically and does not wait for a collector", async () => {
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "focus",
+            select: { type: "point", encodings: ["shape"], toggle: false },
+            value: [{ shape: "default" }],
+        });
+        const collector = new FakeCollector(vi.fn());
+        collector.completed = false;
+        view.getCollector = vi.fn(() => collector);
+        const store = createStore();
+        const bridge = createBridge(view, store, new IntentExecutor(store));
+        try {
+            for (const value of [
+                { type: "point", keyFields: ["id"], keys: [["A"]] },
+                {
+                    type: "point",
+                    membership: "categories",
+                    encodings: ["color"],
+                    values: [["A"]],
+                },
+                {
+                    type: "point",
+                    membership: "categories",
+                    encodings: ["shape"],
+                    values: [["A"], ["B"]],
+                },
+                {
+                    type: "point",
+                    membership: "categories",
+                    encodings: ["shape"],
+                    values: [["A"], [null]],
+                },
+            ]) {
+                store.dispatch(
+                    paramProvenanceSlice.actions.paramChange({
+                        selector: { scope: [], param: "focus" },
+                        value: /** @type {any} */ (value),
+                    })
+                );
+                await bridge.whenApplied();
+                expect(view.paramRuntime.getValue("focus")).toEqual(
+                    createCategorySelection("shape", ["default"])
+                );
+            }
+            store.dispatch(
+                paramProvenanceSlice.actions.paramChange({
+                    selector: { scope: [], param: "focus" },
+                    value: {
+                        type: "point",
+                        membership: "categories",
+                        encodings: ["shape"],
+                        values: [["later"]],
+                    },
+                })
+            );
+            await bridge.whenApplied();
+            expect(view.paramRuntime.getValue("focus")).toEqual(
+                createCategorySelection("shape", ["later"])
+            );
+            expect(view.getCollector).not.toHaveBeenCalled();
+        } finally {
+            bridge.dispose();
+        }
+    });
+
     it("captures param changes into provenance", () => {
         const view = new FakeView();
         const setter = view.paramRuntime.registerParam({

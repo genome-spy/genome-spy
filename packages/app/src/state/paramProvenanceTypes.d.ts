@@ -1,5 +1,6 @@
 import type { Scalar } from "@genome-spy/core/spec/channel.js";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
+import type { CategorySelectionChannel } from "@genome-spy/core/spec/parameter.js";
 import type {
     ParamSelector,
     ViewSelector,
@@ -44,11 +45,14 @@ export type ParamValueInterval = {
     >;
 };
 
-export type ParamValuePoint = {
+export type ParamValueRecordPoint = {
     /**
      * Point selection value.
      */
     type: "point";
+
+    /** Omitted by existing record bookmarks. */
+    membership?: "records";
 
     /**
      * Fields used to identify selected points.
@@ -60,6 +64,16 @@ export type ParamValuePoint = {
      */
     keys: Scalar[][];
 };
+
+/** Raw categorical membership, independent of source rows and scale domains. */
+export type ParamValueCategoryPoint = {
+    type: "point";
+    membership: "categories";
+    encodings: [CategorySelectionChannel];
+    values: [Scalar][];
+};
+
+export type ParamValuePoint = ParamValueRecordPoint | ParamValueCategoryPoint;
 
 /**
  * Origin of a param value derived from a datum or interval lookup.

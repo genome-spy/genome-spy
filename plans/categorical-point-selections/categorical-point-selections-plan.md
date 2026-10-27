@@ -374,6 +374,14 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
   lint, and reviewed shader snapshots pass. Final integration adds the larger
   retained-update fixture and independent mapped-consumer output probes.
 
+- Milestone 5: App provenance stores detached raw category tuples and logical
+  components before any row-key/readiness path. Shared ownership, URL replay,
+  clear/undo/redo, incompatible restores, and record-only expansion have focused
+  coverage. Agent shape and target validation accept categories and enforce
+  projection/cardinality using Core normalization. Existing record envelopes
+  remain unchanged; duplicate App state types now re-export the source contract.
+  Generated agent schemas, App/agent type checks, and related tests pass.
+
 ## Implementation milestones
 
 Each milestone includes its meaningful tests and documentation. Tentative
