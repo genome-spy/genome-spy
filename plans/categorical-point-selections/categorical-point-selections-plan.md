@@ -1,6 +1,6 @@
 # Categorical projections for point selections
 
-Status: implemented and verified in six milestone commits; retained on the feature branch until pre-merge retirement.
+Status: implemented and verified; reconciled for retirement before opening the pull request.
 
 Source: [issue #608](https://github.com/genome-spy/genome-spy/issues/608), read
 2026-10-27. Repository baseline: `085674617` on `master`, with a clean working
@@ -386,13 +386,20 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
   remain unchanged; duplicate App state types now re-export the source contract.
   Generated agent schemas, App/agent type checks, and related tests pass.
 
-- Milestone 6: published the synthetic immune-cell linked views and helper-based
+- Milestone 6: published the synthetic immune-cell example and helper-based
   genomic decoration, completed grammar/API migration guidance, generated the
   API/type documentation, and migrated record-only embedding consumers. Final
   integration found and fixed duplicate bookmark diagnostics for explicit
   selection aliases while retaining legacy interval controllers on untyped
   outer slots. Related fixtures now declare real selections and module mocks
   preserve unmocked selection exports.
+
+- Follow-up expression support adds `selectionContains` through the existing
+  category matcher and expression registry, with no transform grammar or
+  per-row array allocation. The 52 focused tests cover typed/multiple values,
+  validation, reactive formula/filter replay, and explicit empty behavior.
+  A local Node benchmark measures about 5 ms per million formula rows with
+  1–128 selected categories, excluding downstream processing and rendering.
 
 ### Final verification evidence
 
@@ -413,8 +420,9 @@ previously published membership. The two affected source files shrink from
 469 to 462 lines.
 
 - Root build, documentation build, all workspace TypeScript checks, lint, and
-  release policy checks pass. The final full unit run passed 5,299 tests in 556 files, including the
-  owner/legacy-controller regression coverage (one skipped and two todo).
+  release policy checks pass. The final full unit run passed 5,304 tests in 556
+  files, including the owner/legacy-controller and expression membership
+  coverage (one skipped and two todo).
 - Browser output at DPR 1 and 2 covers categorical color/fill/stroke/shape,
   typed raw values, domain/source lifecycle, gestures, order, compound sampling,
   SVG output, and neighboring point/rect/rule/link/arrow/text marks.
@@ -552,14 +560,12 @@ commit subjects below match the six implementation commits.
   (new), parameter/condition/filter/expression and embedding docs, generated
   schema/API references, overview/detail example migration, and one coherent
   changeset for the feature. Focused core specs may carry additional probes.
-- **Demo:** a readable illustrative immune-cell embedding uses T/B cell types
-  on shape and resting/intermediate/activated states on ordinal color. Two
-  linked views use `activation_state` and `activation`, with clear/Shift
-  instructions and semantic helper feedback. The individual-record comparison
-  panel was discarded at the user's request to keep the example focused.
-  Shared encodings, scale/legend settings, and point dimensions live on the
-  parent composition. Keep shape as cell type in the main example; demonstrate
-  activation-color-to-activation-shape mapping in a separate focused case.
+- **Demo:** one illustrative immune-cell scatterplot uses T/B cell types on
+  shape and resting/intermediate/activated states on ordinal color, with both
+  legends on the right. The record comparison, linked consumer, and feedback
+  view were discarded at the user's request, leaving a 60-line unit spec with
+  one local selection. Separate focused tests cover differently named fields,
+  shared state, and activation-color-to-activation-shape mapping.
   Clearly label coordinates and states synthetic/illustrative. Follow
   `examples/README.md`, use inline/small shared data, and keep docs URLs portable.
 - **Verification:** perform the integration matrix below, schema/example and
@@ -581,7 +587,7 @@ correctness or buffer-reuse performance.
 
 | Scenario                        | Required evidence                                                                                                                                                                                                                                                                                                                                                        |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Published example               | Actual click, Shift-toggle, clear, API replacement then gesture, and linked-view feedback on WebGL/WebGPU/Canvas2D; matching SVG export, including conditional paint order. Exercise ordinary point picking with asynchronous WebGPU delivery.                                                                                                                           |
+| Published example               | Actual click, Shift-toggle, clear, API replacement then gesture, and category highlighting on WebGL/WebGPU/Canvas2D; matching SVG export, including conditional paint order. Exercise ordinary point picking with asynchronous WebGPU delivery.                                                                                                                          |
 | Composition beyond the demo     | Two category selections ANDed with a record selection/brush; local versus outer aliases; a read-only consumer; nested shadowing and independent scales. Check the sampling table including negation and empty members.                                                                                                                                                   |
 | Category identity and lifecycle | `1`, `"1"`, `false`, and unusual string labels; distinct categories sharing a color/shape; independent mappings; domain reorder/removal/reappearance and source replacement. Stored tuples and activity remain stable.                                                                                                                                                   |
 | Existing neighboring features   | `examples/core/selection/selection_union.json`, positional endpoint mapping tests, record key API/persistence, interval linked domains, and migrated `examples/docs/grammar/parameters/genome-overview-detail.json`. Preserve brush navigation/genomic behavior and event filters.                                                                                       |
@@ -703,8 +709,8 @@ Raw `wc -l` baseline for focused existing implementation files:
 | Renderer `selectionResources.js` + `visibilityPredicate.js`               |                  987 |
 | Total                                                                     |               10,947 |
 
-Final focused source count: 11,335 lines in the same 13 existing files, plus
-126 lines in the new `categorySelection.js`, for 11,461 lines: +514 from the
+Final focused source count: 11,358 lines in the same 13 existing files, plus
+126 lines in the new `categorySelection.js`, for 11,484 lines: +537 from the
 10,947-line baseline. The added ownership, normalization, retained bindings,
 and persistence behavior account for this growth. The old projected scaffold,
 compound activity wrapper, and duplicate App state declarations were removed.
