@@ -392,6 +392,10 @@ function createSelectionCondition(mark, predicate) {
     }
     if ("selectionActive" in predicate) {
         const { param, type, components } = predicate.selectionActive;
+        if (type === "categories")
+            throw new Error(
+                "Category predicate adapter integration is pending."
+            );
         return {
             selectionActive:
                 type === "interval"
@@ -405,6 +409,8 @@ function createSelectionCondition(mark, predicate) {
                     : { selection: param, type },
         };
     }
+    if (predicate.type === "categories")
+        throw new Error("Category predicate adapter integration is pending.");
     if (predicate.type === "interval") {
         return {
             selection: predicate.param,

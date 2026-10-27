@@ -475,7 +475,9 @@ export default class Mark {
                 this.encoding,
                 this.unitView.paramRuntime,
                 this.defaultHitTestMode,
-                (channel) => this.unitView.getScaleResolution(channel)?.type
+                (channel) => this.unitView.getScaleResolution(channel)?.type,
+                (channel) =>
+                    this.unitView.getScaleResolution(channel)?.getScale()
             );
             this.#orderInitialized = true;
         }
@@ -631,8 +633,12 @@ export default class Mark {
                         getSelectionPredicateTreeParams(
                             normalizeSelectionPredicateTree(condition)
                         ).some((name) => {
+                            const capability =
+                                runtime.findSelectionCapability(name);
+                            if (capability?.membership === "categories")
+                                return false;
                             const type =
-                                runtime.findSelectionCapability(name)?.type ??
+                                capability?.type ??
                                 runtime.findValue(name)?.type;
                             return type === "single" || type === "multi";
                         })

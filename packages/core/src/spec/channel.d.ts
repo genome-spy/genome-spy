@@ -8,7 +8,7 @@
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-import { ExprRef } from "./parameter.js";
+import { ExprRef, CategorySelectionChannel } from "./parameter.js";
 import { Scale } from "./scale.js";
 import { GenomeAxis } from "./axis.js";
 import { Legend } from "./legend.js";
@@ -343,15 +343,21 @@ export interface ParameterPredicate {
     param: string;
 
     /**
-     * Bind interval selection components to positional channels of this mark.
+     * Bind selection components to inputs of this consuming mark.
      * For example, `{ "x": "x2" }` tests the selected x interval against x2
      * alone. Each selected component must be mapped when this is provided.
-     * The target must be an unconditional field encoding of the same data type.
+     * Category components map to unconditional categorical channel inputs.
+     * This mapping does not change the stored selection component or values.
      */
-    project?: {
-        x?: "x" | "x2";
-        y?: "y" | "y2";
-    };
+    project?:
+        | {
+              x?: "x" | "x2";
+              y?: "y" | "y2";
+          }
+        | { color: CategorySelectionChannel }
+        | { fill: CategorySelectionChannel }
+        | { stroke: CategorySelectionChannel }
+        | { shape: CategorySelectionChannel };
 
     /**
      * For selection parameters, the predicate of empty selections returns true by default.

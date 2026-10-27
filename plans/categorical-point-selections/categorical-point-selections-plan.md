@@ -355,6 +355,11 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
   helpers, and precise initializer schema. Focused schema/state/interaction/API
   suites cover the new contracts alongside existing record behavior.
 
+- Milestone 2: implemented per-consumer categorical predicates, order/filter
+  parity, mapping schema, and the direct sampling-leaf rule. Core type checks,
+  focused behavior suites, all 35 schema tests, and schema generation pass.
+  GPU translation is completed in milestones 3 and 4.
+
 ## Implementation milestones
 
 Each milestone includes its meaningful tests and documentation. Tentative

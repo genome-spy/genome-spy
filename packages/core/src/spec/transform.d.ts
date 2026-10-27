@@ -12,7 +12,7 @@ import {
     UrlData,
 } from "./data.js";
 import { Baseline, FontStyle, FontWeight } from "./font.js";
-import { ExprRef } from "./parameter.js";
+import { ExprRef, CategorySelectionChannel } from "./parameter.js";
 
 /**
  * The name of the field or a JavaScript expression for accessing nested properties.
@@ -194,10 +194,13 @@ export interface SelectionFilterParams
     empty?: boolean;
 
     /**
-     * An optional mapping of positional channels to fields. Used to determine which fields
-     * are checked against the selection intervals.
+     * Maps selection components to fields. Required for category and interval
+     * filters, which have no implicit visual encoding. Category mappings must
+     * cover exactly the declared component.
      */
-    fields?: Partial<Record<PositionalChannel, Field>>;
+    fields?: Partial<
+        Record<PositionalChannel | CategorySelectionChannel, Field>
+    >;
 }
 
 export type FilterParams = ExprFilterParams | SelectionFilterParams;

@@ -82,6 +82,41 @@ describe("generated core schema", () => {
         };
         const spec = { mark: "point", params: [param] };
         expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        for (const project of [
+            { color: "shape" },
+            { fill: "color" },
+            { x: "x2" },
+        ]) {
+            expect(
+                validate({
+                    ...spec,
+                    encoding: {
+                        opacity: {
+                            condition: { param: "focus", project, value: 1 },
+                            value: 0.1,
+                        },
+                    },
+                })
+            ).toBe(true);
+        }
+        for (const project of [
+            { color: { field: "state" } },
+            { encoding: "color" },
+            { color: "x" },
+            { x: "y" },
+        ]) {
+            expect(
+                validate({
+                    ...spec,
+                    encoding: {
+                        opacity: {
+                            condition: { param: "focus", project, value: 1 },
+                            value: 0.1,
+                        },
+                    },
+                })
+            ).toBe(false);
+        }
         for (const invalid of [
             { ...param, select: { type: "point", encodings: [] } },
             {

@@ -76,6 +76,17 @@ export function updateCategorySelection(selection, value, toggle) {
 }
 
 /**
+ * @param {import("../types/selectionTypes.js").CategoryPointSelection} selection
+ * @param {unknown} value
+ * @param {boolean} empty
+ */
+export function testCategorySelection(selection, value, empty) {
+    return selection.values.size === 0
+        ? empty
+        : isCategoryValue(value) && selection.values.has(value);
+}
+
+/**
  * Resolve logical channels through the mark's existing normalization metadata.
  * No rendered color, shape code, or domain position participates in membership.
  *

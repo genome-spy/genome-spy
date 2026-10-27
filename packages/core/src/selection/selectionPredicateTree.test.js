@@ -389,7 +389,7 @@ describe("logical selection predicates", () => {
         ).toThrow(/cover/);
         expect(() =>
             resolve({ test: { param: "brush", project: { x: "y" } } })
-        ).toThrow(/Invalid interval/);
+        ).toThrow(/unsupported component/);
         expect(() =>
             resolve(
                 { test: { param: "brush", project: { x: "x2" } } },

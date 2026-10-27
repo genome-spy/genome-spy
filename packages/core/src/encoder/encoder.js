@@ -21,6 +21,7 @@ import { annotateSpecError } from "../utils/specError.js";
  * @param {{ findValue: (param: string) => any, findSelectionCapability?: import("../paramRuntime/viewParamRuntime.js").default["findSelectionCapability"] }} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} [getScale]
  * @returns {import("../types/encoder.js").Predicate}
  */
 export function createSelectionPredicate(
@@ -28,7 +29,8 @@ export function createSelectionPredicate(
     encoding,
     paramRuntime,
     hitTestMode = "intersects",
-    getType
+    getType,
+    getScale
 ) {
     /** @type {import("../selection/selectionPredicateTree.js").ResolvedSelectionPredicate | undefined} */
     let resolved;
@@ -42,7 +44,8 @@ export function createSelectionPredicate(
             encoding,
             paramRuntime,
             hitTestMode,
-            getType
+            getType,
+            getScale
         );
         return resolved;
     };
@@ -78,6 +81,7 @@ export function createSelectionPredicate(
  * @param {Pick<import("../paramRuntime/viewParamRuntime.js").default, "createExpression" | "findValue"> & Partial<Pick<import("../paramRuntime/viewParamRuntime.js").default, "getSpecLocation">>} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} [hitTestMode="intersects"]
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} [getScale]
  * @returns {import("../types/encoder.js").EncodingBranch[]}
  */
 export function createConditionalBranches(
@@ -86,7 +90,8 @@ export function createConditionalBranches(
     encoding,
     paramRuntime,
     hitTestMode = "intersects",
-    getType
+    getType,
+    getScale
 ) {
     const conditions =
         isFieldOrDatumDefWithCondition(channelDef) ||
@@ -132,7 +137,8 @@ export function createConditionalBranches(
                   encoding,
                   paramRuntime,
                   hitTestMode,
-                  getType
+                  getType,
+                  getScale
               )
             : makeConstantExprRef(index === branchChannelDefs.length - 1);
 
@@ -203,7 +209,8 @@ export default function createEncoders(unitView, encoding) {
                 encoding,
                 unitView.paramRuntime,
                 unitView.mark.defaultHitTestMode,
-                (channel) => unitView.getScaleResolution(channel)?.type
+                (channel) => unitView.getScaleResolution(channel)?.type,
+                scaleSource
             ),
             scaleSource,
             bindScale

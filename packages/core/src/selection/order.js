@@ -20,6 +20,7 @@ import { getSelectionPredicateTreeParams } from "./selectionPredicateTree.js";
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} [getScale]
  * @returns {ConditionalOrder | undefined}
  */
 export function normalizeOrderDefinition(
@@ -27,7 +28,8 @@ export function normalizeOrderDefinition(
     encoding,
     paramRuntime,
     hitTestMode,
-    getType
+    getType,
+    getScale
 ) {
     if (definition === undefined) {
         return undefined;
@@ -49,7 +51,8 @@ export function normalizeOrderDefinition(
         encoding,
         paramRuntime,
         hitTestMode,
-        getType
+        getType,
+        getScale
     );
     const params = getSelectionPredicateTreeParams(predicate.selection);
 
