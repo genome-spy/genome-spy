@@ -10,7 +10,10 @@ import {
     getSelectionPredicateTreeParams,
     normalizeSelectionPredicateTree,
 } from "./selectionPredicateTree.js";
-import { createCategorySelection } from "./categorySelection.js";
+import {
+    createCategorySelection,
+    testCategorySelection,
+} from "./categorySelection.js";
 
 /**
  * @param {import("../data/flowNode.js").Datum} datum
@@ -342,6 +345,26 @@ export function selectionValues(selection, component) {
         throw new Error(`Undeclared selection component "${component}".`);
     }
     return Array.from(selection.values);
+}
+
+/**
+ * Tests raw category membership without materializing the selected values.
+ *
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {string} component
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function selectionContains(selection, component, value) {
+    if (!isCategorySelection(selection)) {
+        throw new Error(
+            "selectionContains requires a category point selection."
+        );
+    }
+    if (selection.component !== component) {
+        throw new Error(`Undeclared selection component "${component}".`);
+    }
+    return testCategorySelection(selection, value, false);
 }
 
 /**

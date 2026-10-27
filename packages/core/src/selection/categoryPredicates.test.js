@@ -41,7 +41,7 @@ function panel(name, field = "state") {
     };
 }
 
-test("native categories bind per consumer and agree with order and explicit filters", async () => {
+test("category predicates agree across appearance, order, formulas, and filters", async () => {
     const source = panel("source");
     source.params = [
         {
@@ -53,6 +53,21 @@ test("native categories bind per consumer and agree with order and explicit filt
     const filtered = panel("filtered", "activation");
     filtered.transform = [
         { type: "filter", param: "focus", fields: { color: "activation" } },
+    ];
+    const reader = panel("reader", "activation");
+    reader.transform = [
+        {
+            type: "formula",
+            expr: "selectionContains(focus, 'color', datum.activation)",
+            as: "selected",
+        },
+    ];
+    const expressionFiltered = panel("expressionFiltered", "activation");
+    expressionFiltered.transform = [
+        {
+            type: "filter",
+            expr: "!selectionActive(focus) || selectionContains(focus, 'color', datum.activation)",
+        },
     ];
     const mapped = panel("mapped", "activation");
     mapped.encoding.shape = {
@@ -69,7 +84,7 @@ test("native categories bind per consumer and agree with order and explicit filt
         params: [
             { name: "focus", select: { type: "point", encodings: ["color"] } },
         ],
-        hconcat: [source, panel("reader", "activation"), mapped, filtered],
+        hconcat: [source, reader, mapped, filtered, expressionFiltered],
     });
     const api = categories(views.root());
     api.setValue([["1"]]);
@@ -92,20 +107,43 @@ test("native categories bind per consumer and agree with order and explicit filt
         ]);
     }
     const result = units.find((unit) => unit.name === "filtered");
-    expect(
-        Array.from(result.getCollector().getData(), (row) => row.activation)
-    ).toEqual(["1"]);
-    expect(
-        units.find((unit) => unit.name === "reader").mark.encoders.uniqueId
-    ).toBeUndefined();
+    const formula = units.find((unit) => unit.name === "reader");
+    const expressionResult = units.find(
+        (unit) => unit.name === "expressionFiltered"
+    );
+    expect(formula.mark.encoders.uniqueId).toBeUndefined();
     expect(api.getValue().encodings).toEqual(["color"]);
-    api.setValue([["not loaded"]]);
-    await root.paramRuntime.whenPropagated();
-    expect(api.getValue().active).toBe(true);
-    expect(Array.from(result.getCollector().getData())).toEqual([]);
+    for (const { values, membership } of [
+        { values: [["1"]], membership: [false, true, false, false] },
+        { values: [[1], [false]], membership: [true, false, true, false] },
+        { values: [["not loaded"]], membership: [false, false, false, false] },
+    ]) {
+        api.setValue(values);
+        await root.paramRuntime.whenPropagated();
+        const selected = [1, "1", false, "absent"].filter(
+            (_, i) => membership[i]
+        );
+        expect(
+            Array.from(formula.getCollector().getData(), (row) => row.selected)
+        ).toEqual(membership);
+        for (const unit of [result, expressionResult]) {
+            expect(
+                Array.from(
+                    unit.getCollector().getData(),
+                    (row) => row.activation
+                )
+            ).toEqual(selected);
+        }
+        expect(api.getValue().active).toBe(true);
+    }
     api.clear();
     await root.paramRuntime.whenPropagated();
-    expect(Array.from(result.getCollector().getData())).toHaveLength(4);
+    expect(
+        Array.from(formula.getCollector().getData(), (row) => row.selected)
+    ).toEqual([false, false, false, false]);
+    for (const unit of [result, expressionResult]) {
+        expect(Array.from(unit.getCollector().getData())).toHaveLength(4);
+    }
 });
 
 test("logical/named/union predicates and sampling keep their distinct contracts", async () => {

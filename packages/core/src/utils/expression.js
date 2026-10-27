@@ -22,6 +22,7 @@ import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import {
     isSelectionActive,
     selectionValues,
+    selectionContains,
     selectionBounds,
 } from "../selection/selection.js";
 
@@ -46,6 +47,7 @@ function sequence(value) {
 const functionContext = {
     selectionActive: isSelectionActive,
     selectionValues,
+    selectionContains,
     selectionBounds,
     clamp,
     tickStep,

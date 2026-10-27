@@ -186,16 +186,28 @@ test("expression helpers are reactive, scoped, detached semantic values", async 
             },
             { name: "activity", expr: "selectionActive(focus)" },
             { name: "values", expr: "selectionValues(focus, 'color')" },
+            {
+                name: "containsA",
+                expr: "selectionContains(focus, 'color', 'A')",
+            },
             { name: "brush", select: { type: "interval", encodings: ["x"] } },
         ])
     );
     const api = categories(views.root());
     expect(root.paramRuntime.findValue("values")).toEqual(["A"]);
+    expect(root.paramRuntime.findValue("containsA")).toBe(true);
+    const contains = root.paramRuntime.createExpression(
+        "selectionContains(focus, 'color', datum.value)"
+    );
+    for (const value of ["B", null, undefined, NaN, Infinity, {}, []]) {
+        expect(contains({ value })).toBe(false);
+    }
     root.paramRuntime.findValue("values").push("mutated");
     expect(api.getValue().values).toEqual([["A"]]);
     api.clear();
     await root.paramRuntime.whenPropagated();
     expect(root.paramRuntime.findValue("activity")).toBe(false);
+    expect(root.paramRuntime.findValue("containsA")).toBe(false);
     expect(
         root.paramRuntime.createExpression("selectionBounds(brush, 'x')")()
     ).toBe(null);
@@ -205,6 +217,19 @@ test("expression helpers are reactive, scoped, detached semantic values", async 
     expect(() =>
         root.paramRuntime.createExpression("selectionBounds(focus, 'color')")()
     ).toThrow(/interval/);
+    expect(() =>
+        root.paramRuntime.createExpression(
+            "selectionContains(focus, 'shape', 'A')"
+        )()
+    ).toThrow(/Undeclared/);
+    expect(() =>
+        root.paramRuntime.createExpression("selectionContains(brush, 'x', 1)")()
+    ).toThrow(/category point/);
+    expect(() =>
+        root.paramRuntime.createExpression(
+            "selectionContains(null, 'color', 'A')"
+        )()
+    ).toThrow();
 });
 
 test.each([
