@@ -78,23 +78,13 @@ function resolveScopedEmbedDeclaration(view, name, kind, lifecycle) {
  * @returns {ParamApi}
  */
 export function resolveScopedEmbedParam(view, name, lifecycle = {}) {
-    const { config, runtime, valueRuntime } = resolveScopedEmbedDeclaration(
+    const { runtime, valueRuntime } = resolveScopedEmbedDeclaration(
         view,
         name,
         "Parameter",
         lifecycle
     );
-    const readOnly = !valueRuntime.isWritable(name);
     return createParamApi(valueRuntime, name, lifecycle, (value) => {
-        if (readOnly) {
-            throw new Error('Cannot set computed parameter "' + name + '".');
-        }
-        if (
-            "select" in config &&
-            asSelectionConfig(config.select).type === "point"
-        ) {
-            throw new Error("Set point selections through getSelection().");
-        }
         runtime.setValue(name, value);
     });
 }
@@ -370,6 +360,18 @@ function createParamApi(valueRuntime, name, lifecycle, setValue) {
 
         setValue(value) {
             ensureParamApiIsLive(lifecycle);
+            if (!valueRuntime.isWritable(name)) {
+                throw new Error(
+                    'Cannot set computed parameter "' + name + '".'
+                );
+            }
+            const selection = valueRuntime.findSelectionCapability(name);
+            if (selection && selection.type !== "interval") {
+                throw new Error(
+                    `Cannot set point selection parameter "${name}" through the embed API. Use getSelection().`
+                );
+            }
+
             setValue(value);
         },
 
@@ -430,7 +432,7 @@ function registerParamDisposer(lifecycle, unsubscribe) {
  * @returns {ParamApi}
  */
 export function resolveEmbedParam(root, name) {
-    const effectiveMatches = new Map();
+    const effectiveMatches = new Set();
     root.visit((view) => {
         const param = view.paramRuntime.paramConfigs.get(name);
         if (!param) {
@@ -438,18 +440,7 @@ export function resolveEmbedParam(root, name) {
         }
 
         // Initialized declarations have a runtime owner, including outer aliases.
-        const runtime = view.paramRuntime.findRuntimeForParam(name);
-
-        const previous = effectiveMatches.get(runtime);
-        effectiveMatches.set(runtime, {
-            runtime,
-            readOnly: Boolean(previous?.readOnly || !runtime.isWritable(name)),
-            pointSelection: Boolean(
-                previous?.pointSelection ||
-                ("select" in param &&
-                    isPointSelectionConfig(asSelectionConfig(param.select)))
-            ),
-        });
+        effectiveMatches.add(view.paramRuntime.findRuntimeForParam(name));
     });
 
     if (effectiveMatches.size === 0) {
@@ -460,22 +451,9 @@ export function resolveEmbedParam(root, name) {
         throw new Error('Parameter "' + name + '" is ambiguous.');
     }
 
-    const { runtime, readOnly, pointSelection } = effectiveMatches
-        .values()
-        .next().value;
+    const runtime = effectiveMatches.values().next().value;
 
     const setValue = (/** @type {any} */ value) => {
-        if (readOnly) {
-            throw new Error('Cannot set computed parameter "' + name + '".');
-        }
-        if (pointSelection) {
-            throw new Error(
-                'Cannot set point selection parameter "' +
-                    name +
-                    '" through the embed API.'
-            );
-        }
-
         runtime.setValue(name, value);
         root.context.animator.requestRender();
     };

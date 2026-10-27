@@ -1281,7 +1281,10 @@ export default class ViewParamRuntime {
                             param.select.type === "point")) &&
                     (!recordsOnly ||
                         typeof param.select === "string" ||
-                        !("encodings" in param.select)) &&
+                        !(
+                            "encodings" in param.select &&
+                            param.select.encodings
+                        )) &&
                     (!inherited ||
                         this.findConfiguredParam(param.name).config === param)
                 ) {

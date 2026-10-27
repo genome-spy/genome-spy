@@ -13,6 +13,40 @@ function units(root) {
 }
 
 test.each([false, true])(
+    "preserves record membership without picking (explicit undefined projection: %s)",
+    async (explicitUndefined) => {
+        const { views } = await createTestEmbed({
+            params: [
+                {
+                    name: "selected",
+                    select: {
+                        type: "point",
+                        ...(explicitUndefined ? { encodings: undefined } : {}),
+                    },
+                },
+            ],
+            vconcat: [
+                {
+                    name: "source",
+                    data: { values: [{ id: "A" }, { id: "B" }] },
+                    // Only inherited record membership requires row identity here.
+                    mark: { type: "point", tooltip: null },
+                    encoding: { key: { field: "id" } },
+                },
+            ],
+        });
+        const selected = getPointSelection(
+            views.get({ scope: [], view: "source" })
+        );
+        selected.setValue([["A"], ["B"]]);
+        expect(selected.getValue().data.map((row) => row.id)).toEqual([
+            "A",
+            "B",
+        ]);
+    }
+);
+
+test.each([false, true])(
     "non-picking selection consumers infer IDs regardless of source order (source first: %s)",
     async (sourceFirst) => {
         /** @type {import("../spec/view.js").UnitSpec} */

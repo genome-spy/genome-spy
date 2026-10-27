@@ -390,6 +390,15 @@ owning backend/view. No backend handles enter semantic marks or parameter state.
 
 ### Final verification evidence
 
+Branch review fixes keep record/category classification value-based and move
+generic parameter write validation into the shared handle implementation. Both
+API entry points consult the existing owning-slot selection capability, including
+outer aliases; no parallel declaration scan or cached write policy remains.
+Headless regressions cover undefined projections, alias writes, interval writes,
+and variable shadowing. The eight focused suites pass 177 tests; Core TypeScript
+and lint checks pass. These fixes reduce the combined API/runtime implementation
+from 1,904 to 1,885 lines.
+
 - Root build, documentation build, all workspace TypeScript checks, lint, and
   release policy checks pass. The final full unit run passed 5,299 tests in 556 files, including the
   owner/legacy-controller regression coverage (one skipped and two todo).
@@ -681,8 +690,8 @@ Raw `wc -l` baseline for focused existing implementation files:
 | Renderer `selectionResources.js` + `visibilityPredicate.js`               |                  987 |
 | Total                                                                     |               10,947 |
 
-Final focused source count: 11,357 lines in the same 13 existing files, plus
-130 lines in the new `categorySelection.js`, for 11,487 lines: +540 from the
+Final focused source count: 11,338 lines in the same 13 existing files, plus
+130 lines in the new `categorySelection.js`, for 11,468 lines: +521 from the
 10,947-line baseline. The added ownership, normalization, retained bindings,
 and persistence behavior account for this growth. The old projected scaffold,
 compound activity wrapper, and duplicate App state declarations were removed.
