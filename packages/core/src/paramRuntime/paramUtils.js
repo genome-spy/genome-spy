@@ -95,6 +95,36 @@ export function isSelectionParameter(param) {
 
 /**
  * @param {import("../spec/parameter.js").Parameter} param
+ * @returns {param is import("../spec/parameter.js").PlainValueParameter & {bind: import("../spec/parameter.js").LegendBinding}}
+ */
+export function isLegendBindingParameter(param) {
+    return (
+        "bind" in param &&
+        !!param.bind &&
+        typeof param.bind === "object" &&
+        "legend" in param.bind
+    );
+}
+
+/** @param {unknown} value */
+export function validateLegendValue(value) {
+    if (
+        !Array.isArray(value) ||
+        !value.every(
+            (item) =>
+                typeof item === "string" ||
+                typeof item === "boolean" ||
+                (typeof item === "number" && Number.isFinite(item))
+        )
+    ) {
+        throw new Error(
+            "A legend-bound parameter requires an array of finite scalar category values."
+        );
+    }
+}
+
+/**
+ * @param {import("../spec/parameter.js").Parameter} param
  * @returns {param is import("../spec/parameter.js").RulerParameter}
  */
 export function isRulerParameter(param) {

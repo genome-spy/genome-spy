@@ -323,6 +323,32 @@ function createAgentApiStub(app) {
 }
 
 describe("getAgentContext", () => {
+    it("discovers legend-bound arrays and includes their live values", async () => {
+        const app = createAppStub();
+        const runtime = app.getSampleView().paramRuntime;
+        runtime.paramConfigs.set("classes", {
+            name: "classes",
+            value: [],
+            bind: { legend: "color" },
+        });
+        const getValue = runtime.getValue;
+        runtime.getValue = (name) =>
+            name === "classes" ? ["A", 1, "1"] : getValue(name);
+        const api = createAgentApiStub(app);
+        const context = await getAgentContext(api);
+        expect(context.viewRoot.parameterDeclarations).toContainEqual(
+            expect.objectContaining({
+                parameterType: "variable",
+                selector: { scope: [], param: "classes" },
+                bind: { legend: "color" },
+            })
+        );
+        expect(getAgentVolatileContext(api).parameterValues).toContainEqual({
+            selector: { scope: [], param: "classes" },
+            value: ["A", 1, "1"],
+        });
+    });
+
     it("builds a compact agent context from app state", async () => {
         const app = createAppStub();
         const agentApi = createAgentApiStub(app);

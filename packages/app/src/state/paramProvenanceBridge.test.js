@@ -1,5 +1,6 @@
 // @ts-check
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { ActionCreators } from "redux-undo";
 import { describe, expect, it, vi } from "vitest";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import {
@@ -169,6 +170,40 @@ async function getShowMessageDialogMock() {
 }
 
 describe("ParamProvenanceBridge", () => {
+    it("captures and restores legend arrays through ordinary bound-value state", async () => {
+        const view = new FakeView();
+        const write = view.paramRuntime.registerParam({
+            name: "classes",
+            value: [],
+            bind: { legend: "color" },
+        });
+        const store = createStore();
+        const bridge = createBridge(view, store, new IntentExecutor(store));
+        write(["A", 1, "1"]);
+        await bridge.whenApplied();
+        const selector = { scope: [], param: "classes" };
+        const key = makeParamSelectorKey(selector);
+        expect(
+            store.getState().provenance.present.paramProvenance.entries[key]
+                .value
+        ).toEqual({ type: "value", value: ["A", 1, "1"] });
+        store.dispatch(
+            paramProvenanceSlice.actions.paramChange({
+                selector,
+                value: { type: "value", value: ["B"] },
+            })
+        );
+        await bridge.whenApplied();
+        expect(view.paramRuntime.getValue("classes")).toEqual(["B"]);
+        store.dispatch(ActionCreators.undo());
+        await bridge.whenApplied();
+        expect(view.paramRuntime.getValue("classes")).toEqual(["A", 1, "1"]);
+        store.dispatch(ActionCreators.redo());
+        await bridge.whenApplied();
+        expect(view.paramRuntime.getValue("classes")).toEqual(["B"]);
+        bridge.dispose();
+    });
+
     it("captures param changes into provenance", () => {
         const view = new FakeView();
         const setter = view.paramRuntime.registerParam({

@@ -6,8 +6,10 @@ import { makeLerpSmoother } from "../utils/animator.js";
 import {
     getDefaultParamValue,
     isExprRef,
+    isLegendBindingParameter,
     isSelectionParameter,
     validateParameterName,
+    validateLegendValue,
 } from "./paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
 
@@ -574,6 +576,14 @@ export default class ViewParamRuntime {
             setter(defaultValue);
         }
 
+        if (isLegendBindingParameter(param)) {
+            const write = setter;
+            setter = (value) => {
+                validateLegendValue(value);
+                write(value);
+            };
+            this.#allocatedSetters.set(name, setter);
+        }
         this.#paramConfigs.set(name, param);
 
         this.#registerSelectionCapability(param);
@@ -1293,6 +1303,22 @@ function getParamKind(config) {
  */
 function validateParameterShape(param) {
     const name = param.name;
+
+    if (isLegendBindingParameter(param)) {
+        if (
+            param.bind.legend !== "color" ||
+            "select" in param ||
+            "ruler" in param ||
+            "expr" in param ||
+            "transition" in param ||
+            param.push
+        ) {
+            throw new Error(
+                `Legend binding "${name}" requires a plain value parameter and the color channel.`
+            );
+        }
+        validateLegendValue(param.value);
+    }
 
     if ("value" in param && "expr" in param) {
         throw new Error(

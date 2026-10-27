@@ -28,6 +28,27 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("legend bindings use plain array values and a color channel", () => {
+        const validate = createCoreValidator();
+        const makeSpec = (/** @type {Record<string, unknown>} */ param) => ({
+            params: [
+                {
+                    name: "focus",
+                    value: /** @type {string[]} */ ([]),
+                    bind: { legend: "color" },
+                    ...param,
+                },
+            ],
+            mark: "point",
+        });
+        expect(validate(makeSpec({}))).toBe(true);
+        expect(validate(makeSpec({ bind: { legend: "fill" } }))).toBe(false);
+        expect(validate(makeSpec({ select: "point" }))).toBe(false);
+        expect(
+            validate(makeSpec({ value: 1, transition: { type: "lerp" } }))
+        ).toBe(false);
+    });
+
     test("surround restricts plot kinds while accepting scoped and nested sides", () => {
         const validate = createCoreValidator();
         const spec = {

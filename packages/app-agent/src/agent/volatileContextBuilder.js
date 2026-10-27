@@ -117,11 +117,7 @@ function getAgentVisibleParameterValue(view, paramName, param) {
         };
     }
 
-    if (
-        !isVariableParameter(param) ||
-        !param.bind ||
-        !("input" in param.bind)
-    ) {
+    if (!isVariableParameter(param) || !param.bind) {
         return;
     }
 

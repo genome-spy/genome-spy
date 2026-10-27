@@ -478,7 +478,8 @@ class ViewSettingsButton extends LitElement {
 
 const hasVariableBindings = (/** @type {View} */ view) =>
     [...view.paramRuntime.paramConfigs.values()].some(
-        (param) => isVariableParameter(param) && param.bind
+        (param) =>
+            isVariableParameter(param) && param.bind && "input" in param.bind
     );
 
 /**

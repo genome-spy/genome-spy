@@ -295,13 +295,7 @@ export interface AgentSelectionSummary {
  */
 export interface AgentParameterBindSummary {
     input:
-        | "checkbox"
-        | "radio"
-        | "range"
-        | "select"
-        | "text"
-        | "number"
-        | "color";
+        "checkbox" | "radio" | "range" | "select" | "text" | "number" | "color";
     label: string;
     description?: string;
     debounce?: number;
@@ -335,19 +329,20 @@ export interface AgentSelectionParameterDeclaration extends AgentParameterDeclar
 }
 
 /**
- * Adjustable variable parameter bound to an input control.
+ * Adjustable variable parameter bound to an input control or legend.
  */
 export interface AgentVariableParameterDeclaration extends AgentParameterDeclarationBase {
     parameterType: "variable";
-    bind: AgentParameterBindSummary;
+    bind:
+        | AgentParameterBindSummary
+        | import("@genome-spy/core/spec/parameter.js").LegendBinding;
 }
 
 /**
  * Adjustable parameter declared by the visualization spec.
  */
 export type AgentParameterDeclaration =
-    | AgentSelectionParameterDeclaration
-    | AgentVariableParameterDeclaration;
+    AgentSelectionParameterDeclaration | AgentVariableParameterDeclaration;
 
 /**
  * Field inside a selected view that can be aggregated into a derived workflow.

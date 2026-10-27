@@ -26,12 +26,12 @@ Parameters with input bindings should have a unique `name` within the [import
 scope](./import.md#repeating-with-named-templates). While not enforced in core,
 this is necessary for bookmarkable state in the GenomeSpy App.
 
-By default, selection parameters and parameters with input bindings are
+By default, selection parameters and parameters with input or legend bindings are
 persisted in the GenomeSpy App's bookmarks and provenance history. Use
 `persist: false` to opt out of persistence for ephemeral params (such as hover
-selections) or when `encoding.key` is not defined for point selections.
+selections) or when `encoding.key` is not defined for row-based point selections.
 
-For point selections, `encoding.key` should uniquely identify rows.
+For row-based point selections, `encoding.key` should uniquely identify rows.
 You can use either a single field or a composite key (an array of field
 definitions). When using a composite key, keep the field order stable across
 bookmark creation and restore.
@@ -40,6 +40,46 @@ The following example shows how to bind parameters to input elements and use
 them to control the size, angle, and text of a text mark.
 
 EXAMPLE examples/docs/grammar/parameters/input-bindings.json height=250
+
+## Legend Bindings
+
+Bind an array-valued parameter to a categorical color symbol legend:
+
+```json
+{ "name": "cell_types", "value": [], "bind": { "legend": "color" } }
+```
+
+Click an entry to replace the array with its category, Shift-click to toggle a
+category, and double-click an entry to clear. Values retain their original
+string, number or boolean types. An empty array represents no focus. Plot clicks
+do not change this parameter.
+
+The chart defines how the array affects its marks. The example uses an ordinal
+opacity scale with an explicit category domain and expression-valued range.
+Each expression compares the array with its corresponding
+`domain('fillOpacity')[i]` value. Keep this domain stable, with `reverse: false`;
+changing its length requires updating the range expressions too.
+
+EXAMPLE examples/docs/grammar/parameters/interactive-legend.json height=350
+
+`color` identifies the scale in the declaring view's scope. For a shared color
+scale, declare the binding in a common ancestor where all contributors resolve
+the same parameter. Independent color scales can have separate local bindings,
+even when they encode the same field. Collecting legends elsewhere does not
+change which scale or parameter they control.
+
+Like [Vega-Lite's interactive legend](https://vega.github.io/vega-lite/examples/interactive_legend.html),
+this example dims other categories while retaining all data, entries and colors.
+Dimmed points remain available to hover and brush interactions. A separate
+rectangular brush and semantic-zoom sampling remain independent of this focus.
+The binding does not filter records. Legend gestures are supported by the WebGL
+and Canvas renderers; the experimental WebGPU backend does not yet support
+these legend hit areas.
+
+Embedding applications can read, write and observe the array through the
+existing `params.get("cell_types")` API (`params.get<string[]>("cell_types")`
+for string categories in TypeScript). GenomeSpy App saves bound arrays in
+bookmarks and provenance without row keys; `persist: false` opts out.
 
 ## Expressions
 
