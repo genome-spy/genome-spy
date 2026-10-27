@@ -1,5 +1,5 @@
 ---
-"@genome-spy/core": major
+"@genome-spy/core": minor
 "@genome-spy/app": minor
 "@genome-spy/app-agent": minor
 ---
