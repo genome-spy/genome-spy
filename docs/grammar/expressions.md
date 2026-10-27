@@ -262,7 +262,7 @@ range changes do not determine magnification.
 
 Selection functions take the selection parameter itself, for example
 `selectionActive(picked)`. They follow ordinary expression scope and reactive
-updates. Use native `param` predicates to test row membership.
+updates.
 
 <a name="selectionActive" href="#selectionActive">#</a>
 <b>selectionActive</b>(<i>selection</i>)<br/>
@@ -277,13 +277,28 @@ such as `selectionValues(activation_states, 'color')`. An empty category
 selection returns `[]`. Record and interval selections do not support this
 operation.
 
+<a name="selectionContains" href="#selectionContains">#</a>
+<b>selectionContains</b>(<i>selection</i>, <i>component</i>, <i>value</i>)<br/>
+Tests raw category membership with type-sensitive equality. Empty selections and
+unsupported values such as `null` return `false`. Record and interval selections
+are not supported. Unlike `selectionValues`, this function allocates no array
+and is suitable for per-row formula and filter expressions:
+
+```json
+{
+  "type": "formula",
+  "expr": "selectionContains(focus, 'color', datum.activation_state)",
+  "as": "selected"
+}
+```
+
 <a name="selectionBounds" href="#selectionBounds">#</a>
 <b>selectionBounds</b>(<i>selection</i>, <i>component</i>)<br/>
 Returns a detached numeric `[start, end]` pair for a declared interval component,
 such as `selectionBounds(brush, 'x')`, or `null` when cleared. Locus bounds use
 linearized genomic coordinates. Point selections do not support this operation.
 
-All three functions reject non-selection arguments. Component functions reject
+These functions reject non-selection arguments. Component functions reject
 undeclared components. They read stored values without scanning matching rows.
 
 ### Other functions

@@ -216,14 +216,19 @@ Use parameter values as function arguments, so ordinary lexical binding and
 dependency tracking apply without string-name lookup or a second subscription
 system. Proposed public functions:
 
-| Function                                | Applicable kinds                                  | Result when empty                       | Diagnostics                                     |
-| --------------------------------------- | ------------------------------------------------- | --------------------------------------- | ----------------------------------------------- |
-| `selectionActive(selection)`            | Record point, category point, positional interval | `false`                                 | Reject a non-selection argument.                |
-| `selectionValues(selection, component)` | Category point                                    | Detached `[]`                           | Reject other kinds and an undeclared component. |
-| `selectionBounds(selection, component)` | Positional interval                               | `null` for a cleared declared component | Reject other kinds and an undeclared component. |
+| Function                                         | Applicable kinds                                  | Result when empty                       | Diagnostics                                     |
+| ------------------------------------------------ | ------------------------------------------------- | --------------------------------------- | ----------------------------------------------- |
+| `selectionActive(selection)`                     | Record point, category point, positional interval | `false`                                 | Reject a non-selection argument.                |
+| `selectionValues(selection, component)`          | Category point                                    | Detached `[]`                           | Reject other kinds and an undeclared component. |
+| `selectionContains(selection, component, value)` | Category point                                    | `false`                                 | Reject other kinds and an undeclared component. |
+| `selectionBounds(selection, component)`          | Positional interval                               | `null` for a cleared declared component | Reject other kinds and an undeclared component. |
 
 `selectionValues` returns a flat array of raw scalars in selection order, for
 example `selectionValues(activation_states, 'color')`. It includes absent values.
+`selectionContains` tests a raw scalar through the existing
+`testCategorySelection` matcher with `empty: false`, without allocating an array.
+Unsupported category values return `false`. Formula and filter expressions use
+the existing scoped dependency and replay machinery without transform changes.
 `selectionBounds(brush, 'x')` returns a detached numeric `[lo, hi]` pair in
 native domain coordinates, matching the existing snapshot's `intervals` view;
 locus bounds are linearized genomic coordinates. Complex genomic endpoints
@@ -235,7 +240,8 @@ the native activity helper. Bounds access needs no brush controller or screen
 geometry and must not trigger the broader interval API refactoring. Register
 the functions through the existing expression whitelist and retain located
 errors. Migrate the overview/detail example's direct `brush.intervals.x` access
-to `selectionBounds(brush, 'x')`; use native `param` predicates for membership.
+to `selectionBounds(brush, 'x')`; use native `param` predicates for filtering and
+appearance, and `selectionContains` for category membership within expressions.
 
 ### Sampling policy decision and compatibility
 
