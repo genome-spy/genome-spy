@@ -1,5 +1,6 @@
 // @ts-check
 import { describe, expect, it, vi } from "vitest";
+import * as adapters from "./metadataSourceAdapters.js";
 import {
     createMetadataSourceRuntime,
     getMetadataSourceRuntime,
@@ -66,6 +67,26 @@ describe("createMetadataSourceRuntime", () => {
         expect(secondSources).toBe(firstSources);
         expect(secondAdapter).toBe(firstAdapter);
         expect(loadJson).not.toHaveBeenCalled();
+    });
+
+    it("shares adapter creation and retries a failed lazy module load", async () => {
+        const error = new Error("Adapter module failed to load");
+        const create = vi
+            .spyOn(adapters, "createMetadataSourceAdapter")
+            .mockRejectedValueOnce(error);
+        try {
+            const runtime = createMetadataSourceRuntime(createSampleViewStub());
+            const [source] = await runtime.getSources();
+            const pending = runtime.getAdapter(source);
+            expect(runtime.getAdapter(source)).toBe(pending);
+            await expect(pending).rejects.toBe(error);
+
+            const adapter = await runtime.getAdapter(source);
+            expect(await adapter.listSampleIds()).toEqual(["s1"]);
+            expect(create).toHaveBeenCalledTimes(2);
+        } finally {
+            create.mockRestore();
+        }
     });
 
     it("resolves imported sources once and retries after failed imports", async () => {

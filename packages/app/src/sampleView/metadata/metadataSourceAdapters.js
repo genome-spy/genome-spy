@@ -221,14 +221,17 @@ export function resolveMetadataSourceFromSources(sources, sourceId) {
 /**
  * @param {MetadataSourceDef} source
  * @param {{ baseUrl?: string }} [options]
- * @returns {MetadataSourceAdapter}
+ * @returns {Promise<MetadataSourceAdapter>}
  */
-export function createMetadataSourceAdapter(source, options = {}) {
-    if (
-        source.backend.backend === "data" ||
-        source.backend.backend === "figwig"
-    ) {
+export async function createMetadataSourceAdapter(source, options = {}) {
+    if (source.backend.backend === "data") {
         return new TableMetadataSourceAdapter(source, options);
+    }
+
+    if (source.backend.backend === "figwig") {
+        const { default: FigWigMetadataSourceAdapter } =
+            await import("./adapters/figWigMetadataSourceAdapter.js");
+        return new FigWigMetadataSourceAdapter(source, options);
     }
 
     if (source.backend.backend === "zarr") {

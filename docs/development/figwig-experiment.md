@@ -132,10 +132,11 @@ common-bin cases still pass with zero error.
 
 The App's `figwig` metadata backend uses `getTracks()` and caches ordinary
 metadata rows through the existing eager table adapter. It closes its own
-short-lived header reader and never decodes signal chunks. The adapter grew
-from 344 to 383 lines; table selection, validation, exclusions, grouping and
-publication remain shared with the data backend. Reserved track fields and the
-App's canonical `sample` field cannot be imported as attributes.
+short-lived header reader and never decodes signal chunks. The shared table
+adapter has 349 lines and the separate Figwig adapter has 45, compared with the
+original data adapter's 344. Table selection, validation, exclusions, grouping
+and publication remain shared with the data backend. Reserved track fields and
+the App's canonical `sample` field cannot be imported as attributes.
 
 The mouse Figwig variant imports `metadata-figwig.json`, preserving the original
 attribute definitions and excluding duplicate helper aliases. Identity and
@@ -148,6 +149,25 @@ mouse panning passed. No loading or console errors were observed.
 The original BigWig variant, accepted v4 artifacts and publication records are
 unchanged. All recipe changes and the regenerated data remain local and
 uncommitted.
+
+## Optional dependency loading
+
+Core's minimal entry excludes the Figwig source, reader and pako from every
+emitted chunk. `import "@genome-spy/core/figwig"` registers the optional signal
+source alongside `@genome-spy/core/minimal`; its reader still loads on demand.
+The App loads its Figwig metadata adapter through a dynamic import when that
+backend is selected. The shared table adapter contains no Figwig dependency.
+
+Metadata runtime state caches adapter-creation promises. Bootstrap skips source
+definitions with `initialLoad: false`, and dialog/import/summary operations await
+the adapter when needed. A real browser test configured a deferred Figwig source
+and verified zero adapter, reader, pako or Figwig-file requests during startup.
+The mouse metadata and UI checks also pass through the asynchronous path.
+
+The Core bundle verification checks both bare minimal and explicitly enabled
+Figwig builds. The App production build inspects emitted ESM module graphs and
+rejects eager adapter, reader or pako dependencies. Fat UMD bundles intentionally
+include these implementations; the user explicitly accepted that distribution.
 
 ## Numerical validation
 
@@ -413,7 +433,7 @@ the main App experiment needs only `h3k27ac.fw`.
 
 ## Verification and limitations
 
-The full unit suite passed 556 files and 5,299 tests, with one skipped and two
+The full unit suite passed 557 files and 5,301 tests, with one skipped and two
 todo. Narrow source and App regression tests, generated-schema tests, upstream
 reader tests (160 and three Chromium tests), numerical validation, and
 real-browser checks passed.

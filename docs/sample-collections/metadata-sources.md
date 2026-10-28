@@ -348,6 +348,11 @@ reads those attributes without loading signal chunks. Track names identify the
 samples, and custom attributes become metadata columns with the same grouping,
 styling and exclusion options as table sources.
 
+The adapter and reader load on demand in ESM builds when this backend is used.
+Sources with `initialLoad: false` do not load the adapter during startup;
+importing columns or inspecting their identifiers loads it later. Fat UMD
+bundles include the implementation.
+
 ```json
 {
   "id": "signal-metadata",
@@ -363,9 +368,8 @@ styling and exclusion options as table sources.
 
 Embedded JSON values retain their types. Store quantitative attributes as JSON
 numbers when preparing the Figwig file. Reserved track fields (`name`, `dtype`,
-`group`) and the App's canonical identifier field
-`sample` are excluded. Other helper attributes or duplicate aliases can be
-removed with `excludeColumns`.
+`group`) and the App's canonical identifier field `sample` are excluded. Other
+helper attributes or duplicate aliases can be removed with `excludeColumns`.
 
 Metadata loading is independent of the visible signal tracks. Sample identity
 and display labels still come from `samples.identity`; this backend does not

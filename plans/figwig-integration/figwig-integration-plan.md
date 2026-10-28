@@ -244,3 +244,42 @@ stripped to IDs and labels. The mouse UI and both bookmark passes exercise
 grouping, selected tracks, metadata-derived plots and panning. Full tests pass
 5,299 cases in 556 files; the production App, metadata schema and documentation
 build pass. Identity-source integration remains explicitly out of scope.
+
+## Optional adapter and bundle boundaries
+
+The metadata adapter must be loaded through a dynamic import only when the
+Figwig backend is selected. Split the Figwig-specific reader from the shared
+table adapter and use asynchronous adapter creation at the existing async
+metadata-runtime boundary. Cache adapter promises in that runtime, remove the
+dialog's duplicate adapter cache, and preserve import errors, cancellation and
+source-change guards. Data and Zarr behavior stay the same.
+
+Core's minimal entry already excludes the Figwig source and reader. Add explicit
+bundle assertions across every emitted chunk for Figwig and pako, and expose
+`@genome-spy/core/figwig` as the optional registration entry alongside minimal.
+The App recognizes the metadata backend on demand, so the explicit signal
+registration and selected metadata backend enable both uses without Core
+depending on App. Verify the opted-in minimal fixture retains the source while
+keeping its reader and pako behind dynamic imports.
+
+The full/default runtime continues to register the signal source. The user
+explicitly accepts fat UMD bundles; ESM must keep the metadata adapter and reader
+out of the synchronous import graph. Inspect actual build module graphs and
+extend App's production-bundle checks rather than relying on import syntax.
+Tests cover async creation/caching, failure boundaries and the mouse metadata
+example. Tentative commit: `perf(app): load the Figwig metadata adapter on demand`.
+
+Implemented and independently reviewed: the Figwig class and reader sit behind
+the selected factory's dynamic import; the shared table implementation has no
+Figwig edge. Existing async metadata operations await creation, the runtime owns
+the sole promise cache, and failed creation clears that cache. Disabled startup
+sources skip adapter creation. Combined adapter code grew by 11 lines; the
+dialog's redundant cache was removed.
+
+Both Core bundle fixtures pass: bare minimal excludes the entire Figwig/pako
+graph, and minimal plus `@genome-spy/core/figwig` includes registration with an
+asynchronous reader. The production App build verifies ESM module boundaries;
+fat UMD remains supported. Browser checks confirm zero Figwig network requests
+for deferred metadata and correct mouse metadata, plots, grouping and panning.
+The final full suite passes 5,301 tests in 557 files; workspace types, lint,
+production App and documentation builds pass.

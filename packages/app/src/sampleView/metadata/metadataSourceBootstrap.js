@@ -3,6 +3,7 @@ import { sampleSlice } from "../state/sampleSlice.js";
 import { resetProvenanceHistory } from "../../state/provenanceBaseline.js";
 import {
     chunkInitialLoadColumns,
+    getEffectiveInitialLoad,
     resolveInitialLoadColumnIds,
 } from "./metadataSourceInitialLoad.js";
 import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
@@ -76,7 +77,10 @@ export async function bootstrapInitialMetadataSources(
     let replace = true;
 
     for (const source of sources) {
-        const adapter = runtime.getAdapter(source);
+        if (getEffectiveInitialLoad(source) === false) {
+            continue;
+        }
+        const adapter = await runtime.getAdapter(source);
         const columnIds = await resolveInitialLoadColumnIds(source, adapter);
         if (columnIds.length === 0) {
             continue;

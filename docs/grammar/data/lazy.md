@@ -111,6 +111,10 @@ The `"figwig"` source loads multiple signal tracks from one
 `start`, `end`, `score`, and `sampleId`; `sampleId` is the track name stored in
 the file. These rows work with ordinary marks and the App's sample encoding.
 
+With the [minimal entry point](../../api/embedding.md#minimal), add
+`import "@genome-spy/core/figwig"` before embedding. The reader loads on demand
+in ESM builds; the full UMD bundle includes it.
+
 ```json
 {
   "data": {

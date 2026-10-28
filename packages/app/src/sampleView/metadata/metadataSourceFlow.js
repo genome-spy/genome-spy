@@ -36,7 +36,7 @@ export async function augmentAddMetadataFromSourceAction(
         source,
         payload,
         sampleIds,
-        adapter: runtime.getAdapter(source),
+        adapter: await runtime.getAdapter(source),
         signal,
     });
 

@@ -55,6 +55,20 @@ See
 the [full runtime entry point](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/genomeSpy.js)
 for the complete list of optional modules.
 
+For Figwig signal data, explicitly register its source alongside the minimal
+entry:
+
+```js
+import { embed } from "@genome-spy/core/minimal";
+import "@genome-spy/core/figwig";
+import "@genome-spy/core/rendering/webgl.js";
+```
+
+The minimal entry alone includes neither Figwig nor pako. With the optional
+source registered, the reader loads only when Figwig data is requested. The
+App's Figwig metadata backend also loads its implementation on demand when
+selected in the specification. Fat UMD bundles include these implementations.
+
 The `webgl.js` import enables WebGL2. The `canvas.js` import enables Canvas2D.
 Import `svg.js` when using SVG export. You can omit
 any renderer capability the host application does not use; Core reports the

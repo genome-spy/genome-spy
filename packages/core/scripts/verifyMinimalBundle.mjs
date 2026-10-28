@@ -20,6 +20,7 @@ const forbiddenSources = [
     "src/data/sources/lazy/registerBuiltInLazySources.js",
     "src/data/sources/lazy/indexedFastaSource.js",
     "src/data/sources/lazy/bigWigSource.js",
+    "src/data/sources/lazy/figWigSource.js",
     "src/data/sources/lazy/bigBedSource.js",
     "src/data/sources/lazy/bamSource.js",
     "src/data/sources/lazy/gff3Source.js",
@@ -67,6 +68,15 @@ try {
         }
     }
 
+    const minimalBundleSources = readAllOutputSources(minimalOutput);
+    const figwigSource = minimalBundleSources.find(isFigwigDependency);
+    if (figwigSource) {
+        throw new Error(
+            "Minimal bundle must exclude Figwig and pako entirely: " +
+                figwigSource
+        );
+    }
+
     verifyNoOptionalRendererSources(
         readAllOutputSources(minimalOutput),
         "Minimal bundle"
@@ -112,6 +122,28 @@ try {
         name: "Canvas2D",
         directory: "src/rendering/canvas2d/",
     });
+
+    const figwigEntry = path.resolve("scripts/fixtures/minimalFigwig.js");
+    const figwigOutput = await buildEntry(
+        figwigEntry,
+        "genomeSpyEmbedMinimalFigwig",
+        path.join(tempDir, "minimal-figwig")
+    );
+    const figwigStaticSources = readStaticEntrySources(
+        figwigOutput,
+        figwigEntry
+    );
+    if (
+        !figwigStaticSources.some((source) =>
+            source.endsWith("src/data/sources/lazy/figWigSource.js")
+        ) ||
+        figwigStaticSources.some(isFigwigReaderDependency) ||
+        !readAllOutputSources(figwigOutput).some(isFigwigReaderDependency)
+    ) {
+        throw new Error(
+            "Minimal plus Figwig must register the source and load its reader asynchronously."
+        );
+    }
     if (
         !readAllOutputSources(minimalCanvasOutput).some((source) =>
             source.includes(softwarePickingDirectory)
@@ -372,6 +404,19 @@ function isWebGLImplementationSource(source) {
 /** @param {string} source */
 function normalizeSource(source) {
     return source.replaceAll("\\", "/");
+}
+
+/** @param {string} source */
+function isFigwigReaderDependency(source) {
+    return /\/(?:@genome-spy\/figwig|pako)\//.test(normalizeSource(source));
+}
+
+/** @param {string} source */
+function isFigwigDependency(source) {
+    return (
+        source.endsWith("src/data/sources/lazy/figWigSource.js") ||
+        isFigwigReaderDependency(source)
+    );
 }
 
 /**

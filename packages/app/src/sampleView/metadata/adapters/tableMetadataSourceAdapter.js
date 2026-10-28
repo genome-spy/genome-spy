@@ -5,7 +5,7 @@ import {
     responseType,
     toVegaLoaderFormat,
 } from "@genome-spy/core/data/sources/dataUtils.js";
-import { concatUrl, resolveUrl } from "@genome-spy/core/utils/url.js";
+import { concatUrl } from "@genome-spy/core/utils/url.js";
 import { validateMetadata } from "../metadataValidation.js";
 import { wrangleMetadata } from "../metadataUtils.js";
 import { resolveMetadataSourceAttributes } from "../metadataSourceAttributes.js";
@@ -13,16 +13,11 @@ import { collectExampleValues } from "../exampleValues.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
- * @typedef {import("@genome-spy/app/spec/sampleView.js").DataBackendDef} DataBackendDef
- * @typedef {import("@genome-spy/app/spec/sampleView.js").FigWigBackendDef} FigWigBackendDef
  */
 
 export default class TableMetadataSourceAdapter {
     /** @type {MetadataSourceDef} */
     #source;
-
-    /** @type {DataBackendDef | FigWigBackendDef} */
-    #backend;
 
     /** @type {string} */
     #sampleIdField;
@@ -38,23 +33,19 @@ export default class TableMetadataSourceAdapter {
 
     /**
      * @param {MetadataSourceDef} source
-     * @param {{ baseUrl?: string }} [options]
+     * @param {{ baseUrl?: string; sampleIdField?: string; excludedColumns?: string[] }} [options]
      */
     constructor(source, options = {}) {
         this.#source = source;
-        this.#backend =
-            /** @type {DataBackendDef | FigWigBackendDef} */
-            (source.backend);
         this.#sampleIdField =
-            this.#backend.backend === "figwig"
-                ? "name"
-                : (this.#backend.sampleIdField ?? "sample");
+            options.sampleIdField ??
+            (source.backend.backend === "data"
+                ? (source.backend.sampleIdField ?? "sample")
+                : "sample");
         this.#baseUrl = options.baseUrl;
         this.#excludedColumns = new Set([
             this.#sampleIdField,
-            ...(this.#backend.backend === "figwig"
-                ? ["dtype", "group", "sample"]
-                : []),
+            ...(options.excludedColumns ?? []),
             ...(source.excludeColumns ?? []),
         ]);
     }
@@ -228,12 +219,10 @@ export default class TableMetadataSourceAdapter {
      */
     async #loadRows(signal) {
         if (!this.#rowsPromise) {
-            this.#rowsPromise = this.#loadRowsUncached(signal).catch(
-                (error) => {
-                    this.#rowsPromise = undefined;
-                    throw error;
-                }
-            );
+            this.#rowsPromise = this.loadRows(signal).catch((error) => {
+                this.#rowsPromise = undefined;
+                throw error;
+            });
         }
         return this.#rowsPromise;
     }
@@ -241,12 +230,14 @@ export default class TableMetadataSourceAdapter {
     /**
      * @param {AbortSignal} [signal]
      * @returns {Promise<Record<string, any>[]>}
+     * @protected
      */
-    async #loadRowsUncached(signal) {
-        if (this.#backend.backend === "figwig") {
-            return this.#loadFigwigRows(this.#backend, signal);
+    async loadRows(signal) {
+        const backend = this.#source.backend;
+        if (backend.backend !== "data") {
+            throw new Error("Table metadata loading requires a data backend.");
         }
-        const data = this.#backend.data;
+        const data = backend.data;
 
         if ("url" in data) {
             return this.#loadRowsFromUrlData(data, signal);
@@ -259,31 +250,6 @@ export default class TableMetadataSourceAdapter {
         throw new Error(
             "Metadata source data backend supports only UrlData and InlineData."
         );
-    }
-
-    /**
-     * @param {FigWigBackendDef} backend
-     * @param {AbortSignal} [signal]
-     * @returns {Promise<Record<string, any>[]>}
-     */
-    async #loadFigwigRows(backend, signal) {
-        const { FigWig } = await import("@genome-spy/figwig");
-        const reader = new FigWig({
-            url: resolveUrl(this.#baseUrl, backend.url),
-        });
-
-        try {
-            const tracks = await reader.getTracks({ signal });
-            return tracks.map((track) => {
-                /** @type {Record<string, any>} */
-                const row = { ...track.metadata, name: track.name };
-                delete row.dtype;
-                delete row.group;
-                return row;
-            });
-        } finally {
-            await reader.close();
-        }
     }
 
     /**

@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAppDevServerPlugin } from "../../devServerRoutes.mjs";
 import { visualizer } from "rollup-plugin-visualizer";
+import verifyLazyFigwig from "./scripts/verifyLazyFigwig.mjs";
 
 const process = globalThis.process;
 const packageDir = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,7 @@ export default defineConfig(({ command }) => ({
             }),
         },
         visualizer(),
+        verifyLazyFigwig(),
     ],
     define: {
         // A hack needed by events package

@@ -246,12 +246,12 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapterAny(source);
+        const adapter = await createMetadataSourceAdapterAny(source);
         expect(await adapter.listSampleIds()).toEqual(["s1"]);
         expect(await adapter.listColumns()).toEqual([{ id: "age" }]);
     });
 
-    it("creates a zarr backend adapter", () => {
+    it("creates a zarr backend adapter", async () => {
         const source = {
             backend: {
                 backend: "zarr",
@@ -259,11 +259,11 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapterAny(source);
+        const adapter = await createMetadataSourceAdapterAny(source);
         expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
     });
 
-    it("throws for unsupported backends", () => {
+    it("throws for unsupported backends", async () => {
         const source = {
             backend: {
                 backend: "parquet",
@@ -272,12 +272,12 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        expect(() => createMetadataSourceAdapterAny(source)).toThrow(
+        await expect(createMetadataSourceAdapterAny(source)).rejects.toThrow(
             'Metadata backend "parquet" is not implemented yet.'
         );
     });
 
-    it("ignores defaultAttributeDef for compatibility", () => {
+    it("ignores defaultAttributeDef for compatibility", async () => {
         const source = {
             id: "expression",
             defaultAttributeDef: {
@@ -289,7 +289,7 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapterAny(source);
+        const adapter = await createMetadataSourceAdapterAny(source);
         expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
     });
 });
