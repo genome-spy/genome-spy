@@ -123,6 +123,12 @@ test("bounds results globally and reports partial, unscanned, and excluded sourc
         "unscanned",
     ]);
     expect(search.findDatums("TP53", { limit: 0 }).truncated).toBe(true);
+    const restricted = search.findDatums("TP53", { limit: 1, field: "symbol" });
+    expect(restricted.matches[0].fields).toEqual(["symbol"]);
+    expect(restricted.sources.map((source) => source.scan)).toEqual([
+        "partial",
+        "excluded",
+    ]);
     const exact = search.findDatums("TP53", {
         limit: 2,
         field: "symbol",

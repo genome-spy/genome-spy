@@ -23,28 +23,19 @@ export function parseCoordinates(text, assembly) {
             : { kind: "not-coordinate" };
     }
 
-    // Prefer explicit cross-contig syntax without a dictionary. With a
-    // dictionary, resolve candidates against actual names, including delimiters.
-    const cross = query.match(/^(.+):([\d,]+)-(.+):([\d,]+)$/);
-    const range = query.match(/^(.+):([\d,]+)-([\d,]+)$/);
-    const point = query.match(/^(.+):([\d,]+)$/);
-    const candidates = [
-        ...(cross ? [[cross[1], cross[2], cross[3], cross[4]]] : []),
-        ...(range ? [[range[1], range[2], range[1], range[3]]] : []),
-        ...(point ? [[point[1], point[2], point[1], point[2]]] : []),
-    ];
-    if (!candidates.length)
-        return invalid("syntax", "Invalid coordinate syntax: " + query);
-
-    const known = names ? dictionaryCandidates(query, names) : candidates;
-    if (names && known.length === 0)
-        return invalid("unknown-contig", "Unknown contig in: " + query);
-    if (names && known.length > 1)
+    const candidates = names ? dictionaryCandidates(query, names) : [];
+    if (candidates.length > 1)
         return invalid(
             "ambiguous-contig",
             "Ambiguous contig delimiters in: " + query
         );
-    const [startName, startText, endName, endText] = known[0];
+    const candidate = candidates[0] ?? syntaxCandidate(query);
+    if (!candidate)
+        return invalid("syntax", "Invalid coordinate syntax: " + query);
+    if (names && !candidates.length)
+        return invalid("unknown-contig", "Unknown contig in: " + query);
+
+    const [startName, startText, endName, endText] = candidate;
     const numberPattern = /^(?:\d+|\d{1,3}(?:,\d{3})+)$/;
     const start = Number(startText.replaceAll(",", ""));
     const end = Number(endText.replaceAll(",", ""));
@@ -72,6 +63,18 @@ export function parseCoordinates(text, assembly) {
         return invalid("order", "Coordinate interval is reversed.");
     }
     return coordinate(startChrom, start - 1, endChrom, end);
+}
+
+/**
+ * Without a dictionary, prefer cross-contig syntax over delimiter-containing names.
+ * Also distinguishes malformed syntax from unknown names when dictionary lookup fails.
+ * @param {string} query
+ */
+function syntaxCandidate(query) {
+    const cross = query.match(/^(.+):([\d,]+)-(.+):([\d,]+)$/);
+    if (cross) return cross.slice(1);
+    const same = query.match(/^(.+):([\d,]+)(?:-([\d,]+))?$/);
+    if (same) return [same[1], same[2], same[1], same[3] ?? same[2]];
 }
 
 /**

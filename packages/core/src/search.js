@@ -70,11 +70,20 @@ export function createDatumSearch(views) {
                 throw new Error(
                     "Field must be a non-empty declared search field."
                 );
-            const entries = sources(options.view);
-            if (
-                options.field &&
-                !entries.some(({ fields }) => fields.includes(options.field))
-            ) {
+            const entries = sources(options.view).map((entry) => {
+                const accessors = entry.unit.getSearchAccessors();
+                const fields = entry.fields
+                    .map((field, index) => ({
+                        field,
+                        accessor: accessors[index],
+                    }))
+                    .filter(
+                        ({ field }) => !options.field || field === options.field
+                    );
+                if (!fields.length) entry.source.scan = "excluded";
+                return { ...entry, fields };
+            });
+            if (options.field && !entries.some(({ fields }) => fields.length)) {
                 throw new Error(
                     "The requested scope does not search the field " +
                         options.field +
@@ -92,10 +101,6 @@ export function createDatumSearch(views) {
                 truncated: false,
                 sources: entries.map(({ source }) => source),
             };
-            for (const entry of entries) {
-                if (options.field && !entry.fields.includes(options.field))
-                    entry.source.scan = "excluded";
-            }
             for (const { unit, fields, source } of entries) {
                 if (
                     source.scan === "excluded" ||
@@ -103,16 +108,13 @@ export function createDatumSearch(views) {
                 )
                     continue;
                 source.scan = "partial";
-                const accessors = unit.getSearchAccessors();
                 const project = createTargetProjector(unit);
                 for (const [facetId, data] of unit.getCollector()
                     .facetBatches) {
                     for (const datum of data) {
                         source.rowsExamined++;
-                        const matchedFields = fields.filter((field, index) => {
-                            if (options.field && field !== options.field)
-                                return false;
-                            const value = accessors[index](datum);
+                        const matchedFields = fields.filter(({ accessor }) => {
+                            const value = accessor(datum);
                             if (value === null || value === undefined)
                                 return false;
                             const text = String(value);
@@ -139,7 +141,7 @@ export function createDatumSearch(views) {
                         matches.push({
                             view: source.view,
                             datum: copyDatum(datum),
-                            fields: matchedFields,
+                            fields: matchedFields.map(({ field }) => field),
                             facetId:
                                 facetId === undefined
                                     ? undefined

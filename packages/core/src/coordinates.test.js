@@ -61,6 +61,17 @@ describe("optional coordinate utilities", () => {
             );
     });
 
+    test.each([
+        ["chr1:nope", "syntax"],
+        ["unknown:10", "unknown-contig"],
+        ["chr1:1,00", "syntax"],
+    ])("keeps assembly-aware error classification for %s", (query, code) => {
+        expect(parseCoordinates(query, assembly)).toMatchObject({
+            kind: "invalid-coordinate",
+            code,
+        });
+    });
+
     test("only an assembly establishes bounds, contig existence, aliases, and inter-contig order", () => {
         for (const query of [
             "unknown:10",
