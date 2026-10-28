@@ -95,7 +95,7 @@ Canvas/SVG/WebGPU changes, new passes/buffers/textures or per-frame allocations.
 
 Estimate: 5-7 delivery files, 40-70 changed runtime lines and 150-220 focused test
 lines, plus minimal rectangle snapshot updates and one @genome-spy/core patch
-Changeset. Target <=350 added raw lines including snapshots, excluding this plan.
+Changeset. Revised target <=360 added raw lines including snapshots, excluding this plan.
 Report exact raw/runtime/test/snapshot counts before opening a PR; re-scope before
 exceeding the budget. The patch fragment describes corrected observable rectangle
 transparency; existing fixed-group release intent may already be minor.
@@ -114,7 +114,7 @@ new dependency is justified. Before coding: specify paint-over-shadow weighting,
 measure live and exported alpha separately, prove positive picks/retained updates,
 and save temporary paired-baseline neighbor pixels including edge strips. Existing
 snapshots are isolation guards, not proof that browser shader variants link.
-Keep the <=350 added-line budget, avoid new full shader snapshots or a test framework.
+Keep the revised <=360 added-line budget, avoid new full shader snapshots or a test framework.
 
 ## Bounded baseline proof (2026-10-28)
 
@@ -162,7 +162,7 @@ Zero browser page errors and zero WebGL errors. No production/test/dependency
 files changed; no candidate shader or performance proof was introduced.
 
 Baseline gates above are complete; implementation outcome is recorded below.
-Keep export/picking risk outside scope and the <=350 added-line delivery budget.
+Keep export/picking risk outside scope and the revised <=360 added-line delivery budget.
 
 ## Implementation checkpoint
 
@@ -218,8 +218,8 @@ these are bounded same-device samples, not all-driver performance guarantees.
 Chat artifacts webgl-rect-implementation/ retain candidate results, baseline
 comparison runner, shader snapshots and timing runner/results outside Git.
 
-Delivery against master a29f81c4: five files, +349/-20 raw lines excluding this
-plan. Runtime shaders +19/-10; browser test +304; rectangle snapshot +19/-10;
+Delivery against master a29f81c4: five files, +355/-20 raw lines excluding this
+plan. Runtime shaders +19/-10; browser test +310; rectangle snapshot +19/-10;
 Core patch Changeset +7. Unchanged common helper/point/arrow shaders and
 package/lockfiles have zero diff. A redundant unscaled opaque assertion was
 removed because opaque paint is covered by shared-fade samples and the external
@@ -227,3 +227,32 @@ candidate replay; no test framework or full shader snapshot was added.
 
 No feature scope expansion. No PR opened; retain this temporary plan for review
 and reconcile/remove it before merge. CI will be required after PR creation.
+
+## Implementation-review subpixel regression
+
+Two Sol implementation reviews find no runtime/architecture blocker and verify
+point/arrow isolation. One reviewer identifies a missing analytic nontransparent
+subpixel assertion. The permanent test now exercises three distinct coverages,
+not only transparent-stroke cancellation or full paint coverage.
+
+Core's viewport adds RASTER_COORDINATE_OFFSET=0.5 logical pixels. Set the data
+left edge to 15.5+0.5/DPR and sample physical pixel (16*DPR,32*DPR), so its center
+lies on nominal d=0. With width0.25/DPR and stroke alpha0.5, Ci=.375, Cf=.5,
+Co=.625. Premultiplied red fill and half-blue stroke resolve to
+(.4375,0,.125,.5625), or rounded RGBA bytes [112,0,32,143].
+
+The real public Core path on native ANGLE Metal/Apple M5, Chrome156.0.8078.73,
+measures [112,0,32,143] exactly at both DPR1/2. Unmodified master a29f81c4 instead
+measures [96,0,80,175], failing the <=2-byte quantization tolerance. Both permanent
+software-WebGL DPR tests and lint pass. No browser or WebGL errors. This is a
+verified analytic oracle; the 2-byte allowance covers output/lowp quantization,
+not a widened tolerance to accommodate a failing implementation.
+
+Chat artifacts webgl-rect-implementation/subpixel/ retain the public-path runner,
+source hashes, precise inputs and before/after results outside Git. A shared
+constant removes duplicate module URL construction; no helper framework added.
+Net permanent-test growth is six lines. Authorized review coverage revises the
+raw-addition budget from350 to360; final delivery is +355/-20 across five files,
+with runtime +19/-10 unchanged. The temporary plan is counted separately.
+Only the test and plan change in this review-fix commit. Shared helper, points,
+arrows and dependencies remain byte-identical; no PR has been opened.

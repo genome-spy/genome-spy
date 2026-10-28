@@ -1,6 +1,9 @@
 import { fileURLToPath, URL } from "node:url";
 import { expect, test } from "@playwright/test";
 
+const coreSource =
+    "/@fs" + fileURLToPath(new URL("../../core/src/", import.meta.url));
+
 for (const dpr of [1, 2]) {
     test(`WebGL rectangle composition at DPR ${dpr}`, async ({
         playwright,
@@ -169,6 +172,20 @@ for (const dpr of [1, 2]) {
                                 );
                             }
                         }
+                        // Compensate Core's 0.5px raster offset to sample the nominal edge.
+                        api.datasets.set("rows", [
+                            { ...row, x: 15.5 + 0.5 / dpr },
+                        ]);
+                        const subpixel = pixel(
+                            await paint({
+                                radius: 0,
+                                width: 0.25 / dpr,
+                                alpha: 0.5,
+                            }),
+                            16,
+                            32
+                        );
+                        api.datasets.set("rows", [row]);
                         await paint({ radius: 0, width: 4, alpha: 0.5 });
                         const blend = pixel(await paint(), 17, 32);
                         const viewFade = pixel(
@@ -231,6 +248,7 @@ for (const dpr of [1, 2]) {
                         const outside = await view.marks.pick({ x: 10, y: 32 });
                         return {
                             transparentErrors,
+                            subpixel,
                             viewFade,
                             blend,
                             hatch,
@@ -254,22 +272,8 @@ for (const dpr of [1, 2]) {
                 },
                 {
                     dpr,
-                    entry:
-                        "/@fs" +
-                        fileURLToPath(
-                            new URL(
-                                "../../core/src/minimal.js",
-                                import.meta.url
-                            )
-                        ),
-                    registration:
-                        "/@fs" +
-                        fileURLToPath(
-                            new URL(
-                                "../../core/src/rendering/registerWebGL.js",
-                                import.meta.url
-                            )
-                        ),
+                    entry: coreSource + "minimal.js",
+                    registration: coreSource + "rendering/registerWebGL.js",
                 }
             );
             expect(errors).toEqual([]);
@@ -282,6 +286,8 @@ for (const dpr of [1, 2]) {
                 actual.forEach((value, i) =>
                     expect(Math.abs(value - expected[i])).toBeLessThanOrEqual(2)
                 );
+            // Ci=.375, Cf=.5, Co=.625: premultiplied result=(.4375,0,.125,.5625).
+            close(result.subpixel, [112, 0, 32, 143]);
             close(result.blend, [128, 0, 128, 255]);
             close(result.viewFade, [0, 0, 128, 128]);
             close(result.hatch, [255, 0, 0, 255]);
