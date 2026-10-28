@@ -34,7 +34,7 @@ export default async function runBasicScene(canvas) {
             fill: { value: [0.2, 0.5, 0.8, 1.0] },
             stroke: { value: [0.1, 0.1, 0.1, 1.0], dynamic: true },
             fillOpacity: { value: 1.0 },
-            strokeOpacity: { value: 1.0 },
+            strokeOpacity: { value: 1.0, dynamic: true },
             strokeWidth: { value: 1.0, dynamic: true },
             cornerRadiusTopRight: { value: 0.0, dynamic: true },
             cornerRadiusBottomRight: { value: 0.0, dynamic: true },
@@ -76,6 +76,7 @@ export default async function runBasicScene(canvas) {
         const width = 1.0 + (Math.sin(t * 2.0) * 0.5 + 0.5) * 3.0;
         const corner = (Math.sin(t) * 0.5 + 0.5) * 8.0;
         values.strokeWidth.set(width);
+        values.strokeOpacity.set(Math.sin(t * 0.7) * 0.5 + 0.5);
         values.cornerRadiusTopRight.set(corner);
         values.cornerRadiusBottomRight.set(corner);
         values.cornerRadiusTopLeft.set(corner);

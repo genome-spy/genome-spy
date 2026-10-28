@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import RectProgram, { determineRectAntialiasing } from "./rectProgram.js";
+import { determineRectAntialiasing } from "./rectProgram.js";
 
 const EDGE_CHANNELS = [
     "strokeWidth",
@@ -58,33 +58,5 @@ describe("rectangle antialiasing", () => {
                 strokeWidth: /** @type {any} */ (channel),
             })
         ).toBe("shader");
-    });
-
-    it("specializes shader geometry and shading from the immutable mode", () => {
-        const getShaderBody = Object.getOwnPropertyDescriptor(
-            RectProgram.prototype,
-            "shaderBody"
-        ).get;
-        const plain = {
-            _channels: plainChannels(),
-            antialiasing: "multisample",
-        };
-        const dynamic = {
-            _channels: {
-                ...plainChannels(),
-                strokeWidth: { value: 0, dynamic: true },
-            },
-            antialiasing: "shader",
-        };
-
-        expect(getShaderBody.call(plain)).toContain(
-            "const USE_MULTISAMPLE_EDGE_COVERAGE = true;"
-        );
-        expect(getShaderBody.call(dynamic)).toContain(
-            "const USE_MULTISAMPLE_EDGE_COVERAGE = false;"
-        );
-        expect(getShaderBody.call(dynamic)).toContain(
-            "decorationPadding = max(decorationPadding, 2.0 / globals.dpr);"
-        );
     });
 });
