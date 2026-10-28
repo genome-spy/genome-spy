@@ -111,7 +111,13 @@ export default class SearchField extends LitElement {
         if (!target) return false;
 
         const interval = zoomLinear(target.interval, null, 1.2);
-        if (target.kind === "locus") interval[1] -= 1;
+        if (target.kind === "locus") {
+            const size = target.scale
+                .getAssembly()
+                .contigs.reduce((sum, contig) => sum + contig.size, 0);
+            interval[0] = Math.max(0, interval[0]);
+            interval[1] = Math.min(size, interval[1]) - 1;
+        }
         await target.scale.zoomTo(interval);
         return true;
     }

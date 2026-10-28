@@ -36,9 +36,7 @@ export function parseCoordinates(text, assembly) {
     if (!candidates.length)
         return invalid("syntax", "Invalid coordinate syntax: " + query);
 
-    const known = names
-        ? candidates.filter(([a, , b]) => names.has(a) && names.has(b))
-        : candidates;
+    const known = names ? dictionaryCandidates(query, names) : candidates;
     if (names && known.length === 0)
         return invalid("unknown-contig", "Unknown contig in: " + query);
     if (names && known.length > 1)
@@ -74,6 +72,34 @@ export function parseCoordinates(text, assembly) {
         return invalid("order", "Coordinate interval is reversed.");
     }
     return coordinate(startChrom, start - 1, endChrom, end);
+}
+
+/**
+ * Contig names may themselves contain colons and hyphens. Each known prefix is
+ * a possible left endpoint; the right endpoint ends at the final numeric suffix.
+ * @param {string} query
+ * @param {ReadonlyMap<string, {name: string, size: number}>} names
+ */
+function dictionaryCandidates(query, names) {
+    /** @type {string[][]} */
+    const candidates = [];
+    for (
+        let colon = query.indexOf(":");
+        colon !== -1;
+        colon = query.indexOf(":", colon + 1)
+    ) {
+        const startName = query.slice(0, colon);
+        if (!names.has(startName)) continue;
+        const rest = query.slice(colon + 1);
+        const point = rest.match(/^([\d,]+)$/);
+        const range = rest.match(/^([\d,]+)-([\d,]+)$/);
+        const cross = rest.match(/^([\d,]+)-(.+):([\d,]+)$/);
+        if (point) candidates.push([startName, point[1], startName, point[1]]);
+        if (range) candidates.push([startName, range[1], startName, range[2]]);
+        if (cross && names.has(cross[2]))
+            candidates.push([startName, cross[1], cross[2], cross[3]]);
+    }
+    return candidates;
 }
 
 /**

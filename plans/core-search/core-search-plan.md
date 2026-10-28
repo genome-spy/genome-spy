@@ -664,3 +664,13 @@ No implementation or runtime tests have been performed.
       data-replacement revisions/help, and finalized-service rejection.
 - [ ] B2. App Agent consumer migration and verification.
 - [ ] Final caller composition and integration verification.
+
+### Final review corrections
+
+The independent implementation review found two edge cases. App now clamps
+padded locus navigation to the target assembly before inclusive-end conversion;
+real App tests cover first/last-base records without invalid viewport labels.
+Assembly-aware parsing now considers every dictionary-valid start-name prefix,
+including `a:1-b:2-c:3` for contigs `a` and `b:2-c`, while still rejecting genuine
+ambiguity. Focused regressions and Core/App type checks pass. The reviewer
+confirmed both corrections without expanding the utility APIs.

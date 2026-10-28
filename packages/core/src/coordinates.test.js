@@ -107,6 +107,17 @@ describe("optional coordinate utilities", () => {
             interval("a:1-b:2", { contigs: [{ name: "a:1-b", size: 5 }] })[0]
         ).toEqual({ chrom: "a:1-b", pos: 1 });
         expect(
+            interval("a:1-b:2-c:3", {
+                contigs: [
+                    { name: "a", size: 10 },
+                    { name: "b:2-c", size: 10 },
+                ],
+            })
+        ).toEqual([
+            { chrom: "a", pos: 0 },
+            { chrom: "b:2-c", pos: 3 },
+        ]);
+        expect(
             parseCoordinates("a:1-b:2", {
                 contigs: [
                     { name: "a", size: 5 },

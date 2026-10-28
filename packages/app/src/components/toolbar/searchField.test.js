@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { createTestEmbed } from "@genome-spy/core/view/embedTestUtils.js";
+import { createDatumSearch } from "@genome-spy/core/search";
 import { describe, expect, it, vi } from "vitest";
 import SearchField from "./searchField.js";
 
@@ -58,4 +60,43 @@ describe("SearchField", () => {
             ]);
         });
     });
+});
+
+it("keeps padded first- and last-base gene navigation inside the active assembly", async () => {
+    const { root, views } = await createTestEmbed({
+        data: {
+            values: [
+                { symbol: "FIRST", pos: 0 },
+                { symbol: "LAST", pos: 99 },
+            ],
+        },
+        mark: "point",
+        encoding: {
+            x: {
+                field: "pos",
+                type: "locus",
+                scale: {
+                    assembly: { contigs: [{ name: "scaffold", size: 100 }] },
+                    zoom: true,
+                },
+            },
+            search: { field: "symbol" },
+        },
+    });
+    const field = new SearchField();
+    field.app = /** @type {any} */ ({
+        genomeSpy: { viewRoot: root },
+        datumSearch: createDatumSearch(views),
+    });
+    field.inputRef.value = document.createElement("input");
+    field._initializeGenome();
+    const resolution = root.getScaleResolution("x");
+    for (const term of ["FIRST", "LAST"]) {
+        await field.search(term);
+        const [begin, end] = resolution.getDomain();
+        expect(begin).toBeGreaterThanOrEqual(0);
+        expect(end).toBeLessThanOrEqual(100);
+        expect(end).toBeGreaterThan(begin);
+        expect(field.getDefaultValue()).toMatch(/^scaffold:\d+-\d+$/);
+    }
 });
