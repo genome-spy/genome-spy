@@ -1,6 +1,6 @@
 # WebGL point fill/stroke composition
 
-Status: bounded actual-renderer proof complete; implementation not started.
+Status: implementation and local qualification complete; no PR opened.
 Base: fresh master 22cc6b69. Related: #604, #474 and WebGPU point PR #623.
 No new dependencies. This slice completes neither issue.
 
@@ -11,8 +11,7 @@ Core PointMark (src/marks/point.js and markUtils.js) owns channels, normalizatio
 and datum identity. The private WebGL point delegate
 (src/rendering/webgl/marks/point.js) owns GLSL, gl.POINTS geometry and picking
 submission. Both ordinary and line-only shapes share
-packages/core/src/rendering/webgl/marks/point.fragment.glsl. Keep the fix
-there if proof supports it; do not change common.glsl's distanceToColor because
+packages/core/src/rendering/webgl/marks/point.fragment.glsl. Keep the fix local; do not change common.glsl's distanceToColor because
 arrows and other consumers have separate geometry contracts.
 
 Current ordinary-shape paint uses a stroke/fill replacement mix. Inward strokes
@@ -47,7 +46,7 @@ preserving x/+ thickness/fallback and picking. Tentative commit:
 Expected delivery: point.fragment.glsl, one focused real-browser regression file
 in packages/playground/tests/ (the existing Core rendering integration path),
 one patch changeset, and only necessary test/snapshot adjustments. Target 3-5
-delivery files and <=280 added raw lines excluding this temporary plan. Stop and
+delivery files and <=380 added raw lines excluding this temporary plan. Stop and
 revise if vertex geometry or shared normalization must change. No generic test infrastructure to hide size.
 No public grammar/docs migration is needed for a rendering bug correction.
 
@@ -73,15 +72,15 @@ No public grammar/docs migration is needed for a rendering bug correction.
 - [x] Representative rotated circle/triangle gradient interiors preserve paint.
   Field-driven mixed occurrences retain images and datum identity after updates.
   Shared shader sources, arrows and rectangles are untouched.
-- [ ] During implementation add an overlapping occurrence-order assertion and
-  a nested-viewport clipping case; this bounded proof covers canvas-edge clipping
-  and existing picks, not the full placement matrix.
+- [x] Permanent regressions add overlapping occurrence order and clipping inside
+  a nested viewport with an adjacent empty view. The original bounded proof
+  covered only canvas-edge clipping; these exercise the real integration path.
 - [x] Compare paired same-device CPU submit through synchronous pixel readback after
   warmup: 1k/100k points, circles/mixed shapes, stroke widths0/1, DPR1/2.
   Investigate any median increase beyond max(10%,0.2ms); record hardware/browser
   and single-device limitations. No new draws/vertices/resources/allocations.
 - [x] Reconcile bounded proof results before implementation.
-- [ ] Implement only after the plan/review gate. The permanent behavioral
+- [x] Implement after the plan/review gate and closure of both proof gaps. The permanent behavioral
   regressions must fail master and pass candidate, exercise public APIs and
   preserve the controls above without duplicating unchanged coverage.
 
@@ -89,7 +88,7 @@ Implementation validation later: focused Core browser tests with zero skips,
 relevant point normalization/delegate tests and shader snapshots, Core types and
 lint, release checks. Review related tests for redundant shader-text assertions.
 Patch Core changeset required. Keep WebGPU PR #623 and WebGL rectangle PR #622
-independent. Retire this temporary plan before merge. No PR at planning stage.
+independent. Retire this temporary plan before merge. No PR opened; report the exact delivery size first.
 
 ## Bounded actual-renderer proof (2026-10-28)
 
@@ -158,16 +157,16 @@ machinery or benchmark scripts. No new packages or lockfile changes.
 
 ## Implementation decision
 
-The proof supports a fragment-local correction and no geometry/picking changes.
+The proof and implementation support a fragment-local correction and no
+geometry/picking changes.
 Retain line-only single-paint coverage explicitly; keep common.glsl and the
-vertex shader unchanged. Expected runtime change is about 20 added lines;
-reserve the rest of the <=280-line budget for actual-renderer regressions and
+vertex shader unchanged. Actual runtime diff is +10/-6 non-comment shader lines (net +4);
+reserve the rest of the <=380-line budget for actual-renderer regressions and
 the Core patch changeset. Reconcile exact size before a PR. Two independent Sol
 plan/proof reviews found no architecture or shader-correctness blocker. Their
 two proof-quality findings are closed below; no additional implementation scope
-is needed. Implementation and PR opening are not part of this planning task.
-Remaining permanent integration assertions above are explicit implementation
-gates, not claims of completed proof coverage.
+is needed. Implementation is now authorized and the permanent integration
+assertions above pass. A PR remains unopened pending the exact-size report.
 
 ## Review-gap closure and rerun (2026-10-28)
 
@@ -175,7 +174,9 @@ Both Sol reviewers supported the fragment-local design and preservation of x/+,
 shared helpers, geometry and resource ownership. Their two proof findings were:
 wide-half was captured without a numeric paint assertion, and the minimum-size
 picking control did not probe the expanded hit region. Neither required a new
-production path, dependency, API or change to the <=280-line delivery budget.
+production path, dependency or API. The original estimate was <=280 added
+lines; the implementation checkpoint below records its later evidence-based
+revision for the permanent browser test setup.
 
 The temporary runner now asserts wide inward stroke colors at three locations
 for circle and square, DPR1/2. Width20 exceeds the radius8 interior, so Ci=0.
@@ -205,6 +206,81 @@ The candidate GLSL and baseline production source hashes are unchanged from the
 prior proof, so the earlier 16-case synchronized performance comparison remains
 applicable. Only temporary runner assertions/observations and this plan changed.
 The updated runner/results and original pre-review evidence are retained in the
-chat-local artifact directory. No production code, dependencies or lockfiles
-changed. Overlap ordering and nested-viewport clipping remain the explicitly
-pending permanent implementation tests above.
+chat-local artifact directory. At that proof checkpoint no production code, dependencies or lockfiles
+changed. Overlap ordering and nested-viewport clipping were later added as permanent
+implementation tests above.
+
+
+## Implementation scope checkpoint
+
+Before production edits, the permanent browser regression consolidates paint,
+line-shape controls, minimum picking, overlap order and nested clipping into one
+retained Core renderer per DPR. Its real embed/readback setup is larger than the
+initial test estimate. Revise the added-line delivery target from 280 to 380,
+still 3-5 files, rather than dropping the reviewed behavioral gates or hiding
+setup in generic machinery. Production scope remains one fragment shader,
+about a dozen added lines; no geometry, picking, shared helper or dependencies.
+The exact final test is replayed against the archived master shader to
+establish its pixel failure through the same Core path.
+
+
+## Production implementation checkpoint
+
+Only point.fragment.glsl changes runtime behavior. Compute nominal coverage once
+and use it directly for no-stroke and x/+ single-paint output; ordinary shapes
+with positive width resolve nested coverage. This is algebraically the existing
+zero-band distanceToColor result, without an extra line-shape branch. The
+actual production comparison below qualifies the simplification. The vertex
+shader, picking branch, common.glsl, normalization, buffers, resource lifetimes,
+arrows, rectangles and WebGPU sources remain untouched.
+
+The new pointComposition.playwright.js runs one retained public Core embed per
+DPR, with real parameter and dataset updates, RGBA readback and public picking.
+It covers both ordinary distances, centered/inward thin bands, translucent
+stroke, empty fill, wide inward center/interior/fringe, transparent stroke,
+x/+ width and fill fallback versus stroke precedence, minimum picking beyond
+visible paint, mixed-shape updates/rotation, adjacent-viewport clipping and
+last-datum overlap paint/pick identity. No shader interception is shipped.
+
+The field-driven shape fixture uses an explicit ordinal domain/range and no
+legend, as does its color mapping. Initial proof mixtures used scale:null with
+raw shape names; equal buffers there were baseline compatibility evidence, not
+proof of the intended silhouettes. Final production/control comparisons use
+explicit mappings and therefore qualify the actual mixed shape geometry. No
+production workaround or unrelated color/shape behavior change is introduced.
+
+All 36 candidate pixel samples pass against master on both Metal and SwiftShader
+at DPR1/2 (hardware exact, software max 1/255). Production loads unchanged source
+modules; only the baseline page substitutes the archived master point fragment.
+All x/+ full-image controls, gradient interiors, minimum-picking and mixed datum
+picks remain equal to master. Sources other than the point fragment retain
+baseline hashes. This also qualifies direct single-paint coverage for line
+shapes. All 16 final performance cases meet max(10%,0.2ms), largest increase
+about 0.1ms; 100k mixed at DPR2/width1 is 4.1 to 3.9ms. Timing methodology and
+single-device limits remain as recorded above.
+
+The permanent regressions pass at DPR1/2 in the existing browser suite; relevant
+116 WebGL/point unit tests and Core types pass. Exactly three existing point
+shader snapshots update; no new shader-text assertions are added. A Core patch
+changeset records the observable blending correction. release:check passes;
+release:status remains minor for the fixed release group because master already
+contains minor fragments. Root lint and separate browser-test lint pass. All 10 focused/neighboring
+browser tests pass with zero skips. The exact permanent regression is also
+replayed on Metal and SwiftShader at DPR1/2: master paint expectations fail,
+implementation pixels and all compatibility controls pass. Keep the temporary plan for
+review and retire it before merge.
+
+Delivery is four files: point fragment, browser regression, three refreshed
+point entries in one snapshot file, and one Core patch changeset. Benchmark and
+baseline comparison runners stay outside Git in chat-local
+webgl-point-implementation/. No dependencies or package/lockfile edits.
+
+
+Final exact delivery against base 22cc6b69: 4 files, +378/-24 raw lines.
+Runtime fragment +10/-6 (net +4), browser regression +329, generated snapshot
+entries +30/-18, patch changeset +9. Runtime changes contain no comments or
+blank-only additions; counts exclude tests, snapshots and release/plan prose.
+The revised 380-added-line budget is met. The temporary plan is additional and
+must be removed before merge; report its final separate count at PR delivery.
+Production fix commit: b9d2e9de. Local checks are complete; independent
+implementation review and remote CI are not yet performed. No PR opened.
