@@ -61,7 +61,7 @@ alongside a separate solid handle; ranges and cleanup cover both.
   those checks were completed afterward. Reviewers did not run GPU profiling.
 - [x] Package types/lint/build/tree shaking, renderer unit suite, GPU checks,
   adapter suite, Storybook build and real example resize/DPR/cleanup smoke.
-- [ ] Verify the committed exact diff and prepare the draft PR.
+- [x] Verify the committed exact diff and prepare the draft PR.
 - [ ] Reconcile remaining tasks and remove this temporary plan before merge.
 
 Permanent tests exercise the public renderer and actual GPU shading/readback:
@@ -102,7 +102,10 @@ The original 478-added-line allocation shifted toward real GPU tests and away
 from runtime code. Limits remain ten delivery files, 250 added non-comment
 production lines, and 500 raw added lines, excluding this temporary plan. Stop
 and re-scope beyond them; do not compress code or drop coverage to fit.
-Exact committed counts must be reported before opening the PR.
+Exact committed delivery diff against `origin/master`: ten files, +494/-22 raw
+lines (net +472). Non-comment runtime JS, including the executable example:
++123/-17 (net +106); production source alone is +85/-14 (net +71). The temporary
+plan is additional and reported separately before opening the PR.
 
 ## Deferred #604 work
 
