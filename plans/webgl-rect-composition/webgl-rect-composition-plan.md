@@ -1,7 +1,8 @@
 # WebGL rectangle paint composition
 
 Status: proposed follow-up to merged #621, requested by maintainer in
-issuecomment-6475866489. Reviewed plan; bounded baseline proof complete, no production edits or new dependencies.
+issuecomment-6475866489. Implementation verified on the actual WebGL path; performance qualification pending.
+No new dependencies.
 Separate from the existing point-composition plan and branch. Related to #604.
 Planning base: master a29f81c4 after #621; no runtime code changed.
 
@@ -163,3 +164,30 @@ files changed; no candidate shader or performance proof was introduced.
 Next: implement only the bounded rectangle shader correction after authorization,
 then prove candidate output, compare neighbor baselines, and add permanent tests.
 Keep export/picking risk outside scope and the <=350 added-line delivery budget.
+
+## Implementation checkpoint
+
+The correction is confined to rect.vertex/fragment.glsl. Nested paint coverage
+uses the nominal rectangle distance and hatch-modified inner distance. A carried
+vOpacityFactor applies view/minimum-size attenuation once after paint resolve;
+the plain path uses the same factor without SDF coverage. Shadow kernel/support
+and geometric picking branch remain unchanged. No shared helper, point/arrow
+shader, resource, topology or grammar changes.
+
+Permanent public-Core browser regressions run on software WebGL at DPR1/2;
+actual backing sizes are asserted. Tests failed on master (255/255 transparent
+fill loss), then passed after the correction. Cover full-image transparent paint,
+sharp/rounded shapes, thin/wide bands, hatches, minWidth/minHeight/minOpacity,
+view opacity, shadow overlap, live parameter/data updates and positive picks.
+A two-occurrence crossing verifies occurrence order; the external candidate
+proof additionally verifies removal of moved geometry.
+
+112 focused WebGL unit tests pass, including all point/arrow shader snapshots.
+The updated snapshot named "point selection example" contains the generated
+rectangle brush, not a point shader. Core types, test lint and release checks
+pass after restoring the already-declared lockfile dependencies locally.
+Candidate replay matches all twelve saved point/arrow buffers and picks exactly,
+plus shared/neighbor shader hashes. No manifest or lockfile changes.
+Core patch Changeset is included; existing fixed-group fragments still schedule
+an overall minor release. Remaining checks: performance, final exact size and PR
+review. No PR opened. Temporary proof artifacts remain outside Git.
