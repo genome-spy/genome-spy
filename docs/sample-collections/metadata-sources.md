@@ -348,11 +348,8 @@ reads those attributes without loading signal chunks. Track names identify the
 samples, and custom attributes become metadata columns with the same grouping,
 styling and exclusion options as table sources.
 
-No separate JavaScript import is needed in GenomeSpy App: configuring
-`backend: "figwig"` loads the adapter and reader on demand in ESM builds.
-Sources with `initialLoad: false` defer the adapter until columns or identifiers
-are requested. Selecting the source for sample identity reads its header during
-startup. Fat UMD bundles include the implementation.
+Setting `initialLoad: false` defers attribute loading until requested. If the
+source is selected for sample identity, its header is still read during startup.
 
 ```json
 {

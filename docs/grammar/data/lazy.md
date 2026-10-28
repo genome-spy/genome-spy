@@ -107,21 +107,19 @@ The data source is based on [GMOD](http://gmod.org/)'s
 ## Figwig (experimental)
 
 The `"figwig"` source loads multiple signal tracks from one
-[Figwig](https://github.com/genome-spy/figwig-js) file. Each row contains `chrom`,
-`start`, `end`, `score`, and `sampleId`; `sampleId` is the track name stored in
-the file. These rows work with ordinary marks and the App's sample encoding.
+[Figwig](https://github.com/jmschrei/figwig) file. Rows contain `chrom`, `start`,
+`end`, `score`, and `sampleId`, where `sampleId` is the stored track name.
+GenomeSpy App can also use embedded track attributes as
+[sample metadata](../../sample-collections/metadata-sources.md#figwig-backend).
 
-With the [minimal entry point](../../api/embedding.md#minimal), register the
-source before embedding:
+### Parameters {#figwig-parameters}
 
-```js
-import "@genome-spy/core/data/sources/lazy/figWigSource.js";
-```
+SCHEMA FigWigData
 
-The reader loads on demand in ESM builds; the full UMD bundle includes it.
-GenomeSpy App also loads its
-[Figwig metadata backend](../../sample-collections/metadata-sources.md#figwig-backend)
-on demand when configured, without a separate metadata import.
+### Example
+
+This [sample collection](../../sample-collections/visualizing.md) source follows
+the App's sample filters:
 
 ```json
 {
@@ -129,43 +127,14 @@ on demand when configured, without a separate metadata import.
     "lazy": {
       "type": "figwig",
       "url": "signals.fw",
-      "mode": "fast",
-      "tracks": { "expr": "visibleSamples" },
-      "pixelsPerBin": 1
+      "tracks": { "expr": "visibleSamples" }
     }
   }
 }
 ```
 
-Omit `tracks` to load all tracks, or provide an array of track names. An empty
-array produces no rows. Reactive selection reuses the file reader and its
-caches. Exactly one URL must resolve for each source instance.
-
-Bin widths follow the viewport resolution. The default `"exact"` mode computes
-means from raw values, omitting NaNs; bins with no valid bases produce no rows.
-Measured zeros are retained. Figwig's implicit unwritten values are zeros:
-convert missing observations to NaN when creating the file if gaps must remain
-distinct from measured zero signal.
-
-The `"fast"` mode uses rounded tile and zoom summaries for coarse views, including
-whole-genome overviews. At those resolutions it treats missing bases as zero:
-means are divided by the entire bin width, so gaps dilute the displayed signal
-and wholly missing bins appear as zero. When zoomed in below the file's tile
-resolution, fast mode reads raw values with the same missing-aware means as
-exact mode. A coarse query without compatible summaries reports a loading error
-instead of falling back to an expensive raw read.
-
-Brush-derived measurements use the displayed bins in both modes. Bin boundaries
-can differ from BigWig, and coarse fast-mode measurements can be approximate or
-affected by zero-filled gaps.
-
-The reader is provided by the published `@genome-spy/figwig` npm dependency.
-See the [experiment report](../../development/figwig-experiment.md) for
-reproduction instructions and measured limitations.
-
-### Parameters {#figwig-parameters}
-
-SCHEMA FigWigData
+The data source uses the
+[`@genome-spy/figwig`](https://www.npmjs.com/package/@genome-spy/figwig) library.
 
 ## BigBed
 
