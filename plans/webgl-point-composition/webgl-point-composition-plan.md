@@ -1,6 +1,6 @@
 # WebGL point fill/stroke composition
 
-Status: implementation and local qualification complete; no PR opened.
+Status: implementation, local qualification and independent reviews complete; draft PR delivery.
 Base: fresh master 22cc6b69. Related: #604, #474 and WebGPU point PR #623.
 No new dependencies. This slice completes neither issue.
 
@@ -282,5 +282,8 @@ entries +30/-18, patch changeset +9. Runtime changes contain no comments or
 blank-only additions; counts exclude tests, snapshots and release/plan prose.
 The revised 380-added-line budget is met. The temporary plan is additional and
 must be removed before merge; report its final separate count at PR delivery.
-Production fix commit: b9d2e9de. Local checks are complete; independent
-implementation review and remote CI are not yet performed. No PR opened.
+Production fix commit: b9d2e9de. Local checks and two independent Sol
+implementation reviews are complete, with no actionable findings. Reviewers
+inspected sources and saved results without independently rerunning browsers.
+Remote CI remains pending. Keep this temporary plan in the draft for review
+and retire it before merge. Delivery remains separate from rectangle PR #622.
