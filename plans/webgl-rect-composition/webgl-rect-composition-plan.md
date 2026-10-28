@@ -1,10 +1,10 @@
 # WebGL rectangle paint composition
 
 Status: proposed follow-up to merged #621, requested by maintainer in
-issuecomment-6475866489. Implementation verified on the actual WebGL path; performance qualification pending.
+issuecomment-6475866489. Implementation and bounded performance verified on the actual WebGL path.
 No new dependencies.
 Separate from the existing point-composition plan and branch. Related to #604.
-Planning base: master a29f81c4 after #621; no runtime code changed.
+Planning/implementation base: master a29f81c4 after #621; rectangle shaders only.
 
 ## Architectural fit and scope
 
@@ -50,18 +50,18 @@ Canvas/SVG/WebGPU changes, new passes/buffers/textures or per-frame allocations.
 - [x] Before production edits, reproduce transparent-stroke fill loss using a
   small actual Core spec with renderer:webgl, then record baseline point/arrow
   output on the same browser/device. No mocked shader/pixel implementation.
-- [ ] Transparent and half-transparent stroke preserve nominal fill and correctly
+- [x] Transparent and half-transparent stroke preserve nominal fill and correctly
   overlap it; opaque internal transitions have no background seam. Qualify sharp
   and rounded corners, fractional positions and subpixel/wide bands at DPR1/2
   using selected analytic premultiplied pixels (tolerance <=2/255, justified for
   the actual WebGL precision/export path before adopting it).
-- [ ] Keep nominal fill beneath transparent hatch paint. Cover one hatch case
+- [x] Keep nominal fill beneath transparent hatch paint. Cover one hatch case
   and a stroke-over-shadow sample; retain existing shadow behavior elsewhere.
-- [ ] Test minWidth, minHeight and minOpacity floor, plus fractional view opacity:
+- [x] Test minWidth, minHeight and minOpacity floor, plus fractional view opacity:
   shared paint attenuation applies once. Exercise retained paint changes and a
   two-occurrence overlap through api.params handles and api.datasets.set().
   Dataset set returns void; wait for rendered pixel changes, not its return value.
-- [ ] Rectangle clipping, positional offsets, minimum-size expansion and picking
+- [x] Rectangle clipping, positional offsets, minimum-size expansion and picking
   identity/policy retain their existing behavior; shadows do not acquire a new
   picking contract. Keep picking based on the existing hatch-modified
   d<vHalfStrokeWidth, not nominal-fill distance or resolved alpha. Characterize
@@ -69,23 +69,23 @@ Canvas/SVG/WebGPU changes, new passes/buffers/textures or per-frame allocations.
   test positive datum IDs plus outside/subpixel-fringe/shadow-only no-hit samples
   with tooltip:false. Do not silently broaden this into a picking-policy fix.
   The plain-rectangle geometry and fast path stay intact.
-- [ ] Points and arrows: common.glsl and both mark shaders have zero diff;
+- [x] Points and arrows: common.glsl and both mark shaders have zero diff;
   existing generated point/arrow snapshots stay unchanged. Before/after actual
   pixels and picks are identical for representative filled/inward/line-only
   x/+ point cases and filled/open-arrow heads, including fractional opacity.
   Reuse a compact fixture, not another exhaustive shape matrix.
-- [ ] Existing playground/tests/embedSelection.playwright.js demonstrates the
+- [x] Existing playground/tests/embedSelection.playwright.js demonstrates the
   public embed/selection/export browser harness. Add focused coverage alongside
   that harness, explicitly selecting WebGL and DPR1/2. Verify visible live output
   and characterize supported WebGL raster export separately. One keyed two-row
   rectangle scene plus six disjoint point/arrow controls suffices. Real-compile
   plain, rounded-only, stroked and shadow-only variants: mocked shader snapshots
   cannot prove varying linkage. Screenshots alone are not correctness proof.
-- [ ] Run relevant rectangle/unit/shader suites, browser regressions with no
+- [x] Run relevant rectangle/unit/shader suites, browser regressions with no
   skips, Core types/lint, schema check only if grammar unexpectedly changes
   (which requires re-scoping), and release policy/status. Update only rectangle
   shader snapshots if needed; do not regenerate point/arrow expectations.
-- [ ] Measure paired warmed rendering at 1k/100k plain/decorated rectangles,
+- [x] Measure paired warmed rendering at 1k/100k plain/decorated rectangles,
   DPR1/2 on one browser/device. Investigate median increases beyond max(10%,0.2ms).
   Use explicit GPU completion (e.g. gl.finish for bounded external measurement),
   not requestAnimationFrame spacing or CPU submission alone. No extra geometry,
@@ -161,8 +161,7 @@ implementation, not a claim that an unimplemented candidate has passed.
 Zero browser page errors and zero WebGL errors. No production/test/dependency
 files changed; no candidate shader or performance proof was introduced.
 
-Next: implement only the bounded rectangle shader correction after authorization,
-then prove candidate output, compare neighbor baselines, and add permanent tests.
+Baseline gates above are complete; implementation outcome is recorded below.
 Keep export/picking risk outside scope and the <=350 added-line delivery budget.
 
 ## Implementation checkpoint
@@ -189,5 +188,42 @@ pass after restoring the already-declared lockfile dependencies locally.
 Candidate replay matches all twelve saved point/arrow buffers and picks exactly,
 plus shared/neighbor shader hashes. No manifest or lockfile changes.
 Core patch Changeset is included; existing fixed-group fragments still schedule
-an overall minor release. Remaining checks: performance, final exact size and PR
-review. No PR opened. Temporary proof artifacts remain outside Git.
+an overall minor release. Remaining delivery: final exact size and PR review. No PR opened. Temporary proof artifacts remain outside Git.
+
+## Final qualification
+
+Two permanent public-Core browser tests pass with zero skips on software WebGL,
+DPR1/2. 112 focused WebGL unit tests, Core types, test lint, complete Core build
+(including schema/typings) and release policy pass.
+Twelve native-Metal candidate point/arrow RGBA buffers, positive/outside picks and
+shared/neighbor source hashes match the saved baseline exactly. Plain, rounded,
+stroked and shadow-only variants still compile/render. Existing export alpha
+handling is unchanged; it is not used as the live-pixel correctness oracle.
+
+The performance runner measures the real exported Core class/renderAll path,
+checks actual non-instanced draw submissions and drains GPU work with synchronous
+one-pixel readback. gl.finish-only timings on this setup rounded to zero and
+were discarded, not counted as evidence. Five warmups/30 alternating paired
+samples, Chrome156/ANGLE Metal Apple M5, 800x400, DPR1/2:
+
+| Count/mode | DPR1 before->after ms | DPR2 before->after ms |
+| --- | --- | --- |
+| 1k plain | .5->.5 | .4->.4 |
+| 1k decorated | .8->.7 | .5->.5 |
+| 100k plain | .6->.7 | .8->.8 |
+| 100k decorated | 2.3->2.3 | 3.0->2.9 |
+
+All deltas meet max(10%, .2ms). Readback overhead is common to both sides;
+these are bounded same-device samples, not all-driver performance guarantees.
+Chat artifacts webgl-rect-implementation/ retain candidate results, baseline
+comparison runner, shader snapshots and timing runner/results outside Git.
+
+Delivery against master a29f81c4: five files, +349/-20 raw lines excluding this
+plan. Runtime shaders +19/-10; browser test +304; rectangle snapshot +19/-10;
+Core patch Changeset +7. Unchanged common helper/point/arrow shaders and
+package/lockfiles have zero diff. A redundant unscaled opaque assertion was
+removed because opaque paint is covered by shared-fade samples and the external
+candidate replay; no test framework or full shader snapshot was added.
+
+No feature scope expansion. No PR opened; retain this temporary plan for review
+and reconcile/remove it before merge. CI will be required after PR creation.

@@ -171,9 +171,8 @@ for (const dpr of [1, 2]) {
                         }
                         await paint({ radius: 0, width: 4, alpha: 0.5 });
                         const blend = pixel(await paint(), 17, 32);
-                        const opaque = pixel(await paint({ alpha: 1 }), 17, 32);
                         const viewFade = pixel(
-                            await paint({ viewFade: 0.5 }),
+                            await paint({ alpha: 1, viewFade: 0.5 }),
                             17,
                             32
                         );
@@ -234,7 +233,6 @@ for (const dpr of [1, 2]) {
                             transparentErrors,
                             viewFade,
                             blend,
-                            opaque,
                             hatch,
                             fades,
                             floor,
@@ -285,7 +283,6 @@ for (const dpr of [1, 2]) {
                     expect(Math.abs(value - expected[i])).toBeLessThanOrEqual(2)
                 );
             close(result.blend, [128, 0, 128, 255]);
-            close(result.opaque, [0, 0, 255, 255]);
             close(result.viewFade, [0, 0, 128, 128]);
             close(result.hatch, [255, 0, 0, 255]);
             for (const fade of result.fades) close(fade, [0, 0, 128, 128]);
