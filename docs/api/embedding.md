@@ -60,14 +60,16 @@ entry:
 
 ```js
 import { embed } from "@genome-spy/core/minimal";
-import "@genome-spy/core/figwig";
+import "@genome-spy/core/data/sources/lazy/figWigSource.js";
 import "@genome-spy/core/rendering/webgl.js";
 ```
 
 The minimal entry alone includes neither Figwig nor pako. With the optional
-source registered, the reader loads only when Figwig data is requested. The
-App's Figwig metadata backend also loads its implementation on demand when
-selected in the specification. Fat UMD bundles include these implementations.
+source registered, the reader loads only when Figwig data is requested. In
+GenomeSpy App, configuring the
+[Figwig metadata backend](../sample-collections/metadata-sources.md#figwig-backend)
+loads its adapter on demand; no separate metadata import is needed. Fat UMD
+bundles include these implementations.
 
 The `webgl.js` import enables WebGL2. The `canvas.js` import enables Canvas2D.
 Import `svg.js` when using SVG export. You can omit

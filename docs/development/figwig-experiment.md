@@ -155,10 +155,16 @@ uncommitted.
 ## Optional dependency loading
 
 Core's minimal entry excludes the Figwig source, reader and pako from every
-emitted chunk. `import "@genome-spy/core/figwig"` registers the optional signal
-source alongside `@genome-spy/core/minimal`; its reader still loads on demand.
-The App loads its Figwig metadata adapter through a dynamic import when that
-backend is selected. The shared table adapter contains no Figwig dependency.
+emitted chunk. Register the optional signal source alongside
+`@genome-spy/core/minimal` with its ordinary module import:
+
+```js
+import "@genome-spy/core/data/sources/lazy/figWigSource.js";
+```
+
+Its reader still loads on demand. In the App, configuring `backend: "figwig"`
+loads the metadata adapter through a dynamic import; no separate metadata
+import is needed. The shared table adapter contains no Figwig dependency.
 
 Metadata runtime state caches adapter-creation promises. Bootstrap skips source
 definitions with `initialLoad: false`, and dialog/import/summary operations await

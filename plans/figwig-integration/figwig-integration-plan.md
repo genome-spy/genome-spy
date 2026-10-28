@@ -255,12 +255,14 @@ dialog's duplicate adapter cache, and preserve import errors, cancellation and
 source-change guards. Data and Zarr behavior stay the same.
 
 Core's minimal entry already excludes the Figwig source and reader. Add explicit
-bundle assertions across every emitted chunk for Figwig and pako, and expose
-`@genome-spy/core/figwig` as the optional registration entry alongside minimal.
-The App recognizes the metadata backend on demand, so the explicit signal
-registration and selected metadata backend enable both uses without Core
-depending on App. Verify the opted-in minimal fixture retains the source while
-keeping its reader and pako behind dynamic imports.
+bundle assertions across every emitted chunk for Figwig and pako. Register the
+source alongside minimal through the conventional
+`@genome-spy/core/data/sources/lazy/figWigSource.js` module export, following the
+other optional lazy sources. In the App, configuring the Figwig metadata backend
+loads its adapter on demand without a separate metadata import. Core source
+registration and App metadata configuration retain their existing ownership.
+Verify the opted-in minimal fixture retains the source while keeping its reader
+and pako behind dynamic imports.
 
 The full/default runtime continues to register the signal source. The user
 explicitly accepts fat UMD bundles; ESM must keep the metadata adapter and reader
@@ -277,9 +279,10 @@ sources skip adapter creation. Combined adapter code grew by 11 lines; the
 dialog's redundant cache was removed.
 
 Both Core bundle fixtures pass: bare minimal excludes the entire Figwig/pako
-graph, and minimal plus `@genome-spy/core/figwig` includes registration with an
-asynchronous reader. The production App build verifies ESM module boundaries;
-fat UMD remains supported. Browser checks confirm zero Figwig network requests
-for deferred metadata and correct mouse metadata, plots, grouping and panning.
+graph, and minimal with the ordinary Figwig source import includes registration
+with an asynchronous reader. The production App build verifies ESM module
+boundaries; fat UMD remains supported. Browser checks confirm zero Figwig
+network requests for deferred metadata and correct mouse metadata, plots,
+grouping and panning.
 The final full suite passes 5,301 tests in 557 files; workspace types, lint,
 production App and documentation builds pass.
