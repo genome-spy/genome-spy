@@ -11,6 +11,7 @@ Metadata sources make sample metadata configurable as explicit sources instead
 of one monolithic metadata table. This enables:
 
 - eager loading for regular tabular metadata (`backend: "data"`)
+- per-track metadata embedded in a Figwig signal file (`backend: "figwig"`)
 - lazy loading for large matrix-like metadata (`backend: "zarr"`)
 - per-source defaults for imported columns
 
@@ -339,6 +340,40 @@ APP_SCHEMA MetadataSourceDef
 ### `data` backend
 
 APP_SCHEMA DataBackendDef
+
+### `figwig` backend
+
+Figwig files can hold sample attributes alongside genomic signal. This backend
+reads those attributes without loading signal chunks. Track names identify the
+samples, and custom attributes become metadata columns with the same grouping,
+styling and exclusion options as table sources.
+
+```json
+{
+  "id": "signal-metadata",
+  "initialLoad": "*",
+  "attributeGroupSeparator": ".",
+  "excludeColumns": ["sampleId", "rowLabel"],
+  "backend": {
+    "backend": "figwig",
+    "url": "signals.fw"
+  }
+}
+```
+
+Embedded JSON values retain their types. Store quantitative attributes as JSON
+numbers when preparing the Figwig file. Reserved track fields (`name`, `dtype`,
+`group`) and the App's canonical identifier field
+`sample` are excluded. Other helper attributes or duplicate aliases can be
+removed with `excludeColumns`.
+
+Metadata loading is independent of the visible signal tracks. Sample identity
+and display labels still come from `samples.identity`; this backend does not
+replace that source. Configure `initialLoad: "*"` to load the attributes at
+startup, or import selected columns later. This experiment uses the same
+unpublished reader package as the [Figwig signal source](../grammar/data/lazy.md#figwig-experimental).
+
+APP_SCHEMA FigWigBackendDef
 
 ### `zarr` backend
 

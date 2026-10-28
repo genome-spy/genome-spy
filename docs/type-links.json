@@ -29,6 +29,7 @@
   "FacetSpacing": "/grammar/facet/#spacing",
   "FacetSpec": "/grammar/facet/#defining-a-facet",
   "FadedMultiscaleStops": "/grammar/composition/multiscale/#fadedmultiscalestops",
+  "FigWigBackendDef": "/sample-collections/metadata-sources/#figwig-backend",
   "FigWigData": "/grammar/data/lazy/#figwig-parameters",
   "FilterScoredLabelsParams": "/grammar/transform/filter-scored-labels/#parameters",
   "FlattenCigarParams": "/grammar/transform/flatten-cigar/#parameters",

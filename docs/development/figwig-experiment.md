@@ -116,6 +116,39 @@ committed, staged or uploaded. The experimental signal view retains the name
 The local Figwig signal variant now selects `mode: "fast"`; its README explains
 the approximate coarse means and brush statistics.
 
+## Embedded sample metadata
+
+The local converter now embeds all 41 columns of `samples.tsv` in each of the
+24 track records. Its typed records contain 27 numeric fields and preserve
+sample IDs, accessions and technical-replicate labels as strings. The pinned
+Python converter helper accepts these records directly. No string parsing or
+type inference is performed by the App's Figwig backend.
+
+The updated file is 89,771,464 bytes; the size comparisons above describe the
+original conversion. The compressed signal payload, track identities,
+statistics and all 15 group/summary levels match the previous file exactly.
+All 984 embedded metadata values and types were verified, and the 81 exact
+common-bin cases still pass with zero error.
+
+The App's `figwig` metadata backend uses `getTracks()` and caches ordinary
+metadata rows through the existing eager table adapter. It closes its own
+short-lived header reader and never decodes signal chunks. The adapter grew
+from 344 to 383 lines; table selection, validation, exclusions, grouping and
+publication remain shared with the data backend. Reserved track fields and the
+App's canonical `sample` field cannot be imported as attributes.
+
+The mouse Figwig variant imports `metadata-figwig.json`, preserving the original
+attribute definitions and excluding duplicate helper aliases. Identity and
+display labels still use `samples.tsv`. A Chromium check stripped every
+metadata column from that TSV response and verified all 936 displayed values
+across 39 attributes and 24 samples, proving they came from Figwig. Grouping,
+filtering, brush-derived metadata, scatterplots, actual bookmark buttons and
+mouse panning passed. No loading or console errors were observed.
+
+The original BigWig variant, accepted v4 artifacts and publication records are
+unchanged. All recipe changes and the regenerated data remain local and
+uncommitted.
+
 ## Numerical validation
 
 The repeatable Python validator computes reference means directly from original
@@ -380,7 +413,7 @@ the main App experiment needs only `h3k27ac.fw`.
 
 ## Verification and limitations
 
-The full unit suite passed 555 files and 5,293 tests, with one skipped and two
+The full unit suite passed 556 files and 5,299 tests, with one skipped and two
 todo. Narrow source and App regression tests, generated-schema tests, upstream
 reader tests (160 and three Chromium tests), numerical validation, and
 real-browser checks passed.

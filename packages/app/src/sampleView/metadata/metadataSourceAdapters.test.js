@@ -90,6 +90,24 @@ describe("resolveMetadataSource", () => {
 });
 
 describe("resolveMetadataSources", () => {
+    it("resolves imported Figwig URLs relative to the metadata definition", async () => {
+        const sources = await resolveMetadataSources(
+            {
+                sources: [{ import: { url: "metadata/source.json" } }],
+            },
+            {
+                baseUrl: "https://example.org/spec.json",
+                loadJson: async () => ({
+                    backend: { backend: "figwig", url: "../data/signals.fw" },
+                }),
+            }
+        );
+        expect(sources[0].backend).toEqual({
+            backend: "figwig",
+            url: "https://example.org/data/signals.fw",
+        });
+    });
+
     it("rewrites imported backend urls relative to the import file", async () => {
         const metadataDef = {
             sources: [{ import: { url: "metadata/source.json" } }],
@@ -220,7 +238,7 @@ describe("resolveMetadataSources", () => {
 });
 
 describe("createMetadataSourceAdapter", () => {
-    it("creates a data backend adapter", () => {
+    it("creates a data backend adapter", async () => {
         const source = {
             backend: {
                 backend: "data",
@@ -229,7 +247,8 @@ describe("createMetadataSourceAdapter", () => {
         };
 
         const adapter = createMetadataSourceAdapterAny(source);
-        expect(adapter.constructor.name).toBe("DataMetadataSourceAdapter");
+        expect(await adapter.listSampleIds()).toEqual(["s1"]);
+        expect(await adapter.listColumns()).toEqual([{ id: "age" }]);
     });
 
     it("creates a zarr backend adapter", () => {

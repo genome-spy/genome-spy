@@ -3,14 +3,14 @@ import {
     fetchJson,
     FetchJsonError,
 } from "@genome-spy/core/utils/fetchUtils.js";
-import DataMetadataSourceAdapter from "./adapters/dataMetadataSourceAdapter.js";
+import TableMetadataSourceAdapter from "./adapters/tableMetadataSourceAdapter.js";
 import ZarrMetadataSourceAdapter from "./adapters/zarrMetadataSourceAdapter.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataDef} MetadataDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceEntry} MetadataSourceEntry
- * @typedef {DataMetadataSourceAdapter | ZarrMetadataSourceAdapter} MetadataSourceAdapter
+ * @typedef {TableMetadataSourceAdapter | ZarrMetadataSourceAdapter} MetadataSourceAdapter
  */
 
 export const MAX_METADATA_SOURCE_COLUMNS = 100;
@@ -224,8 +224,11 @@ export function resolveMetadataSourceFromSources(sources, sourceId) {
  * @returns {MetadataSourceAdapter}
  */
 export function createMetadataSourceAdapter(source, options = {}) {
-    if (source.backend.backend === "data") {
-        return new DataMetadataSourceAdapter(source, options);
+    if (
+        source.backend.backend === "data" ||
+        source.backend.backend === "figwig"
+    ) {
+        return new TableMetadataSourceAdapter(source, options);
     }
 
     if (source.backend.backend === "zarr") {

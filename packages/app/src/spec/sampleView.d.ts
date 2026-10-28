@@ -241,6 +241,19 @@ export interface DataBackendDef {
     sampleIdField?: string;
 }
 
+export interface FigWigBackendDef {
+    backend: "figwig";
+
+    /**
+     * URL to a Figwig file containing per-track metadata. Track names must
+     * match the sample ids in the view. Custom track attributes become metadata
+     * columns. Reserved `name`, `dtype`, and `group` fields, and the App's
+     * canonical identifier field `sample`, are excluded.
+     * Only file metadata is read, without decoding genomic signal.
+     */
+    url: string;
+}
+
 export interface ZarrMatrixLayoutDef {
     /**
      * Path to matrix values, arranged as sample rows by metadata columns.
@@ -318,7 +331,11 @@ export interface ArrowBackendDef {
 }
 
 export type MetadataBackendDef =
-    DataBackendDef | ZarrBackendDef | ParquetBackendDef | ArrowBackendDef;
+    | DataBackendDef
+    | FigWigBackendDef
+    | ZarrBackendDef
+    | ParquetBackendDef
+    | ArrowBackendDef;
 
 export interface MetadataSourceDef {
     /**
@@ -359,9 +376,9 @@ export interface MetadataSourceDef {
     /**
      * Column ids that must never be imported from this source.
      *
-     * The data backend always excludes its `sampleIdField` automatically, so
-     * this property is only needed for other helper columns such as display
-     * labels.
+     * The data backend excludes its `sampleIdField`, and the Figwig backend
+     * excludes reserved track fields and `sample` automatically. Use this
+     * property for other helper columns such as display labels.
      */
     excludeColumns?: string[];
 

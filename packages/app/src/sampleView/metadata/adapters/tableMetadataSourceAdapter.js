@@ -5,7 +5,7 @@ import {
     responseType,
     toVegaLoaderFormat,
 } from "@genome-spy/core/data/sources/dataUtils.js";
-import { concatUrl } from "@genome-spy/core/utils/url.js";
+import { concatUrl, resolveUrl } from "@genome-spy/core/utils/url.js";
 import { validateMetadata } from "../metadataValidation.js";
 import { wrangleMetadata } from "../metadataUtils.js";
 import { resolveMetadataSourceAttributes } from "../metadataSourceAttributes.js";
@@ -14,14 +14,18 @@ import { collectExampleValues } from "../exampleValues.js";
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").DataBackendDef} DataBackendDef
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").FigWigBackendDef} FigWigBackendDef
  */
 
-export default class DataMetadataSourceAdapter {
+export default class TableMetadataSourceAdapter {
     /** @type {MetadataSourceDef} */
     #source;
 
-    /** @type {DataBackendDef} */
+    /** @type {DataBackendDef | FigWigBackendDef} */
     #backend;
+
+    /** @type {string} */
+    #sampleIdField;
 
     /** @type {string | undefined} */
     #baseUrl;
@@ -39,11 +43,18 @@ export default class DataMetadataSourceAdapter {
     constructor(source, options = {}) {
         this.#source = source;
         this.#backend =
-            /** @type {DataBackendDef} */
+            /** @type {DataBackendDef | FigWigBackendDef} */
             (source.backend);
+        this.#sampleIdField =
+            this.#backend.backend === "figwig"
+                ? "name"
+                : (this.#backend.sampleIdField ?? "sample");
         this.#baseUrl = options.baseUrl;
         this.#excludedColumns = new Set([
-            this.#backend.sampleIdField ?? "sample",
+            this.#sampleIdField,
+            ...(this.#backend.backend === "figwig"
+                ? ["dtype", "group", "sample"]
+                : []),
             ...(source.excludeColumns ?? []),
         ]);
     }
@@ -54,7 +65,7 @@ export default class DataMetadataSourceAdapter {
      */
     async listColumns(signal) {
         const rows = await this.#loadRows(signal);
-        const sampleIdField = this.#backend.sampleIdField ?? "sample";
+        const sampleIdField = this.#sampleIdField;
 
         /** @type {Set<string>} */
         const columns = new Set();
@@ -79,7 +90,7 @@ export default class DataMetadataSourceAdapter {
      */
     async listSampleIds(signal) {
         const rows = await this.#loadRows(signal);
-        const sampleIdField = this.#backend.sampleIdField ?? "sample";
+        const sampleIdField = this.#sampleIdField;
         return rows.map((row) => String(row[sampleIdField] ?? ""));
     }
 
@@ -141,7 +152,7 @@ export default class DataMetadataSourceAdapter {
      */
     async fetchColumns(request, signal) {
         const rows = await this.#loadRows(signal);
-        const sampleIdField = this.#backend.sampleIdField ?? "sample";
+        const sampleIdField = this.#sampleIdField;
         const sampleIdSet = new Set(request.sampleIds);
 
         for (const columnId of request.columnIds) {
@@ -232,6 +243,9 @@ export default class DataMetadataSourceAdapter {
      * @returns {Promise<Record<string, any>[]>}
      */
     async #loadRowsUncached(signal) {
+        if (this.#backend.backend === "figwig") {
+            return this.#loadFigwigRows(this.#backend, signal);
+        }
         const data = this.#backend.data;
 
         if ("url" in data) {
@@ -245,6 +259,31 @@ export default class DataMetadataSourceAdapter {
         throw new Error(
             "Metadata source data backend supports only UrlData and InlineData."
         );
+    }
+
+    /**
+     * @param {FigWigBackendDef} backend
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<Record<string, any>[]>}
+     */
+    async #loadFigwigRows(backend, signal) {
+        const { FigWig } = await import("@genome-spy/figwig");
+        const reader = new FigWig({
+            url: resolveUrl(this.#baseUrl, backend.url),
+        });
+
+        try {
+            const tracks = await reader.getTracks({ signal });
+            return tracks.map((track) => {
+                /** @type {Record<string, any>} */
+                const row = { ...track.metadata, name: track.name };
+                delete row.dtype;
+                delete row.group;
+                return row;
+            });
+        } finally {
+            await reader.close();
+        }
     }
 
     /**

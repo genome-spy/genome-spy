@@ -193,3 +193,54 @@ without errors. The exact oracle still passes all 81 cases with zero error.
 Full GenomeSpy tests pass 5,293 cases in 555 files; reader checks pass 160 unit
 and three Chromium tests. All planned mode work is complete; continuous frame
 profiling, remote latency and other browser engines remain outside this task.
+
+## Embedded track metadata backend
+
+App metadata adapters own sample metadata import. The existing eager data
+adapter already owns row caching, column selection, exclusions, validation and
+`wrangleMetadata`; generalize it as an eager table adapter for data and Figwig
+backends. Keep the Zarr matrix adapter separate. No new Core data source,
+signal-row attributes, sample state or reader registry is needed.
+
+Add an App `figwig` backend with a file URL. Track names are canonical sample ids;
+custom track attributes are columns, with reserved name/dtype/group and the
+App's internal payload identifier `sample` excluded.
+Preserve JSON values and store numeric attributes as JSON numbers when preparing
+the file. The backend performs no inference or parsing; identifiers remain
+strings. The user explicitly requested typed metadata at the conversion boundary.
+Read all track metadata through `getTracks`, close the short-lived header
+reader in `finally`, and cache the extracted rows through the existing table
+adapter. Resolve imported URLs through the current metadata-source path.
+
+Keep metadata available independently of signal viewport and visible-track
+selection. Existing initialLoad semantics remain: the new backend loads only
+when requested or explicitly configured with `initialLoad: "*"`. Sample
+identity and labels continue to use the separate table. Removing that table
+dependency is outside this task.
+
+Switch only the local mouse Figwig variant to a separate metadata-source
+definition pointing to the enriched `.fw`. Reuse the original attribute
+definitions and exclude duplicate helper aliases. Regenerate the local file with
+typed sample metadata while preserving signal values. The original BigWig variant,
+accepted v4 data and records stay unchanged; recipe changes stay uncommitted.
+
+Verification covers data-backend compatibility, Figwig header-only reads,
+import-relative URLs, string identities, native JSON numbers, exclusions,
+failure/abort cleanup and metadata state publication through the actual import
+flow. The mouse App must retain all 24 samples, numeric expression metadata,
+grouping, filtering, bookmark-derived brush values and scatterplots. Update the
+metadata grammar docs, generated schema/type links and existing Figwig release
+fragment. Tentative commit: `feat(app): load sample metadata from Figwig tracks`.
+
+Completed: the shared table adapter adds 39 lines and the registry adds three.
+No Figwig parsing API is exposed. The recipe stores 648 numeric values and 336
+strings as typed JSON; all signal payload bytes, statistics and summary levels
+remain unchanged. The reader/backend tests cover native numbers, string IDs,
+exclusions, cached header reads, cleanup, abort/retry and bootstrap into actual
+Redux metadata state. Independent implementation review found no blocker.
+
+Chromium verified all 936 displayed metadata values with the identity TSV
+stripped to IDs and labels. The mouse UI and both bookmark passes exercise
+grouping, selected tracks, metadata-derived plots and panning. Full tests pass
+5,299 cases in 556 files; the production App, metadata schema and documentation
+build pass. Identity-source integration remains explicitly out of scope.
