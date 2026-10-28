@@ -194,8 +194,11 @@ Permanent tests exercise the submitted render/picking textures, including both
 shader routes, rather than shader text. Geometry and normalization deferrals
 above remain explicit. The final production shader diff is +19/-42 non-comment
 lines (net -23); the example adds one line. No package manifests or locks change.
-Local qualification is complete; remote CI and implementation review remain
-PR delivery gates. No PR opened. Keep this temporary plan until reviewed, then
+Local qualification is complete. Two independent Sol implementation reviewers
+found no actionable architecture, simplicity, shader-path or scope issues. Both
+reviewed downstream dispatch and shared picking; neither independently reran GPU
+validation (one local server bind attempt was blocked). The existing 22 passing
+GPU tests remain runtime evidence. Remote CI remains a PR delivery gate. No PR opened. Keep this temporary plan until reviewed, then
 reconcile and retire it before merge.
 
 Candidate artifacts: chat-local gpu-point-composition/ contains the performance
