@@ -299,7 +299,7 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
-### Solid rule borders
+### Rule fill and borders
 
 Rules use `fill` (formerly `color`) for the body, with `size` as its thickness.
 `stroke` and `strokeWidth` add a border; the default width is zero. Numeric
@@ -310,15 +310,19 @@ its existing codes: 0 butt, 1 square, 2 round. Widths are in logical pixels.
 paints. Transparent strokes preserve the original fill. Nonpositive sizes hide
 both paints. Picking includes the visible border and retains the original ID.
 
-Solid borders support retained scalar and series updates. A nonempty
-`dashPatterns` table cannot be combined with a declared `stroke`, `strokeWidth`,
-`strokeOpacity`, or `strokeAlign`, even when its initial value is transparent
-or zero. Existing unbordered dashed rules remain supported.
+Solid and dashed borders support retained scalar, series and conditional inputs.
+`strokeCap` shapes the ribbon endpoints; dash boundaries cut that ribbon into
+finite painted intervals. Border alignment follows those clipped contours.
+`strokeDashOffset` shifts the pattern in logical pixels, including negative
+phases. Zero-length gaps merge adjacent painted runs; all-off patterns stay empty.
+Periods through the supported maximum of 256 logical pixels retain their gaps.
 
-Rules use six vertices and signed-distance antialiasing at sides and endpoints,
-including butt ends. Border offsets round convex corners. Transparent borders
-preserve that nominal coverage. Non-antialiased hard butt clipping is corrected;
-pixel-center endpoint samples now have half coverage.
+Rules use six vertices and signed-distance antialiasing at sides, dash cuts and
+endpoints, including butt ends. Border offsets round convex corners consistently.
+Hard butt/dash clipping is corrected: exact-boundary samples have half coverage.
+The Rules story combines strokes and dashes with retained paint, width, cap,
+alignment and phase controls. Pattern metadata is uploaded once per program;
+no per-datum dash geometry or extra rendering pass is created.
 
 ### Position clamping
 

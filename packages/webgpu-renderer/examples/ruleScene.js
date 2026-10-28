@@ -1,18 +1,49 @@
 import { createExampleRenderer, setupResize } from "./utils.js";
 import { ruleMark } from "../src/marks/rule.js";
-import { identityScale } from "../src/scales/identity.js";
+import { color as parseColor } from "d3-color";
 import { linearScale } from "../src/scales/linear.js";
 import { ordinalScale } from "../src/scales/ordinal.js";
 
 /**
- * @param {HTMLCanvasElement} canvas
- * @returns {Promise<() => void>}
+ * @typedef {object} RuleOptions
+ * @prop {number} [size]
+ * @prop {number} [strokeWidth]
+ * @prop {number} [strokeOpacity]
+ * @prop {number} [fillOpacity]
+ * @prop {number} [opacity]
+ * @prop {string} [stroke]
+ * @prop {"butt" | "square" | "round"} [cap]
+ * @prop {"inside" | "center" | "outside"} [alignment]
+ * @prop {boolean} [dashed]
+ * @prop {number} [dashPattern]
+ * @prop {number} [dashOffset]
  */
-export default async function runRuleScene(canvas) {
+
+/** @type {Required<RuleOptions>} */
+export const ruleDefaults = {
+    size: 8,
+    strokeWidth: 1,
+    strokeOpacity: 1,
+    fillOpacity: 1,
+    opacity: 0.9,
+    stroke: "#ffffff",
+    cap: "butt",
+    alignment: "outside",
+    dashed: true,
+    dashPattern: 1,
+    dashOffset: 0,
+};
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @param {RuleOptions} [options]
+ * @returns {Promise<{cleanup: () => void, update: (next: RuleOptions) => void}>}
+ */
+export default async function runRuleScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
 
     const padding = 30;
-    const count = 2000;
+    const count = 200;
     const palette = [
         "#1f77b4",
         "#aec7e8",
@@ -43,7 +74,6 @@ export default async function runRuleScene(canvas) {
     const y2 = new Float32Array(count);
     const size = new Float32Array(count);
     const color = new Uint32Array(count);
-    const dash = new Uint32Array(count);
 
     for (let i = 0; i < count; i += 1) {
         const x0 = Math.random();
@@ -60,18 +90,15 @@ export default async function runRuleScene(canvas) {
             palette.length - 1,
             Math.floor(x[i] * palette.length)
         );
-        dash[i] = color[i] % 6;
     }
 
-    const { series, scales } = renderer.createMark(ruleMark, {
+    const mark = renderer.createMark(ruleMark, {
         count,
         dashPatterns: [
             [1, 0],
-            [1, 3],
-            [3, 1],
-            [1, 1],
-            [1, 5],
-            [4, 2, 1, 2],
+            [8, 4],
+            [2, 4],
+            [8, 3, 2, 3],
         ],
         channels: {
             x: {
@@ -97,72 +124,73 @@ export default async function runRuleScene(canvas) {
             size: {
                 data: size,
                 type: "f32",
-                scale: identityScale(),
+                scale: linearScale({
+                    domain: [0, 15],
+                    range: [0, ruleDefaults.size],
+                }),
             },
             fill: {
                 data: color,
                 type: "u32",
                 scale: ordinalScale({ domain: colorDomain, range: palette }),
             },
-            strokeDash: { data: dash, type: "u32" },
-            opacity: { value: 0.9 },
-            strokeCap: { value: 2, type: "u32" },
+            strokeDash: { value: 1, type: "u32", dynamic: true },
+            strokeDashOffset: { value: 0, dynamic: true },
+            opacity: { value: ruleDefaults.opacity, dynamic: true },
+            fillOpacity: { value: 1, dynamic: true },
+            stroke: { value: [1, 1, 1, 1], dynamic: true },
+            strokeWidth: { value: 1, dynamic: true },
+            strokeOpacity: { value: 1, dynamic: true },
+            strokeCap: { value: 0, type: "u32", dynamic: true },
+            strokeAlign: { value: 2, type: "u32", dynamic: true },
         },
     });
 
-    // Keep the original dashed mark above a separate solid-border comparison.
-    const rows = new Float32Array(Array.from({ length: 9 }, (_, i) => i / 8));
-    const solid = renderer.createMark(ruleMark, {
-        count: 9,
-        channels: {
-            x: { value: 0.15, scale: linearScale({ domain: [0, 1] }) },
-            x2: { value: 0.85, scale: linearScale({ domain: [0, 1] }) },
-            y: { data: rows, scale: linearScale({ domain: [0, 1] }) },
-            y2: { data: rows, scale: linearScale({ domain: [0, 1] }) },
-            size: { value: 10 },
-            fill: { value: [1, 0.6, 0.2, 1] },
-            stroke: { value: [0.15, 0.25, 0.5, 1] },
-            strokeWidth: { value: 3 },
-            strokeAlign: {
-                data: new Uint32Array(rows.map((_, i) => i % 3)),
-                type: "u32",
-            },
-            strokeCap: {
-                data: new Uint32Array(rows.map((_, i) => Math.floor(i / 3))),
-                type: "u32",
-            },
-        },
-    });
+    const { scales, values } = mark;
 
     const updateRanges = ({ width, height }) => {
         const xRange = [padding, Math.max(padding, width - padding)];
-        const yRange = [Math.max(padding, height * 0.45), padding];
+        const yRange = [Math.max(padding, height - padding), padding];
         scales.x.setRange(xRange);
         scales.x2.setRange(xRange);
         scales.y.setRange(yRange);
         scales.y2.setRange(yRange);
-        solid.batchUpdates(() => {
-            solid.scales.x.setRange(xRange);
-            solid.scales.x2.setRange(xRange);
-            const lower = [
-                Math.max(padding, height * 0.55),
-                Math.max(padding, height - padding),
-            ];
-            solid.scales.y.setRange(lower);
-            solid.scales.y2.setRange(lower);
-        });
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    series.replace(
-        { x, x2, y, y2, size, fill: color, strokeDash: dash },
-        count
-    );
-    renderer.render();
+    /** @param {RuleOptions} next */
+    const update = (next) => {
+        const state = { ...ruleDefaults, ...next };
+        mark.batchUpdates(() => {
+            scales.size.setRange([0, state.size]);
+            const stroke = parseColor(state.stroke).rgb();
+            values.stroke.set([
+                stroke.r / 255,
+                stroke.g / 255,
+                stroke.b / 255,
+                stroke.opacity,
+            ]);
+            values.strokeWidth.set(state.strokeWidth);
+            values.strokeOpacity.set(state.strokeOpacity);
+            values.fillOpacity.set(state.fillOpacity);
+            values.opacity.set(state.opacity);
+            values.strokeCap.set({ butt: 0, square: 1, round: 2 }[state.cap]);
+            values.strokeAlign.set(
+                { inside: 0, center: 1, outside: 2 }[state.alignment]
+            );
+            values.strokeDash.set(state.dashed ? state.dashPattern : 0);
+            values.strokeDashOffset.set(state.dashOffset);
+        });
+        renderer.render();
+    };
+    update(options);
 
-    return () => {
-        cleanupResize();
-        renderer.destroy();
+    return {
+        update,
+        cleanup() {
+            cleanupResize();
+            renderer.destroy();
+        },
     };
 }
