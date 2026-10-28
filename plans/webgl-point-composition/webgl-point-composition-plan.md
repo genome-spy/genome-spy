@@ -8,8 +8,9 @@ No new dependencies. This slice completes neither issue.
 
 Follow ARCHITECTURE.md, packages/core/ARCHITECTURE.md and its rendering document.
 Core PointMark (src/marks/point.js and markUtils.js) owns channels, normalization
-and datum identity. The private WebGL point delegate (src/rendering/webgl/marks/point.js) owns GLSL,
-gl.POINTS geometry and picking submission. Both ordinary and line-only shapes share
+and datum identity. The private WebGL point delegate
+(src/rendering/webgl/marks/point.js) owns GLSL, gl.POINTS geometry and picking
+submission. Both ordinary and line-only shapes share
 packages/core/src/rendering/webgl/marks/point.fragment.glsl. Keep the fix
 there if proof supports it; do not change common.glsl's distanceToColor because
 arrows and other consumers have separate geometry contracts.
@@ -45,9 +46,9 @@ preserving x/+ thickness/fallback and picking. Tentative commit:
 
 Expected delivery: point.fragment.glsl, one focused real-browser regression file
 in packages/playground/tests/ (the existing Core rendering integration path),
-one patch changeset, and only necessary test/snapshot adjustments. Target 3-5 delivery files and <=280 added
-raw lines excluding this temporary plan. Stop and revise if vertex geometry or
-shared normalization must change. No generic test infrastructure to hide size.
+one patch changeset, and only necessary test/snapshot adjustments. Target 3-5
+delivery files and <=280 added raw lines excluding this temporary plan. Stop and
+revise if vertex geometry or shared normalization must change. No generic test infrastructure to hide size.
 No public grammar/docs migration is needed for a rendering bug correction.
 
 ## Proof and implementation gates
@@ -119,9 +120,10 @@ Tolerance remains <=2/255; no shader-distance diagnostic is used as the oracle.
 | Inward thin, opaque, either shape | [0,0,128,128] | [64,0,64,128] |
 | Inward outer fringe, stroke opacity .5 | [0,0,64,64] | [64,0,64,128] |
 
-All 24 candidate sample comparisons pass on each backend. The matrix covers separate fractional fill/stroke opacity, empty fill,
-wide inward stroke and no-stroke controls. StrokeOpacity-zero versus zero width
-is whole-image identical. All expected sample cases fail master and pass the
+All 36 candidate pixel comparisons pass on each backend after the review-gap
+rerun below. The matrix covers separate fractional fill/stroke opacity, empty
+fill, wide inward stroke and no-stroke controls. StrokeOpacity-zero versus zero
+width is whole-image identical. All expected sample cases fail master and pass the
 experiment. Hardware samples are exact; software differs by at most 1/255.
 No page errors or GL errors. Backing size follows DPR.
 
@@ -130,7 +132,8 @@ visible-stroke precedence and strokeOpacity-zero with inward toggled. Every
 candidate buffer and datum pick equals master exactly. Two retained mixed-shape
 stages use circle/x/+/triangle, update width and rotation, replace shape/data
 with new identities, and touch the clipped canvas edge; images and picks remain
-identical. A small circle with minPickingSize12 retains its image and picks.
+identical. A small circle with minPickingSize12 retains its image and picks,
+including an explicit hit outside visible paint in the enlarged picking area.
 Rotated gradient circle/triangle interiors and their picks are preserved. The
 ordinary circle/square pick probes include interior, nominal edge, outer band
 and empty space. Existing inward hit policy is preserved rather than corrected
@@ -159,7 +162,49 @@ The proof supports a fragment-local correction and no geometry/picking changes.
 Retain line-only single-paint coverage explicitly; keep common.glsl and the
 vertex shader unchanged. Expected runtime change is about 20 added lines;
 reserve the rest of the <=280-line budget for actual-renderer regressions and
-the Core patch changeset. Reconcile exact size before a PR. Independent plan
-review is not yet requested; implementation and PR opening are not part of this
-planning task. Remaining permanent integration assertions above are explicit
-implementation gates, not claims of completed proof coverage.
+the Core patch changeset. Reconcile exact size before a PR. Two independent Sol
+plan/proof reviews found no architecture or shader-correctness blocker. Their
+two proof-quality findings are closed below; no additional implementation scope
+is needed. Implementation and PR opening are not part of this planning task.
+Remaining permanent integration assertions above are explicit implementation
+gates, not claims of completed proof coverage.
+
+## Review-gap closure and rerun (2026-10-28)
+
+Both Sol reviewers supported the fragment-local design and preservation of x/+,
+shared helpers, geometry and resource ownership. Their two proof findings were:
+wide-half was captured without a numeric paint assertion, and the minimum-size
+picking control did not probe the expanded hit region. Neither required a new
+production path, dependency, API or change to the <=280-line delivery budget.
+
+The temporary runner now asserts wide inward stroke colors at three locations
+for circle and square, DPR1/2. Width20 exceeds the radius8 interior, so Ci=0.
+At center/local x6, Cf=Co=1: opaque red beneath half-opacity blue must give
+[128,0,128,255]. At the nominal outer fringe, Cf=Co=.5: expected
+[64,0,64,128]. These expectations come from paint-over and coverage math;
+the center/interior assertions do not rely on candidate shader output. Master
+instead gives [0,0,128,128] internally and [0,0,64,64] at the fringe, so the new
+checks expose lost underlying fill for a band wider than the entire shape.
+
+The minimum-picking control now asserts original datum A at (32,32) and (35,32),
+and an empty result at (39,32), on master and experiment. Its size4 circle has
+nominal radius1. The (35,32) pixel is explicitly asserted to be [0,0,0,0] in the
+visible framebuffer, while public picking must return A with minPickingSize12.
+This proves an actual expanded hit beyond paint, not merely center/remote parity.
+The full minimum-control image and these picks also remain equal to master.
+
+Reran the complete actual Core embed/readback/picking proof on hardware Metal
+and software SwiftShader at DPR1/2. Each backend now has 36 numeric candidate
+pixel assertions: the prior 24, four wide-fringe and eight wide center/interior
+checks. All pass within the unchanged <=2/255 tolerance; hardware is exact and
+software's overall maximum error is 1/255. All wide samples are exact on both.
+No page/GL errors; all x/+ full-image/fallback/width and retained mixed-shape
+controls still pass, including unchanged datum identity and minimum picking.
+
+The candidate GLSL and baseline production source hashes are unchanged from the
+prior proof, so the earlier 16-case synchronized performance comparison remains
+applicable. Only temporary runner assertions/observations and this plan changed.
+The updated runner/results and original pre-review evidence are retained in the
+chat-local artifact directory. No production code, dependencies or lockfiles
+changed. Overlap ordering and nested-viewport clipping remain the explicitly
+pending permanent implementation tests above.
