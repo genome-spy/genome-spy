@@ -197,8 +197,9 @@ export default class FigWigSource extends IntervalUrlSource {
      * @param {AbortSignal} signal
      */
     async #loadBins(intervals, handle, tracks, binSize, useSummaries, signal) {
+        const { reader, chromosomeLengths } = handle;
         const regions = intervals.map((d) => {
-            const length = handle.chromosomeLengths.get(d.chrom) ?? 0;
+            const length = chromosomeLengths.get(d.chrom) ?? 0;
             const end = Math.min(d.endPos, length);
             // Alignment must not pull an entirely out-of-file request into data.
             const align = useSummaries && end > d.startPos;
@@ -212,18 +213,51 @@ export default class FigWigSource extends IntervalUrlSource {
                     : end,
             };
         });
-        const batches = await handle.reader.getBinsMulti(
-            regions.filter((r) => r.end > r.start),
-            {
-                tracks,
-                binSize,
-                aggregation: "mean",
-                missing: useSummaries ? "zero" : "omit",
-                useSummaries,
-                requireSummaries: useSummaries,
-                signal,
-            }
-        );
+        const requestedRegions = regions.filter((r) => r.end > r.start);
+        if (useSummaries && requestedRegions.length) {
+            const selected = tracks
+                ? await reader.selectTracks(tracks, { signal })
+                : await reader.getTracks({ signal });
+            const groups = Array.from(new Set(selected.map((t) => t.group)));
+            const levels = await reader.getZoomLevels({ tracks, signal });
+
+            // The published reader falls back to raw values. Check the summaries
+            // it would select first, preserving fast mode's bounded coarse reads.
+            await Promise.all(
+                requestedRegions.flatMap((region) =>
+                    groups.map(async (group) => {
+                        const level = levels.findLast(
+                            (level) =>
+                                level.groups.includes(group) &&
+                                region.start % level.binSize === 0 &&
+                                binSize % level.binSize === 0 &&
+                                (region.end % level.binSize === 0 ||
+                                    region.end ===
+                                        chromosomeLengths.get(
+                                            region.chromosome
+                                        ))
+                        );
+                        const summary = await reader.getSummary(
+                            group,
+                            level?.level ?? 0,
+                            { signal }
+                        );
+                        if (!summary.available) {
+                            throw new Error("Required summaries unavailable");
+                        }
+                    })
+                )
+            );
+        }
+
+        const batches = await reader.getBinsMulti(requestedRegions, {
+            tracks,
+            binSize,
+            aggregation: "mean",
+            missing: useSummaries ? "zero" : "omit",
+            useSummaries,
+            signal,
+        });
 
         let batchIndex = 0;
         return regions.map((region, intervalIndex) => {

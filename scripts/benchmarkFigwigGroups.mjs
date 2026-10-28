@@ -14,7 +14,7 @@ const repetitions = Number(repetitionsArg);
 assert(Number.isSafeInteger(repetitions) && repetitions > 0);
 const root = fileURLToPath(new URL("../", import.meta.url));
 const origin = new URL(dataBaseUrl).origin;
-// Vite must transform the bare package import, including Pako's CommonJS code.
+// Vite resolves the bare npm package import for the browser benchmark.
 const entry = root + "private/figwig/benchmarkEntry.js";
 mkdirSync(root + "private/figwig", { recursive: true });
 writeFileSync(entry, 'export { FigWig } from "@genome-spy/figwig";\n');

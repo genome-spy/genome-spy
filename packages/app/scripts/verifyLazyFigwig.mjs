@@ -34,7 +34,7 @@ export default function verifyLazyFigwig() {
             }
 
             const adapter = /\/adapters\/figWigMetadataSourceAdapter\.js$/;
-            const dependencies = /\/(?:@genome-spy\/figwig|pako)\//;
+            const dependencies = /\/(?:@genome-spy\/figwig|pako(?:-esm2)?)\//;
             const eager = Array.from(staticSources).find(
                 (id) => adapter.test(id) || dependencies.test(id)
             );

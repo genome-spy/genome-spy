@@ -120,7 +120,7 @@ FigWigExperimentSource.prototype.loadWindow = async function(domain, handles, si
                 const result = await getBinsMulti.call(this, regions, options);
                 window.experiment.binQueries.push({
                     regions, binSize:options.binSize, missing:options.missing,
-                    requireSummaries:options.requireSummaries,
+                    useSummaries:options.useSummaries,
                     sources:result.map(batch=>batch.source),
                 });
                 return result;
@@ -263,7 +263,7 @@ ExperimentLazySource.prototype.publishData = function(chunks,domain) {
                 assert(
                     state.binQueries.every(
                         (q) =>
-                            q.requireSummaries &&
+                            q.useSummaries &&
                             q.sources.every((source) => source === "summary")
                     )
                 );

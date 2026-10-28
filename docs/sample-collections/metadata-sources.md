@@ -377,7 +377,7 @@ sample set and display labels from this file, configure
 [`samples.identity.metadataSource`](visualizing.md#identity-from-metadata).
 Identity and attribute loading reuse the cached header. Configure
 `initialLoad: "*"` to load the attributes at startup, or import selected columns
-later. This experiment uses the same unpublished reader package as the
+later. This backend uses the same published `@genome-spy/figwig` dependency as the
 [Figwig signal source](../grammar/data/lazy.md#figwig-experimental).
 
 APP_SCHEMA FigWigBackendDef

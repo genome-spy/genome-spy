@@ -1,5 +1,30 @@
 # Experimental Figwig integration
 
+## Published npm dependency migration
+
+Use published `@genome-spy/figwig@^0.1.0` in Core and App. Remove the local
+tarball setup script, source patch and release-fixture tarball workaround.
+The package retains the existing binning and metadata contracts, but does not
+expose the experiment's `requireSummaries` option. Core therefore checks the
+coarsest compatible stored summary for each selected group/region through
+`selectTracks`, `getZoomLevels` and `getSummary` before requesting fast bins.
+This preserves the no-raw-fallback policy using public APIs. Keep exact binning,
+reactive track selection and App metadata ownership unchanged.
+
+Verify missing tile/zoom summaries fail before bin queries, selected groups and
+chromosome tails retain their behavior, and numerical references still agree.
+Build checks must keep the reader and its `pako-esm2` inflater out of the bare
+minimal bundle and synchronous App entries. Exercise the real mouse metadata
+and whole-genome overview. Update current installation instructions, including
+the recipe README, while retaining historical measurement context.
+
+Migration verification passed: ordinary `npm ci`, all 558 test files (5,316
+passed tests), workspace types, lint, Core/App builds and bundle guards. The
+81 exact numeric cases still have zero error. Chromium verified all 24 IDs and
+labels plus 936 metadata values without TSV requests; all 17 whole-genome and
+bookmark stages passed, with zero raw bytes/chunks for coarse views. The
+existing unreleased Figwig changeset remains accurate.
+
 ## Architecture check
 
 Core owns the lazy-source grammar and dataflow. `FigWigSource` extends
@@ -33,10 +58,11 @@ standalone implementation code is copied.
   contract, preserving all existing callers. Signed finite signals remain valid;
   missing and infinite values are omitted.
 - Descriptor attachment rejects collisions with chrom/start/end/score/sampleId.
-- Install the unpublished reader reproducibly with a pinned portable dependency
-  if its build lifecycle permits; otherwise document local packing.
-- Keep ENCODE recipes and data local and uncommitted. Preserve original specs,
-  BigWigs, provenance, rights and distribution records. No upload, push or PR.
+- Install the published reader through normal npm dependencies and lockfile
+  integrity. The local packing workaround has been retired.
+- Preserve original ENCODE specs, BigWigs, provenance, rights and distribution
+  records. The user subsequently authorized recipe commit `f88b5ac`; generated
+  data remain local. No upload, push or PR.
 
 Alternatives: feature objects allocate missing rows before filtering; summary
 means alter missingness semantics; per-track readers duplicate file metadata.
@@ -52,7 +78,7 @@ to correctness. Exact aggregation can cost more than BigWig zoom queries.
 2. Convert the regional ENCODE panel with deterministic metadata, validate against
    original BigWigs, and create separate local visualization specs. Verify all
    tracks/chromosomes, missingness, measured zeros, common bins and boundaries.
-   Recipe work remains uncommitted.
+   Recipe workflow was later committed at the user's request; artifacts remain local.
 3. Run both App variants over HTTP ranges, exercise all six bookmarks and brush
    metadata, revisit/pan after selection changes, and measure cold/warm bytes,
    requests, timing, memory and reader diagnostics. Record limitations and exact
@@ -74,7 +100,7 @@ than hidden. Browser interactions and metadata are final integration gates.
   `91ce56e30eeb08f30e63fca518935d386e7f00f1`.
 - Created local branch `experiment/figwig-integration`.
 - Implemented the source, reactive public grammar, schema generation, docs,
-  changesets and reproducible unpublished-package setup. Independent review
+  changesets and an initially local package setup, now replaced by npm. Independent review
   found no remaining material lifecycle defects.
 - Converted all 24 regional tracks with NaN missingness and generated separate
   local specs. Python and JavaScript common-bin comparisons passed with zero
@@ -83,7 +109,7 @@ than hidden. Browser interactions and metadata are final integration gates.
   real HTTP range checks and cold/warm measurements. Actual bookmark buttons,
   expanded scatterplot and mouse panning after filtering passed.
 - Full unit suite: 5,288 passed; workspace types, lint, complete build and docs
-  build passed. The existing release fixture now preserves local tarballs.
+  build passed. Its initial local-tarball fixture workaround is now removed.
 - Exact means cost substantially more than BigWig zoom summaries for broad
   overview loading. The initial integration had no approximate mode; the
   follow-up below adds an explicit fast policy.
@@ -94,7 +120,7 @@ than hidden. Browser interactions and metadata are final integration gates.
   Build-generated App-agent schema drift unrelated to this feature was restored
   to its original state.
 - Full results and reproduction: `docs/development/figwig-experiment.md`.
-  Recipe changes, data and benchmark outputs remain local and uncommitted.
+  Recipe workflow was committed as `f88b5ac`; data and benchmark outputs remain local.
 - Independent plan review completed: retain the native source lifecycle and
   register through `lazy/registerBuiltInLazySources.js`. Profiling established
   that coarse spatial quantization decoded 28.06 Mb for a 10 Mb viewport,

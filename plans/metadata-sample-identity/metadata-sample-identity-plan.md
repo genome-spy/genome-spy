@@ -210,8 +210,8 @@ Verification:
 - Release checks pass. This backward-compatible App feature requests a minor
   bump; the current fixed release group resolves from 1.2.0 to 1.3.0.
 
-The mouse recipe changes remain local and uncommitted in the nested recipes
-repository. Alternative 2, automatic metadata identity on omission, set-union
+The mouse recipe workflow was committed as `f88b5ac` in the nested recipes
+repository; generated artifacts remain local. Alternative 2, automatic metadata identity on omission, set-union
 policies and live membership changes are explicitly discarded for this scope.
 
 The subsequent KISS review retained the streaming identity processor to avoid

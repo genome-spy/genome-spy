@@ -10,9 +10,13 @@ const readers = [];
 
 /** @type {{ regions: import("@genome-spy/figwig").Region[], options: import("@genome-spy/figwig").BinOptions & { signal: AbortSignal } }[]} */
 const queries = [];
+/** @type {{ group: number; level: number }[]} */
+const summaryQueries = [];
 let failHeader = false;
 let failQuery = false;
 let summariesAvailable = true;
+/** @type {string | undefined} */
+let unavailableSummary;
 /** @type {((result: any) => Promise<any>) | undefined} */
 let delayQuery;
 
@@ -44,13 +48,38 @@ vi.mock("@genome-spy/figwig", () => ({
             };
         });
 
+        async getTracks() {
+            return [
+                { name: "A", group: 0 },
+                { name: "B", group: 1 },
+            ];
+        }
+
+        /** @param {string[]} names */
+        async selectTracks(names) {
+            return (await this.getTracks()).filter((t) =>
+                names.includes(t.name)
+            );
+        }
+
+        async getZoomLevels() {
+            return [{ level: 1, binSize: 512, groups: [0, 1] }];
+        }
+
+        /** @param {number} group @param {number} level */
+        async getSummary(group, level) {
+            summaryQueries.push({ group, level });
+            return {
+                available:
+                    summariesAvailable &&
+                    unavailableSummary !== `${group}:${level}`,
+            };
+        }
+
         /** @param {any[]} regions @param {any} options */
         async getBinsMulti(regions, options) {
             queries.push({ regions, options });
             if (failQuery) throw new Error("Broken chunk");
-            if (options.requireSummaries && !summariesAvailable) {
-                throw new Error("Required summaries unavailable");
-            }
             const names = /** @type {string[]} */ (
                 options.tracks ?? ["A", "B"]
             );
@@ -176,9 +205,11 @@ describe("FigWigSource", () => {
     beforeEach(() => {
         readers.length = 0;
         queries.length = 0;
+        summaryQueries.length = 0;
         failHeader = false;
         failQuery = false;
         summariesAvailable = true;
+        unavailableSummary = undefined;
         delayQuery = undefined;
         vi.useFakeTimers();
         vi.stubGlobal("window", { setTimeout, clearTimeout });
@@ -213,7 +244,6 @@ describe("FigWigSource", () => {
             aggregation: "mean",
             missing: "omit",
             useSummaries: false,
-            requireSummaries: false,
         });
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
         source.disposeSubtree();
@@ -418,7 +448,6 @@ describe("FigWigSource", () => {
             aggregation: "mean",
             missing: "zero",
             useSummaries: true,
-            requireSummaries: true,
         });
         expect(regions.map((r) => r.chromosome)).toEqual(["chr1", "chr2"]);
         expect(regions.every((r) => r.start % options.binSize === 0)).toBe(
@@ -469,7 +498,7 @@ describe("FigWigSource", () => {
         expect(queries.at(-1).options).toMatchObject({
             binSize: 300,
             missing: "omit",
-            requireSummaries: false,
+            useSummaries: false,
         });
 
         setMode("fast");
@@ -477,7 +506,7 @@ describe("FigWigSource", () => {
         expect(queries.at(-1).options).toMatchObject({
             binSize: 512,
             missing: "zero",
-            requireSummaries: true,
+            useSummaries: true,
         });
         setTracks(["B"]);
         await vi.runAllTimersAsync();
@@ -487,18 +516,18 @@ describe("FigWigSource", () => {
         await source.requestInterval([0, 3000]);
         expect(queries.at(-1).options).toMatchObject({
             binSize: 128,
-            requireSummaries: true,
+            useSummaries: true,
         });
         setAxisLength(24);
         await source.requestInterval([0, 3000]);
         expect(queries.at(-1).options).toMatchObject({
             binSize: 125,
             missing: "omit",
-            requireSummaries: false,
+            useSummaries: false,
         });
         setMode("exact");
         await vi.runAllTimersAsync();
-        expect(queries.at(-1).options.requireSummaries).toBe(false);
+        expect(queries.at(-1).options.useSummaries).toBe(false);
         expect(readers).toHaveLength(1);
         expect(readers[0].getHeader).toHaveBeenCalledTimes(1);
         source.disposeSubtree();
@@ -512,14 +541,40 @@ describe("FigWigSource", () => {
         const { source } = create({ mode: "fast" });
         await source.requestInterval([0, 1000]);
 
-        expect(queries).toHaveLength(1);
-        expect(queries[0].options.requireSummaries).toBe(true);
+        expect(queries).toHaveLength(0);
         expect(statuses.at(-1)).toMatchObject({
             status: "error",
             detail: "Required summaries unavailable",
         });
         expect(source.isDataReadyForDomain({ x: [0, 1000] })).toBe(false);
         source.disposeSubtree();
+    });
+
+    it("checks the selected groups' compatible zooms before any bin queries", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const { create, setAxisLength, statuses } = createFixture();
+        setAxisLength(10);
+        unavailableSummary = "1:1";
+        const { source } = create({ mode: "fast", pixelsPerBin: 1 });
+        await source.requestInterval([0, 3000]);
+
+        expect(summaryQueries).toContainEqual({ group: 1, level: 1 });
+        expect(queries).toHaveLength(0);
+        expect(statuses.at(-1).status).toBe("error");
+        source.disposeSubtree();
+
+        summaryQueries.length = 0;
+        const selected = create({
+            mode: "fast",
+            pixelsPerBin: 1,
+            tracks: ["A"],
+        });
+        await selected.source.requestInterval([0, 3000]);
+        expect(
+            summaryQueries.every((q) => q.group === 0 && q.level === 1)
+        ).toBe(true);
+        expect(queries).toHaveLength(1);
+        selected.source.disposeSubtree();
     });
 
     it.each([

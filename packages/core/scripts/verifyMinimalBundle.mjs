@@ -408,7 +408,9 @@ function normalizeSource(source) {
 
 /** @param {string} source */
 function isFigwigReaderDependency(source) {
-    return /\/(?:@genome-spy\/figwig|pako)\//.test(normalizeSource(source));
+    return /\/(?:@genome-spy\/figwig|pako(?:-esm2)?)\//.test(
+        normalizeSource(source)
+    );
 }
 
 /** @param {string} source */

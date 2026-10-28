@@ -1,11 +1,11 @@
 # Local Figwig experiment
 
-This experiment integrates the unpublished `@genome-spy/figwig` reader into
+This experiment integrates the `@genome-spy/figwig` reader into
 GenomeSpy and compares a single multitrack file with the ENCODE mouse fetal
 development regional BigWigs. It is a local experiment on
 `experiment/figwig-integration`, based on GenomeSpy
-`91ce56e30eeb08f30e63fca518935d386e7f00f1`. No branch, package or dataset was
-published.
+`91ce56e30eeb08f30e63fca518935d386e7f00f1`. The measurements below describe
+local runs; the reader is now published on npm.
 
 ## Implementation
 
@@ -39,56 +39,38 @@ in the original BigWig visualization was also fixed: group rows omitted `title`
 when it equaled the name, but their formula required the field. The fix always
 publishes it, with a regression assertion and a separate changeset.
 
-## Unpublished dependency
+## Reader dependency
 
-Reader base revision: `df1d737e5503c0463a35e94cf0b4d922a076ea91` from
-[figwig-js](https://github.com/genome-spy/figwig-js), with the isolated runtime
-patch in `scripts/figwig-experiment.patch`. The standalone checkout on
-`codex/validation-performance` contains the validation optimizations and
-`requireSummaries` API separately from GenomeSpy. The runtime patch includes
-both implementation and public types; it does not change the binary format.
-The required-summary feature is committed there as `64f6e2c`; the existing
-`findings.md` additions remain uncommitted.
-
-A real pinned GitHub-package probe produced only three files and no `dist`:
-the package builds in `prepack`, whereas npm's Git dependency packing path uses
-`prepare`. A direct GitHub dependency therefore fails to resolve its exports at
-this revision. The experiment uses a relative `file:` tarball dependency in
-Core, pointing into ignored `private/figwig/`. No machine-specific absolute
-dependency or nonexistent npm release is recorded.
+Core and App use the published [`@genome-spy/figwig`](https://www.npmjs.com/package/@genome-spy/figwig)
+package, currently `^0.1.0`. Install dependencies normally:
 
 ```sh
-# Use an existing clean checkout, or clone one locally.
-git clone https://github.com/genome-spy/figwig-js.git ../figwig-js
-git -C ../figwig-js checkout df1d737e5503c0463a35e94cf0b4d922a076ea91
-node scripts/setupFigwigExperiment.mjs ../figwig-js
+npm ci
 ```
 
-The setup script archives the pinned base, applies the reviewed runtime patch in
-a temporary directory, installs build dependencies, and runs the package's normal
-build/pack lifecycle before installing GenomeSpy dependencies. Local checkout
-edits are neither used nor modified. The patch reproduces the standalone runtime
-change byte for byte and has SHA-256
-`d6447c4079c54094194b792036ca322debe26c00fd03bf6e82eef9c59b29020a`.
-Run it before `npm ci` on a fresh checkout: the tarball is intentionally absent
-from Git. It contains 21 files and is approximately 29 kB. Its SHA-512 integrity
-is `tpeUtn2zbCQFbEpD0Q33SG7j1zrxI4oE3CCdMPnMVdOmUt9kOlyhMYPANUX2Ex4HdZWhFKctXnPfJsAttn0NGQ==`.
-Base revision, patch hash and artifact integrity are recorded locally in
-`private/figwig/provenance.json`. Restart any running Vite server after replacing
-the tarball so its optimized dependency cache uses the patched reader.
-This dependency arrangement is suitable for the local branch, not a release.
+No reader checkout, local tarball or source patch is required. The reader and its
+`pako-esm2` inflater remain behind dynamic imports. The inflater is shared with
+the GMOD dependencies when their versions align.
+
+Version 0.1.0 exposes `useSummaries`, which can fall back to raw values, but not
+the experiment's `requireSummaries` option. Before a coarse fast query,
+`FigWigSource` checks the coarsest compatible summary for each selected group
+and region through `getZoomLevels()` and `getSummary()`. An unavailable summary
+fails before the bin query, preserving bounded work without patching the reader.
+
+Earlier measurements used a locally patched reader. Its optimization and
+required-summary changes were committed in the reader repository as
+`64f6e2c`; the historical timings below are not new measurements of npm 0.1.0.
 
 ## Local dataset
 
-The separate recipes repository remained on
-`main@7e143f47849d977d83cb124fa896ca171b7f8046`. Existing unrelated README,
-HCC1954 spec and CellMiner work was preserved.
-
-Uncommitted additions under `recipes/encode-mouse-fetal-development-mm10/`:
+The Figwig recipe was committed in the separate recipes repository at
+`f88b5ac737dd77d26eaebbcf7310e280237cf375`. Additions under
+`recipes/encode-mouse-fetal-development-mm10/`:
 
 - `scripts/prepare_figwig.py` and `validate_figwig.py`, with uv script locks.
 - `specs/spec-figwig.json`, `samples-figwig.json` and
-  `h3k27ac-signal-figwig.json`.
+  `h3k27ac-signal-figwig.json`, plus `metadata-figwig.json`.
 
 The conversion reads `output/samples.tsv` in its established order and records
 the same sample IDs as track names, with tissue, stage, replicate and ENCODE
@@ -149,8 +131,7 @@ filtering, brush-derived metadata, scatterplots, actual bookmark buttons and
 mouse panning passed. No loading or console errors were observed.
 
 The original BigWig variant, accepted v4 artifacts and publication records are
-unchanged. All recipe changes and the regenerated data remain local and
-uncommitted.
+unchanged. Generated Figwig data and benchmark outputs remain ignored local artifacts.
 
 ## Optional dependency loading
 
@@ -344,7 +325,7 @@ earlier run measured 3,370 ms startup and a 31 ms source query. These are not
 frame-time or remote-network guarantees. All five signal responses were HTTP 206. Reader
 diagnostics reported 269,949 index/summary bytes, zero raw data bytes, zero
 fetched/decompressed chunks and zero decoding time. Bins were 4,194,304 bases;
-every region returned `source: "summary"` with `requireSummaries: true`.
+every region returned `source: "summary"` with summary-only queries.
 
 Returning to the 10 Mb bookmark switched to exact 9,175-base bins because they
 are finer than the 16,384-base tile size. Both passes of all six bookmarks,
@@ -354,8 +335,8 @@ the raw-query cost documented above.
 
 The fast coarse mean divides rounded sums by the full bin width, including
 missing bases. Gaps therefore dilute the signal, and brush statistics reuse
-these displayed approximations. The reader rejects unsupported required-summary
-queries before raw fallback; it does not infer missing coverage counts or add a
+these displayed approximations. The source checks summary availability
+before bin queries; it does not infer missing coverage counts or add a
 new format. The exact common-bin oracle still passes with zero error.
 
 The benchmark records query policies, returned summary/value sources and reader
@@ -445,16 +426,18 @@ the main App experiment needs only `h3k27ac.fw`.
 
 The full unit suite passed 558 files and 5,316 tests, with one skipped and two
 todo. Narrow source and App regression tests, generated-schema tests, upstream
-reader tests (160 and three Chromium tests), numerical validation, and
-real-browser checks passed.
+numerical validation, and real-browser checks passed.
 Workspace typechecks, lint, the complete workspace build and the documentation
-build passed. The built Figwig browser bundle resolved successfully.
+build passed. The npm 0.1.0 migration also passed an ordinary `npm ci`, all 81 exact
+numerical cases with zero error, and the 17-stage mouse browser check. The
+whole-genome stages fetched no raw bytes or chunks. Metadata and identity
+loaded all 24 samples without sample-TSV requests; bundle checks retained lazy
+reader/inflater imports.
 
-The first unrestricted full-suite run had resource-sensitive five-second schema
-timeouts and a release fixture that rewrote the unpublished local package to a
-registry version. The fixture now preserves/copies relative tarballs while
-retaining all release assertions; the complete suite passed with four workers.
-Local server binding and npm/uv caches require normal sandbox escalation.
+Release fixtures now distinguish actual workspace packages from external npm
+packages sharing the `@genome-spy` scope. They no longer need local tarball
+copying. The full suite runs with four workers to avoid resource-sensitive
+schema timeouts.
 
 The original recipe's verification and targeted recipe checks passed. Whole
 recipe-repository validation still reports an unrelated incomplete

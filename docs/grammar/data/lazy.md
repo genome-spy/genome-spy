@@ -159,9 +159,9 @@ Brush-derived measurements use the displayed bins in both modes. Bin boundaries
 can differ from BigWig, and coarse fast-mode measurements can be approximate or
 affected by zero-filled gaps.
 
-This experiment uses an unpublished reader package. See the
-[experiment report](../../development/figwig-experiment.md) for the pinned
-revision, local installation instructions and measured limitations.
+The reader is provided by the published `@genome-spy/figwig` npm dependency.
+See the [experiment report](../../development/figwig-experiment.md) for
+reproduction instructions and measured limitations.
 
 ### Parameters {#figwig-parameters}
 
