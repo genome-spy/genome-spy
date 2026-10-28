@@ -23,13 +23,10 @@ export default class SearchField extends LitElement {
 
         this._focused = false;
         this._subscriptions = new SubscriptionController(this);
-        /** @type {function():string} */
-        this.getDefaultValue = () => "";
     }
 
-    get genomeSpy() {
-        return this.app.genomeSpy;
-    }
+    /** @type {import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionApi} */
+    _genomeResolution;
 
     get _inputField() {
         return /** @type {HTMLInputElement} */ (this.inputRef.value);
@@ -38,6 +35,7 @@ export default class SearchField extends LitElement {
     static get properties() {
         return {
             app: { type: Object },
+            _focused: { state: true },
         };
     }
 
@@ -67,100 +65,71 @@ export default class SearchField extends LitElement {
     }
 
     _initializeGenome() {
-        const genomeResolution = findGenomeScaleResolution(
-            this.genomeSpy.viewRoot
+        const resolution = findGenomeScaleResolution(
+            this.app.genomeSpy.viewRoot
         );
-        if (genomeResolution) {
-            this._genomeResolution = genomeResolution;
-            this.getDefaultValue = () => {
-                const [begin, end] =
-                    /** @type {import("@genome-spy/core/types/coordinates.js").CoordinateLocus[]} */ (
-                        genomeResolution.getComplexDomain()
-                    );
-                return formatCoordinates([
-                    /** @type {import("@genome-spy/core/types/coordinates.js").CoordinateLocus} */ (
-                        begin
-                    ),
-                    { chrom: end.chrom, pos: end.pos + 1 },
-                ]);
-            };
+        if (!resolution)
+            throw new Error(
+                "The search field requires a zoomable locus scale."
+            );
+        this._genomeResolution = resolution;
 
-            const domainListener = debounce(
-                () => this.requestUpdate(),
-                60,
-                false
-            );
-            genomeResolution.addEventListener("domain", domainListener);
-            this._subscriptions.addUnsubscribeCallback(() =>
-                genomeResolution.removeEventListener("domain", domainListener)
-            );
-        }
+        const listener = debounce(() => this.requestUpdate(), 60, false);
+        resolution.addEventListener("domain", listener);
+        this._subscriptions.addUnsubscribeCallback(() =>
+            resolution.removeEventListener("domain", listener)
+        );
     }
 
-    /**
-     * @param {string} term
-     */
-    async searchViews(term) {
-        const { matches } = this.app.datumSearch.findDatums(term, {
-            limit: 1,
-            target: "zoomable",
-        });
-        const target = matches[0]?.targets.find(
-            (candidate) => candidate.zoomable
-        );
-        if (!target) return false;
-
-        const interval = zoomLinear(target.interval, null, 1.2);
-        if (target.kind === "locus") {
-            const size = target.scale
-                .getAssembly()
-                .contigs.reduce((sum, contig) => sum + contig.size, 0);
-            interval[0] = Math.max(0, interval[0]);
-            interval[1] = Math.min(size, interval[1]) - 1;
-        }
-        await target.scale.zoomTo(interval);
-        return true;
+    getDefaultValue() {
+        const [begin, end] =
+            /** @type {import("@genome-spy/core/types/coordinates.js").CoordinateLocus[]} */ (
+                this._genomeResolution.getComplexDomain()
+            );
+        // Domain endpoints are detached, inclusive snapshots; display is half-open.
+        end.pos++;
+        return formatCoordinates([begin, end]);
     }
 
-    /**
-     * @param {string} term
-     */
+    /** @param {string} term */
     async search(term) {
-        const doSearch = async () => {
-            if (this._genomeResolution) {
-                const parsed = parseCoordinates(
-                    term,
-                    this._genomeResolution.getAssembly()
-                );
-                if (parsed.kind === "invalid-coordinate")
-                    throw new Error(parsed.message);
-                if (parsed.kind === "coordinate") {
-                    const [begin, end] = parsed.interval;
-                    await this._genomeResolution.zoomTo([
-                        begin,
-                        { chrom: end.chrom, pos: end.pos - 1 },
-                    ]);
-                    return;
+        const parsed = parseCoordinates(
+            term,
+            this._genomeResolution.getAssembly()
+        );
+        if (parsed.kind === "invalid-coordinate")
+            throw new Error(parsed.message);
+        if (parsed.kind === "coordinate") {
+            const [begin, end] = parsed.interval;
+            end.pos--; // Native scale navigation has an inclusive upper endpoint.
+            await this._genomeResolution.zoomTo([begin, end]);
+        } else {
+            const { matches } = this.app.datumSearch.findDatums(term, {
+                limit: 1,
+                target: "zoomable",
+            });
+            const target = matches[0]?.targets.find(
+                (candidate) => candidate.zoomable
+            );
+            if (target) {
+                const interval = zoomLinear(target.interval, null, 1.2);
+                if (target.kind === "locus") {
+                    const size = target.scale
+                        .getAssembly()
+                        .contigs.reduce((sum, contig) => sum + contig.size, 0);
+                    interval[0] = Math.max(0, interval[0]);
+                    interval[1] = Math.min(size, interval[1]) - 1;
                 }
-
-                if (await this.searchViews(term)) {
-                    return;
-                }
-
-                // TODO: A proper api for registering searchable stuff
-                this.genomeSpy.viewRoot.visit((view) => {
-                    if (view instanceof MetadataView) {
-                        // TODO: Await
+                await target.scale.zoomTo(interval);
+            } else {
+                this.app.genomeSpy.viewRoot.visit((view) => {
+                    if (view instanceof MetadataView)
                         view.handleVerboseCommand(term);
-                    }
                 });
             }
-        };
+        }
 
-        await doSearch();
-
-        // Directly modifying the HTMLElement. Should be done through the template
-        // but it doesn't quite work when the template-provided value wasn't changed...
+        // The input may have been edited without changing the template's bound value.
         this._inputField.value = this.getDefaultValue();
         this.requestUpdate();
     }
@@ -230,37 +199,30 @@ export default class SearchField extends LitElement {
     }
 
     _getSearchHelp() {
-        /** @type {import("lit").TemplateResult[]} */
-        const parts = [];
-
-        parts.push(html`
-            <p>Focus to a specific range. Examples:</p>
-            <ul>
-                <!-- TODO: Display only when using a genomic coordinate system-->
-                <li>chr8</li>
-                <li>chr8:21,445,873</li>
-                <li>chr8:21,445,873-24,623,697</li>
-                <li>chr4:166,014,727-chr15:23,731,397</li>
-            </ul>
-        `);
-
-        for (const view of this.app.datumSearch.listSearchableViews({
-            exampleLimit: 3,
-        })) {
-            const examples = Array.from(
-                new Set(view.fields.flatMap((field) => field.examples))
-            ).slice(0, 3);
-            parts.push(html`
-                <p>
-                    Search
-                    <em>${view.title}</em>
-                    (${view.fields.map((field) => field.field).join(", ")}).
-                    Examples:
-                </p>
+        const parts = [
+            html`
+                <p>Focus to a specific range. Examples:</p>
                 <ul>
-                    ${examples.map((example) => html`<li>${example}</li>`)}
+                    <li>chr8</li>
+                    <li>chr8:21,445,873</li>
+                    <li>chr8:21,445,873-24,623,697</li>
+                    <li>chr4:166,014,727-chr15:23,731,397</li>
                 </ul>
-            `);
+            `,
+        ];
+
+        for (const {
+            title,
+            fields,
+        } of this.app.datumSearch.listSearchableViews({ exampleLimit: 3 })) {
+            for (const { field, examples } of fields) {
+                parts.push(html`
+                    <p>Search <em>${title}</em> (${field}). Examples:</p>
+                    <ul>
+                        ${examples.map((example) => html`<li>${example}</li>`)}
+                    </ul>
+                `);
+            }
         }
 
         const metadataView = this.app.getSampleView()?.metadataView;

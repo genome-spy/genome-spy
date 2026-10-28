@@ -696,3 +696,32 @@ Assembly-aware parsing now considers every dictionary-valid start-name prefix,
 including `a:1-b:2-c:3` for contigs `a` and `b:2-c`, while still rejecting genuine
 ambiguity. Focused regressions and Core/App type checks pass. The reviewer
 confirmed both corrections without expanding the utility APIs.
+
+### Follow-up: simplify the App consumer
+
+Architecture check: App continues to own query routing, navigation padding,
+keyboard/focus behavior, example presentation, and sample commands. Core's two
+independent utilities and the native inclusive scale contract stay unchanged.
+The shared ViewApi startup and agent exposure remain necessary for supported
+handle ownership; no new public adapter or service will be introduced.
+
+Remove the component's passthrough genomeSpy getter, reassigned default-value
+callback, nested async search wrapper, and boolean-returning lookup wrapper.
+Keep endpoint adaptation local and explicit. Render the supplied examples by
+field instead of flattening/deduplicating them again. Reactive focus refreshes
+help against current source revisions without scanning rows on ordinary renders.
+Cover coordinate errors, boundary padding, and changed examples through the real
+Core-to-App component path. Initial App runtime delta is +5 production SLOC;
+`searchField.js` is 405 physical lines before this pass.
+
+- [x] Implement and verify the App consumer simplification.
+      The component shrank from 405 to 367 physical lines. All 652 App tests,
+      App source/test TypeScript checks, focused lint, and the production App
+      build pass. WebGL and Canvas browser checks cover Enter submission,
+      boundary navigation, per-field help, and refreshed examples after data
+      replacement without a domain change. Changeset validation passes; the
+      existing feature still plans a minor fixed-group release. This follow-up
+      removes 25 production JavaScript lines (72 added, 97 deleted). Against
+      origin/master, App now removes 20 lines overall instead of adding five;
+      the complete feature adds 244 runtime lines across Core, App, and App Agent.
+      Counts exclude tests, declarations, comments, blanks, and examples.
