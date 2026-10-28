@@ -44,7 +44,9 @@ A public API for ScaleResolution
 
 > **getDomain**(): `any`[]
 
-Returns the current, possible zoomed domain.
+Returns the current, possibly zoomed domain. For locus scales, this is
+the internal half-open numeric interval; zoomTo() currently expects an
+inclusive upper endpoint.
 
 #### Returns
 
@@ -153,6 +155,17 @@ are zero-based and inclusive, covering the integer bases in the viewport.
 #### Call Signature
 
 > **zoomTo**(`domain`, `options?`): `Promise`<`void`\>
+
+Zooms to the given interval, optionally animating the transition.
+
+For locus scales, explicit numeric and chromosome-relative endpoints are
+zero-based with an inclusive upper endpoint. Subtract one from the upper
+position of half-open intervals returned by parseCoordinates() or datum
+search before navigation. Whole-chromosome shortcuts retain their full extent.
+
+This legacy locus convention is retained for compatibility. Standardizing
+genomic interval APIs on half-open endpoints is tracked for v2.0 in
+[#620](https://github.com/genome-spy/genome-spy/issues/620).
 
 ##### Parameters
 

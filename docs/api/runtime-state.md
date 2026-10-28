@@ -190,10 +190,11 @@ await detailScale.zoomTo([25, 50]);
 ### Domains
 
 `getDomain()` returns the current domain used by the scale. For locus scales,
-this is the linearized numeric domain.
+this is the linearized, zero-based half-open numeric domain.
 
 `getComplexDomain()` returns the current domain converted back to complex
-domain values when available, such as genomic loci for locus scales. See
+domain values when available. For locus scales, its chromosome-relative endpoints
+are zero-based and inclusive, covering the integer bases in the viewport. See
 [Specifying the domain](../grammar/scale.md#specifying-the-domain) for locus
 domain syntax.
 
@@ -214,6 +215,17 @@ complex genomic interval:
 await genomeScale.zoomTo([{ chrom: "chr8" }, { chrom: "chr10" }]);
 await genomeScale.zoomTo([400_000_000, 500_000_000]);
 ```
+
+Locus `zoomTo()` currently interprets explicit upper endpoints as inclusive in
+both forms. Subtract one from a half-open upper endpoint before navigation,
+including intervals from `getDomain()`, [coordinate parsing](coordinates.md), or
+[datum search](search.md). Whole-chromosome shortcuts without an explicit upper
+position retain their full extent. Ordinary continuous numeric scales keep their
+usual endpoint semantics.
+
+This legacy locus convention is retained for compatibility. Standardizing genomic
+interval APIs on half-open endpoints is tracked for
+[v2.0 (#620)](https://github.com/genome-spy/genome-spy/issues/620).
 
 Pass `{ duration: true }` or `{ duration: milliseconds }` to animate the zoom:
 

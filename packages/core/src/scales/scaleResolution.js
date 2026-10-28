@@ -1702,7 +1702,13 @@ export default class ScaleResolution {
     }
 
     /**
-     * Immediately zooms to the given interval.
+     * Zooms to the given interval, optionally animating the transition.
+     *
+     * Locus intervals with explicit numeric or chromosome-relative endpoints
+     * use a zero-based inclusive upper endpoint for compatibility. Convert
+     * half-open coordinate/search intervals by subtracting one from the upper
+     * position. Standardizing genomic interval APIs is tracked for v2.0 in
+     * {@link https://github.com/genome-spy/genome-spy/issues/620 | #620}.
      *
      * @param {NumericDomain | ComplexDomain} domain
      * @param {import("../types/scaleResolutionApi.js").ZoomToOptions | boolean | number} [options]

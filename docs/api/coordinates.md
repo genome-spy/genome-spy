@@ -51,12 +51,18 @@ resolved assembly, including custom or URL-backed assemblies loaded during
 startup. It throws for non-locus scales. There is no need to configure a second
 genome in the embedding application.
 
+Locus `zoomTo()` currently expects zero-based inclusive upper endpoints. Subtract
+one from the parsed half-open upper position before navigation. This legacy
+convention is retained for compatibility; standardizing genomic interval APIs on
+half-open endpoints is tracked for
+[v2.0 (#620)](https://github.com/genome-spy/genome-spy/issues/620).
+
 ```js
 const scale = api.getScaleResolutionByName("genome");
 const result = parseCoordinates(input, scale.getAssembly());
 if (result.kind === "coordinate") {
   const [begin, end] = result.interval;
-  // Existing scale APIs use zero-based inclusive upper endpoints.
+  // Existing locus navigation uses a zero-based inclusive upper endpoint.
   await scale.zoomTo([begin, { chrom: end.chrom, pos: end.pos - 1 }]);
 }
 ```

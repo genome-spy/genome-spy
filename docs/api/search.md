@@ -53,6 +53,10 @@ if (target) {
 }
 ```
 
+This legacy locus convention is retained for compatibility. Standardizing genomic
+interval APIs on half-open endpoints is tracked for
+[v2.0 (#620)](https://github.com/genome-spy/genome-spy/issues/620).
+
 Padding, animation, candidate ranking, and selection belong to the caller.
 `target: "zoomable"` filters out matches without a zoomable target **before**
 applying the row limit, so a non-navigable first match cannot hide a later one.
