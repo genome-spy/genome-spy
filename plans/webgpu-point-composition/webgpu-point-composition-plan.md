@@ -1,8 +1,8 @@
 # WebGPU point antialiasing composition
 
-Status: review findings incorporated; bounded baseline GPU proof complete.
-Implementation started on fresh master a29f81c4, separate from WebGL PR #622.
-The baseline point sources still match the reviewed proof. No new dependencies.
+Status: implementation and local qualification complete; PR not opened.
+Implemented on fresh master a29f81c4, separate from WebGL PR #622.
+Both point shader paths use combined paint coverage. No new dependencies.
 Related: #604 and #474; this slice completes neither issue.
 
 ## Native contract and ownership
@@ -61,36 +61,38 @@ semantics remain unresolved; baseline preservation is not cross-renderer parity.
 
 - [x] First demonstrate the AA-opacity defect on the actual public renderer at
   DPR 1/2, for a fixed analytic circle and a path-backed straight boundary.
-- [ ] Analytic premultiplied pixel expectations qualify centered/inward strokes,
+- [x] Analytic premultiplied pixel expectations qualify centered/inward strokes,
   fractional widths/positions, opaque/translucent paints and transparent fill.
   Include an inward outer fringe and a centered thin-band boundary. Tolerance
   <=2/255 for analytic/straight samples; justify atlas-specific tolerance from
   measured distance precision rather than silently widening it.
-- [ ] In the established unclamped geometry regime, whole-shape transparent
+- [x] In the established unclamped geometry regime, whole-shape transparent
   strokes preserve nominal fill versus zero-width baseline; test RGBA alpha-zero
   and strokeOpacity-zero separately. First characterize the preexisting tiny/
   wide-stroke UV-clamping limitation and require no new regression there.
   Universal equality would require a separate geometry slice, not a workaround.
-- [ ] One retained mixed-shape mark includes circle, triangle and x/+ instances.
+- [x] One retained mixed-shape mark includes circle, triangle and x/+ instances.
   Check shape/paint series updates, rotated asymmetric shape, occurrence order,
   inwardStroke live change, clipping and datum-preserving picking. Reuse existing
   coverage where it protects these contracts; avoid a Cartesian test matrix.
-- [ ] Existing gradients and stroke-width/atlas-spread limits remain valid;
+- [x] Existing gradients and stroke-width/atlas-spread limits remain valid;
   representative checks include small symbols with wide inward/centered bands.
-- [ ] Semantic scope opacity applies once after combined paint. Keep this claim
+- [x] Semantic scope opacity applies once after combined paint. Keep this claim
   separate from Core's deferred common mark-opacity normalization.
-- [ ] No additional vertices, draw calls, attachments, atlas rebuilds or
+- [x] No additional vertices, draw calls, attachments, atlas rebuilds or
   per-frame allocations. Measure paired same-device CPU-submit-to-GPU-completion
   medians for 1k/100k circles and a mixed path table at DPR 1/2, after atlas warmup.
   Investigate increases beyond max(10%, 0.2ms), reporting driver/machine limits.
-- [ ] Focused GPU tests pass with zero skips; relevant renderer unit tests,
+- [x] Focused GPU tests pass with zero skips; relevant renderer unit tests,
   renderer types/lint, example build/smoke and release checks pass. Review related
   shader-string tests and replace overlapping assertions with behavioral proof.
 
-Expected delivery: 4-6 files, roughly 30-60 changed runtime lines plus 150-230
+Reviewed estimate: 4-6 files, roughly 30-60 changed runtime lines plus 150-230
 new test lines; target <=320 added raw lines excluding this temporary plan.
-These are estimates. Report exact size before opening a PR; revise scope before
-exceeding the budget. Do not add generic test machinery just to hide line counts.
+Actual delivery is 5 files, +302/-42 raw lines: shaders +19/-42, behavioral
+tests +278, example +1 and migration backlog +4. Tests exceed the initial
+per-file estimate while total delivery stays within budget. No generic test
+machinery was introduced. Report the temporary plan separately before any PR.
 
 Gates: if either shader cannot express nested coverages within current distance
 and atlas limits, or Core compatibility requires changing paint normalization
@@ -172,5 +174,30 @@ correction, and no new shader-text assertions are added. No release fragment is
 needed for unpublished renderer-only work; existing master fragments remain minor.
 
 The existing PathPoints story uses half-opacity stroke to make overlap visible.
-Storybook builds; browser smoke and bounded paired performance remain to complete
-before delivery. Temporary build/proof artifacts stay outside Git. No PR opened.
+Storybook builds; the built story renders and cleans up in Chrome without page
+errors. The unchanged Core WebGPU adapter's 74 unit tests also pass.
+
+## Candidate performance and delivery qualification
+
+Chrome156.0.8078.73 with Metal WebGPU on the same local machine; baseline is
+master a29f81c4. Public renderer.render through queue.onSubmittedWorkDone,
+800x400 logical canvas, DPR1/2, 1k/100k points, fixed circles or mixed
+circle/triangle/x/+ table, width0/1. Atlas generation precedes five warmups;
+30 alternating paired samples per case. All 16 median deltas meet the reviewed
+max(10%, 0.2ms) budget. Baseline/candidate medians range 0.4-5.2ms, with largest
+increase 0.1ms (4.1 to 4.2ms, 100k mixed points, DPR1, width1). DPR2's same case
+is 5.2 to 5.1ms. This is a bounded single-browser/device comparison, not a
+cross-device performance guarantee. No extra vertices, draws, attachments,
+atlas rebuilds or per-frame allocations are introduced by the fragment changes.
+
+Permanent tests exercise the submitted render/picking textures, including both
+shader routes, rather than shader text. Geometry and normalization deferrals
+above remain explicit. The final production shader diff is +19/-42 non-comment
+lines (net -23); the example adds one line. No package manifests or locks change.
+Local qualification is complete; remote CI and implementation review remain
+PR delivery gates. No PR opened. Keep this temporary plan until reviewed, then
+reconcile and retire it before merge.
+
+Candidate artifacts: chat-local gpu-point-composition/ contains the performance
+runner/results, built-story smoke result/screenshot and shader/test snapshots.
+Temporary build/proof artifacts stay outside Git.

@@ -40,6 +40,10 @@ Rectangle centered strokes now preserve nominal fill beneath transparent paint,
 including hatches. Shared rectangle alignment and shadow-only picking exclusion
 remain #604 follow-ups; this correction does not expose new Core grammar.
 
+Point circle and path programs now resolve existing centered/inward paint
+coverage together. Shared Core opacity/alignment normalization and x/+ arm
+semantics remain separate; tiny path UV-clamping geometry is unchanged.
+
 ## Active integration: selection predicate composition
 
 The renderer uses one recursive predicate tree for channel conditions,
