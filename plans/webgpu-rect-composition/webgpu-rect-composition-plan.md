@@ -1,6 +1,6 @@
 # WebGPU rectangle paint composition
 
-Status: implementing bounded shader correction. Branch starts at master cdb38551.
+Status: completed and approved for merge, 2026-10-28. Branch starts at master cdb38551.
 Part of #604; independently useful correction to existing centered strokes.
 
 ## Scope and architectural fit
@@ -50,8 +50,8 @@ new passes, textures, resources or per-frame allocation.
   1k and 100k plain and stroked rectangles, DPR 1/2. Investigate a median increase
   exceeding max(10%, 0.2ms); do not expand architecture to meet a noisy sample.
 - [x] Five focused GPU tests run without skips; renderer unit tests, types and lint
-  pass. Storybook build and built Basic-story smoke pass. CI is a delivery gate
-  before merge, not run yet because this branch has not been pushed.
+  pass. Storybook build and built Basic-story smoke pass. All three CI checks
+  passed on 0fdb66fd; repeat for the plan-removal head before merge.
 
 ## Boundaries and gates
 
@@ -111,8 +111,12 @@ Original implementation is in two focused commits. Review-fix delivery diff
 against master cdb38551: five files, +312/-38 raw lines. This temporary plan is
 additional to delivery size. Runtime additions remain limited to the existing shader and example.
 Both Sol reviewers re-reviewed the correction and report no remaining blockers.
-Pending delivery: report exact size before opening a PR; CI before merge.
-Retain this plan for draft discussion; reconcile and remove it before merge.
+Delivery size was reported before PR #621 opened; recording is attached.
+Maintainer accepts the result and requests WebGL in a separate PR. User explicitly
+authorizes cleanup and merge. All implementation tasks are complete. Remaining
+Core/alignment/backend/shadow-picking work is deferred from this slice, not an
+unfinished PR task. Remove this reconciled plan in the next commit, then await
+cleanup-head CI and merge. The WebGL follow-up and point plan remain separate.
 
 ## Review correction
 
