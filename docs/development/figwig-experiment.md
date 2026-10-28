@@ -18,7 +18,10 @@ data and reuse the reader, metadata and indexes. URL changes use the normal
 descriptor path. Empty selections publish ready empty data.
 
 The source derives integer genomic bin widths from the actual axis length and
-`pixelsPerBin`, with resolution-sensitive 1024-bin windows. Batched queries use
+`pixelsPerBin`. Fetch windows provide a small pan buffer, bounded to 32 bins
+and one eighth of the viewport per edge. Published bin resolution is tracked
+separately from spatial coverage so resize and failed-query retries still reload.
+Batched queries use
 mean aggregation, `missing: "omit"`, and `useSummaries: false`. Finite values,
 including measured zeros and signed signals, become ordinary
 `chrom/start/end/score/sampleId` rows. Track names supply sample IDs; URL descriptor
@@ -33,9 +36,11 @@ publishes it, with a regression assertion and a separate changeset.
 
 ## Unpublished dependency
 
-Reader revision: `df1d737e5503c0463a35e94cf0b4d922a076ea91` from
-[figwig-js](https://github.com/genome-spy/figwig-js). The existing local checkout
-was clean and was not modified.
+Reader base revision: `df1d737e5503c0463a35e94cf0b4d922a076ea91` from
+[figwig-js](https://github.com/genome-spy/figwig-js), with the isolated runtime
+patch in `scripts/figwig-experiment.patch`. The user subsequently authorized
+reader changes: the standalone checkout has source and corruption-test edits on
+`codex/validation-performance`, kept separate from GenomeSpy and uncommitted.
 
 A real pinned GitHub-package probe produced only three files and no `dist`:
 the package builds in `prepack`, whereas npm's Git dependency packing path uses
@@ -51,12 +56,18 @@ git -C ../figwig-js checkout df1d737e5503c0463a35e94cf0b4d922a076ea91
 node scripts/setupFigwigExperiment.mjs ../figwig-js
 ```
 
-The setup script validates the revision and clean state, archives tracked files
-into an ignored temporary directory, installs build dependencies, and runs the
-package's normal build/pack lifecycle before installing GenomeSpy dependencies.
+The setup script archives the pinned base, applies the reviewed runtime patch in
+a temporary directory, installs build dependencies, and runs the package's normal
+build/pack lifecycle before installing GenomeSpy dependencies. Local checkout
+edits are neither used nor modified. The patch reproduces the standalone runtime
+change byte for byte and has SHA-256
+`d4c631e0ad65f6a4557a07e58d1206f8d7203e996b9aae24ee2f3578d11f9c78`.
 Run it before `npm ci` on a fresh checkout: the tarball is intentionally absent
 from Git. It contains 21 files and is approximately 29 kB. Its SHA-512 integrity
-is `6heRsGZQORh/hBXjJ+3ztBKbcLEd91Ig/k1Lik+w6lhbR7HXKNRXe67O5WrJny6aHCTYzKXpG4X0cdplMt0oHw==`.
+is `4STJeImOmzuYVCAIL/OvSBsg39SU7W5mEmDrKGa43VxKIOJGXP/svDmiVcWuLlLfu/gPTvvhydvD/bpW2W1FlQ==`.
+Base revision, patch hash and artifact integrity are recorded locally in
+`private/figwig/provenance.json`. Restart any running Vite server after replacing
+the tarball so its optimized dependency cache uses the patched reader.
 This dependency arrangement is suitable for the local branch, not a release.
 
 ## Local dataset
@@ -147,7 +158,7 @@ passed. Ungrouping, regrouping and descending replicate sorting after filtering
 also preserved the six selected tracks. Recorded artifacts are under ignored
 `output/playwright/`.
 
-## App performance
+## Initial App performance, before the performance fixes
 
 Chromium ran at 1440 × 1000 over localhost with browser HTTP caching disabled.
 Each format used a fresh browser context; the warm pass reused its readers and
@@ -180,12 +191,65 @@ for Figwig. CDP ScriptDuration is recorded but does not isolate
 all decoder CPU time. The reader-specific measurements below provide that
 separation for Figwig.
 
-The experiment demonstrates working configuration and track selection, but
-exact Figwig overview loading is currently substantially slower and transfers
-far more data than BigWig zoom summaries. This is not evidence for a production
-replacement or a universal performance advantage.
+These initial measurements exposed a serious integration problem, diagnosed
+below. They remain the baseline rather than describing the corrected source.
+Exact Figwig queries still transfer far more data than BigWig zoom summaries.
 
-## Grouping benchmark
+## Performance follow-up
+
+The user's DevTools profile identified representability checks on every decoded
+value, including eager error-string construction. A separate CPU profile exposed
+the main cause of the long overview delay: the source fetched 28,056,576 bases
+for a 10,000,001-base viewport. This added 3309 dense missing-data chunks outside
+the retained region. Only 1,770,315 compressed bytes expanded to 1,734,868,992
+bytes (1.62 GiB); checksum, numeric validation and binning loops then processed
+those unnecessary NaNs. The exact viewport contained 1833 run chunks and only
+70,563,784 inflated bytes.
+
+Bounded prefetch now loads chr10:82212077–92441037 for the same
+chr10:82400000–92400001 viewport: 10,228,960 bases, 2.29% extra. With the original
+reader unchanged, the profiled App query dropped from 12.815 seconds to
+1.172 seconds and decoded chunks fell from 5142 to 1878. Querying only the
+viewport with that reader took about 0.9 seconds. Spatial quantization remains
+owned by `IntervalUrlSource`; a small optional force flag allows resolution
+changes to reload an otherwise cached spatial window.
+
+The standalone reader patch skips representability scans when decoding already
+proves the result: float32 storage into float32 tracks, and decoded values into
+float64 tracks. Error text is built only on failure. Narrowing, signedness,
+integer, NaN and infinity validation remain enforced. Its 154 unit tests and
+three Chromium conformance tests passed, including deliberately malformed files.
+An exploratory Node comparison on the original padded query measured decoding
+at 2564 ms before, 2243 ms with lazy error text alone, and 869 ms with both
+changes. The source fetch-window fix accounts for most of the end-to-end gain.
+
+The final Chromium run confirmed the patched reader in Vite's optimized module:
+
+| Measurement                               | Original integration |      Both fixes |
+| ----------------------------------------- | -------------------: | --------------: |
+| Profiled overview signal query            |            12,815 ms |        1,068 ms |
+| Query decoding diagnostic                 |             2,346 ms |           80 ms |
+| Total cold App startup                    |            16,675 ms |        5,506 ms |
+| Initial signal HTTP requests / body bytes |      40 / 30,186,213 | 14 / 28,439,973 |
+| Overview after the full tour              |             7,078 ms |        1,325 ms |
+
+The earlier unpatched-reader run with the corrected source measured 181 ms
+decoding, versus 80 ms with the patched reader, using the same 1878 chunks.
+The exact query with the final reader took 849 ms. These are exploratory local
+measurements rather than throughput guarantees. Reducing padding removes CPU
+work far more than network traffic: almost all 28 MB of real signal data remains
+necessary for exact overview means. The default decoded cache still cannot
+retain the entire overview working set, so returning to it transfers data again.
+Both full bookmark passes, expanded scatterplot, filtering, ungrouping,
+regrouping, sorting and mouse panning passed with the patched browser package.
+
+All 81 common-bin references still pass with zero error after installing the
+patched package. Both cold and warm brush-derived means retain the earlier
+maximum absolute difference 0.00006289999 (0.0010554%) from exact interval means.
+The optimizations preserve exact missing-aware aggregation and use no stored
+approximate summaries or dataset-specific masks.
+
+## Initial grouping benchmark, before the reader patch
 
 An independent browser reader benchmark ran three repetitions for each grouping,
 selection, window and cold/warm combination: 96 samples. It excludes Vite imports
@@ -265,9 +329,10 @@ the main App experiment needs only `h3k27ac.fw`.
 
 ## Verification and limitations
 
-The full unit suite passed 555 files and 5,284 tests, with one skipped and two
+The full unit suite passed 555 files and 5,288 tests, with one skipped and two
 todo. Narrow source and App regression tests, generated-schema tests, upstream
-reader tests (143), numerical validation, and real-browser checks passed.
+reader tests (154 and three Chromium tests), numerical validation, and
+real-browser checks passed.
 Workspace typechecks, lint, the complete workspace build and the documentation
 build passed. The built Figwig browser bundle resolved successfully.
 

@@ -18,6 +18,10 @@ import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
 /** @extends {IntervalUrlSource<FigWigHandle, import("../../flowNode.js").Datum[][]>} */
 export default class FigWigSource extends IntervalUrlSource {
+    #requestedBinSize = 0;
+
+    #publishedBinSize = 0;
+
     /**
      * @param {import("../../../spec/data.js").FigWigData} params
      * @param {import("../../../view/view.js").default} view
@@ -105,9 +109,18 @@ export default class FigWigSource extends IntervalUrlSource {
             1,
             Math.ceil(((domain[1] - domain[0]) / length) * pixelsPerBin)
         );
-        // A resolution-dependent window also invalidates coverage on resize.
-        const windowSize = binSize * 1024;
-        const interval = this.getChangedWindow(domain, windowSize);
+        // Keep small-pan coverage without decoding wide, potentially dense gaps.
+        // Cap each side's quantization padding at one eighth of the viewport.
+        const windowSize = Math.max(
+            1,
+            Math.min(binSize * 32, Math.floor((domain[1] - domain[0]) / 8))
+        );
+        this.#requestedBinSize = binSize;
+        const interval = this.getChangedWindow(
+            domain,
+            windowSize,
+            binSize !== this.#publishedBinSize
+        );
         if (!interval) return;
 
         return {
@@ -141,6 +154,19 @@ export default class FigWigSource extends IntervalUrlSource {
                           signal
                       ),
         };
+    }
+
+    /**
+     * @param {import("../../flowNode.js").Datum[][]} data
+     * @param {number[]} interval
+     * @param {FigWigHandle[]} handles
+     */
+    publishInterval(data, interval, handles) {
+        // The base guards publication with the active request's abort signal.
+        // Failed or obsolete resolution changes must not advance this key.
+        const binSize = this.#requestedBinSize;
+        super.publishInterval(data, interval, handles);
+        this.#publishedBinSize = binSize;
     }
 
     /**

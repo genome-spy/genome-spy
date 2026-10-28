@@ -215,10 +215,12 @@ describe("FigWigSource", () => {
         const { source, rows } = create({ pixelsPerBin: 1 });
         await source.requestInterval([1400, 3500]);
 
-        expect(queries[0].regions).toEqual([
-            { chromosome: "chr1", start: 0, end: 1500 },
+        expect(queries[0].regions).toMatchObject([
+            { chromosome: "chr1", end: 1500 },
             { chromosome: "chr2", start: 0, end: 1000 },
         ]);
+        expect(queries[0].regions[0].start).toBeGreaterThanOrEqual(0);
+        expect(queries[0].regions[0].start).toBeLessThanOrEqual(1400);
         expect(new Set(rows().map((d) => d.chrom))).toEqual(
             new Set(["chr1", "chr2"])
         );
@@ -342,6 +344,56 @@ describe("FigWigSource", () => {
             "signals.fw",
             "other.fw",
         ]);
+        source.disposeSubtree();
+    });
+
+    it.each([1, 100, 1000])(
+        "bounds prefetch for an axis of %i pixels and reuses coverage while panning inside it",
+        async (axisLength) => {
+            const { create, setAxisLength } = createFixture();
+            setAxisLength(axisLength);
+            const { source } = create({ pixelsPerBin: 1 });
+            const domain = [1437, 2437];
+            await source.requestInterval(domain);
+
+            const loaded = /** @type {number[]} */ (source.getLoadedDomain());
+            expect(loaded[0]).toBeLessThanOrEqual(domain[0]);
+            expect(loaded[1]).toBeGreaterThanOrEqual(domain[1]);
+            expect(loaded[1] - loaded[0]).toBeLessThanOrEqual(1250);
+
+            // Same-span navigation inside published coverage must not repeat decoding.
+            const shifted = [domain[0] + 1, domain[1] + 1];
+            await source.requestInterval(shifted);
+            expect(queries).toHaveLength(1);
+            expect(source.isDataReadyForDomain({ x: shifted })).toBe(true);
+            source.disposeSubtree();
+        }
+    );
+
+    it("reloads changed resolution in the same bounded window and retries failed loads", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const { create, setAxisLength, statuses } = createFixture();
+        const { source } = create({ pixelsPerBin: 1 });
+        const domain = [1437, 2437];
+        await source.requestInterval(domain);
+        const regions = queries[0].regions;
+        expect(queries[0].options.binSize).toBe(10);
+
+        setAxisLength(1);
+        failQuery = true;
+        await source.requestInterval(domain);
+        expect(queries).toHaveLength(2);
+        expect(queries[1].regions).toEqual(regions);
+        expect(queries[1].options.binSize).toBe(1000);
+        expect(statuses.at(-1).status).toBe("error");
+        expect(source.isDataReadyForDomain({ x: domain })).toBe(false);
+
+        failQuery = false;
+        await source.requestInterval(domain);
+        expect(queries).toHaveLength(3);
+        expect(queries[2].options.binSize).toBe(1000);
+        expect(source.isDataReadyForDomain({ x: domain })).toBe(true);
+        expect(readers).toHaveLength(1);
         source.disposeSubtree();
     });
 

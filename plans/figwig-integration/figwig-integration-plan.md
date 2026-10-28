@@ -25,9 +25,13 @@ standalone implementation code is copied.
   the dataflow boundary. Clip discrete requests to file chromosome bounds.
 - Track/resolution changes invalidate current coverage and abort obsolete work,
   retaining the reader; URL changes use normal descriptor reload.
-- Quantized window size is proportional to bin size, so viewport resolution
-  changes cannot reuse coverage produced at an obsolete resolution. Signed
-  finite signals remain valid; missing and infinite values are omitted.
+- Quantized fetch windows retain small-pan coverage while bounding padding on
+  each side to one eighth of the viewport (apart from the one-base minimum).
+  Resolution is tracked separately at successful publication, so resizing must
+  reload even when the bounded spatial window remains unchanged. The base
+  `getChangedWindow` accepts an optional force flag for this independent cache
+  contract, preserving all existing callers. Signed finite signals remain valid;
+  missing and infinite values are omitted.
 - Descriptor attachment rejects collisions with chrom/start/end/score/sampleId.
 - Install the unpublished reader reproducibly with a pinned portable dependency
   if its build lifecycle permits; otherwise document local packing.
@@ -66,7 +70,7 @@ than hidden. Browser interactions and metadata are final integration gates.
 
 ## Status
 
-- Initial GenomeSpy and recipe worktrees clean; base HEAD
+- Initial GenomeSpy worktree clean; pre-existing recipe work was preserved. Base HEAD
   `91ce56e30eeb08f30e63fca518935d386e7f00f1`.
 - Created local branch `experiment/figwig-integration`.
 - Implemented the source, reactive public grammar, schema generation, docs,
@@ -78,7 +82,7 @@ than hidden. Browser interactions and metadata are final integration gates.
 - Both App variants passed all six bookmarks, derived metadata/scatterplots,
   real HTTP range checks and cold/warm measurements. Actual bookmark buttons,
   expanded scatterplot and mouse panning after filtering passed.
-- Full unit suite: 5,284 passed; workspace types, lint, complete build and docs
+- Full unit suite: 5,288 passed; workspace types, lint, complete build and docs
   build passed. The existing release fixture now preserves local tarballs.
 - Exact means currently cost substantially more than BigWig zoom summaries for
   broad overview loading. No approximate mode was added; this is a measured
@@ -91,6 +95,44 @@ than hidden. Browser interactions and metadata are final integration gates.
   to its original state.
 - Full results and reproduction: `docs/development/figwig-experiment.md`.
   Recipe changes, data and benchmark outputs remain local and uncommitted.
-- Independent plan review completed: retain the native source lifecycle, use
-  resolution-sensitive window quantization, and register through
-  `lazy/registerBuiltInLazySources.js`. No shared base-class changes are needed.
+- Independent plan review completed: retain the native source lifecycle and
+  register through `lazy/registerBuiltInLazySources.js`. Profiling established
+  that coarse spatial quantization decoded 28.06 Mb for a 10 Mb viewport,
+  including dense NaN-only gaps. Bounded windows plus the optional base force
+  flag separate spatial coverage from source resolution without duplicating
+  quantization or caching state.
+
+## Performance follow-up
+
+The user's browser profile exposed per-value representability validation in the
+standalone reader. Independent App profiling also found excessive source
+overfetch: a 10,000,001-base viewport at 1095 pixels loaded 28,056,576 bases.
+This decoded 5142 chunks and took 12.8 seconds; querying only the viewport with
+the same reader after clearing caches took 0.90 seconds and 1833 chunks.
+
+The source owns overscan policy. Reduce its quantization padding while retaining
+the base's coverage, cancellation and handle ownership. Keep bin resolution
+invalidation explicit in the quantization key. A regression must bound genomic
+overfetch, rather than assert an arbitrary internal window constant.
+
+The standalone reader owns binary type validation. Eliminate eager failure text
+and redundant scans only where the chunk storage type proves representability
+in the declared track dtype. Preserve checks for narrowing and signedness,
+nonfinite rejection, NaNs and float precision. Keep these changes isolated in
+the Figwig repository, now explicitly authorized for editing by the user.
+
+Verify the two changes independently before combining them: actual browser
+query timing and decoded chunks for source overscan; corruption/conformance and
+before/after timing for the reader. Re-run all six bookmarks and common-bin
+references with the final installed package. Exact missing-aware means remain
+required; no approximate summary mode or dataset-specific masks are introduced.
+
+Follow-up complete: the original reader with bounded source windows measured
+1.172 seconds per overview query. With both fixes installed in Vite, the query
+took 1.068 seconds and decoding fell to 80 ms. Cold App startup measured 5.506
+seconds versus the original 16.675 seconds. All six bookmarks, UI interactions,
+81 numeric cases and the full unit suite passed. The standalone reader's 154
+tests and three Chromium tests passed. Its reviewed runtime patch is committed
+with the experiment setup, which archives the public base and applies the patch
+in temporary storage; the standalone working-tree edits remain separate and
+uncommitted. All data and recipe changes remain local and uncommitted.

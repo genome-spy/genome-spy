@@ -248,10 +248,11 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     /**
      * @param {number[]} interval
      * @param {number} windowSize
+     * @param {boolean} [force] Reload when source resolution changes within the same spatial window.
      * @returns {number[] | undefined}
      * @protected
      */
-    getChangedWindow(interval, windowSize) {
+    getChangedWindow(interval, windowSize, force = false) {
         const quantized = [
             Math.max(Math.floor(interval[0] / windowSize) * windowSize, 0),
             Math.min(
@@ -260,7 +261,8 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
             ),
         ];
         const last = this.#lastQuantizedInterval;
-        return windowSize !== this.#lastWindowSize ||
+        return force ||
+            windowSize !== this.#lastWindowSize ||
             quantized[0] < last[0] ||
             quantized[1] > last[1]
             ? quantized
