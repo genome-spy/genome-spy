@@ -105,5 +105,8 @@ Release assessment: unpublished renderer only, no fragment needed. release:check
 passes; existing master fragments schedule the eight-package fixed-group minor.
 No public Core API, alignment or other-backend promise is made by this PR.
 
-Pending delivery: report exact final size, commit, and obtain review before merge.
+Implementation committed in two focused commits. Exact delivery diff against
+master cdb38551: five files, +264/-35 raw lines. Non-comment runtime source and
+example: +13/-6 (net +7). This temporary plan is additional to delivery size.
+Pending delivery: obtain review and report size before opening a PR.
 Retain this plan for draft discussion; reconcile and remove it before merge.

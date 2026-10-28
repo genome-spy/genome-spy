@@ -36,6 +36,10 @@ Solid/dashed ribbons share SDF coverage and six-vertex geometry. Remaining work:
 WebGL/native parity and shared Core
 paint normalization before exposing #604. The Rules story exercises combined strokes, dash patterns and retained controls.
 
+Rectangle centered strokes now preserve nominal fill beneath transparent paint,
+including hatches. Shared rectangle alignment and shadow-only picking exclusion
+remain #604 follow-ups; this correction does not expose new Core grammar.
+
 ## Active integration: selection predicate composition
 
 The renderer uses one recursive predicate tree for channel conditions,
