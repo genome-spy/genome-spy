@@ -66,9 +66,11 @@ CPU wire-contract tests and actual renderer output cover the relevant behavior.
   other example switching releases resources without errors.
 - [x] Release checks. No new fragment for unpublished renderer/experimental
   adapter work. Existing master fragments already schedule a fixed-group minor.
-- [ ] Report exact size, push review commits and update PR metadata.
-- [ ] Inspect new CI results; retain draft/review threads for maintainer review.
-- [ ] Reconcile this temporary plan and remove it in a later commit before merge.
+- [x] Report exact size, push review commits and update PR metadata.
+- [x] All three CI checks passed on `61b77790`. Maintainer approved on
+  2026-10-28: "LGTM. Feel free to merge."
+- [x] Reconcile this plan for retirement. Remove it in the next commit before
+  merging; the user explicitly authorized cleanup and merge.
 
 Final bounded timing, Chrome 156 / Apple Metal-3, CPU submission through GPU
 completion, five warmups/30 paired samples: solid 100k DPR-2 borders improve
