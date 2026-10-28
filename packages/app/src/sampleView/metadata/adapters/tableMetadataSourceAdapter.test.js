@@ -31,6 +31,57 @@ function createSourceDef() {
 }
 
 describe("TableMetadataSourceAdapter", () => {
+    it("lists ordered identity labels independently of metadata exclusions", async () => {
+        const adapter = new TableMetadataSourceAdapter({
+            backend: {
+                backend: "data",
+                sampleIdField: "sid",
+                data: {
+                    values: [
+                        { sid: "002", rowLabel: "0012" },
+                        { sid: "001", rowLabel: "Technical 001" },
+                        { sid: 0, rowLabel: 0 },
+                        { sid: "missing", rowLabel: null },
+                        { sid: "unlabeled" },
+                    ],
+                },
+            },
+            excludeColumns: ["rowLabel"],
+        });
+
+        expect(
+            await adapter.listSamples({ displayNameField: "rowLabel" })
+        ).toEqual([
+            { id: "002", displayName: "0012" },
+            { id: "001", displayName: "Technical 001" },
+            { id: "0", displayName: "0" },
+            { id: "missing", displayName: "missing" },
+            { id: "unlabeled", displayName: "unlabeled" },
+        ]);
+        const ids = ["002", "001", "0", "missing", "unlabeled"];
+        expect(await adapter.listSampleIds()).toEqual(ids);
+        expect(await adapter.listSamples()).toEqual(
+            ids.map((id) => ({ id, displayName: id }))
+        );
+        expect(await adapter.listColumns()).toEqual([]);
+    });
+
+    it("leaves missing canonical IDs invalid for identity validation", async () => {
+        const adapter = new TableMetadataSourceAdapter({
+            backend: {
+                backend: "data",
+                data: { values: [{ sample: null }, {}, { sample: "" }] },
+            },
+        });
+
+        expect(await adapter.listSampleIds()).toEqual(["", "", ""]);
+        expect(await adapter.listSamples()).toEqual([
+            { id: "", displayName: "" },
+            { id: "", displayName: "" },
+            { id: "", displayName: "" },
+        ]);
+    });
+
     it("lists and resolves columns from inline data", async () => {
         const adapter = new TableMetadataSourceAdapter(createSourceDef());
 

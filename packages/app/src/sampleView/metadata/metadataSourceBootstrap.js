@@ -18,7 +18,7 @@ async function awaitSampleIds(sampleView) {
     // SampleView-level "samples ready" awaitable or generic waitForSelector)
     // so metadata bootstrap does not own subscribe/timeout plumbing.
     const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
-    if (sampleIds && sampleIds.length > 0) {
+    if (sampleIds) {
         return sampleIds;
     }
 
@@ -34,7 +34,7 @@ async function awaitSampleIds(sampleView) {
             sampleView.provenance.store,
             () => sampleView.sampleHierarchy.sampleData?.ids,
             (ids) => {
-                if (!ids || ids.length === 0) {
+                if (!ids) {
                     return;
                 }
 
@@ -69,7 +69,7 @@ export async function bootstrapInitialMetadataSources(
 
     const sampleIds = await awaitSampleIds(sampleView);
     if (sampleIds.length === 0) {
-        throw new Error("No sample identifiers are available for metadata.");
+        return;
     }
 
     /** @type {import("@reduxjs/toolkit").Action[]} */

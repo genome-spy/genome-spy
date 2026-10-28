@@ -80,9 +80,31 @@ export default class TableMetadataSourceAdapter {
      * @returns {Promise<string[]>}
      */
     async listSampleIds(signal) {
+        return (await this.listSamples(undefined, signal)).map(
+            (sample) => sample.id
+        );
+    }
+
+    /**
+     * @param {{ displayNameField?: string }} [options]
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ id: string; displayName: string }[]>}
+     */
+    async listSamples(options = {}, signal) {
         const rows = await this.#loadRows(signal);
         const sampleIdField = this.#sampleIdField;
-        return rows.map((row) => String(row[sampleIdField] ?? ""));
+        return rows.map((row) => {
+            const id = String(row[sampleIdField] ?? "");
+            const label = options.displayNameField
+                ? row[options.displayNameField]
+                : undefined;
+
+            return {
+                id,
+                displayName:
+                    label === undefined || label === null ? id : String(label),
+            };
+        });
     }
 
     /**

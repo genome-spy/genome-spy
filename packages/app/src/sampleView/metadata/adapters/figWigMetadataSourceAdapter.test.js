@@ -111,11 +111,13 @@ describe("Figwig metadata tables", () => {
             { baseUrl: "https://example.org/specs/metadata.json" }
         );
         const signal = new AbortController().signal;
-        const [ids, columns] = await Promise.all([
+        const [ids, columns, samples] = await Promise.all([
             adapter.listSampleIds(signal),
             adapter.listColumns(signal),
+            adapter.listSamples({ displayNameField: "rowLabel" }, signal),
         ]);
         expect(ids).toEqual(["001"]);
+        expect(samples).toEqual([{ id: "001", displayName: "Sample one" }]);
         expect(columns.map((column) => column.id)).toEqual([
             "Sample.age",
             "accession",

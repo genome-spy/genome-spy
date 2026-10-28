@@ -103,8 +103,51 @@ EXAMPLE examples/app/samples.json runtime=app height=200
 
 ### Defining sample identity
 
-Use `samples.identity` when you want to define the sample order, display names,
-or the complete sample set independently from the visualized data.
+Use `samples.identity` to define sample order, display names, or the complete
+sample set independently from the visualized data. Identity can come from
+explicit data or a configured metadata source.
+
+APP_SCHEMA SampleIdentityDef
+
+#### Identity from metadata
+
+When a metadata source already defines the samples, reference its `id`:
+
+```json
+{
+  "samples": {
+    "identity": {
+      "metadataSource": "fetal-tissues",
+      "displayNameField": "rowLabel"
+    }
+  },
+  "metadata": {
+    "sources": [{ "import": { "url": "metadata-figwig.json" } }]
+  }
+}
+```
+
+The backend supplies canonical IDs in source order. Figwig uses track names;
+Zarr uses matrix row IDs. Labels are optional and default to IDs. Table and
+Figwig sources can read labels from raw attributes even when those columns are
+excluded from displayed metadata. Zarr currently supports IDs as labels only.
+
+With exactly one metadata source, the shorthand uses its IDs as labels:
+
+```json
+"samples": { "identity": "metadata" }
+```
+
+Multiple sources require an explicit `metadataSource`. Identity loads before
+dependent signal queries and reuses the source's cached adapter for subsequent
+metadata imports. `initialLoad: false` defers attributes, while IDs are still
+read when the source is selected for identity. An empty source produces an empty
+sample view. IDs must be nonempty and unique; identity-loading errors fail
+initialization.
+
+APP_SCHEMA MetadataSampleIdentityDef
+
+#### Identity from explicit data
 
 ```json title="Explicit sample identity"
 {
@@ -125,9 +168,7 @@ Sample metadata, like clinical attributes, has to be provided separately in a
 
 The following properties configure `samples.identity`:
 
-APP_SCHEMA SampleIdentityDef
-
-#### Example
+APP_SCHEMA DataSampleIdentityDef
 
 The example below defines three samples and their display names with inline identity
 data.

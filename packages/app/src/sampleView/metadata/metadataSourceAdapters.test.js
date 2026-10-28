@@ -17,6 +17,19 @@ afterEach(() => {
 });
 
 describe("resolveMetadataSource", () => {
+    it("rejects ambiguous duplicate source identifiers", async () => {
+        const source = {
+            id: "repeated",
+            backend: { backend: "data", data: { values: [] } },
+        };
+        await expect(
+            resolveMetadataSourceAny(
+                { sources: [source, { ...source }] },
+                "repeated"
+            )
+        ).rejects.toThrow('Metadata source id "repeated" is not unique.');
+    });
+
     it("resolves the only configured source when sourceId is omitted", async () => {
         const source = {
             id: "clinical",

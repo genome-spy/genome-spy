@@ -139,10 +139,12 @@ and publication remain shared with the data backend. Reserved track fields and
 the App's canonical `sample` field cannot be imported as attributes.
 
 The mouse Figwig variant imports `metadata-figwig.json`, preserving the original
-attribute definitions and excluding duplicate helper aliases. Identity and
-display labels still use `samples.tsv`. A Chromium check stripped every
-metadata column from that TSV response and verified all 936 displayed values
-across 39 attributes and 24 samples, proving they came from Figwig. Grouping,
+attribute definitions and excluding duplicate helper aliases. Its
+`samples.identity` references that source and uses `displayNameField: "rowLabel"`.
+The adapter reads all 24 IDs and labels from the same cached header as metadata
+columns, including the excluded `rowLabel` field. A Chromium check blocked every
+`samples.tsv` request and verified all IDs, labels and 936 displayed values
+across 39 attributes and 24 samples, with zero TSV requests. Grouping,
 filtering, brush-derived metadata, scatterplots, actual bookmark buttons and
 mouse panning passed. No loading or console errors were observed.
 
@@ -160,7 +162,9 @@ backend is selected. The shared table adapter contains no Figwig dependency.
 
 Metadata runtime state caches adapter-creation promises. Bootstrap skips source
 definitions with `initialLoad: false`, and dialog/import/summary operations await
-the adapter when needed. A real browser test configured a deferred Figwig source
+the adapter when needed. Selecting a source for sample identity reads its IDs
+and labels during startup even when columns are deferred. A real browser test
+configured a deferred Figwig source without an identity reference
 and verified zero adapter, reader, pako or Figwig-file requests during startup.
 The mouse metadata and UI checks also pass through the asynchronous path.
 
@@ -433,7 +437,7 @@ the main App experiment needs only `h3k27ac.fw`.
 
 ## Verification and limitations
 
-The full unit suite passed 557 files and 5,301 tests, with one skipped and two
+The full unit suite passed 558 files and 5,316 tests, with one skipped and two
 todo. Narrow source and App regression tests, generated-schema tests, upstream
 reader tests (160 and three Chromium tests), numerical validation, and
 real-browser checks passed.

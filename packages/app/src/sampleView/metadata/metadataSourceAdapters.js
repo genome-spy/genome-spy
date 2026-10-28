@@ -200,13 +200,18 @@ export function resolveMetadataSourceFromSources(sources, sourceId) {
     }
 
     if (sourceId !== undefined) {
-        const matched = sources.find((source) => source.id === sourceId);
-        if (!matched) {
+        const matches = sources.filter((source) => source.id === sourceId);
+        if (matches.length === 0) {
             throw new Error(
                 'Metadata source "' + sourceId + '" was not found.'
             );
         }
-        return matched;
+        if (matches.length > 1) {
+            throw new Error(
+                'Metadata source id "' + sourceId + '" is not unique.'
+            );
+        }
+        return matches[0];
     }
 
     if (sources.length !== 1) {

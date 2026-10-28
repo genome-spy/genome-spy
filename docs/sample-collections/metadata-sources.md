@@ -349,9 +349,9 @@ samples, and custom attributes become metadata columns with the same grouping,
 styling and exclusion options as table sources.
 
 The adapter and reader load on demand in ESM builds when this backend is used.
-Sources with `initialLoad: false` do not load the adapter during startup;
-importing columns or inspecting their identifiers loads it later. Fat UMD
-bundles include the implementation.
+Sources with `initialLoad: false` defer the adapter until columns or identifiers
+are requested. Selecting the source for sample identity reads its header during
+startup. Fat UMD bundles include the implementation.
 
 ```json
 {
@@ -371,11 +371,13 @@ numbers when preparing the Figwig file. Reserved track fields (`name`, `dtype`,
 `group`) and the App's canonical identifier field `sample` are excluded. Other
 helper attributes or duplicate aliases can be removed with `excludeColumns`.
 
-Metadata loading is independent of the visible signal tracks. Sample identity
-and display labels still come from `samples.identity`; this backend does not
-replace that source. Configure `initialLoad: "*"` to load the attributes at
-startup, or import selected columns later. This experiment uses the same
-unpublished reader package as the [Figwig signal source](../grammar/data/lazy.md#figwig-experimental).
+Metadata loading is independent of the visible signal tracks. To derive the
+sample set and display labels from this file, configure
+[`samples.identity.metadataSource`](visualizing.md#identity-from-metadata).
+Identity and attribute loading reuse the cached header. Configure
+`initialLoad: "*"` to load the attributes at startup, or import selected columns
+later. This experiment uses the same unpublished reader package as the
+[Figwig signal source](../grammar/data/lazy.md#figwig-experimental).
 
 APP_SCHEMA FigWigBackendDef
 

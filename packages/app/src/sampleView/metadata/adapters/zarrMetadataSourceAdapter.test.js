@@ -1,5 +1,6 @@
 // @ts-check
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as zarrita from "zarrita";
 import ZarrMetadataSourceAdapter from "./zarrMetadataSourceAdapter.js";
 
 /** @type {Record<string, any>} */
@@ -64,6 +65,61 @@ describe("ZarrMetadataSourceAdapter", () => {
             "var/symbol": ["TP53", "MYC"],
             "var/ensembl_id": ["ENSG1.1", "ENSG2.3"],
         };
+    });
+
+    it("lists identity in cached row order without reading matrix values", async () => {
+        mockArrays.row_ids = ["002", "001", 0, null, undefined];
+        const get = vi.spyOn(zarrita, "get");
+        try {
+            const adapter = new ZarrMetadataSourceAdapter({
+                backend: {
+                    backend: "zarr",
+                    url: "https://example.org/expression.zarr",
+                    matrix: { rowIdsPath: "row_ids" },
+                },
+            });
+            expect(await adapter.listSamples()).toEqual([
+                { id: "002", displayName: "002" },
+                { id: "001", displayName: "001" },
+                { id: "0", displayName: "0" },
+                { id: "", displayName: "" },
+                { id: "", displayName: "" },
+            ]);
+            expect(await adapter.listSampleIds()).toEqual([
+                "002",
+                "001",
+                "0",
+                "",
+                "",
+            ]);
+            expect(get).toHaveBeenCalledExactlyOnceWith(
+                expect.objectContaining({ path: "row_ids" }),
+                expect.any(Array),
+                undefined
+            );
+        } finally {
+            get.mockRestore();
+        }
+    });
+
+    it("rejects display-name fields without reading Zarr data", async () => {
+        const get = vi.spyOn(zarrita, "get");
+        try {
+            const adapter = new ZarrMetadataSourceAdapter({
+                backend: {
+                    backend: "zarr",
+                    url: "https://example.org/expression.zarr",
+                },
+            });
+            await expect(
+                adapter.listSamples({ displayNameField: "rowLabel" })
+            ).rejects.toThrow(
+                "Zarr metadata sources do not support displayNameField"
+            );
+            expect(get).not.toHaveBeenCalled();
+        } finally {
+            get.mockRestore();
+        }
     });
 
     it("lists columns and resolves queries using identifiers", async () => {

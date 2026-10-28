@@ -50,4 +50,58 @@ describe("generated App schema", () => {
             })
         ).toBe(false);
     });
+
+    test("accepts metadata identity and keeps its schema separate from explicit data", () => {
+        const schema = createGenerator({
+            path: path.join(specDir, "*.d.ts"),
+            tsconfig: path.resolve(specDir, "../../../../tsconfig.json"),
+            type: "AppRootSpec",
+            skipTypeCheck: true,
+        }).createSchema("AppRootSpec");
+        const validate = new Ajv.default({
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+        const validIdentities = [
+            "metadata",
+            { metadataSource: "signals" },
+            { metadataSource: "signals", displayNameField: "rowLabel" },
+            { data: { values: [{ sample: "001" }] } },
+        ];
+        const invalidIdentities = [
+            "signals",
+            { metadataSource: "" },
+            { displayNameField: "rowLabel" },
+            { metadataSource: "signals", idField: "name" },
+            { metadataSource: "signals", data: { values: [] } },
+        ];
+        const cases = [
+            ...validIdentities.map((identity) => ({
+                identity,
+                expected: true,
+            })),
+            ...invalidIdentities.map((identity) => ({
+                identity,
+                expected: false,
+            })),
+        ];
+        for (const { identity, expected } of cases) {
+            const spec = {
+                samples: { identity },
+                metadata: {
+                    sources: [
+                        {
+                            id: "signals",
+                            backend: {
+                                backend: "figwig",
+                                url: "signals.fw",
+                            },
+                        },
+                    ],
+                },
+                spec: { mark: "point" },
+            };
+            expect(validate(spec), JSON.stringify(identity)).toBe(expected);
+        }
+    });
 });

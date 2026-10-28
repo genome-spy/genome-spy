@@ -140,6 +140,21 @@ export default class ZarrMetadataSourceAdapter {
     }
 
     /**
+     * @param {{ displayNameField?: string }} [options]
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ id: string; displayName: string }[]>}
+     */
+    async listSamples(options = {}, signal) {
+        if (options.displayNameField) {
+            throw new Error(
+                "Zarr metadata sources do not support displayNameField; sample labels use row IDs."
+            );
+        }
+        const ids = await this.#getRowIds(signal);
+        return ids.map((id) => ({ id, displayName: id }));
+    }
+
+    /**
      * @param {number} maxExamples
      * @param {AbortSignal} [signal]
      * @returns {Promise<{ name: string; primary?: boolean; caseInsensitive?: boolean; stripVersionSuffix?: boolean; examples: string[] }[]>}
@@ -334,10 +349,10 @@ export default class ZarrMetadataSourceAdapter {
      */
     async #getRowIds(signal) {
         if (!this.#rowIdsPromise) {
-            this.#rowIdsPromise = this.#readStringArray(
+            this.#rowIdsPromise = this.#readArray(
                 this.#backend.matrix?.rowIdsPath ?? "obs_names",
                 signal
-            );
+            ).then((values) => values.map((value) => String(value ?? "")));
         }
         return this.#rowIdsPromise;
     }
