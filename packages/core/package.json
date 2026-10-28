@@ -55,7 +55,7 @@
     "postpack": "node scripts/postpack.mjs"
   },
   "dependencies": {
-    "@genome-spy/figwig": "^0.1.0",
+    "@genome-spy/figwig": "^0.2.2",
     "@gmod/bam": "^7.1.19",
     "@gmod/bbi": "^9.2.0",
     "@gmod/bed": "^2.1.10",
