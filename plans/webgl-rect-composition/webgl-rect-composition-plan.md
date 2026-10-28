@@ -1,7 +1,7 @@
 # WebGL rectangle paint composition
 
 Status: proposed follow-up to merged #621, requested by maintainer in
-issuecomment-6475866489. Plan only; no production edits or new dependencies.
+issuecomment-6475866489. Reviewed plan; bounded baseline proof complete, no production edits or new dependencies.
 Separate from the existing point-composition plan and branch. Related to #604.
 Planning base: master a29f81c4 after #621; no runtime code changed.
 
@@ -28,9 +28,11 @@ At width0 all coverages coincide; transparent stroke preserves nominal fill.
 
 The vertex shader currently multiplies both paints by opaFactor, which contains
 uViewOpacity and minimum-size compensation. Separate paint alpha from that
-factor. Multiply combined fill/stroke once before the existing shadow background
-resolve; keep the trivial unadorned path equivalent. Preserve shadow geometry,
-its existing uViewOpacity treatment and WebGL's effective-view-opacity fallback.
+factor. Let Q=opaFactor*resolvedPaint; output Q+(1-Q.a)*background. This
+intentionally corrects shadow visibility through translucent foreground paint.
+Preserve the existing shadow kernel, support condition, offsets and
+uShadowOpacity*uViewOpacity treatment, plus WebGL's effective-view-opacity fallback.
+Keep the trivial unadorned path equivalent.
 Do not claim that this makes shadow grouping identical to WebGPU semantic scopes.
 Core's legacy mark-opacity normalization into paint channels remains unchanged.
 
@@ -44,7 +46,7 @@ Canvas/SVG/WebGPU changes, new passes/buffers/textures or per-frame allocations.
 
 ## Proof and success criteria
 
-- [ ] Before production edits, reproduce transparent-stroke fill loss using a
+- [x] Before production edits, reproduce transparent-stroke fill loss using a
   small actual Core spec with renderer:webgl, then record baseline point/arrow
   output on the same browser/device. No mocked shader/pixel implementation.
 - [ ] Transparent and half-transparent stroke preserve nominal fill and correctly
@@ -56,10 +58,16 @@ Canvas/SVG/WebGPU changes, new passes/buffers/textures or per-frame allocations.
   and a stroke-over-shadow sample; retain existing shadow behavior elsewhere.
 - [ ] Test minWidth, minHeight and minOpacity floor, plus fractional view opacity:
   shared paint attenuation applies once. Exercise retained paint changes and a
-  two-occurrence overlap through real parameter/data updates, not shader mirrors.
+  two-occurrence overlap through api.params handles and api.datasets.set().
+  Dataset set returns void; wait for rendered pixel changes, not its return value.
 - [ ] Rectangle clipping, positional offsets, minimum-size expansion and picking
   identity/policy retain their existing behavior; shadows do not acquire a new
-  picking contract. The plain-rectangle geometry and fast path stay intact.
+  picking contract. Keep picking based on the existing hatch-modified
+  d<vHalfStrokeWidth, not nominal-fill distance or resolved alpha. Characterize
+  the existing outside-threshold fallthrough to ordinary paint before coding;
+  test positive datum IDs plus outside/subpixel-fringe/shadow-only no-hit samples
+  with tooltip:false. Do not silently broaden this into a picking-policy fix.
+  The plain-rectangle geometry and fast path stay intact.
 - [ ] Points and arrows: common.glsl and both mark shaders have zero diff;
   existing generated point/arrow snapshots stay unchanged. Before/after actual
   pixels and picks are identical for representative filled/inward/line-only
@@ -68,14 +76,19 @@ Canvas/SVG/WebGPU changes, new passes/buffers/textures or per-frame allocations.
 - [ ] Existing playground/tests/embedSelection.playwright.js demonstrates the
   public embed/selection/export browser harness. Add focused coverage alongside
   that harness, explicitly selecting WebGL and DPR1/2. Verify visible live output
-  and supported WebGL raster export; screenshots alone are not correctness proof.
+  and characterize supported WebGL raster export separately. One keyed two-row
+  rectangle scene plus six disjoint point/arrow controls suffices. Real-compile
+  plain, rounded-only, stroked and shadow-only variants: mocked shader snapshots
+  cannot prove varying linkage. Screenshots alone are not correctness proof.
 - [ ] Run relevant rectangle/unit/shader suites, browser regressions with no
   skips, Core types/lint, schema check only if grammar unexpectedly changes
   (which requires re-scoping), and release policy/status. Update only rectangle
   shader snapshots if needed; do not regenerate point/arrow expectations.
 - [ ] Measure paired warmed rendering at 1k/100k plain/decorated rectangles,
   DPR1/2 on one browser/device. Investigate median increases beyond max(10%,0.2ms).
-  No extra geometry, passes, resources or per-frame allocations.
+  Use explicit GPU completion (e.g. gl.finish for bounded external measurement),
+  not requestAnimationFrame spacing or CPU submission alone. No extra geometry,
+  passes, resources or per-frame allocations.
 
 ## Delivery boundary
 
@@ -91,3 +104,62 @@ rectangle opacity requires a broader normalization/shadow redesign, revise the
 split before coding. Do not slip a shared refactor into this follow-up. Keep
 other #604 outcomes open. Review the bounded plan before substantial work when
 requested; reconcile and retire it under the planning skill before merge.
+
+## Independent review findings
+
+Both Sol reviews confirm rectangle-local ownership, unchanged common helper and
+neighboring shaders, and a plausible five-file minimum. No shared abstraction or
+new dependency is justified. Before coding: specify paint-over-shadow weighting,
+measure live and exported alpha separately, prove positive picks/retained updates,
+and save temporary paired-baseline neighbor pixels including edge strips. Existing
+snapshots are isolation guards, not proof that browser shader variants link.
+Keep the <=350 added-line budget, avoid new full shader snapshots or a test framework.
+
+## Bounded baseline proof (2026-10-28)
+
+Source master a29f81c4, Chrome156.0.8078.73, native Metal launch, DPR1/2.
+Public Core minimal embed with explicit WebGL registration; actual inline specs,
+parameter/data APIs and public positive picking. Temporary live readback requests
+preserveDrawingBuffer, retaining antialiasing and premultiplied alpha. Assert
+actual 64x64/128x128 buffers. Launch with Chrome's device-scale flag as well as
+context DPR: context-only emulation gave a wrong observed backing size here.
+Runners, JSON, source hashes/snapshots and raw RGBA buffers live outside Git in
+chat artifacts webgl-rect-plan-proof/ and /private/tmp/genomespy-webgl-rect-proof/.
+
+Both DPRs reproduce the defect at a fully covered inward-band pixel:
+
+| Paint case | Actual premultiplied RGBA | Required resolved paint |
+| --- | --- | --- |
+| Zero-width stroke | [255,0,0,255] | [255,0,0,255] |
+| Transparent blue stroke | [0,0,0,0] | [255,0,0,255] |
+| Half-opacity blue stroke | [0,0,128,128] | [128,0,128,255] |
+
+Live half-alpha red is [128,0,0,128]. Public PNG export decodes as straight
+[128,0,0,128], normalizing to premultiplied [64,0,0,128]. That existing export
+alpha difference is characterized, not fixed or used as a live pixel oracle.
+Opaque/fractional paint baselines are exact on the selected interior samples;
+<=2/255 edge tolerance still needs calibration against candidate edge cases.
+
+Plain, rounded-only, stroked and shadow-only variants compile/render without
+WebGL errors at both DPRs. Additional thin-stroke, transparent hatch, stroke/
+shadow overlap, minWidth, minOpacity floor and fractional view-opacity baselines
+are recorded. minWidth fade gives [0,0,128,128]; minOpacity=.75 gives
+[0,0,191,191]. Shadow-only green is [0,127,0,127]; the half-blue foreground band
+currently hides it ([0,0,128,128]), consistent with the old replacement helper.
+
+Positive picks identify datum A, then B after public dataset replacement; moved
+pixels clear and parameter updates visibly change paints. The selected outside,
+subpixel-fringe and shadow-only picks are empty. This does not establish that
+all raw picking fallthrough cases are safe; no picking-policy fix is included.
+
+Six separate neighbor controls (filled/inward points, x/+, filled/open arrows)
+at DPR1/2 have full live RGBA snapshots and expected positive/outside picks.
+All twelve buffers and picks match on repeat. Common helper and all point/arrow
+sources match master hashes. These are baselines for exact comparison after
+implementation, not a claim that an unimplemented candidate has passed.
+Zero browser page errors and zero WebGL errors. No production/test/dependency
+files changed; no candidate shader or performance proof was introduced.
+
+Next: implement only the bounded rectangle shader correction after authorization,
+then prove candidate output, compare neighbor baselines, and add permanent tests.
+Keep export/picking risk outside scope and the <=350 added-line delivery budget.
