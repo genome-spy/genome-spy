@@ -299,6 +299,27 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
+### Solid rule borders
+
+Rules use `fill` (formerly `color`) for the body, with `size` as its thickness.
+`stroke` and `strokeWidth` add a border; the default width is zero. Numeric
+`strokeAlign` is 0 inside, 1 center, or 2 outside (default). `strokeCap` keeps
+its existing codes: 0 butt, 1 square, 2 round. Widths are in logical pixels.
+`fillOpacity` and `strokeOpacity` multiply their respective RGBA alpha;
+`opacity` applies once to the combined paint. Thin-rule fading applies to both
+paints. Transparent strokes preserve the original fill. Nonpositive sizes hide
+both paints. Picking includes the visible border and retains the original ID.
+
+Solid borders support retained scalar and series updates. A nonempty
+`dashPatterns` table cannot be combined with a declared `stroke`, `strokeWidth`,
+`strokeOpacity`, or `strokeAlign`, even when its initial value is transparent
+or zero. Existing unbordered dashed rules remain supported.
+
+Omitting `strokeWidth` retains the six-vertex path. Declaring it selects 54
+vertices per occurrence, including while a dynamic width is zero. Dense bordered
+scenes can be substantially slower; the Rules example separates solid borders
+from its original dashed scene.
+
 ### Position clamping
 
 All marks accept optional two-component `xClampRange` and `yClampRange` channels

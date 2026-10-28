@@ -31,20 +31,28 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
                 y: { value: 32 },
                 y2: { value: 32 },
                 size: { value: 8 },
+                strokeWidth: { value: 0, dynamic: true },
             },
             placementIndex: { source: "draw" },
         });
 
-        renderer.render({
+        const frame = {
             draws: [
                 {
                     mark,
                     placement: { set: placements, index: 0 },
                 },
             ],
-        });
+        };
+        renderer.render(frame);
         await renderer.device.queue.onSubmittedWorkDone();
         const ids = [await renderer.pick(32, 27), await renderer.pick(32, 29)];
+        mark.values.strokeWidth.set(2);
+        renderer.render(frame);
+        ids.push(await renderer.pick(32, 29), await renderer.pick(32, 31));
+        frame.draws[0].scissor = { x: 0, y: 0, width: 64, height: 28 };
+        renderer.render(frame);
+        ids.push(await renderer.pick(32, 29));
         renderer.destroy();
         canvas.remove();
         return {
@@ -56,7 +64,7 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
     });
 
     expect(result).toEqual({
-        ids: [17, null],
+        ids: [17, null, 17, null, null],
         maxStorageBuffersPerShaderStage: 8,
         maxBindGroups: 4,
     });

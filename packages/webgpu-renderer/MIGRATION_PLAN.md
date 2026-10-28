@@ -27,6 +27,15 @@ contains only current work that still has a concrete renderer or Core consumer.
 - Adding registries, a renderer scene graph, per-facet marks, or speculative
   backend abstractions.
 
+## Active integration: aligned solid rule borders
+
+The standalone rule API composes fill and stroke with inside/center/outside
+alignment. Core rules and ticks retain their existing appearance through the
+adapter's `color` to renderer `fill` translation. No Core grammar is exposed.
+Remaining work: dashed-ribbon borders, WebGL/native parity, and shared Core
+paint normalization before exposing #604. Declared border geometry costs 54
+vertices per occurrence; default unbordered rules retain six.
+
 ## Active integration: selection predicate composition
 
 The renderer uses one recursive predicate tree for channel conditions,

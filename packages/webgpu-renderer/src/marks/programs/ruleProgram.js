@@ -314,7 +314,7 @@ export default class RuleProgram extends BaseProgram {
 
     get shaderBody() {
         return (
-            `const BORDER_GEOMETRY: bool = ${!!this._markConfig.channels?.strokeWidth};\n` +
+            `const BORDER_GEOMETRY: bool = ${this.verticesPerInstance === 54};\n` +
             RULE_SHADER_BODY
         );
     }
