@@ -98,7 +98,8 @@ const runExample = async (key) => {
         cleanup = null;
     }
     const example = EXAMPLES[key] ?? EXAMPLES.basic;
-    cleanup = await example.run(canvas);
+    const scene = await example.run(canvas);
+    cleanup = typeof scene === "function" ? scene : scene.cleanup;
 };
 
 const applyHash = () => {

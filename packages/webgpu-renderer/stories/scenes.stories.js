@@ -11,7 +11,7 @@ import runPiecewiseScene from "../examples/piecewiseScene.js";
 import runIndexGapScene from "../examples/indexGapScene.js";
 import runRectClampingScene from "../examples/rectClampingScene.js";
 import runIndexScene from "../examples/indexScene.js";
-import runRuleScene from "../examples/ruleScene.js";
+import runRuleScene, { ruleDefaults } from "../examples/ruleScene.js";
 import runLinkScene from "../examples/linkScene.js";
 import runOrthogonalLinkScene from "../examples/orthogonalLinkScene.js";
 import runArrowScene from "../examples/arrowScene.js";
@@ -182,7 +182,28 @@ export const IndexScale = withSource("runIndexScene", null, {
     render: (args) => renderScene(runIndexScene, args),
 });
 
-export const Rules = withSource("runRuleScene", null, {
+export const Rules = withSource("runRuleScene", ruleDefaults, {
+    args: ruleDefaults,
+    argTypes: {
+        size: { control: { type: "range", min: 0, max: 24, step: 0.25 } },
+        strokeWidth: { control: { type: "range", min: 0, max: 8, step: 0.25 } },
+        strokeOpacity: {
+            control: { type: "range", min: 0, max: 1, step: 0.05 },
+        },
+        fillOpacity: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
+        opacity: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
+        stroke: { control: "color" },
+        cap: { control: "select", options: ["butt", "square", "round"] },
+        alignment: {
+            control: "select",
+            options: ["inside", "center", "outside"],
+        },
+        dashed: { control: "boolean" },
+        dashPattern: { control: "select", options: [1, 2, 3] },
+        dashOffset: {
+            control: { type: "range", min: -24, max: 24, step: 0.25 },
+        },
+    },
     render: (args) => renderScene(runRuleScene, args),
 });
 

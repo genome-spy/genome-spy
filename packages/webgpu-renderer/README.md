@@ -299,6 +299,31 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
+### Rule fill and borders
+
+Rules use `fill` (formerly `color`) for the body, with `size` as its thickness.
+`stroke` and `strokeWidth` add a border; the default width is zero. Numeric
+`strokeAlign` is 0 inside, 1 center, or 2 outside (default). `strokeCap` keeps
+its existing codes: 0 butt, 1 square, 2 round. Widths are in logical pixels.
+`fillOpacity` and `strokeOpacity` multiply their respective RGBA alpha;
+`opacity` applies once to the combined paint. Thin-rule fading applies to both
+paints. Transparent strokes preserve the original fill. Nonpositive sizes hide
+both paints. Picking includes the visible border and retains the original ID.
+
+Solid and dashed borders support retained scalar, series and conditional inputs.
+`strokeCap` shapes the ribbon endpoints; dash boundaries cut that ribbon into
+finite painted intervals. Border alignment follows those clipped contours.
+`strokeDashOffset` shifts the pattern in logical pixels, including negative
+phases. Zero-length gaps merge adjacent painted runs; all-off patterns stay empty.
+Periods through the supported maximum of 256 logical pixels retain their gaps.
+
+Rules use six vertices and signed-distance antialiasing at sides, dash cuts and
+endpoints, including butt ends. Border offsets round convex corners consistently.
+Hard butt/dash clipping is corrected: exact-boundary samples have half coverage.
+The Rules story combines strokes and dashes with retained paint, width, cap,
+alignment and phase controls. Pattern metadata is uploaded once per program;
+no per-datum dash geometry or extra rendering pass is created.
+
 ### Position clamping
 
 All marks accept optional two-component `xClampRange` and `yClampRange` channels

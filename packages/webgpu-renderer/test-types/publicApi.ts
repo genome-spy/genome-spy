@@ -73,6 +73,24 @@ export async function createPointExample(
         y: new Float32Array([0.75, 0.25]),
     });
 
+    const rules = renderer.createMark(ruleMark, {
+        count: 1,
+        channels: {
+            x: { value: 10 },
+            x2: { value: 90 },
+            y: { value: 50 },
+            y2: { value: 50 },
+            fill: { value: [1, 0, 0, 1] },
+            fillOpacity: { value: 0.5 },
+            stroke: { value: [0, 0, 0, 1] },
+            strokeOpacity: { value: 0.8 },
+            strokeWidth: { value: 2, dynamic: true },
+            strokeAlign: { value: 2, type: "u32", dynamic: true },
+        },
+    });
+    rules.values.strokeAlign.set(0);
+    rules.values.strokeWidth.set(4);
+
     const labels = renderer.createMark(textMark, {
         channels: {
             text: { data: ["0.00000"] },

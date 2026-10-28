@@ -849,6 +849,9 @@ describe("WebGPU mark adapter", () => {
             value: 0,
             type: "u32",
         });
+        expect(config.channels.fill.value).toEqual([0, 0, 0, 1]);
+        expect(config.channels).not.toHaveProperty("color");
+        expect(config.channels).not.toHaveProperty("strokeWidth");
         expect(config.dashPatterns).toEqual([[3, 2]]);
         expect(config.channels.strokeDashOffset).toEqual(dynamicValue(1));
     });

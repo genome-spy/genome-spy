@@ -22,8 +22,13 @@ export const RULE_CHANNEL_SPECS = {
     yOffset: { type: "f32", components: 1, default: 0 },
     y2Offset: { type: "f32", components: 1, default: 0 },
     size: { type: "f32", components: 1, default: 1.0 },
-    color: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
+    fill: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     opacity: { type: "f32", components: 1, default: 1.0 },
+    stroke: { type: "f32", components: 4, default: [0, 0, 0, 1] },
+    fillOpacity: { type: "f32", components: 1, default: 1 },
+    strokeOpacity: { type: "f32", components: 1, default: 1 },
+    strokeAlign: { type: "u32", components: 1, default: 2 },
+    strokeWidth: { type: "f32", components: 1, default: 0 },
     minLength: { type: "f32", components: 1, default: 0.0 },
     strokeCap: { type: "u32", components: 1, default: 0 },
     strokeDash: { type: "u32", components: 1, default: 0 },
@@ -46,15 +51,19 @@ struct VSOut {
     @location(15) @interpolate(flat) placementClip: vec4<f32>,
 #endif
     @builtin(position) pos: vec4<f32>,
-    @location(0) color: vec4<f32>,
+    @location(0) fill: vec4<f32>,
     @location(1) normalDistance: f32,
     @location(2) halfWidth: f32,
     @location(3) opacity: f32,
-    @location(4) posInPixels: vec2<f32>,
+    @location(4) along: f32,
+    @location(11) @interpolate(flat) span: f32,
     @location(5) @interpolate(flat) strokeCap: u32,
     @location(6) @interpolate(flat) dashIndex: u32,
     @location(7) @interpolate(flat) dashOffset: f32,
     @location(8) @interpolate(flat) pickId: u32,
+    @location(9) @interpolate(flat) stroke: vec4<f32>,
+    @location(10) @interpolate(flat) outset: f32,
+    @location(12) @interpolate(flat) inset: f32,
 };
 
 fn culledRule() -> VSOut {
@@ -63,14 +72,18 @@ fn culledRule() -> VSOut {
     out.placementClip = vec4<f32>(-1e9);
 #endif
     out.pos = vec4<f32>(0.0);
-    out.color = vec4<f32>(0.0);
+    out.fill = vec4<f32>(0.0);
     out.normalDistance = 0.0;
     out.halfWidth = 0.0;
     out.opacity = 0.0;
-    out.posInPixels = vec2<f32>(0.0);
+    out.along = 0.0;
+    out.span = 0.0;
     out.strokeCap = 0u;
     out.dashIndex = 0u;
     out.dashOffset = 0.0;
+    out.stroke = vec4<f32>(0.0);
+    out.outset = 0.0;
+    out.inset = 0.0;
     out.pickId = 0u;
     return out;
 }
@@ -123,6 +136,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     // Stroke width in pixels.
     var width = getScaled_size(i);
+    if (width <= 0.0) { return culledRule(); }
+    let borderWidth = max(getScaled_strokeWidth(i), 0.0);
+    // Numeric alignment: inside=0, center=1, outside=2.
+    let expansion = borderWidth * f32(getScaled_strokeAlign(i)) * 0.5;
     var opacity = getScaled_opacity(i);
 
     // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively.
@@ -144,7 +161,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     let upper = vec2<f32>(globals.width, globals.height);
     // The overscan keeps artificial caps and thick strokes outside the image.
-    let margin = max(upper, vec2<f32>(width + getScaled_minLength(i) + pixelSize));
+    let margin = max(upper, vec2<f32>(width + expansion + getScaled_minLength(i) + pixelSize));
     var xBounds = vec2<f32>(-margin.x, upper.x + margin.x);
     var yBounds = vec2<f32>(-margin.y, upper.y + margin.y);
 #if defined(xClampRange_DEFINED)
@@ -165,30 +182,13 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let normal = normalize(vec2<f32>(-tangent.y, tangent.x));
 
     let strokeCap = u32(getScaled_strokeCap(i));
-    let minLength = getScaled_minLength(i);
-    var offset = 0.0;
-    var relativeDiff = 0.0;
-    if (minLength > 0.0 || strokeCap != BUTT) {
-        var diff = max(0.0, minLength - len);
-        // Add line caps
-        if (strokeCap != BUTT) {
-            diff = diff + width;
-        }
-        relativeDiff = diff / len;
-        offset = relativeDiff * (local.x - 0.5);
-    }
-
-    // Add an extra pixel to stroke width to accommodate edge antialiasing.
-    let aaPadding = pixelSize;
-    let paddedWidth = width + aaPadding;
+    let span = max(len, getScaled_minLength(i));
     let halfWidth = 0.5 * width;
-    let side = local.y - 0.5;
-
-    // Apply caps and minimum length by spreading the vertices along the tangent.
-    var position = a + tangent * (local.x + offset);
-
-    // Extrude the quad along the normal direction.
-    position = position + normal * side * paddedWidth;
+    let end = select(0.0, halfWidth, strokeCap != BUTT);
+    let padding = expansion + 0.5 * pixelSize;
+    let along = mix(-end - padding, span + end + padding, local.x);
+    let across = (local.y - 0.5) * (width + 2.0 * padding);
+    let position = (a + b) * 0.5 + tangent / len * (along - span * 0.5) + normal * across;
     let clip = vec2<f32>(
         (position.x / globals.width) * 2.0 - 1.0,
         1.0 - (position.y / globals.height) * 2.0
@@ -199,13 +199,17 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.placementClip = placementClipBounds(i);
 #endif
     out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);
-    out.color = getScaled_color(i);
-    out.normalDistance = side * paddedWidth;
+    out.fill = getScaled_fill(i);
+    out.fill.a *= getScaled_fillOpacity(i);
+    out.stroke = getScaled_stroke(i);
+    out.stroke.a *= getScaled_strokeOpacity(i);
+    out.outset = expansion;
+    out.inset = borderWidth - expansion;
+    out.normalDistance = across;
     out.halfWidth = halfWidth;
     out.opacity = opacity;
-    // Distances from the line endings (pixels). Used for round caps.
-    out.posInPixels = vec2<f32>(local.x, 1.0 - local.x) * (1.0 + relativeDiff) * len -
-        vec2<f32>(select(0.0, width * 0.5, strokeCap != BUTT));
+    out.along = along;
+    out.span = span;
     out.strokeCap = strokeCap;
     out.dashIndex = u32(getScaled_strokeDash(i));
     out.dashOffset = f32(getScaled_strokeDashOffset(i));
@@ -216,25 +220,82 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     return out;
 }
 
-fn shade(in: VSOut) -> vec4<f32> {
-    let distanceFromEnd = -min(in.posInPixels.x, in.posInPixels.y);
-    var distance: f32;
-    if (distanceFromEnd > 0.0 && in.strokeCap == ROUND) {
-        // Round caps
-        distance = length(vec2<f32>(distanceFromEnd, in.normalDistance));
-    } else {
-        distance = abs(in.normalDistance);
+// Signed distance to a finite rectangle or a capsule clipped by a dash interval.
+// The closest point uses the actual clipped contour, including acute cap cuts.
+fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
+    if (interval.x >= interval.y) { return vec3<f32>(0.0); }
+    let p = vec2<f32>(in.along, in.normalDistance);
+    let radius = in.halfWidth;
+    let span = in.span;
+    var nearest = vec2<f32>(clamp(p.x, interval.x, interval.y), clamp(p.y, -radius, radius));
+    var interior = min(radius - abs(p.y), min(p.x - interval.x, interval.y - p.x));
+    if (in.strokeCap == ROUND) {
+        let center = vec2<f32>(clamp(p.x, 0.0, span), 0.0);
+        let v = p - center;
+        let distance = length(v);
+        nearest = p;
+        if (distance > radius) { nearest = center + v * (radius / distance); }
+        nearest.x = clamp(nearest.x, interval.x, interval.y);
+        let capX = max(-nearest.x, max(nearest.x - span, 0.0));
+        let height = sqrt(max(0.0, radius * radius - capX * capX));
+        nearest.y = clamp(p.y, -height, height);
+        interior = min(radius - distance, min(p.x - interval.x, interval.y - p.x));
     }
-    let width = in.halfWidth * 2.0;
-    let dash = dashMask(
-        dashAtlas,
-        in.dashIndex,
-        in.posInPixels.x,
-        in.dashOffset
-    );
-    let alpha = clamp(((in.halfWidth - distance) * globals.dpr) + 0.5, 0.0, 1.0);
-    let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
-    return premultiplyAlpha(color) * alpha * dash;
+    let distance = select(length(p - nearest), -interior, interior >= 0.0);
+    let cf = clamp(0.5 - distance * globals.dpr, 0.0, 1.0);
+    if (in.inset == 0.0 && in.outset == 0.0) { return vec3<f32>(cf); }
+    var maxInset = min(radius, (interval.y - interval.x) * 0.5);
+    if (in.strokeCap == ROUND) {
+        maxInset = min(maxInset, min(interval.y + radius, span + radius - interval.x) * 0.5);
+    }
+    let co = clamp(0.5 - (distance - in.outset) * globals.dpr, 0.0, 1.0);
+    let ci = select(clamp(0.5 - (distance + in.inset) * globals.dpr, 0.0, 1.0),
+        0.0, in.inset > 0.0 && in.inset >= maxInset);
+    return vec3<f32>(ci, cf, co);
+}
+
+fn ruleCoverage(in: VSOut) -> vec3<f32> {
+    let span = in.span;
+    let end = select(0.0, in.halfWidth, in.strokeCap != BUTT);
+    let bounds = vec2<f32>(-end, span + end);
+    if (params.uDashPatternCount == 0u || in.dashIndex >= params.uDashPatternCount) {
+        return intervalCoverage(in, bounds);
+    }
+    let info = textureLoad(dashAtlas, vec2<i32>(0, i32(in.dashIndex)), 0);
+    if (info.z == 1u) { return intervalCoverage(in, bounds); }
+    if (info.z == 2u) { return vec3<f32>(0.0); }
+    let p = vec2<f32>(in.along, in.normalDistance);
+    var query = clamp(p.x, bounds.x, bounds.y);
+    if (in.strokeCap == ROUND) {
+        let center = vec2<f32>(clamp(p.x, 0.0, span), 0.0);
+        let v = p - center;
+        if (length(v) > in.halfWidth) { query = (center + normalize(v) * in.halfWidth).x; }
+    }
+    let period = f32(info.x + 256u * info.y);
+    let phase = fract((query + in.dashOffset) / period) * period;
+    // A tiny negative phase can round fract() to one; wrap the lookup as well.
+    let local = select(phase, 0.0, phase == period);
+    var coverage = vec3<f32>(0.0);
+    for (var side = 0u; side < 2u; side++) {
+        let packed = textureLoad(dashAtlas,
+            vec2<i32>(1 + i32(floor(local)) * 2 + i32(side), i32(in.dashIndex)), 0);
+        let interval = decodeDashInterval(packed) + query - fract(local);
+        coverage = max(coverage, intervalCoverage(in,
+            vec2<f32>(max(bounds.x, interval.x), min(bounds.y, interval.y))));
+    }
+    return coverage;
+}
+
+fn shade(in: VSOut) -> vec4<f32> {
+    let coverage = ruleCoverage(in);
+    let ci = coverage.x;
+    let cf = coverage.y;
+    let co = coverage.z;
+    let fill = premultiplyAlpha(in.fill);
+    if (in.outset == 0.0 && in.inset == 0.0) { return cf * fill * in.opacity; }
+    let stroke = premultiplyAlpha(in.stroke);
+    return (ci * fill + (cf - ci) * (stroke + (1.0 - stroke.a) * fill) +
+        (co - cf) * stroke) * in.opacity;
 }
 
 @fragment
@@ -292,7 +353,7 @@ export default class RuleProgram extends BaseProgram {
         const texture = createTextureFromData(
             this.device,
             {
-                format: "r8uint",
+                format: "rgba8uint",
                 width: atlas.width,
                 height: atlas.height,
                 data: atlas.data,
@@ -304,7 +365,7 @@ export default class RuleProgram extends BaseProgram {
             texture,
             width: atlas.width,
             height: atlas.height,
-            format: "r8uint",
+            format: "rgba8uint",
         });
 
         const dashChannel = this._channels.strokeDash;
