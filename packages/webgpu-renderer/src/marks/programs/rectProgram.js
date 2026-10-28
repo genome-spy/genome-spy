@@ -106,12 +106,16 @@ fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
 
-fn distanceToColor(d: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, halfStrokeWidth: f32) -> vec4<f32> {
+fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, halfStrokeWidth: f32) -> vec4<f32> {
+    let cf = distanceToRatio(-d);
+    var color = cf * fill;
     if (halfStrokeWidth > 0.0) {
-        let sd = abs(d) - halfStrokeWidth;
-        return mix(stroke, select(background, fill, d <= 0.0), distanceToRatio(sd));
+        let ci = distanceToRatio(-strokeDistance - halfStrokeWidth);
+        let co = distanceToRatio(-d + halfStrokeWidth);
+        color = ci * fill + (cf - ci) * (stroke + (1.0 - stroke.a) * fill)
+            + (co - cf) * stroke;
     }
-    return mix(background, fill, distanceToRatio(-d));
+    return color + (1.0 - color.a) * background;
 }
 
 fn gaussian(x: f32, sigma: f32) -> f32 {
@@ -448,6 +452,8 @@ fn shade(in: VSOut) -> vec4<f32> {
     }
 
     let halfStrokeWidth = in.strokeWidth * 0.5;
+    // Hatches affect the stroke band, never the nominal fill beneath it.
+    let fillDistance = d;
     let patternType = i32(in.hatchPattern);
     if (halfStrokeWidth > 0.0 && patternType > 0) {
         // Hatch coordinates in Core's GLSL rect shader use a bottom-left Y
@@ -462,7 +468,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         );
     }
 
-    return distanceToColor(d, fillColor, strokeColor, background, halfStrokeWidth);
+    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, halfStrokeWidth);
 }
 
 @fragment
