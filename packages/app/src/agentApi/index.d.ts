@@ -73,6 +73,8 @@ export interface AgentApi {
         paramName: string
     ): { description?: string } | undefined;
 
+    getDatumSearch(): import("@genome-spy/core/types/search.js").DatumSearch;
+    getViewApi(): import("@genome-spy/core/types/embedApi.js").ViewApi;
     getSearchableViews(): UnitView[];
 
     getViewRoot(): import("@genome-spy/core/view/view.js").default | undefined;
@@ -82,8 +84,7 @@ export interface AgentApi {
      * This is typically the current sample view.
      */
     getFocusedView():
-        | import("@genome-spy/core/view/view.js").default
-        | undefined;
+        import("@genome-spy/core/view/view.js").default | undefined;
 
     /**
      * Returns the root spec used to summarize the top-level visualization.

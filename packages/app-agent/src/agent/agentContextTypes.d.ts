@@ -242,7 +242,6 @@ export interface AgentSearchableViewSummary {
     title: string;
     description?: string;
     searchFields: AgentSearchableFieldSummary[];
-    dataFields: string[];
 }
 
 /**

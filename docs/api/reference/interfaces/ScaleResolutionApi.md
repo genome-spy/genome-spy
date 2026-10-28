@@ -81,12 +81,24 @@ Inspect getDomain() for the usability conditions required by your consumer.
 
 ***
 
+### getAssembly()
+
+> **getAssembly**(): [`CoordinateAssembly`](CoordinateAssembly.md)
+
+Returns detached ordered contigs from an initialized locus scale. Throws for non-locus scales.
+
+#### Returns
+
+[`CoordinateAssembly`](CoordinateAssembly.md)
+
+***
+
 ### getComplexDomain()
 
 > **getComplexDomain**(): `NumericDomain` \| `ComplexDomain`
 
-Returns the current, possible zoomed domain converted into complex objects
-such as genomic coordinates.
+Returns the current domain converted into complex objects. Locus endpoints
+are zero-based and inclusive, covering the integer bases in the viewport.
 
 #### Returns
 

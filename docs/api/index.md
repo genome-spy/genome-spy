@@ -19,6 +19,8 @@ their source in the
 - [Embedding and entry points](./embedding.md)
 - [View hierarchy](./views.md)
 - [Runtime state](./runtime-state.md)
+- [Coordinates](./coordinates.md)
+- [Datum search](./search.md)
 - [Inspector](./inspector.md)
 - [Instance, events, and export](./instance.md)
 - [Embed options](./embed-options.md)

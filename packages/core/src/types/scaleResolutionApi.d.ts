@@ -59,9 +59,12 @@ export interface ScaleResolutionApi {
      */
     isDomainInitialized(): boolean;
 
+    /** Returns detached ordered contigs from an initialized locus scale. Throws for non-locus scales. */
+    getAssembly(): import("./coordinates.js").CoordinateAssembly;
+
     /**
-     * Returns the current, possible zoomed domain converted into complex objects
-     * such as genomic coordinates.
+     * Returns the current domain converted into complex objects. Locus endpoints
+     * are zero-based and inclusive, covering the integer bases in the viewport.
      */
     getComplexDomain(): NumericDomain | ComplexDomain;
 

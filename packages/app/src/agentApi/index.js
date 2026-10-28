@@ -112,6 +112,14 @@ export function createAgentApi(app) {
             return sampleView.paramRuntime.paramConfigs.get(paramName);
         },
 
+        getDatumSearch() {
+            return app.datumSearch;
+        },
+
+        getViewApi() {
+            return app.views;
+        },
+
         getSearchableViews() {
             return app.genomeSpy.getSearchableViews();
         },

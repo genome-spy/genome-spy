@@ -237,7 +237,7 @@ function createAgentApiStub(app) {
             app.getSampleView().paramRuntime?.paramConfigs?.get(paramName),
         getSampleViewScopedParamConfig: (paramName) =>
             app.getSampleView().paramRuntime?.paramConfigs?.get(paramName),
-        getSearchableViews: () => app.genomeSpy.getSearchableViews(),
+        getDatumSearch: () => ({ listSearchableViews: () => [] }),
         getViewRoot: () => app.getSampleView(),
         getFocusedView: () => app.getSampleView(),
         resolveViewSelector: (selector) =>

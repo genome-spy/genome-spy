@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <title>Datum search</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <h1>Search loaded records</h1>
+        <p>
+            Synthetic records demonstrate multiple loci for one symbol. Search
+            only finds candidates; choose a candidate to navigate.
+        </p>
+        <form id="search">
+            <label>Symbol <input id="query" value="TP53" /></label>
+            <button>Find</button>
+        </form>
+        <p id="status" role="status"></p>
+        <ul id="matches"></ul>
+        <div id="container" class="visualization-surface"></div>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

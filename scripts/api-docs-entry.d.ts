@@ -5,3 +5,5 @@
  */
 export type * from "../packages/core/src/types/embedApi.js";
 export type * from "../packages/core/src/types/scaleResolutionApi.js";
+export type * from "../packages/core/src/types/coordinates.js";
+export type * from "../packages/core/src/types/search.js";

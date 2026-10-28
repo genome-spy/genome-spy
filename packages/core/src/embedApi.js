@@ -15,12 +15,19 @@ import { getTopLevelSpecView } from "./view/viewFactory.js";
  * @param {import("./genomeSpy.js").default} options.genomeSpy
  * @param {() => boolean} options.isActive
  * @param {import("./types/embedApi.js").EmbedDebugApi} options.debug
+ * @param {import("./types/embedApi.js").ViewApi} [options.views]
  * @param {() => void} options.finalize
  * @returns {import("./types/embedApi.js").EmbedResult}
  */
-export function createEmbedResult({ genomeSpy, isActive, debug, finalize }) {
+export function createEmbedResult({
+    genomeSpy,
+    isActive,
+    debug,
+    finalize,
+    views,
+}) {
     return {
-        views: createViewMutationApi(genomeSpy, isActive),
+        views: views ?? createViewMutationApi(genomeSpy, isActive),
         datasets: createTopLevelDatasetApi(genomeSpy, isActive),
         dataLoading: {
             getSnapshot: () => getLoadingRegistry().getSnapshot(),

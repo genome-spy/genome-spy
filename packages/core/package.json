@@ -16,6 +16,8 @@
     ".": "./src/index.js",
     "./minimal": "./src/minimal.js",
     "./full": "./src/full.js",
+    "./search": "./src/search.js",
+    "./coordinates": "./src/coordinates.js",
     "./controls": "./src/controls.js",
     "./rendering/canvas.js": "./src/rendering/registerCanvas.js",
     "./rendering/svg.js": "./src/rendering/registerSvg.js",

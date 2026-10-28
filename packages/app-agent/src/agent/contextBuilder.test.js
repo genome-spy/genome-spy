@@ -51,22 +51,7 @@ import { getAgentContext } from "./contextBuilder.js";
 import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 import { getAgentVolatileContext } from "./volatileContextBuilder.js";
 
-function createAppStub(options = {}) {
-    const geneSearchData = options.geneSearchData ?? [
-        {
-            gene_symbol: "TP53",
-            gene_name: "tumor protein p53",
-        },
-        {
-            gene_symbol: "BRCA1",
-            gene_name: "breast cancer 1",
-        },
-        {
-            gene_symbol: "EGFR",
-            gene_name: "epidermal growth factor receptor",
-        },
-    ];
-
+function createAppStub() {
     const getAttributeInfo = (attribute) => ({
         name: String(attribute.specifier),
         attribute,
@@ -117,36 +102,30 @@ function createAppStub(options = {}) {
         },
     ];
 
-    const getGeneSearchData = vi.fn(() => geneSearchData);
-    const searchCollector = {
-        getData: getGeneSearchData,
-    };
-    const searchView = {
-        name: "gene-track",
-        explicitName: "gene-track",
-        spec: {
-            name: "gene-track",
-            description: "Gene symbols and names.",
-            encoding: {
-                search: [
+    const datumSearch = {
+        listSearchableViews: vi.fn(() => [
+            {
+                view: { selector: { scope: [], view: "gene-track" } },
+                title: "Gene Symbols",
+                description: "Gene symbols and names.",
+                fields: [
                     {
                         field: "gene_symbol",
                         description: "Gene symbol",
+                        examples: ["TP53", "BRCA1", "EGFR"],
                     },
                     {
                         field: "gene_name",
                         description: "Gene name",
+                        examples: [
+                            "tumor protein p53",
+                            "breast cancer 1",
+                            "epidermal growth factor receptor",
+                        ],
                     },
                 ],
             },
-        },
-        getTitleText: () => "Gene Symbols",
-        getEncoding: () => searchView.spec.encoding,
-        getSearchAccessors: vi.fn(() => [
-            (datum) => datum.gene_symbol,
-            (datum) => datum.gene_name,
         ]),
-        getCollector: vi.fn(() => searchCollector),
     };
 
     const sampleView = {
@@ -219,7 +198,6 @@ function createAppStub(options = {}) {
     return {
         getSampleView: () => sampleView,
         genomeSpy: {
-            getSearchableViews: () => [searchView],
             getNamedScaleResolutions: () =>
                 new Map([
                     [
@@ -243,8 +221,7 @@ function createAppStub(options = {}) {
                     ],
                 ]),
         },
-        searchView,
-        searchCollector,
+        datumSearch,
         provenance: {
             getPresentState: () => ({
                 sampleView: {
@@ -310,7 +287,7 @@ function createAgentApiStub(app) {
             app.getSampleView().paramRuntime.paramConfigs.get(paramName),
         getSampleViewScopedParamConfig: (paramName) =>
             app.getSampleView().paramRuntime.paramConfigs.get(paramName),
-        getSearchableViews: () => app.genomeSpy.getSearchableViews(),
+        getDatumSearch: () => app.datumSearch,
         getNamedScaleResolutions: () =>
             app.genomeSpy.getNamedScaleResolutions(),
         getViewRoot: () => app.getSampleView(),
@@ -446,68 +423,31 @@ describe("getAgentContext", () => {
                         ],
                     },
                 ],
-                dataFields: ["gene_symbol", "gene_name"],
             }),
         ]);
         expect(context).not.toHaveProperty("provenance");
     });
 
-    it("caches searchable view examples across context rebuilds", async () => {
+    it("refreshes searchable examples from the host instead of caching by view", async () => {
         const app = createAppStub();
-
-        const firstContext = await getAgentContext(createAgentApiStub(app));
-        const secondContext = await getAgentContext(createAgentApiStub(app));
-
-        expect(firstContext.searchableViews).toEqual(
-            secondContext.searchableViews
+        const agentApi = createAgentApiStub(app);
+        const first = await getAgentContext(agentApi);
+        const updated = structuredClone(
+            app.datumSearch.listSearchableViews()[0]
         );
-        expect(app.searchView.getSearchAccessors).toHaveBeenCalledTimes(1);
-        expect(app.searchView.getCollector).toHaveBeenCalledTimes(1);
-        expect(app.searchCollector.getData).toHaveBeenCalledTimes(1);
-    });
-
-    it("caps searchable view examples per field", async () => {
-        const app = createAppStub({
-            geneSearchData: [
-                {
-                    gene_symbol: "TP53",
-                    gene_name: "tumor protein p53",
-                },
-                {
-                    gene_symbol: "BRCA1",
-                    gene_name: "breast cancer 1",
-                },
-                {
-                    gene_symbol: "EGFR",
-                    gene_name: "epidermal growth factor receptor",
-                },
-                {
-                    gene_symbol: "MYC",
-                    gene_name: "myelocytomatosis",
-                },
-                {
-                    gene_symbol: "PTEN",
-                    gene_name: "phosphatase and tensin homolog",
-                },
-            ],
-        });
-
-        const context = await getAgentContext(createAgentApiStub(app));
-
-        expect(context.searchableViews[0].searchFields[0].examples).toEqual([
+        updated.fields[0].examples = ["MYC"];
+        app.datumSearch.listSearchableViews.mockReturnValue([updated]);
+        const second = await getAgentContext(agentApi);
+        expect(first.searchableViews[0].searchFields[0].examples).toEqual([
             "TP53",
             "BRCA1",
             "EGFR",
         ]);
-        expect(context.searchableViews[0].searchFields[1].examples).toEqual([
-            "tumor protein p53",
-            "breast cancer 1",
-            "epidermal growth factor receptor",
+        expect(second.searchableViews[0].searchFields[0].examples).toEqual([
+            "MYC",
         ]);
     });
-});
 
-describe("getSelectionAggregationContext", () => {
     it("builds high-churn selection aggregation state separately", () => {
         const app = createAppStub();
 

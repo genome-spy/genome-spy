@@ -4,6 +4,8 @@ Public TypeScript API for `@genome-spy/core`.
 
 ## Interfaces
 
+- [CoordinateAssembly](interfaces/CoordinateAssembly.md)
+- [CoordinateLocus](interfaces/CoordinateLocus.md)
 - [FontCatalogEntry](interfaces/FontCatalogEntry.md)
 - [EmbedOptions](interfaces/EmbedOptions.md)
 - [SpecLocation](interfaces/SpecLocation.md)
@@ -46,11 +48,20 @@ Public TypeScript API for `@genome-spy/core`.
 - [ScaleResolutionEvent](interfaces/ScaleResolutionEvent.md)
 - [ZoomToOptions](interfaces/ZoomToOptions.md)
 - [ScaleResolutionApi](interfaces/ScaleResolutionApi.md)
+- [SearchSource](interfaces/SearchSource.md)
+- [DatumSearchTarget](interfaces/DatumSearchTarget.md)
+- [DatumSearchMatch](interfaces/DatumSearchMatch.md)
+- [DatumSearchResult](interfaces/DatumSearchResult.md)
+- [DatumSearchOptions](interfaces/DatumSearchOptions.md)
+- [SearchableView](interfaces/SearchableView.md)
+- [DatumSearch](interfaces/DatumSearch.md)
 - [AnalysisSampleParams](interfaces/AnalysisSampleParams.md)
 - [TransformDataOptions](interfaces/TransformDataOptions.md)
 
 ## Type Aliases
 
+- [CoordinateInterval](type-aliases/CoordinateInterval.md)
+- [CoordinateQueryResult](type-aliases/CoordinateQueryResult.md)
 - [EmbedFunction](type-aliases/EmbedFunction.md)
 - [ParamValue](type-aliases/ParamValue.md)
 - [IntervalEndpoint](type-aliases/IntervalEndpoint.md)
