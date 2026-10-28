@@ -106,7 +106,7 @@ fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
 
-fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, halfStrokeWidth: f32) -> vec4<f32> {
+fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, halfStrokeWidth: f32, opacityFactor: f32) -> vec4<f32> {
     let cf = distanceToRatio(-d);
     var color = cf * fill;
     if (halfStrokeWidth > 0.0) {
@@ -115,6 +115,7 @@ fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f3
         color = ci * fill + (cf - ci) * (stroke + (1.0 - stroke.a) * fill)
             + (co - cf) * stroke;
     }
+    color *= opacityFactor;
     return color + (1.0 - color.a) * background;
 }
 
@@ -265,6 +266,7 @@ struct VSOut {
     @location(11) shadowColor: vec4<f32>,
     @location(12) @interpolate(flat) hatchPattern: u32,
     @location(13) @interpolate(flat) pickId: u32,
+    @location(14) opacityFactor: f32,
 };
 
 fn culledRect() -> VSOut {
@@ -277,6 +279,7 @@ fn culledRect() -> VSOut {
     out.size = vec2<f32>(0.0);
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
+    out.opacityFactor = 0.0;
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
     out.strokeWidth = 0.0;
@@ -389,8 +392,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.size = vec2<f32>(w, h);
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
-    out.fillOpacity = getScaled_fillOpacity(i) * opaFactor;
-    out.strokeOpacity = getScaled_strokeOpacity(i) * opaFactor;
+    out.opacityFactor = opaFactor;
+    out.fillOpacity = getScaled_fillOpacity(i);
+    out.strokeOpacity = getScaled_strokeOpacity(i);
     out.strokeWidth = strokeWidth;
     let halfMinSize = min(w, h) * 0.5;
     out.cornerRadii = min(cornerRadii, vec4<f32>(halfMinSize));
@@ -416,7 +420,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     if (USE_MULTISAMPLE_EDGE_COVERAGE &&
             all(in.cornerRadii <= vec4<f32>(0.0)) && in.strokeWidth <= 0.0 &&
             in.shadowOpacity <= 0.0) {
-        return fillColor;
+        return fillColor * in.opacityFactor;
     }
 
     let halfSize = in.size * 0.5;
@@ -468,7 +472,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         );
     }
 
-    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, halfStrokeWidth);
+    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, halfStrokeWidth, in.opacityFactor);
 }
 
 @fragment

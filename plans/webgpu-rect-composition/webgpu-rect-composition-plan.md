@@ -37,14 +37,14 @@ new passes, textures, resources or per-frame allocation.
 - [x] Cover sharp and rounded rectangles, distinct corner radii, subpixel widths,
   widths exceeding the interior, transparent fill and zero-width strokes.
   Representative cases rather than a combinatorial matrix.
-- [x] Existing view/scope opacity applies once; two overlapping occurrences
+- [x] Existing view/scope opacity and minimum-size fading each apply once; two overlapping occurrences
   retain paint order. Retained scalar/series paint updates reach visible output.
 - [x] Picking retains current datum identity, geometry, threshold; test interior, stroke band and outside samples. Existing generic
   picking uses shaded alpha, including shadows. Shadow exclusion is deferred
   #604 work, not an existing contract to claim here.
-- [x] Plain adjacent rectangles keep their existing edge-AA fast path and have
-  no new seams. Existing shadow/hatch examples retain their intended geometry
-  and appearance except the explicitly corrected translucent-paint behavior.
+- [x] Plain rectangles keep their unchanged edge-AA fast path. Existing tests
+  qualify group opacity and an isolated retained edge, not visible adjacent seams.
+  Shadow-overlap and hatch-paint samples qualify the corrected paint behavior.
 - [x] No extra vertices, draw calls, attachments or render-time allocations.
   Compare before/after on the same browser/device with alternating samples:
   1k and 100k plain and stroked rectangles, DPR 1/2. Investigate a median increase
@@ -63,10 +63,10 @@ First add a focused failing actual-renderer regression for transparent stroke;
 then implement the smallest shader correction and qualify neighboring cases.
 No shader-string assertions or tests duplicating shader code as their oracle.
 
-Estimated delivery: 3-6 files, 20-60 changed production lines and 120-250 test
-lines, target <=300 added raw lines excluding this temporary plan. This is a
+Estimated delivery: 3-6 files, 20-60 changed production lines and up to 290 test
+lines, revised target <=320 added raw lines excluding this temporary plan. This is a
 review budget, not a measured diff. Report exact size before opening the PR;
-re-scope first if production changes exceed 60 lines or delivery exceeds 300.
+re-scope first if production changes exceed 60 lines or delivery exceeds 320.
 Update renderer MIGRATION_PLAN.md with the completed bounded outcome. Unpublished
 renderer-only work needs no release fragment; verify release policy at delivery.
 Keep #604 open and make remaining alignment/backend work explicit in PR notes.
@@ -90,14 +90,16 @@ Permanent tests cover DPR 1/2, whole-image transparent-stroke equivalence (maxim
 observed rounding error 1/255; tolerance 2/255), analytic sharp and circular-corner
 paint samples, transparent fill, hatch paint, scoped opacity, retained scalar
 and series updates, overlap order, picking and visible shadow. Existing adjacent
-rectangle/group and large-index picking regressions also pass. Remove the old
+rectangle/group and large-index picking regressions also pass; the latter
+verifies datum identity rather than visible seam pixels. Remove the old
 shader-string specialization assertion: real GPU tests now cover plain and
 retained decorated paths, while unit tests retain configuration-mode contracts.
 
-Performance: Chrome 156, 800x400, five warmups/30 alternating paired samples,
-CPU submission through GPU completion. 1k plain/stroked medians unchanged at
-0.5ms (DPR 1) and 0.7/0.8ms (DPR 2). 100k plain medians 2.3->2.3ms / 2.7->2.8ms;
-stroked medians 1.8->1.9ms / 2.2->2.2ms. All deltas satisfy the stated budget.
+Final review-fix performance: Chrome 156, 800x400, five warmups/30 alternating
+paired samples, CPU submission through GPU completion. 1k plain/stroked medians
+0.4/0.5ms unchanged at DPR 1; DPR 2 plain 0.4->0.5ms and stroked 0.4ms unchanged.
+100k plain medians 1.9->2.0ms / 2.1->2.1ms; stroked medians 1.7->1.7ms /
+1.7->1.8ms. All deltas satisfy the stated budget.
 These are same-machine samples, not cross-driver guarantees. Disposable runners,
 baseline source, results and screenshot: /private/tmp/genomespy-rect-proof/.
 
@@ -105,8 +107,24 @@ Release assessment: unpublished renderer only, no fragment needed. release:check
 passes; existing master fragments schedule the eight-package fixed-group minor.
 No public Core API, alignment or other-backend promise is made by this PR.
 
-Implementation committed in two focused commits. Exact delivery diff against
-master cdb38551: five files, +264/-35 raw lines. Non-comment runtime source and
-example: +13/-6 (net +7). This temporary plan is additional to delivery size.
-Pending delivery: obtain review and report size before opening a PR.
+Original implementation is in two focused commits. Review-fix delivery diff
+against master cdb38551: five files, +312/-38 raw lines. This temporary plan is
+additional to delivery size. Runtime additions remain limited to the existing shader and example.
+Both Sol reviewers re-reviewed the correction and report no remaining blockers.
+Pending delivery: report exact size before opening a PR; CI before merge.
 Retain this plan for draft discussion; reconcile and remove it before merge.
+
+## Review correction
+
+Both Sol reviewers confirm architectural fit and identify minimum-size fading
+as a blocker. Carry opaFactor separately from paint alpha, multiply the resolved
+fill/stroke once, then composite the existing shadow behind it. Preserve the
+plain path's fade and shadow treatment. GPU regressions fail before the change
+and pass after it for minWidth and minHeight at DPR 1/2. Retained series coverage
+now updates stroke paint on decorated geometry; shadow overlap is checked against
+its actual shadow-only background. Tighten adjacent-seam claims rather than
+claim unperformed qualification. Budget rises from 300 to 320 added raw lines
+for this review correction and focused proof, with no feature/API expansion.
+Final checks pass: five GPU tests (zero skips), 313 unit tests, renderer types
+and lint, Storybook build and release policy. Bounded performance also passes.
+The corrected built Basic story is smoke-tested before committing.

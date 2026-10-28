@@ -36,12 +36,15 @@ for (const dpr of [1, 2]) {
                 channels: {
                     uniqueId: { value: 7, type: "u32" },
                     x: { value: 16 + 0.5 / dpr, scale: identityScale() },
-                    x2: { value: 48 + 0.5 / dpr, scale: identityScale() },
+                    x2: { ...dynamic(48 + 0.5 / dpr), scale: identityScale() },
                     y: { value: 16 + 0.5 / dpr, scale: identityScale() },
-                    y2: { value: 48 + 0.5 / dpr, scale: identityScale() },
+                    y2: { ...dynamic(48 + 0.5 / dpr), scale: identityScale() },
                     fill: dynamic([1, 0, 0, 1]),
                     stroke: dynamic([0, 0, 1, 0]),
                     fillOpacity: dynamic(1),
+                    minWidth: dynamic(0),
+                    minHeight: dynamic(0),
+                    minOpacity: dynamic(0),
                     strokeOpacity: dynamic(1),
                     strokeWidth: dynamic(0),
                     cornerRadiusTopLeft: dynamic(0),
@@ -169,20 +172,21 @@ for (const dpr of [1, 2]) {
                         x2: { value: 44, scale: identityScale() },
                         y: { value: 24, scale: identityScale() },
                         y2: { value: 44, scale: identityScale() },
-                        fill: {
-                            data: new Float32Array([0, 1, 0, 0.5]),
+                        fill: { value: [0, 1, 0, 0.5] },
+                        stroke: {
+                            data: new Float32Array([1, 0, 0, 0.5]),
                             components: 4,
                         },
-                        strokeWidth: { value: 0 },
+                        strokeWidth: { value: 4 },
                     },
                 });
                 const draws = [{ mark }, { mark: overlay }];
                 const overlap = pixel(await capture(draws), 32 * dpr, 32 * dpr);
                 overlay.series.replace(
-                    { fill: new Float32Array([0, 0, 1, 0.5]) },
+                    { stroke: new Float32Array([0, 0, 1, 0.5]) },
                     1
                 );
-                const updated = pixel(await capture(draws), 32 * dpr, 32 * dpr);
+                const updated = pixel(await capture(draws), 25 * dpr, 32 * dpr);
                 await capture();
                 const picks = [];
                 for (const x of [32, 15, 12])
@@ -190,7 +194,37 @@ for (const dpr of [1, 2]) {
                 // Shadow picking is an existing policy, deliberately outside this fix.
                 set({ shadowOpacity: 1 });
                 const shadow = pixel(await capture(), 54 * dpr, 32 * dpr);
+                set({ fillOpacity: 0, strokeOpacity: 0 });
+                const shadowOnly = pixel(
+                    await capture(),
+                    48 * dpr + 2,
+                    32 * dpr
+                );
+                set({ strokeOpacity: 0.5 });
+                const shadowOverlap = pixel(
+                    await capture(),
+                    48 * dpr + 2,
+                    32 * dpr
+                );
+                set({
+                    shadowOpacity: 0,
+                    fillOpacity: 1,
+                    strokeOpacity: 1,
+                    strokeWidth: 4,
+                });
+                const fades = [];
+                for (const [end, minimum, x, y] of [
+                    ["x2", "minWidth", 15, 32],
+                    ["y2", "minHeight", 32, 15],
+                ]) {
+                    set({ [end]: 20 + 0.5 / dpr, [minimum]: 8 });
+                    fades.push(pixel(await capture(), x * dpr, y * dpr));
+                    set({ [end]: 48 + 0.5 / dpr, [minimum]: 0 });
+                }
                 return {
+                    fades,
+                    shadowOnly,
+                    shadowOverlap,
                     transparentErrors,
                     samples,
                     seam,
@@ -241,6 +275,13 @@ for (const dpr of [1, 2]) {
         ]);
         close(result.hatchPixel, [128, 0, 128, 255]);
         close(result.overlap, [128, 128, 0, 255]);
-        close(result.updated, [128, 0, 128, 255]);
+        close(result.updated, [64, 64, 128, 255]);
+        for (const faded of result.fades) close(faded, [0, 0, 128, 128]);
+        close(result.shadowOverlap, [
+            0,
+            result.shadowOnly[1] * 0.75,
+            64,
+            64 + result.shadowOnly[3] * 0.75,
+        ]);
     });
 }
