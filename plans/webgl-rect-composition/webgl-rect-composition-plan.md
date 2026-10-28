@@ -256,3 +256,27 @@ raw-addition budget from350 to360; final delivery is +355/-20 across five files,
 with runtime +19/-10 unchanged. The temporary plan is counted separately.
 Only the test and plan change in this review-fix commit. Shared helper, points,
 arrows and dependencies remain byte-identical; no PR has been opened.
+
+
+## PR #622 hatch example review follow-up
+
+Add the existing strokeOpacity expression and a bound 0..1 slider (step 0.01,
+default 1) to the shared hatch-pattern example. This is six example lines, with
+no renderer, point/arrow, dependency, schema/type or API change. The existing
+Core patch changeset already covers this unreleased hatch composition fix.
+
+The actual bound input is exercised at 1/.5/0 for all 10 hatch options on Metal
+and SwiftShader, DPR1/2. All 40 opaque frame comparisons match the original
+example on master a29f81c4 exactly. At opacity 0 every hatch yields the same
+nominal fill; half-opacity frames match the average of opaque/transparent
+endpoints with max 0.5 byte rounding error. The slider updates the public
+parameter; control min/max/step/default and zero GL/page errors are asserted.
+Schema generation, focused example schema/initialization tests, formatting and
+release validation pass. Both existing rectangle browser regressions pass at
+DPR1/2. The existing overall release plan stays minor.
+
+Point issue #474 is related but remains separate. WebGL point composition is
+implemented/reviewed on codex/webgl-point-composition-plan (b9d2e9de); no point
+changes are included here. WebGPU point work is in PR #623. None of these
+bounded slices alone closes the cross-renderer/alignment requirements of #604
+or #474. Keep the temporary plan until review, then retire before merge.

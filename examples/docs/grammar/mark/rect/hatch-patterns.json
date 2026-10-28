@@ -25,6 +25,11 @@
       "name": "strokeWidth",
       "value": 2,
       "bind": { "input": "range", "min": 0, "max": 50, "step": 0.25 }
+    },
+    {
+      "name": "strokeOpacity",
+      "value": 1,
+      "bind": { "input": "range", "min": 0, "max": 1, "step": 0.01 }
     }
   ],
 
@@ -37,6 +42,7 @@
     "fill": "#caf0f8",
     "stroke": "black",
     "strokeWidth": { "expr": "strokeWidth" },
+    "strokeOpacity": { "expr": "strokeOpacity" },
     "hatch": { "expr": "hatch" }
   }
 }
