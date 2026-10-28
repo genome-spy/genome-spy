@@ -104,6 +104,38 @@ EXAMPLE examples/docs/grammar/data/lazy/bigwig-gc-content.json height=120 spechi
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js 9.2.1](https://github.com/GMOD/bbi-js/tree/v9.2.1) library.
 
+## Figwig (experimental)
+
+The `"figwig"` source loads multiple signal tracks from one
+[Figwig](https://github.com/jmschrei/figwig) file. Rows contain `chrom`, `start`,
+`end`, `score`, and `sampleId`, where `sampleId` is the stored track name.
+GenomeSpy App can also use embedded track attributes as
+[sample metadata](../../sample-collections/metadata-sources.md#figwig-backend).
+
+### Parameters {#figwig-parameters}
+
+SCHEMA FigWigData
+
+### Example
+
+This [sample collection](../../sample-collections/visualizing.md) source follows
+the App's sample filters:
+
+```json
+{
+  "data": {
+    "lazy": {
+      "type": "figwig",
+      "url": "signals.fw",
+      "tracks": { "expr": "visibleSamples" }
+    }
+  }
+}
+```
+
+The data source uses the
+[`@genome-spy/figwig`](https://www.npmjs.com/package/@genome-spy/figwig) library.
+
 ## BigBed
 
 The `"bigbed"` source enables the retrieval of segmented data, such as annotated

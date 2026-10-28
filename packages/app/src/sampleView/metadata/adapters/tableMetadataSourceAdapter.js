@@ -13,15 +13,14 @@ import { collectExampleValues } from "../exampleValues.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
- * @typedef {import("@genome-spy/app/spec/sampleView.js").DataBackendDef} DataBackendDef
  */
 
-export default class DataMetadataSourceAdapter {
+export default class TableMetadataSourceAdapter {
     /** @type {MetadataSourceDef} */
     #source;
 
-    /** @type {DataBackendDef} */
-    #backend;
+    /** @type {string} */
+    #sampleIdField;
 
     /** @type {string | undefined} */
     #baseUrl;
@@ -34,16 +33,19 @@ export default class DataMetadataSourceAdapter {
 
     /**
      * @param {MetadataSourceDef} source
-     * @param {{ baseUrl?: string }} [options]
+     * @param {{ baseUrl?: string; sampleIdField?: string; excludedColumns?: string[] }} [options]
      */
     constructor(source, options = {}) {
         this.#source = source;
-        this.#backend =
-            /** @type {DataBackendDef} */
-            (source.backend);
+        this.#sampleIdField =
+            options.sampleIdField ??
+            (source.backend.backend === "data"
+                ? (source.backend.sampleIdField ?? "sample")
+                : "sample");
         this.#baseUrl = options.baseUrl;
         this.#excludedColumns = new Set([
-            this.#backend.sampleIdField ?? "sample",
+            this.#sampleIdField,
+            ...(options.excludedColumns ?? []),
             ...(source.excludeColumns ?? []),
         ]);
     }
@@ -54,7 +56,7 @@ export default class DataMetadataSourceAdapter {
      */
     async listColumns(signal) {
         const rows = await this.#loadRows(signal);
-        const sampleIdField = this.#backend.sampleIdField ?? "sample";
+        const sampleIdField = this.#sampleIdField;
 
         /** @type {Set<string>} */
         const columns = new Set();
@@ -79,8 +81,29 @@ export default class DataMetadataSourceAdapter {
      */
     async listSampleIds(signal) {
         const rows = await this.#loadRows(signal);
-        const sampleIdField = this.#backend.sampleIdField ?? "sample";
-        return rows.map((row) => String(row[sampleIdField] ?? ""));
+        return rows.map((row) => String(row[this.#sampleIdField] ?? ""));
+    }
+
+    /**
+     * @param {{ displayNameField?: string }} [options]
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ id: string; displayName: string }[]>}
+     */
+    async listSamples(options = {}, signal) {
+        const rows = await this.#loadRows(signal);
+        const sampleIdField = this.#sampleIdField;
+        return rows.map((row) => {
+            const id = String(row[sampleIdField] ?? "");
+            const label = options.displayNameField
+                ? row[options.displayNameField]
+                : undefined;
+
+            return {
+                id,
+                displayName:
+                    label === undefined || label === null ? id : String(label),
+            };
+        });
     }
 
     /**
@@ -141,7 +164,7 @@ export default class DataMetadataSourceAdapter {
      */
     async fetchColumns(request, signal) {
         const rows = await this.#loadRows(signal);
-        const sampleIdField = this.#backend.sampleIdField ?? "sample";
+        const sampleIdField = this.#sampleIdField;
         const sampleIdSet = new Set(request.sampleIds);
 
         for (const columnId of request.columnIds) {
@@ -217,12 +240,10 @@ export default class DataMetadataSourceAdapter {
      */
     async #loadRows(signal) {
         if (!this.#rowsPromise) {
-            this.#rowsPromise = this.#loadRowsUncached(signal).catch(
-                (error) => {
-                    this.#rowsPromise = undefined;
-                    throw error;
-                }
-            );
+            this.#rowsPromise = this.loadRows(signal).catch((error) => {
+                this.#rowsPromise = undefined;
+                throw error;
+            });
         }
         return this.#rowsPromise;
     }
@@ -230,9 +251,14 @@ export default class DataMetadataSourceAdapter {
     /**
      * @param {AbortSignal} [signal]
      * @returns {Promise<Record<string, any>[]>}
+     * @protected
      */
-    async #loadRowsUncached(signal) {
-        const data = this.#backend.data;
+    async loadRows(signal) {
+        const backend = this.#source.backend;
+        if (backend.backend !== "data") {
+            throw new Error("Table metadata loading requires a data backend.");
+        }
+        const data = backend.data;
 
         if ("url" in data) {
             return this.#loadRowsFromUrlData(data, signal);

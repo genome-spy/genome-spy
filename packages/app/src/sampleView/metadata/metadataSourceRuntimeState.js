@@ -22,7 +22,7 @@ export class MetadataSourceRuntime {
     /** @type {Promise<MetadataSourceDef[]> | undefined} */
     #sourcesPromise;
 
-    /** @type {Map<MetadataSourceDef, import("./metadataSourceAdapters.js").MetadataSourceAdapter>} */
+    /** @type {Map<MetadataSourceDef, Promise<import("./metadataSourceAdapters.js").MetadataSourceAdapter>>} */
     #adapterBySource = new Map();
 
     /** @type {Promise<import("@genome-spy/app/agentApi").AgentMetadataSourceSummary[]> | undefined} */
@@ -80,6 +80,9 @@ export class MetadataSourceRuntime {
                 baseUrl:
                     this.#resolveOptions.baseUrl ??
                     this.#sampleView.getBaseUrl(),
+            }).catch((error) => {
+                this.#adapterBySource.delete(source);
+                throw error;
             });
             this.#adapterBySource.set(source, adapter);
         }

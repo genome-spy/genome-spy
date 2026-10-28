@@ -6,6 +6,7 @@ import {
     mapToPixelCoords,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadata/metadataView.js";
+import MetadataIdentitySource from "./metadata/metadataIdentitySource.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
 import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory.js";
@@ -218,7 +219,7 @@ export default class SampleView extends ContainerView {
 
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
 
-        if (this.spec.samples.identity?.data) {
+        if (this.spec.samples.identity) {
             this.#loadSampleIdentity();
         } else {
             // TODO: schedule: extractSamplesFromData()
@@ -884,7 +885,7 @@ export default class SampleView extends ContainerView {
     }
 
     #extractSamplesFromData() {
-        if (this.getSamples()) {
+        if (this.spec.samples.identity || this.getSamples()) {
             return; // NOP
         }
 
@@ -917,15 +918,24 @@ export default class SampleView extends ContainerView {
             throw new Error("Sample identity definition is missing.");
         }
 
+        const dataIdentity = typeof identity === "object" && "data" in identity;
         const { dataSource, collector } = createChain(
-            createDataSource(identity.data, this),
-            new ProcessSampleIdentity(
-                identity.idField ?? "sample",
-                identity.displayNameField
-            )
+            dataIdentity
+                ? createDataSource(identity.data, this)
+                : new MetadataIdentitySource(
+                      identity === "metadata" ? {} : identity,
+                      this
+                  ),
+            dataIdentity
+                ? new ProcessSampleIdentity(
+                      identity.idField ?? "sample",
+                      identity.displayNameField
+                  )
+                : new ProcessSampleIdentity("id", "displayName")
         );
 
         const stop = collector.observe(() => {
+            if (this.sampleHierarchy.sampleData) return;
             const samples = /** @type {Sample[]} */ (collector.getData());
             this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
@@ -933,6 +943,11 @@ export default class SampleView extends ContainerView {
             resetProvenanceHistory(this.provenance.store, SAMPLE_SLICE_NAME);
         });
         this.registerDisposer(stop);
+        if (!dataIdentity) {
+            this.registerDisposer(() =>
+                this.context.dataFlow.removeDataSource(dataSource)
+            );
+        }
 
         this.context.dataFlow.addDataSource(dataSource);
     }

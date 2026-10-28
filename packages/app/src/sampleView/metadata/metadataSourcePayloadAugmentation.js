@@ -55,9 +55,9 @@ export async function augmentMetadataSourcePayload(params) {
 
     const sourceAdapter =
         adapter ??
-        createMetadataSourceAdapter(source, {
+        (await createMetadataSourceAdapter(source, {
             baseUrl,
-        });
+        }));
 
     let columnIds = payload.columnIds;
     if (resolveColumns) {

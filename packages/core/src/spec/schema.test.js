@@ -28,6 +28,47 @@ function createCoreValidator() {
 }
 
 describe("generated core schema", () => {
+    test("accepts Figwig track selections and rejects invalid track and URL shapes", () => {
+        const validate = createCoreValidator();
+        const lazy = { type: "figwig", url: "signals.fw" };
+
+        for (const selection of [
+            {},
+            { tracks: ["A", "B"] },
+            { tracks: [] },
+            { mode: "exact" },
+            { mode: "fast" },
+            {
+                tracks: { expr: "visibleSamples" },
+                pixelsPerBin: { expr: "binWidth" },
+                mode: { expr: "signalMode" },
+            },
+        ]) {
+            expect(
+                validate({
+                    mark: "rect",
+                    data: { lazy: { ...lazy, ...selection } },
+                }),
+                JSON.stringify(validate.errors)
+            ).toBe(true);
+        }
+
+        for (const invalid of [
+            { tracks: "A" },
+            { tracks: [1] },
+            { url: ["a.fw", "b.fw"] },
+            { channel: "color" },
+            { mode: "approximate" },
+        ]) {
+            expect(
+                validate({
+                    mark: "rect",
+                    data: { lazy: { ...lazy, ...invalid } },
+                })
+            ).toBe(false);
+        }
+    });
+
     test("surround restricts plot kinds while accepting scoped and nested sides", () => {
         const validate = createCoreValidator();
         const spec = {

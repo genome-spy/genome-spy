@@ -1,6 +1,7 @@
 import "./registerCoreLazySources.js";
 import "./indexedFastaSource.js";
 import "./bigWigSource.js";
+import "./figWigSource.js";
 import "./bigBedSource.js";
 import "./bamSource.js";
 import "./tabixTsvSource.js";

@@ -11,6 +11,7 @@ Metadata sources make sample metadata configurable as explicit sources instead
 of one monolithic metadata table. This enables:
 
 - eager loading for regular tabular metadata (`backend: "data"`)
+- per-track metadata embedded in a Figwig signal file (`backend: "figwig"`)
 - lazy loading for large matrix-like metadata (`backend: "zarr"`)
 - per-source defaults for imported columns
 
@@ -339,6 +340,44 @@ APP_SCHEMA MetadataSourceDef
 ### `data` backend
 
 APP_SCHEMA DataBackendDef
+
+### `figwig` backend
+
+Figwig files can hold sample attributes alongside genomic signal. This backend
+reads those attributes without loading signal chunks. Track names identify the
+samples, and custom attributes become metadata columns with the same grouping,
+styling and exclusion options as table sources.
+
+Setting `initialLoad: false` defers attribute loading until requested. If the
+source is selected for sample identity, its header is still read during startup.
+
+```json
+{
+  "id": "signal-metadata",
+  "initialLoad": "*",
+  "attributeGroupSeparator": ".",
+  "excludeColumns": ["sampleId", "rowLabel"],
+  "backend": {
+    "backend": "figwig",
+    "url": "signals.fw"
+  }
+}
+```
+
+Embedded JSON values retain their types. Store quantitative attributes as JSON
+numbers when preparing the Figwig file. Reserved track fields (`name`, `dtype`,
+`group`) and the App's canonical identifier field `sample` are excluded. Other
+helper attributes or duplicate aliases can be removed with `excludeColumns`.
+
+Metadata loading is independent of the visible signal tracks. To derive the
+sample set and display labels from this file, configure
+[`samples.identity.metadataSource`](visualizing.md#identity-from-metadata).
+Identity and attribute loading reuse the cached header. Configure
+`initialLoad: "*"` to load the attributes at startup, or import selected columns
+later. This backend uses the same published `@genome-spy/figwig` dependency as the
+[Figwig signal source](../grammar/data/lazy.md#figwig-experimental).
+
+APP_SCHEMA FigWigBackendDef
 
 ### `zarr` backend
 

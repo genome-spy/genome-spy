@@ -3,6 +3,7 @@ import { sampleSlice } from "../state/sampleSlice.js";
 import { resetProvenanceHistory } from "../../state/provenanceBaseline.js";
 import {
     chunkInitialLoadColumns,
+    getEffectiveInitialLoad,
     resolveInitialLoadColumnIds,
 } from "./metadataSourceInitialLoad.js";
 import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
@@ -17,7 +18,7 @@ async function awaitSampleIds(sampleView) {
     // SampleView-level "samples ready" awaitable or generic waitForSelector)
     // so metadata bootstrap does not own subscribe/timeout plumbing.
     const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
-    if (sampleIds && sampleIds.length > 0) {
+    if (sampleIds) {
         return sampleIds;
     }
 
@@ -33,7 +34,7 @@ async function awaitSampleIds(sampleView) {
             sampleView.provenance.store,
             () => sampleView.sampleHierarchy.sampleData?.ids,
             (ids) => {
-                if (!ids || ids.length === 0) {
+                if (!ids) {
                     return;
                 }
 
@@ -68,7 +69,7 @@ export async function bootstrapInitialMetadataSources(
 
     const sampleIds = await awaitSampleIds(sampleView);
     if (sampleIds.length === 0) {
-        throw new Error("No sample identifiers are available for metadata.");
+        return;
     }
 
     /** @type {import("@reduxjs/toolkit").Action[]} */
@@ -76,7 +77,10 @@ export async function bootstrapInitialMetadataSources(
     let replace = true;
 
     for (const source of sources) {
-        const adapter = runtime.getAdapter(source);
+        if (getEffectiveInitialLoad(source) === false) {
+            continue;
+        }
+        const adapter = await runtime.getAdapter(source);
         const columnIds = await resolveInitialLoadColumnIds(source, adapter);
         if (columnIds.length === 0) {
             continue;

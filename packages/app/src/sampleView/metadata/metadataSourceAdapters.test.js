@@ -17,6 +17,19 @@ afterEach(() => {
 });
 
 describe("resolveMetadataSource", () => {
+    it("rejects ambiguous duplicate source identifiers", async () => {
+        const source = {
+            id: "repeated",
+            backend: { backend: "data", data: { values: [] } },
+        };
+        await expect(
+            resolveMetadataSourceAny(
+                { sources: [source, { ...source }] },
+                "repeated"
+            )
+        ).rejects.toThrow('Metadata source id "repeated" is not unique.');
+    });
+
     it("resolves the only configured source when sourceId is omitted", async () => {
         const source = {
             id: "clinical",
@@ -90,6 +103,24 @@ describe("resolveMetadataSource", () => {
 });
 
 describe("resolveMetadataSources", () => {
+    it("resolves imported Figwig URLs relative to the metadata definition", async () => {
+        const sources = await resolveMetadataSources(
+            {
+                sources: [{ import: { url: "metadata/source.json" } }],
+            },
+            {
+                baseUrl: "https://example.org/spec.json",
+                loadJson: async () => ({
+                    backend: { backend: "figwig", url: "../data/signals.fw" },
+                }),
+            }
+        );
+        expect(sources[0].backend).toEqual({
+            backend: "figwig",
+            url: "https://example.org/data/signals.fw",
+        });
+    });
+
     it("rewrites imported backend urls relative to the import file", async () => {
         const metadataDef = {
             sources: [{ import: { url: "metadata/source.json" } }],
@@ -220,7 +251,7 @@ describe("resolveMetadataSources", () => {
 });
 
 describe("createMetadataSourceAdapter", () => {
-    it("creates a data backend adapter", () => {
+    it("creates a data backend adapter", async () => {
         const source = {
             backend: {
                 backend: "data",
@@ -228,11 +259,12 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapterAny(source);
-        expect(adapter.constructor.name).toBe("DataMetadataSourceAdapter");
+        const adapter = await createMetadataSourceAdapterAny(source);
+        expect(await adapter.listSampleIds()).toEqual(["s1"]);
+        expect(await adapter.listColumns()).toEqual([{ id: "age" }]);
     });
 
-    it("creates a zarr backend adapter", () => {
+    it("creates a zarr backend adapter", async () => {
         const source = {
             backend: {
                 backend: "zarr",
@@ -240,11 +272,11 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapterAny(source);
+        const adapter = await createMetadataSourceAdapterAny(source);
         expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
     });
 
-    it("throws for unsupported backends", () => {
+    it("throws for unsupported backends", async () => {
         const source = {
             backend: {
                 backend: "parquet",
@@ -253,12 +285,12 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        expect(() => createMetadataSourceAdapterAny(source)).toThrow(
+        await expect(createMetadataSourceAdapterAny(source)).rejects.toThrow(
             'Metadata backend "parquet" is not implemented yet.'
         );
     });
 
-    it("ignores defaultAttributeDef for compatibility", () => {
+    it("ignores defaultAttributeDef for compatibility", async () => {
         const source = {
             id: "expression",
             defaultAttributeDef: {
@@ -270,7 +302,7 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapterAny(source);
+        const adapter = await createMetadataSourceAdapterAny(source);
         expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
     });
 });

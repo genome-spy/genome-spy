@@ -165,7 +165,15 @@ export interface SampleAttributeDef {
     title?: string;
 }
 
-export interface SampleIdentityDef {
+/**
+ * The authoritative sample collection. Use `"metadata"` to select the sole
+ * metadata source, or reference a specific source with `metadataSource`.
+ * Explicit data remains available for a separate cohort or ordering.
+ */
+export type SampleIdentityDef =
+    DataSampleIdentityDef | MetadataSampleIdentityDef | "metadata";
+
+export interface DataSampleIdentityDef {
     /**
      * Data source that defines the sample set for the view.
      *
@@ -185,6 +193,26 @@ export interface SampleIdentityDef {
      * Field containing a user-visible sample label.
      *
      * If omitted, sample ids are used.
+     */
+    displayNameField?: string;
+}
+
+export interface MetadataSampleIdentityDef {
+    /**
+     * Id of the configured metadata source that defines the sample set and
+     * ordering. Canonical sample ids come from that backend, independently of
+     * which metadata columns are imported. For Figwig, ids are track names.
+     *
+     * @minLength 1
+     */
+    metadataSource: string;
+
+    /**
+     * Field in the source containing user-visible sample labels. It may be
+     * excluded from displayed metadata columns. Missing labels fall back to ids.
+     * The backend must support reading the configured label field.
+     *
+     * If omitted, canonical sample ids are used.
      */
     displayNameField?: string;
 }
@@ -239,6 +267,19 @@ export interface DataBackendDef {
      * __Default value:__ `"sample"`
      */
     sampleIdField?: string;
+}
+
+export interface FigWigBackendDef {
+    backend: "figwig";
+
+    /**
+     * URL to a Figwig file containing per-track metadata. Track names must
+     * match the sample ids in the view. Custom track attributes become metadata
+     * columns. Reserved `name`, `dtype`, and `group` fields, and the App's
+     * canonical identifier field `sample`, are excluded.
+     * Only file metadata is read, without decoding genomic signal.
+     */
+    url: string;
 }
 
 export interface ZarrMatrixLayoutDef {
@@ -318,7 +359,11 @@ export interface ArrowBackendDef {
 }
 
 export type MetadataBackendDef =
-    DataBackendDef | ZarrBackendDef | ParquetBackendDef | ArrowBackendDef;
+    | DataBackendDef
+    | FigWigBackendDef
+    | ZarrBackendDef
+    | ParquetBackendDef
+    | ArrowBackendDef;
 
 export interface MetadataSourceDef {
     /**
@@ -359,9 +404,9 @@ export interface MetadataSourceDef {
     /**
      * Column ids that must never be imported from this source.
      *
-     * The data backend always excludes its `sampleIdField` automatically, so
-     * this property is only needed for other helper columns such as display
-     * labels.
+     * The data backend excludes its `sampleIdField`, and the Figwig backend
+     * excludes reserved track fields and `sample` automatically. Use this
+     * property for other helper columns such as display labels.
      */
     excludeColumns?: string[];
 
@@ -507,6 +552,10 @@ export interface MetadataDef {
 export interface SampleDef {
     /**
      * Defines the sample ids and optional display names for the sample view.
+     * Use `"metadata"` for the sole metadata source, or
+     * `{"metadataSource": "source-id", "displayNameField": "label"}` to
+     * select a source and its labels. Identity is read even when that source's
+     * metadata columns have `initialLoad: false`.
      *
      * If omitted, sample ids are inferred from the `sample` channel in the view
      * data.

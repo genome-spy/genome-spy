@@ -1,6 +1,6 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
-import DataMetadataSourceAdapter from "./dataMetadataSourceAdapter.js";
+import TableMetadataSourceAdapter from "./tableMetadataSourceAdapter.js";
 
 /**
  * @returns {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef}
@@ -30,9 +30,44 @@ function createSourceDef() {
     };
 }
 
-describe("DataMetadataSourceAdapter", () => {
+describe("TableMetadataSourceAdapter", () => {
+    it("lists ordered identity labels independently of metadata exclusions", async () => {
+        const adapter = new TableMetadataSourceAdapter({
+            backend: {
+                backend: "data",
+                sampleIdField: "sid",
+                data: {
+                    values: [
+                        { sid: "002", rowLabel: "0012" },
+                        { sid: "001", rowLabel: "Technical 001" },
+                        { sid: 0, rowLabel: 0 },
+                        { sid: "missing", rowLabel: null },
+                        { sid: "unlabeled" },
+                    ],
+                },
+            },
+            excludeColumns: ["rowLabel"],
+        });
+
+        expect(
+            await adapter.listSamples({ displayNameField: "rowLabel" })
+        ).toEqual([
+            { id: "002", displayName: "0012" },
+            { id: "001", displayName: "Technical 001" },
+            { id: "0", displayName: "0" },
+            { id: "missing", displayName: "missing" },
+            { id: "unlabeled", displayName: "unlabeled" },
+        ]);
+        const ids = ["002", "001", "0", "missing", "unlabeled"];
+        expect(await adapter.listSampleIds()).toEqual(ids);
+        expect(await adapter.listSamples()).toEqual(
+            ids.map((id) => ({ id, displayName: id }))
+        );
+        expect(await adapter.listColumns()).toEqual([]);
+    });
+
     it("lists and resolves columns from inline data", async () => {
-        const adapter = new DataMetadataSourceAdapter(createSourceDef());
+        const adapter = new TableMetadataSourceAdapter(createSourceDef());
 
         const columns = await adapter.listColumns();
         expect(columns.map((column) => column.id)).toEqual(["TP53", "status"]);
@@ -50,7 +85,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it("fetches selected columns and applies configured attribute defs", async () => {
-        const adapter = new DataMetadataSourceAdapter(createSourceDef());
+        const adapter = new TableMetadataSourceAdapter(createSourceDef());
 
         const metadata = await adapter.fetchColumns({
             columnIds: ["TP53", "status"],
@@ -78,7 +113,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it("fails when source rows do not match any sample ids", async () => {
-        const adapter = new DataMetadataSourceAdapter(createSourceDef());
+        const adapter = new TableMetadataSourceAdapter(createSourceDef());
 
         await expect(
             adapter.fetchColumns({
@@ -91,7 +126,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it("preserves source column order when listing columns", async () => {
-        const adapter = new DataMetadataSourceAdapter({
+        const adapter = new TableMetadataSourceAdapter({
             backend: {
                 backend: "data",
                 data: {
@@ -113,7 +148,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it("lists stable sampled column examples for agent context", async () => {
-        const adapter = new DataMetadataSourceAdapter({
+        const adapter = new TableMetadataSourceAdapter({
             backend: {
                 backend: "data",
                 data: {
@@ -148,7 +183,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it("excludes configured columns from listing and importing", async () => {
-        const adapter = new DataMetadataSourceAdapter({
+        const adapter = new TableMetadataSourceAdapter({
             ...createSourceDef(),
             excludeColumns: ["status"],
         });
@@ -171,7 +206,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it("excludes sampleIdField from imported metadata implicitly", async () => {
-        const adapter = new DataMetadataSourceAdapter({
+        const adapter = new TableMetadataSourceAdapter({
             backend: {
                 backend: "data",
                 data: {
@@ -203,7 +238,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it("applies hierarchy-aware column defs with attributeGroupSeparator", async () => {
-        const adapter = new DataMetadataSourceAdapter({
+        const adapter = new TableMetadataSourceAdapter({
             id: "clinical",
             attributeGroupSeparator: ".",
             attributes: {
@@ -275,7 +310,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it('applies attributes[""] as source-level default for flat columns', async () => {
-        const adapter = new DataMetadataSourceAdapter({
+        const adapter = new TableMetadataSourceAdapter({
             id: "expression",
             attributes: {
                 "": {
@@ -315,7 +350,7 @@ describe("DataMetadataSourceAdapter", () => {
     });
 
     it('maps attributes[""] to groupPath when imported under a group', async () => {
-        const adapter = new DataMetadataSourceAdapter({
+        const adapter = new TableMetadataSourceAdapter({
             id: "expression",
             groupPath: "Expression",
             attributes: {

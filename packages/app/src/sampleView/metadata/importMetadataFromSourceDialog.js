@@ -172,8 +172,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._alignmentIssue = null;
         this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
-        /** @type {import("./metadataSourceAdapters.js").MetadataSourceAdapter | null} */
-        this._adapter = null;
 
         /** @type {FormController} */
         this._form = new FormController(this);
@@ -234,45 +232,56 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     </div>
                 </div>
 
-                ${alignmentIssue
-                    ? html`<div
-                          class="gs-alert ${alignmentIssue.severity === "error"
-                              ? "danger"
-                              : alignmentIssue.severity}"
-                      >
-                          ${icon(
-                              alignmentIssue.severity === "info"
-                                  ? faInfoCircle
-                                  : alignmentIssue.severity === "warning"
-                                    ? faExclamationCircle
-                                    : faTimesCircle
-                          ).node[0]}
-                          <span>
-                              ${alignmentIssue.summary}${alignmentIssue.details
-                                  ? this._showAlignmentDetails
-                                      ? html` ${alignmentIssue.details}`
-                                      : html` <button
-                                            class="inline-link"
-                                            type="button"
-                                            @click=${(
-                                                /** @type {MouseEvent} */ event
-                                            ) =>
-                                                this.#showAlignmentDetails(
-                                                    event
-                                                )}
-                                        >
-                                            Show the problems
-                                        </button>`
-                                  : nothing}
-                          </span>
-                      </div>`
-                    : nothing}
-                ${this._error
-                    ? html`<div class="gs-alert danger">
-                          ${icon(faTimesCircle).node[0]}
-                          <span>${this._error}</span>
-                      </div>`
-                    : nothing}
+                ${
+                    alignmentIssue
+                        ? html`<div
+                              class="gs-alert ${
+                                  alignmentIssue.severity === "error"
+                                      ? "danger"
+                                      : alignmentIssue.severity
+                              }"
+                          >
+                              ${
+                                  icon(
+                                      alignmentIssue.severity === "info"
+                                          ? faInfoCircle
+                                          : alignmentIssue.severity ===
+                                              "warning"
+                                            ? faExclamationCircle
+                                            : faTimesCircle
+                                  ).node[0]
+                              }
+                              <span>
+                                  ${alignmentIssue.summary}${
+                                      alignmentIssue.details
+                                          ? this._showAlignmentDetails
+                                              ? html` ${alignmentIssue.details}`
+                                              : html` <button
+                                                    class="inline-link"
+                                                    type="button"
+                                                    @click=${(
+                                                        /** @type {MouseEvent} */ event
+                                                    ) =>
+                                                        this.#showAlignmentDetails(
+                                                            event
+                                                        )}
+                                                >
+                                                    Show the problems
+                                                </button>`
+                                          : nothing
+                                  }
+                              </span>
+                          </div>`
+                        : nothing
+                }
+                ${
+                    this._error
+                        ? html`<div class="gs-alert danger">
+                              ${icon(faTimesCircle).node[0]}
+                              <span>${this._error}</span>
+                          </div>`
+                        : nothing
+                }
 
                 <div class="gs-form-group">
                     <div class="label">${columnsLabel}</div>
@@ -288,9 +297,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         .allowUnknown=${true}
                         .commitDelimiters=${COLUMN_COMMIT_DELIMITERS}
                         .maxSuggestions=${MAX_SEARCH_SUGGESTIONS}
-                        aria-invalid=${this._form.error("columns")
-                            ? "true"
-                            : "false"}
+                        aria-invalid=${
+                            this._form.error("columns") ? "true" : "false"
+                        }
                         @focusin=${() => this.#handleColumnsFocus()}
                         @change=${(/** @type {Event} */ event) =>
                             this.#handleColumnSelectionChange(event)}
@@ -307,11 +316,13 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     />
                 </div>
 
-                ${blocking?.overLimit
-                    ? html`<div class="gs-alert danger">
-                          Import exceeds the hard limit of 100 columns.
-                      </div>`
-                    : nothing}
+                ${
+                    blocking?.overLimit
+                        ? html`<div class="gs-alert danger">
+                              Import exceeds the hard limit of 100 columns.
+                          </div>`
+                        : nothing
+                }
             </div>
         `;
     }
@@ -336,7 +347,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         this._previewVersion++;
-        this._adapter = null;
         this._error = "";
         this._preview = null;
         this._alignmentIssue = null;
@@ -358,14 +368,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             );
         }
 
-        if (this._adapter) {
-            return this._adapter;
-        }
-
-        this._adapter = getMetadataSourceRuntime(this.sampleView).getAdapter(
+        return getMetadataSourceRuntime(this.sampleView).getAdapter(
             this.source
         );
-        return this._adapter;
     }
 
     #handleColumnsFocus() {
@@ -436,9 +441,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return;
         }
 
-        const adapter = this.#getAdapter();
-
         try {
+            const adapter = await this.#getAdapter();
             const resolved = await adapter.resolveColumns(queries);
             if (previewVersion !== this._previewVersion) {
                 return;
@@ -467,10 +471,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         const version = ++this._sourceContextVersion;
-        const adapter = this.#getAdapter();
+        const adapterPromise = this.#getAdapter();
 
-        void adapter
-            .listColumns()
+        void adapterPromise
+            .then((adapter) => adapter.listColumns())
             .then((columns) => {
                 if (version !== this._sourceContextVersion) {
                     return;
@@ -486,8 +490,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 this._columnSearchIndex.replace([]);
             });
 
-        void adapter
-            .listSampleIds()
+        void adapterPromise
+            .then((adapter) => adapter.listSampleIds())
             .then((sourceSampleIds) => {
                 if (version !== this._sourceContextVersion) {
                     return;

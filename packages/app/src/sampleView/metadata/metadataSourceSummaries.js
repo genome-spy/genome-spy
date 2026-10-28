@@ -13,7 +13,7 @@ const DEFAULT_MAX_EXAMPLES = 3;
  * @param {{
  *   signal?: AbortSignal;
  *   maxExamples?: number;
- *   getAdapter?: (source: MetadataSourceDef) => import("./metadataSourceAdapters.js").MetadataSourceAdapter;
+ *   getAdapter?: (source: MetadataSourceDef) => import("./metadataSourceAdapters.js").MetadataSourceAdapter | Promise<import("./metadataSourceAdapters.js").MetadataSourceAdapter>;
  * }} [options]
  * @returns {Promise<AgentMetadataSourceSummary[]>}
  */
@@ -32,7 +32,7 @@ export async function buildMetadataSourceSummaries(sources, options = {}) {
  * @param {{
  *   signal?: AbortSignal;
  *   maxExamples?: number;
- *   getAdapter?: (source: MetadataSourceDef) => import("./metadataSourceAdapters.js").MetadataSourceAdapter;
+ *   getAdapter?: (source: MetadataSourceDef) => import("./metadataSourceAdapters.js").MetadataSourceAdapter | Promise<import("./metadataSourceAdapters.js").MetadataSourceAdapter>;
  * }} options
  * @returns {Promise<AgentMetadataSourceSummary>}
  */
@@ -41,7 +41,7 @@ async function summarizeMetadataSource(source, options) {
         throw new Error("Metadata source summary adapter is required.");
     }
 
-    const adapter = options.getAdapter(source);
+    const adapter = await options.getAdapter(source);
     const identifiers = await adapter.listIdentifierExamples(
         options.maxExamples ?? DEFAULT_MAX_EXAMPLES,
         options.signal

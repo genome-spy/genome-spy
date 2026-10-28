@@ -99,12 +99,18 @@ export default {
     const directories = await readdir(path.join(repoRoot, "packages"), {
         withFileTypes: true,
     });
-    for (const directory of directories
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => entry.name)) {
-        const actual = await readJson(
-            path.join(repoRoot, "packages", directory, "package.json")
-        );
+    const packages = await Promise.all(
+        directories
+            .filter((entry) => entry.isDirectory())
+            .map(async ({ name: directory }) => ({
+                directory,
+                actual: await readJson(
+                    path.join(repoRoot, "packages", directory, "package.json")
+                ),
+            }))
+    );
+    const workspaceNames = new Set(packages.map(({ actual }) => actual.name));
+    for (const { directory, actual } of packages) {
         const manifest = {
             name: actual.name,
             version: "1.0.0",
@@ -117,7 +123,7 @@ export default {
             "optionalDependencies",
         ]) {
             const internal = Object.entries(actual[field] ?? {}).filter(
-                ([name]) => name.startsWith("@genome-spy/")
+                ([name]) => workspaceNames.has(name)
             );
             if (internal.length) {
                 // Match the fixture baseline even after the checkout is versioned.

@@ -3,14 +3,14 @@ import {
     fetchJson,
     FetchJsonError,
 } from "@genome-spy/core/utils/fetchUtils.js";
-import DataMetadataSourceAdapter from "./adapters/dataMetadataSourceAdapter.js";
+import TableMetadataSourceAdapter from "./adapters/tableMetadataSourceAdapter.js";
 import ZarrMetadataSourceAdapter from "./adapters/zarrMetadataSourceAdapter.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataDef} MetadataDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceEntry} MetadataSourceEntry
- * @typedef {DataMetadataSourceAdapter | ZarrMetadataSourceAdapter} MetadataSourceAdapter
+ * @typedef {TableMetadataSourceAdapter | ZarrMetadataSourceAdapter} MetadataSourceAdapter
  */
 
 export const MAX_METADATA_SOURCE_COLUMNS = 100;
@@ -200,13 +200,18 @@ export function resolveMetadataSourceFromSources(sources, sourceId) {
     }
 
     if (sourceId !== undefined) {
-        const matched = sources.find((source) => source.id === sourceId);
-        if (!matched) {
+        const matches = sources.filter((source) => source.id === sourceId);
+        if (matches.length === 0) {
             throw new Error(
                 'Metadata source "' + sourceId + '" was not found.'
             );
         }
-        return matched;
+        if (matches.length > 1) {
+            throw new Error(
+                'Metadata source id "' + sourceId + '" is not unique.'
+            );
+        }
+        return matches[0];
     }
 
     if (sources.length !== 1) {
@@ -221,11 +226,17 @@ export function resolveMetadataSourceFromSources(sources, sourceId) {
 /**
  * @param {MetadataSourceDef} source
  * @param {{ baseUrl?: string }} [options]
- * @returns {MetadataSourceAdapter}
+ * @returns {Promise<MetadataSourceAdapter>}
  */
-export function createMetadataSourceAdapter(source, options = {}) {
+export async function createMetadataSourceAdapter(source, options = {}) {
     if (source.backend.backend === "data") {
-        return new DataMetadataSourceAdapter(source, options);
+        return new TableMetadataSourceAdapter(source, options);
+    }
+
+    if (source.backend.backend === "figwig") {
+        const { default: FigWigMetadataSourceAdapter } =
+            await import("./adapters/figWigMetadataSourceAdapter.js");
+        return new FigWigMetadataSourceAdapter(source, options);
     }
 
     if (source.backend.backend === "zarr") {
