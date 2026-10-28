@@ -1,3 +1,4 @@
+import { createContigLookup } from "./contigNames.js";
 import { bisect } from "d3-array";
 import { tsvParseRows } from "d3-dsv";
 import { isObject } from "vega-util";
@@ -135,23 +136,23 @@ export default class Genome {
 
             this.chromosomes.push(chrom);
 
-            const plain = chrom.name.replace(/^chr/i, "");
-            for (const name of [
-                "chr" + plain,
-                "CHR" + plain,
-                "Chr" + plain,
-                // The number is a bit fragile because it depends on the order of the chromosomes.
-                // It probably works for autosomes, but X, Y, M, etc., not necessarily.
-                chrom.number,
-                "" + chrom.number,
-                plain,
-                chrom.name,
-            ]) {
-                this.cumulativeChromPositions.set(name, pos);
-                this.chromosomesByName.set(name, chrom);
-            }
-
             pos += chrom.size;
+        }
+
+        const named = createContigLookup(this.chromosomes);
+        for (const [name, chrom] of named) {
+            this.chromosomesByName.set(name, chrom);
+        }
+        // Retain ordinal aliases for existing conversion callers, without
+        // overwriting canonical contig names or named aliases.
+        for (const chrom of this.chromosomes) {
+            this.chromosomesByName.set(chrom.number, chrom);
+            const ordinal = String(chrom.number);
+            if (!this.chromosomesByName.has(ordinal))
+                this.chromosomesByName.set(ordinal, chrom);
+        }
+        for (const [name, chrom] of this.chromosomesByName) {
+            this.cumulativeChromPositions.set(name, chrom.continuousStart);
         }
 
         this.totalSize = pos;
@@ -226,7 +227,7 @@ export default class Genome {
      * However, the interval may span multiple chromosomes, which is incompatible
      * with UCSC.
      *
-     * The inteval is shown as one-based closed-open range.
+     * The interval is shown as a one-based inclusive range.
      * See https://genome.ucsc.edu/FAQ/FAQtracks#tracks1
      *
      * @param {number[]} interval
@@ -337,43 +338,6 @@ export default class Genome {
             this.toChromosomal(continuousInterval[0]),
             this.toChromosomal(continuousInterval[1]),
         ]);
-    }
-
-    /**
-     *
-     * @param {string} str
-     * @returns {[number, number]}
-     */
-    parseInterval(str) {
-        // TODO: consider changing [0-9XY] to support other species besides humans
-        const matches = str.match(
-            /^(chr[0-9A-Z]+)(?::([0-9,]+)(?:-(?:(chr[0-9A-Z]+):)?([0-9,]+))?)?$/
-        );
-
-        if (matches) {
-            const startChr = matches[1];
-
-            if (matches.slice(2).every((x) => x === undefined)) {
-                const chrom = this.getChromosome(startChr);
-                if (chrom) {
-                    return [chrom.continuousStart, chrom.continuousEnd];
-                }
-                return;
-            }
-
-            const endChr = matches[3] || startChr;
-
-            const startIndex = parseInt(matches[2].replace(/,/g, ""));
-            const endIndex =
-                matches[4] !== undefined
-                    ? parseInt(matches[4].replace(/,/g, ""))
-                    : startIndex;
-
-            return [
-                this.toContinuous(startChr, startIndex - 1),
-                this.toContinuous(endChr, endIndex),
-            ];
-        }
     }
 }
 

@@ -1,3 +1,7 @@
+import {
+    parseCoordinates,
+    formatCoordinates,
+} from "@genome-spy/core/coordinates";
 import { html, LitElement } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
 import { guard } from "lit/directives/guard.js";
@@ -69,16 +73,18 @@ export default class SearchField extends LitElement {
         );
         if (genomeResolution) {
             this._genomeResolution = genomeResolution;
-            const genomeScale = genomeResolution.getScale();
-            if (!("genome" in genomeScale)) {
-                throw new Error(
-                    "Expected a zoomable locus scale to provide genome()"
-                );
-            }
-            this._genome = genomeScale.genome();
-
-            this.getDefaultValue = () =>
-                this._genome.formatInterval(genomeResolution.getDomain());
+            this.getDefaultValue = () => {
+                const [begin, end] =
+                    /** @type {import("@genome-spy/core/types/coordinates.js").CoordinateLocus[]} */ (
+                        genomeResolution.getComplexDomain()
+                    );
+                return formatCoordinates([
+                    /** @type {import("@genome-spy/core/types/coordinates.js").CoordinateLocus} */ (
+                        begin
+                    ),
+                    { chrom: end.chrom, pos: end.pos + 1 },
+                ]);
+            };
 
             const domainListener = debounce(
                 () => this.requestUpdate(),
@@ -135,10 +141,19 @@ export default class SearchField extends LitElement {
      */
     async search(term) {
         const doSearch = async () => {
-            if (this._genomeResolution && this._genome) {
-                const interval = this._genome.parseInterval(term);
-                if (interval) {
-                    this._genomeResolution.zoomTo(interval);
+            if (this._genomeResolution) {
+                const parsed = parseCoordinates(
+                    term,
+                    this._genomeResolution.getAssembly()
+                );
+                if (parsed.kind === "invalid-coordinate")
+                    throw new Error(parsed.message);
+                if (parsed.kind === "coordinate") {
+                    const [begin, end] = parsed.interval;
+                    await this._genomeResolution.zoomTo([
+                        begin,
+                        { chrom: end.chrom, pos: end.pos - 1 },
+                    ]);
                     return;
                 }
 

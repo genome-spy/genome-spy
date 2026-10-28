@@ -19,6 +19,7 @@ export default defineConfig({
             input: {
                 index: "index.html",
                 "scaleApi/index": "scaleApi/index.html",
+                "coordinates/index": "coordinates/index.html",
                 "paramApi/index": "paramApi/index.html",
                 "darkMode/index": "darkMode/index.html",
                 "dataReadback/index": "dataReadback/index.html",

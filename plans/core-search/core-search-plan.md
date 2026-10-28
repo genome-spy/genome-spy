@@ -648,7 +648,13 @@ No implementation or runtime tests have been performed.
 
 ## Implementation progress
 
-- [ ] A. Coordinate utilities, App migration, docs/example, and verification.
+- [x] A. Coordinate utilities, App migration, docs/example, and verification.
+      Focused suites: 125 tests; Core/App/example types, lint, declarations/Core build,
+      example build, generated API docs, optional bundle checks, Node import, and
+      packed export/declaration checks pass. Browser checks cover WebGL coordinate
+      example and Canvas App one-base/cross-contig navigation and invalid input.
+      Existing example favicon 404 is unrelated to rendering or data loading.
+      Release policy passes; the fixed group is a minor release.
 - [ ] B1. Core datum search and App host migration, docs/example, and verification.
 - [ ] B2. App Agent consumer migration and verification.
 - [ ] Final caller composition and integration verification.

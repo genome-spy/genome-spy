@@ -4,6 +4,8 @@ Public TypeScript API for `@genome-spy/core`.
 
 ## Interfaces
 
+- [CoordinateAssembly](interfaces/CoordinateAssembly.md)
+- [CoordinateLocus](interfaces/CoordinateLocus.md)
 - [FontCatalogEntry](interfaces/FontCatalogEntry.md)
 - [EmbedOptions](interfaces/EmbedOptions.md)
 - [SpecLocation](interfaces/SpecLocation.md)
@@ -51,6 +53,8 @@ Public TypeScript API for `@genome-spy/core`.
 
 ## Type Aliases
 
+- [CoordinateInterval](type-aliases/CoordinateInterval.md)
+- [CoordinateQueryResult](type-aliases/CoordinateQueryResult.md)
 - [EmbedFunction](type-aliases/EmbedFunction.md)
 - [ParamValue](type-aliases/ParamValue.md)
 - [IntervalEndpoint](type-aliases/IntervalEndpoint.md)

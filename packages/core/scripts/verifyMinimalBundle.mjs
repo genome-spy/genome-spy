@@ -148,9 +148,13 @@ try {
         readAllOutputSources(minimalOutput),
         productionBundleSources,
     ]) {
-        if (sources.some((source) => /src\/controls[/.]/.test(source))) {
+        if (
+            sources.some((source) =>
+                /src\/(?:controls[/.]|coordinates\.js|search[/.])/.test(source)
+            )
+        ) {
             throw new Error(
-                "Core entry points should not include optional controls."
+                "Core entry points should not include optional controls, coordinates, or datum search."
             );
         }
     }
@@ -163,6 +167,23 @@ try {
             `Production bundle should not include ${webGpuRenderingDirectory}, but it does.`
         );
     }
+    const coordinateOutput = await buildEntry(
+        "coordinates.js",
+        "genomeSpyCoordinates",
+        path.join(tempDir, "coordinates")
+    );
+    const coordinateSources = readAllOutputSources(coordinateOutput);
+    verifyNoOptionalRendererSources(coordinateSources, "Coordinate utility");
+    if (
+        coordinateSources.some((source) =>
+            /src\/(?:view\/|search[/.]|genomeSpy|embedFactory)/.test(source)
+        )
+    ) {
+        throw new Error(
+            "Coordinate utility must not include hierarchy, search, or embed runtime implementation."
+        );
+    }
+
     verifyDynamicRendererChunks(productionOutput, "index.js", {
         name: "WebGL",
         directory: webGlRenderingDirectory,

@@ -4,18 +4,17 @@ import SearchField from "./searchField.js";
 
 describe("SearchField", () => {
     it("initializes genome from the active locus scale without default genome lookup", () => {
-        const genome = {
-            formatInterval: vi.fn(() => "chr1:1-10"),
-            parseInterval: vi.fn(),
-        };
-        const scale = {
-            genome: vi.fn(() => genome),
-        };
         const resolution = {
             type: "locus",
             isZoomable: () => true,
-            getScale: vi.fn(() => scale),
-            getDomain: vi.fn(() => [0, 10]),
+            getAssembly: vi.fn(() => ({
+                contigs: [{ name: "chr1", size: 100 }],
+            })),
+            getComplexDomain: vi.fn(() => [
+                { chrom: "chr1", pos: 0 },
+                { chrom: "chr1", pos: 9 },
+            ]),
+            zoomTo: vi.fn(),
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
         };
@@ -50,9 +49,13 @@ describe("SearchField", () => {
         searchField._initializeGenome();
 
         expect(defaultGenomeLookup).not.toHaveBeenCalled();
-        expect(scale.genome).toHaveBeenCalledTimes(1);
-        expect(searchField._genome).toBe(genome);
         expect(searchField.getDefaultValue()).toBe("chr1:1-10");
-        expect(genome.formatInterval).toHaveBeenCalledWith([0, 10]);
+        searchField.inputRef.value = document.createElement("input");
+        return searchField.search("chr1:10-20").then(() => {
+            expect(resolution.zoomTo).toHaveBeenCalledWith([
+                { chrom: "chr1", pos: 9 },
+                { chrom: "chr1", pos: 19 },
+            ]);
+        });
     });
 });

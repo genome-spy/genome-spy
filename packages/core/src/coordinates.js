@@ -1,0 +1,131 @@
+import { createContigLookup } from "./genome/contigNames.js";
+import { formatRange } from "./genome/locusFormat.js";
+
+/**
+ * Parses one-based inclusive text into zero-based half-open endpoints. Without
+ * an assembly, only explicit positional syntax and same-contig order can be
+ * validated; bare contig shortcuts require an assembly.
+ *
+ * @param {string} text
+ * @param {import("./types/coordinates.js").CoordinateAssembly} [assembly]
+ * @returns {import("./types/coordinates.js").CoordinateQueryResult}
+ */
+export function parseCoordinates(text, assembly) {
+    const query = text.trim();
+    const names = assembly ? createContigLookup(assembly.contigs) : undefined;
+    const contig = names?.get(query);
+    if (contig) {
+        return coordinate(contig.name, 0, contig.name, contig.size);
+    }
+    if (!query.includes(":")) {
+        return names && /^chr(?:\d+|[XYM]|MT)$/i.test(query)
+            ? invalid("unknown-contig", "Unknown chromosome: " + query)
+            : { kind: "not-coordinate" };
+    }
+
+    // Prefer explicit cross-contig syntax without a dictionary. With a
+    // dictionary, resolve candidates against actual names, including delimiters.
+    const cross = query.match(/^(.+):([\d,]+)-(.+):([\d,]+)$/);
+    const range = query.match(/^(.+):([\d,]+)-([\d,]+)$/);
+    const point = query.match(/^(.+):([\d,]+)$/);
+    const candidates = [
+        ...(cross ? [[cross[1], cross[2], cross[3], cross[4]]] : []),
+        ...(range ? [[range[1], range[2], range[1], range[3]]] : []),
+        ...(point ? [[point[1], point[2], point[1], point[2]]] : []),
+    ];
+    if (!candidates.length)
+        return invalid("syntax", "Invalid coordinate syntax: " + query);
+
+    const known = names
+        ? candidates.filter(([a, , b]) => names.has(a) && names.has(b))
+        : candidates;
+    if (names && known.length === 0)
+        return invalid("unknown-contig", "Unknown contig in: " + query);
+    if (names && known.length > 1)
+        return invalid(
+            "ambiguous-contig",
+            "Ambiguous contig delimiters in: " + query
+        );
+    const [startName, startText, endName, endText] = known[0];
+    const numberPattern = /^(?:\d+|\d{1,3}(?:,\d{3})+)$/;
+    const start = Number(startText.replaceAll(",", ""));
+    const end = Number(endText.replaceAll(",", ""));
+    if (
+        ![startText, endText].every((value) => numberPattern.test(value)) ||
+        ![start, end].every((value) => Number.isSafeInteger(value) && value > 0)
+    ) {
+        return invalid(
+            "syntax",
+            "Positions must be positive safe integers with correctly grouped commas."
+        );
+    }
+
+    const a = names?.get(startName);
+    const b = names?.get(endName);
+    if (names && (start > a.size || end > b.size)) {
+        return invalid("bounds", "Coordinate exceeds the contig bounds.");
+    }
+    const startChrom = a?.name ?? startName;
+    const endChrom = b?.name ?? endName;
+    if (
+        (startChrom === endChrom && start > end) ||
+        (assembly && assembly.contigs.indexOf(a) > assembly.contigs.indexOf(b))
+    ) {
+        return invalid("order", "Coordinate interval is reversed.");
+    }
+    return coordinate(startChrom, start - 1, endChrom, end);
+}
+
+/**
+ * Formats chromosome-relative half-open endpoints as one-based inclusive text.
+ * Fractional positions cover the enclosing integer interval. Whole-genome
+ * numeric offsets and cross-contig upper endpoints at zero require assembly
+ * conversion before formatting.
+ *
+ * @param {import("./types/coordinates.js").CoordinateInterval} interval
+ * @returns {string}
+ */
+export function formatCoordinates([begin, end]) {
+    if (
+        !begin.chrom ||
+        !end.chrom ||
+        !Number.isFinite(begin.pos) ||
+        !Number.isFinite(end.pos) ||
+        begin.pos < 0 ||
+        end.pos <= 0 ||
+        !Number.isSafeInteger(Math.floor(begin.pos)) ||
+        !Number.isSafeInteger(Math.ceil(end.pos)) ||
+        (begin.chrom === end.chrom && begin.pos >= end.pos)
+    ) {
+        throw new Error(
+            "Expected a nonempty chromosome-relative half-open interval."
+        );
+    }
+    return formatRange(begin, end);
+}
+
+/**
+ * @param {string} chrom
+ * @param {number} pos
+ * @param {string} endChrom
+ * @param {number} endPos
+ * @returns {import("./types/coordinates.js").CoordinateQueryResult}
+ */
+function coordinate(chrom, pos, endChrom, endPos) {
+    return {
+        kind: "coordinate",
+        interval: [
+            { chrom, pos },
+            { chrom: endChrom, pos: endPos },
+        ],
+    };
+}
+
+/**
+ * @param {Extract<import("./types/coordinates.js").CoordinateQueryResult, {kind: "invalid-coordinate"}>["code"]} code
+ * @param {string} message
+ * @returns {import("./types/coordinates.js").CoordinateQueryResult}
+ */
+function invalid(code, message) {
+    return { kind: "invalid-coordinate", code, message };
+}

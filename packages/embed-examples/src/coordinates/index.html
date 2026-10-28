@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <title>Coordinate navigation</title>
+    </head>
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <h1>Coordinate navigation</h1>
+        <p>
+            Enter chrA, chrA:10-20, or chrA:90-chrB:20. Coordinates are
+            one-based and inclusive.
+        </p>
+        <form id="location">
+            <label>Location <input id="query" value="chrA:10-20" /></label>
+            <button>Go</button>
+        </form>
+        <p id="status" role="status"></p>
+        <div id="container" class="visualization-surface"></div>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>

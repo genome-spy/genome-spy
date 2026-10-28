@@ -1585,12 +1585,39 @@ export default class ScaleResolution {
      * @returns {NumericDomain | ComplexDomain}
      */
     getComplexDomain() {
+        if (this.type === LOCUS) {
+            const [start, end] = this.getDomain();
+            // Public locus endpoints are inclusive; convert each covered base
+            // as a point, not as a half-open interval (including one-base views).
+            return /** @type {import("../spec/scale.js").ComplexDomain} */ ([
+                this.toComplex(Math.floor(start)),
+                this.toComplex(Math.ceil(end) - 1),
+            ]);
+        }
         return /** @type {NumericDomain | ComplexDomain} */ (
             toComplexInterval(
                 this.#getGenomeSource(),
                 toExternalIndexLikeInterval(this.type, this.getDomain())
             )
         );
+    }
+
+    /**
+     * Returns detached contigs for the assembly resolved by this locus scale.
+     * @returns {import("../types/coordinates.js").CoordinateAssembly}
+     */
+    getAssembly() {
+        if (this.type !== LOCUS)
+            throw new Error("Assembly access requires a locus scale.");
+        const genome = this.#scaleManager.getLocusGenome(
+            this.getAssemblyRequirement().assembly
+        );
+        return {
+            contigs: genome.chromosomes.map(({ name, size }) => ({
+                name,
+                size,
+            })),
+        };
     }
 
     /**
