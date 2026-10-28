@@ -1,6 +1,7 @@
 # Separate coordinate and datum-search utilities for Core embedders
 
-Status: implementation authorized on 2026-10-28; commit after each milestone.
+Status: implemented and verified on 2026-10-28; milestones committed separately.
+Retained on the feature branch for review; remove before merge.
 Issue: [#612](https://github.com/genome-spy/genome-spy/issues/612).
 Baseline: `origin/master` at `91ce56e30` (2026-10-28).
 
@@ -563,33 +564,33 @@ migration; add a combined App/example smoke test when both have landed.
 
 ## Final integration and acceptance
 
-- [ ] The single coordinate entry works in Node without an assembly or runtime.
-- [ ] Optional assembly validation and structured result/formatting conventions
+- [x] The single coordinate entry works in Node without an assembly or runtime.
+- [x] Optional assembly validation and structured result/formatting conventions
       hold for custom contigs and a chosen scale's resolved assembly.
-- [ ] Coordinate delivery adds no service, hierarchy registry, context factory,
+- [x] Coordinate delivery adds no service, hierarchy registry, context factory,
       runtime subpath, or App initialization changes.
-- [ ] Default and minimal embed production graphs exclude optional implementation.
-- [ ] Coordinate-only and search-only consumers work independently; neither
+- [x] Default and minimal embed production graphs exclude optional implementation.
+- [x] Coordinate-only and search-only consumers work independently; neither
       utility imports or re-exports the other.
-- [ ] Datum search treats coordinate-looking field values as literal search
+- [x] Datum search treats coordinate-looking field values as literal search
       terms and never parses, validates, or classifies user coordinates.
-- [ ] The example navigates coordinates and multiple gene matches using only
+- [x] Separate examples navigate coordinates and multiple gene matches using only
       public APIs, with the currently resolved scale assembly.
-- [ ] Browser smoke-test the example and App with the RefSeq gene example and a
+- [x] Browser smoke-test the example and App with the RefSeq gene example and a
       small composed x/y, two-assembly fixture under WebGL and Canvas2D. Test
       coordinate error, chromosome boundary, duplicate symbol, domain display
       after manual pan/zoom, repeated queries after data replacement, and
       sample-metadata fallback. No search action implicitly selects or brushes.
-- [ ] Headless tests verify lookup independently of renderer registration; no
+- [x] Headless tests verify lookup independently of renderer registration; no
       mark/render/picking/SVG code path changes are needed. SVG geometry tests
       are unnecessary unless implementation changes those paths.
-- [ ] Focused Vitest suites pass with `--reporter=agent`, workspace TypeScript
+- [x] Focused Vitest suites pass with `--reporter=agent`, workspace TypeScript
       checks and lint pass, documentation/API declarations and example builds
       pass, and optional-bundle checks pass. Run the full unit suite before PR
       delivery because lifecycle/API changes span Core, App, and App Agent.
-- [ ] Review implementation at the runtime/lifecycle boundary and after final
+- [x] Review implementation at the runtime/lifecycle boundary and after final
       consumer integration, checking downstream App startup as well as embeds.
-- [ ] Reconcile completed/discarded plan items; retain the plan for draft review
+- [x] Reconcile completed/discarded plan items; retain the plan for draft review
       and retire it before merge according to the planning skill.
 
 ## Risks, alternatives, and remaining decisions
@@ -615,8 +616,8 @@ migration; add a combined App/example smoke test when both have landed.
 - Assembly-free parsing cannot establish contig existence, bounds, or cross-
   chromosome ordering. Keep structured return values and document the validation
   limit instead of guessing. Bare contig names require assembly recognition.
-- Before implementation, finalize the minimal no-target/status vocabulary for
-  datum search. Coordinate parsing/formatting require no additional service API.
+- Source status and target-issue vocabulary are defined in `src/types/search.d.ts`.
+  Coordinate parsing/formatting require no additional service API.
 
 ## Plan review and current decisions
 
@@ -644,7 +645,7 @@ translation between half-open coordinate results and inclusive scale endpoints,
 and corrects locus complex-domain rounding through point conversion while
 preserving native endpoint semantics. A focused re-review confirmed no remaining
 blockers in this simplified design or its independent search/typeahead boundary.
-No implementation or runtime tests have been performed.
+Implementation and runtime verification are complete; results are recorded below.
 
 ## Implementation progress
 
@@ -662,8 +663,29 @@ No implementation or runtime tests have been performed.
       checks pass. WebGL/Canvas examples and Canvas App checks confirm non-mutating
       lookup, candidate navigation, shared handle identity, coordinate composition,
       data-replacement revisions/help, and finalized-service rejection.
-- [ ] B2. App Agent consumer migration and verification.
-- [ ] Final caller composition and integration verification.
+- [x] B2. App Agent consumer migration and verification.
+      The tool preserves selector, wildcard/field, exact/prefix, and ten-result
+      behavior through the host API, returning detached rows and serializable
+      truncation/coverage metadata. Context examples refresh from current data.
+      Duplicated matcher/context code shrank from 480 to 168 lines. Regeneration
+      synchronized agent action/tool schemas with current Core scale definitions;
+      generated-file checks pass.
+- [x] Final caller composition and integration verification.
+      Final full suite: 5,284 passed, one skipped, two todo in 558 files. All workspace
+      TypeScript checks, lint, full workspace build, example builds, API-reference
+      checks, generated-agent checks, optional bundle checks, and Zensical docs build
+      pass. Packed coordinate/search imports and declarations were verified.
+      Real RefSeq lookup/navigation, composed independent x/y assemblies, App/agent
+      lookup and data replacement, coordinate routing, boundary padding, and sample
+      metadata fallback pass browser checks under WebGL and/or Canvas as applicable.
+      Changesets validates a minor fixed-group release to 1.3.0. No versions were
+      changed and nothing was published.
+
+The optional additional combined-field example is deferred: App provides the
+caller-composition integration case, while the two standalone examples remain
+independent. Typeahead indexing, cytoband semantics, and remote search remain
+explicit non-goals. Plan retirement is future PR/merge work, not part of this
+local implementation request.
 
 ### Final review corrections
 
