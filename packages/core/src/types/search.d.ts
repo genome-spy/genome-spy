@@ -63,8 +63,6 @@ export interface SearchableView {
         description: string | undefined;
         examples: string[];
     }[];
-    /** Fields encountered while collecting examples; this is not a complete schema. */
-    dataFields: string[];
     source: SearchSource;
 }
 

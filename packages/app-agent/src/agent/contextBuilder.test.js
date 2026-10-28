@@ -124,7 +124,6 @@ function createAppStub() {
                         ],
                     },
                 ],
-                dataFields: ["gene_symbol", "gene_name"],
             },
         ]),
     };
@@ -424,7 +423,6 @@ describe("getAgentContext", () => {
                         ],
                     },
                 ],
-                dataFields: ["gene_symbol", "gene_name"],
             }),
         ]);
         expect(context).not.toHaveProperty("provenance");

@@ -78,8 +78,7 @@ for (const source of sources) {
 
 Metadata refreshes against the current publication. Set `exampleLimit: 0` to
 inspect handles, declared fields, readiness, and revisions without scanning rows.
-`dataFields` describes fields encountered during example sampling, not a complete
-schema. Examples are bounded suggestions, not a vocabulary index.
+Examples are bounded suggestions, not a vocabulary index.
 
 A typeahead can read complete bounded snapshots with
 `view.data.read({scope: "all", limit})`, extract symbols, and build its own sorted

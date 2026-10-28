@@ -168,14 +168,11 @@ export function createDatumSearch(views) {
                     description: describe(definitions[index].description),
                     examples: /** @type {string[]} */ ([]),
                 }));
-                const dataFields = new Set();
                 if (source.readiness === "ready" && limit > 0) {
                     const accessors = unit.getSearchAccessors();
                     source.scan = "complete";
                     for (const datum of unit.getCollector().getData()) {
                         source.rowsExamined++;
-                        for (const field of Object.keys(datum))
-                            if (!field.startsWith("_")) dataFields.add(field);
                         metadata.forEach((info, index) => {
                             if (info.examples.length === limit) return;
                             const value = accessors[index](datum);
@@ -201,7 +198,6 @@ export function createDatumSearch(views) {
                     title: unit.getTitleText() ?? unit.explicitName ?? "view",
                     description: describe(unit.spec.description),
                     fields: metadata,
-                    dataFields: Array.from(dataFields),
                     source,
                 };
             });

@@ -95,7 +95,6 @@ function buildSearchableViews(agentApi) {
                     title: summary.title,
                     description: summary.description,
                     searchFields: summary.fields,
-                    dataFields: summary.dataFields,
                 },
             ];
         });

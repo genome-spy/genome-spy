@@ -42,14 +42,6 @@ Search metadata, suitable for building a consumer-owned typeahead index.
 
 ***
 
-### dataFields
-
-> **dataFields**: `string`[]
-
-Fields encountered while collecting examples; this is not a complete schema.
-
-***
-
 ### source
 
 > **source**: [`SearchSource`](SearchSource.md)
