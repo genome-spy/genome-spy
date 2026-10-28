@@ -184,6 +184,23 @@ try {
         );
     }
 
+    const searchOutput = await buildEntry(
+        "search.js",
+        "genomeSpySearch",
+        path.join(tempDir, "search")
+    );
+    const searchSources = readAllOutputSources(searchOutput);
+    verifyNoOptionalRendererSources(searchSources, "Datum search utility");
+    if (
+        searchSources.some((source) =>
+            /src\/(?:coordinates\.js|genomeSpy|embedFactory)/.test(source)
+        )
+    ) {
+        throw new Error(
+            "Datum search must not include coordinate parsing or embed runtime implementation."
+        );
+    }
+
     verifyDynamicRendererChunks(productionOutput, "index.js", {
         name: "WebGL",
         directory: webGlRenderingDirectory,

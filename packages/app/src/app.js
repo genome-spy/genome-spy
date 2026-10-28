@@ -1,3 +1,5 @@
+import { createViewMutationApi } from "@genome-spy/core/view/viewMutationApi.js";
+import { createDatumSearch } from "@genome-spy/core/search";
 import { loader as vegaLoader } from "vega-loader";
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import "./styles/genome-spy-app.scss";
@@ -68,6 +70,12 @@ export default class App {
     #disposers = new Set();
 
     #finalized = false;
+
+    /** @type {import("@genome-spy/core/types/embedApi.js").ViewApi} */
+    views;
+
+    /** @type {import("@genome-spy/core/types/search.js").DatumSearch} */
+    datumSearch;
 
     /**
      * @param {HTMLElement} appContainerElement
@@ -404,6 +412,11 @@ export default class App {
         if (!result) {
             return false;
         }
+        this.views = createViewMutationApi(
+            this.genomeSpy,
+            () => !this.#finalized
+        );
+        this.datumSearch = createDatumSearch(this.views);
         this.#showSelectorConstraintWarnings();
 
         const viewRoot = this.genomeSpy.viewRoot;

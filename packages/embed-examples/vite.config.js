@@ -20,6 +20,7 @@ export default defineConfig({
                 index: "index.html",
                 "scaleApi/index": "scaleApi/index.html",
                 "coordinates/index": "coordinates/index.html",
+                "datumSearch/index": "datumSearch/index.html",
                 "paramApi/index": "paramApi/index.html",
                 "darkMode/index": "darkMode/index.html",
                 "dataReadback/index": "dataReadback/index.html",

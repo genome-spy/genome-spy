@@ -1,3 +1,5 @@
+import { registerViewRuntime } from "./viewRuntime.js";
+import { copyDatum } from "../data/copyDatum.js";
 import runDataTransforms from "../data/runDataTransforms.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import { matchesViewport } from "../data/viewportDomain.js";
@@ -366,9 +368,7 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                         if (!matches(datum)) continue;
                         if (rows.length === options.limit)
                             return { rows, truncated: true };
-                        const row = structuredClone(datum);
-                        delete row[UNIQUE_ID_KEY];
-                        rows.push(row);
+                        rows.push(copyDatum(datum));
                     }
                     return { rows, truncated: false };
                 },
@@ -1121,6 +1121,12 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 : enqueueTopLevelOperation(() => runTransaction(callback)),
     };
 
+    registerViewRuntime(api, {
+        ensureActive: () => ensureEmbedIsActive(isActive),
+        getRoot: getRootView,
+        getView,
+        getHandle,
+    });
     return api;
 }
 

@@ -97,6 +97,7 @@ nav = [
         "api/views.md",
         "api/runtime-state.md",
         "api/coordinates.md",
+        "api/search.md",
         "api/inspector.md",
         "api/instance.md",
         "api/embed-options.md",

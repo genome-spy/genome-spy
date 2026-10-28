@@ -655,6 +655,12 @@ No implementation or runtime tests have been performed.
       example and Canvas App one-base/cross-contig navigation and invalid input.
       Existing example favicon 404 is unrelated to rendering or data loading.
       Release policy passes; the fixed group is a minor release.
-- [ ] B1. Core datum search and App host migration, docs/example, and verification.
+- [x] B1. Core datum search and App host migration, docs/example, and verification.
+      Focused runtime/readback/API suites pass (94 tests, plus unsupported-projection
+      coverage). Workspace types, lint, Core/declaration and example builds, packed
+      exports/types, generated docs, release policy, and separate optional bundle
+      checks pass. WebGL/Canvas examples and Canvas App checks confirm non-mutating
+      lookup, candidate navigation, shared handle identity, coordinate composition,
+      data-replacement revisions/help, and finalized-service rejection.
 - [ ] B2. App Agent consumer migration and verification.
 - [ ] Final caller composition and integration verification.

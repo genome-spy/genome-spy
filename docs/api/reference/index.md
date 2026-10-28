@@ -48,6 +48,13 @@ Public TypeScript API for `@genome-spy/core`.
 - [ScaleResolutionEvent](interfaces/ScaleResolutionEvent.md)
 - [ZoomToOptions](interfaces/ZoomToOptions.md)
 - [ScaleResolutionApi](interfaces/ScaleResolutionApi.md)
+- [SearchSource](interfaces/SearchSource.md)
+- [DatumSearchTarget](interfaces/DatumSearchTarget.md)
+- [DatumSearchMatch](interfaces/DatumSearchMatch.md)
+- [DatumSearchResult](interfaces/DatumSearchResult.md)
+- [DatumSearchOptions](interfaces/DatumSearchOptions.md)
+- [SearchableView](interfaces/SearchableView.md)
+- [DatumSearch](interfaces/DatumSearch.md)
 - [AnalysisSampleParams](interfaces/AnalysisSampleParams.md)
 - [TransformDataOptions](interfaces/TransformDataOptions.md)
 

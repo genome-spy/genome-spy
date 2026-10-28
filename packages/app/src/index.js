@@ -85,6 +85,7 @@ export async function embed(el, spec, options = {}) {
         genomeSpy,
         isActive,
         debug: app.debug,
+        views: app.views,
         finalize() {
             active = false;
             const disposers = pluginDisposers;

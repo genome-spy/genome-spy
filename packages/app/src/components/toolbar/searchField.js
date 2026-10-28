@@ -8,7 +8,6 @@ import { guard } from "lit/directives/guard.js";
 import { zoomLinear } from "vega-util";
 
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
-import { sampleIterable } from "@genome-spy/core/data/transforms/sample.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
 import SubscriptionController from "../generic/subscriptionController.js";
@@ -102,38 +101,19 @@ export default class SearchField extends LitElement {
      * @param {string} term
      */
     async searchViews(term) {
-        const collator = new Intl.Collator("en", {
-            usage: "search",
-            sensitivity: "base",
+        const { matches } = this.app.datumSearch.findDatums(term, {
+            limit: 1,
+            target: "zoomable",
         });
-        for (const view of this.genomeSpy.getSearchableViews()) {
-            const searchAccessors = view.getSearchAccessors();
-            if (searchAccessors.length === 0) {
-                continue;
-            }
+        const target = matches[0]?.targets.find(
+            (candidate) => candidate.zoomable
+        );
+        if (!target) return false;
 
-            const xa = view.getDataAccessor("x").asNumberAccessor();
-            const x2a = view.getDataAccessor("x2").asNumberAccessor();
-            const xResolution = view.getScaleResolution("x");
-
-            // TODO: y
-
-            if (!xa || !x2a || !xResolution?.isZoomable()) {
-                continue;
-            }
-
-            for (const d of view.getCollector()?.getData() ?? []) {
-                if (
-                    datumMatchesSearchTerm(d, searchAccessors, term, collator)
-                ) {
-                    // TODO: zoomLog for log scales, etc
-                    const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
-                    await xResolution.zoomTo(interval);
-                    return true;
-                }
-            }
-        }
-        return false;
+        const interval = zoomLinear(target.interval, null, 1.2);
+        if (target.kind === "locus") interval[1] -= 1;
+        await target.scale.zoomTo(interval);
+        return true;
     }
 
     /**
@@ -258,23 +238,21 @@ export default class SearchField extends LitElement {
             </ul>
         `);
 
-        for (const view of this.genomeSpy?.getSearchableViews() || []) {
-            const viewTitle = view.getTitleText() ?? view.spec.name;
-            const searchAccessors = view.getSearchAccessors();
-            const fieldString = searchAccessors
-                .flatMap((accessor) => accessor.fields)
-                .join(", "); // TODO: Field title
-
-            const examples = collectSearchExamples(
-                searchAccessors,
-                view.getCollector().getData(),
-                3
-            );
-
+        for (const view of this.app.datumSearch.listSearchableViews({
+            exampleLimit: 3,
+        })) {
+            const examples = Array.from(
+                new Set(view.fields.flatMap((field) => field.examples))
+            ).slice(0, 3);
             parts.push(html`
-                <p>Search <em>${viewTitle}</em> (${fieldString}). Examples:</p>
+                <p>
+                    Search
+                    <em>${view.title}</em>
+                    (${view.fields.map((field) => field.field).join(", ")}).
+                    Examples:
+                </p>
                 <ul>
-                    ${examples.map((example) => html` <li>${example}</li> `)}
+                    ${examples.map((example) => html`<li>${example}</li>`)}
                 </ul>
             `);
         }
@@ -349,7 +327,16 @@ export default class SearchField extends LitElement {
                     @blur=${this._onSearchFocused}
                     ${ref(this.inputRef)}
                 />
-                ${guard([123], () => this._getSearchHelp())}
+                ${guard(
+                    this.app.datumSearch
+                        .listSearchableViews({ exampleLimit: 0 })
+                        .flatMap(({ view, source }) => [
+                            view.id,
+                            source.dataRevision,
+                            source.readiness,
+                        ]),
+                    () => this._getSearchHelp()
+                )}
             </div>
         `;
     }
@@ -380,52 +367,6 @@ function typeSlowly(text, element) {
 
         next();
     });
-}
-
-/**
- * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
- * @param {import("vega-util").AccessorFn[]} accessors
- * @param {string} term
- * @param {Intl.Collator} collator
- * @returns {boolean}
- */
-function datumMatchesSearchTerm(datum, accessors, term, collator) {
-    for (const accessor of accessors) {
-        const value = accessor(datum);
-        if (
-            value !== null &&
-            value !== undefined &&
-            collator.compare(String(value), term) === 0
-        ) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/**
- * @param {import("vega-util").AccessorFn[]} accessors
- * @param {Iterable<import("@genome-spy/core/data/flowNode.js").Datum>} data
- * @param {number} maxExamples
- * @returns {string[]}
- */
-function collectSearchExamples(accessors, data, maxExamples) {
-    /** @type {Set<string>} */
-    const examples = new Set();
-    for (const accessor of accessors) {
-        for (const example of sampleIterable(maxExamples, data, accessor)) {
-            if (example !== null && example !== undefined) {
-                examples.add(String(example));
-            }
-
-            if (examples.size >= maxExamples) {
-                return [...examples];
-            }
-        }
-    }
-
-    return [...examples];
 }
 
 /**
