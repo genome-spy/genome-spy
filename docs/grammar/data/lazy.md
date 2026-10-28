@@ -117,6 +117,7 @@ the file. These rows work with ordinary marks and the App's sample encoding.
     "lazy": {
       "type": "figwig",
       "url": "signals.fw",
+      "mode": "fast",
       "tracks": { "expr": "visibleSamples" },
       "pixelsPerBin": 1
     }
@@ -128,13 +129,23 @@ Omit `tracks` to load all tracks, or provide an array of track names. An empty
 array produces no rows. Reactive selection reuses the file reader and its
 caches. Exactly one URL must resolve for each source instance.
 
-Bin widths follow the viewport resolution. Scores are means over non-NaN bases;
-bins with no valid bases produce no rows. Measured zeros are retained. Figwig's
-implicit unwritten values are zeros: convert missing observations to NaN when
-creating the file if gaps must remain distinct from measured zero signal.
-Rounded tile and zoom summaries are not used, so broad queries may require
-more decoding than BigWig zoom queries. Bin boundaries and coarse means can
-differ from BigWig rendering.
+Bin widths follow the viewport resolution. The default `"exact"` mode computes
+means from raw values, omitting NaNs; bins with no valid bases produce no rows.
+Measured zeros are retained. Figwig's implicit unwritten values are zeros:
+convert missing observations to NaN when creating the file if gaps must remain
+distinct from measured zero signal.
+
+The `"fast"` mode uses rounded tile and zoom summaries for coarse views, including
+whole-genome overviews. At those resolutions it treats missing bases as zero:
+means are divided by the entire bin width, so gaps dilute the displayed signal
+and wholly missing bins appear as zero. When zoomed in below the file's tile
+resolution, fast mode reads raw values with the same missing-aware means as
+exact mode. A coarse query without compatible summaries reports a loading error
+instead of falling back to an expensive raw read.
+
+Brush-derived measurements use the displayed bins in both modes. Bin boundaries
+can differ from BigWig, and coarse fast-mode measurements can be approximate or
+affected by zero-filled gaps.
 
 This experiment uses an unpublished reader package. See the
 [experiment report](../../development/figwig-experiment.md) for the pinned

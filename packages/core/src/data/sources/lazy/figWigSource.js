@@ -13,6 +13,7 @@ import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
  * @typedef {object} FigWigHandle
  * @prop {import("@genome-spy/figwig").FigWig} reader
  * @prop {Map<string, number>} chromosomeLengths
+ * @prop {number} tileSize
  * @prop {(datum: Record<string, any>) => Record<string, any>} attachFields
  */
 
@@ -29,6 +30,7 @@ export default class FigWigSource extends IntervalUrlSource {
     constructor(params, view) {
         const paramsWithDefaults = {
             pixelsPerBin: 2,
+            mode: /** @type {const} */ ("exact"),
             channel: /** @type {const} */ ("x"),
             debounce: 200,
             debounceMode: /** @type {const} */ ("window"),
@@ -42,7 +44,11 @@ export default class FigWigSource extends IntervalUrlSource {
             (props) => {
                 if (props.has("url")) {
                     this.reloadUrlDescriptors();
-                } else if (props.has("tracks") || props.has("pixelsPerBin")) {
+                } else if (
+                    props.has("tracks") ||
+                    props.has("pixelsPerBin") ||
+                    props.has("mode")
+                ) {
                     this.invalidateData();
                     this.reloadLastDomain();
                 }
@@ -65,6 +71,7 @@ export default class FigWigSource extends IntervalUrlSource {
                 const header = await reader.getHeader();
                 return {
                     reader,
+                    tileSize: header.tileSize,
                     chromosomeLengths: new Map(
                         header.chromosomes.map((c) => [c.name, c.length])
                     ),
@@ -103,12 +110,22 @@ export default class FigWigSource extends IntervalUrlSource {
         ) {
             throw new Error("Figwig tracks must be an array of track names.");
         }
+        const mode = withoutExprRef(this.params.mode);
+        if (mode !== "exact" && mode !== "fast") {
+            throw new Error('Figwig mode must be "exact" or "fast".');
+        }
 
         const length = this.scaleResolution.getAxisLength() || 700;
-        const binSize = Math.max(
+        const desiredBinSize = Math.max(
             1,
             Math.ceil(((domain[1] - domain[0]) / length) * pixelsPerBin)
         );
+        const useSummaries =
+            mode === "fast" && desiredBinSize >= handle.tileSize;
+        const binSize = useSummaries
+            ? handle.tileSize *
+              2 ** Math.ceil(Math.log2(desiredBinSize / handle.tileSize))
+            : desiredBinSize;
         // Keep small-pan coverage without decoding wide, potentially dense gaps.
         // Cap each side's quantization padding at one eighth of the viewport.
         const windowSize = Math.max(
@@ -139,6 +156,7 @@ export default class FigWigSource extends IntervalUrlSource {
                                           handle,
                                           tracks,
                                           binSize,
+                                          useSummaries,
                                           signal
                                       )
                                   )[0],
@@ -148,6 +166,7 @@ export default class FigWigSource extends IntervalUrlSource {
                                       handle,
                                       tracks,
                                       binSize,
+                                      useSummaries,
                                       signal
                                   ),
                           },
@@ -174,28 +193,40 @@ export default class FigWigSource extends IntervalUrlSource {
      * @param {FigWigHandle} handle
      * @param {string[] | undefined} tracks
      * @param {number} binSize
+     * @param {boolean} useSummaries
      * @param {AbortSignal} signal
      */
-    async #loadBins(intervals, handle, tracks, binSize, signal) {
-        const regions = intervals.map((d) => ({
-            chromosome: d.chrom,
-            start: d.startPos,
-            end: Math.min(d.endPos, handle.chromosomeLengths.get(d.chrom) ?? 0),
-        }));
+    async #loadBins(intervals, handle, tracks, binSize, useSummaries, signal) {
+        const regions = intervals.map((d) => {
+            const length = handle.chromosomeLengths.get(d.chrom) ?? 0;
+            const end = Math.min(d.endPos, length);
+            // Alignment must not pull an entirely out-of-file request into data.
+            const align = useSummaries && end > d.startPos;
+            return {
+                chromosome: d.chrom,
+                start: align
+                    ? Math.floor(d.startPos / binSize) * binSize
+                    : d.startPos,
+                end: align
+                    ? Math.min(Math.ceil(end / binSize) * binSize, length)
+                    : end,
+            };
+        });
         const batches = await handle.reader.getBinsMulti(
             regions.filter((r) => r.end > r.start),
             {
                 tracks,
                 binSize,
                 aggregation: "mean",
-                missing: "omit",
-                useSummaries: false,
+                missing: useSummaries ? "zero" : "omit",
+                useSummaries,
+                requireSummaries: useSummaries,
                 signal,
             }
         );
 
         let batchIndex = 0;
-        return regions.map((region) => {
+        return regions.map((region, intervalIndex) => {
             /** @type {import("../../flowNode.js").Datum[]} */
             const data = [];
             if (region.end <= region.start) return data;
@@ -208,8 +239,16 @@ export default class FigWigSource extends IntervalUrlSource {
                         data.push(
                             handle.attachFields({
                                 chrom: region.chromosome,
-                                start: batch.starts[i],
-                                end: batch.ends[i],
+                                // Fast means describe aligned summary bins; keep
+                                // their approximations inside requested bounds.
+                                start: Math.max(
+                                    batch.starts[i],
+                                    intervals[intervalIndex].startPos
+                                ),
+                                end: Math.min(
+                                    batch.ends[i],
+                                    intervals[intervalIndex].endPos
+                                ),
                                 score,
                                 sampleId: track.name,
                             })

@@ -12,6 +12,7 @@ const readers = [];
 const queries = [];
 let failHeader = false;
 let failQuery = false;
+let summariesAvailable = true;
 /** @type {((result: any) => Promise<any>) | undefined} */
 let delayQuery;
 
@@ -35,6 +36,7 @@ vi.mock("@genome-spy/figwig", () => ({
         getHeader = vi.fn(async () => {
             if (failHeader) throw new Error("Missing Figwig");
             return {
+                tileSize: 128,
                 chromosomes: [
                     { name: "chr1", length: 1500 },
                     { name: "chr2", length: 1000 },
@@ -46,6 +48,9 @@ vi.mock("@genome-spy/figwig", () => ({
         async getBinsMulti(regions, options) {
             queries.push({ regions, options });
             if (failQuery) throw new Error("Broken chunk");
+            if (options.requireSummaries && !summariesAvailable) {
+                throw new Error("Required summaries unavailable");
+            }
             const names = /** @type {string[]} */ (
                 options.tracks ?? ["A", "B"]
             );
@@ -96,6 +101,7 @@ function createFixture() {
     const setTracks = paramRuntime.allocateSetter("visibleSamples", ["A", "B"]);
     const setPixels = paramRuntime.allocateSetter("pixels", 1);
     const setUrl = paramRuntime.allocateSetter("signalUrl", "signals.fw");
+    const setMode = paramRuntime.allocateSetter("signalMode", "exact");
     const genome = {
         totalSize: 4000,
         continuousToDiscreteChromosomeIntervals: (
@@ -156,6 +162,7 @@ function createFixture() {
         setTracks,
         setPixels,
         setUrl,
+        setMode,
         setDomain: (/** @type {number[]} */ value) => {
             domain = value;
         },
@@ -171,6 +178,7 @@ describe("FigWigSource", () => {
         queries.length = 0;
         failHeader = false;
         failQuery = false;
+        summariesAvailable = true;
         delayQuery = undefined;
         vi.useFakeTimers();
         vi.stubGlobal("window", { setTimeout, clearTimeout });
@@ -205,6 +213,7 @@ describe("FigWigSource", () => {
             aggregation: "mean",
             missing: "omit",
             useSummaries: false,
+            requireSummaries: false,
         });
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
         source.disposeSubtree();
@@ -397,8 +406,125 @@ describe("FigWigSource", () => {
         source.disposeSubtree();
     });
 
+    it("uses required aligned summaries at coarse fast resolution and clips published bins", async () => {
+        const { create, setAxisLength } = createFixture();
+        setAxisLength(10);
+        const { source, rows } = create({ mode: "fast", pixelsPerBin: 1 });
+        await source.requestInterval([1400, 3500]);
+
+        const { regions, options } = queries[0];
+        expect(options).toMatchObject({
+            binSize: 256,
+            aggregation: "mean",
+            missing: "zero",
+            useSummaries: true,
+            requireSummaries: true,
+        });
+        expect(regions.map((r) => r.chromosome)).toEqual(["chr1", "chr2"]);
+        expect(regions.every((r) => r.start % options.binSize === 0)).toBe(
+            true
+        );
+        expect(regions[0].end).toBe(1500);
+        expect(regions[1].end).toBe(1000);
+        expect(rows()[0]).toMatchObject({
+            chrom: "chr1",
+            start: source.getLoadedDomain()[0],
+            end: 1500,
+            score: 0,
+        });
+        expect(rows()[0].start).toBeGreaterThan(regions[0].start);
+        expect(
+            rows().every((d) => Number.isFinite(d.score) && d.start < d.end)
+        ).toBe(true);
+        source.disposeSubtree();
+    });
+
+    it("does not align an entirely out-of-file chromosome tail back into earlier data", async () => {
+        const { create, setAxisLength } = createFixture();
+        setAxisLength(1);
+        const { source, rows } = create({ mode: "fast", pixelsPerBin: 1 });
+        await source.requestInterval([1600, 2400]);
+
+        expect(queries[0].regions).toEqual([
+            { chromosome: "chr2", start: 0, end: 1000 },
+        ]);
+        expect(rows()).toEqual([
+            { chrom: "chr2", start: 0, end: 400, score: 0, sampleId: "A" },
+            { chrom: "chr2", start: 0, end: 400, score: 0, sampleId: "B" },
+        ]);
+        source.disposeSubtree();
+    });
+
+    it("switches modes and fine/coarse resolutions reactively while retaining the reader", async () => {
+        const { create, setMode, setTracks, setDomain, setAxisLength } =
+            createFixture();
+        setDomain([0, 3000]);
+        setAxisLength(10);
+        const { source, rows } = create({
+            mode: { expr: "signalMode" },
+            tracks: { expr: "visibleSamples" },
+            pixelsPerBin: 1,
+        });
+        await source.requestInterval([0, 3000]);
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 300,
+            missing: "omit",
+            requireSummaries: false,
+        });
+
+        setMode("fast");
+        await vi.runAllTimersAsync();
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 512,
+            missing: "zero",
+            requireSummaries: true,
+        });
+        setTracks(["B"]);
+        await vi.runAllTimersAsync();
+        expect(new Set(rows().map((d) => d.sampleId))).toEqual(new Set(["B"]));
+
+        setAxisLength(3000 / 128);
+        await source.requestInterval([0, 3000]);
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 128,
+            requireSummaries: true,
+        });
+        setAxisLength(24);
+        await source.requestInterval([0, 3000]);
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 125,
+            missing: "omit",
+            requireSummaries: false,
+        });
+        setMode("exact");
+        await vi.runAllTimersAsync();
+        expect(queries.at(-1).options.requireSummaries).toBe(false);
+        expect(readers).toHaveLength(1);
+        expect(readers[0].getHeader).toHaveBeenCalledTimes(1);
+        source.disposeSubtree();
+    });
+
+    it("reports unavailable required summaries without issuing an exact fallback query", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const { create, setAxisLength, statuses } = createFixture();
+        setAxisLength(1);
+        summariesAvailable = false;
+        const { source } = create({ mode: "fast" });
+        await source.requestInterval([0, 1000]);
+
+        expect(queries).toHaveLength(1);
+        expect(queries[0].options.requireSummaries).toBe(true);
+        expect(statuses.at(-1)).toMatchObject({
+            status: "error",
+            detail: "Required summaries unavailable",
+        });
+        expect(source.isDataReadyForDomain({ x: [0, 1000] })).toBe(false);
+        source.disposeSubtree();
+    });
+
     it.each([
         [{ pixelsPerBin: 0 }, "pixelsPerBin"],
+        [{ mode: "approximate" }, "mode must be"],
         [{ tracks: { expr: "42" } }, "array of track names"],
         [{ tracks: ["missing"] }, "Unknown track"],
         [

@@ -36,9 +36,12 @@ describe("generated core schema", () => {
             {},
             { tracks: ["A", "B"] },
             { tracks: [] },
+            { mode: "exact" },
+            { mode: "fast" },
             {
                 tracks: { expr: "visibleSamples" },
                 pixelsPerBin: { expr: "binWidth" },
+                mode: { expr: "signalMode" },
             },
         ]) {
             expect(
@@ -55,6 +58,7 @@ describe("generated core schema", () => {
             { tracks: [1] },
             { url: ["a.fw", "b.fw"] },
             { channel: "color" },
+            { mode: "approximate" },
         ]) {
             expect(
                 validate({

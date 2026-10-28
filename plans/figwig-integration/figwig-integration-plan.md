@@ -84,9 +84,9 @@ than hidden. Browser interactions and metadata are final integration gates.
   expanded scatterplot and mouse panning after filtering passed.
 - Full unit suite: 5,288 passed; workspace types, lint, complete build and docs
   build passed. The existing release fixture now preserves local tarballs.
-- Exact means currently cost substantially more than BigWig zoom summaries for
-  broad overview loading. No approximate mode was added; this is a measured
-  limitation, not a production rollout.
+- Exact means cost substantially more than BigWig zoom summaries for broad
+  overview loading. The initial integration had no approximate mode; the
+  follow-up below adds an explicit fast policy.
 - Optional grouping measurements completed. Continuous frame-time profiling,
   process peak-memory measurement, remote latency tests and non-Chromium tests
   were excluded from this experiment; sampled heap and timings are reported.
@@ -134,5 +134,62 @@ seconds versus the original 16.675 seconds. All six bookmarks, UI interactions,
 81 numeric cases and the full unit suite passed. The standalone reader's 154
 tests and three Chromium tests passed. Its reviewed runtime patch is committed
 with the experiment setup, which archives the public base and applies the patch
-in temporary storage; the standalone working-tree edits remain separate and
-uncommitted. All data and recipe changes remain local and uncommitted.
+in temporary storage. The standalone validation optimization was committed as
+`5416c0600075abea4a5a72f3664612daaaecac3e`. All data and recipe changes remain
+local and uncommitted.
+
+## Exact and fast modes
+
+The user requests two source modes and accepts approximate brush statistics.
+Keep viewport decisions in Core's source and binary summary capability in the
+standalone reader. Reuse existing expression activation, handle ownership,
+cancellation and spatial/resolution tracking. No separate analysis data path,
+coverage sidecar, dataset mask or binary format change is needed.
+
+- Add `mode: "exact" | "fast"` (default exact) to the public source grammar.
+  Follow existing reactive property handling if the mode is an expression.
+- Exact mode retains current full-value, NaN-omitting means.
+- Fast mode retains exact queries below the file tile resolution. At coarser
+  scales, choose tile-aligned bins, expand chromosome query bounds to that grid,
+  and use rounded summary means with missing values treated as zero. Preserve
+  valid zeros and describe dilution across gaps explicitly.
+- Add `requireSummaries` to the reader's binned query contract. It enables
+  summary use and rejects unavailable/incompatible summaries before raw chunk
+  decoding. Preserve opportunistic `useSummaries` behavior for existing callers.
+  Apply the same no-fallback promise to binned feature queries if exposed there.
+- Keep reactive track/mode/resolution changes on the same cached reader. The
+  existing publication guard remains authoritative for obsolete requests.
+- Switch only the local mouse Figwig signal variant to fast mode. Preserve the
+  original BigWig spec, view name, dataset files and published v4 records.
+- Update the reproducible reader patch, types/schema, focused tests, grammar
+  documentation and existing feature changeset. Preserve prior uncommitted
+  findings and recipe README work.
+
+Verification: reader tests prove successful required summaries use no raw data
+and rejected unaligned/missing-summary/incompatible-policy batch requests never
+fall back. Source tests cover mode selection, chromosome edges, fine/coarse
+transitions, reactive invalidation and handle reuse. In the real App, measure
+whole-genome overview cold/warm bytes, requests and chunk decoding; test all 24
+and six selected tracks, panning, zooming back into detail, and all bookmarks.
+Scientific brush output may be approximate in fast mode and must remain finite
+and functional. Test exact mode against the existing common-bin oracle.
+
+Tentative commit: `feat(core): add fast summary mode for Figwig overview`.
+Standalone reader changes and GenomeSpy changes remain separate; no push or
+publication, and recipe changes remain uncommitted.
+
+Implemented and independently reviewed: exact remains the default; fast uses
+required summaries for tile-scale bins and exact raw queries at finer scales.
+The reader preflights the whole batch before any raw fallback. Reactive changes
+retain the existing reader and publication lifecycle. The source grew from 241
+to 280 lines; the added policy and alignment logic stay local to the source.
+
+The real whole-genome App rendered all 24 tracks with five partial responses,
+269,949 bytes and no raw chunks. Cold App completion was 3.413 seconds; the
+summary source query itself was 28 ms. Warm loading, filtering to six tracks and
+panning needed no further transfer. Both passes of all six bookmarks switched
+to exact detail queries as expected and completed brush/scatterplot analysis
+without errors. The exact oracle still passes all 81 cases with zero error.
+Full GenomeSpy tests pass 5,293 cases in 555 files; reader checks pass 160 unit
+and three Chromium tests. All planned mode work is complete; continuous frame
+profiling, remote latency and other browser engines remain outside this task.

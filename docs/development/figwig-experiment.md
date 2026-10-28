@@ -12,17 +12,22 @@ published.
 `FigWigSource` extends `IntervalUrlSource`. The base owns URL resolution, handle
 caching, cancellation, window tracking, debounce, genomic discretization,
 readiness and publication. A dynamic import loads one reader for one resolved
-URL. Public `FigWigData` supports omitted, literal and reactive `tracks`, plus
-the normal channel, debounce and pixels-per-bin options. Track changes invalidate
-data and reuse the reader, metadata and indexes. URL changes use the normal
+URL. Public `FigWigData` supports omitted, literal and reactive `tracks`, reactive
+`mode: "exact" | "fast"`, and the normal channel, debounce and pixels-per-bin
+options. Track and mode changes invalidate data and reuse the reader, metadata
+and indexes. URL changes use the normal
 descriptor path. Empty selections publish ready empty data.
 
 The source derives integer genomic bin widths from the actual axis length and
 `pixelsPerBin`. Fetch windows provide a small pan buffer, bounded to 32 bins
 and one eighth of the viewport per edge. Published bin resolution is tracked
 separately from spatial coverage so resize and failed-query retries still reload.
-Batched queries use
-mean aggregation, `missing: "omit"`, and `useSummaries: false`. Finite values,
+Exact mode, the default, uses mean aggregation, `missing: "omit"`, and
+`useSummaries: false`. Fast mode uses the same exact queries below the file's
+tile resolution. At coarser scales it rounds bin widths up to power-of-two tile
+multiples, aligns chromosome queries, and requires rounded summaries with
+`missing: "zero"`. Unavailable summaries cause an error before raw chunk reads.
+Finite values,
 including measured zeros and signed signals, become ordinary
 `chrom/start/end/score/sampleId` rows. Track names supply sample IDs; URL descriptor
 field conflicts raise errors. Requests clip to the file's chromosome bounds.
@@ -38,9 +43,12 @@ publishes it, with a regression assertion and a separate changeset.
 
 Reader base revision: `df1d737e5503c0463a35e94cf0b4d922a076ea91` from
 [figwig-js](https://github.com/genome-spy/figwig-js), with the isolated runtime
-patch in `scripts/figwig-experiment.patch`. The user subsequently authorized
-reader changes: the standalone checkout has source and corruption-test edits on
-`codex/validation-performance`, kept separate from GenomeSpy and uncommitted.
+patch in `scripts/figwig-experiment.patch`. The standalone checkout on
+`codex/validation-performance` contains the validation optimizations and
+`requireSummaries` API separately from GenomeSpy. The runtime patch includes
+both implementation and public types; it does not change the binary format.
+The required-summary feature is committed there as `64f6e2c`; the existing
+`findings.md` additions remain uncommitted.
 
 A real pinned GitHub-package probe produced only three files and no `dist`:
 the package builds in `prepack`, whereas npm's Git dependency packing path uses
@@ -61,10 +69,10 @@ a temporary directory, installs build dependencies, and runs the package's norma
 build/pack lifecycle before installing GenomeSpy dependencies. Local checkout
 edits are neither used nor modified. The patch reproduces the standalone runtime
 change byte for byte and has SHA-256
-`d4c631e0ad65f6a4557a07e58d1206f8d7203e996b9aae24ee2f3578d11f9c78`.
+`d6447c4079c54094194b792036ca322debe26c00fd03bf6e82eef9c59b29020a`.
 Run it before `npm ci` on a fresh checkout: the tarball is intentionally absent
 from Git. It contains 21 files and is approximately 29 kB. Its SHA-512 integrity
-is `4STJeImOmzuYVCAIL/OvSBsg39SU7W5mEmDrKGa43VxKIOJGXP/svDmiVcWuLlLfu/gPTvvhydvD/bpW2W1FlQ==`.
+is `tpeUtn2zbCQFbEpD0Q33SG7j1zrxI4oE3CCdMPnMVdOmUt9kOlyhMYPANUX2Ex4HdZWhFKctXnPfJsAttn0NGQ==`.
 Base revision, patch hash and artifact integrity are recorded locally in
 `private/figwig/provenance.json`. Restart any running Vite server after replacing
 the tarball so its optimized dependency cache uses the patched reader.
@@ -105,6 +113,8 @@ The original specs, generated BigWigs, provenance, rights, manifests, artifact
 identities and output hashes were preserved. No recipe files or data were
 committed, staged or uploaded. The experimental signal view retains the name
 `h3k27ac-signal`, and otherwise preserves the original transforms and encodings.
+The local Figwig signal variant now selects `mode: "fast"`; its README explains
+the approximate coarse means and brush statistics.
 
 ## Numerical validation
 
@@ -138,7 +148,8 @@ Existing weighted-mean analysis treats each displayed bin as constant.
 Arbitrary brush endpoints or partly missing bins can therefore differ from a
 base-resolution covered-base mean. Exact reader-bin correctness does not make
 every downstream interval statistic exact. Stored Figwig summaries cannot
-recover NaN-aware coverage counts and remain disabled.
+recover NaN-aware coverage counts. Exact mode therefore leaves them disabled;
+fast mode explicitly accepts zero-filled approximate means at coarse scales.
 
 ## Browser and bookmark validation
 
@@ -246,8 +257,47 @@ regrouping, sorting and mouse panning passed with the patched browser package.
 All 81 common-bin references still pass with zero error after installing the
 patched package. Both cold and warm brush-derived means retain the earlier
 maximum absolute difference 0.00006289999 (0.0010554%) from exact interval means.
-The optimizations preserve exact missing-aware aggregation and use no stored
-approximate summaries or dataset-specific masks.
+These earlier optimizations preserve exact missing-aware aggregation. Fast mode
+is a separate, explicit policy described below; neither mode uses dataset masks.
+
+## Whole-genome fast mode
+
+The whole-genome Chromium run used the real mouse App at 1440 × 1000, a fresh
+context, disabled browser HTTP caching, and the entire mm10 domain. The local
+file contains four chromosomes, so absent chromosomes remain empty. All 24
+sample tracks rendered aligned, and all published intervals were finite.
+
+| Operation                    | App completion | Signal requests / bytes | Raw chunks |
+| ---------------------------- | -------------: | ----------------------: | ---------: |
+| Cold whole-genome startup    |       3,413 ms |             5 / 269,949 |          0 |
+| Warm whole-genome request    |          22 ms |                   0 / 0 |          0 |
+| Filter to six tracks         |       1,467 ms |                   0 / 0 |          0 |
+| Pan within the loaded genome |          33 ms |                   0 / 0 |          0 |
+
+The initial source query took 28 ms after reader initialization; the six-track
+query took less than 1 ms. App completion includes module loading, other data,
+rendering and interaction work. The table records the final local run; an
+earlier run measured 3,370 ms startup and a 31 ms source query. These are not
+frame-time or remote-network guarantees. All five signal responses were HTTP 206. Reader
+diagnostics reported 269,949 index/summary bytes, zero raw data bytes, zero
+fetched/decompressed chunks and zero decoding time. Bins were 4,194,304 bases;
+every region returned `source: "summary"` with `requireSummaries: true`.
+
+Returning to the 10 Mb bookmark switched to exact 9,175-base bins because they
+are finer than the 16,384-base tile size. Both passes of all six bookmarks,
+24/six-track selection, brush-derived metadata and scatterplot rebuilding passed
+with one cached reader and no console or loading errors. Detailed views retain
+the raw-query cost documented above.
+
+The fast coarse mean divides rounded sums by the full bin width, including
+missing bases. Gaps therefore dilute the signal, and brush statistics reuse
+these displayed approximations. The reader rejects unsupported required-summary
+queries before raw fallback; it does not infer missing coverage counts or add a
+new format. The exact common-bin oracle still passes with zero error.
+
+The benchmark records query policies, returned summary/value sources and reader
+diagnostics in `output/playwright/benchmark-results-whole-genome-figwig.json`.
+The corresponding rendered overview is `output/playwright/figwig-whole-genome.png`.
 
 ## Initial grouping benchmark, before the reader patch
 
@@ -319,6 +369,7 @@ node scripts/validateFigwigExperiment.mjs \
   private/genomespy-dataset-recipes/recipes/encode-mouse-fetal-development-mm10/output/figwig/h3k27ac.fw \
   private/genomespy-dataset-recipes/recipes/encode-mouse-fetal-development-mm10/output/figwig/numeric-reference.json
 node scripts/benchmarkFigwigApp.mjs
+FIGWIG_WHOLE_GENOME=1 node scripts/benchmarkFigwigApp.mjs figwig
 node scripts/benchmarkFigwigGroups.mjs \
   http://127.0.0.1:8080/private/genomespy-dataset-recipes/recipes/encode-mouse-fetal-development-mm10/output/figwig/ \
   private/genomespy-dataset-recipes/recipes/encode-mouse-fetal-development-mm10/output/figwig/browser-grouping-benchmark.json
@@ -329,9 +380,9 @@ the main App experiment needs only `h3k27ac.fw`.
 
 ## Verification and limitations
 
-The full unit suite passed 555 files and 5,288 tests, with one skipped and two
+The full unit suite passed 555 files and 5,293 tests, with one skipped and two
 todo. Narrow source and App regression tests, generated-schema tests, upstream
-reader tests (154 and three Chromium tests), numerical validation, and
+reader tests (160 and three Chromium tests), numerical validation, and
 real-browser checks passed.
 Workspace typechecks, lint, the complete workspace build and the documentation
 build passed. The built Figwig browser bundle resolved successfully.
@@ -345,7 +396,7 @@ Local server binding and npm/uv caches require normal sandbox escalation.
 The original recipe's verification and targeted recipe checks passed. Whole
 recipe-repository validation still reports an unrelated incomplete
 `encode-a549-dexamethasone-grch38` recipe; it was not changed.
-No Firefox/WebKit, remote high-latency network, continuous frame profiler,
-process peak-memory measurement or alternative approximate summary mode was
-tested. Missing-data correctness and scientific bin semantics take precedence
-over optimizing these experimental timings.
+No Firefox/WebKit, remote high-latency network, continuous frame profiler or
+process peak-memory measurement was tested. Exact mode preserves missing-aware
+bin means; fast mode explicitly trades coarse missingness semantics for bounded
+summary work.

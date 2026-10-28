@@ -6,6 +6,7 @@ import process from "node:process";
 import { performance } from "node:perf_hooks";
 import console from "node:console";
 import { fileURLToPath, URL } from "node:url";
+import { getContigs } from "../packages/core/src/genome/genomes.js";
 
 /* global window, document, requestAnimationFrame, AbortSignal */
 
@@ -19,6 +20,11 @@ const origin = process.env.FIGWIG_APP_ORIGIN ?? "http://127.0.0.1:8080";
 const recipe =
     "private/genomespy-dataset-recipes/recipes/encode-mouse-fetal-development-mm10";
 const output = path.join(root, "output/playwright");
+const wholeGenome = process.env.FIGWIG_WHOLE_GENOME === "1";
+const genomeSize = getContigs("mm10").reduce(
+    (sum, contig) => sum + contig.size,
+    0
+);
 const bookmarks = JSON.parse(
     await readFile(path.join(root, recipe, "specs/bookmarks.json"), "utf8")
 );
@@ -35,10 +41,25 @@ const results = [];
 
 try {
     for (const format of formats) {
+        const spec = format === "figwig" ? "spec-figwig.json" : "spec.json";
         const context = await browser.newContext({
             viewport: { width: 1440, height: 1000 },
         });
         const page = await context.newPage();
+        if (wholeGenome) {
+            await page.route(
+                (url) => url.pathname === `/${recipe}/specs/${spec}`,
+                async (route) => {
+                    const response = await route.fetch();
+                    const specification = await response.json();
+                    // Authored locus domains include both endpoint bases.
+                    specification.scales.x.domain = [0, genomeSize - 1];
+                    delete specification.bookmarks.remote.initialBookmark;
+                    specification.bookmarks.remote.tour = false;
+                    await route.fulfill({ response, json: specification });
+                }
+            );
+        }
         const cdp = await context.newCDPSession(page);
         await cdp.send("Network.enable");
         await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
@@ -82,7 +103,7 @@ try {
             const prefix = `
 import FigWigExperimentSource from ${JSON.stringify("/@fs" + path.join(root, "packages/core/src/data/sources/lazy/figWigSource.js"))};
 import ExperimentLazySource from ${JSON.stringify("/@fs" + path.join(root, "packages/core/src/data/sources/lazy/singleAxisLazySource.js"))};
-window.experiment = {readers:new Set(), publications:[], headerCalls:0, queryTimes:[]};
+window.experiment = {readers:new Set(), publications:[], headerCalls:0, queryTimes:[], binQueries:[]};
 const originalLoadWindow = FigWigExperimentSource.prototype.loadWindow;
 FigWigExperimentSource.prototype.loadWindow = async function(domain, handles, signal) {
     for (const handle of handles) {
@@ -93,6 +114,16 @@ FigWigExperimentSource.prototype.loadWindow = async function(domain, handles, si
             reader.getHeader = function(...args) {
                 window.experiment.headerCalls++;
                 return getHeader.apply(this,args);
+            };
+            const getBinsMulti = reader.getBinsMulti;
+            reader.getBinsMulti = async function(regions, options) {
+                const result = await getBinsMulti.call(this, regions, options);
+                window.experiment.binQueries.push({
+                    regions, binSize:options.binSize, missing:options.missing,
+                    requireSummaries:options.requireSummaries,
+                    sources:result.map(batch=>batch.source),
+                });
+                return result;
             };
         }
     }
@@ -178,6 +209,7 @@ ExperimentLazySource.prototype.publishData = function(chunks,domain) {
                     headerCallsAfterInitialization:
                         window.experiment.headerCalls,
                     queryTimes: window.experiment.queryTimes.slice(),
+                    binQueries: window.experiment.binQueries.slice(),
                     diagnostics,
                     publications: window.experiment.publications.slice(),
                     memory: performance.memory?.usedJSHeapSize,
@@ -218,6 +250,24 @@ ExperimentLazySource.prototype.publishData = function(chunks,domain) {
                     1,
                     "track changes must reuse the reader"
                 );
+            if (
+                wholeGenome &&
+                format === "figwig" &&
+                !name.includes("bookmark") &&
+                name !== "pan-after-filter"
+            ) {
+                assert(
+                    state.diagnostics.every((d) => d.chunksFetched === 0),
+                    "whole-genome fast views must never decode raw chunks"
+                );
+                assert(
+                    state.binQueries.every(
+                        (q) =>
+                            q.requireSummaries &&
+                            q.sources.every((source) => source === "summary")
+                    )
+                );
+            }
             if (name.endsWith("bookmark-3")) {
                 assert.equal(
                     Object.keys(state.derived).length,
@@ -279,16 +329,53 @@ ExperimentLazySource.prototype.publishData = function(chunks,domain) {
             return result;
         }
 
-        const spec = format === "figwig" ? "spec-figwig.json" : "spec.json";
         await stage("initial-cold", async () => {
             await page.goto(`${origin}/?spec=${recipe}/specs/${spec}`);
-            await page.waitForFunction(() => window.__genomeSpy?.api, {
+            await page.waitForFunction(() => window.__genomeSpy?.api, null, {
                 timeout: 60000,
             });
         });
+        // Let completed loading indicators finish their fade before capture.
+        await page.locator(".loading-indicators").waitFor({ state: "hidden" });
         await page.screenshot({
-            path: path.join(output, `${format}-overview.png`),
+            path: path.join(
+                output,
+                `${format}-${wholeGenome ? "whole-genome" : "overview"}.png`
+            ),
         });
+        if (wholeGenome) {
+            await stage("whole-genome-warm", async () => {
+                await page.evaluate(async () => {
+                    const source = window.__genomeSpy.api.debug
+                        .getViewRoot()
+                        .context.dataFlow.dataSources.find(
+                            (s) =>
+                                s.label === "figWigSource" ||
+                                s.label === "bigWigSource"
+                        );
+                    await source.requestInterval(
+                        source.scaleResolution.getDomain()
+                    );
+                });
+            });
+            await stage("whole-genome-six-tracks", async () => {
+                await page.evaluate(async (actions) => {
+                    const app =
+                        document.querySelector("genome-spy-toolbar").app;
+                    await app.intentPipeline.submit(actions);
+                }, bookmarks[1].actions);
+            });
+            await stage("whole-genome-pan", async () => {
+                await page.evaluate(async (size) => {
+                    const app =
+                        document.querySelector("genome-spy-toolbar").app;
+                    await app.genomeSpy
+                        .getNamedScaleResolutions()
+                        .get("x_at_root")
+                        .zoomTo([size * 0.05, size * 0.95], false);
+                }, genomeSize);
+            });
+        }
         for (const pass of ["cold", "warm"]) {
             for (let index = 0; index < bookmarks.length; index++) {
                 const bookmark = bookmarks[index];
@@ -338,7 +425,10 @@ ExperimentLazySource.prototype.publishData = function(chunks,domain) {
         await context.close();
     }
     await writeFile(
-        path.join(output, `benchmark-results-${formats.join("-")}.json`),
+        path.join(
+            output,
+            `benchmark-results-${wholeGenome ? "whole-genome-" : ""}${formats.join("-")}.json`
+        ),
         JSON.stringify(results, null, 2)
     );
 } finally {
