@@ -96,7 +96,7 @@ for (const dpr of [1, 2]) {
             });
             renderer.updateGlobals({ width: 64, height: 64, dpr });
             renderer.device.pushErrorScope("validation");
-            // Endpoints lie on physical pixel centers; hard clipping has observable ownership.
+            // Endpoints lie on physical pixel centers so their half coverage is observable.
             const rows = [
                 { cap: 0, size: 0.25, reverse: false, min: 0 },
                 { cap: 0, size: 0.25, reverse: true, min: 0 },
@@ -313,14 +313,14 @@ for (const dpr of [1, 2]) {
         const halfBlue = [0, 0, 128, 128],
             mixed = [102, 0, 128, 229];
         expect(result.aligned).toEqual([
-            [red, blue, clear, clear, blue],
+            [red, blue, clear, clear, halfBlue],
             [red, mixed, halfBlue, halfBlue, blue],
-            [red, red, blue, blue, red],
+            [red, red, blue, blue, mixed],
         ]);
         expect(result.caps).toEqual([
+            [halfBlue],
             [blue],
-            [blue],
-            [red],
+            [mixed],
             [halfBlue],
             [blue],
             [mixed],
@@ -338,12 +338,12 @@ for (const dpr of [1, 2]) {
             [26, 0, 64, 89],
         ]);
         // Fade is .25; .8 fill alpha and .65 common opacity give .13 premultiplied red.
-        const strengths = [33, 33, 133, 66, 33, 0, 0];
+        const strengths = [17, 17, 66, 66, 17, 0, 0];
         const centerStrengths = [33, 33, 133, 133, 33, 0, 0];
         expect(result.baseline).toEqual(
             strengths.flatMap((v, i) => [
                 [v, 0, 0, v],
-                [0, 0, 0, 0],
+                [v, 0, 0, v],
                 [centerStrengths[i], 0, 0, centerStrengths[i]],
             ])
         );
@@ -359,11 +359,11 @@ for (const dpr of [1, 2]) {
                 ).toBeLessThanOrEqual(1);
             });
         expect(result.noBorderPicks).toEqual(rowsExpectedIds());
-        expect(result.opaque[1]).toEqual([0, 0, 41, 41]);
+        expect(result.opaque[1]).toEqual([17, 0, 21, 37]);
         expect(result.borderPicks).toEqual([1, 2, 3, 4, 5, null, null]);
     });
 }
 
 function rowsExpectedIds() {
-    return [1, 2, 3, 4, 5, null, null].flatMap((id) => [id, null, id]);
+    return [1, 2, 3, 4, 5, null, null].flatMap((id) => [id, id, id]);
 }

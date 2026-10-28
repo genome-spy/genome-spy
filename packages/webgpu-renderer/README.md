@@ -315,10 +315,10 @@ Solid borders support retained scalar and series updates. A nonempty
 `strokeOpacity`, or `strokeAlign`, even when its initial value is transparent
 or zero. Existing unbordered dashed rules remain supported.
 
-Omitting `strokeWidth` retains the six-vertex path. Declaring it selects 54
-vertices per occurrence, including while a dynamic width is zero. Dense bordered
-scenes can be substantially slower; the Rules example separates solid borders
-from its original dashed scene.
+Rules use six vertices and signed-distance antialiasing at sides and endpoints,
+including butt ends. Border offsets round convex corners. Transparent borders
+preserve that nominal coverage. Non-antialiased hard butt clipping is corrected;
+pixel-center endpoint samples now have half coverage.
 
 ### Position clamping
 

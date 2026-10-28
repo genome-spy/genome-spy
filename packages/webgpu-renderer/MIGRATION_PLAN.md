@@ -33,8 +33,7 @@ The standalone rule API composes fill and stroke with inside/center/outside
 alignment. Core rules and ticks retain their existing appearance through the
 adapter's `color` to renderer `fill` translation. No Core grammar is exposed.
 Remaining work: dashed-ribbon borders, WebGL/native parity, and shared Core
-paint normalization before exposing #604. Declared border geometry costs 54
-vertices per occurrence; default unbordered rules retain six.
+paint normalization before exposing #604. Rules use six vertices and signed-distance coverage, including butt endpoints.
 
 ## Active integration: selection predicate composition
 

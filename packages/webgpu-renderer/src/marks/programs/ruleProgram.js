@@ -62,7 +62,6 @@ struct VSOut {
     @location(8) @interpolate(flat) pickId: u32,
     @location(9) @interpolate(flat) stroke: vec4<f32>,
     @location(10) @interpolate(flat) outset: f32,
-    @location(11) @interpolate(flat) body: u32,
     @location(12) @interpolate(flat) inset: f32,
 };
 
@@ -82,7 +81,6 @@ fn culledRule() -> VSOut {
     out.dashOffset = 0.0;
     out.stroke = vec4<f32>(0.0);
     out.outset = 0.0;
-    out.body = 0u;
     out.inset = 0.0;
     out.pickId = 0u;
     return out;
@@ -130,13 +128,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
-    // Preserve the original body triangles and their hardware-owned butt boundaries.
-    // Eight perimeter cells extend coverage without reconstructing those boundaries.
-    let cell = select(4u, v / 6u, BORDER_GEOMETRY);
-    let corner = quad[v % 6u];
-    let grid = vec2<u32>(cell % 3u, cell / 3u) + vec2<u32>(corner);
-    let local = vec2<f32>(select(0.0, 1.0, grid.x >= 2u),
-                          select(0.0, 1.0, grid.y >= 2u));
+    let local = quad[v];
 
     let pixelSize = 1.0 / globals.dpr;
 
@@ -146,7 +138,6 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let borderWidth = max(getScaled_strokeWidth(i), 0.0);
     // Numeric alignment: inside=0, center=1, outside=2.
     let expansion = borderWidth * f32(getScaled_strokeAlign(i)) * 0.5;
-    let extra = select(0.0, expansion + 0.5 * pixelSize, expansion > 0.0);
     var opacity = getScaled_opacity(i);
 
     // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively.
@@ -189,33 +180,13 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let normal = normalize(vec2<f32>(-tangent.y, tangent.x));
 
     let strokeCap = u32(getScaled_strokeCap(i));
-    let minLength = getScaled_minLength(i);
-    var offset = 0.0;
-    var relativeDiff = 0.0;
-    if (minLength > 0.0 || strokeCap != BUTT) {
-        var diff = max(0.0, minLength - len);
-        // Add line caps
-        if (strokeCap != BUTT) {
-            diff = diff + width;
-        }
-        relativeDiff = diff / len;
-        offset = relativeDiff * (local.x - 0.5);
-    }
-
-    // Add an extra pixel to stroke width to accommodate edge antialiasing.
-    let aaPadding = pixelSize;
-    let paddedWidth = width + aaPadding;
-    let tx = select(select(0.0, extra, grid.x == 3u), -extra, grid.x == 0u);
-    let ny = select(select(0.0, expansion, grid.y == 3u), -expansion, grid.y == 0u);
+    let span = max(len, getScaled_minLength(i));
     let halfWidth = 0.5 * width;
-    let side = local.y - 0.5;
-
-    // Apply caps and minimum length by spreading the vertices along the tangent.
-    var position = a + tangent * (local.x + offset);
-
-    // Extrude the quad along the normal direction.
-    position = position + normal * side * paddedWidth;
-    position = position + normalize(tangent) * tx + normal * ny;
+    let end = select(0.0, halfWidth, strokeCap != BUTT);
+    let padding = expansion + 0.5 * pixelSize;
+    let along = mix(-end - padding, span + end + padding, local.x);
+    let across = (local.y - 0.5) * (width + 2.0 * padding);
+    let position = (a + b) * 0.5 + tangent / len * (along - span * 0.5) + normal * across;
     let clip = vec2<f32>(
         (position.x / globals.width) * 2.0 - 1.0,
         1.0 - (position.y / globals.height) * 2.0
@@ -232,13 +203,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.stroke.a *= getScaled_strokeOpacity(i);
     out.outset = expansion;
     out.inset = borderWidth - expansion;
-    out.body = select(0u, 1u, cell == 4u);
-    out.normalDistance = side * paddedWidth + ny;
+    out.normalDistance = across;
     out.halfWidth = halfWidth;
     out.opacity = opacity;
-    // Distances from the line endings (pixels). Used for round caps.
-    out.posInPixels = vec2<f32>(local.x, 1.0 - local.x) * (1.0 + relativeDiff) * len + vec2<f32>(tx, -tx) -
-        vec2<f32>(select(0.0, width * 0.5, strokeCap != BUTT));
+    out.posInPixels = vec2<f32>(along, span - along);
     out.strokeCap = strokeCap;
     out.dashIndex = u32(getScaled_strokeDash(i));
     out.dashOffset = f32(getScaled_strokeDashOffset(i));
@@ -251,43 +219,21 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
 fn shade(in: VSOut) -> vec4<f32> {
     let distanceFromEnd = -min(in.posInPixels.x, in.posInPixels.y);
-    var distance: f32;
-    if (distanceFromEnd > 0.0 && in.strokeCap == ROUND) {
-        // Round caps
-        distance = length(vec2<f32>(distanceFromEnd, in.normalDistance));
-    } else {
-        distance = abs(in.normalDistance);
-    }
-    let dash = dashMask(
-        dashAtlas,
-        in.dashIndex,
-        in.posInPixels.x,
-        in.dashOffset
-    );
-    // Freeze the legacy nominal body independently of the expanded quad.
-    let bodyEnd = select(0.0, in.halfWidth, in.strokeCap != BUTT);
-    let coverage = clamp(((in.halfWidth - distance) * globals.dpr) + 0.5, 0.0, 1.0) * dash;
-    if (!BORDER_GEOMETRY || (in.outset == 0.0 && in.inset == 0.0)) {
-        let fill = vec4<f32>(in.fill.rgb, in.fill.a * in.opacity);
-        return premultiplyAlpha(fill) * coverage;
-    }
-    let cf = select(0.0, coverage, in.body != 0u);
-    var outside = min(in.halfWidth + in.outset - abs(in.normalDistance),
-        bodyEnd + in.outset - distanceFromEnd);
+    let end = select(0.0, in.halfWidth, in.strokeCap != BUTT);
+    let q = vec2<f32>(abs(in.normalDistance) - in.halfWidth, distanceFromEnd - end);
+    var distance = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0);
     if (in.strokeCap == ROUND) {
-        outside = in.halfWidth + in.outset -
-            length(vec2<f32>(max(distanceFromEnd, 0.0), in.normalDistance));
+        distance = length(vec2<f32>(max(distanceFromEnd, 0.0), in.normalDistance)) - in.halfWidth;
     }
-    let co = select(cf, max(cf, clamp(outside * globals.dpr + 0.5, 0.0, 1.0)), in.outset > 0.0);
-    var inner = min(in.halfWidth - in.inset - abs(in.normalDistance),
-        bodyEnd - in.inset - distanceFromEnd);
-    if (in.strokeCap == ROUND) {
-        inner = in.halfWidth - in.inset -
-            length(vec2<f32>(max(distanceFromEnd, 0.0), in.normalDistance));
+    let cf = clamp(0.5 - distance * globals.dpr, 0.0, 1.0) * dashMask(
+        dashAtlas, in.dashIndex, in.posInPixels.x, in.dashOffset);
+    if (in.outset == 0.0 && in.inset == 0.0) {
+        return premultiplyAlpha(in.fill) * cf * in.opacity;
     }
+    let co = max(cf, clamp(0.5 - (distance - in.outset) * globals.dpr, 0.0, 1.0));
     let empty = in.halfWidth <= in.inset ||
-        (in.strokeCap != ROUND && in.posInPixels.x + in.posInPixels.y + 2.0 * bodyEnd <= 2.0 * in.inset);
-    let ci = select(select(min(cf, clamp(inner * globals.dpr + 0.5, 0.0, 1.0)), 0.0, empty), cf, in.inset == 0.0);
+        (in.strokeCap != ROUND && in.posInPixels.x + in.posInPixels.y + 2.0 * end <= 2.0 * in.inset);
+    let ci = select(min(cf, clamp(0.5 - (distance + in.inset) * globals.dpr, 0.0, 1.0)), 0.0, empty);
     let fill = premultiplyAlpha(in.fill);
     let stroke = premultiplyAlpha(in.stroke);
     return (ci * fill + (cf - ci) * (stroke + (1.0 - stroke.a) * fill) +
@@ -304,19 +250,12 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class RuleProgram extends BaseProgram {
-    get verticesPerInstance() {
-        return this._markConfig.channels?.strokeWidth ? 54 : 6;
-    }
-
     get channelSpecs() {
         return RULE_CHANNEL_SPECS;
     }
 
     get shaderBody() {
-        return (
-            `const BORDER_GEOMETRY: bool = ${this.verticesPerInstance === 54};\n` +
-            RULE_SHADER_BODY
-        );
+        return RULE_SHADER_BODY;
     }
 
     getExtraUniformLayout() {
