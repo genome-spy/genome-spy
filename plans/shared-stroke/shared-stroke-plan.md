@@ -1,57 +1,91 @@
 # Shared rule paints: PR #615 review reconciliation
 
-Status: addressing maintainer review, 2026-10-28. No new dependencies.
+Status: maintainer requests implemented and locally verified, 2026-10-28.
+No new dependencies. The user authorized combining solid and dashed work in
+#615, with exact size reported before pushing. The separate dash-plan branch
+and disposable prototypes remain historical reference, not another delivery PR.
 
-## Corrected architecture and geometry
+## Architecture and corrected geometry
 
-The maintainer identifies hard-clipped butt ends as a bug, not compatibility to
-preserve. Discard the 3x3 perimeter mesh and its 54 vertices. Use six vertices
-and signed-distance coverage at every finite rule boundary, including butt ends.
-Keep geometry/shaders/resources in the existing renderer; Core only translates
-its existing rule/tick color encoder to fill. No new Core grammar or framework.
+Follow `ARCHITECTURE.md`, Core's rendering architecture and renderer AGENTS.md.
+Geometry, interval textures, shaders and picking remain renderer-owned. Core
+only maps its existing rule/tick color encoder to fill. No Core grammar, CPU
+scene graph, per-datum dash expansion, new pass or resource lifecycle is added.
 
-Existing paint channels, size as body thickness, separate paint/common opacity,
-alignment extents, retained inputs, occurrence order and shared picking still
-follow #604. Transparent strokes preserve the corrected nominal SDF fill, not
-legacy hard-clipped pixels. Square/butt rectangles and round capsules use true
-signed distance; outside offsets round convex corners consistently.
+The maintainer identifies hard butt clipping as a bug. The 54-vertex perimeter
+mesh and its exact legacy-pixel gate are discarded. All rules use six vertices
+and true signed distance to finite rectangles or clipped round capsules.
+Distance offsets round convex corners consistently, including cap/dash cuts.
+A flat span avoids endpoint drift from summing interpolated distances. Periodic
+lookup canonicalizes a wrapped phase that rounds to its period back to zero.
+
+Existing paints, size as body thickness, per-paint/common opacity, alignments,
+retained inputs, occurrence order and shared picking follow #604. Transparent
+strokes reveal the corrected nominal SDF fill. Hard butt/dash boundaries now
+have antialiased coverage. Zero/negative sizes and all-off patterns stay hidden.
+
+Dash data remains one immutable program-owned integer texture. Two neighboring
+finite intervals are necessary when a containing interval clips empty at an
+exact endpoint. A short decoder owns its byte layout. Maximum-period 256 is
+stored correctly instead of wrapping a byte to zero. The bounded maximum atlas
+is 525,312 bytes rather than 65,792; no pattern data is rebuilt per frame.
 
 ## Review requests and synchronization
 
-- [ ] Replace the mesh with an antialiased SDF body and simplify vertex handling
-  (`discussion_r4398512480`). Replace regressions that enshrine hard clipping.
-- [ ] Implement dashed borders instead of rejecting them (`discussion_r4398542914`).
-  Incorporate the separately proven immutable interval representation only after
-  requalifying it against corrected SDF nominal coverage. Old exact-baseline
-  pixel gates are superseded; all geometry must use the same distance contract.
-- [ ] One combined Rules story with controls for paints, alignment, caps, dashes
-  and phase (`discussion_r4398568005`). No separate solid/dashed demo handles.
+- [x] SDF butt ends and simpler vertices (`discussion_r4398512480`). Commit
+  `12d99413`; replace hard-clipping expectations with analytic SDF samples.
+- [x] Dashed borders instead of rejection (`discussion_r4398542914`). Commit
+  `e77b4c82`; qualify all finite cuts using the same distance/composition path.
+- [x] Combined controlled story (`discussion_r4398568005`). Commit `91052bad`;
+  one retained mark exposes paint, width, cap, alignment, dash and phase controls.
+- [x] Two independent Sol reviews of the combined implementation. Fix their
+  standalone cleanup finding, verify control redraws through the real UI, and
+  close dashed conditional/scalar/placement coverage gaps. Final geometry
+  review finds no concrete issue in the flat-span, wrap or zero-border fast path.
 
-The user authorized combining solid and dashed renderer work in #615.
-Report the revised exact size before pushing the combined scope. Keep the dash-plan branch and its evidence as reference.
+The old dash proof's nominal-pixel contract is superseded. Its representation
+was requalified against independent SDF contours. No miter-limit API or generic
+geometry machinery is introduced. Existing shader-string tests are removed;
+CPU wire-contract tests and actual renderer output cover the relevant behavior.
 
-The earlier two-Sol dash review found the atlas ownership/size reasonable. Before
-using that proof as a gate, make the runner reject nonzero failure counts, bound
-oracle precision, and add an analytic acute cap/dash-cut case. Document the
-selected Euclidean offset/join contract, interval layout and two-neighbor need;
-keep a short authoritative interval decoder in the existing dash WGSL module.
-No miter-limit API or generic geometry machinery is justified.
+## Verification and limits
 
-## Delivery gates
+- [x] 314 renderer unit tests and 74 Core adapter tests.
+- [x] Four actual GPU tests, zero skips, DPR 1/2: antialiased butt/cap boundaries,
+  all alignments, thin/nonpositive sizes, translucent/common paint opacity,
+  transparent strokes, acute clipped-cap distance, finite dashes, retained
+  scalar/series phase/pattern changes, selection-driven stroke paint, crossing
+  order, clamped placement/clipping and border/gap picking.
+- [x] Independent external contour matrix: 219 occurrences × 72 variants =
+  15,768 comparisons, zero failed cases, maximum error 1.167/255. Construct the
+  oracle from actual f32 input coordinates. Adaptive subdivision bounds arc
+  chord error, not universal post-clipping error near tangency. The analytic
+  acute-cut fixture independently fixes the required corner-distance contract.
+- [x] Workspace types; renderer lint, package build/tree shaking/packing;
+  Storybook build; real controls change rendered pixels; standalone Rules →
+  other example switching releases resources without errors.
+- [x] Release checks. No new fragment for unpublished renderer/experimental
+  adapter work. Existing master fragments already schedule a fixed-group minor.
+- [ ] Report exact size, push review commits and update PR metadata.
+- [ ] Inspect new CI results; retain draft/review threads for maintainer review.
+- [ ] Reconcile this temporary plan and remove it in a later commit before merge.
 
-Use actual GPU readbacks and picking: antialiased butt ends, all caps/alignments,
-thin/nonpositive sizes, translucent paints/common opacity, transparent strokes,
-finite/partial dashes, acute cuts, phase/pattern and conditional input updates,
-crossings, placement/clipping/zoom and the maximum-period correction. Test the
-corrected shape contract; do not keep assertions for the rejected hard clipping.
-Run focused units/GPU, workspace types/lint, builds, interactive story smoke,
-performance through GPU completion, release assessment and exact diff counts.
+Final bounded timing, Chrome 156 / Apple Metal-3, CPU submission through GPU
+completion, five warmups/30 paired samples: solid 100k DPR-2 borders improve
+16.2 → 2.5ms median. Corrected unbordered SDF costs 2.3ms vs old hard clipping's
+1.7ms in that stress scene. Dashed 100k DPR-2 borders measure 3.0ms; the 1k
+representative scene is 0.4–0.6ms. These are bounded samples, not cross-driver or
+all-workload guarantees. Source/runner/results/recording stay outside Git in
+this chat's `gpu-rule-review615/` artifacts.
 
-The previous 500-added-line delivery budget and PR metadata must be reconciled
-with the accepted scope before pushing. Keep commits focused and reversible.
-This is unpublished renderer/experimental adapter work; no release fragment is
-expected. Reassess the actual final diff. Temporary plans must be reconciled,
-committed and removed in a later commit before merge.
+Combined delivery against `origin/master`: 16 files, +817/-159 raw lines
+(net +658), excluding this plan. Tests and type smoke account for 505 added
+lines. Non-comment runtime including examples/stories is +243/-119 (net +124);
+production source alone is +152/-95 (net +57). The former solid-only 500-raw-line
+allocation is superseded by the explicitly combined review scope; runtime
+remains within 250 added non-comment lines. Report the plan's additional size
+separately before pushing. No unrelated features or dependency changes.
 
-Full #604 Core grammar, legacy inwardStroke mapping, scales/legends, WebGL/native
-parity and other filled families remain deferred. This PR does not complete them.
+Full #604 Core grammar, inwardStroke mapping, scales/legends, WebGL/native parity,
+other filled families, schema/docs and eventual Core minor release remain deferred.
+This PR does not complete those requirements.
