@@ -80,9 +80,8 @@ export default class TableMetadataSourceAdapter {
      * @returns {Promise<string[]>}
      */
     async listSampleIds(signal) {
-        return (await this.listSamples(undefined, signal)).map(
-            (sample) => sample.id
-        );
+        const rows = await this.#loadRows(signal);
+        return rows.map((row) => String(row[this.#sampleIdField] ?? ""));
     }
 
     /**

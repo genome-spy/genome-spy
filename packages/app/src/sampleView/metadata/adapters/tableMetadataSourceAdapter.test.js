@@ -66,22 +66,6 @@ describe("TableMetadataSourceAdapter", () => {
         expect(await adapter.listColumns()).toEqual([]);
     });
 
-    it("leaves missing canonical IDs invalid for identity validation", async () => {
-        const adapter = new TableMetadataSourceAdapter({
-            backend: {
-                backend: "data",
-                data: { values: [{ sample: null }, {}, { sample: "" }] },
-            },
-        });
-
-        expect(await adapter.listSampleIds()).toEqual(["", "", ""]);
-        expect(await adapter.listSamples()).toEqual([
-            { id: "", displayName: "" },
-            { id: "", displayName: "" },
-            { id: "", displayName: "" },
-        ]);
-    });
-
     it("lists and resolves columns from inline data", async () => {
         const adapter = new TableMetadataSourceAdapter(createSourceDef());
 

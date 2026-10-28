@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 import { createGenerator } from "ts-json-schema-generator";
 import Ajv from "ajv";
 import path from "node:path";
@@ -7,17 +7,23 @@ import { fileURLToPath } from "node:url";
 const specDir = path.dirname(fileURLToPath(import.meta.url));
 
 describe("generated App schema", () => {
-    test("accepts Figwig metadata and requires a file URL", () => {
+    /** @type {import("ajv").ValidateFunction} */
+    let validate;
+
+    beforeAll(() => {
         const schema = createGenerator({
             path: path.join(specDir, "*.d.ts"),
             tsconfig: path.resolve(specDir, "../../../../tsconfig.json"),
             type: "AppRootSpec",
             skipTypeCheck: true,
         }).createSchema("AppRootSpec");
-        const validate = new Ajv.default({
+        validate = new Ajv.default({
             strict: false,
             allowUnionTypes: true,
         }).compile(schema);
+    });
+
+    test("accepts Figwig metadata and requires a file URL", () => {
         const backend = {
             backend: "figwig",
             url: "signals.fw",
@@ -52,16 +58,6 @@ describe("generated App schema", () => {
     });
 
     test("accepts metadata identity and keeps its schema separate from explicit data", () => {
-        const schema = createGenerator({
-            path: path.join(specDir, "*.d.ts"),
-            tsconfig: path.resolve(specDir, "../../../../tsconfig.json"),
-            type: "AppRootSpec",
-            skipTypeCheck: true,
-        }).createSchema("AppRootSpec");
-        const validate = new Ajv.default({
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
         const validIdentities = [
             "metadata",
             { metadataSource: "signals" },

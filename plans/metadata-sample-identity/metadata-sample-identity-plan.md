@@ -213,3 +213,10 @@ Verification:
 The mouse recipe changes remain local and uncommitted in the nested recipes
 repository. Alternative 2, automatic metadata identity on omission, set-union
 policies and live membership changes are explicitly discarded for this scope.
+
+The subsequent KISS review retained the streaming identity processor to avoid
+retaining complete raw table rows. Its applied cleanups reuse reducer-owned
+duplicate-ID validation, map ID-only adapter queries directly from cached rows,
+and remove duplicate schema setup and overlapping adapter tests. The 52 affected
+tests, App source/test types and focused lint pass after these changes. The
+existing feature changeset remains accurate; this cleanup adds no release note.

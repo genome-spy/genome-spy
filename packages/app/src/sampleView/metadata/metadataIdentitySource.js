@@ -47,21 +47,8 @@ export default class MetadataIdentitySource extends DataSource {
             );
             signal.throwIfAborted();
 
-            /** @type {Set<string>} */
-            const ids = new Set();
-            for (const sample of samples) {
-                if (sample.id == null || sample.id === "") {
-                    throw new Error(
-                        "Sample identity contains an empty sample id."
-                    );
-                }
-                if (ids.has(sample.id)) {
-                    throw new Error(
-                        "Sample identity contains duplicate sample ids: " +
-                            sample.id
-                    );
-                }
-                ids.add(sample.id);
+            if (samples.some((sample) => sample.id === "")) {
+                throw new Error("Sample identity contains an empty sample id.");
             }
 
             this.reset();

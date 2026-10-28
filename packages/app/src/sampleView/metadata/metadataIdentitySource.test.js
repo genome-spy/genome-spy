@@ -169,7 +169,7 @@ describe("metadata-backed sample identity", () => {
     });
 
     it.each([[{ sid: null }], [{}], [{ sid: "" }], [{ sid: 1 }, { sid: "1" }]])(
-        "rejects invalid canonical ids before publishing: %j",
+        "rejects invalid canonical ids before initializing samples: %j",
         async (...rows) => {
             const fixture = await createSampleViewForTest({
                 spec: spec("metadata", rows),
@@ -184,7 +184,9 @@ describe("metadata-backed sample identity", () => {
             ).toEqual([
                 expect.objectContaining({
                     status: "error",
-                    message: expect.stringContaining("Sample identity"),
+                    message: expect.stringMatching(
+                        /empty sample id|duplicate sample ids/
+                    ),
                 }),
             ]);
             fixture.view.disposeSubtree();
