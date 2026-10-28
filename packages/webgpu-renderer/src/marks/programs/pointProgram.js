@@ -39,10 +39,6 @@ fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
 
-fn sourceOver(above: vec4<f32>, below: vec4<f32>) -> vec4<f32> {
-    return above + below * (1.0 - above.a);
-}
-
 fn circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
 }
@@ -196,18 +192,17 @@ fn shade(in: VSOut) -> vec4<f32> {
     strokeColor = premultiplyAlpha(strokeColor);
 
     let fillCoverage = distanceToRatio(-d);
-    var strokeCoverage: f32;
-    if (in.inwardStroke > 0u) {
-        let innerCoverage = distanceToRatio(-d - 2.0 * in.halfStrokeWidth);
-        strokeCoverage = max(fillCoverage - innerCoverage, 0.0);
-    } else {
-        let outerCoverage = distanceToRatio(in.halfStrokeWidth - d);
-        let innerCoverage = distanceToRatio(-in.halfStrokeWidth - d);
-        strokeCoverage = max(outerCoverage - innerCoverage, 0.0);
+    var color = fillColor * fillCoverage;
+    if (in.halfStrokeWidth > 0.0) {
+        let inward = in.inwardStroke > 0u;
+        let innerCoverage = distanceToRatio(
+            -d - select(in.halfStrokeWidth, 2.0 * in.halfStrokeWidth, inward)
+        );
+        let outerCoverage = select(distanceToRatio(in.halfStrokeWidth - d), fillCoverage, inward);
+        color = innerCoverage * fillColor
+            + (fillCoverage - innerCoverage) * (strokeColor + (1.0 - strokeColor.a) * fillColor)
+            + (outerCoverage - fillCoverage) * strokeColor;
     }
-    let fillLayer = fillColor * fillCoverage;
-    let strokeLayer = strokeColor * strokeCoverage;
-    let color = sourceOver(strokeLayer, fillLayer);
 
     if (color.a == 0.0) {
         discard;
