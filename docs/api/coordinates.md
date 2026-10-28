@@ -29,7 +29,8 @@ cross-contig ordering. Bare names, including `chr1`, return `not-coordinate`.
 Pass `{contigs: [{name, size}, ...]}` to validate an ordered assembly dictionary.
 This additionally checks contig existence, endpoint bounds, and chromosome order,
 canonicalizes unambiguous `chr` prefix aliases, and recognizes bare contig names
-as their full extents. Canonical names take precedence over aliases. Ordinal
+as their full extents. Unknown bare names return `not-coordinate`, allowing the
+caller to try datum search. Canonical names take precedence over aliases. Ordinal
 chromosome-number aliases are not accepted. Invalid dictionaries throw.
 
 A result is one of:

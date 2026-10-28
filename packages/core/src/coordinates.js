@@ -17,11 +17,7 @@ export function parseCoordinates(text, assembly) {
     if (contig) {
         return coordinate(contig.name, 0, contig.name, contig.size);
     }
-    if (!query.includes(":")) {
-        return names && /^chr(?:\d+|[XYM]|MT)$/i.test(query)
-            ? invalid("unknown-contig", "Unknown chromosome: " + query)
-            : { kind: "not-coordinate" };
-    }
+    if (!query.includes(":")) return { kind: "not-coordinate" };
 
     const candidates = names ? dictionaryCandidates(query, names) : [];
     if (candidates.length > 1)

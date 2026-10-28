@@ -13,6 +13,7 @@ async function setup() {
                 { symbol: "FIRST", alias: "alpha", start: 0, end: 1 },
                 { symbol: "LAST", alias: "omega", start: 99, end: 100 },
                 { symbol: "TP53", alias: "p53", start: 10, end: 20 },
+                { symbol: "chr99", alias: "custom label", start: 30, end: 40 },
             ],
         },
         data: { name: "rows" },
@@ -53,6 +54,14 @@ it("uses the active assembly and preserves native endpoints and domains when for
     expect(scale.getDomain()).toEqual([9, 20]);
     await expect(field.search("scaffold:0")).rejects.toThrow(/positive/);
     expect(scale.getDomain()).toEqual([9, 20]);
+});
+
+it("searches unknown bare contig-like names as literal record values", async () => {
+    const { field, scale } = await setup();
+    await field.search("chr99");
+    expect(scale.getDomain()).toEqual([29, 41]);
+    await expect(field.search("chr99:10")).rejects.toThrow(/Unknown contig/);
+    expect(scale.getDomain()).toEqual([29, 41]);
 });
 
 it("keeps padded first- and last-base gene navigation inside the active assembly", async () => {

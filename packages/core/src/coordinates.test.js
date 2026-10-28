@@ -38,12 +38,10 @@ describe("optional coordinate utilities", () => {
             { chrom: "chr1", pos: 100 },
         ]);
         expect(parseCoordinates("chr1")).toEqual({ kind: "not-coordinate" });
-        expect(parseCoordinates("TP53", assembly)).toEqual({
-            kind: "not-coordinate",
-        });
-        expect(parseCoordinates("17q21", assembly)).toEqual({
-            kind: "not-coordinate",
-        });
+        for (const query of ["TP53", "17q21", "chr99", "chrZ", "scaffold_42"])
+            expect(parseCoordinates(query, assembly)).toEqual({
+                kind: "not-coordinate",
+            });
     });
 
     test.each([
@@ -83,7 +81,7 @@ describe("optional coordinate utilities", () => {
                 "invalid-coordinate"
             );
         }
-        expect(parseCoordinates("chr99", assembly)).toMatchObject({
+        expect(parseCoordinates("chr99:10", assembly)).toMatchObject({
             kind: "invalid-coordinate",
             code: "unknown-contig",
         });
@@ -94,6 +92,7 @@ describe("optional coordinate utilities", () => {
                 { name: "chra", size: 20 },
                 { name: "1", size: 30 },
                 { name: "NC_001.1", size: 40 },
+                { name: "chrZ", size: 50 },
             ],
         };
         expect(interval("a:1", custom)[0].chrom).toBe("a");
@@ -103,6 +102,10 @@ describe("optional coordinate utilities", () => {
         );
         expect(interval("1:1", custom)[0].chrom).toBe("1");
         expect(interval("NC_001.1:40", custom)[1].pos).toBe(40);
+        expect(interval("chrZ", custom)).toEqual([
+            { chrom: "chrZ", pos: 0 },
+            { chrom: "chrZ", pos: 50 },
+        ]);
         expect(
             parseCoordinates("2:1", {
                 contigs: [
