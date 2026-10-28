@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createTestEmbed } from "@genome-spy/core/view/embedTestUtils.js";
 import { createDatumSearch } from "@genome-spy/core/search";
-import { expect, it, onTestFinished } from "vitest";
+import { expect, it, onTestFinished, vi } from "vitest";
 import SearchField from "./searchField.js";
 
 /** Real Core data and scale capabilities exercise the mounted App component. */
@@ -91,4 +91,24 @@ it("shows examples for each field and refreshes them on focus after data replace
     expect(help()).toContain("BRCA1");
     expect(help()).toContain("breast cancer 1");
     expect(help()).not.toContain("FIRST");
+});
+
+it("cancels pending domain updates when disconnected before embed finalization", async () => {
+    const { field, scale, input, finalize } = await setup();
+    vi.useFakeTimers();
+    try {
+        await scale.zoomTo([10, 20]);
+        await vi.advanceTimersByTimeAsync(60);
+        await field.updateComplete;
+        expect(input.value).toBe("scaffold:11-21");
+
+        // Leave a second domain update pending while the host tears down.
+        await scale.zoomTo([20, 30]);
+        field.remove();
+        finalize();
+        vi.advanceTimersByTime(60);
+        await expect(field.updateComplete).resolves.toBe(true);
+    } finally {
+        vi.useRealTimers();
+    }
 });

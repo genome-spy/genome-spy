@@ -8,7 +8,6 @@ import { guard } from "lit/directives/guard.js";
 import { zoomLinear } from "vega-util";
 
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
-import { debounce } from "@genome-spy/core/utils/debounce.js";
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
 import SubscriptionController from "../generic/subscriptionController.js";
 
@@ -74,11 +73,17 @@ export default class SearchField extends LitElement {
             );
         this._genomeResolution = resolution;
 
-        const listener = debounce(() => this.requestUpdate(), 60, false);
+        /** @type {ReturnType<typeof setTimeout> | undefined} */
+        let timeout;
+        const listener = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => this.requestUpdate(), 60);
+        };
         resolution.addEventListener("domain", listener);
-        this._subscriptions.addUnsubscribeCallback(() =>
-            resolution.removeEventListener("domain", listener)
-        );
+        this._subscriptions.addUnsubscribeCallback(() => {
+            resolution.removeEventListener("domain", listener);
+            clearTimeout(timeout);
+        });
     }
 
     getDefaultValue() {
