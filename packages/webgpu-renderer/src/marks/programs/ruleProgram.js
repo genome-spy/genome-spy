@@ -55,7 +55,8 @@ struct VSOut {
     @location(1) normalDistance: f32,
     @location(2) halfWidth: f32,
     @location(3) opacity: f32,
-    @location(4) posInPixels: vec2<f32>,
+    @location(4) along: f32,
+    @location(11) @interpolate(flat) span: f32,
     @location(5) @interpolate(flat) strokeCap: u32,
     @location(6) @interpolate(flat) dashIndex: u32,
     @location(7) @interpolate(flat) dashOffset: f32,
@@ -75,7 +76,8 @@ fn culledRule() -> VSOut {
     out.normalDistance = 0.0;
     out.halfWidth = 0.0;
     out.opacity = 0.0;
-    out.posInPixels = vec2<f32>(0.0);
+    out.along = 0.0;
+    out.span = 0.0;
     out.strokeCap = 0u;
     out.dashIndex = 0u;
     out.dashOffset = 0.0;
@@ -206,7 +208,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.normalDistance = across;
     out.halfWidth = halfWidth;
     out.opacity = opacity;
-    out.posInPixels = vec2<f32>(along, span - along);
+    out.along = along;
+    out.span = span;
     out.strokeCap = strokeCap;
     out.dashIndex = u32(getScaled_strokeDash(i));
     out.dashOffset = f32(getScaled_strokeDashOffset(i));
@@ -217,24 +220,79 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     return out;
 }
 
-fn shade(in: VSOut) -> vec4<f32> {
-    let distanceFromEnd = -min(in.posInPixels.x, in.posInPixels.y);
-    let end = select(0.0, in.halfWidth, in.strokeCap != BUTT);
-    let q = vec2<f32>(abs(in.normalDistance) - in.halfWidth, distanceFromEnd - end);
-    var distance = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0);
+// Signed distance to a finite rectangle or a capsule clipped by a dash interval.
+// The closest point uses the actual clipped contour, including acute cap cuts.
+fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
+    if (interval.x >= interval.y) { return vec3<f32>(0.0); }
+    let p = vec2<f32>(in.along, in.normalDistance);
+    let radius = in.halfWidth;
+    let span = in.span;
+    var nearest = vec2<f32>(clamp(p.x, interval.x, interval.y), clamp(p.y, -radius, radius));
+    var interior = min(radius - abs(p.y), min(p.x - interval.x, interval.y - p.x));
     if (in.strokeCap == ROUND) {
-        distance = length(vec2<f32>(max(distanceFromEnd, 0.0), in.normalDistance)) - in.halfWidth;
+        let center = vec2<f32>(clamp(p.x, 0.0, span), 0.0);
+        let v = p - center;
+        let distance = length(v);
+        nearest = p;
+        if (distance > radius) { nearest = center + v * (radius / distance); }
+        nearest.x = clamp(nearest.x, interval.x, interval.y);
+        let capX = max(-nearest.x, max(nearest.x - span, 0.0));
+        let height = sqrt(max(0.0, radius * radius - capX * capX));
+        nearest.y = clamp(p.y, -height, height);
+        interior = min(radius - distance, min(p.x - interval.x, interval.y - p.x));
     }
-    let cf = clamp(0.5 - distance * globals.dpr, 0.0, 1.0) * dashMask(
-        dashAtlas, in.dashIndex, in.posInPixels.x, in.dashOffset);
-    if (in.outset == 0.0 && in.inset == 0.0) {
-        return premultiplyAlpha(in.fill) * cf * in.opacity;
+    let distance = select(length(p - nearest), -interior, interior >= 0.0);
+    let cf = clamp(0.5 - distance * globals.dpr, 0.0, 1.0);
+    if (in.inset == 0.0 && in.outset == 0.0) { return vec3<f32>(cf); }
+    var maxInset = min(radius, (interval.y - interval.x) * 0.5);
+    if (in.strokeCap == ROUND) {
+        maxInset = min(maxInset, min(interval.y + radius, span + radius - interval.x) * 0.5);
     }
-    let co = max(cf, clamp(0.5 - (distance - in.outset) * globals.dpr, 0.0, 1.0));
-    let empty = in.halfWidth <= in.inset ||
-        (in.strokeCap != ROUND && in.posInPixels.x + in.posInPixels.y + 2.0 * end <= 2.0 * in.inset);
-    let ci = select(min(cf, clamp(0.5 - (distance + in.inset) * globals.dpr, 0.0, 1.0)), 0.0, empty);
+    let co = clamp(0.5 - (distance - in.outset) * globals.dpr, 0.0, 1.0);
+    let ci = select(clamp(0.5 - (distance + in.inset) * globals.dpr, 0.0, 1.0),
+        0.0, in.inset > 0.0 && in.inset >= maxInset);
+    return vec3<f32>(ci, cf, co);
+}
+
+fn ruleCoverage(in: VSOut) -> vec3<f32> {
+    let span = in.span;
+    let end = select(0.0, in.halfWidth, in.strokeCap != BUTT);
+    let bounds = vec2<f32>(-end, span + end);
+    if (params.uDashPatternCount == 0u || in.dashIndex >= params.uDashPatternCount) {
+        return intervalCoverage(in, bounds);
+    }
+    let info = textureLoad(dashAtlas, vec2<i32>(0, i32(in.dashIndex)), 0);
+    if (info.z == 1u) { return intervalCoverage(in, bounds); }
+    if (info.z == 2u) { return vec3<f32>(0.0); }
+    let p = vec2<f32>(in.along, in.normalDistance);
+    var query = clamp(p.x, bounds.x, bounds.y);
+    if (in.strokeCap == ROUND) {
+        let center = vec2<f32>(clamp(p.x, 0.0, span), 0.0);
+        let v = p - center;
+        if (length(v) > in.halfWidth) { query = (center + normalize(v) * in.halfWidth).x; }
+    }
+    let period = f32(info.x + 256u * info.y);
+    let phase = fract((query + in.dashOffset) / period) * period;
+    // A tiny negative phase can round fract() to one; wrap the lookup as well.
+    let local = select(phase, 0.0, phase == period);
+    var coverage = vec3<f32>(0.0);
+    for (var side = 0u; side < 2u; side++) {
+        let packed = textureLoad(dashAtlas,
+            vec2<i32>(1 + i32(floor(local)) * 2 + i32(side), i32(in.dashIndex)), 0);
+        let interval = decodeDashInterval(packed) + query - fract(local);
+        coverage = max(coverage, intervalCoverage(in,
+            vec2<f32>(max(bounds.x, interval.x), min(bounds.y, interval.y))));
+    }
+    return coverage;
+}
+
+fn shade(in: VSOut) -> vec4<f32> {
+    let coverage = ruleCoverage(in);
+    let ci = coverage.x;
+    let cf = coverage.y;
+    let co = coverage.z;
     let fill = premultiplyAlpha(in.fill);
+    if (in.outset == 0.0 && in.inset == 0.0) { return cf * fill * in.opacity; }
     let stroke = premultiplyAlpha(in.stroke);
     return (ci * fill + (cf - ci) * (stroke + (1.0 - stroke.a) * fill) +
         (co - cf) * stroke) * in.opacity;
@@ -295,7 +353,7 @@ export default class RuleProgram extends BaseProgram {
         const texture = createTextureFromData(
             this.device,
             {
-                format: "r8uint",
+                format: "rgba8uint",
                 width: atlas.width,
                 height: atlas.height,
                 data: atlas.data,
@@ -307,7 +365,7 @@ export default class RuleProgram extends BaseProgram {
             texture,
             width: atlas.width,
             height: atlas.height,
-            format: "r8uint",
+            format: "rgba8uint",
         });
 
         const dashChannel = this._channels.strokeDash;

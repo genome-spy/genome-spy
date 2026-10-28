@@ -24,6 +24,7 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
         });
         const mark = renderer.createMark(ruleMark, {
             count: 1,
+            dashPatterns: [[4, 4]],
             channels: {
                 uniqueId: { value: 17, type: "u32" },
                 x: { value: 8 },
@@ -31,6 +32,7 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
                 y: { value: 32 },
                 y2: { value: 32 },
                 size: { value: 8 },
+                xClampRange: { value: [16, 48], components: 2 },
                 strokeWidth: { value: 0, dynamic: true },
             },
             placementIndex: { source: "draw" },
@@ -50,6 +52,7 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
         mark.values.strokeWidth.set(2);
         renderer.render(frame);
         ids.push(await renderer.pick(32, 29), await renderer.pick(32, 31));
+        ids.push(await renderer.pick(14, 24), await renderer.pick(13, 24));
         frame.draws[0].scissor = { x: 0, y: 0, width: 64, height: 28 };
         renderer.render(frame);
         ids.push(await renderer.pick(32, 29));
@@ -64,7 +67,7 @@ test("placed rules preserve their pixel stroke width", async ({ page }) => {
     });
 
     expect(result).toEqual({
-        ids: [17, null, 17, null, null],
+        ids: [17, null, 17, null, 17, null, null],
         maxStorageBuffersPerShaderStage: 8,
         maxBindGroups: 4,
     });
@@ -146,7 +149,7 @@ for (const dpr of [1, 2]) {
                     (8 + i * 8) * dpr,
                 ]);
             });
-            const capture = async (
+            const paint = async (
                 width,
                 alpha,
                 samples = points,
@@ -156,6 +159,9 @@ for (const dpr of [1, 2]) {
                     mark.values.strokeWidth.set(width);
                     mark.values.stroke.set([0, 0, 1, alpha]);
                 });
+                return capture(samples, draws);
+            };
+            const capture = async (samples = points, draws = [{ mark }]) => {
                 renderer.render({
                     draws,
                     clearColor: { r: 0, g: 0, b: 0, a: 0 },
@@ -181,19 +187,19 @@ for (const dpr of [1, 2]) {
                 return pixels;
             };
             try {
-                const baseline = await capture(0, 0);
+                const baseline = await paint(0, 0);
                 const updates = [];
                 for (const width of [0.25 / dpr, 1 / dpr, 4 / dpr]) {
                     for (const alpha of [0, 1 / 255])
-                        updates.push(await capture(width, alpha));
+                        updates.push(await paint(width, alpha));
                 }
                 const noBorderPicks = [];
-                await capture(1 / dpr, 0);
+                await paint(1 / dpr, 0);
                 for (const [x, y] of points)
                     noBorderPicks.push(
                         await renderer.pick((x + 0.5) / dpr, (y + 0.5) / dpr)
                     );
-                const opaque = await capture(1 / dpr, 1);
+                const opaque = await paint(1 / dpr, 1);
                 const borderPicks = [];
                 for (let i = 0; i < rows.length; i++) {
                     const [x, y] = points[i * 3 + 1];
@@ -224,14 +230,14 @@ for (const dpr of [1, 2]) {
                 ];
                 for (const align of [0, 1, 2]) {
                     mark.values.strokeAlign.set(align);
-                    aligned.push(await capture(2 / dpr, 1, samples));
+                    aligned.push(await paint(2 / dpr, 1, samples));
                 }
                 mark.values.strokeAlign.set(0);
-                const collapsed = await capture(8 / dpr, 1, [[32, 32]]);
+                const collapsed = await paint(8 / dpr, 1, [[32, 32]]);
                 mark.values.opacity.set(0.5);
                 mark.values.fillOpacity.set(0.5);
                 mark.values.strokeOpacity.set(0.5);
-                const composed = await capture(2 / dpr, 1, [
+                const composed = await paint(2 / dpr, 1, [
                     [32, 32],
                     [32, 29],
                 ]);
@@ -244,7 +250,7 @@ for (const dpr of [1, 2]) {
                     mark.series.replace(ribbon, 1);
                     for (const align of [0, 1, 2]) {
                         mark.values.strokeAlign.set(align);
-                        caps.push(await capture(2 / dpr, 1, [[8, 32]]));
+                        caps.push(await paint(2 / dpr, 1, [[8, 32]]));
                     }
                 }
                 const neighbor = renderer.createMark(ruleMark, {
@@ -265,29 +271,154 @@ for (const dpr of [1, 2]) {
                     [{ mark }, { mark: neighbor }],
                     [{ mark: neighbor }, { mark }],
                 ])
-                    crossing.push(await capture(2 / dpr, 1, [[32, 32]], draws));
-                const rejected = [];
-                for (const key of [
-                    "stroke",
-                    "strokeWidth",
-                    "strokeOpacity",
-                    "strokeAlign",
-                ]) {
-                    try {
-                        renderer.createMark(ruleMark, {
-                            dashPatterns: [[1, 0]],
-                            channels: {
-                                [key]: { value: 0, dynamic: true },
-                            },
-                        });
-                    } catch (error) {
-                        rejected.push(error.message);
-                    }
-                }
+                    crossing.push(await paint(2 / dpr, 1, [[32, 32]], draws));
+                const acuteX = 24.5 / dpr + 2.25;
+                const acuteY = 44.5 / dpr - Math.sqrt(7) - 1;
+                const dashData = {
+                    uniqueId: new Uint32Array([17, 18, 19]),
+                    x: new Float32Array([8 + 0.5 / dpr, 8 + 0.5 / dpr, acuteX]),
+                    x2: new Float32Array([
+                        40 + 0.5 / dpr,
+                        40 + 0.5 / dpr,
+                        acuteX + 32,
+                    ]),
+                    y: new Float32Array([
+                        8 + 0.5 / dpr,
+                        24 + 0.5 / dpr,
+                        acuteY,
+                    ]),
+                    y2: new Float32Array([
+                        8 + 0.5 / dpr,
+                        24 + 0.5 / dpr,
+                        acuteY,
+                    ]),
+                    size: new Float32Array([4, 4 / dpr, 8]),
+                    strokeWidth: new Float32Array([1, 1 / dpr, 1]),
+                    strokeCap: new Uint32Array([0, 2, 2]),
+                    strokeDash: new Uint32Array([0, 1, 4]),
+                    strokeDashOffset: new Float32Array([0, 0, 4]),
+                };
+                const dashConfig = {
+                    count: 3,
+                    dashPatterns: [
+                        [3, 1, 1, 2],
+                        [4, 4],
+                        [0, 3],
+                        [254, 2],
+                        [1, 7],
+                    ],
+                    channels: {
+                        ...Object.fromEntries(
+                            Object.entries(dashData).map(([key, data]) => [
+                                key,
+                                {
+                                    data,
+                                    type:
+                                        data instanceof Uint32Array
+                                            ? "u32"
+                                            : "f32",
+                                },
+                            ])
+                        ),
+                        fill: { value: [1, 0, 0, 1] },
+                        stroke: {
+                            value: [0, 0, 1, 1],
+                            conditions: [
+                                {
+                                    when: {
+                                        selection: "selected",
+                                        type: "single",
+                                        empty: false,
+                                    },
+                                    value: [0, 1, 0, 1],
+                                },
+                            ],
+                        },
+                    },
+                };
+                const dashed = renderer.createMark(ruleMark, dashConfig);
+                const dashDraws = [{ mark: dashed }];
+                const finiteEnd = await capture(
+                    [[40 * dpr, 8 * dpr]],
+                    dashDraws
+                );
+                dashed.selections.selected.set(17);
+                const selectedBorder = await capture(
+                    [[40 * dpr, 8 * dpr]],
+                    dashDraws
+                );
+                dashed.selections.selected.set(0);
+                const endPick = await renderer.pick(
+                    40 + 0.5 / dpr,
+                    8 + 0.5 / dpr
+                );
+                const roundCut = await capture(
+                    [[8 * dpr - 1, 24 * dpr - 3]],
+                    dashDraws
+                );
+                // At the acute corner q=(-3,sqrt(7)), this sample is 1.25px away.
+                const acuteCut = await capture([[24, 44]], dashDraws);
+                const gapPick = await renderer.pick(
+                    14 + 0.5 / dpr,
+                    24 + 0.5 / dpr
+                );
+                const scalar = renderer.createMark(ruleMark, {
+                    ...dashConfig,
+                    channels: {
+                        ...dashConfig.channels,
+                        strokeDashOffset: { value: 0, dynamic: true },
+                    },
+                });
+                await capture([], [{ mark: scalar }]);
+                const scalarGap = await renderer.pick(
+                    14 + 0.5 / dpr,
+                    24 + 0.5 / dpr
+                );
+                scalar.values.strokeDashOffset.set(2);
+                await capture([], [{ mark: scalar }]);
+                const scalarShift = await renderer.pick(
+                    14 + 0.5 / dpr,
+                    24 + 0.5 / dpr
+                );
+                dashData.strokeDashOffset.set([2, 2, 4]);
+                dashed.series.replace(dashData, 3);
+                await capture([], dashDraws);
+                const shiftedPick = await renderer.pick(
+                    14 + 0.5 / dpr,
+                    24 + 0.5 / dpr
+                );
+                dashData.strokeDash.fill(2);
+                dashed.series.replace(dashData, 3);
+                const allOff = await capture([[20 * dpr, 8 * dpr]], dashDraws);
+                const emptyPick = await renderer.pick(20, 8);
+                dashData.strokeDash.fill(3);
+                dashData.strokeWidth.fill(0);
+                dashData.strokeDashOffset.fill(250);
+                dashed.series.replace(dashData, 3);
+                const maxPeriod = await capture(
+                    [[13 * dpr, 8 * dpr]],
+                    dashDraws
+                );
+                const periodPick = await renderer.pick(
+                    13 + 0.5 / dpr,
+                    8 + 0.5 / dpr
+                );
                 return {
                     caps,
                     crossing,
-                    rejected,
+                    finiteEnd,
+                    selectedBorder,
+                    scalarGap,
+                    scalarShift,
+                    endPick,
+                    roundCut,
+                    acuteCut,
+                    gapPick,
+                    shiftedPick,
+                    allOff,
+                    emptyPick,
+                    maxPeriod,
+                    periodPick,
                     aligned,
                     collapsed,
                     composed,
@@ -329,9 +460,21 @@ for (const dpr of [1, 2]) {
             [[26, 128, 0, 153]],
             [[51, 102, 0, 153]],
         ]);
-        expect(result.rejected).toEqual(
-            Array(4).fill("Rule borders do not support dashPatterns yet.")
-        );
+        expect(result.finiteEnd).toEqual([[0, 0, 128, 128]]);
+        expect(result.endPick).toBe(17);
+        expect(result.selectedBorder).toEqual([[0, 128, 0, 128]]);
+        expect(result.scalarGap).toBeNull();
+        expect(result.scalarShift).toBe(18);
+        expect(result.roundCut).toEqual([[0, 0, 22, 22]]);
+        expect(result.acuteCut).toEqual([
+            [0, 0, dpr === 1 ? 64 : 0, dpr === 1 ? 64 : 0],
+        ]);
+        expect(result.gapPick).toBeNull();
+        expect(result.shiftedPick).toBe(18);
+        expect(result.allOff).toEqual([[0, 0, 0, 0]]);
+        expect(result.emptyPick).toBeNull();
+        expect(result.maxPeriod).toEqual([[0, 0, 0, 0]]);
+        expect(result.periodPick).toBeNull();
         expect(result.collapsed).toEqual([[0, 0, 255, 255]]);
         expect(result.composed).toEqual([
             [51, 0, 0, 51],

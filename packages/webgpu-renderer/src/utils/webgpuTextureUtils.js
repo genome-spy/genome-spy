@@ -89,6 +89,7 @@ function bytesPerPixelForFormat(format) {
             return 4;
         case "rg32float":
             return 8;
+        case "rgba8uint":
         case "rgba8unorm":
         case "rgba8unorm-srgb":
             return 4;
