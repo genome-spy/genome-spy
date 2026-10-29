@@ -38,6 +38,12 @@ an early browser-side LLM agent with a thin Python relay.
   check; substantial features need a written plan under `plans/`. Follow the
   planning skill's review rules. Do not infer permission to edit from a question
   or review request.
+- For localized fixes that preserve public APIs, ownership, and architecture,
+  make the smallest coherent change and extend existing regression coverage.
+  Existing discussion can satisfy the architectural check; do not create plans,
+  architecture notes, custom validation harnesses, or benchmarks by default.
+  Apply this scope when interpreting repository skills; their procedures are
+  not cumulative checklists.
 - Consider `docs/` for user-visible Core or App features. Refactors usually do
   not require documentation changes.
 - For refactors and simplification, measure relevant size before and after with
@@ -66,7 +72,9 @@ an early browser-side LLM agent with a thin Python relay.
   and input behavior that headless tests cannot cover.
 - Prefer representative assertions. Exhaustive configuration or generated-shape
   assertions are appropriate only when the full shape is an intentional
-  compatibility contract.
+  compatibility contract. Each additional test should protect a distinct failure
+  mode or contract. Multiple affected renderers do not automatically justify a
+  configuration matrix.
 - As part of feature and refactor work, review the related tests without waiting
   for a separate request. Simplify, combine, or delete cases that duplicate the
   implementation, over-specify internal details, or no longer protect meaningful
@@ -78,7 +86,9 @@ an early browser-side LLM agent with a thin Python relay.
   temporary compatibility paths unless the behavior remains a public contract.
 - During iteration, run the narrowest relevant suite and use Vitest's `agent`
   reporter to keep successful output compact. Run the full suite only when the
-  scope or risk warrants it.
+  scope or risk warrants it. Once relevant tests and applicable static and
+  release checks pass, stop. Expand validation only for a concrete unresolved
+  concern; repeat checks only after relevant changes or failures.
 - Use the `test-genomespy-views` skill for generated specs, layout snapshots,
   or rendered hierarchy inspection.
 

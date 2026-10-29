@@ -13,8 +13,12 @@ For implementation work, use the
 
 ## Check architectural fit
 
-Before implementation or design revisions, record a brief architecture check in
-existing notes or the plan. Routine fixes and docs do not need a formal plan.
+For localized fixes that preserve public APIs, ownership, and architecture,
+inspect ownership and affected callers. Existing discussion can satisfy this
+check; no written architecture record is required.
+
+For changes to contracts, ownership, or subsystem boundaries, record a brief
+architecture check in existing notes or the required plan:
 
 - Read `ARCHITECTURE.md`, applicable package instructions and current linked
   issues/reviews. Understand the package responsibility map, then trace affected
