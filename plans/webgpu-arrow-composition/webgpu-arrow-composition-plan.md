@@ -1,6 +1,6 @@
 # WebGPU arrow fill/stroke composition
 
-Status: implementation and final qualification complete; no PR opened.
+Status: implementation, final qualification and two independent reviews complete; no PR opened.
 Base: fresh master 22cc6b69. Part of #604; independent of PRs #622-#624; no stacking on their branches.
 No new dependencies. Future merges use squash.
 
@@ -185,16 +185,15 @@ The bounded proof is complete. The local shader correction and permanent GPU
 regressions are implemented. Four focused GPU tests pass without skips at DPR1/2,
 including the existing geometry suite. All 313 renderer unit tests, renderer
 types/lint and release-policy checks pass. Final production proof/performance
-and the existing story build/smoke also pass as recorded below. No independent review was requested for this implementation.
-Keep the repeat-layout limitation visible.
+and the existing story build/smoke also pass as recorded below. Two independent Sol implementation reviews found no actionable issues, as recorded
+below. Keep the repeat-layout limitation visible.
 No PR opened. Temporary runners, raw RGBA controls, source hashes/snapshots and
 results are retained outside Git in chat-local webgpu-arrow-plan-proof/.
 
 ## Implementation boundary
 
-The explicit plan request did not include independent review; the user has now
-authorized implementation after the completed bounded proof. Keep the proven
-local helper replacement. Permanent GPU tests complement existing arrow geometry
+Keep the proven local helper replacement. Permanent GPU tests complement
+existing arrow geometry
 coverage with numeric paint, stable transparent fill, live open-head/direction
 updates, hole/arm IDs, clipping and zero-length checks. Generic occurrence-order
 machinery is unchanged and remains qualified by the bounded integration proof;
@@ -245,3 +244,17 @@ Final production artifacts are retained outside Git in chat-local
 webgpu-arrow-implementation-proof/. No dependencies, Core, WebGL, points or
 rectangles changed. Plan remains for review on the branch and must be retired
 before squash merge. No PR opened.
+
+
+## Independent implementation reviews
+
+Two Sol reviewers inspected 22cc6b69..bfc16f81 for architectural fit, simplicity,
+rendering correctness and scope. Both reported no actionable findings. Ownership,
+public API, geometry, width-zero path, shared shade-alpha picking and original
+IDs remain intact; restored nominal-fill hits under transparent paint are intended.
+No dependency or other-mark changes were found. One reviewer independently passed
+types, focused lint, diff and release checks. The other reran all four focused GPU
+tests at DPR1/2 with zero skips and verified the corrected positive probe against
+archived master. Performance evidence was reviewed, not rerun. Existing tight-repeat
+layout and WebGL/Core normalization work remain separate. No production edits were
+needed following review. Retire this temporary plan before squash merge.
