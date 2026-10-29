@@ -192,7 +192,7 @@ describe("FigWigSource", () => {
         vi.restoreAllMocks();
     });
 
-    it("loads all tracks as exact missing-aware bins and preserves finite zeros and signed values", async () => {
+    it("loads fine views as missing-aware raw bins and preserves finite zeros and signed values", async () => {
         const { create } = createFixture();
         const { source, rows } = create();
         await source.requestInterval([0, 100]);
@@ -383,7 +383,7 @@ describe("FigWigSource", () => {
     it("reloads changed resolution in the same bounded window and retries failed loads", async () => {
         vi.spyOn(console, "error").mockImplementation(() => undefined);
         const { create, setAxisLength, statuses } = createFixture();
-        const { source } = create({ pixelsPerBin: 1 });
+        const { source } = create({ mode: "exact", pixelsPerBin: 1 });
         const domain = [1437, 2437];
         await source.requestInterval(domain);
         const regions = queries[0].regions;
@@ -505,10 +505,10 @@ describe("FigWigSource", () => {
         source.disposeSubtree();
     });
 
-    it("uses the finest summary at two pixels without requesting sub-tile bins", async () => {
+    it("defaults to fast mode and uses the finest summary at two pixels without requesting sub-tile bins", async () => {
         const { create, setAxisLength } = createFixture();
         setAxisLength(50);
-        const { source } = create({ mode: "fast", pixelsPerBin: 1 });
+        const { source } = create({ pixelsPerBin: 1 });
         await source.requestInterval([0, 3200]);
 
         expect(queries).toHaveLength(1);
@@ -623,7 +623,7 @@ describe("FigWigSource", () => {
         const { create, setAxisLength, statuses } = createFixture();
         setAxisLength(1);
         summariesAvailable = false;
-        const { source } = create({ mode: "fast" });
+        const { source } = create();
         await source.requestInterval([0, 1000]);
 
         expect(queries).toHaveLength(1);

@@ -116,11 +116,16 @@ GenomeSpy App can also use embedded track attributes as
 
 SCHEMA FigWigData
 
-Fast mode can keep the finest stored summary in use when it spans a few screen
-pixels, avoiding large raw reads at intermediate zoom levels. `maxSummaryPixels`
-controls this tradeoff independently of `pixelsPerBin`: exact mode and raw-data
-binning retain their requested resolution. Summary means treat missing bases as
-zero, so they can differ from exact means over observed bases.
+The default favors interactive browsing. Its coarser summaries can hide narrow
+features and change comparisons between tracks with different amounts of missing
+data. For example, ten observed bases scoring 10 in a 100-base bin have an
+observed-base mean of **10**, but a zero-filled summary mean of **1**. A wholly
+missing summary bin appears as zero rather than missing.
+
+Choose `mode: "exact"` when raw-derived, missing-aware bin means are required;
+broad views can then read substantial raw data. Statistics calculated from
+displayed bins, including brush summaries, still depend on binning and brush
+boundaries. At close zooms, both modes use the same raw queries and resolution.
 
 ### Example
 

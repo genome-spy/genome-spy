@@ -4,6 +4,7 @@
 
 <!-- category: improvement -->
 
-Use Figwig summaries at closer zoom levels in fast mode to avoid large raw-data
-reads. The new `maxSummaryPixels` option controls the detail tradeoff independently
-of raw-data binning; exact mode retains its existing resolution.
+Default Figwig browsing to fast mode and use summaries at closer zoom levels to
+avoid large raw-data reads. Summary values are approximate and treat missing
+bases as zero; set `mode: "exact"` for raw-derived, missing-aware bin means. The
+new `maxSummaryPixels` option controls summary detail independently of raw binning.

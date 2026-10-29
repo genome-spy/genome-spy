@@ -31,7 +31,7 @@ export default class FigWigSource extends IntervalUrlSource {
         const paramsWithDefaults = {
             pixelsPerBin: 2,
             maxSummaryPixels: 4,
-            mode: /** @type {const} */ ("exact"),
+            mode: /** @type {const} */ ("fast"),
             channel: /** @type {const} */ ("x"),
             debounce: 200,
             debounceMode: /** @type {const} */ ("window"),
