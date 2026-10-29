@@ -58,21 +58,18 @@ export function renderPointSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
+    const constantFill = group.getAttribute("fill");
+    const constantFillOpacity = group.getAttribute("fill-opacity");
+    const constantStroke = group.getAttribute("stroke");
+    const constantStrokeOpacity = group.getAttribute("stroke-opacity");
     const pointPathBuilder = createPointPathBuilder();
     return visitPointInstances(mark, properties, options, (instance) => {
         if (options.countOnly) {
             return;
         }
-        const {
-            datum,
-            shape,
-            x,
-            y,
-            geometryRadius,
-            angle,
-            strokeWidth,
-            lineShape,
-        } = instance;
+        const { datum, radius, geometryRadius, strokeWidth, lineShape } =
+            instance;
+        /** @type {Record<string, string | number>} */
         const styles = {
             ...encodeStyles(datum),
             ...(inwardStroke && !lineShape
@@ -82,66 +79,89 @@ export function renderPointSvg(baseMark, options) {
                 ? getLineShapeStyles(encoders, datum, viewOpacity)
                 : {}),
         };
-        const element = createPointElement(
-            shape,
-            x,
-            y,
-            geometryRadius,
-            styles,
-            pointPathBuilder
+        const strokeOpacity = +(
+            styles["stroke-opacity"] ?? constantStrokeOpacity
         );
-        if (!element) {
-            options.warn(
-                `SVG export rendered unsupported point shape "${shape}" as a circle.`
-            );
+        const hasStroke =
+            (styles.stroke ?? constantStroke) != "none" && strokeOpacity > 0;
+        const separateFill =
+            !lineShape &&
+            radius != geometryRadius &&
+            (!hasStroke || strokeOpacity < 1) &&
+            (styles.fill ?? constantFill) != "none" &&
+            +(styles["fill-opacity"] ?? constantFillOpacity) > 0;
+
+        if (separateFill) {
+            // Preserve the nominal fill without introducing per-point clips.
             group.appendChild(
-                createSvgElement("circle", {
-                    cx: formatSvgNumber(x),
-                    cy: formatSvgNumber(y),
-                    r: formatSvgNumber(geometryRadius),
-                    ...styles,
-                })
+                createPointElement(
+                    instance,
+                    radius,
+                    { ...styles, stroke: "none" },
+                    pointPathBuilder,
+                    options.warn
+                )
             );
-        } else {
-            if (angle) {
-                element.setAttribute(
-                    "transform",
-                    `rotate(${formatSvgNumber(angle)} ${formatSvgNumber(x)} ${formatSvgNumber(y)})`
-                );
-            }
-            group.appendChild(element);
+            styles.fill = "none";
+        }
+        if (!separateFill || hasStroke) {
+            group.appendChild(
+                createPointElement(
+                    instance,
+                    geometryRadius,
+                    styles,
+                    pointPathBuilder,
+                    options.warn
+                )
+            );
         }
     });
 }
 
 /**
- * @param {string} shape
- * @param {number} x
- * @param {number} y
+ * @param {import("../../immediate/marks/point.js").PointInstance} instance
  * @param {number} radius
  * @param {Record<string, string | number>} styles
  * @param {{build: (shape: string, x: number, y: number, radius: number) => string | undefined}} pointPathBuilder
- * @returns {SVGElement | undefined}
+ * @param {(message: string) => void} warn
+ * @returns {SVGElement}
  */
-function createPointElement(shape, x, y, radius, styles, pointPathBuilder) {
+function createPointElement(instance, radius, styles, pointPathBuilder, warn) {
+    const { shape, x, y, angle } = instance;
     const cx = formatSvgNumber(x);
     const cy = formatSvgNumber(y);
     const r = formatSvgNumber(radius);
 
+    let element;
     if (shape == "circle") {
-        return createSvgElement("circle", { cx, cy, r, ...styles });
+        element = createSvgElement("circle", { cx, cy, r, ...styles });
     } else if (shape == "square") {
-        return createSvgElement("rect", {
+        element = createSvgElement("rect", {
             x: formatSvgNumber(x - radius),
             y: formatSvgNumber(y - radius),
             width: formatSvgNumber(radius * 2),
             height: formatSvgNumber(radius * 2),
             ...styles,
         });
+    } else {
+        const path = pointPathBuilder.build(shape, x, y, radius);
+        if (path) {
+            element = createSvgElement("path", { d: path, ...styles });
+        } else {
+            warn(
+                `SVG export rendered unsupported point shape "${shape}" as a circle.`
+            );
+            element = createSvgElement("circle", { cx, cy, r, ...styles });
+        }
     }
 
-    const path = pointPathBuilder.build(shape, x, y, radius);
-    return path ? createSvgElement("path", { d: path, ...styles }) : undefined;
+    if (angle) {
+        element.setAttribute(
+            "transform",
+            `rotate(${formatSvgNumber(angle)} ${cx} ${cy})`
+        );
+    }
+    return element;
 }
 
 /**

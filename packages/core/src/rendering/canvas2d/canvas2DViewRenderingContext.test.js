@@ -789,10 +789,21 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(fill).toHaveBeenCalledTimes(3);
     });
 
-    test("draws points without per-datum save scopes", async () => {
+    test("preserves inward point fills without per-datum save scopes", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{ x: 0.25 }, { x: 0.75 }] },
-            mark: "point",
+            data: {
+                values: [0, 0.5, 1].map((strokeOpacity, index) => ({
+                    x: (index + 1) / 4,
+                    strokeOpacity,
+                })),
+            },
+            mark: {
+                type: "point",
+                inwardStroke: true,
+                fillOpacity: 0.75,
+                stroke: "blue",
+                strokeWidth: 4,
+            },
             encoding: {
                 x: {
                     field: "x",
@@ -802,6 +813,11 @@ describe("Canvas2DViewRenderingContext", () => {
                 y: { value: 0.5 },
                 size: { value: 400 },
                 fill: { value: "black" },
+                strokeOpacity: {
+                    field: "strokeOpacity",
+                    type: "quantitative",
+                    scale: null,
+                },
             },
         });
         const recording = createRecordingContext();
@@ -810,10 +826,16 @@ describe("Canvas2DViewRenderingContext", () => {
 
         expect(recording.calls.arcs).toEqual([
             [25, 50, 10],
-            [75, 50, 10],
+            [50, 50, 10],
+            [50, 50, 8],
+            [75, 50, 8],
         ]);
         expect(recording.calls.saves).toBe(1);
-        expect(recording.context.fill).toHaveBeenCalledTimes(2);
+        expect(recording.calls.fills).toEqual(Array(3).fill([0.75, "black"]));
+        expect(recording.calls.strokes).toEqual([
+            [0.5, "blue"],
+            [1, "blue"],
+        ]);
     });
 
     test("draws and rotates every point shape", async () => {

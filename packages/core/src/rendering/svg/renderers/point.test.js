@@ -209,7 +209,7 @@ describe("SVG point renderer", () => {
         expect(circles[0].getAttribute("cy")).toBe("50");
     });
 
-    test("keeps inward strokes within the encoded point diameter", async () => {
+    test("preserves inward point fills and stroke geometry", async () => {
         const { view } = await createHeadlessEngine({
             data: {
                 values: [
@@ -217,7 +217,22 @@ describe("SVG point renderer", () => {
                     { x: 0.5, shape: "circle", size: 100, strokeWidth: 8 },
                     { x: 0.8, shape: "x", size: 400, strokeWidth: 8 },
                     { x: 0.9, shape: "circle", size: 0, strokeWidth: 8 },
-                ],
+                    {
+                        x: 0.3,
+                        shape: "diamond",
+                        size: 400,
+                        strokeWidth: 4,
+                        strokeOpacity: 0.5,
+                        angle: 30,
+                    },
+                    {
+                        x: 0.4,
+                        shape: "circle",
+                        size: 400,
+                        strokeWidth: 4,
+                        strokeOpacity: 0,
+                    },
+                ].map((datum) => ({ strokeOpacity: 1, angle: 0, ...datum })),
             },
             mark: {
                 type: "point",
@@ -227,11 +242,17 @@ describe("SVG point renderer", () => {
                 x: { field: "x", type: "quantitative", scale: null },
                 y: { value: 0.5 },
                 shape: { field: "shape", type: "nominal", scale: null },
+                angle: { field: "angle", type: "quantitative", scale: null },
                 size: { field: "size", type: "quantitative", scale: null },
                 fill: { value: "#abcdef" },
                 stroke: { value: "#123456" },
                 strokeWidth: {
                     field: "strokeWidth",
+                    type: "quantitative",
+                    scale: null,
+                },
+                strokeOpacity: {
+                    field: "strokeOpacity",
                     type: "quantitative",
                     scale: null,
                 },
@@ -248,19 +269,69 @@ describe("SVG point renderer", () => {
         const circles = Array.from(pointGroup.querySelectorAll("circle"));
         const line = pointGroup.querySelector("path");
 
-        expect(pointGroup.children).toHaveLength(3);
+        expect(pointGroup.children).toHaveLength(6);
         expect(
-            circles.map((circle) => [
-                circle.getAttribute("r"),
-                circle.getAttribute("stroke-width"),
-            ])
+            circles
+                .slice(0, 2)
+                .map((circle) => [
+                    circle.getAttribute("r"),
+                    circle.getAttribute("stroke-width"),
+                ])
         ).toEqual([
             ["8", "4"],
             ["2.5", "5"],
         ]);
         expect(line?.getAttribute("d")).toBe("M 70 40 L 90 60 M 90 40 L 70 60");
         expect(line?.getAttribute("stroke-width")).toBe("8");
+        expect(circles[2].getAttribute("r")).toBe("10");
+        expect(circles[2].getAttribute("stroke")).toBe("none");
+
+        const diamond = Array.from(pointGroup.querySelectorAll("path")).slice(
+            1
+        );
+        // The full fill and inset stroke must share the encoded rotation.
+        expect(
+            diamond.map((path) => path.getAttribute("d").split(" L")[0])
+        ).toEqual(["M 30 40", "M 30 42"]);
+        expect(diamond[0].getAttribute("stroke")).toBe("none");
+        expect(diamond[1].getAttribute("fill")).toBe("none");
+        expect(diamond.map((path) => path.getAttribute("transform"))).toEqual([
+            "rotate(30 30 50)",
+            "rotate(30 30 50)",
+        ]);
         expect(warnings).toEqual([]);
+    });
+
+    test("preserves inward fill when constant stroke opacity inherits view opacity", async () => {
+        const { view } = await createHeadlessEngine({
+            opacity: 0.5,
+            data: { values: [{}] },
+            mark: {
+                type: "point",
+                inwardStroke: true,
+                fill: "red",
+                stroke: "blue",
+                strokeWidth: 4,
+                size: 400,
+            },
+        });
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const group = svg.querySelector('[data-mark-type="point"]');
+        const circles = Array.from(group.querySelectorAll("circle"));
+
+        expect(group.getAttribute("stroke-opacity")).toBe("0.5");
+        expect(group.getAttribute("fill-opacity")).toBe("0.5");
+        expect(circles.map((circle) => circle.getAttribute("r"))).toEqual([
+            "10",
+            "8",
+        ]);
+        expect(circles[0].getAttribute("stroke")).toBe("none");
+        expect(circles[1].getAttribute("fill")).toBe("none");
     });
 
     test("reports resolved unsupported properties separately", async () => {
