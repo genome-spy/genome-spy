@@ -571,13 +571,23 @@ export interface FigWigData extends DebouncedData {
     tracks?: string[] | ExprRef;
 
     /**
-     * Signal query mode. `"exact"` computes full-value means while omitting
-     * NaNs. `"fast"` uses rounded summaries at tile resolution and coarser,
-     * treating missing bases as zero. It uses exact queries at finer scales
-     * and fails if required coarse summaries are unavailable. Fast means,
-     * including brush-derived statistics, are approximate and diluted by gaps.
+     * Signal query mode. `"fast"` favors interactive browsing by using rounded
+     * summaries when their resolution meets `pixelsPerBin` or the finest
+     * summary fits within `maxSummaryPixels`. Summary bins can be coarser than
+     * requested, smoothing narrow features. NaNs contribute zero: wholly
+     * missing bins appear as zero, and partial coverage pulls means toward zero.
+     * Values and statistics derived from summary rows, including brush
+     * summaries, are approximate and can change with zoom level. If required
+     * summaries are unavailable, loading fails without a raw-data fallback.
+     * At finer zooms, fast mode uses the same raw queries and resolution as
+     * exact mode.
      *
-     * __Default value:__ `"exact"`
+     * `"exact"` computes bin means from raw values while omitting NaNs. Use it
+     * when missing-aware bin means are required; broad views can transfer and
+     * decode substantial raw data. Both modes emit bins, so exact mode does
+     * not make arbitrary brush-region statistics exact.
+     *
+     * __Default value:__ `"fast"`
      */
     mode?: "exact" | "fast" | ExprRef;
 
@@ -591,6 +601,18 @@ export interface FigWigData extends DebouncedData {
      * __Default value:__ `2`
      */
     pixelsPerBin?: number | ExprRef;
+
+    /**
+     * Maximum screen width of the finest summary bin when fast mode would
+     * otherwise request finer raw bins. Must be nonnegative. Larger values
+     * keep summaries in use closer to the data, reducing reads while smoothing
+     * smaller features. Set to zero to require summaries to meet the `pixelsPerBin`
+     * target. Coarser requested bins still follow `pixelsPerBin`.
+     * Does not change exact mode or raw-data binning.
+     *
+     * __Default value:__ `4`
+     */
+    maxSummaryPixels?: number | ExprRef;
 }
 
 export interface BigBedData extends DebouncedData {
