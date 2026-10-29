@@ -1,6 +1,6 @@
 # WebGPU arrow fill/stroke composition
 
-Status: bounded correctness/performance proof complete; no production edits.
+Status: local shader fix and focused regressions implemented; final integration qualification pending.
 Base: fresh master 22cc6b69. Part of #604; independent of PRs #622-#624; no stacking on their branches.
 No new dependencies. Future merges use squash.
 
@@ -182,10 +182,41 @@ measure before opening a PR. Reuse current shape distances and existing
 premultiplied paint; replace only the centered branch of local distanceToColor.
 No alignment API, shared framework, geometry/picking workaround or dependencies.
 
-The proof is complete, but production implementation, permanent tests,
-existing-arrow-suite rerun, unit/types/lint and story build/smoke are not yet
-performed. Plan review has not been requested; offer independent reviews before
-implementation. Keep open-head/opaque picking controls and the transparent-hit
-correction in permanent regressions. Keep the repeat-layout limitation visible.
+The bounded proof is complete. The local shader correction and permanent GPU
+regressions are implemented. Four focused GPU tests pass without skips at DPR1/2,
+including the existing geometry suite. All 313 renderer unit tests, renderer
+types/lint and release-policy checks pass. Final production proof/performance
+and the existing story build/smoke remain pending. No independent review was
+requested for this implementation. Keep the repeat-layout limitation visible.
 No PR opened. Temporary runners, raw RGBA controls, source hashes/snapshots and
 results are retained outside Git in chat-local webgpu-arrow-plan-proof/.
+
+
+## Implementation boundary
+
+The explicit plan request did not include independent review; the user has now
+authorized implementation after the completed bounded proof. Keep the proven
+local helper replacement. Permanent GPU tests complement existing arrow geometry
+coverage with numeric paint, stable transparent fill, live open-head/direction
+updates, hole/arm IDs, clipping and zero-length checks. Generic occurrence-order
+machinery is unchanged and remains qualified by the bounded integration proof;
+do not duplicate that full fixture merely to mirror every proof observation.
+
+
+## Implementation checkpoint
+
+Master fails both new numeric paint regressions by 64 bytes in a channel. The
+corrected production helper passes the independent pixel expectations and the
+transparent-fill, original-ID, hollow-head, clipping and zero-length controls.
+No geometry, resource, API or picking policy was changed.
+
+The preexisting geometry suite also failed on untouched master: (12,10) samples
+empty space outside the left head's diagonal while expecting ID41. Move that
+positive probe to (18,14) inside the upper wing, preserving the asserted ID.
+Both unchanged master and the corrected shader pass this probe at DPR1/2. This
+one-line fixture correction makes five delivery files instead of the original
+four; keep the <=250 added-line target. Avoid unrelated formatting changes.
+
+Release assessment: unpublished WebGPU prototype only; no new fragment. Release
+policy is valid; existing unrelated fragments still schedule the eight-package
+fixed group's minor release. No package/dependency/lockfile modifications.
