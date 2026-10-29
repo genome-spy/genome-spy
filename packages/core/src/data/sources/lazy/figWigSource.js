@@ -214,48 +214,13 @@ export default class FigWigSource extends IntervalUrlSource {
             };
         });
         const requestedRegions = regions.filter((r) => r.end > r.start);
-        if (useSummaries && requestedRegions.length) {
-            const selected = tracks
-                ? await reader.selectTracks(tracks, { signal })
-                : await reader.getTracks({ signal });
-            const groups = Array.from(new Set(selected.map((t) => t.group)));
-            const levels = await reader.getZoomLevels({ tracks, signal });
-
-            // The published reader falls back to raw values. Check the summaries
-            // it would select first, preserving fast mode's bounded coarse reads.
-            await Promise.all(
-                requestedRegions.flatMap((region) =>
-                    groups.map(async (group) => {
-                        const level = levels.findLast(
-                            (level) =>
-                                level.groups.includes(group) &&
-                                region.start % level.binSize === 0 &&
-                                binSize % level.binSize === 0 &&
-                                (region.end % level.binSize === 0 ||
-                                    region.end ===
-                                        chromosomeLengths.get(
-                                            region.chromosome
-                                        ))
-                        );
-                        const summary = await reader.getSummary(
-                            group,
-                            level?.level ?? 0,
-                            { signal }
-                        );
-                        if (!summary.available) {
-                            throw new Error("Required summaries unavailable");
-                        }
-                    })
-                )
-            );
-        }
 
         const batches = await reader.getBinsMulti(requestedRegions, {
             tracks,
             binSize,
             aggregation: "mean",
             missing: useSummaries ? "zero" : "omit",
-            useSummaries,
+            requireSummaries: useSummaries,
             signal,
         });
 
