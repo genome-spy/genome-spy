@@ -1,6 +1,6 @@
 # WebGPU arrow fill/stroke composition
 
-Status: local shader fix and focused regressions implemented; final integration qualification pending.
+Status: implementation and final qualification complete; no PR opened.
 Base: fresh master 22cc6b69. Part of #604; independent of PRs #622-#624; no stacking on their branches.
 No new dependencies. Future merges use squash.
 
@@ -85,7 +85,6 @@ Canvas/SVG/text effects, point/rectangle changes, min-size/zero-size or repeat
 geometry redesign, picking-policy changes or dependencies. Preserve geometry;
 if proof requires changing it, stop and revise the split before implementation.
 
-
 ## Bounded proof results (2026-10-29)
 
 Chrome156.0.8078.73, Apple/Metal-3, public createRenderer + arrowMark, 64x64
@@ -93,7 +92,7 @@ logical canvas, DPR1/2, rgba8unorm submitted texture readback. The baseline
 imports production sources. The experiment substitutes exactly one arrowProgram
 module containing the local paint-helper replacement; every vertex, distance,
 resource and picking implementation still uses the production path. Candidate
-runtime estimate is +6/-2 WGSL lines; repository sources are untouched.
+runtime estimate was +6/-2 WGSL lines; that bounded proof left sources untouched.
 
 Independent stem oracle: endpoints(8,cy)..(56,cy), cy=32+.5/DPR, size=8-.25/DPR,
 w=.25/DPR, sample physical(32*DPR,36*DPR). This is away from heads/notches,
@@ -186,11 +185,10 @@ The bounded proof is complete. The local shader correction and permanent GPU
 regressions are implemented. Four focused GPU tests pass without skips at DPR1/2,
 including the existing geometry suite. All 313 renderer unit tests, renderer
 types/lint and release-policy checks pass. Final production proof/performance
-and the existing story build/smoke remain pending. No independent review was
-requested for this implementation. Keep the repeat-layout limitation visible.
+and the existing story build/smoke also pass as recorded below. No independent review was requested for this implementation.
+Keep the repeat-layout limitation visible.
 No PR opened. Temporary runners, raw RGBA controls, source hashes/snapshots and
 results are retained outside Git in chat-local webgpu-arrow-plan-proof/.
-
 
 ## Implementation boundary
 
@@ -201,7 +199,6 @@ coverage with numeric paint, stable transparent fill, live open-head/direction
 updates, hole/arm IDs, clipping and zero-length checks. Generic occurrence-order
 machinery is unchanged and remains qualified by the bounded integration proof;
 do not duplicate that full fixture merely to mirror every proof observation.
-
 
 ## Implementation checkpoint
 
@@ -220,3 +217,31 @@ four; keep the <=250 added-line target. Avoid unrelated formatting changes.
 Release assessment: unpublished WebGPU prototype only; no new fragment. Release
 policy is valid; existing unrelated fragments still schedule the eight-package
 fixed group's minor release. No package/dependency/lockfile modifications.
+
+## Final production qualification
+
+The final source equals the proven helper replacement byte for byte. A fresh
+actual-path run serves the candidate normally and substitutes archived master
+only for the baseline. All 14 independent numeric samples are exact; width-zero
+images, opaque support, original IDs, retained series/paint/direction updates,
+open holes, occurrence order and clipping pass with no GPU/browser errors.
+The documented tight-repeat geometry limit remains; no workaround was added.
+
+All 16 paired performance cases meet max(10%,0.2ms), with 5 warmups and 30
+alternating samples and no concurrent GPU work. Largest increase is about .1ms:
+100k arrows, DPR2, width1, triangle/open, 4.5->4.6ms (budget .45ms).
+
+The existing arrow scene now uses strokeOpacity .5. Storybook builds and its
+built arrow story completes GPU setup and renders at DPR1/2 with correct backing
+sizes and no application/validation console errors. The static harness supplies
+an empty favicon; generated build artifacts stay outside Git. Existing build
+chunk-size warnings are unchanged. Renderer lint/types, 313 unit tests, four
+focused GPU tests (zero skips), formatting, diff checks and release checks pass.
+
+Exact cumulative diff from 22cc6b69, excluding this temporary plan: five files,
++245/-3 raw lines, net +242. Runtime shader alone is +6/-2, net +4. The additional
+geometry test file changes one probe, qualified independently against master.
+Final production artifacts are retained outside Git in chat-local
+webgpu-arrow-implementation-proof/. No dependencies, Core, WebGL, points or
+rectangles changed. Plan remains for review on the branch and must be retired
+before squash merge. No PR opened.
