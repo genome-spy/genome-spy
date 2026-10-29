@@ -1,6 +1,6 @@
 # WebGPU arrow fill/stroke composition
 
-Status: implementation, final qualification and two independent reviews complete; no PR opened.
+Status: implementation, final qualification and two independent reviews complete; draft PR delivery.
 Base: fresh master 22cc6b69. Part of #604; independent of PRs #622-#624; no stacking on their branches.
 No new dependencies. Future merges use squash.
 
@@ -51,7 +51,7 @@ numeric paint assertions and representative retained interactions, not another
 configuration matrix. Build/smoke the existing arrow story if edited. Before
 implementation confirm backend ownership, Core consumer and invariants below;
 run relevant unit/GPU/type/lint/release checks for delivery. Retain the plan in
-a draft and retire before merge. Do not open a PR during this planning task.
+a draft and retire before squash merge.
 
 ## Proof gates before production changes
 
@@ -187,7 +187,7 @@ including the existing geometry suite. All 313 renderer unit tests, renderer
 types/lint and release-policy checks pass. Final production proof/performance
 and the existing story build/smoke also pass as recorded below. Two independent Sol implementation reviews found no actionable issues, as recorded
 below. Keep the repeat-layout limitation visible.
-No PR opened. Temporary runners, raw RGBA controls, source hashes/snapshots and
+Temporary runners, raw RGBA controls, source hashes/snapshots and
 results are retained outside Git in chat-local webgpu-arrow-plan-proof/.
 
 ## Implementation boundary
@@ -243,7 +243,7 @@ geometry test file changes one probe, qualified independently against master.
 Final production artifacts are retained outside Git in chat-local
 webgpu-arrow-implementation-proof/. No dependencies, Core, WebGL, points or
 rectangles changed. Plan remains for review on the branch and must be retired
-before squash merge. No PR opened.
+before squash merge.
 
 
 ## Independent implementation reviews
