@@ -116,6 +116,12 @@ GenomeSpy App can also use embedded track attributes as
 
 SCHEMA FigWigData
 
+Fast mode can keep the finest stored summary in use when it spans a few screen
+pixels, avoiding large raw reads at intermediate zoom levels. `maxSummaryPixels`
+controls this tradeoff independently of `pixelsPerBin`: exact mode and raw-data
+binning retain their requested resolution. Summary means treat missing bases as
+zero, so they can differ from exact means over observed bases.
+
 ### Example
 
 This [sample collection](../../sample-collections/visualizing.md) source follows

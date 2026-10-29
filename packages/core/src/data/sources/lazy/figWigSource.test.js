@@ -102,6 +102,7 @@ function createFixture() {
     const setPixels = paramRuntime.allocateSetter("pixels", 1);
     const setUrl = paramRuntime.allocateSetter("signalUrl", "signals.fw");
     const setMode = paramRuntime.allocateSetter("signalMode", "exact");
+    const setMaxSummaryPixels = paramRuntime.allocateSetter("summaryPixels", 4);
     const genome = {
         totalSize: 4000,
         continuousToDiscreteChromosomeIntervals: (
@@ -163,6 +164,7 @@ function createFixture() {
         setPixels,
         setUrl,
         setMode,
+        setMaxSummaryPixels,
         setDomain: (/** @type {number[]} */ value) => {
             domain = value;
         },
@@ -462,6 +464,7 @@ describe("FigWigSource", () => {
             mode: { expr: "signalMode" },
             tracks: { expr: "visibleSamples" },
             pixelsPerBin: 1,
+            maxSummaryPixels: 0,
         });
         await source.requestInterval([0, 3000]);
         expect(queries.at(-1).options).toMatchObject({
@@ -502,6 +505,119 @@ describe("FigWigSource", () => {
         source.disposeSubtree();
     });
 
+    it("uses the finest summary at two pixels without requesting sub-tile bins", async () => {
+        const { create, setAxisLength } = createFixture();
+        setAxisLength(50);
+        const { source } = create({ mode: "fast", pixelsPerBin: 1 });
+        await source.requestInterval([0, 3200]);
+
+        expect(queries).toHaveLength(1);
+        expect(queries[0].options).toMatchObject({
+            binSize: 128,
+            missing: "zero",
+            requireSummaries: true,
+        });
+        source.disposeSubtree();
+    });
+
+    it("switches from summaries at the actual four-pixel boundary rather than rounded raw bin width", async () => {
+        const { create } = createFixture();
+        const { source } = create({ mode: "fast", pixelsPerBin: 1 });
+        await source.requestInterval([0, 3200]);
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 128,
+            requireSummaries: true,
+        });
+
+        // Both spans request 32-base raw bins, but a summary exceeds four pixels
+        // at 3199 bases. The summary threshold uses the unrounded viewport scale.
+        await source.requestInterval([0, 3199]);
+        expect(queries).toHaveLength(2);
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 32,
+            missing: "omit",
+            requireSummaries: false,
+        });
+        source.disposeSubtree();
+    });
+
+    it.each([
+        [
+            "exact resolution",
+            { mode: "exact", pixelsPerBin: 1 },
+            3200,
+            32,
+            false,
+        ],
+        [
+            "fine raw resolution",
+            { mode: "fast", pixelsPerBin: 2 },
+            800,
+            16,
+            false,
+        ],
+        [
+            "explicitly coarse resolution",
+            { mode: "fast", pixelsPerBin: 16, maxSummaryPixels: 1 },
+            1600,
+            256,
+            true,
+        ],
+    ])(
+        "preserves %s independently of the summary limit",
+        async (_name, params, span, binSize, required) => {
+            const { create } = createFixture();
+            const { source } = create(
+                /** @type {Partial<import("../../../spec/data.js").FigWigData>} */ (
+                    params
+                )
+            );
+            await source.requestInterval([0, /** @type {number} */ (span)]);
+
+            expect(queries.at(-1).options).toMatchObject({
+                binSize,
+                missing: required ? "zero" : "omit",
+                requireSummaries: required,
+            });
+            source.disposeSubtree();
+        }
+    );
+
+    it("reactively disables and restores early summaries without reopening the reader", async () => {
+        const { create, setDomain, setMaxSummaryPixels, paramRuntime } =
+            createFixture();
+        setDomain([0, 3200]);
+        const { source } = create({
+            mode: "fast",
+            pixelsPerBin: 1,
+            maxSummaryPixels: { expr: "summaryPixels" },
+        });
+        await source.requestInterval([0, 3200]);
+        expect(queries.at(-1).options.requireSummaries).toBe(true);
+
+        setMaxSummaryPixels(0);
+        await paramRuntime.whenPropagated();
+        expect(source.isDataReadyForDomain({ x: [0, 3200] })).toBe(false);
+        await vi.runAllTimersAsync();
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 32,
+            missing: "omit",
+            requireSummaries: false,
+        });
+
+        setMaxSummaryPixels(4);
+        await vi.runAllTimersAsync();
+        expect(queries).toHaveLength(3);
+        expect(queries.at(-1).options).toMatchObject({
+            binSize: 128,
+            missing: "zero",
+            requireSummaries: true,
+        });
+        expect(readers).toHaveLength(1);
+        expect(readers[0].getHeader).toHaveBeenCalledTimes(1);
+        source.disposeSubtree();
+    });
+
     it("reports unavailable required summaries without issuing an exact fallback query", async () => {
         vi.spyOn(console, "error").mockImplementation(() => undefined);
         const { create, setAxisLength, statuses } = createFixture();
@@ -525,6 +641,9 @@ describe("FigWigSource", () => {
 
     it.each([
         [{ pixelsPerBin: 0 }, "pixelsPerBin"],
+        [{ maxSummaryPixels: -1 }, "maxSummaryPixels"],
+        [{ maxSummaryPixels: NaN }, "maxSummaryPixels"],
+        [{ maxSummaryPixels: { expr: "1 / 0" } }, "maxSummaryPixels"],
         [{ mode: "approximate" }, "mode must be"],
         [{ tracks: { expr: "42" } }, "array of track names"],
         [{ tracks: ["missing"] }, "Unknown track"],

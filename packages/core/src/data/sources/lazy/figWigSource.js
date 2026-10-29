@@ -30,6 +30,7 @@ export default class FigWigSource extends IntervalUrlSource {
     constructor(params, view) {
         const paramsWithDefaults = {
             pixelsPerBin: 2,
+            maxSummaryPixels: 4,
             mode: /** @type {const} */ ("exact"),
             channel: /** @type {const} */ ("x"),
             debounce: 200,
@@ -47,6 +48,7 @@ export default class FigWigSource extends IntervalUrlSource {
                 } else if (
                     props.has("tracks") ||
                     props.has("pixelsPerBin") ||
+                    props.has("maxSummaryPixels") ||
                     props.has("mode")
                 ) {
                     this.invalidateData();
@@ -102,6 +104,12 @@ export default class FigWigSource extends IntervalUrlSource {
         if (!Number.isFinite(pixelsPerBin) || pixelsPerBin <= 0) {
             throw new Error("Figwig pixelsPerBin must be a positive number.");
         }
+        const maxSummaryPixels = withoutExprRef(this.params.maxSummaryPixels);
+        if (!Number.isFinite(maxSummaryPixels) || maxSummaryPixels < 0) {
+            throw new Error(
+                "Figwig maxSummaryPixels must be a nonnegative number."
+            );
+        }
         const tracks = withoutExprRef(this.params.tracks);
         if (
             tracks !== undefined &&
@@ -116,15 +124,21 @@ export default class FigWigSource extends IntervalUrlSource {
         }
 
         const length = this.scaleResolution.getAxisLength() || 700;
+        const basesPerPixel = (domain[1] - domain[0]) / length;
         const desiredBinSize = Math.max(
             1,
-            Math.ceil(((domain[1] - domain[0]) / length) * pixelsPerBin)
+            Math.ceil(basesPerPixel * pixelsPerBin)
         );
         const useSummaries =
-            mode === "fast" && desiredBinSize >= handle.tileSize;
+            mode === "fast" &&
+            (desiredBinSize >= handle.tileSize ||
+                handle.tileSize / basesPerPixel <= maxSummaryPixels);
         const binSize = useSummaries
             ? handle.tileSize *
-              2 ** Math.ceil(Math.log2(desiredBinSize / handle.tileSize))
+              2 **
+                  Math.ceil(
+                      Math.log2(Math.max(1, desiredBinSize / handle.tileSize))
+                  )
             : desiredBinSize;
         // Keep small-pan coverage without decoding wide, potentially dense gaps.
         // Cap each side's quantization padding at one eighth of the viewport.

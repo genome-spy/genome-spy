@@ -572,9 +572,10 @@ export interface FigWigData extends DebouncedData {
 
     /**
      * Signal query mode. `"exact"` computes full-value means while omitting
-     * NaNs. `"fast"` uses rounded summaries at tile resolution and coarser,
+     * NaNs. `"fast"` uses rounded summaries when their resolution meets
+     * `pixelsPerBin` or the finest summary fits within `maxSummaryPixels`,
      * treating missing bases as zero. It uses exact queries at finer scales
-     * and fails if required coarse summaries are unavailable. Fast means,
+     * and fails if required summaries are unavailable. Fast means,
      * including brush-derived statistics, are approximate and diluted by gaps.
      *
      * __Default value:__ `"exact"`
@@ -591,6 +592,18 @@ export interface FigWigData extends DebouncedData {
      * __Default value:__ `2`
      */
     pixelsPerBin?: number | ExprRef;
+
+    /**
+     * Maximum screen width of the finest summary bin when fast mode would
+     * otherwise request finer raw bins. Must be nonnegative. Larger values
+     * keep summaries in use closer to the data, trading detail for smaller
+     * reads. Set to zero to require summaries to meet the `pixelsPerBin`
+     * target. Coarser requested bins still follow `pixelsPerBin`.
+     * Does not change exact mode or raw-data binning.
+     *
+     * __Default value:__ `4`
+     */
+    maxSummaryPixels?: number | ExprRef;
 }
 
 export interface BigBedData extends DebouncedData {
