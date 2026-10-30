@@ -16,7 +16,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @property {import("../../shaders/channelIR.js").CompiledMarkChannels} compiledChannels
  * @property {Array<{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
  * @property {string} shaderBody
- * @property {boolean} [usesPickingEnabledOverride] Whether the mark shader uses the pickingEnabled WGSL override.
+ * @property {boolean} [usesPickingEnabledInVertex] Whether the vertex shader uses the pickingEnabled WGSL override.
  * @property {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @property {Array<{ name: string, type: import("../../../index.d.ts").SelectionType, targets?: Array<{ input: string, secondaryInput?: string, hitTest?: "intersects"|"encloses"|"endpoints", scalarType?: import("../../../types.js").ScalarType, secondaryScalarType?: import("../../../types.js").ScalarType }> }>} [selectionDefs]
  * @property {import("../../../index.d.ts").VisibilityPredicate} [visibleWhen]
@@ -43,7 +43,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @param {GPUTextureFormat} pickFormat
  * @param {GPUPrimitiveTopology} primitiveTopology
  * @param {boolean} usesPlacementLayout
- * @param {boolean} usesPickingEnabledOverride
+ * @param {boolean} usesPickingEnabledInVertex
  * @returns {string}
  */
 function createDescriptorKey(
@@ -52,7 +52,7 @@ function createDescriptorKey(
     pickFormat,
     primitiveTopology,
     usesPlacementLayout,
-    usesPickingEnabledOverride
+    usesPickingEnabledInVertex
 ) {
     return JSON.stringify([
         resourceBindings,
@@ -60,7 +60,7 @@ function createDescriptorKey(
         pickFormat,
         primitiveTopology,
         usesPlacementLayout,
-        usesPickingEnabledOverride,
+        usesPickingEnabledInVertex,
     ]);
 }
 
@@ -79,7 +79,7 @@ export function buildPipelines({
     compiledChannels,
     uniformLayout,
     shaderBody,
-    usesPickingEnabledOverride = false,
+    usesPickingEnabledInVertex = false,
     packedSeriesLayout,
     selectionDefs,
     visibleWhen,
@@ -144,7 +144,7 @@ export function buildPipelines({
         pickFormat,
         primitiveTopology,
         usesPlacementLayout,
-        usesPickingEnabledOverride
+        usesPickingEnabledInVertex
     );
 
     const template = cache.getOrCreate(shaderCode, descriptorKey, (id) => {
@@ -231,8 +231,9 @@ export function buildPipelines({
         let pickPipeline;
         const getPickPipeline = () => {
             // Safari fails native compilation when a stage receives an unused
-            // specialization constant. Only link geometry needs this override.
-            const constants = usesPickingEnabledOverride
+            // specialization constant. All pick fragments use it, but vertex
+            // geometry/culling only needs it for some marks.
+            const constants = usesPickingEnabledInVertex
                 ? { pickingEnabled: 1 }
                 : undefined;
             pickPipeline ??= device.createRenderPipeline({
@@ -241,7 +242,7 @@ export function buildPipelines({
                 vertex: { ...common.vertex, constants },
                 fragment: {
                     module,
-                    constants,
+                    constants: { pickingEnabled: 1 },
                     entryPoint: "fs_pick",
                     targets: [
                         {

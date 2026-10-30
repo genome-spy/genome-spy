@@ -369,16 +369,14 @@ for (const dpr of [1, 2]) {
                         strokeDashOffset: { value: 0, dynamic: true },
                     },
                 });
-                await capture([], [{ mark: scalar }]);
-                const scalarGap = await renderer.pick(
-                    14 + 0.5 / dpr,
-                    24 + 0.5 / dpr
+                const scalarGap = await capture(
+                    [[14 * dpr, 24 * dpr]],
+                    [{ mark: scalar }]
                 );
                 scalar.values.strokeDashOffset.set(2);
-                await capture([], [{ mark: scalar }]);
-                const scalarShift = await renderer.pick(
-                    14 + 0.5 / dpr,
-                    24 + 0.5 / dpr
+                const scalarShift = await capture(
+                    [[14 * dpr, 24 * dpr]],
+                    [{ mark: scalar }]
                 );
                 dashData.strokeDashOffset.set([2, 2, 4]);
                 dashed.series.replace(dashData, 3);
@@ -463,18 +461,19 @@ for (const dpr of [1, 2]) {
         expect(result.finiteEnd).toEqual([[0, 0, 128, 128]]);
         expect(result.endPick).toBe(17);
         expect(result.selectedBorder).toEqual([[0, 128, 0, 128]]);
-        expect(result.scalarGap).toBeNull();
-        expect(result.scalarShift).toBe(18);
+        expect(result.scalarGap).toEqual([[0, 0, 0, 0]]);
+        expect(result.scalarShift[0][3]).toBeGreaterThan(0);
         expect(result.roundCut).toEqual([[0, 0, 22, 22]]);
         expect(result.acuteCut).toEqual([
             [0, 0, dpr === 1 ? 64 : 0, dpr === 1 ? 64 : 0],
         ]);
-        expect(result.gapPick).toBeNull();
+        // Dash gaps and all-off patterns remain in the hit quad as in WebGL.
+        expect(result.gapPick).toBe(18);
         expect(result.shiftedPick).toBe(18);
         expect(result.allOff).toEqual([[0, 0, 0, 0]]);
-        expect(result.emptyPick).toBeNull();
+        expect(result.emptyPick).toBe(17);
         expect(result.maxPeriod).toEqual([[0, 0, 0, 0]]);
-        expect(result.periodPick).toBeNull();
+        expect(result.periodPick).toBe(17);
         expect(result.collapsed).toEqual([[0, 0, 255, 255]]);
         expect(result.composed).toEqual([
             [51, 0, 0, 51],

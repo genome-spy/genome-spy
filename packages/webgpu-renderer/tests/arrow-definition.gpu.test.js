@@ -113,9 +113,9 @@ for (const dpr of [1, 2]) {
                 [12, 20],
                 [64, 20],
                 [116, 20],
-                [18, 14], // Probe the upper wing inside its diagonal edge.
+                [18, 14], // Painted antialiasing fringe outside the hit silhouette.
                 [12, 0],
-                [12, 48],
+                [4, 38], // Probe the interior of the left head's upper wing.
                 [64, 48],
                 [116, 48],
                 [12, 76],
@@ -138,7 +138,7 @@ for (const dpr of [1, 2]) {
             41,
             41,
             41,
-            41,
+            null,
             null,
             42,
             null,

@@ -189,9 +189,8 @@ for (const dpr of [1, 2]) {
                 const updated = pixel(await capture(draws), 25 * dpr, 32 * dpr);
                 await capture();
                 const picks = [];
-                for (const x of [32, 15, 12])
+                for (const x of [32, 16, 12])
                     picks.push(await renderer.pick(x, 32));
-                // Shadow picking is an existing policy, deliberately outside this fix.
                 set({ shadowOpacity: 1 });
                 const shadow = pixel(await capture(), 54 * dpr, 32 * dpr);
                 set({ fillOpacity: 0, strokeOpacity: 0 });

@@ -125,8 +125,11 @@ ${
     }`
         : ""
 }
-    if (layerColor.a <= 0.0 || opacity * layerOpacityMultiplier <= 0.0 ||
-            (layer == TEXT_LAYER_OUTLINE && layerExtent <= 0.0)) {
+    if (pickingEnabled && layer != TEXT_LAYER_FILL) {
+        return culledText();
+    }
+    if (!pickingEnabled && (layerColor.a <= 0.0 || opacity * layerOpacityMultiplier <= 0.0 ||
+            (layer == TEXT_LAYER_OUTLINE && layerExtent <= 0.0))) {
         return culledText();
     }`
         : /* wgsl */ `
@@ -810,6 +813,8 @@ ${outlineShading}
 
 // Picking intentionally ignores edge fading, like the WebGL renderer.
 fn shade(in: VSOut) -> vec4<f32> {
+    // Like WebGL, pick glyph quads, including counters and transparent paint.
+    if (pickingEnabled) { return vec4<f32>(1.0); }
     return shadeBase(in, 1.0);
 }
 
@@ -956,6 +961,10 @@ function outlineAtlasResource(atlas) {
 }
 
 export default class TextProgram extends BaseProgram {
+    get usesPickingEnabledInVertex() {
+        return /** @type {TextEffects} */ (this._markConfig.effects).enabled;
+    }
+
     get propertySlotDefinitions() {
         return {
             viewport: {
