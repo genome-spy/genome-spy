@@ -1,7 +1,7 @@
 {
   "description": [
     "Select cell types and activation states",
-    "Click legend entries to focus categories. Shift-click toggles; double-click an entry clears that legend. Coordinates, cell types, and activation states are synthetic."
+    "Click legend entries to focus categories. Shift-click toggles; click the chart background to reset both legends. Coordinates, cell types, and activation states are synthetic."
   ],
 
   "title": {

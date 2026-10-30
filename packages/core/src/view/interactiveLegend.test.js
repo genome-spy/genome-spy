@@ -5,6 +5,8 @@ import LegendView from "./legendView.js";
 import Interaction from "../utils/interaction.js";
 import Point from "./layout/point.js";
 import { renderToLayout } from "./testUtils.js";
+import InteractionDispatcher from "../genomeSpy/interactionDispatcher.js";
+import { intervalSelection } from "../selection/index.js";
 
 beforeEach(() =>
     vi.stubGlobal(
@@ -156,7 +158,7 @@ test("legend input and feedback share typed native membership and preserve base 
     expect(types.getValue().values).toEqual([["T"], ["B"]]);
     expect(states.getValue().values).toEqual([["1"]]);
     shape.handleInteraction(pickedEvent("dblclick", entry, row), false);
-    expect(types.getValue().active).toBe(false);
+    expect(types.getValue().values).toEqual([["T"], ["B"]]);
     expect(states.getValue().active).toBe(true);
 });
 
@@ -210,7 +212,7 @@ test("shared legend captures the binding ref despite another contributor's shado
                     select: {
                         type: "point",
                         encodings: ["color"],
-                        clear: { type: "dblclick" },
+                        clear: false,
                     },
                     push: "outer",
                     bind: "legend",
@@ -307,6 +309,187 @@ test("legend bindings reject missing, ambiguous, continuous, and competing targe
     }
 });
 
+test("background reset clears collected legend selections globally and preserves other selections", async () => {
+    const children = ["left", "right"].map((name) =>
+        panel(name, [
+            {
+                name: "focus",
+                select: {
+                    type: "point",
+                    encodings: ["color"],
+                    ...(name === "right" ? { clear: false } : {}),
+                },
+                bind: "legend",
+                value: [{ color: name === "left" ? "A" : "B" }],
+            },
+        ])
+    );
+    children[0].params.push(
+        {
+            name: "records",
+            select: { type: "point", on: "pointerover", toggle: true },
+        },
+        { name: "brush", select: { type: "interval", encodings: ["x"] } }
+    );
+    children[0].data = {
+        values: [
+            { group: "A", x: 0 },
+            { group: "B", x: 1 },
+        ],
+    };
+    children[0].encoding.key = { field: "group" };
+    children[0].encoding.x = {
+        field: "x",
+        type: "quantitative",
+        scale: { domain: [0, 1] },
+    };
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false, padding: 8 } },
+        resolve: {
+            scale: { color: "independent" },
+            legend: { color: "collected" },
+        },
+        spacing: 20,
+        hconcat: children,
+    });
+    renderToLayout(root);
+    const left = views.get({ scope: [], view: "left" });
+    const focus = [left, views.get({ scope: [], view: "right" })].map((v) =>
+        v.params.getSelection("focus")
+    );
+    const records = left.params.getSelection("records");
+    if (records.type !== "point" || records.membership !== "records")
+        throw new Error("Expected records");
+    records.setValue([["A"]]);
+    const brush = left.params.get("brush");
+    brush.setValue(intervalSelection({ x: [0, 0.5] }));
+    const dispatcher = new InteractionDispatcher({ viewRoot: root });
+    const plots = root
+        .getDescendants()
+        .filter((v) => v instanceof UnitView)
+        .filter((v) => ["left", "right"].includes(v.name));
+    const legends = root
+        .getDescendants()
+        .filter((v) => v instanceof LegendView);
+    const background = new Point(plots[0].coords.x + 2, plots[0].coords.y + 2);
+    /** @param {Point} point @param {import("../types/interactionApi.js").InternalMarkHit | null} hit @param {MouseEventInit} [options] */
+    const click = (point, hit, options) =>
+        dispatcher.dispatch(point, new MouseEvent("click", options), hit);
+
+    // A picked mark, modifiers, and collected legend chrome do not reset any binding.
+    const row = Array.from(plots[0].getCollector().getData())[0];
+    click(background, {
+        mark: plots[0].mark,
+        datum: row,
+        uniqueId: row.__uniqueId,
+    });
+    click(background, null, { shiftKey: true });
+    click(new Point(legends[0].coords.x + 1, legends[0].coords.y + 1), null);
+    click(
+        new Point(
+            legends[0].coords.x + 1,
+            (legends[0].coords.y +
+                legends[0].coords.height +
+                legends[1].coords.y) /
+                2
+        ),
+        null
+    );
+    expect(focus.map((f) => f.getValue().active)).toEqual([true, true]);
+    const before = [records.getValue(), brush.getValue()];
+
+    // The reset targets legend bindings, leaving other input sources alone.
+    click(background, null);
+    expect(focus.map((f) => f.getValue().active)).toEqual([false, false]);
+    expect([records.getValue(), brush.getValue()]).toEqual(before);
+});
+
+test("background reset lets brush click bookkeeping finish before the next mark click", async () => {
+    // Exercise native event order, including the document mouseup ending a pan.
+    vi.stubGlobal(
+        "MouseEvent",
+        class extends Event {
+            /** @param {string} type @param {MouseEventInit} [options] */
+            constructor(type, options = {}) {
+                super(type);
+                Object.assign(
+                    this,
+                    { button: 0, shiftKey: false, clientX: 0, clientY: 0 },
+                    options
+                );
+            }
+        }
+    );
+    vi.stubGlobal("document", new EventTarget());
+    const input = panel("source", [
+        {
+            name: "focus",
+            bind: "legend",
+            select: { type: "point", encodings: ["color"] },
+            value: [{ color: "A" }],
+        },
+        { name: "records", select: "point" },
+        {
+            name: "brush",
+            select: {
+                type: "interval",
+                encodings: ["x"],
+                on: "mousedown[event.shiftKey]",
+            },
+        },
+    ]);
+    input.data = {
+        values: [
+            { group: "A", x: 0.1 },
+            { group: "B", x: 0.8 },
+        ],
+    };
+    input.encoding.key = { field: "group" };
+    input.encoding.x = {
+        field: "x",
+        type: "quantitative",
+        scale: { domain: [0, 1], zoom: false },
+    };
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false } },
+        vconcat: [input],
+    });
+    renderToLayout(root);
+    const source = /** @type {UnitView} */ (
+        root.getDescendants().find((v) => v.name === "source")
+    );
+    const params = views.get({ scope: [], view: "source" }).params;
+    params.get("brush").setValue(intervalSelection({ x: [0.2, 0.4] }));
+    const dispatcher = new InteractionDispatcher({ viewRoot: root });
+    /** @param {number} fraction */
+    const pointAt = (fraction) =>
+        new Point(
+            source.coords.x + source.coords.width * fraction,
+            source.coords.y + source.coords.height / 2
+        );
+    /** @param {Point} point @param {import("../types/interactionApi.js").InternalMarkHit | null} hit */
+    const click = (point, hit) => {
+        const options = { clientX: point.x, clientY: point.y };
+        dispatcher.dispatch(point, new MouseEvent("mousedown", options));
+        const up = new MouseEvent("mouseup", options);
+        dispatcher.dispatch(point, up);
+        document.dispatchEvent(up);
+        dispatcher.dispatch(point, new MouseEvent("click", options), hit);
+    };
+    click(pointAt(0.95), null);
+    expect(params.getSelection("focus").getValue().active).toBe(false);
+    expect(params.getSelection("brush").getValue().active).toBe(false);
+    expect(params.getSelection("records").getValue().active).toBe(false);
+
+    const row = Array.from(source.getCollector().getData())[0];
+    click(pointAt(0.1), {
+        mark: source.mark,
+        datum: row,
+        uniqueId: row.__uniqueId,
+    });
+    expect(params.getSelection("records").getValue().active).toBe(true);
+});
+
 test("legend-only sources avoid plot picking, while explicit plot and record inputs retain it", async () => {
     for (const mode of ["legend", "plot", "records"]) {
         const input = panel("source", [
@@ -318,6 +501,7 @@ test("legend-only sources avoid plot picking, while explicit plot and record inp
                     encodings: ["color"],
                     ...(mode === "plot" ? { on: "click" } : {}),
                 },
+                value: [{ color: "A" }],
             },
         ]);
         if (mode === "records")
@@ -331,6 +515,11 @@ test("legend-only sources avoid plot picking, while explicit plot and record inp
         );
         expect(unit.mark.isPickingParticipant()).toBe(mode !== "legend");
         expect(Boolean(unit.mark.encoders.uniqueId)).toBe(mode !== "legend");
+        unit.handleInteraction(
+            new Interaction(new Point(0, 0), new MouseEvent("dblclick")),
+            false
+        );
+        expect(unit.paramRuntime.findValue("focus").values.has("A")).toBe(true);
     }
 });
 
@@ -368,7 +557,7 @@ test("a merged color/shape legend supports one native shape binding", async () =
 
 test("shared legend bindings reject conflicting clear settings in either sibling order", async () => {
     // Compatible outer aliases share membership, but cannot disagree on the legend gesture.
-    for (const clear of [false, "mousedown", "dblclick[event.altKey]"]) {
+    for (const clear of ["dblclick", "mousedown", "dblclick[event.altKey]"]) {
         const children = [undefined, clear].map((clear, i) =>
             panel("source" + i, [
                 {

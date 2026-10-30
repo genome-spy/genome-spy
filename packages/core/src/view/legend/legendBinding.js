@@ -40,7 +40,7 @@ export function resolveLegendBindings(views) {
                 !("select" in param)
             )
                 continue;
-            const select = asSelectionConfig(param.select);
+            const select = asSelectionConfig(param.select, "legend");
             if (select.type !== "point" || !select.encodings) {
                 throw new Error(
                     `Legend binding "${param.name}" requires one categorical point projection.`
@@ -99,6 +99,32 @@ export function resolveLegendBindings(views) {
                     definition.scaleResolution,
                     binding
                 );
+            }
+        }
+    }
+}
+
+/** Reset legend bindings after ordinary view interaction bookkeeping.
+ * @param {import("../view.js").default} viewRoot
+ * @param {import("../../utils/interaction.js").default} event
+ */
+export function clearLegendSelectionsOnBackgroundClick(viewRoot, event) {
+    if (
+        event.type !== "click" ||
+        event.markHit !== null ||
+        (event.target && isInChromeSubtree(event.target))
+    )
+        return;
+    const { shiftKey, ctrlKey, altKey, metaKey } = event.mouseEvent;
+    if (shiftKey || ctrlKey || altKey || metaKey) return;
+
+    for (const view of viewRoot.getDescendants()) {
+        for (const resolution of Object.values(view.resolutions.legend)) {
+            for (const binding of resolution.selectionBindings.values()) {
+                const { name, runtime, select } = binding;
+                if (runtime.findValue(name).values.size) {
+                    runtime.setValue(name, clearPointSelection(select));
+                }
             }
         }
     }

@@ -63,6 +63,7 @@ import { IntervalSelectionController } from "./intervalSelectionController.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
 import { getScaleProjectionCoords } from "../scaleProjection.js";
 import { isInChromeSubtree } from "../viewChrome.js";
+import { clearLegendSelectionsOnBackgroundClick } from "../legend/legendBinding.js";
 import {
     asSelectionConfig,
     createIntervalSelection,
@@ -1695,14 +1696,13 @@ export default class GridView extends ContainerView {
         this.#containerOverlays = [];
     }
 
-    *#interactiveLegendRegions() {
+    *#legendRegions() {
         for (const region of Object.values(this.#sharedLegends)) {
-            if (region.isActive() && region.isPickingSupported()) yield region;
+            if (region.isActive()) yield region;
         }
         for (const child of this.#children) {
             for (const region of Object.values(child.legends)) {
-                if (region.isActive() && region.isPickingSupported())
-                    yield region;
+                if (region.isActive()) yield region;
             }
         }
     }
@@ -1712,7 +1712,7 @@ export default class GridView extends ContainerView {
      */
     propagateInteraction(event) {
         propagateInteraction(this, event, () => {
-            for (const region of this.#interactiveLegendRegions()) {
+            for (const region of this.#legendRegions()) {
                 if (region.coords.containsPoint(event.point.x, event.point.y)) {
                     region.propagateInteraction(event);
                     return;
@@ -1822,6 +1822,10 @@ export default class GridView extends ContainerView {
                 }
             );
         });
+        if (!this.layoutParent) {
+            // Brush click suppression must finish before the global reset.
+            clearLegendSelectionsOnBackgroundClick(this, event);
+        }
     }
 
     /**
