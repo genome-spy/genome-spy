@@ -120,6 +120,7 @@ export default async function runPathPointScene(canvas, options = {}) {
                 }),
             },
             stroke: { value: [0.0, 0.0, 0.0, 1.0] },
+            strokeOpacity: { value: 0.5 },
             strokeWidth: { data: strokeWidth, type: "f32" },
             angle: { data: angle, type: "f32" },
         },
