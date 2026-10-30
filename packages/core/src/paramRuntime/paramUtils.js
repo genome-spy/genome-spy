@@ -90,7 +90,17 @@ export function isVariableParameter(param) {
  * @returns {param is import("../spec/parameter.js").SelectionParameter}
  */
 export function isSelectionParameter(param) {
-    return !("expr" in param || "bind" in param) && "select" in param;
+    return !("expr" in param) && "select" in param;
+}
+
+/** @param {import("../spec/parameter.js").Parameter} param */
+export function hasPlotSelectionInput(param) {
+    return (
+        !("bind" in param && param.bind === "legend") ||
+        ("select" in param &&
+            typeof param.select === "object" &&
+            param.select.on !== undefined)
+    );
 }
 
 /**

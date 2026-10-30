@@ -1,0 +1,800 @@
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { createTestEmbed } from "./embedTestUtils.js";
+import UnitView from "./unitView.js";
+import LegendView from "./legendView.js";
+import Interaction from "../utils/interaction.js";
+import Point from "./layout/point.js";
+import { renderToLayout } from "./testUtils.js";
+import InteractionDispatcher from "../genomeSpy/interactionDispatcher.js";
+import { intervalSelection } from "../selection/index.js";
+
+beforeEach(() =>
+    vi.stubGlobal(
+        "MouseEvent",
+        class {
+            /** @param {string} type @param {object} [options] */
+            constructor(type, options = {}) {
+                Object.assign(this, { type, shiftKey: false }, options);
+            }
+        }
+    )
+);
+afterEach(() => vi.unstubAllGlobals());
+
+/** @param {string} type @param {UnitView} unit @param {import("../data/flowNode.js").Datum} row @param {MouseEventInit} [options] */
+function pickedEvent(type, unit, row, options) {
+    const event = new Interaction(
+        new Point(0, 0),
+        new MouseEvent(type, options)
+    );
+    event.markHit = { mark: unit.mark, datum: row, uniqueId: row.__uniqueId };
+    return event;
+}
+
+/** @returns {import("../spec/view.js").VConcatSpec & import("../spec/root.js").RootConfig} */
+function spec() {
+    return {
+        resolve: { scale: { shape: "shared", color: "shared" } },
+        params: [
+            {
+                name: "types",
+                select: { type: "point", encodings: ["shape"] },
+                bind: "legend",
+            },
+            {
+                name: "states",
+                select: { type: "point", encodings: ["color"] },
+                bind: "legend",
+            },
+            { name: "baseOpacity", value: 0.8 },
+        ],
+        config: {
+            legend: { disable: false, symbolOpacity: { expr: "baseOpacity" } },
+        },
+        vconcat: [
+            {
+                name: "cells",
+                data: {
+                    values: [
+                        { cell: "T", state: 1 },
+                        { cell: "T", state: "1" },
+                        { cell: "B", state: 1 },
+                        { cell: "B", state: "1" },
+                    ],
+                },
+                mark: { type: "point", tooltip: null },
+                encoding: {
+                    shape: {
+                        field: "cell",
+                        type: "nominal",
+                        scale: { domain: ["T", "B"] },
+                    },
+                    color: {
+                        field: "state",
+                        type: "ordinal",
+                        scale: { domain: [1, "1"], range: ["red", "red"] },
+                    },
+                    opacity: {
+                        condition: {
+                            test: {
+                                and: [{ param: "types" }, { param: "states" }],
+                            },
+                            value: 1,
+                        },
+                        value: 0.1,
+                    },
+                },
+            },
+        ],
+    };
+}
+
+test("legend input and feedback share typed native membership and preserve base style", async () => {
+    const { root, views } = await createTestEmbed(spec());
+    const legends = root
+        .getDescendants()
+        .filter((view) => view instanceof LegendView);
+    expect(legends).toHaveLength(2);
+    const cells = root.getDescendants().find((view) => view.name === "cells");
+    const types = views.root().params.getSelection("types");
+    const states = views.root().params.getSelection("states");
+    if (
+        types.type !== "point" ||
+        types.membership !== "categories" ||
+        states.type !== "point" ||
+        states.membership !== "categories"
+    )
+        throw new Error("Expected categories");
+    types.setValue([["T"]]);
+    states.setValue([["1"]]);
+    await root.paramRuntime.whenPropagated();
+    const unit = /** @type {UnitView} */ (cells);
+    expect(
+        Array.from(unit.getCollector().getData(), (row) =>
+            unit.mark.encoders.fillOpacity(row)
+        )
+    ).toEqual([0.1, 1, 0.1, 0.1]);
+    /** @param {LegendView} legend */
+    const feedback = (legend) => {
+        const units = legend
+            .getDescendants()
+            .filter((view) => view instanceof UnitView);
+        const symbol = units.find((view) => view.name === "symbols");
+        const label = units.find((view) => view.name === "labels");
+        const rows = Array.from(symbol.getCollector().getData());
+        return { units, symbol, label, rows };
+    };
+    const shape = legends.find(
+        (legend) => feedback(legend).rows[0].value === "T"
+    );
+    const { symbol, label, rows } = feedback(shape);
+    expect(rows.map((row) => symbol.mark.encoders.strokeOpacity(row))).toEqual([
+        0.8,
+        expect.closeTo(0.28),
+    ]);
+    expect(rows.map((row) => label.mark.encoders.opacity(row))).toEqual([
+        1, 0.35,
+    ]);
+    const color = feedback(
+        legends.find((legend) => feedback(legend).rows[0].value === 1)
+    );
+    expect(
+        color.rows.map((row) => color.label.mark.encoders.opacity(row))
+    ).toEqual([0.35, 1]);
+    views.root().params.get("baseOpacity").setValue(0.4);
+    await root.paramRuntime.whenPropagated();
+    expect(rows.map((row) => symbol.mark.encoders.strokeOpacity(row))).toEqual([
+        0.4,
+        expect.closeTo(0.14),
+    ]);
+
+    // Route the picked entry through the actual legend listener, without browser geometry.
+    const entry = feedback(shape).units.find((view) => view.name === "entries");
+    const row = Array.from(entry.getCollector().getData())[1];
+    shape.handleInteraction(
+        pickedEvent("click", entry, row, { shiftKey: true }),
+        false
+    );
+    expect(types.getValue().values).toEqual([["T"], ["B"]]);
+    expect(states.getValue().values).toEqual([["1"]]);
+    shape.handleInteraction(pickedEvent("dblclick", entry, row), false);
+    expect(types.getValue().values).toEqual([["T"], ["B"]]);
+    expect(states.getValue().active).toBe(true);
+});
+
+/** @param {string} name @param {import("../spec/parameter.js").Parameter[]} params @returns {import("../spec/view.js").UnitSpec} */
+function panel(name, params) {
+    return {
+        name,
+        params,
+        mark: { type: "point", tooltip: null },
+        data: { values: [{ group: "A" }, { group: "B" }] },
+        encoding: {
+            color: {
+                field: "group",
+                type: "nominal",
+                scale: { domain: ["A", "B"] },
+            },
+        },
+    };
+}
+
+test("shared legend captures the binding ref despite another contributor's shadowed name", async () => {
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false, symbolOpacity: 1 } },
+        params: [
+            {
+                name: "focus",
+                select: { type: "point", encodings: ["color"] },
+                value: [{ color: "A" }],
+            },
+        ],
+        resolve: { scale: { color: "shared" }, legend: { color: "shared" } },
+        hconcat: [
+            panel("shadow", [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"] },
+                    value: [{ color: "B" }],
+                },
+            ]),
+            panel("writer", [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"] },
+                    push: "outer",
+                    bind: "legend",
+                },
+            ]),
+            panel("otherWriter", [
+                {
+                    name: "focus",
+                    select: {
+                        type: "point",
+                        encodings: ["color"],
+                        clear: false,
+                    },
+                    push: "outer",
+                    bind: "legend",
+                },
+            ]),
+        ],
+    });
+    const legends = root
+        .getDescendants()
+        .filter((view) => view instanceof LegendView);
+    expect(legends).toHaveLength(1);
+    const symbols = /** @type {UnitView} */ (
+        legends[0].getDescendants().find((view) => view.name === "symbols")
+    );
+    const rows = Array.from(symbols.getCollector().getData());
+    expect(rows.map((row) => symbols.mark.encoders.strokeOpacity(row))).toEqual(
+        [1, 0.35]
+    );
+    const focus = views.root().params.getSelection("focus");
+    if (focus.type !== "point" || focus.membership !== "categories")
+        throw new Error("Expected categories");
+    focus.setValue([["B"]]);
+    await root.paramRuntime.whenPropagated();
+    expect(rows.map((row) => symbols.mark.encoders.strokeOpacity(row))).toEqual(
+        [0.35, 1]
+    );
+});
+
+test("collected independent legends retain local selection and scale ownership", async () => {
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false, symbolOpacity: 1 } },
+        resolve: {
+            scale: { color: "independent" },
+            legend: { color: "collected" },
+        },
+        hconcat: ["left", "right"].map((name) =>
+            panel(name, [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"] },
+                    bind: "legend",
+                },
+            ])
+        ),
+    });
+    const focus = views
+        .get({ scope: [], view: "right" })
+        .params.getSelection("focus");
+    if (focus.type !== "point" || focus.membership !== "categories")
+        throw new Error("Expected categories");
+    focus.setValue([["B"]]);
+    await root.paramRuntime.whenPropagated();
+    const legends = root
+        .getDescendants()
+        .filter((view) => view instanceof LegendView);
+    expect(legends).toHaveLength(2);
+    for (const legend of legends) {
+        const symbols = /** @type {UnitView} */ (
+            legend.getDescendants().find((view) => view.name === "symbols")
+        );
+        const opacity = Array.from(symbols.getCollector().getData(), (row) =>
+            symbols.mark.encoders.strokeOpacity(row)
+        );
+        expect(opacity).toEqual(
+            legend.dataParent.name === "right" ? [0.35, 1] : [1, 1]
+        );
+    }
+    await views.remove({ scope: [], view: "right" });
+    expect(
+        root.getDescendants().filter((view) => view instanceof LegendView)
+    ).toHaveLength(1);
+});
+
+test("legend bindings reject missing, ambiguous, continuous, and competing targets", async () => {
+    const disabled = spec();
+    disabled.config.legend.disable = true;
+    const ambiguous = spec();
+    delete ambiguous.resolve;
+    const continuous = spec();
+    const plot = /** @type {import("../spec/view.js").UnitSpec} */ (
+        continuous.vconcat[0]
+    );
+    plot.encoding.color = { field: "state", type: "quantitative" };
+    const competing = spec();
+    competing.params.push({
+        name: "other",
+        select: { type: "point", encodings: ["shape"] },
+        bind: "legend",
+    });
+    for (const invalid of [disabled, ambiguous, continuous, competing]) {
+        await expect(createTestEmbed(invalid)).rejects.toThrow(
+            /legend|competing/i
+        );
+    }
+});
+
+test("background reset clears collected legend selections globally and preserves other selections", async () => {
+    const children = ["left", "right"].map((name) =>
+        panel(name, [
+            {
+                name: "focus",
+                select: {
+                    type: "point",
+                    encodings: ["color"],
+                    ...(name === "right" ? { clear: false } : {}),
+                },
+                bind: "legend",
+                value: [{ color: name === "left" ? "A" : "B" }],
+            },
+        ])
+    );
+    children[0].params.push(
+        {
+            name: "records",
+            select: { type: "point", on: "pointerover", toggle: true },
+        },
+        { name: "brush", select: { type: "interval", encodings: ["x"] } }
+    );
+    children[0].data = {
+        values: [
+            { group: "A", x: 0 },
+            { group: "B", x: 1 },
+        ],
+    };
+    children[0].encoding.key = { field: "group" };
+    children[0].encoding.x = {
+        field: "x",
+        type: "quantitative",
+        scale: { domain: [0, 1] },
+    };
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false, padding: 8 } },
+        resolve: {
+            scale: { color: "independent" },
+            legend: { color: "collected" },
+        },
+        spacing: 20,
+        hconcat: children,
+    });
+    renderToLayout(root);
+    const left = views.get({ scope: [], view: "left" });
+    const focus = [left, views.get({ scope: [], view: "right" })].map((v) =>
+        v.params.getSelection("focus")
+    );
+    const records = left.params.getSelection("records");
+    if (records.type !== "point" || records.membership !== "records")
+        throw new Error("Expected records");
+    records.setValue([["A"]]);
+    const brush = left.params.get("brush");
+    brush.setValue(intervalSelection({ x: [0, 0.5] }));
+    const dispatcher = new InteractionDispatcher({ viewRoot: root });
+    const plots = root
+        .getDescendants()
+        .filter((v) => v instanceof UnitView)
+        .filter((v) => ["left", "right"].includes(v.name));
+    const legends = root
+        .getDescendants()
+        .filter((v) => v instanceof LegendView);
+    const background = new Point(plots[0].coords.x + 2, plots[0].coords.y + 2);
+    /** @param {Point} point @param {import("../types/interactionApi.js").InternalMarkHit | null} hit @param {MouseEventInit} [options] */
+    const click = (point, hit, options) =>
+        dispatcher.dispatch(point, new MouseEvent("click", options), hit);
+
+    // A picked mark, modifiers, and collected legend chrome do not reset any binding.
+    const row = Array.from(plots[0].getCollector().getData())[0];
+    click(background, {
+        mark: plots[0].mark,
+        datum: row,
+        uniqueId: row.__uniqueId,
+    });
+    click(background, null, { shiftKey: true });
+    click(new Point(legends[0].coords.x + 1, legends[0].coords.y + 1), null);
+    click(
+        new Point(
+            legends[0].coords.x + 1,
+            (legends[0].coords.y +
+                legends[0].coords.height +
+                legends[1].coords.y) /
+                2
+        ),
+        null
+    );
+    expect(focus.map((f) => f.getValue().active)).toEqual([true, true]);
+    const before = [records.getValue(), brush.getValue()];
+
+    // The reset targets legend bindings, leaving other input sources alone.
+    click(background, null);
+    expect(focus.map((f) => f.getValue().active)).toEqual([false, false]);
+    expect([records.getValue(), brush.getValue()]).toEqual(before);
+});
+
+test("background reset lets brush click bookkeeping finish before the next mark click", async () => {
+    // Exercise native event order, including the document mouseup ending a pan.
+    vi.stubGlobal(
+        "MouseEvent",
+        class extends Event {
+            /** @param {string} type @param {MouseEventInit} [options] */
+            constructor(type, options = {}) {
+                super(type);
+                Object.assign(
+                    this,
+                    { button: 0, shiftKey: false, clientX: 0, clientY: 0 },
+                    options
+                );
+            }
+        }
+    );
+    vi.stubGlobal("document", new EventTarget());
+    const input = panel("source", [
+        {
+            name: "focus",
+            bind: "legend",
+            select: { type: "point", encodings: ["color"] },
+            value: [{ color: "A" }],
+        },
+        { name: "records", select: "point" },
+        {
+            name: "brush",
+            select: {
+                type: "interval",
+                encodings: ["x"],
+                on: "mousedown[event.shiftKey]",
+            },
+        },
+    ]);
+    input.data = {
+        values: [
+            { group: "A", x: 0.1 },
+            { group: "B", x: 0.8 },
+        ],
+    };
+    input.encoding.key = { field: "group" };
+    input.encoding.x = {
+        field: "x",
+        type: "quantitative",
+        scale: { domain: [0, 1], zoom: false },
+    };
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false } },
+        vconcat: [input],
+    });
+    renderToLayout(root);
+    const source = /** @type {UnitView} */ (
+        root.getDescendants().find((v) => v.name === "source")
+    );
+    const params = views.get({ scope: [], view: "source" }).params;
+    params.get("brush").setValue(intervalSelection({ x: [0.2, 0.4] }));
+    const dispatcher = new InteractionDispatcher({ viewRoot: root });
+    /** @param {number} fraction */
+    const pointAt = (fraction) =>
+        new Point(
+            source.coords.x + source.coords.width * fraction,
+            source.coords.y + source.coords.height / 2
+        );
+    /** @param {Point} point @param {import("../types/interactionApi.js").InternalMarkHit | null} hit */
+    const click = (point, hit) => {
+        const options = { clientX: point.x, clientY: point.y };
+        dispatcher.dispatch(point, new MouseEvent("mousedown", options));
+        const up = new MouseEvent("mouseup", options);
+        dispatcher.dispatch(point, up);
+        document.dispatchEvent(up);
+        dispatcher.dispatch(point, new MouseEvent("click", options), hit);
+    };
+    click(pointAt(0.95), null);
+    expect(params.getSelection("focus").getValue().active).toBe(false);
+    expect(params.getSelection("brush").getValue().active).toBe(false);
+    expect(params.getSelection("records").getValue().active).toBe(false);
+
+    const row = Array.from(source.getCollector().getData())[0];
+    click(pointAt(0.1), {
+        mark: source.mark,
+        datum: row,
+        uniqueId: row.__uniqueId,
+    });
+    expect(params.getSelection("records").getValue().active).toBe(true);
+});
+
+test("legend-only sources avoid plot picking, while explicit plot and record inputs retain it", async () => {
+    for (const mode of ["legend", "plot", "records"]) {
+        const input = panel("source", [
+            {
+                name: "focus",
+                bind: "legend",
+                select: {
+                    type: "point",
+                    encodings: ["color"],
+                    ...(mode === "plot" ? { on: "click" } : {}),
+                },
+                value: [{ color: "A" }],
+            },
+        ]);
+        if (mode === "records")
+            input.params.push({ name: "picked", select: "point" });
+        const { root } = await createTestEmbed({
+            config: { legend: { disable: false } },
+            vconcat: [input],
+        });
+        const unit = /** @type {UnitView} */ (
+            root.getDescendants().find((view) => view.name === "source")
+        );
+        expect(unit.mark.isPickingParticipant()).toBe(mode !== "legend");
+        expect(Boolean(unit.mark.encoders.uniqueId)).toBe(mode !== "legend");
+        unit.handleInteraction(
+            new Interaction(new Point(0, 0), new MouseEvent("dblclick")),
+            false
+        );
+        expect(unit.paramRuntime.findValue("focus").values.has("A")).toBe(true);
+    }
+});
+
+test("a merged color/shape legend supports one native shape binding", async () => {
+    const input = panel("source", [
+        {
+            name: "focus",
+            select: { type: "point", encodings: ["shape"] },
+            bind: "legend",
+            value: [{ shape: "B" }],
+        },
+    ]);
+    input.encoding.shape = {
+        field: "group",
+        type: "nominal",
+        scale: { domain: ["A", "B"] },
+    };
+    const { root } = await createTestEmbed({
+        config: { legend: { disable: false, symbolOpacity: 1 } },
+        vconcat: [input],
+    });
+    const legends = root
+        .getDescendants()
+        .filter((view) => view instanceof LegendView);
+    expect(legends).toHaveLength(1);
+    const symbols = /** @type {UnitView} */ (
+        legends[0].getDescendants().find((view) => view.name === "symbols")
+    );
+    expect(
+        Array.from(symbols.getCollector().getData(), (row) =>
+            symbols.mark.encoders.fillOpacity(row)
+        )
+    ).toEqual([0.35, 1]);
+});
+
+test("shared legend bindings reject conflicting clear settings in either sibling order", async () => {
+    // Compatible outer aliases share membership, but cannot disagree on the legend gesture.
+    for (const clear of ["dblclick", "mousedown", "dblclick[event.altKey]"]) {
+        const children = [undefined, clear].map((clear, i) =>
+            panel("source" + i, [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"], clear },
+                    push: "outer",
+                    bind: "legend",
+                },
+            ])
+        );
+        for (const hconcat of [children, children.toReversed()]) {
+            await expect(
+                createTestEmbed({
+                    config: { legend: { disable: false } },
+                    params: [
+                        {
+                            name: "focus",
+                            select: { type: "point", encodings: ["color"] },
+                        },
+                    ],
+                    resolve: {
+                        scale: { color: "shared" },
+                        legend: { color: "shared" },
+                    },
+                    hconcat,
+                })
+            ).rejects.toThrow(/conflicting clear settings/);
+        }
+    }
+});
+
+test("explicit plot hover and legend clicks share toggle settings but keep event filters and clear targets", async () => {
+    const input = panel("source", [
+        {
+            name: "focus",
+            bind: "legend",
+            select: {
+                type: "point",
+                encodings: ["color"],
+                on: "pointerover[event.ctrlKey]",
+                toggle: true,
+                clear: "dblclick[event.altKey]",
+            },
+        },
+    ]);
+    const { root, views, context } = await createTestEmbed({
+        config: { legend: { disable: false } },
+        vconcat: [input],
+    });
+    const source = /** @type {UnitView} */ (
+        root.getDescendants().find((view) => view.name === "source")
+    );
+    const legend = root
+        .getDescendants()
+        .find((view) => view instanceof LegendView);
+    const entry = /** @type {UnitView} */ (
+        legend.getDescendants().find((view) => view.name === "entries")
+    );
+    const a = Array.from(source.getCollector().getData())[0];
+    const b = Array.from(entry.getCollector().getData())[1];
+    const focus = views
+        .get({ scope: [], view: "source" })
+        .params.getSelection("focus");
+    if (focus.type !== "point" || focus.membership !== "categories")
+        throw new Error("Expected categories");
+    /** @param {import("./view.js").default} view @param {string} type @param {import("../types/interactionApi.js").InternalMarkHit | null} hit @param {MouseEventInit} [options] */
+    const send = (view, type, hit, options) => {
+        const event = new Interaction(
+            new Point(0, 0),
+            new MouseEvent(type, options)
+        );
+        event.markHit = hit;
+        view.handleInteraction(event, false);
+    };
+    const plotHit = { mark: source.mark, datum: a, uniqueId: a.__uniqueId };
+    const entryHit = { mark: entry.mark, datum: b, uniqueId: b.__uniqueId };
+    context.getCurrentHover = () => entryHit;
+    send(source, "mousemove", plotHit);
+    expect(focus.getValue().active).toBe(false);
+    send(source, "mousemove", plotHit, { ctrlKey: true });
+    expect(focus.getValue().values).toEqual([["A"]]);
+    send(legend, "click", entryHit, { shiftKey: true });
+    expect(focus.getValue().values).toEqual([["A"], ["B"]]);
+    // A picked-empty title/padding event must not reuse the previous entry hit.
+    send(legend, "dblclick", null, { altKey: true });
+    send(legend, "dblclick", entryHit);
+    expect(focus.getValue().active).toBe(true);
+    send(legend, "dblclick", entryHit, { altKey: true });
+    expect(focus.getValue().active).toBe(false);
+});
+
+test("legend single-value mode and disabled clearing preserve API control", async () => {
+    const input = panel("source", [
+        {
+            name: "focus",
+            bind: "legend",
+            select: {
+                type: "point",
+                encodings: ["color"],
+                toggle: false,
+                clear: false,
+            },
+            value: [{ color: "B" }],
+        },
+    ]);
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false } },
+        vconcat: [input],
+    });
+    const legend = root
+        .getDescendants()
+        .find((view) => view instanceof LegendView);
+    const entry = /** @type {UnitView} */ (
+        legend.getDescendants().find((view) => view.name === "entries")
+    );
+    const row = Array.from(entry.getCollector().getData())[0];
+    const focus = views
+        .get({ scope: [], view: "source" })
+        .params.getSelection("focus");
+    if (focus.type !== "point" || focus.membership !== "categories")
+        throw new Error("Expected categories");
+    legend.handleInteraction(
+        pickedEvent("click", entry, row, { shiftKey: true }),
+        false
+    );
+    expect(focus.getValue().values).toEqual([["A"]]);
+    legend.handleInteraction(pickedEvent("dblclick", entry, row), false);
+    expect(focus.getValue().active).toBe(true);
+    focus.clear();
+    expect(focus.getValue().active).toBe(false);
+});
+
+test("custom unpicked clear events hit-test entries rather than stale hover", async () => {
+    const input = panel("source", [
+        {
+            name: "focus",
+            bind: "legend",
+            select: {
+                type: "point",
+                encodings: ["color"],
+                clear: "mousedown[event.altKey]",
+            },
+            value: [{ color: "A" }],
+        },
+    ]);
+    const { root, views, context } = await createTestEmbed({
+        config: {
+            legend: {
+                disable: false,
+                padding: 8,
+                direction: "horizontal",
+                columns: 2,
+                symbolOffset: 3,
+                labelOffset: 6,
+            },
+        },
+        vconcat: [input],
+    });
+    renderToLayout(root);
+    const legend = root
+        .getDescendants()
+        .find((view) => view instanceof LegendView);
+    const entry = /** @type {UnitView} */ (
+        legend.getDescendants().find((view) => view.name === "entries")
+    );
+    const row = Array.from(entry.getCollector().getData())[1];
+    context.getCurrentHover = () => ({ mark: entry.mark, datum: row });
+    const focus = views
+        .get({ scope: [], view: "source" })
+        .params.getSelection("focus");
+    const send = (/** @type {Point} */ point) =>
+        legend.handleInteraction(
+            new Interaction(
+                point,
+                new MouseEvent("mousedown", { altKey: true })
+            ),
+            false
+        );
+    send(new Point(legend.coords.x + 1, legend.coords.y + 1));
+    expect(focus.getValue().active).toBe(true);
+    send(new Point(entry.coords.x + row.labelX, entry.coords.y + row.labelY));
+    expect(focus.getValue().active).toBe(false);
+});
+
+test("domain reorder, removal, and new entries preserve selection identity and feedback", async () => {
+    const input = panel("source", [
+        {
+            name: "focus",
+            bind: "legend",
+            select: { type: "point", encodings: ["color"] },
+            value: [{ color: "A" }],
+        },
+        { name: "categories", value: ["A", "B"] },
+    ]);
+    input.encoding.color = {
+        field: "group",
+        type: "nominal",
+        scale: { domain: { expr: "categories" } },
+    };
+    const { root, views } = await createTestEmbed({
+        config: { legend: { disable: false, symbolOpacity: 1 } },
+        vconcat: [input],
+    });
+    const source = views.get({ scope: [], view: "source" });
+    const focus = source.params.getSelection("focus");
+    if (focus.type !== "point" || focus.membership !== "categories")
+        throw new Error("Expected categories");
+    const legend = root
+        .getDescendants()
+        .find((view) => view instanceof LegendView);
+    const symbols = /** @type {UnitView} */ (
+        legend.getDescendants().find((view) => view.name === "symbols")
+    );
+    const feedback = () =>
+        Array.from(symbols.getCollector().getData(), (row) => [
+            row.value,
+            symbols.mark.encoders.strokeOpacity(row),
+        ]);
+    const categories =
+        /** @type {import("../types/embedApi.js").ParamApi<string[]>} */ (
+            source.params.get("categories")
+        );
+    categories.setValue(["B", "A"]);
+    await root.paramRuntime.whenPropagated();
+    expect(feedback()).toEqual([
+        ["B", 0.35],
+        ["A", 1],
+    ]);
+    categories.setValue(["B"]);
+    await root.paramRuntime.whenPropagated();
+    expect(feedback()).toEqual([["B", 0.35]]);
+    expect(focus.getValue().values).toEqual([["A"]]);
+    focus.setValue([["later"]]);
+    categories.setValue(["B", "later"]);
+    await root.paramRuntime.whenPropagated();
+    expect(feedback()).toEqual([
+        ["B", 0.35],
+        ["later", 1],
+    ]);
+});

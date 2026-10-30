@@ -21,6 +21,67 @@ legend retains the sizes represented by its scale.
 
 These properties can also be set under `config.legend` for all legends.
 
+## Interactive legends
+
+Add `bind: "legend"` to a [categorical point selection](parameters.md#categorical-point-selection)
+to select categories through its symbol legend. Chart highlighting remains an
+ordinary conditional encoding, so selections from different legends can be
+combined with `and` to highlight their intersection.
+
+EXAMPLE examples/docs/grammar/legend/interactive-legend.json height=350
+
+!!! disclaimer ""
+
+    Coordinates, cell types, and activation states are synthetic.
+
+Click an entry to select its category and Shift-click to toggle categories.
+An unmodified background click resets **all legend-bound selections** in the
+visualization, including independent and collected legends. Background means
+space without a picked mark; non-interactive marks do not block the reset.
+Legend titles, padding, and spacing between collected legends remain inert.
+The reset only clears legend-bound selections. Other selections keep their own
+interaction behavior.
+
+Default double-click clearing is disabled for legend-bound selections.
+`select.toggle: false` restricts selection to one category. An empty selection
+shows all entries normally.
+Unselected symbols and labels use 35% of their normal opacity.
+
+The binding supports one nominal or ordinal `color`, `fill`, `stroke`, or `shape`
+encoding with a discrete scale and an enabled symbol legend. Shared legends use
+one selection; independent legends can use local selections or compatible
+`push: "outer"` declarations. Collecting legends changes their placement while
+preserving their selection owners. A legend cannot bind two different selections.
+Declarations binding the same shared legend must agree on `select.clear`.
+
+Plot input is disabled by default for a legend-bound selection. Explicit
+`select.on` enables it in addition to legend clicks. For example, combine plot
+hover with multi-category legend clicks:
+
+```json
+{
+  "name": "focus",
+  "select": {
+    "type": "point",
+    "encodings": ["color"],
+    "on": "pointerover",
+    "toggle": true
+  },
+  "bind": "legend"
+}
+```
+
+Hover replaces the selected category; Shift-clicking legend entries toggles
+categories. The explicit `toggle: true` preserves multiple categories for this
+mixed-input configuration. Explicit `select.clear` events and filters apply to
+legend entries and explicitly enabled plot input; `select.clear: false` disables
+those events. The global background reset remains available independently of
+`select.clear`.
+
+The `bind: "legend"` form follows Vega-Lite's grammar. Field projections,
+object-valued legend event bindings, and expression-valued toggling are not
+supported. GenomeSpy retains its existing single-value hover default.
+
 ## Gradient legends
 
 Continuous quantitative color channels create gradient legends. The gradient

@@ -40,6 +40,7 @@ import { getLegendAnchorFactor } from "./gridView/legendLayout.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
 import { measureText, requestFont } from "../fonts/textMetrics.js";
+import { bindLegend } from "./legend/legendBinding.js";
 import {
     DEFAULT_GRADIENT_STROKE_WIDTH,
     DEFAULT_GRADIENT_THICKNESS,
@@ -175,6 +176,7 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
 
     return {
         name: "legend_" + (legend.orient ?? "right"),
+        config: { mark: { tooltip: null } },
         padding: legend.padding,
         resolve: {
             scale: Object.fromEntries(
@@ -321,6 +323,7 @@ function createStrokeSymbolLayer({
 /**
  * @param {object} options
  * @param {LegendEntry[]} [options.entries]
+ * @param {import("./legend/legendBinding.js").LegendBinding} [options.binding]
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [options.symbolChannels]
  * @param {SymbolLegendStyle} [options.symbolStyle]
@@ -333,6 +336,7 @@ function createStrokeSymbolLayer({
  */
 export function createSymbolLegendSpec({
     entries,
+    binding,
     channel,
     symbolChannels = {},
     symbolStyle = {},
@@ -510,6 +514,44 @@ export function createSymbolLegendSpec({
             text: { field: "label" },
         },
     });
+
+    if (binding) {
+        layer.push({
+            name: "entries",
+            mark: {
+                type: "rect",
+                tooltip: false,
+                cursor: "pointer",
+                clip: false,
+                fillOpacity: 0,
+                strokeWidth: 0,
+                cullByVisibleRange: false,
+            },
+            encoding: {
+                x: {
+                    field: "symbolX",
+                    type: "quantitative",
+                    scale: horizontalPixelScale,
+                    buildIndex: false,
+                },
+                x2: {
+                    expr: "datum.symbolX + datum.entryWidth",
+                    type: "quantitative",
+                    scale: horizontalPixelScale,
+                },
+                y: {
+                    field: "entryY2",
+                    type: "quantitative",
+                    scale: verticalPixelScale,
+                },
+                y2: {
+                    expr: "datum.entryY2 - datum.entryHeight",
+                    type: "quantitative",
+                    scale: verticalPixelScale,
+                },
+            },
+        });
+    }
 
     return createLegendRootSpec(
         legend,
@@ -991,7 +1033,7 @@ export class LegendRegionView extends ContainerView {
     }
 
     isPickingSupported() {
-        return false;
+        return this.#legendViews.some((legend) => legend.isPickingSupported());
     }
 
     /**
@@ -1078,6 +1120,7 @@ export class LegendRegionView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
+        event.target = this;
         propagateInteraction(this, event, () => {
             const legend = this.#getVisibleLegendViews().find((view) =>
                 view.coords.containsPoint(event.point.x, event.point.y)
@@ -1104,6 +1147,9 @@ function sameLines(a, b) {
 
 /** @extends {ContainerView<LegendRootSpec>} */
 export default class LegendView extends ContainerView {
+    /** @type {import("./legend/legendBinding.js").LegendBinding | undefined} */
+    #binding;
+
     #effectiveExtent;
 
     /** @type {import("./view.js").default | undefined} */
@@ -1134,6 +1180,7 @@ export default class LegendView extends ContainerView {
     /**
      * @param {object} props
      * @param {LegendEntry[]} [props.entries]
+     * @param {import("./legend/legendBinding.js").LegendBinding} [props.binding]
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
      * @param {SymbolLegendStyle} [props.symbolStyle]
@@ -1150,6 +1197,7 @@ export default class LegendView extends ContainerView {
     constructor(
         {
             entries,
+            binding,
             channel,
             symbolChannels,
             symbolStyle,
@@ -1174,6 +1222,7 @@ export default class LegendView extends ContainerView {
                   })
                 : createSymbolLegendSpec({
                       entries,
+                      binding,
                       channel,
                       symbolChannels,
                       symbolStyle,
@@ -1194,6 +1243,7 @@ export default class LegendView extends ContainerView {
         );
 
         this.needsAxes = { x: false, y: false };
+        this.#binding = binding;
         this.legendProps = legend;
         this.#type = type ?? "symbol";
         this.#effectiveExtent = getMinimumLegendExtent(
@@ -1244,6 +1294,14 @@ export default class LegendView extends ContainerView {
 
         markViewAsNonAddressable(this.#child, { skipSubtree: true });
         markViewAsChrome(this.#child, { skipSubtree: true });
+
+        if (this.#binding) {
+            bindLegend(
+                this,
+                this.#binding,
+                this.getDescendants().filter((view) => view instanceof UnitView)
+            );
+        }
 
         this.#labelViews = [];
         for (const view of this.getDescendants()) {
@@ -1464,7 +1522,7 @@ export default class LegendView extends ContainerView {
     }
 
     isPickingSupported() {
-        return false;
+        return !!this.#binding;
     }
 
     /** Legend chrome is owned and painted here rather than by a parent grid. */

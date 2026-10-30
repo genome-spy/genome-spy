@@ -2432,6 +2432,7 @@ function createMark(type, data, encoders, properties = {}) {
     const revisions = { configuration: 0, resources: 0 };
     return /** @type {import("../../marks/mark.js").default} */ (
         /** @type {unknown} */ ({
+            nonvisualInputs: new Set(),
             encoders: { ...defaultEncoders, ...encoders },
             properties: {
                 cornerRadius: 0,

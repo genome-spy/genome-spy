@@ -495,6 +495,7 @@ export async function createGridChildLegend(definition, layoutParent) {
             legend: legendProps,
             format: definition.format,
             dataType: definition.dataType,
+            binding: definition.binding,
         },
         layoutParent.context,
         layoutParent,

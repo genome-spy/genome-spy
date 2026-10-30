@@ -1,0 +1,80 @@
+{
+  "description": [
+    "Select cell types and activation states",
+    "Click legend entries to focus categories. Shift-click toggles; click the chart background to reset both legends. Coordinates, cell types, and activation states are synthetic."
+  ],
+
+  "title": {
+    "text": "Explore immune cell categories",
+    "subtitle": "Choose categories in both legends to highlight their intersection.",
+    "anchor": "start"
+  },
+
+  "width": 420,
+  "height": 260,
+
+  "params": [
+    {
+      "name": "cell_types",
+      "select": { "type": "point", "encodings": ["shape"] },
+      "bind": "legend"
+    },
+    {
+      "name": "activation_states",
+      "select": { "type": "point", "encodings": ["color"] },
+      "bind": "legend"
+    }
+  ],
+
+  "config": {
+    "legend": {
+      "disable": false,
+      "symbolOpacity": 1,
+      "labelFontSize": 12,
+      "rowPadding": 6
+    }
+  },
+
+  "data": { "url": "data/immune-cell-activation.csv" },
+
+  "mark": { "type": "point", "tooltip": null, "size": 100 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "title": "Synthetic embedding 1",
+      "scale": { "domain": [0, 9] }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "title": "Synthetic embedding 2",
+      "scale": { "domain": [0, 7] }
+    },
+    "shape": {
+      "field": "cell_type",
+      "type": "nominal",
+      "title": "Cell type",
+      "scale": { "domain": ["T cell", "B cell"] }
+    },
+    "color": {
+      "field": "activation_state",
+      "type": "ordinal",
+      "title": "Activation state",
+      "scale": {
+        "domain": ["resting", "intermediate", "activated"],
+        "range": ["#9ecae1", "#4292c6", "#084594"]
+      }
+    },
+    "opacity": {
+      "condition": {
+        "test": {
+          "and": [{ "param": "cell_types" }, { "param": "activation_states" }]
+        },
+        "value": 1
+      },
+      "value": 0.12
+    }
+  }
+}

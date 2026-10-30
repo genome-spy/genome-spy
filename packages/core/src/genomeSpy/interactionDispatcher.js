@@ -62,11 +62,13 @@ export default class InteractionDispatcher {
      *
      * @param {import("../view/layout/point.js").default} point
      * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
+     * @param {import("../types/interactionApi.js").InternalMarkHit | null} [markHit]
      * @returns {Interaction}
      */
-    dispatch(point, uiEvent) {
+    dispatch(point, uiEvent, markHit) {
         this.#lastPoint = point;
         const interaction = new Interaction(point, uiEvent);
+        interaction.markHit = markHit;
         this.#viewRoot.propagateInteraction(interaction);
         this.#lastTarget = interaction.target;
 

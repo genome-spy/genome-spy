@@ -64,6 +64,11 @@ export default class Mark {
 
     #requiresSelectionIdentity = false;
 
+    /** Nonvisual predicate input names; definitions live in the normalized encoding.
+     * @type {Set<string>}
+     */
+    nonvisualInputs = new Set();
+
     /**
      * Creates the semantic mark owned by a unit view and resolves its configured
      * property defaults.
@@ -676,7 +681,7 @@ export default class Mark {
     isPickingParticipant() {
         if (
             this.properties.tooltip === null &&
-            !this.unitView.paramRuntime.hasPointSelections()
+            !this.unitView.paramRuntime.hasPointSelections({ inputOnly: true })
         ) {
             return false;
         }
