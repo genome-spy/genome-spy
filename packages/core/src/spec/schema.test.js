@@ -82,10 +82,28 @@ describe("generated core schema", () => {
         };
         const spec = { mark: "point", params: [param] };
         expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        for (const channel of ["x", "y"]) {
+            expect(
+                validate({
+                    ...spec,
+                    params: [
+                        {
+                            ...param,
+                            select: { type: "point", encodings: [channel] },
+                            value: [{ [channel]: "A" }],
+                        },
+                    ],
+                })
+            ).toBe(true);
+        }
         for (const project of [
             { color: "shape" },
             { fill: "color" },
             { x: "x2" },
+            { color: "x" },
+            { x: "shape" },
+            { x: "y" },
+            { y: "color" },
         ]) {
             expect(
                 validate({
@@ -102,8 +120,8 @@ describe("generated core schema", () => {
         for (const project of [
             { color: { field: "state" } },
             { encoding: "color" },
-            { color: "x" },
-            { x: "y" },
+            { color: "x2" },
+            { x: "size" },
         ]) {
             expect(
                 validate({
@@ -123,6 +141,8 @@ describe("generated core schema", () => {
                 ...param,
                 select: { type: "point", encodings: ["color", "shape"] },
             },
+            { ...param, select: { type: "point", encodings: ["x2"] } },
+            // Positional initializers must use the declared component key.
             { ...param, select: { type: "point", encodings: ["x"] } },
             { ...param, select: { type: "point", encoding: "color" } },
             { ...param, select: { type: "point", fields: ["state"] } },
@@ -515,7 +535,7 @@ describe("generated core schema", () => {
         condition.test.or = [{ param: "brush" }];
         expect(validate(base)).toBe(false);
         delete condition.test.or;
-        condition.test.and[0].project = { x: "y" };
+        condition.test.and[0].project = { x: "size" };
         expect(validate(base)).toBe(false);
         delete condition.test;
         condition.param = { or: ["selected"] };

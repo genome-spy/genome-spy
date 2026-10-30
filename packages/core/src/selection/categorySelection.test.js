@@ -92,54 +92,62 @@ test("category API normalizes detached typed values and rejects writes atomicall
     expect(api.getValue().active).toBe(false);
 });
 
-test.each([true, false])(
-    "plot gestures share API membership (toggle: %s)",
-    async (toggle) => {
-        const { root, context, views } = await createTestEmbed(
-            spec([
-                {
-                    name: "focus",
-                    select: { type: "point", encodings: ["color"], toggle },
-                },
-            ])
-        );
-        const unit = /** @type {import("../view/unitView.js").default} */ (
-            root
-        );
-        const rows = Array.from(unit.getCollector().getData());
-        const api = categories(views.root());
-        /** @param {number} index @param {boolean} [shiftKey] @param {string} [type] */
-        const click = (index, shiftKey = false, type = "click") => {
-            context.getCurrentHover = () => ({
-                mark: unit.mark,
-                datum: rows[index],
-            });
-            unit.handleInteraction(
-                new Interaction(
-                    new Point(0, 0),
-                    new MouseEvent(type, { shiftKey })
-                ),
-                false
-            );
+test.each([
+    { component: "color", toggle: true },
+    { component: "y", toggle: false },
+])("plot gestures share API membership (%j)", async ({ component, toggle }) => {
+    /** @type {import("../spec/parameter.js").Parameter} */
+    const param =
+        component === "color"
+            ? {
+                  name: "focus",
+                  select: { type: "point", encodings: ["color"], toggle },
+              }
+            : {
+                  name: "focus",
+                  select: { type: "point", encodings: ["y"], toggle },
+              };
+    const input = spec([param]);
+    if (component === "y") {
+        input.encoding.y = {
+            field: "state",
+            type: "nominal",
+            scale: { type: "point", domain: ["A", "B"] },
         };
-        api.setValue([["B"]]);
-        const previous = root.paramRuntime.getValue("focus");
-        click(0, true);
-        // Gesture updates must leave previously published membership intact.
-        expect(Array.from(previous.values)).toEqual(["B"]);
-        expect(api.getValue().values).toEqual(
-            toggle ? [["B"], ["A"]] : [["A"]]
-        );
-        click(2, true);
-        expect(api.getValue().values).toEqual(toggle ? [["B"]] : [["A"]]);
-        click(1);
-        expect(api.getValue().values).toEqual([["B"]]);
-        click(1, false, "dblclick");
-        expect(api.getValue().values).toEqual([]);
-        if (!toggle)
-            expect(() => api.setValue([["A"], ["B"]])).toThrow(/at most one/);
     }
-);
+    const { root, context, views } = await createTestEmbed(input);
+    const unit = /** @type {import("../view/unitView.js").default} */ (root);
+    const rows = Array.from(unit.getCollector().getData());
+    const api = categories(views.root());
+    /** @param {number} index @param {boolean} [shiftKey] @param {string} [type] */
+    const click = (index, shiftKey = false, type = "click") => {
+        context.getCurrentHover = () => ({
+            mark: unit.mark,
+            datum: rows[index],
+        });
+        unit.handleInteraction(
+            new Interaction(
+                new Point(0, 0),
+                new MouseEvent(type, { shiftKey })
+            ),
+            false
+        );
+    };
+    api.setValue([["B"]]);
+    const previous = root.paramRuntime.getValue("focus");
+    click(0, true);
+    // Gesture updates must leave previously published membership intact.
+    expect(Array.from(previous.values)).toEqual(["B"]);
+    expect(api.getValue().values).toEqual(toggle ? [["B"], ["A"]] : [["A"]]);
+    click(2, true);
+    expect(api.getValue().values).toEqual(toggle ? [["B"]] : [["A"]]);
+    click(1);
+    expect(api.getValue().values).toEqual([["B"]]);
+    click(1, false, "dblclick");
+    expect(api.getValue().values).toEqual([]);
+    if (!toggle)
+        expect(() => api.setValue([["A"], ["B"]])).toThrow(/at most one/);
+});
 
 test("outer category writers preserve initialization and read-only consumers", async () => {
     const { root, views } = await createTestEmbed({
@@ -230,6 +238,16 @@ test("expression helpers are reactive, scoped, detached semantic values", async 
             "selectionContains(null, 'color', 'A')"
         )()
     ).toThrow();
+});
+
+test("categorical point selection rejects a continuous positional source", async () => {
+    await expect(
+        createTestEmbed(
+            spec([
+                { name: "focus", select: { type: "point", encodings: ["x"] } },
+            ])
+        )
+    ).rejects.toThrow(/nominal or ordinal field with a discrete scale/);
 });
 
 test.each([

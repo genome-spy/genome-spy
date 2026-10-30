@@ -2,8 +2,16 @@
 import assert from "node:assert/strict";
 import { testRenderers } from "./testRenderers.mjs";
 
-await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
-    const composed = await page.evaluate(async (renderer) => {
+const variants = [
+    { deviceScaleFactor: 1, position: "x", scaleType: "band" },
+    { deviceScaleFactor: 1, position: "y", scaleType: "point" },
+];
+await testRenderers(variants, async (page, renderer, variant) => {
+    const { position, scaleType } = variant;
+    const options = { renderer, position, scaleType };
+    const composed = await page.evaluate(async (options) => {
+        const { renderer, position, scaleType } = options;
+        const otherPosition = position === "x" ? "y" : "x";
         const { embed, intervalSelection } = await import("/index.js");
         const frame = () =>
             new Promise((resolve) =>
@@ -36,98 +44,108 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             scale: { domain: [0, 1] },
             axis: null,
         };
-        const api = await embed(
-            host,
-            {
-                width: 340,
-                height: 140,
-                padding: 0,
-                params: [
-                    { name: "colorDomain", value: ["A", "B"] },
-                    { name: "shapeDomain", value: ["B", "A"] },
-                    {
-                        name: "focus",
-                        select: { type: "point", encodings: ["color"] },
-                    },
-                ],
-                datasets: {
-                    first: [
-                        { x: 0.25, state: "A" },
-                        { x: 0.75, state: "B" },
-                    ],
-                    second: [
-                        { x: 0.25, activation: "B" },
-                        { x: 0.75, activation: "A" },
-                    ],
+        const spec = {
+            width: 340,
+            height: 140,
+            padding: 0,
+            params: [
+                { name: "positionDomain", value: ["A", "B"] },
+                { name: "shapeDomain", value: ["B", "A"] },
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: [position] },
                 },
-                layer: [
-                    {
-                        data: { name: "first" },
-                        mark: "point",
-                        encoding: {
-                            x,
-                            y: { value: 0.75 },
-                            size: { value: 200 },
-                            color: {
-                                field: "state",
-                                type: "ordinal",
-                                legend: null,
-                                scale: {
-                                    domain: { expr: "colorDomain" },
-                                    range: ["red"],
-                                },
-                            },
-                            opacity: {
-                                condition: { param: "focus", value: 1 },
-                                value: 0.15,
-                            },
-                        },
-                    },
-                    {
-                        data: { name: "second" },
-                        mark: { type: "point", color: "red" },
-                        encoding: {
-                            x,
-                            y: { value: 0.25 },
-                            size: { value: 200 },
-                            shape: {
-                                field: "activation",
-                                type: "ordinal",
-                                legend: null,
-                                scale: {
-                                    domain: { expr: "shapeDomain" },
-                                    range: ["circle"],
-                                },
-                            },
-                            opacity: {
-                                condition: {
-                                    param: "focus",
-                                    project: { color: "shape" },
-                                    value: 1,
-                                },
-                                value: 0.15,
-                            },
-                        },
-                    },
+            ],
+            datasets: {
+                first: [
+                    { x: 0.25, state: "A" },
+                    { x: 0.75, state: "B" },
+                ],
+                second: [
+                    { x: 0.25, activation: "B" },
+                    { x: 0.75, activation: "A" },
                 ],
             },
-            { renderer }
-        );
+            resolve: {
+                scale: { [position]: "independent" },
+                axis: { [position]: "independent" },
+            },
+            layer: [
+                {
+                    data: { name: "first" },
+                    mark: { type: "point", color: "red" },
+                    encoding: {
+                        [position]: {
+                            field: "state",
+                            type: "ordinal",
+                            axis: null,
+                            scale: {
+                                type: scaleType,
+                                padding: scaleType === "point" ? 0.5 : 0,
+                                domain: { expr: "positionDomain" },
+                            },
+                        },
+                        [otherPosition]: { value: 0.75 },
+                        size: { value: 200 },
+                        opacity: {
+                            condition: { param: "focus", value: 1 },
+                            value: 0.15,
+                        },
+                    },
+                },
+                {
+                    data: { name: "second" },
+                    mark: { type: "point", color: "red" },
+                    encoding: {
+                        [position]: x,
+                        [otherPosition]: { value: 0.25 },
+                        size: { value: 200 },
+                        shape: {
+                            field: "activation",
+                            type: "ordinal",
+                            legend: null,
+                            scale: {
+                                domain: { expr: "shapeDomain" },
+                                range: ["circle"],
+                            },
+                        },
+                        opacity: {
+                            condition: {
+                                param: "focus",
+                                project: { [position]: "shape" },
+                                value: 1,
+                            },
+                            value: 0.15,
+                        },
+                    },
+                },
+            ],
+        };
+        const api = await embed(host, spec, { renderer });
         await api.awaitVisibleLazyData(AbortSignal.timeout(5000));
         const focus = api.params.getSelection("focus");
-        const positions = [
-            [85, 35],
-            [255, 35],
-            [85, 105],
-            [255, 105],
-        ];
+        // Categorical y runs top to bottom; quantitative y runs bottom to top.
+        const positions =
+            position === "x"
+                ? [
+                      [85, 35],
+                      [255, 35],
+                      [85, 105],
+                      [255, 105],
+                  ]
+                : [
+                      [255, 35],
+                      [255, 105],
+                      [85, 105],
+                      [85, 35],
+                  ];
         focus.setValue([["A"]]);
         const a = await read(api, positions);
         focus.setValue([["B"]]);
         const b = await read(api, positions);
         focus.setValue([["later"]]);
         const unknown = await read(api, positions);
-        api.params.get("colorDomain").setValue(["A", "B", "later"]);
+        api.params.get("positionDomain").setValue(["later", "B"]);
         api.params.get("shapeDomain").setValue(["B", "A", "later"]);
         await api.datasets.set("first", [
             { x: 0.25, state: "later" },
@@ -154,14 +172,24 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
                     },
                 ],
                 data: {
-                    values: [0.25, 0.5, 0.75].map((x) => ({ x, score: 0 })),
+                    values: [0.25, 0.5, 0.75].map((x) => ({
+                        x,
+                        score: 0,
+                    })),
                 },
-                mark: { type: "point", tooltip: null, semanticZoomFraction: 0 },
+                mark: {
+                    type: "point",
+                    tooltip: null,
+                    semanticZoomFraction: 0,
+                },
                 encoding: {
                     x,
                     y: { value: 0.5 },
                     size: { value: 200 },
-                    semanticScore: { field: "score", type: "quantitative" },
+                    semanticScore: {
+                        field: "score",
+                        type: "quantitative",
+                    },
                     opacity: {
                         condition: { param: "brush", value: 1 },
                         value: 0.2,
@@ -180,7 +208,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         ]);
         brushApi.finalize();
         return { a, b, unknown, arrival, brush };
-    }, renderer);
+    }, options);
     assert.deepEqual(
         composed,
         {
@@ -190,8 +218,10 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             arrival: [255, 38, 255, 38],
             brush: [0, 255, 0],
         },
-        `${renderer}: independent color-to-shape mappings, unknown arrivals, and interval-only sampling`
+        `${renderer}: independent ${position}-to-shape mappings, unknown arrivals, and interval-only sampling`
     );
+
+    if (position === "y") return;
 
     if (renderer !== "canvas") {
         const performance = await page.evaluate(async (renderer) => {
@@ -409,6 +439,13 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             )
         ).json();
         spec.name = "activation";
+        // Exercise selection gestures independently of tooltip placement.
+        spec.mark = {
+            ...(typeof spec.mark === "string"
+                ? { type: spec.mark }
+                : spec.mark),
+            tooltip: null,
+        };
         spec.baseUrl = new URL("/examples/", location.href).href;
         const api = await embed(host, spec, { renderer });
         await api.awaitVisibleLazyData(AbortSignal.timeout(5000));

@@ -354,6 +354,8 @@ export interface ParameterPredicate {
               x?: "x" | "x2";
               y?: "y" | "y2";
           }
+        | { x: CategorySelectionChannel }
+        | { y: CategorySelectionChannel }
         | { color: CategorySelectionChannel }
         | { fill: CategorySelectionChannel }
         | { stroke: CategorySelectionChannel }

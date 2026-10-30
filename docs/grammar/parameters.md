@@ -173,8 +173,13 @@ EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 matching raw values in the color field. This is a subset of
 [Vega-Lite's selection projections](https://vega.github.io/vega-lite/docs/selection.html#project):
 GenomeSpy supports one unconditional nominal or ordinal field encoding with a
-discrete scale, using `color`, `fill`, `stroke`, or `shape`. Direct `fields`
+discrete scale, using `x`, `y`, `color`, `fill`, `stroke`, or `shape`. Categorical
+positions use band or point scales. Direct `fields`
 projection and multi-channel projections are not supported.
+
+Category selections can link plots with different scales, for example a
+categorical x axis and a shape encoding. Map the selected component to the other
+plot's input with [`project`](conditional-encoding.md#matching-categories-across-views).
 
 Initial values use channel-keyed objects such as `value: [{"color": "activated"}]`.
 See the [selection API](../api/runtime-state.md#setting-categorical-point-selections)

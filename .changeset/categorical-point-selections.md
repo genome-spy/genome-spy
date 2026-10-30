@@ -8,6 +8,7 @@
 
 Add categorical membership to point selections with typed raw values, scoped
 selection APIs, and expression helpers including allocation-free membership tests.
+Link categorical positions, colors, and shapes across plots with independent scales.
 Category selections also support App history, bookmarks, and agent parameter
 actions without requiring record keys.
 

@@ -146,6 +146,79 @@ test("category predicates agree across appearance, order, formulas, and filters"
     }
 });
 
+test("category predicates link band x to shape and point y across independent scales", async () => {
+    const source = panel("source");
+    const consumer = panel("consumer", "activation");
+    source.params = [
+        {
+            name: "focus",
+            select: { type: "point", encodings: ["x"] },
+            push: "outer",
+        },
+    ];
+    source.encoding.x = {
+        field: "state",
+        type: "nominal",
+        scale: {
+            type: "band",
+            domain: [1, "1", false, "absent"],
+        },
+    };
+    consumer.encoding.y = {
+        field: "activation",
+        type: "ordinal",
+        scale: {
+            type: "point",
+            domain: ["absent", false, "1", 1],
+        },
+    };
+    consumer.encoding.shape = {
+        field: "activation",
+        type: "nominal",
+        scale: { domain: [false, 1, "absent", "1"] },
+    };
+    consumer.encoding.opacity = {
+        condition: { param: "focus", project: { x: "shape" }, value: 1 },
+        value: 0.1,
+    };
+    consumer.encoding.order = {
+        condition: { param: "focus", project: { x: "y" }, value: 1 },
+        value: 0,
+    };
+    const { root, views } = await createTestEmbed({
+        params: [
+            {
+                name: "focus",
+                select: { type: "point", encodings: ["x"] },
+            },
+        ],
+        hconcat: [source, consumer],
+    });
+    const api = categories(views.root());
+    api.setValue([["1"], [false]]);
+    await root.paramRuntime.whenPropagated();
+    const units = root
+        .getDescendants()
+        .filter((view) => view instanceof UnitView);
+    for (const unit of units.filter((view) =>
+        ["source", "consumer"].includes(view.name)
+    )) {
+        const rows = Array.from(unit.getCollector().getData());
+        expect(rows.map((row) => unit.mark.encoders.fillOpacity(row))).toEqual([
+            0.1, 1, 1, 0.1,
+        ]);
+        expect(rows.map((row) => unit.mark.getOrder().predicate(row))).toEqual([
+            false,
+            true,
+            true,
+            false,
+        ]);
+        if (unit.name === "consumer")
+            expect(unit.mark.encoders.uniqueId).toBeUndefined();
+    }
+    expect(api.getValue().encodings).toEqual(["x"]);
+});
+
 test("logical/named/union predicates and sampling keep their distinct contracts", async () => {
     const input = panel("cells");
     input.params = [

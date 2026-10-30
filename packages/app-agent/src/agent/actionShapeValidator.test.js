@@ -17,12 +17,16 @@ describe("actionShapeValidator", () => {
                 values: [[1], ["1"], [false]],
             },
         };
-        expect(
-            validateActionPayloadShape("paramProvenance/paramChange", payload)
-                .ok
-        ).toBe(true);
+        for (const component of ["color", "x", "y"]) {
+            expect(
+                validateActionPayloadShape("paramProvenance/paramChange", {
+                    ...payload,
+                    value: { ...payload.value, encodings: [component] },
+                }).ok
+            ).toBe(true);
+        }
         for (const changes of [
-            { encodings: ["x"] },
+            { encodings: ["x2"] },
             { encodings: ["color", "shape"] },
             { values: [["A", "B"]] },
             { values: [[null]] },

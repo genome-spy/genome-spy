@@ -475,7 +475,8 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     measure?: "none" | "inside" | "outside";
 }
 
-export type CategorySelectionChannel = "color" | "fill" | "stroke" | "shape";
+export type CategorySelectionChannel =
+    "x" | "y" | "color" | "fill" | "stroke" | "shape";
 
 export interface RecordSelectionParameter
     extends ParameterBase, PersistedParameter {
@@ -486,7 +487,7 @@ export interface RecordSelectionParameter
 
 export interface CategorySelectionParameter<C extends CategorySelectionChannel>
     extends ParameterBase, PersistedParameter {
-    select: PointSelectionConfig & { encodings: [C] };
+    select: Omit<PointSelectionConfig, "encodings"> & { encodings: [C] };
 
     /** Initial raw categories, keyed by the declared encoding channel. */
     value?: Record<C, Scalar>[];
@@ -512,6 +513,8 @@ export type SelectionParameter<T extends SelectionType = SelectionType> =
     T extends "interval"
         ? IntervalSelectionParameter
         : | RecordSelectionParameter
+          | CategorySelectionParameter<"x">
+          | CategorySelectionParameter<"y">
           | CategorySelectionParameter<"color">
           | CategorySelectionParameter<"fill">
           | CategorySelectionParameter<"stroke">

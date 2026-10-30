@@ -458,7 +458,7 @@
       "type": "object"
     },
     "CategorySelectionChannel": {
-      "enum": ["color", "fill", "stroke", "shape"],
+      "enum": ["x", "y", "color", "fill", "stroke", "shape"],
       "type": "string"
     },
     "ChromosomalLocus": {
