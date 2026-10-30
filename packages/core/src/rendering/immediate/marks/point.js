@@ -14,6 +14,7 @@ import {
  * @prop {string} shape
  * @prop {number} x
  * @prop {number} y
+ * @prop {number} radius Nominal radius before insetting the stroke path.
  * @prop {number} geometryRadius
  * @prop {number} boundsRadius
  * @prop {number} angle
@@ -79,6 +80,7 @@ export function visitPointInstances(mark, properties, options, visitor) {
         shape: "circle",
         x: 0,
         y: 0,
+        radius: 0,
         geometryRadius: 0,
         boundsRadius: 0,
         angle: 0,
@@ -138,6 +140,7 @@ export function visitPointInstances(mark, properties, options, visitor) {
         instance.shape = shape;
         instance.x = x;
         instance.y = y;
+        instance.radius = radius;
         instance.geometryRadius = geometryRadius;
         instance.boundsRadius = conservativeRadius;
         instance.angle = encodeNumber(encoders.angle, datum);

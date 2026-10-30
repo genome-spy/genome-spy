@@ -19,9 +19,12 @@ description: Test GenomeSpy generated specifications, rendered view hierarchies,
 - Prefer focused SVG DOM assertions over whole-document snapshots. Snapshot a
   complete SVG only when the fixture is compact and its exact serialized shape
   is an intentional contract.
-- SVG tests cover the exporter and its shared view traversal, layout, scales,
-  and CPU encoders. They do not replace browser tests for WebGL shaders,
-  blending, antialiasing, or other renderer-specific behavior.
+- Use browser checks when the changed contract cannot be established
+  headlessly, such as WebGL shader output, antialiasing, or browser input.
+  Geometry, presentation attributes, paint order, and Canvas drawing commands
+  can often be verified with existing headless tests. A renderer change alone
+  does not require a new browser harness; add one only for a specific unresolved
+  behavior that existing checks cannot cover.
 - Prefer representative assertions when only part of the shape matters; do not
   snapshot incidental implementation details.
 - If existing output is unsuitable for stable snapshots, propose a

@@ -205,10 +205,6 @@ fn median3(value: vec3<f32>) -> f32 {
     return max(min(value.r, value.g), min(max(value.r, value.g), value.b));
 }
 
-fn sourceOver(above: vec4<f32>, below: vec4<f32>) -> vec4<f32> {
-    return above + below * (1.0 - above.a);
-}
-
 fn signedDistanceInDevicePixels(
     uv: vec2<f32>,
     devicePixelsPerAtlas: f32
@@ -224,11 +220,6 @@ fn shade(in: VSOut) -> vec4<f32> {
         in.devicePixelsPerAtlas
     );
     let shapeCoverage = clamp(distance + 0.5, 0.0, 1.0);
-    let expandedCoverage = clamp(
-        distance + in.halfStrokeWidth * globals.dpr + 0.5,
-        0.0,
-        1.0
-    );
     var fillColor = in.fill;
     var strokeColor = in.stroke;
     fillColor.a *= in.fillOpacity;
@@ -241,25 +232,16 @@ fn shade(in: VSOut) -> vec4<f32> {
     fillColor = premultiplyAlpha(fillColor);
     strokeColor = premultiplyAlpha(strokeColor);
 
-    var strokeCoverage: f32;
-    if (in.inwardStroke != 0u) {
-        let innerCoverage = clamp(
-            distance - 2.0 * in.halfStrokeWidth * globals.dpr + 0.5,
-            0.0,
-            1.0
-        );
-        strokeCoverage = max(shapeCoverage - innerCoverage, 0.0);
-    } else {
-        let innerCoverage = clamp(
-            distance - in.halfStrokeWidth * globals.dpr + 0.5,
-            0.0,
-            1.0
-        );
-        strokeCoverage = max(expandedCoverage - innerCoverage, 0.0);
+    var color = fillColor * shapeCoverage;
+    if (in.halfStrokeWidth > 0.0) {
+        let inward = in.inwardStroke != 0u;
+        let width = in.halfStrokeWidth * globals.dpr;
+        let innerCoverage = clamp(distance - select(width, 2.0 * width, inward) + 0.5, 0.0, 1.0);
+        let outerCoverage = select(clamp(distance + width + 0.5, 0.0, 1.0), shapeCoverage, inward);
+        color = innerCoverage * fillColor
+            + (shapeCoverage - innerCoverage) * (strokeColor + (1.0 - strokeColor.a) * fillColor)
+            + (outerCoverage - shapeCoverage) * strokeColor;
     }
-    let fillLayer = fillColor * shapeCoverage;
-    let strokeLayer = strokeColor * strokeCoverage;
-    let color = sourceOver(strokeLayer, fillLayer);
     if (color.a <= 0.0) {
         discard;
     }

@@ -57,52 +57,19 @@ export function renderPointCanvas(baseMark, options) {
             strokeOpacity = fillOpacity;
         }
 
-        context.beginPath();
-        const rotated = instance.angle != 0 && instance.shape != "circle";
-        if (rotated) {
-            context.save();
-            context.translate(instance.x, instance.y);
-            context.rotate((instance.angle * Math.PI) / 180);
-        }
-        const x = rotated ? 0 : instance.x;
-        const y = rotated ? 0 : instance.y;
-        let supported = true;
-        if (instance.shape == "circle") {
-            context.arc(x, y, instance.geometryRadius, 0, Math.PI * 2);
-        } else if (instance.shape == "square") {
-            const diameter = instance.geometryRadius * 2;
-            context.rect(
-                x - instance.geometryRadius,
-                y - instance.geometryRadius,
-                diameter,
-                diameter
-            );
-        } else {
-            supported = tracePointPath(
-                instance.shape,
-                x,
-                y,
-                instance.geometryRadius,
-                context
-            );
-        }
-        if (rotated) {
-            context.restore();
-        }
-        if (!supported) {
-            options.warn(
-                `Canvas2D rendered unsupported point shape "${instance.shape}" as a circle.`
-            );
-            context.arc(
-                instance.x,
-                instance.y,
-                instance.geometryRadius,
-                0,
-                Math.PI * 2
-            );
-        }
+        const hasFill = !lineShape && fill != "none" && fillOpacity > 0;
+        const fillRadius =
+            strokeOpacity < 1 || stroke == "none"
+                ? instance.radius
+                : instance.geometryRadius;
+        tracePointCanvas(
+            context,
+            instance,
+            hasFill ? fillRadius : instance.geometryRadius,
+            options.warn
+        );
 
-        if (!lineShape && fill != "none" && fillOpacity > 0) {
+        if (hasFill) {
             if (fillStyle != fill) {
                 context.fillStyle = fill;
                 fillStyle = fill;
@@ -111,6 +78,15 @@ export function renderPointCanvas(baseMark, options) {
             context.fill();
         }
         if (stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0) {
+            // Opaque strokes and centered points reuse the fill path.
+            if (hasFill && fillRadius != instance.geometryRadius) {
+                tracePointCanvas(
+                    context,
+                    instance,
+                    instance.geometryRadius,
+                    options.warn
+                );
+            }
             if (lineShape && context.lineCap != "butt") {
                 context.lineCap = "butt";
             }
@@ -123,6 +99,43 @@ export function renderPointCanvas(baseMark, options) {
             context.stroke();
         }
     });
+}
+
+/**
+ * @param {CanvasRenderingContext2D} context
+ * @param {import("../../immediate/marks/point.js").PointInstance} instance
+ * @param {number} radius
+ * @param {(message: string) => void} warn
+ */
+function tracePointCanvas(context, instance, radius, warn) {
+    context.beginPath();
+    const rotated = instance.angle != 0 && instance.shape != "circle";
+    if (rotated) {
+        context.save();
+        context.translate(instance.x, instance.y);
+        context.rotate((instance.angle * Math.PI) / 180);
+    }
+
+    const x = rotated ? 0 : instance.x;
+    const y = rotated ? 0 : instance.y;
+    let supported = true;
+    if (instance.shape == "circle") {
+        context.arc(x, y, radius, 0, Math.PI * 2);
+    } else if (instance.shape == "square") {
+        context.rect(x - radius, y - radius, radius * 2, radius * 2);
+    } else {
+        supported = tracePointPath(instance.shape, x, y, radius, context);
+    }
+    if (rotated) {
+        context.restore();
+    }
+
+    if (!supported) {
+        warn(
+            `Canvas2D rendered unsupported point shape "${instance.shape}" as a circle.`
+        );
+        context.arc(instance.x, instance.y, radius, 0, Math.PI * 2);
+    }
 }
 
 /** @param {CanvasRenderingContext2D} context @param {number} value */
