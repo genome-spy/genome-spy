@@ -22,9 +22,15 @@ export async function buildMetadataSourceSummaries(sources, options = {}) {
         (source) => getEffectiveInitialLoad(source) === false
     );
 
-    return Promise.all(
+    const results = await Promise.allSettled(
         lazySources.map((source) => summarizeMetadataSource(source, options))
     );
+    return results.map((result) => {
+        if (result.status === "rejected") {
+            throw result.reason;
+        }
+        return result.value;
+    });
 }
 
 /**

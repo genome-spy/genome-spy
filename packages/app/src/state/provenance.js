@@ -13,6 +13,7 @@
 
 import { ActionCreators } from "redux-undo";
 import { isBaselineAction } from "./provenanceBaseline.js";
+import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 
 /**
  * Adds a provenance id to dispatched actions.
@@ -197,12 +198,25 @@ export default class Provenance {
      * @returns {Action[]}
      */
     getBookmarkableActionHistory() {
-        return this.getActionHistory()
-            .filter((action) => !isBaselineAction(action))
-            .map((action) => {
-                // eslint-disable-next-line no-unused-vars
-                const { provenanceId, ...rest } = action;
-                return rest;
-            });
+        const state = this._provenanceState;
+        const baseline = state.past[0] ?? state.present;
+        // A lifecycle baseline retains independent parameter values without
+        // retaining undo history. Persist those values as ordinary replay intents.
+        const baselineEntries = isBaselineAction(baseline?.lastAction)
+            ? (baseline.paramProvenance?.entries ?? {})
+            : {};
+        /** @type {Action[]} */
+        const initialActions = Object.values(baselineEntries).map((entry) =>
+            paramProvenanceSlice.actions.paramChange(entry)
+        );
+        return initialActions.concat(
+            this.getActionHistory()
+                .filter((action) => !isBaselineAction(action))
+                .map((action) => {
+                    // eslint-disable-next-line no-unused-vars
+                    const { provenanceId, ...rest } = action;
+                    return rest;
+                })
+        );
     }
 }

@@ -47,6 +47,11 @@ export default class BookmarkDatabase {
         return undefined;
     }
 
+    /** Release any connection owned by this database. */
+    async close() {
+        // Read-only in-memory databases have no connection.
+    }
+
     _checkReadonly() {
         if (this.isReadonly()) {
             throw new Error("This bookmark");

@@ -90,6 +90,21 @@ export default class App {
 
     #transitioning = false;
 
+    /** @type {Pick<import("./spec/appSpec.js").AppRootSpec, "specId" | "baseUrl" | "bookmarks">} */
+    #persistenceConfig;
+
+    #updateUrl = debounce(
+        () => {
+            if (!this.#finalized && !this.#transitioning)
+                this._updateStateToUrl();
+        },
+        500,
+        false
+    );
+
+    /** @type {Map<import("@genome-spy/core/scales/scaleResolution.js").default, () => void>} */
+    #scaleObservers = new Map();
+
     /** @type {import("./embedTypes.js").AppViewApi} */
     views;
 
@@ -103,6 +118,7 @@ export default class App {
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
+        this.#persistenceConfig = rootSpec;
 
         this.options = {
             embedMode: /** @type {const} */ ("standalone"),
@@ -291,6 +307,7 @@ export default class App {
                         await this.#attachSampleView();
                     } finally {
                         this.#bindParamProvenance();
+                        this.#observeScaleDomains();
                         this.store.dispatch(
                             lifecycleSlice.actions.hierarchyChanged()
                         );
@@ -302,6 +319,8 @@ export default class App {
                     this.store.dispatch(
                         lifecycleSlice.actions.setCohortTransitioning(false)
                     );
+                if (!this.#finalized && !this.isEmbedded())
+                    this._updateStateToUrl();
             }
         }
     }
@@ -364,6 +383,7 @@ export default class App {
                     );
                 }
                 this.store.dispatch(resetCohort(retainedEntries));
+                if (removing) await this.#replacePersistenceContext(null);
                 const visibilities = Object.fromEntries(
                     Object.entries(
                         this.store.getState().viewSettings.visibilities
@@ -481,8 +501,8 @@ export default class App {
          */
         this.localBookmarkDatabase = this.isEmbedded()
             ? undefined
-            : typeof this.rootSpec.specId == "string"
-              ? new IDBBookmarkDatabase(this.rootSpec.specId)
+            : typeof this.#persistenceConfig.specId == "string"
+              ? new IDBBookmarkDatabase(this.#persistenceConfig.specId)
               : undefined;
 
         /**
@@ -490,6 +510,75 @@ export default class App {
          * @type {import("./bookmark/bookmarkDatabase.js").default}
          */
         this.globalBookmarkDatabase = undefined;
+    }
+
+    /** Base for bookmark-authored assets in the current source context. */
+    get bookmarkBaseUrl() {
+        return this.#persistenceConfig.baseUrl ?? "";
+    }
+
+    /**
+     * Change source persistence independently of hierarchy mutation.
+     * @param {import("./embedTypes.js").AppPersistenceContext | null} context
+     */
+    async setPersistenceContext(context) {
+        const remoteUrl = context?.remoteBookmarks?.url;
+        if (remoteUrl && !context.baseUrl && !URL.canParse(remoteUrl)) {
+            throw new Error(
+                "Relative remote bookmark URLs require a persistence baseUrl."
+            );
+        }
+        await this.views.transaction(async () => {
+            await this.#replacePersistenceContext(context);
+            await this.#ensureRemoteBookmarks(this.#loadRemoteBookmarks());
+        });
+    }
+
+    /** @param {import("./embedTypes.js").AppPersistenceContext | null} context */
+    async #replacePersistenceContext(context) {
+        this.#updateUrl.cancel();
+        await this.localBookmarkDatabase?.close();
+        this.#persistenceConfig = {
+            specId: context?.specId,
+            baseUrl: context?.baseUrl ?? "",
+            bookmarks: context?.remoteBookmarks
+                ? { remote: context.remoteBookmarks }
+                : undefined,
+        };
+        this.#setupBookmarkDatabases();
+    }
+
+    /** @returns {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>} */
+    #loadRemoteBookmarks() {
+        const remote = this.#persistenceConfig.bookmarks?.remote;
+        return this.isEmbedded() || !remote
+            ? Promise.resolve([])
+            : vegaLoader({ baseURL: this.bookmarkBaseUrl })
+                  .load(remote.url)
+                  .then((/** @type {string} */ value) => JSON.parse(value));
+    }
+
+    #observeScaleDomains() {
+        if (this.isEmbedded()) return;
+        const current = new Set(
+            Array.from(
+                this.genomeSpy.getNamedScaleResolutions().values()
+            ).filter((resolution) => resolution.isZoomable())
+        );
+        for (const [resolution, unsubscribe] of this.#scaleObservers) {
+            if (!current.has(resolution)) {
+                unsubscribe();
+                this.#scaleObservers.delete(resolution);
+            }
+        }
+        for (const resolution of current) {
+            if (!this.#scaleObservers.has(resolution)) {
+                resolution.addEventListener("domain", this.#updateUrl);
+                this.#scaleObservers.set(resolution, () =>
+                    resolution.removeEventListener("domain", this.#updateUrl)
+                );
+            }
+        }
     }
 
     /**
@@ -614,6 +703,12 @@ export default class App {
         }
         this.#finalized = true;
         this.paramProvenanceBridge?.dispose();
+        this.#updateUrl.cancel();
+        for (const unsubscribe of this.#scaleObservers.values()) unsubscribe();
+        this.#scaleObservers.clear();
+        void this.localBookmarkDatabase
+            ?.close()
+            .catch((error) => console.error(error));
 
         for (const disposer of Array.from(this.#disposers).reverse()) {
             disposer();
@@ -635,15 +730,7 @@ export default class App {
          * Initiate async fetching of the remote bookmark entries.
          * @type {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>}
          */
-        const remoteBookmarkPromise = this.isEmbedded()
-            ? Promise.resolve([])
-            : this.rootSpec.bookmarks?.remote
-              ? vegaLoader({ baseURL: this.rootSpec.baseUrl })
-                    .load(this.rootSpec.bookmarks.remote.url)
-                    .then((/** @type {string} */ str) =>
-                        Promise.resolve(JSON.parse(str))
-                    )
-              : Promise.resolve([]);
+        const remoteBookmarkPromise = this.#loadRemoteBookmarks();
 
         // Restore view visibility early so initial data/scale init honors bookmarks.
         // This avoids lazy-init races where in-flight loads miss newly visible branches.
@@ -772,26 +859,8 @@ export default class App {
                 window.removeEventListener("hashchange", onHashChange, false)
             );
 
-            const debouncedUpdateUrl = debounce(
-                () => {
-                    if (!this.#finalized) {
-                        this._updateStateToUrl();
-                    }
-                },
-                500,
-                false
-            );
-
-            this.#registerDisposer(this.store.subscribe(debouncedUpdateUrl));
-
-            for (const [, res] of this.genomeSpy.getNamedScaleResolutions()) {
-                if (res.isZoomable()) {
-                    res.addEventListener("domain", debouncedUpdateUrl);
-                    this.#registerDisposer(() =>
-                        res.removeEventListener("domain", debouncedUpdateUrl)
-                    );
-                }
-            }
+            this.#registerDisposer(this.store.subscribe(this.#updateUrl));
+            this.#observeScaleDomains();
         }
 
         const title = asArray(this.genomeSpy.spec.description ?? []);
@@ -838,7 +907,7 @@ export default class App {
      * Restore state from url. If not restored, load a bookmark if requested in config.
      */
     async _restoreStateFromUrlOrBookmark() {
-        const remoteConf = this.rootSpec.bookmarks?.remote;
+        const remoteConf = this.#persistenceConfig.bookmarks?.remote;
         const remoteDb = this.globalBookmarkDatabase;
 
         const restored = await this._restoreStateFromUrl();
@@ -955,7 +1024,7 @@ export default class App {
      */
     async #resolveBookmarkFromHash(hash, remoteBookmarkPromise) {
         if (hash.startsWith("#bookmark:")) {
-            const remoteConf = this.rootSpec.bookmarks?.remote;
+            const remoteConf = this.#persistenceConfig.bookmarks?.remote;
             if (!remoteConf) {
                 return;
             }
@@ -1008,7 +1077,7 @@ export default class App {
         }
 
         if (hash.startsWith("#bookmark:")) {
-            const remoteConf = this.rootSpec.bookmarks?.remote;
+            const remoteConf = this.#persistenceConfig.bookmarks?.remote;
             return {
                 entry,
                 mode: "tour",
@@ -1037,7 +1106,7 @@ export default class App {
             this.globalBookmarkDatabase = new SimpleBookmarkDatabase(
                 remoteBookmarks,
                 {
-                    baseUrl: getRemoteBookmarkBaseUrl(this.rootSpec),
+                    baseUrl: getRemoteBookmarkBaseUrl(this.#persistenceConfig),
                 }
             );
         }
@@ -1064,7 +1133,7 @@ export default class App {
 }
 
 /**
- * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
+ * @param {Pick<import("./spec/appSpec.js").AppRootSpec, "baseUrl" | "bookmarks">} rootSpec
  */
 export function getRemoteBookmarkBaseUrl(rootSpec) {
     const remoteConf = rootSpec.bookmarks?.remote;

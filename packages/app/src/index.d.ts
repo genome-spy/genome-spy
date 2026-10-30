@@ -6,7 +6,11 @@ export * from "./agentShared/index.js";
 export { BaseDialog, showDialog, showMessageDialog } from "./dialog/index.js";
 
 export declare const embed: AppEmbedFunction;
-export type { AppViewApi, AppEmbedResult } from "./embedTypes.d.ts";
+export type {
+    AppViewApi,
+    AppEmbedResult,
+    AppPersistenceContext,
+} from "./embedTypes.d.ts";
 export type * from "./appTypes.d.ts";
 export type * from "./sampleView/types.d.ts";
 export type * from "./sampleView/state/sampleState.d.ts";

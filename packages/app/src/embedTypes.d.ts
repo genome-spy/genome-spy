@@ -20,6 +20,19 @@ export interface AppViewApi extends Omit<ViewApi, "insert" | "transaction"> {
 
 export interface AppEmbedResult extends Omit<EmbedResult, "views"> {
     views: AppViewApi;
+    /** Switch bookmark identity/configuration without replacing the App or cohort. */
+    setPersistenceContext(context: AppPersistenceContext | null): Promise<void>;
+}
+
+/** Source bookmark configuration; dynamic changes do not start a bookmark tour. */
+export interface AppPersistenceContext {
+    specId?: string;
+    baseUrl?: string;
+    /** Absolute URL, or a relative URL accompanied by baseUrl. */
+    remoteBookmarks?: Pick<
+        import("./spec/appSpec.js").RemoteBookmarkConfig,
+        "url"
+    >;
 }
 
 export type AppEmbedOptions = import("./appTypes.js").AppEmbedOptions;

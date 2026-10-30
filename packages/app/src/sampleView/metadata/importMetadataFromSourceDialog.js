@@ -357,8 +357,16 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this.dialogTitle = html`Import metadata from
             <em>${sourceLabel}</em> source`;
         this.groupPath = this.source.groupPath ?? "";
-        void this.#refreshSourceContext();
-        void this.#updatePreview();
+        try {
+            await this.sampleView.runCohortOperation(() =>
+                Promise.all([
+                    this.#refreshSourceContext(),
+                    this.#updatePreview(),
+                ])
+            );
+        } catch (error) {
+            this._error = String(error);
+        }
     }
 
     #getAdapter() {
@@ -391,10 +399,16 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     /**
      * @param {string[]} columnIds
      */
-    #setColumnSelection(columnIds) {
+    async #setColumnSelection(columnIds) {
         const normalized = parseColumnQueries(columnIds.join("\n"));
         this.columnInput = normalized.join("\n");
-        void this.#updatePreview();
+        try {
+            await this.sampleView.runCohortOperation(() =>
+                this.#updatePreview()
+            );
+        } catch (error) {
+            this._error = String(error);
+        }
     }
 
     #revalidateColumnsAfterPreview() {
@@ -473,7 +487,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const version = ++this._sourceContextVersion;
         const adapterPromise = this.#getAdapter();
 
-        void adapterPromise
+        const columnsPromise = adapterPromise
             .then((adapter) => adapter.listColumns())
             .then((columns) => {
                 if (version !== this._sourceContextVersion) {
@@ -490,7 +504,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 this._columnSearchIndex.replace([]);
             });
 
-        void adapterPromise
+        const sampleIdsPromise = adapterPromise
             .then((adapter) => adapter.listSampleIds())
             .then((sourceSampleIds) => {
                 if (version !== this._sourceContextVersion) {
@@ -511,6 +525,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 };
                 this._showAlignmentDetails = false;
             });
+
+        return Promise.all([columnsPromise, sampleIdsPromise]);
     }
 
     /**

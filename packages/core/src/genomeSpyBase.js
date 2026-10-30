@@ -82,6 +82,9 @@ export default class GenomeSpy {
     /** @type {import("./rendering/renderingBackend.js").RenderingBackend | undefined} */
     #renderingBackend;
 
+    /** @type {ResizeObserver | undefined} */
+    #containerResizeObserver;
+
     /** @type {View | undefined} */
     #disposedViewRoot;
 
@@ -296,12 +299,10 @@ export default class GenomeSpy {
 
         this.#onCanvasResize = resizeCallback;
 
-        if (this.viewRoot.getSize().isGrowing()) {
-            // TODO: Size should be observed only if the content is not absolutely sized
-            const resizeObserver = new ResizeObserver(resizeCallback);
-            resizeObserver.observe(this.container);
-            this.#destructionCallbacks.push(() => resizeObserver.disconnect());
-        }
+        this.#syncCanvasSizing();
+        this.#destructionCallbacks.push(() =>
+            this.#containerResizeObserver?.disconnect()
+        );
 
         /** @type {() => void} */
         let remove = null;
@@ -323,6 +324,23 @@ export default class GenomeSpy {
 
         if (remove) {
             this.#destructionCallbacks.push(remove);
+        }
+    }
+
+    #syncCanvasSizing() {
+        const size = this.viewRoot.getSize();
+        this.#canvasWrapper.style.flexGrow = size.height.grow > 0 ? "1" : "0";
+
+        if (size.isGrowing()) {
+            if (!this.#containerResizeObserver) {
+                this.#containerResizeObserver = new ResizeObserver(() =>
+                    this.#onCanvasResize()
+                );
+                this.#containerResizeObserver.observe(this.container);
+            }
+        } else {
+            this.#containerResizeObserver?.disconnect();
+            this.#containerResizeObserver = undefined;
         }
     }
 
@@ -543,9 +561,6 @@ export default class GenomeSpy {
         await initializeViewGuides(this.viewRoot);
 
         this.#loadingStatusRegistry.set(this.viewRoot, "loading");
-
-        this.#canvasWrapper.style.flexGrow =
-            this.viewRoot.getSize().height.grow > 0 ? "1" : "0";
 
         this.#initializeParameterBindings();
 
@@ -952,6 +967,7 @@ export default class GenomeSpy {
 
     computeLayout() {
         this.#layoutReflowRequested = false;
+        this.#syncCanvasSizing();
         this.#renderCoordinator.computeLayout();
     }
 

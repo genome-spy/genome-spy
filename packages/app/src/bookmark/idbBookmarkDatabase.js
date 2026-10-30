@@ -54,6 +54,10 @@ export default class IDBBookmarkDatabase extends BookmarkDatabase {
         return this._db;
     }
 
+    async close() {
+        if (this._db) (await this._db).close();
+    }
+
     isReadonly() {
         return false;
     }

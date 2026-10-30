@@ -41,15 +41,15 @@ export function createAgentApi(app) {
         /**
          * @param {AbortSignal} [signal]
          */
-        getMetadataSourceSummaries(signal) {
-            const sampleView = app.getSampleView();
-            if (!sampleView) {
-                return Promise.resolve([]);
-            }
-
-            return getMetadataSourceRuntime(sampleView).getAgentSummaries(
-                signal
-            );
+        async getMetadataSourceSummaries(signal) {
+            return app.runCohortOperation(() => {
+                const sampleView = app.getSampleView();
+                return sampleView
+                    ? getMetadataSourceRuntime(sampleView).getAgentSummaries(
+                          signal
+                      )
+                    : Promise.resolve([]);
+            });
         },
 
         /**

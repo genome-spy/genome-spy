@@ -288,9 +288,5 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
  * @param {BookmarkInfoBoxOptions} options
  */
 export function getBookmarkInfoBoxBaseUrl(app, options) {
-    return (
-        options.database?.baseUrl ??
-        options.baseUrl ??
-        app.genomeSpy.spec.baseUrl
-    );
+    return options.database?.baseUrl ?? options.baseUrl ?? app.bookmarkBaseUrl;
 }

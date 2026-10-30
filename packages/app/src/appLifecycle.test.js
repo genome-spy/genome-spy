@@ -8,6 +8,13 @@ import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataIn
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import { findAncestorDataSource } from "@genome-spy/core/data/flowInit.js";
 import { intervalSelection } from "@genome-spy/core/selection/index.js";
+import { createSvg } from "@genome-spy/core/svg/index.js";
+import { INTERNAL_DEFAULT_CONFIG } from "@genome-spy/core/config/defaultConfig.js";
+import { resolveBaseConfig } from "@genome-spy/core/config/resolveConfig.js";
+import {
+    DEFAULT_THEME_NAME,
+    resolveThemeSelection,
+} from "@genome-spy/core/config/themes.js";
 import {
     getParamSelector,
     getViewSelector,
@@ -15,19 +22,56 @@ import {
 import App from "./app.js";
 import { sampleSlice } from "./sampleView/state/sampleSlice.js";
 import { paramProvenanceSlice } from "./state/paramProvenanceSlice.js";
+import { createBookmarkWithCurrentState } from "./bookmark/bookmarkState.js";
+import { restoreBookmark } from "./bookmark/bookmark.js";
+import { decompressFromUrlHash } from "./utils/urlHash.js";
+import { createAgentApi } from "./agentApi/index.js";
+import BaseDialog from "./components/generic/baseDialog.js";
+import { ImportMetadataFromSourceDialog } from "./sampleView/metadata/importMetadataFromSourceDialog.js";
+
+const figwigMetadata = vi.hoisted(() => ({
+    getTracks: vi.fn(),
+    close: vi.fn(),
+}));
+
+vi.mock("@genome-spy/figwig", () => ({
+    FigWig: class {
+        getTracks = figwigMetadata.getTracks;
+        close = figwigMetadata.close;
+    },
+}));
 
 // Exercise the real App shell and lifecycle while replacing only GPU startup.
 vi.mock("@genome-spy/core/styles/genome-spy.css.js", () => ({ default: "" }));
+// The browser loader has no filesystem fallback; keep its real HTTP path in Node.
+vi.mock("vega-loader", async (importOriginal) => {
+    const actual = /** @type {typeof import("vega-loader")} */ (
+        await importOriginal()
+    );
+    return {
+        ...actual,
+        loader: (options) => actual.loader({ ...options, mode: "http" }),
+    };
+});
 
 /** @type {App[]} */
 const apps = [];
 
 beforeEach(() => {
+    window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search
+    );
     vi.spyOn(GenomeSpy.prototype, "launch").mockImplementation(
         async function () {
             const context = createTestViewContext(
                 {},
                 {
+                    baseConfig: resolveBaseConfig({
+                        defaultConfig: INTERNAL_DEFAULT_CONFIG,
+                        builtInTheme: resolveThemeSelection(DEFAULT_THEME_NAME),
+                    }),
                     genomeStore: new GenomeStore("."),
                     isViewConfiguredVisible: (view) =>
                         this.viewVisibilityPredicate(view),
@@ -81,13 +125,15 @@ afterEach(() => {
         app.appContainer.remove();
     }
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
 });
 
 /**
  * @param {import("@genome-spy/core/spec/parameter.js").Parameter[]} [params]
+ * @param {import("./appTypes.js").AppEmbedOptions} [options]
  * @returns {Promise<App>}
  */
-async function createApp(params = []) {
+async function createApp(params = [], options = {}) {
     const container = document.createElement("div");
     document.body.append(container);
     const app = new App(
@@ -115,7 +161,7 @@ async function createApp(params = []) {
                 },
             ],
         },
-        { embedMode: "embedded" }
+        { embedMode: "embedded", ...options }
     );
     apps.push(app);
     expect(await app.launch()).toBe(true);
@@ -271,6 +317,24 @@ test("replaces complete cohorts while retaining annotation data, locus and App s
     expect(sourceLoad).not.toHaveBeenCalled();
     expect(app.appContainer.querySelector(".genome-spy-app")).toBe(shell);
     expect(app.appContainer.querySelector("genome-spy-toolbar")).toBe(toolbar);
+
+    // Export must traverse the current cohort and its retained annotation sibling.
+    const { svg, warnings } = createSvg({
+        viewRoot: app.genomeSpy.viewRoot,
+        logicalWidth: 640,
+        logicalHeight: 360,
+    });
+    const labels = Array.from(
+        svg.querySelectorAll("text"),
+        (text) => text.textContent
+    );
+    expect(labels).toContain("newOnly");
+    expect(labels).not.toContain("oldOnly");
+    expect(
+        svg.querySelector('[data-name="attribute-newOnly-value"] rect')
+    ).not.toBeNull();
+    expect(svg.querySelector('[data-name="annotation"]')).not.toBeNull();
+    expect(warnings).toEqual([]);
 });
 
 test("rejects extra and nested cohorts through transactions and recovers from construction failure", async () => {
@@ -361,6 +425,76 @@ test("drains accepted work while allowing its remaining pipeline actions and rej
     ).toEqual(["status", "newOnly"]);
 });
 
+test.each(["agent summaries", "source dialog"])(
+    "removal awaits %s metadata reads and reader closure",
+    async (entrypoint) => {
+        const app = await createApp();
+        const spec = cohortSpec("A");
+        spec.samples.identity = { metadataSource: "panel" };
+        const source = {
+            id: "figwig",
+            initialLoad: /** @type {const} */ (false),
+            backend: {
+                backend: /** @type {const} */ ("figwig"),
+                url: "blob:metadata",
+            },
+        };
+        spec.metadata.sources.push(source);
+        const handle = await app.views.insert(app.views.root(), spec);
+        const sampleView = app.getSampleView();
+        const admission = vi.spyOn(sampleView, "runCohortOperation");
+        const read = Promise.withResolvers();
+        const close = Promise.withResolvers();
+        figwigMetadata.getTracks.mockReset().mockReturnValue(read.promise);
+        figwigMetadata.close.mockReset().mockReturnValue(close.promise);
+
+        let query;
+        let dialog;
+        if (entrypoint === "agent summaries") {
+            query = createAgentApi(app).getMetadataSourceSummaries();
+        } else {
+            // jsdom has no native dialog opening; keep the real Lit content.
+            vi.spyOn(BaseDialog.prototype, "firstUpdated").mockImplementation(
+                () => undefined
+            );
+            dialog = new ImportMetadataFromSourceDialog();
+            dialog.sampleView = sampleView;
+            dialog.source = source;
+            document.body.append(dialog);
+            await dialog.updateComplete;
+            const change = Object.assign(new Event("change"), {
+                values: ["status"],
+            });
+            dialog.shadowRoot
+                .querySelector("#columnInput")
+                .dispatchEvent(change);
+            expect(admission).toHaveBeenCalledTimes(2);
+        }
+
+        await vi.waitFor(() =>
+            expect(figwigMetadata.getTracks).toHaveBeenCalledOnce()
+        );
+        const removal = app.views.remove(handle);
+        await vi.waitFor(() =>
+            expect(app.store.getState().lifecycle.cohortTransitioning).toBe(
+                true
+            )
+        );
+        expect(app.getSampleView()).toBe(sampleView);
+
+        read.resolve([{ name: "s1", metadata: { status: "case" } }]);
+        await vi.waitFor(() =>
+            expect(figwigMetadata.close).toHaveBeenCalledOnce()
+        );
+        expect(app.getSampleView()).toBe(sampleView);
+        close.resolve();
+        await query;
+        await removal;
+        expect(app.getSampleView()).toBeUndefined();
+        dialog?.remove();
+    }
+);
+
 test("clears the last surviving selection when its cohort origin is removed", async () => {
     const app = await createApp([
         { name: "region", select: { type: "interval", encodings: ["x"] } },
@@ -401,13 +535,14 @@ test("clears the last surviving selection when its cohort origin is removed", as
 });
 
 test("retains the latest independent input value when its capture is still throttled", async () => {
-    const app = await createApp([
+    const params = [
         {
             name: "independentThreshold",
             value: 1,
             bind: { input: "range", min: 0, max: 10 },
         },
-    ]);
+    ];
+    const app = await createApp(params);
     const handle = await app.views.insert(app.views.root(), cohortSpec("A"));
     const runtime = app.genomeSpy.viewRoot.paramRuntime;
     vi.useFakeTimers();
@@ -430,7 +565,171 @@ test("retains the latest independent input value when its capture is still throt
         ).toEqual({ type: "value", value: 8 });
         await vi.advanceTimersByTimeAsync(150);
         expect(app.provenance.isUndoable()).toBe(false);
+
+        const bookmark = createBookmarkWithCurrentState(app);
+        expect(bookmark.actions).toEqual([
+            expect.objectContaining({
+                type: paramProvenanceSlice.actions.paramChange.type,
+                payload: expect.objectContaining({
+                    value: { type: "value", value: 8 },
+                }),
+            }),
+        ]);
+        const fresh = await createApp(params);
+        await restoreBookmark(bookmark, fresh);
+        expect(
+            fresh.genomeSpy.viewRoot.paramRuntime.getValue(
+                "independentThreshold"
+            )
+        ).toBe(8);
+        expect(fresh.getSampleView()).toBeUndefined();
     } finally {
         vi.useRealTimers();
     }
+});
+
+test("switches source bookmark contexts and clears old hash actions while preserving navigation", async () => {
+    const fetchBookmarks = vi.fn(
+        async () =>
+            new Response(
+                JSON.stringify([
+                    {
+                        name: "Saved view",
+                        notes: "![relative image](figure.png)",
+                        actions: [
+                            sampleSlice.actions.addMetadata({
+                                columnarMetadata: {
+                                    sample: ["s1"],
+                                    remoteLeak: [true],
+                                },
+                            }),
+                        ],
+                    },
+                ])
+            )
+    );
+    vi.stubGlobal("fetch", fetchBookmarks);
+    const app = await createApp([], { embedMode: "standalone" });
+    await expect(
+        app.setPersistenceContext({ remoteBookmarks: { url: "list.json" } })
+    ).rejects.toThrow("baseUrl");
+    await app.setPersistenceContext({
+        specId: "dataset-a",
+        baseUrl: "https://example.org/a/",
+        remoteBookmarks: { url: "notes/list.json" },
+    });
+    const firstDatabase = app.localBookmarkDatabase;
+    const close = vi.spyOn(firstDatabase, "close");
+    expect(firstDatabase).toMatchObject({ specId: "dataset-a" });
+    expect(app.globalBookmarkDatabase.baseUrl).toBe(
+        "https://example.org/a/notes/"
+    );
+    expect(await app.globalBookmarkDatabase.getNames()).toEqual(["Saved view"]);
+
+    const handle = await app.views.insert(app.views.root(), cohortSpec("A"));
+    const locus = app.genomeSpy.getNamedScaleResolutions().get("locus");
+    await locus.zoomTo([200, 400]);
+    await app.runCohortOperation(() =>
+        app.intentPipeline.submit(
+            sampleSlice.actions.filterByNominal({
+                attribute: statusAttribute,
+                values: ["control"],
+                remove: false,
+            })
+        )
+    );
+    app._updateStateToUrl();
+    const previousHash = decompressFromUrlHash(window.location.hash);
+    expect(previousHash.actions).not.toHaveLength(0);
+
+    await app.views.remove(handle);
+    await vi.waitFor(() =>
+        expect(decompressFromUrlHash(window.location.hash).actions).toEqual([])
+    );
+    expect(decompressFromUrlHash(window.location.hash).scaleDomains).toEqual(
+        previousHash.scaleDomains
+    );
+    expect(close).toHaveBeenCalledOnce();
+    expect(app.localBookmarkDatabase).toBeUndefined();
+    expect(app.globalBookmarkDatabase).toBeUndefined();
+
+    await app.setPersistenceContext({
+        specId: "dataset-b",
+        baseUrl: "https://example.org/b/",
+        remoteBookmarks: { url: "bookmarks.json" },
+    });
+    const secondDatabase = app.localBookmarkDatabase;
+    const invalid = cohortSpec("B");
+    invalid.samples.identity = {
+        data: { values: [{ sample: "s1" }, { sample: "s1" }] },
+    };
+    await expect(app.views.insert(app.views.root(), invalid)).rejects.toThrow(
+        "duplicate sample ids"
+    );
+    expect(app.localBookmarkDatabase).toBe(secondDatabase);
+    expect(app.globalBookmarkDatabase.baseUrl).toBe("https://example.org/b/");
+    await app.views.insert(app.views.root(), cohortSpec("B"));
+    expect(secondDatabase).toMatchObject({ specId: "dataset-b" });
+    expect(
+        app.getSampleView().sampleHierarchy.sampleMetadata.attributeNames
+    ).toEqual(["status", "newOnly"]);
+    expect(fetchBookmarks.mock.calls.map(([url]) => String(url))).toEqual([
+        "https://example.org/a/notes/list.json",
+        "https://example.org/b/bookmarks.json",
+    ]);
+    await app.setPersistenceContext(null);
+    expect(app.localBookmarkDatabase).toBeUndefined();
+    expect(app.globalBookmarkDatabase).toBeUndefined();
+});
+
+test("embedded persistence changes do not own bookmark storage or the page URL", async () => {
+    const fetchBookmarks = vi.fn();
+    vi.stubGlobal("fetch", fetchBookmarks);
+    const app = await createApp();
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    await app.setPersistenceContext({
+        specId: "embedded-source",
+        remoteBookmarks: { url: "https://example.org/bookmarks.json" },
+    });
+    await app.views.insert(app.views.root(), cohortSpec("A"));
+
+    expect(app.localBookmarkDatabase).toBeUndefined();
+    expect(app.globalBookmarkDatabase).toBeUndefined();
+    expect(fetchBookmarks).not.toHaveBeenCalled();
+    expect(replaceState).not.toHaveBeenCalled();
+});
+
+test("URL persistence observes named scales inserted after launch and releases them on removal", async () => {
+    const app = await createApp([], { embedMode: "standalone" });
+    const handle = await app.views.insert(app.views.root(), {
+        name: "independent-track",
+        scales: {
+            y: {
+                name: "additional",
+                type: "linear",
+                domain: [0, 100],
+                zoom: true,
+            },
+        },
+        data: { values: [{ value: 25 }] },
+        mark: "point",
+        encoding: { y: { field: "value", type: "quantitative" } },
+    });
+    const scale = app.genomeSpy.getNamedScaleResolutions().get("additional");
+    const removeListener = vi.spyOn(scale, "removeEventListener");
+    await scale.zoomTo([10, 20]);
+    await vi.waitFor(() =>
+        expect(
+            decompressFromUrlHash(window.location.hash).scaleDomains.additional
+        ).toEqual([10, 20])
+    );
+
+    await app.views.remove(handle);
+    expect(removeListener).toHaveBeenCalledWith("domain", expect.any(Function));
+    await vi.waitFor(() => {
+        const state = window.location.hash
+            ? decompressFromUrlHash(window.location.hash)
+            : { scaleDomains: {} };
+        expect(state.scaleDomains).not.toHaveProperty("additional");
+    });
 });

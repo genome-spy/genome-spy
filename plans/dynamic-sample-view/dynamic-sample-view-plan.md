@@ -1,7 +1,7 @@
 # Dynamic SampleView lifecycle in GenomeSpy App
 
-Status: implementation in progress. Milestones 1 and 2 are implemented and
-verified; controls and persistence integration follow.
+Status: implementation complete and verified. All three milestones are committed
+separately. Retain this reconciled plan on the feature branch; remove before merge.
 
 Issue: [#628](https://github.com/genome-spy/genome-spy/issues/628).
 Base: `master` at `d983873ab`. Branch: `codex/dynamic-sample-view`.
@@ -278,6 +278,15 @@ Tentative commit: `feat(app): support dynamic SampleView attachment and detachme
 
 ### 3. Refresh controls and source persistence
 
+Completed: hierarchy-aware controls/search, scale observations, explicit bookmark
+context setter, isolated public consumer types, docs and composed SVG coverage.
+Retained baseline inputs round-trip through bookmarks without retaining old undo
+history. Integration also fixed partial FacetView cleanup and canvas wrapper/resize
+ownership when the root changes between fixed and growing size.
+Active metadata summary and dialog background-read promises use the same admission
+helper; open dialog lifetime remains untracked. Failed sibling summaries settle
+all readers before removal can finish and the host can release a blob URL.
+
 Outcome: parameter provenance, toolbar/menu/search and URL/bookmarks follow the
 live hierarchy. Areas: hierarchy revision/visibility cache, parameter bridge,
 controls, scale observations, explicit persistence setter, lightweight UI cleanup.
@@ -298,30 +307,50 @@ Tentative commit: `feat(app): refresh controls and persistence after view mutati
 
 ## Final integration and acceptance
 
-- [ ] Real App empty start, insert/remove/insert without replacing shell/toolbar.
-- [ ] Composed fixed-assembly replacement preserves annotation instances, collector
+- [x] Real App empty start, insert/remove/insert without replacing shell/toolbar.
+- [x] Composed fixed-assembly replacement preserves annotation instances, collector
       data/source load count, shared scale identity and navigated locus; B loads
       its own identities, metadata and signal.
-- [ ] Overlapping-ID A/B case proves isolation of cohort state, removed parameters,
+- [x] Overlapping-ID A/B case proves isolation of cohort state, removed parameters,
       visibility, history and source-specific persisted state.
-- [ ] Replacement waits for accepted slow work, rejects new cohort work, and has
+- [x] Replacement waits for accepted slow work, rejects new cohort work, and has
       no late old-cohort dispatch/error handling against B. Repeated cycles release
       callbacks, subscriptions, keyboard handlers, reservations and readers.
-- [ ] Imports, ancestor removal and transaction callbacks follow the lifecycle;
+- [x] Imports, ancestor removal and transaction callbacks follow the lifecycle;
       unsupported cohorts and failed construction leave a usable App.
-- [ ] A representative composed `sampleViewSvg.test.js` case exports the current
-      cohort plus retained annotations; use `test-genomespy-views` for structured
-      rendering changes and avoid an unnecessary backend matrix.
-- [ ] Browser verification with `debug-genomespy-web`: two small same-assembly
+- [x] A representative composed `appLifecycle.test.js` SVG case exports the current
+      cohort plus retained annotations. Reused the real App fixture and existing
+      SVG helper instead of duplicating it in `sampleViewSvg.test.js`.
+- [x] Browser verification with `debug-genomespy-web`: two small same-assembly
       Figwig fixtures, annotation sibling, metadata import, bound input/selection,
       navigation, replacement, undo/redo, removal and failed insertion/retry.
       Check menus, first locus-scale search, single keyboard handling and static
       SampleView embedding.
-- [ ] Narrow affected Vitest suites use `--reporter=agent`; run App/Core source
+- [x] Narrow affected Vitest suites use `--reporter=agent`; run App/Core source
       and test TypeScript checks, lint, and applicable schema/docs/release checks.
       Broaden validation only for concrete failures or unresolved integration risks.
-- [ ] Review substantial implementation boundaries and final composition; reconcile
-      this temporary plan, retain it in draft branch history, remove before merge.
+- [x] Review substantial implementation boundaries and final composition; reconcile
+      this temporary plan and retain it in branch history. Plan deletion is a
+      required pre-merge step, outside this implementation request.
+
+Final verification: 568 Vitest files passed (5,374 tests; existing one skipped and
+two todo). Workspace source/test checks, isolated App consumer typing, lint,
+formatting and release checks passed. Changesets calculates version 1.3.0 for the
+fixed release group: App functionality is minor and Core cleanup is patch.
+Documentation examples were syntax checked; no grammar/schema changes were needed.
+
+Real Chromium/WebGL smoke used two upstream Figwig fixtures with a shared assembly.
+It covered metadata import, inputs, grouping/filtering, selections, persistence,
+failed insertion/retry, static embedding, first-scale search and repeated keyboard
+cleanup. Annotation handles/collectors/rows, locus and App shell remained identical.
+Fixed-to-growing canvas insertion, host resizing, and removal back to fixed height
+were visually verified. Final removal left zero loading entries and no errors.
+Temporary browser/server resources were closed.
+
+Size check: App orchestration grew from 873 to 1,174 lines. The added code owns
+attachment/reset, accepted-operation draining, and explicit persistence/scale
+observations. Coordination remains in the existing Core queue with one App
+transition flag and pending-promise set; no task or resource framework was added.
 
 ## Tradeoffs and review
 

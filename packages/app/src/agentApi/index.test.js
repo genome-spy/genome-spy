@@ -328,6 +328,7 @@ describe("createAgentApi", () => {
         const first = await agentApi.getMetadataSourceSummaries();
         const second = await agentApi.getMetadataSourceSummaries();
 
+        expect(app.runCohortOperation).toHaveBeenCalledTimes(2);
         expect(first).toBe(second);
         expect(first).toEqual([
             {

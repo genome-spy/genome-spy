@@ -22,10 +22,14 @@ export default class SearchField extends LitElement {
 
         this._focused = false;
         this._subscriptions = new SubscriptionController(this);
+        this.hierarchyRevision = 0;
     }
 
     /** @type {import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionApi} */
     _genomeResolution;
+
+    /** @type {(() => void) | undefined} */
+    #unsubscribeGenome;
 
     get _inputField() {
         return /** @type {HTMLInputElement} */ (this.inputRef.value);
@@ -35,12 +39,17 @@ export default class SearchField extends LitElement {
         return {
             app: { type: Object },
             _focused: { state: true },
+            hierarchyRevision: { type: Number },
         };
     }
 
     connectedCallback() {
         super.connectedCallback();
         this._initializeGenome();
+        this._subscriptions.addUnsubscribeCallback(() => {
+            this.#unsubscribeGenome?.();
+            this.#unsubscribeGenome = undefined;
+        });
 
         const documentClickListener = (/** @type {InputEvent} */ event) => {
             if (event.target !== this._inputField) {
@@ -63,6 +72,21 @@ export default class SearchField extends LitElement {
         this._inputField?.focus();
     }
 
+    /** @param {Map<string, unknown>} changedProperties */
+    willUpdate(changedProperties) {
+        if (
+            this.isConnected &&
+            (changedProperties.has("app") ||
+                changedProperties.has("hierarchyRevision"))
+        ) {
+            this._initializeGenome();
+            if (this._inputField) {
+                this._inputField.blur();
+                this._inputField.value = this.getDefaultValue();
+            }
+        }
+    }
+
     _initializeGenome() {
         const resolution = findGenomeScaleResolution(
             this.app.genomeSpy.viewRoot
@@ -71,6 +95,9 @@ export default class SearchField extends LitElement {
             throw new Error(
                 "The search field requires a zoomable locus scale."
             );
+        if (resolution === this._genomeResolution && this.#unsubscribeGenome)
+            return;
+        this.#unsubscribeGenome?.();
         this._genomeResolution = resolution;
 
         /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -80,10 +107,10 @@ export default class SearchField extends LitElement {
             timeout = setTimeout(() => this.requestUpdate(), 60);
         };
         resolution.addEventListener("domain", listener);
-        this._subscriptions.addUnsubscribeCallback(() => {
+        this.#unsubscribeGenome = () => {
             resolution.removeEventListener("domain", listener);
             clearTimeout(timeout);
-        });
+        };
     }
 
     getDefaultValue() {
@@ -197,7 +224,10 @@ export default class SearchField extends LitElement {
      * @param {string} term
      */
     _doExampleSearch(term) {
+        const revision = this.hierarchyRevision;
         typeSlowly(term, this._inputField).then(() => {
+            if (!this.isConnected || revision !== this.hierarchyRevision)
+                return;
             this._inputField.blur();
             this.search(term);
         });
@@ -301,13 +331,16 @@ export default class SearchField extends LitElement {
                     ${ref(this.inputRef)}
                 />
                 ${guard(
-                    this.app.datumSearch
-                        .listSearchableViews({ exampleLimit: 0 })
-                        .flatMap(({ view, source }) => [
-                            view.id,
-                            source.dataRevision,
-                            source.readiness,
-                        ]),
+                    [
+                        this.hierarchyRevision,
+                        ...this.app.datumSearch
+                            .listSearchableViews({ exampleLimit: 0 })
+                            .flatMap(({ view, source }) => [
+                                view.id,
+                                source.dataRevision,
+                                source.readiness,
+                            ]),
+                    ],
                     () => this._getSearchHelp()
                 )}
             </div>
