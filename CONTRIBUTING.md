@@ -298,8 +298,7 @@ changelogs retain Changesets' version-bump headings. Release preparation needs a
 [formatter documentation](https://changesets.dev/packages/changelog-github).
 Empty fragments alone do not create a release. This command supports stable
 releases. The deferred branch policy and required prerelease work are recorded
-under [future major release lines](#future-major-release-lines). Snapshot
-workflows require a separate design.
+under [future major release lines](#future-major-release-lines).
 
 For optional release-wide prose, prepare a Markdown file outside the working
 tree (or commit it first) and run:
@@ -412,6 +411,37 @@ or release creation and complete that step manually before deploying docs.
 npm publication. Do not run it during preparation or rehearsal. Use
 `npm run release:version` instead of plain `changeset version` so the lockfile
 and root changelog are prepared too.
+
+### Publish a package preview
+
+The **Publish GenomeSpy preview** workflow publishes the selected commit's Core,
+App, Inspector, and React packages to [pkg.pr.new](https://pkg.pr.new/) for testing.
+It requires the [pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new) to be
+installed on the repository. No npm publishing credentials are needed.
+
+Once `preview.yml` exists on the default branch, open **Actions → Publish GenomeSpy
+preview → Run workflow** and select the branch to test. The branch must contain
+the workflow and the locked `pkg-pr-new` development dependency. The run checks
+out that branch's commit at dispatch time; later pushes do not change its contents.
+Only pushed, committed changes are included. Alternatively, dispatch it with:
+
+```sh
+gh workflow run preview.yml --repo genome-spy/genome-spy --ref YOUR_BRANCH
+```
+
+The workflow runs lint, type checks, tests, the ordered production build, and
+package archive validation before publishing all four packages together. Open
+the completed run's **Summary** for installation commands. Running one in a
+consumer project saves the preview URL in `package.json` and updates its lockfile.
+Imports continue to use the normal `@genome-spy/...` package names.
+
+Packages receive `0.0.0-preview-<sha>` versions, and dependencies between the
+published packages point to matching previews. Source versions, Changesets
+fragments, npm releases, Git tags, and the public documentation site are unchanged.
+These are temporary test dependencies: pkg.pr.new's
+[retention policy](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/)
+removes packages after more than a month without downloads or once they are over
+six months old. Switch consumer projects back to npm releases after testing.
 
 ### Rehearse without publishing
 

@@ -1,0 +1,80 @@
+name: Publish GenomeSpy preview
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    preview:
+        if: github.repository == 'genome-spy/genome-spy'
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.sha }}
+                  persist-credentials: false
+
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  package-manager-cache: false
+
+            - run: npm ci
+            - run: npm run lint
+            - run: npm --workspaces run test:tsc --if-present
+            - run: npm test -- --reporter=agent
+
+            # Tests can rewrite App outputs, so build last before packing.
+            - run: npm run build
+
+            - name: Verify package archives
+              run: |
+                  npm run --silent release:pack -- --pack-destination "$RUNNER_TEMP" --json > "$RUNNER_TEMP/packed-packages.json"
+                  node scripts/verifyPackedPackages.mjs "$RUNNER_TEMP/packed-packages.json"
+                  git diff --exit-code -- packages/*/package.json
+                  test ! -e packages/core/package.prepack-backup.json
+
+            - name: Publish preview packages
+              run: |
+                  npm exec -- pkg-pr-new publish \
+                    --previewVersion \
+                    --peerDeps \
+                    --comment=off \
+                    --no-template \
+                    --json "$RUNNER_TEMP/preview.json" \
+                    ./packages/core \
+                    ./packages/app \
+                    ./packages/inspector \
+                    ./packages/react-component
+
+            - name: Show installation commands
+              env:
+                  PREVIEW_METADATA: ${{ runner.temp }}/preview.json
+              run: |
+                  node --input-type=module <<'NODE'
+                  import fs from "node:fs";
+
+                  /** @type {{ packages: { name: string, url: string }[] }} */
+                  const { packages } = JSON.parse(
+                      fs.readFileSync(process.env.PREVIEW_METADATA, "utf8")
+                  );
+
+                  const summary = [
+                      `Preview of commit ${process.env.GITHUB_SHA}`,
+                      "",
+                      ...packages.flatMap(({ name, url }) => [
+                          `**${name}**`,
+                          "",
+                          "```sh",
+                          `npm install ${url}`,
+                          "```",
+                          "",
+                      ]),
+                  ].join("\n");
+
+                  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+                  NODE
