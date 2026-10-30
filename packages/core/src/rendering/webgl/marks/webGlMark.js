@@ -194,9 +194,7 @@ export default class WebGLMark {
     getEncodingAttributes() {
         return [
             ...this.getAttributes(),
-            .../** @type {Channel[]} */ (
-                Array.from(this.mark.nonvisualInputs.keys())
-            ),
+            .../** @type {Channel[]} */ (Array.from(this.mark.nonvisualInputs)),
         ];
     }
 

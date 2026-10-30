@@ -94,9 +94,6 @@ test("legend input and feedback share typed native membership and preserve base 
         .filter((view) => view instanceof LegendView);
     expect(legends).toHaveLength(2);
     const cells = root.getDescendants().find((view) => view.name === "cells");
-    expect(
-        /** @type {UnitView} */ (cells).mark.encoders.uniqueId
-    ).toBeUndefined();
     const types = views.root().params.getSelection("types");
     const states = views.root().params.getSelection("states");
     if (
@@ -203,6 +200,18 @@ test("shared legend captures the binding ref despite another contributor's shado
                 {
                     name: "focus",
                     select: { type: "point", encodings: ["color"] },
+                    push: "outer",
+                    bind: "legend",
+                },
+            ]),
+            panel("otherWriter", [
+                {
+                    name: "focus",
+                    select: {
+                        type: "point",
+                        encodings: ["color"],
+                        clear: { type: "dblclick" },
+                    },
                     push: "outer",
                     bind: "legend",
                 },
@@ -357,6 +366,40 @@ test("a merged color/shape legend supports one native shape binding", async () =
     ).toEqual([0.35, 1]);
 });
 
+test("shared legend bindings reject conflicting clear settings in either sibling order", async () => {
+    // Compatible outer aliases share membership, but cannot disagree on the legend gesture.
+    for (const clear of [false, "mousedown", "dblclick[event.altKey]"]) {
+        const children = [undefined, clear].map((clear, i) =>
+            panel("source" + i, [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"], clear },
+                    push: "outer",
+                    bind: "legend",
+                },
+            ])
+        );
+        for (const hconcat of [children, children.toReversed()]) {
+            await expect(
+                createTestEmbed({
+                    config: { legend: { disable: false } },
+                    params: [
+                        {
+                            name: "focus",
+                            select: { type: "point", encodings: ["color"] },
+                        },
+                    ],
+                    resolve: {
+                        scale: { color: "shared" },
+                        legend: { color: "shared" },
+                    },
+                    hconcat,
+                })
+            ).rejects.toThrow(/conflicting clear settings/);
+        }
+    }
+});
+
 test("explicit plot hover and legend clicks share toggle settings but keep event filters and clear targets", async () => {
     const input = panel("source", [
         {
@@ -472,7 +515,16 @@ test("custom unpicked clear events hit-test entries rather than stale hover", as
         },
     ]);
     const { root, views, context } = await createTestEmbed({
-        config: { legend: { disable: false, padding: 8 } },
+        config: {
+            legend: {
+                disable: false,
+                padding: 8,
+                direction: "horizontal",
+                columns: 2,
+                symbolOffset: 3,
+                labelOffset: 6,
+            },
+        },
         vconcat: [input],
     });
     renderToLayout(root);

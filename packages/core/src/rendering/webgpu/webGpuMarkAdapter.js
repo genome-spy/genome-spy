@@ -220,7 +220,7 @@ export function createWebGpuMarkConfig(
         throw unsupported(mark, `Mark type "${markType}" is not supported.`);
     }
 
-    for (const input of mark.nonvisualInputs.keys()) {
+    for (const input of mark.nonvisualInputs) {
         const encoder =
             mark.encoders[
                 /** @type {import("../../spec/channel.js").Channel} */ (input)

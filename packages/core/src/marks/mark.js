@@ -64,10 +64,10 @@ export default class Mark {
 
     #requiresSelectionIdentity = false;
 
-    /** Internal field inputs consumed by predicates without changing visible channels.
-     * @type {Map<string, import("../spec/channel.js").MarkPropFieldDef>}
+    /** Nonvisual predicate input names; definitions live in the normalized encoding.
+     * @type {Set<string>}
      */
-    nonvisualInputs = new Map();
+    nonvisualInputs = new Set();
 
     /** Internal hit targets can be picked independently of paint opacity. */
     pickingGeometry = false;
@@ -466,7 +466,6 @@ export default class Mark {
      * @returns {void}
      */
     initializeEncoders() {
-        Object.assign(this.encoding, Object.fromEntries(this.nonvisualInputs));
         this.unitView.validatePointSelectionSources();
         this.encoders = createEncoders(this.unitView, this.encoding);
     }
