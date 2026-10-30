@@ -198,13 +198,16 @@ void main(void) {
         bidirectional
     );
 
-    fragColor = distanceToColor(
-        d,
-        vFillColor,
-        vStrokeColor,
-        vec4(0.0),
-        vHalfStrokeWidth
-    );
+    float cf = distanceToRatio(-d);
+    if (vHalfStrokeWidth > 0.0) {
+        float ci = distanceToRatio(-d - vHalfStrokeWidth);
+        float co = distanceToRatio(vHalfStrokeWidth - d);
+        fragColor = ci * vFillColor
+            + (cf - ci) * (vStrokeColor + (1.0 - vStrokeColor.a) * vFillColor)
+            + (co - cf) * vStrokeColor;
+    } else {
+        fragColor = cf * vFillColor;
+    }
 
     if (uPickingEnabled) {
         if (d < vHalfStrokeWidth) {
