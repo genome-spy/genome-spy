@@ -725,7 +725,6 @@ export default class WebGLMark {
                         channelDefWithScale.resolutionChannel) ||
                     channel;
 
-                // TODO: The event listener should be in the scale, not the resolution
                 const scaleResolution = isChannelWithScale(resolutionChannel)
                     ? this.unitView.getScaleResolution(resolutionChannel)
                     : null;
@@ -748,8 +747,12 @@ export default class WebGLMark {
                             this.createMarkUniformSetter(rangeUniformName);
 
                         const set = () =>
-                            rangeSetter(getRangeForGlsl(scale, channel));
-                        // TODO: The event listener should be in the scale, not the resolution
+                            rangeSetter(
+                                getRangeForGlsl(
+                                    scaleResolution.getScale(),
+                                    channel
+                                )
+                            );
                         this.registerScaleResolutionListener(
                             scaleResolution,
                             "range",
@@ -766,23 +769,25 @@ export default class WebGLMark {
                         const domainSetter =
                             this.createMarkUniformSetter(domainUniformName);
                         const set = () => {
+                            // View mutations can replace the scale behind a shared resolution.
+                            const currentScale = scaleResolution.getScale();
                             let domain;
-                            if (isDiscrete(scale.type)) {
-                                domain = [0, scale.domain().length];
-                            } else if (isDiscretizing(scale.type)) {
-                                domain = getDiscretizingDomainForGlsl(scale);
+                            if (isDiscrete(currentScale.type)) {
+                                domain = [0, currentScale.domain().length];
+                            } else if (isDiscretizing(currentScale.type)) {
+                                domain =
+                                    getDiscretizingDomainForGlsl(currentScale);
                             } else {
-                                domain = scale.domain();
+                                domain = currentScale.domain();
                             }
 
                             domainSetter(
-                                isIndexLikeDomainType(scale.type)
+                                isIndexLikeDomainType(currentScale.type)
                                     ? toHighPrecisionDomainUniform(domain)
                                     : domain
                             );
                         };
 
-                        // TODO: The event listener should be in the scale, not the resolution
                         this.registerScaleResolutionListener(
                             scaleResolution,
                             "domain",
