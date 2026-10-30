@@ -16,7 +16,7 @@
 
   "data": { "url": "data/immune-cell-activation.csv" },
 
-  "mark": { "type": "point", "size": 110, "filled": true, "tooltip": null },
+  "mark": "point",
 
   "encoding": {
     "x": {
