@@ -1674,12 +1674,12 @@ function createViewOpacityFunction(view) {
             /**
              * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
              */
-            const getScaleContext = (channel) => {
+            const getScaleResolution = (channel) => {
                 const scaleResolution = view.getScaleResolution(channel);
                 const scale = scaleResolution?.getScale();
                 // Only works on linear scales
                 if (["linear", "index", "locus"].includes(scale?.type)) {
-                    return { scale, scaleResolution };
+                    return scaleResolution;
                 }
             };
 
@@ -1738,20 +1738,21 @@ function createViewOpacityFunction(view) {
             updateInterpolator();
 
             /**
-             * @param {{ scale: any, scaleResolution: import("../scales/scaleResolution.js").default }} scaleContext
+             * @param {import("../scales/scaleResolution.js").default} scaleResolution
              */
-            const getUnitsPerPixel = (scaleContext) => {
-                const axisLength = scaleContext.scaleResolution.getAxisLength();
+            const getUnitsPerPixel = (scaleResolution) => {
+                const axisLength = scaleResolution.getAxisLength();
                 const rangeSpan = axisLength || 1000;
-                return span(scaleContext.scale.domain()) / rangeSpan;
+                // View mutations can replace the physical scale instance.
+                return span(scaleResolution.getDomain()) / rangeSpan;
             };
 
             /** @type {() => number} */
             let getMetric;
 
             if (opacityDef.channel === "auto") {
-                const xScale = getScaleContext("x");
-                const yScale = getScaleContext("y");
+                const xScale = getScaleResolution("x");
+                const yScale = getScaleResolution("y");
 
                 if (xScale && yScale) {
                     getMetric = () =>
@@ -1768,18 +1769,18 @@ function createViewOpacityFunction(view) {
                     );
                 }
             } else {
-                const scaleContext = opacityDef.channel
-                    ? getScaleContext(opacityDef.channel)
-                    : (getScaleContext("x") ?? getScaleContext("y"));
+                const scaleResolution = opacityDef.channel
+                    ? getScaleResolution(opacityDef.channel)
+                    : (getScaleResolution("x") ?? getScaleResolution("y"));
 
-                if (!scaleContext) {
+                if (!scaleResolution) {
                     throw new ViewError(
                         "Cannot find a resolved quantitative scale for dynamic opacity!",
                         view
                     );
                 }
 
-                getMetric = () => getUnitsPerPixel(scaleContext);
+                getMetric = () => getUnitsPerPixel(scaleResolution);
             }
 
             return (parentOpacity) => {

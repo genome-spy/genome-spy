@@ -70,6 +70,36 @@ test("host lifecycle wraps transaction layout suppression and every nested mutat
     view.disposeSubtree();
 });
 
+test("semantic zoom follows shared scales across view mutations", async () => {
+    const { view, api } = await createViewMutationAcidHarness({
+        width: 1000,
+        scales: { x: { type: "linear", domain: [0, 1000000], zoom: true } },
+        resolve: { scale: { x: "shared" } },
+        vconcat: [
+            {
+                ...makeTrackSpec("annotation", "Annotation"),
+                opacity: { unitsPerPixel: [100, 10], values: [0, 1] },
+            },
+        ],
+    });
+    const annotation = getRequiredView(view, "annotation");
+    const position = annotation.getScaleResolution("x");
+
+    // Start hidden, as gene details do when a file is opened at whole-genome scale.
+    expect(annotation.getEffectiveOpacity()).toBe(0);
+    const inserted = await api.insert(
+        "root",
+        makeTrackSpec("cohort", "Cohort")
+    );
+    await position.zoomTo([0, 1000]);
+    expect(annotation.getEffectiveOpacity()).toBe(1);
+
+    await api.remove(inserted);
+    await position.zoomTo([0, 1000000]);
+    expect(annotation.getEffectiveOpacity()).toBe(0);
+    view.disposeSubtree();
+});
+
 // These acid scenarios intentionally drive mutations through the public
 // ViewMutationApi. The assertions inspect normalized internal state because
 // the goal is to catch stale views, dataflow objects, resolutions, and guides
