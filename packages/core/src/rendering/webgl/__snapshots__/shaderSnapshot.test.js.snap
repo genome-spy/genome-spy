@@ -3176,12 +3176,16 @@ void main() {
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
             : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
 
-		fragColor = distanceToColor(
-			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),
-			fillColor,
-			vStrokeColor,
-            vec4(0.0),
-			lineShape ? 0.0 : vHalfStrokeWidth);
+        float fillCoverage = distanceToRatio(-d);
+        fragColor = fillColor * fillCoverage;
+        if (!lineShape && vHalfStrokeWidth > 0.0) {
+            float innerWidth = uInwardStroke ? 2.0 * vHalfStrokeWidth : vHalfStrokeWidth;
+            float innerCoverage = distanceToRatio(-d - innerWidth);
+            float outerCoverage = uInwardStroke ? fillCoverage : distanceToRatio(vHalfStrokeWidth - d);
+            fragColor = innerCoverage * fillColor
+                + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
+                + (outerCoverage - fillCoverage) * vStrokeColor;
+        }
 
 	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
@@ -5606,12 +5610,16 @@ void main() {
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
             : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
 
-		fragColor = distanceToColor(
-			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),
-			fillColor,
-			vStrokeColor,
-            vec4(0.0),
-			lineShape ? 0.0 : vHalfStrokeWidth);
+        float fillCoverage = distanceToRatio(-d);
+        fragColor = fillColor * fillCoverage;
+        if (!lineShape && vHalfStrokeWidth > 0.0) {
+            float innerWidth = uInwardStroke ? 2.0 * vHalfStrokeWidth : vHalfStrokeWidth;
+            float innerCoverage = distanceToRatio(-d - innerWidth);
+            float outerCoverage = uInwardStroke ? fillCoverage : distanceToRatio(vHalfStrokeWidth - d);
+            fragColor = innerCoverage * fillColor
+                + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
+                + (outerCoverage - fillCoverage) * vStrokeColor;
+        }
 
 	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
@@ -6799,12 +6807,16 @@ void main() {
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
             : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
 
-		fragColor = distanceToColor(
-			d + (!lineShape && uInwardStroke ? vHalfStrokeWidth : 0.0),
-			fillColor,
-			vStrokeColor,
-            vec4(0.0),
-			lineShape ? 0.0 : vHalfStrokeWidth);
+        float fillCoverage = distanceToRatio(-d);
+        fragColor = fillColor * fillCoverage;
+        if (!lineShape && vHalfStrokeWidth > 0.0) {
+            float innerWidth = uInwardStroke ? 2.0 * vHalfStrokeWidth : vHalfStrokeWidth;
+            float innerCoverage = distanceToRatio(-d - innerWidth);
+            float outerCoverage = uInwardStroke ? fillCoverage : distanceToRatio(vHalfStrokeWidth - d);
+            fragColor = innerCoverage * fillColor
+                + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
+                + (outerCoverage - fillCoverage) * vStrokeColor;
+        }
 
 	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
