@@ -1,0 +1,45 @@
+{
+  "description": [
+    "Combine plot hover and legend selection",
+    "Hover a cell to focus its activation state, or use the legend. Shift-click toggles legend categories; double-click clears. Coordinates and categories are synthetic."
+  ],
+
+  "width": 420,
+  "height": 260,
+  "params": [
+    {
+      "name": "focus",
+      "select": {
+        "type": "point",
+        "encodings": ["color"],
+        "on": "pointerover",
+        "toggle": true
+      },
+      "bind": "legend"
+    }
+  ],
+  "config": { "legend": { "disable": false, "symbolOpacity": 1 } },
+
+  "data": { "url": "data/immune-cell-activation.csv" },
+  "mark": { "type": "point", "tooltip": null, "size": 100 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 9] }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 7] }
+    },
+    "color": {
+      "field": "activation_state",
+      "type": "ordinal",
+      "title": "Activation state",
+      "scale": { "domain": ["resting", "intermediate", "activated"] }
+    },
+    "opacity": { "condition": { "param": "focus", "value": 1 }, "value": 0.12 }
+  }
+}

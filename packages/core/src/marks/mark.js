@@ -64,6 +64,14 @@ export default class Mark {
 
     #requiresSelectionIdentity = false;
 
+    /** Internal field inputs consumed by predicates without changing visible channels.
+     * @type {Map<string, import("../spec/channel.js").MarkPropFieldDef>}
+     */
+    nonvisualInputs = new Map();
+
+    /** Internal hit targets can be picked independently of paint opacity. */
+    pickingGeometry = false;
+
     /**
      * Creates the semantic mark owned by a unit view and resolves its configured
      * property defaults.
@@ -458,6 +466,7 @@ export default class Mark {
      * @returns {void}
      */
     initializeEncoders() {
+        Object.assign(this.encoding, Object.fromEntries(this.nonvisualInputs));
         this.unitView.validatePointSelectionSources();
         this.encoders = createEncoders(this.unitView, this.encoding);
     }
@@ -676,7 +685,7 @@ export default class Mark {
     isPickingParticipant() {
         if (
             this.properties.tooltip === null &&
-            !this.unitView.paramRuntime.hasPointSelections()
+            !this.unitView.paramRuntime.hasPointSelections({ inputOnly: true })
         ) {
             return false;
         }

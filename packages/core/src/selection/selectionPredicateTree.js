@@ -235,7 +235,9 @@ export function resolveSelectionPredicateTree(
             throw new Error(`Selection parameter "${name}" was not found.`);
         }
         return {
-            type: /** @type {"single" | "multi" | "interval"} */ (value.type),
+            type: /** @type {"single" | "multi" | "interval" | "categories"} */ (
+                value.type
+            ),
             components:
                 value.type === "categories"
                     ? [{ component: value.component }]

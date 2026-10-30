@@ -30,8 +30,8 @@ import {
  * - propagation is view-driven rather than browser-driven
  * - only the event types used by GenomeSpy are represented
  * - there is only `stopPropagation()`, not stop-immediate semantics
- * - mark picking is not encoded into `target`; mark hover lives separately in
- *   `InteractionController`
+ * - mark picking is separate from `target`; `markHit` retains the event's own
+ *   pick while current hover lives in `InteractionController`
  *
  * Mouse and wheel helpers:
  * - `mouseEvent` exposes the underlying MouseEvent for imperative handlers
@@ -47,6 +47,11 @@ import {
  *   touch input
  */
 export default class Interaction {
+    /** The event's own pick; null means picked empty, undefined means unpicked.
+     * @type {import("../types/interactionApi.js").InternalMarkHit | null | undefined}
+     */
+    markHit;
+
     /** @type {MouseEvent} */
     #primitiveMouseEventProxy;
 

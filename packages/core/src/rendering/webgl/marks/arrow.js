@@ -98,7 +98,7 @@ export default class WebGLArrowMark extends WebGLMark {
 
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,
-            attributes: this.getAttributes(),
+            attributes: this.getEncodingAttributes(),
             numItems,
         });
 

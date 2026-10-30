@@ -7,6 +7,7 @@ import {
     attachViewLevelLegendProps,
 } from "../../scales/viewLevelGuideProps.js";
 import { ensureAssembliesForView } from "../../genome/assemblyPreflight.js";
+import { resolveLegendBindings } from "../legend/legendBinding.js";
 
 /**
  * Completes startup guide preparation after constructing the authored hierarchy.
@@ -28,6 +29,7 @@ export async function initializeViewGuides(viewRoot) {
  */
 export async function syncViewGuideViews(viewRoot) {
     const descendants = viewRoot.getDescendants();
+    resolveLegendBindings(descendants);
     /** @type {Map<ContainerView, import("../view.js").default[]>} */
     const legendOwnersByHost = new Map();
 
