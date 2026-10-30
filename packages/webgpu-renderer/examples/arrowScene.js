@@ -50,6 +50,7 @@ export default async function runArrowScene(canvas) {
             fill: { value: [0.36, 0.56, 0.94, 1] },
             stroke: { value: [0.05, 0.08, 0.16, 1] },
             strokeWidth: { value: 1 },
+            strokeOpacity: { value: 0.5 },
         },
         headAngle: 45,
         headNotchAngle: 75,

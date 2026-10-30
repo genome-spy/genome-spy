@@ -40,6 +40,12 @@ Rectangle centered strokes now preserve nominal fill beneath transparent paint,
 including hatches. Shared rectangle alignment and shadow-only picking exclusion
 remain #604 follow-ups; this correction does not expose new Core grammar.
 
+## Active integration: arrow paint composition
+
+Arrow centered strokes preserve nominal fill beneath translucent paint (#604).
+Open-head geometry and picking policy remain unchanged; tightly packed repeated
+heads still have stroke-dependent layout. WebGL parity and Core common-opacity
+normalization remain separate follow-ups.
 Point circle and path programs now resolve existing centered/inward paint
 coverage together. Shared Core opacity/alignment normalization and x/+ arm
 semantics remain separate; tiny path UV-clamping geometry is unchanged.
