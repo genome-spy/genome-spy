@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import createVegaScale from "../scale/scale.js";
 
 /** @returns {import("../spec/view.js").UnitSpec} */
 function mappingSpec() {
@@ -29,6 +30,65 @@ function mappingSpec() {
 }
 
 describe("graph-owned scale mapping", () => {
+    test("resamples ordinal color schemes when data changes the domain cardinality", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "colors", expr: "range('color')" }],
+            data: {
+                values: [
+                    { category: "resting" },
+                    { category: "intermediate" },
+                    { category: "activated" },
+                ],
+            },
+            mark: { type: "point", filled: true },
+            encoding: { color: { field: "category", type: "ordinal" } },
+        });
+        try {
+            const scale = view.getScaleResolution("color").getScale();
+            const source =
+                /** @type {import("../data/sources/inlineSource.js").default} */ (
+                    view.flowHandle.dataSource
+                );
+            const mark = /** @type {import("../view/unitView.js").default} */ (
+                view
+            ).mark;
+            /** @param {string[]} domain */
+            const expectColors = (domain) => {
+                const reference = createVegaScale({
+                    type: "ordinal",
+                    domain,
+                    scheme: "blues",
+                });
+                expect(scale.domain()).toEqual(domain);
+                expect(scale.range()).toEqual(reference.range());
+                expect(view.paramRuntime.getValue("colors")).toEqual(
+                    reference.range()
+                );
+                expect(
+                    domain.map((category) => mark.encoders.fill({ category }))
+                ).toEqual(domain.map(reference));
+            };
+
+            // Inferred categories arrive after the empty scale is initialized.
+            expectColors(["resting", "intermediate", "activated"]);
+            source.updateDynamicData([{ category: "resting" }]);
+            expectColors(["resting"]);
+            source.updateDynamicData([
+                { category: "resting" },
+                { category: "activated" },
+            ]);
+            expectColors(["resting", "activated"]);
+
+            // Public range commands remain authoritative across data updates.
+            scale.range(["red"]);
+            source.updateDynamicData([{ category: "activated" }]);
+            expect(scale.range()).toEqual(["red"]);
+            expect(mark.encoders.fill({ category: "activated" })).toBe("red");
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("allows a scale range to depend on its own zoom level", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ value: 5 }] },
