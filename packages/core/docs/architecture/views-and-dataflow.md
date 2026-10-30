@@ -240,9 +240,10 @@ state; the routing `GridView` owns pan sessions across child and gap surfaces.
 - Failed parallel construction settles all children and disposes successful
   siblings before rejecting. A factory also disposes a returned view whose child
   initialization fails; constructors own cleanup until they return an instance.
-- Windowed URL sources retain a local disposal-completion promise. Mutation
-  cleanup waits for disposed sources' pending reads and handle closure while
-  preserving shared sources; ordinary view/dataflow disposal remains synchronous.
+- Windowed URL sources abort publication and retain a local disposal-completion
+  promise. Mutation cleanup waits for disposed sources' pending handle acquisitions
+  and handle closure while preserving shared sources. Figwig reader closure cancels
+  pending queries; ordinary view/dataflow disposal remains synchronous.
 - Prefer `ViewFactory.createOrImportView`; some App views are still constructed
   directly and need equivalent lifecycle wiring.
 - `src/data/flowInit.js` owns `initializeViewSubtree` and

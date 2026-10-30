@@ -82,9 +82,6 @@ export default class GenomeSpy {
     /** @type {import("./rendering/renderingBackend.js").RenderingBackend | undefined} */
     #renderingBackend;
 
-    /** @type {ResizeObserver | undefined} */
-    #containerResizeObserver;
-
     /** @type {View | undefined} */
     #disposedViewRoot;
 
@@ -299,10 +296,11 @@ export default class GenomeSpy {
 
         this.#onCanvasResize = resizeCallback;
 
-        this.#syncCanvasSizing();
-        this.#destructionCallbacks.push(() =>
-            this.#containerResizeObserver?.disconnect()
-        );
+        const resizeObserver = new ResizeObserver(() => {
+            if (this.viewRoot.getSize().isGrowing()) resizeCallback();
+        });
+        resizeObserver.observe(this.container);
+        this.#destructionCallbacks.push(() => resizeObserver.disconnect());
 
         /** @type {() => void} */
         let remove = null;
@@ -324,23 +322,6 @@ export default class GenomeSpy {
 
         if (remove) {
             this.#destructionCallbacks.push(remove);
-        }
-    }
-
-    #syncCanvasSizing() {
-        const size = this.viewRoot.getSize();
-        this.#canvasWrapper.style.flexGrow = size.height.grow > 0 ? "1" : "0";
-
-        if (size.isGrowing()) {
-            if (!this.#containerResizeObserver) {
-                this.#containerResizeObserver = new ResizeObserver(() =>
-                    this.#onCanvasResize()
-                );
-                this.#containerResizeObserver.observe(this.container);
-            }
-        } else {
-            this.#containerResizeObserver?.disconnect();
-            this.#containerResizeObserver = undefined;
         }
     }
 
@@ -967,7 +948,8 @@ export default class GenomeSpy {
 
     computeLayout() {
         this.#layoutReflowRequested = false;
-        this.#syncCanvasSizing();
+        this.#canvasWrapper.style.flexGrow =
+            this.viewRoot.getSize().height.grow > 0 ? "1" : "0";
         this.#renderCoordinator.computeLayout();
     }
 

@@ -378,47 +378,51 @@ describe("FigWigSource", () => {
         ).toBe(true);
     });
 
-    it.each(/** @type {const} */ (["header", "query"]))(
-        "waits for a pending %s before closing its reader",
-        async (phase) => {
-            const gate = Promise.withResolvers();
-            if (phase === "header") {
-                pendingHeader = gate.promise;
-            } else {
-                delayQuery = async (result) => {
-                    await gate.promise;
-                    return result;
-                };
-            }
-            const { create, statuses } = createFixture();
-            const { source, collector } = create();
-            const request = source.requestInterval([0, 100]);
-            await vi.waitFor(() => {
-                if (phase === "header") {
-                    expect(readers).toHaveLength(1);
-                } else {
-                    expect(queries).toHaveLength(1);
-                }
-            });
+    it("waits for a pending handle acquisition and closes its reader", async () => {
+        const gate = Promise.withResolvers();
+        pendingHeader = gate.promise;
+        const { create } = createFixture();
+        const { source } = create();
+        const request = source.requestInterval([0, 100]);
+        await vi.waitFor(() => expect(readers).toHaveLength(1));
 
-            source.disposeSubtree();
-            let settled = false;
-            const cleanup = source.whenDisposed().then(() => {
-                settled = true;
-            });
-            await Promise.resolve();
-            expect(settled).toBe(false);
-            expect(readers[0].close).not.toHaveBeenCalled();
+        source.disposeSubtree();
+        let settled = false;
+        const cleanup = source.whenDisposed().then(() => {
+            settled = true;
+        });
+        await Promise.resolve();
+        expect(settled).toBe(false);
+        expect(readers[0].close).not.toHaveBeenCalled();
 
-            gate.resolve(undefined);
-            await Promise.all([request, cleanup]);
-            expect(readers[0].close).toHaveBeenCalledOnce();
-            expect(collector.completed).toBe(false);
-            expect(statuses).toEqual([
-                { status: "loading", detail: undefined },
-            ]);
-        }
-    );
+        gate.resolve(undefined);
+        await Promise.all([request, cleanup]);
+        expect(readers[0].close).toHaveBeenCalledOnce();
+        expect(queries).toHaveLength(0);
+    });
+
+    it("closes a reader with a pending query and prevents late publication", async () => {
+        const gate = Promise.withResolvers();
+        // Even work that ignores cancellation must not publish after removal.
+        delayQuery = async (result) => {
+            await gate.promise;
+            return result;
+        };
+        const { create, statuses } = createFixture();
+        const { source, collector } = create();
+        const request = source.requestInterval([0, 100]);
+        await vi.waitFor(() => expect(queries).toHaveLength(1));
+
+        source.disposeSubtree();
+        await source.whenDisposed();
+        expect(readers[0].close).toHaveBeenCalledOnce();
+        expect(queries[0].options.signal.aborted).toBe(true);
+
+        gate.resolve(undefined);
+        await request;
+        expect(collector.completed).toBe(false);
+        expect(statuses).toEqual([{ status: "loading", detail: undefined }]);
+    });
 
     it("reloads at changed viewport resolution and pixelsPerBin, reopening only for URL changes", async () => {
         const { create, setAxisLength, setPixels, setUrl } = createFixture();

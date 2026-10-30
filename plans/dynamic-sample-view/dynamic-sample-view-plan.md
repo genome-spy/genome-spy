@@ -352,6 +352,12 @@ attachment/reset, accepted-operation draining, and explicit persistence/scale
 observations. Coordination remains in the existing Core queue with one App
 transition flag and pending-promise set; no task or resource framework was added.
 
+Core KISS follow-up removes the request registry and wrapper: disposal awaits
+pending handle acquisitions and reader closure, with Figwig owning cancellation
+of pending queries. One container resize observer now lasts for the embed's
+lifetime and checks the current sizing mode. Focused source, mutation, App lifecycle
+and canvas suites, Core typing, lint, formatting and release checks passed.
+
 ## Tradeoffs and review
 
 Serialization can delay replacement while accepted work finishes. This is the

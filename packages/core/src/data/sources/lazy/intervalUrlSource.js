@@ -36,9 +36,6 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     /** @type {Map<string, Promise<H>>} */
     #handleCache = new Map();
 
-    /** @type {Set<Promise<void>>} */
-    #requests = new Set();
-
     /** @type {Promise<void>} */
     #disposalPromise = Promise.resolve();
 
@@ -75,7 +72,7 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     }
 
     /**
-     * Waits for pending reads and retained handles to finish closing after disposal.
+     * Waits for pending handle acquisitions and retained handles to close.
      *
      * @returns {Promise<void>}
      */
@@ -84,7 +81,6 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     }
 
     async #disposeHandles() {
-        await Promise.allSettled(this.#requests);
         const handles = Array.from(this.#handleCache.values());
         this.#handleCache.clear();
 
@@ -188,19 +184,9 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
      * @param {number[]} domain
      * @param {number} [windowSize]
      */
-    requestInterval(domain, windowSize) {
-        if (this.disposed) return Promise.resolve();
+    async requestInterval(domain, windowSize) {
+        if (this.disposed) return;
 
-        const request = this.#requestInterval(domain, windowSize);
-        this.#requests.add(request);
-        return request.finally(() => this.#requests.delete(request));
-    }
-
-    /**
-     * @param {number[]} domain
-     * @param {number} [windowSize]
-     */
-    async #requestInterval(domain, windowSize) {
         this.#abortController.abort();
         this.#abortController = new AbortController();
         const signal = this.#abortController.signal;

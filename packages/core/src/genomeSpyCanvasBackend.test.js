@@ -34,6 +34,13 @@ import Canvas2DRenderCoordinator from "./rendering/canvas2d/canvas2DRenderCoordi
 beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            observe() {}
+            disconnect() {}
+        }
+    );
+    vi.stubGlobal(
         "matchMedia",
         vi.fn(() => ({
             addEventListener: /** @returns {void} */ () => undefined,
@@ -106,7 +113,7 @@ test("launches with a rendering backend that has no retained resources", async (
     expect(finalize).toHaveBeenCalledOnce();
 });
 
-test("updates canvas sizing and container observation from fixed to growing and back", async () => {
+test("keeps canvas responsive across fixed and growing views", async () => {
     const container = document.createElement("div");
     document.body.append(container);
     /** @type {TestResizeObserver[]} */
@@ -209,9 +216,13 @@ test("updates canvas sizing and container observation from fixed to growing and 
     const fixedSize = genomeSpy.getLogicalCanvasSize();
     expect(wrapper.style.flexGrow).toBe("0");
     expect(fixedSize.height).toBeLessThan(availableHeight);
-    expect(observers.some((observer) => observer.targets.has(container))).toBe(
-        false
+    const observer = observers.find((candidate) =>
+        candidate.targets.has(container)
     );
+    expect(observer).toBeDefined();
+    const computeLayout = vi.spyOn(genomeSpy, "computeLayout");
+    observer.notify();
+    expect(computeLayout).not.toHaveBeenCalled();
 
     const views = createViewMutationApi(genomeSpy);
     const growing = await views.insert(views.root(), {
@@ -225,10 +236,6 @@ test("updates canvas sizing and container observation from fixed to growing and 
     expect(wrapper.style.flexGrow).toBe("1");
     expect(genomeSpy.getLogicalCanvasSize().height).toBe(availableHeight);
     expect(views.getLayoutBounds(growing).height).toBeGreaterThan(100);
-    const observer = observers.find((candidate) =>
-        candidate.targets.has(container)
-    );
-    expect(observer).toBeDefined();
 
     availableHeight = 500;
     observer.notify();
@@ -238,6 +245,13 @@ test("updates canvas sizing and container observation from fixed to growing and 
     genomeSpy.renderAll();
     expect(wrapper.style.flexGrow).toBe("0");
     expect(genomeSpy.getLogicalCanvasSize()).toEqual(fixedSize);
+    computeLayout.mockClear();
+    availableHeight = 400;
+    observer.notify();
+    expect(computeLayout).not.toHaveBeenCalled();
+    expect(genomeSpy.getLogicalCanvasSize()).toEqual(fixedSize);
+
+    genomeSpy.destroy();
     expect(observer.targets.has(container)).toBe(false);
 });
 
