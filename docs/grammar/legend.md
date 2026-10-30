@@ -45,6 +45,7 @@ encoding with a discrete scale and an enabled symbol legend. Shared legends use
 one selection; independent legends can use local selections or compatible
 `push: "outer"` declarations. Collecting legends changes their placement while
 preserving their selection owners. A legend cannot bind two different selections.
+Declarations binding the same shared legend must agree on `select.clear`.
 
 Plot input is disabled by default for a legend-bound selection. Explicit
 `select.on` enables it in addition to legend clicks. For example, combine plot

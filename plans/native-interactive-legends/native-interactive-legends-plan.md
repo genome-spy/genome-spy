@@ -281,6 +281,7 @@ to reduce line count.
 The two implementation questions are resolved:
 
 1. Generated labels add one internal `Mark.nonvisualInputs` categorical field.
+   Its definition lives in the normalized encoding; a set tracks input names.
    WebGL includes it in ordinary geometry/attribute generation; Core's WebGPU
    adapter translates it to the renderer's existing scalar inputs. Symbols reuse
    their existing category channel. Both use native conditional predicates and
@@ -317,8 +318,8 @@ alias primitive, and combine delivery into one complete feature milestone.
       source-policy state, subscriptions, DOM overlay, or legend-local event scheduler.
       The runtime addition is concentrated in semantic binding, native feedback
       wiring, entry picking, and the renderer-neutral event/pick contract.
-  Final feature diff in Core runtime JavaScript: +442/-47, net +395 raw lines,
-  including comments and blank lines, excluding tests and specification types.
+      Initial feature commit in Core runtime JavaScript: +442/-47, net +395 raw lines,
+      including comments and blank lines, excluding tests and specification types.
 - [x] Full unit suite: 571 files passed; 5,428 tests passed, one skipped and two
       todo. Subsequent focused checks cover the final edge-case additions: 564 tests
       across eight files passed, including examples/schema validation and existing
@@ -335,6 +336,16 @@ alias primitive, and combine delivery into one complete feature milestone.
       documentation type freshness, and release checks. The Core minor fragment
       advances the fixed release group to 1.3.0.
 - [ ] User manual testing, including the supplemental mixed-hover example.
+
+The subsequent KISS review fixes reject inconsistent clear settings on a shared
+legend, retain equivalent normalized bindings once, use packed pixel bounds for
+unpicked custom clears, and remove duplicated nonvisual-input storage. The
+duplicate picking-ID assertion is removed while its dedicated regression stays.
+Verification after these fixes: 251 focused tests, Core types, lint, and release
+checks pass. Native browser integration passes on all three backends at DPR 1
+and 2, including retained updates. The browser check now waits for the canvas's
+loading transition before reading entry coordinates, correcting a demonstrated
+startup click race in the test.
 
 Retain this reconciled plan for branch discussion and commit history. Remove it
 in a later cleanup before merging, per the repository's plan-retirement workflow.

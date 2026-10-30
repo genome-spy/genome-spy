@@ -33,6 +33,12 @@ await testRenderers(
                 ).documentElement;
             };
             await svg();
+            // Entry coordinates assume the canvas loading transition has finished.
+            await Promise.all(
+                host
+                    .getAnimations({ subtree: true })
+                    .map((animation) => animation.finished)
+            );
             const entries = () =>
                 api.debug
                     .getViewRoot()

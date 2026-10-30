@@ -7,6 +7,7 @@ import { updateCategorySelection } from "../../selection/categorySelection.js";
 import { createEventPredicate } from "../../utils/interactionConfig.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { isInChromeSubtree } from "../viewChrome.js";
+import deepEqual from "../../utils/deepEqual.js";
 
 /**
  * @typedef {object} LegendBinding
@@ -81,13 +82,18 @@ export function resolveLegendBindings(views) {
                 const previous = resolution.selectionBindings.get(
                     definition.scaleResolution
                 );
-                if (
-                    previous &&
-                    previous.runtime.getParamRef(previous.name) !== ref
-                ) {
-                    throw new Error(
-                        `A legend cannot bind competing selections "${previous.name}" and "${param.name}".`
-                    );
+                if (previous) {
+                    if (previous.runtime.getParamRef(previous.name) !== ref) {
+                        throw new Error(
+                            `A legend cannot bind competing selections "${previous.name}" and "${param.name}".`
+                        );
+                    }
+                    if (!deepEqual(previous.select.clear, select.clear)) {
+                        throw new Error(
+                            `Shared legend binding "${param.name}" has conflicting clear settings.`
+                        );
+                    }
+                    continue;
                 }
                 resolution.selectionBindings.set(
                     definition.scaleResolution,
@@ -113,17 +119,18 @@ export function bindLegend(legend, binding, units) {
         if (!["symbols", "labels"].includes(unit.name)) continue;
         const label = unit.name === "labels";
         const input = label ? "legendCategory" : component;
+        const encoding = /** @type {Record<string, any>} */ (
+            unit.mark.encoding
+        );
         if (label) {
-            unit.mark.nonvisualInputs.set(input, {
+            encoding[input] = {
                 field: "value",
                 type: "nominal",
                 resolutionChannel: component,
                 domainInert: true,
-            });
+            };
+            unit.mark.nonvisualInputs.add(input);
         }
-        const encoding = /** @type {Record<string, any>} */ (
-            unit.mark.encoding
-        );
         for (const channel of label
             ? ["opacity"]
             : ["fillOpacity", "strokeOpacity"]) {
@@ -154,25 +161,15 @@ export function bindLegend(legend, binding, units) {
             // Hit-test the same entry geometry instead of reusing stale hover.
             const collector = entry.getCollector();
             if (!collector?.completed) return;
-            const x = (event.point.x - entry.coords.x) / entry.coords.width;
-            const y =
-                1 - (event.point.y - entry.coords.y) / entry.coords.height;
-            const e = entry.mark.encoders;
-            for (const row of collector.getData()) {
-                const x1 = /** @type {number} */ (e.x(row));
-                const x2 = /** @type {number} */ (e.x2(row));
-                const y1 = /** @type {number} */ (e.y(row));
-                const y2 = /** @type {number} */ (e.y2(row));
-                if (
-                    x >= Math.min(x1, x2) &&
-                    x <= Math.max(x1, x2) &&
-                    y >= Math.min(y1, y2) &&
-                    y <= Math.max(y1, y2)
-                ) {
-                    datum = row;
-                    break;
-                }
-            }
+            const x = event.point.x - entry.coords.x;
+            const y = event.point.y - entry.coords.y;
+            datum = Iterator.from(collector.getData()).find(
+                (row) =>
+                    x >= row.symbolX &&
+                    x <= row.symbolX + row.entryWidth &&
+                    y >= row.entryY &&
+                    y <= row.entryY + row.entryHeight
+            );
             if (!datum) return;
         }
         event.stopPropagation();
