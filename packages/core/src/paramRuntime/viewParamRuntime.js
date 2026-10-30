@@ -110,7 +110,7 @@ export default class ViewParamRuntime {
     /** @type {import("../view/view.js").default | undefined} */
     #selectionSource;
 
-    /** @type {Map<string, Set<{kind: "single" | "multi" | "interval", membership: "records" | "categories" | undefined, components: string[], source: import("../view/view.js").default | undefined}>>} */
+    /** @type {Map<string, Set<{kind: "single" | "multi" | "categories" | "interval", toggle: boolean | undefined, components: string[], source: import("../view/view.js").default | undefined}>>} */
     #selectionDeclarations = new Map();
 
     /** @type {Map<string, TransitionState>} */
@@ -194,7 +194,6 @@ export default class ViewParamRuntime {
 
         const capabilities = Array.from(declarations, (declaration) => ({
             type: declaration.kind,
-            membership: declaration.membership,
             components: declaration.components.map((component) => ({
                 component,
                 type:
@@ -225,30 +224,25 @@ export default class ViewParamRuntime {
             return;
         }
         const select = asSelectionConfig(param.select);
-        /** @type {"single" | "multi" | "interval"} */
+        /** @type {"single" | "multi" | "categories" | "interval"} */
         const kind =
             select.type === "interval"
                 ? "interval"
-                : select.toggle
-                  ? "multi"
-                  : "single";
+                : select.encodings
+                  ? "categories"
+                  : select.toggle
+                    ? "multi"
+                    : "single";
         const components = select.encodings
             ? Array.from(new Set(select.encodings)).sort()
             : [];
-        /** @type {"records" | "categories" | undefined} */
-        const membership =
-            select.type === "point"
-                ? select.encodings
-                    ? "categories"
-                    : "records"
-                : undefined;
         const owner =
             param.push === "outer"
                 ? this.findRuntimeForParam(param.name)
                 : this;
         const declaration = {
             kind,
-            membership,
+            toggle: select.type === "point" ? !!select.toggle : undefined,
             components,
             source: this.#selectionSource,
         };
@@ -258,7 +252,7 @@ export default class ViewParamRuntime {
         if (
             existing &&
             (existing.kind !== kind ||
-                existing.membership !== membership ||
+                existing.toggle !== declaration.toggle ||
                 JSON.stringify(existing.components) !==
                     JSON.stringify(components))
         ) {

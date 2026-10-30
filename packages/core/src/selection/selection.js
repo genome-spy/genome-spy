@@ -1,3 +1,4 @@
+import { splitAccessPath } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
     getSecondaryChannel,
@@ -182,6 +183,17 @@ export function makeSelectionTestExpression(params, selection) {
     const paramName = validateParameterName(params.param);
     const fields = params.fields ?? {};
 
+    if (isCategorySelection(selection)) {
+        if (Object.keys(fields).length !== 1 || !fields[selection.component]) {
+            throw new Error(
+                `Category filter fields must map the declared component "${selection.component}".`
+            );
+        }
+        const access = splitAccessPath(fields[selection.component])
+            .map((part) => `[${JSON.stringify(part)}]`)
+            .join("");
+        return `${paramName}.values.size == 0 ? ${empty} : mapHasKey(${paramName}.values, datum${access})`;
+    }
     if (isSinglePointSelection(selection)) {
         return `${paramName}.uniqueId == null ? ${empty} : ${paramName}.uniqueId === datum[${JSON.stringify(
             UNIQUE_ID_KEY

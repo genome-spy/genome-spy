@@ -1,8 +1,5 @@
 import { makeSelectionTestExpression } from "../../selection/selection.js";
 import Transform from "./transform.js";
-import { isCategorySelection } from "../../selection/selection.js";
-import { testCategorySelection } from "../../selection/categorySelection.js";
-import { field } from "../../utils/field.js";
 
 export default class FilterTransform extends Transform {
     /**
@@ -30,25 +27,6 @@ export default class FilterTransform extends Transform {
                 throw new Error(
                     `Cannot initialize filter transform. Selection parameter "${this.params.param}" not found!`
                 );
-            }
-            if (isCategorySelection(selection)) {
-                const fields = this.params.fields ?? {};
-                if (
-                    Object.keys(fields).length !== 1 ||
-                    !fields[selection.component]
-                ) {
-                    throw new Error(
-                        `Category filter fields must map the declared component "${selection.component}".`
-                    );
-                }
-                const read = field(fields[selection.component]);
-                const current = this.watchSnapshottedExpression(
-                    this.params.param
-                );
-                const empty = this.params.empty ?? true;
-                this.predicate = (datum) =>
-                    testCategorySelection(current(), read(datum), empty);
-                return;
             }
             expression = makeSelectionTestExpression(this.params, selection);
         } else {

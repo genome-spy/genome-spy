@@ -209,7 +209,7 @@ export function selectionPredicateMatchesWhenEmpty(tree) {
  *
  * @param {SelectionPredicateTree} tree
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "interval", membership?: "records" | "categories", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
+ * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "categories" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
  * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} [getScale]
@@ -226,15 +226,7 @@ export function resolveSelectionPredicateTree(
     /** @param {string} name @returns {{type: "single" | "multi" | "interval" | "categories", components: {component: string, type?: import("../spec/channel.js").Type}[]}} */
     const capability = (name) => {
         const registered = runtime.findSelectionCapability?.(name);
-        if (registered) {
-            return {
-                ...registered,
-                type:
-                    registered.membership === "categories"
-                        ? "categories"
-                        : registered.type,
-            };
-        }
+        if (registered) return registered;
         const value = runtime.findValue(name);
         if (
             !value ||

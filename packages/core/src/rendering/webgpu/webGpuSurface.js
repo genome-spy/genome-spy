@@ -698,44 +698,33 @@ function updateRetainedSelections(retained, mark) {
                 retained.selections.set(name, id);
             }
         } else if (slot.type == "multi") {
-            if (categoryBinding) {
-                const indexer = /** @type {any} */ (
-                    mark.encoders[
-                        /** @type {import("../../spec/channel.js").Channel} */ (
-                            categoryBinding.input
-                        )
-                    ].scale.props
-                ).domainIndexer;
-                const previous =
-                    /** @type {CategorySelectionSnapshot | undefined} */ (
-                        retained.selections.get(name)
-                    );
-                if (
-                    previous?.value === selection &&
-                    previous.indexer === indexer
-                )
-                    continue;
-                const ids = Uint32Array.from(selection.values, (value) =>
-                    indexer(value)
-                );
-                if (!uint32ArraysEqual(previous?.ids, ids)) {
-                    slot.set(ids);
-                    writes++;
-                }
-                retained.selections.set(name, {
-                    type: "categories",
-                    value: selection,
-                    indexer,
-                    ids,
-                });
+            const indexer = categoryBinding
+                ? /** @type {any} */ (
+                      mark.encoders[
+                          /** @type {import("../../spec/channel.js").Channel} */ (
+                              categoryBinding.input
+                          )
+                      ].scale.props
+                  ).domainIndexer
+                : undefined;
+            const previous = /** @type {IntegerSetSnapshot | undefined} */ (
+                retained.selections.get(name)
+            );
+            // Record map mutations also publish a new selection wrapper.
+            if (previous?.value === selection && previous.indexer === indexer)
                 continue;
-            }
-            const ids = Uint32Array.from(selection.data.keys());
-            if (!uint32ArraysEqual(retained.selections.get(name), ids)) {
+
+            const ids = Uint32Array.from(
+                categoryBinding
+                    ? selection.values.values().map(indexer)
+                    : selection.data.keys()
+            );
+
+            if (!uint32ArraysEqual(previous?.ids, ids)) {
                 slot.set(ids);
                 writes++;
-                retained.selections.set(name, ids);
             }
+            retained.selections.set(name, { value: selection, indexer, ids });
         } else if (slot.type == "interval") {
             let snapshot = /** @type {SelectionSnapshot | undefined} */ (
                 retained.selections.get(name)
@@ -892,7 +881,7 @@ function getLogicalChannelSeries(channel) {
  * @prop {ResourceBinding[]} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
- * @prop {Map<string, number | Uint32Array | SelectionSnapshot | CategorySelectionSnapshot>} selections
+ * @prop {Map<string, number | SelectionSnapshot | IntegerSetSnapshot>} selections
  */
 
 /**
@@ -911,9 +900,8 @@ function getLogicalChannelSeries(channel) {
  */
 
 /**
- * @typedef {object} CategorySelectionSnapshot
- * @property {"categories"} type
- * @property {import("../../types/selectionTypes.js").CategoryPointSelection} value
- * @property {(value: import("../../spec/channel.js").Scalar) => number} indexer
+ * @typedef {object} IntegerSetSnapshot
+ * @property {import("../../types/selectionTypes.js").CategoryPointSelection | import("../../types/selectionTypes.js").MultiPointSelection} value
+ * @property {((value: import("../../spec/channel.js").Scalar) => number) | undefined} indexer
  * @property {Uint32Array} ids
  */

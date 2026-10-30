@@ -635,8 +635,6 @@ export default class Mark {
                         ).some((name) => {
                             const capability =
                                 runtime.findSelectionCapability(name);
-                            if (capability?.membership === "categories")
-                                return false;
                             const type =
                                 capability?.type ??
                                 runtime.findValue(name)?.type;

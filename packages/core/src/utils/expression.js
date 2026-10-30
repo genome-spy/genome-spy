@@ -94,7 +94,8 @@ const functionContext = {
     ) {
         return sequence(seq).slice(start, end);
     },
-    mapHasKey(/** @type {Map<any, any>} */ map, /** @type {any} */ key) {
+    /** @param {Map<any, any> | Set<any>} map @param {any} key */
+    mapHasKey(map, key) {
         return map.has(key);
     },
     isArray,

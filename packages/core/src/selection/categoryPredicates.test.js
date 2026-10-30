@@ -237,3 +237,50 @@ test("category filters require fields and explicit consumer mappings cover the c
     };
     await expect(createTestEmbed(input)).rejects.toThrow(/declared component/);
 });
+
+test.each(["nested.state", "literal\\.state"])(
+    "category filters preserve field path %s",
+    async (field) => {
+        const { root, views } = await createTestEmbed({
+            params: [
+                {
+                    name: "focus",
+                    select: { type: "point", encodings: ["color"] },
+                    value: [{ color: "A" }],
+                },
+            ],
+            data: {
+                values: [
+                    { nested: { state: "A" }, "literal.state": "A" },
+                    { nested: { state: "B" }, "literal.state": "B" },
+                ],
+            },
+            transform: [
+                { type: "filter", param: "focus", fields: { color: field } },
+            ],
+            mark: "point",
+            encoding: { color: { field, type: "nominal", legend: null } },
+        });
+        try {
+            const unit = /** @type {UnitView} */ (root);
+            const selected = () =>
+                Array.from(
+                    unit.getCollector().getData(),
+                    (row) => row.nested.state
+                );
+            expect(selected()).toEqual(["A"]);
+            const api = categories(views.root());
+            api.setValue([["B"]]);
+            await root.paramRuntime.whenPropagated();
+            expect(selected()).toEqual(["B"]);
+            api.setValue([["absent"]]);
+            await root.paramRuntime.whenPropagated();
+            expect(selected()).toEqual([]);
+            api.clear();
+            await root.paramRuntime.whenPropagated();
+            expect(selected()).toEqual(["A", "B"]);
+        } finally {
+            root.disposeSubtree();
+        }
+    }
+);
