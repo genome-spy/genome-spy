@@ -283,9 +283,14 @@ export default class App {
         return view;
     }
 
-    /** @template T @param {import("@genome-spy/core/view/viewMutationApi.js").ViewMutation} mutation @param {() => Promise<T>} operation */
-    async #runViewMutation(mutation, operation) {
-        if (this.#transitioning) return this.#mutateCohort(mutation, operation);
+    /**
+     * @template T
+     * @param {() => Promise<T>} operation
+     * @param {import("@genome-spy/core/view/view.js").default} [removalRoot]
+     */
+    async #runViewMutation(operation, removalRoot) {
+        if (this.#transitioning)
+            return this.#mutateCohort(operation, removalRoot);
         if (this.#finalized) throw new Error("App has been finalized.");
 
         this.#transitioning = true;
@@ -299,7 +304,7 @@ export default class App {
             if (this.#finalized) throw new Error("App has been finalized.");
             this.paramProvenanceBridge?.flushPendingChanges();
             this.paramProvenanceBridge?.dispose();
-            return await this.#mutateCohort(mutation, operation);
+            return await this.#mutateCohort(operation, removalRoot);
         } finally {
             try {
                 if (!this.#finalized) {
@@ -325,16 +330,16 @@ export default class App {
         }
     }
 
-    /** @template T @param {import("@genome-spy/core/view/viewMutationApi.js").ViewMutation} mutation @param {() => Promise<T>} operation */
-    async #mutateCohort(mutation, operation) {
+    /**
+     * @template T
+     * @param {() => Promise<T>} operation
+     * @param {import("@genome-spy/core/view/view.js").default} [removalRoot]
+     */
+    async #mutateCohort(operation, removalRoot) {
         const sampleView = this.#activeSampleView ?? this.#sampleViewCandidate;
-        const removing =
-            mutation.kind === "remove" &&
-            sampleView &&
-            mutation.target.getDescendants().includes(sampleView);
-        const subtree = new Set(
-            removing ? mutation.target.getDescendants() : []
-        );
+        const descendants = removalRoot?.getDescendants() ?? [];
+        const removing = sampleView && descendants.includes(sampleView);
+        const subtree = new Set(removing ? descendants : []);
         const entries =
             this.store.getState().provenance.present.paramProvenance.entries;
         /** @type {import("@genome-spy/core/view/viewSelectors.js").ResolvedParam[]} */

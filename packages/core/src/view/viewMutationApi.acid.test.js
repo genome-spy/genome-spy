@@ -20,23 +20,24 @@ test("host lifecycle wraps transaction layout suppression and every nested mutat
         vconcat: [],
     });
     const requestLayout = context.requestLayoutReflow;
-    /** @type {string[]} */
-    const phases = [];
+    /** @type {boolean[]} */
+    const layoutEnabled = [];
+    let removals = 0;
     const api = createViewMutationApi(
         { viewRoot: view },
         () => true,
-        async (mutation, operation) => {
-            phases.push(mutation.kind + ":before");
-            if (mutation.kind === "transaction") {
-                expect(context.requestLayoutReflow).toBe(requestLayout);
+        async (operation, removalRoot) => {
+            layoutEnabled.push(context.requestLayoutReflow === requestLayout);
+            if (removalRoot) {
+                expect(removalRoot).toBe(getRequiredView(view, "cohort"));
+                removals++;
             }
             try {
                 return await operation();
             } finally {
-                if (mutation.kind === "transaction") {
-                    expect(context.requestLayoutReflow).toBe(requestLayout);
-                }
-                phases.push(mutation.kind + ":after");
+                layoutEnabled.push(
+                    context.requestLayoutReflow === requestLayout
+                );
             }
         }
     );
@@ -49,21 +50,23 @@ test("host lifecycle wraps transaction layout suppression and every nested mutat
         await views.move(child, { index: 0 });
         await views.remove(child);
     });
-    expect(phases).toEqual([
-        "transaction:before",
-        "insert:before",
-        "insert:after",
-        "move:before",
-        "move:after",
-        "remove:before",
-        "remove:after",
-        "transaction:after",
+    // Only the outer boundary runs outside transaction layout suppression.
+    expect(layoutEnabled).toEqual([
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
     ]);
-    phases.length = 0;
+    expect(removals).toBe(1);
+    layoutEnabled.length = 0;
     await expect(
         api.insert(api.root(), makeTrackSpec("bad", "Bad"), { index: -1 })
     ).rejects.toThrow();
-    expect(phases).toEqual([]);
+    expect(layoutEnabled).toEqual([]);
     view.disposeSubtree();
 });
 

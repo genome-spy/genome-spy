@@ -64,8 +64,8 @@ code is copied or adapted.
 ### Mutation coordination and minimal state
 
 Add one optional internal around-operation callback to `createViewMutationApi`,
-inside its existing queue. It receives the operation kind, resolved parent/target,
-and the operation to execute. Core argument/container validation and removal
+inside its existing queue. It receives the operation to execute and an optional
+subtree root for removal. Core argument/container validation and removal
 dependency preflight precede destructive App state changes. Core-only callers
 keep their existing behavior.
 
@@ -347,7 +347,7 @@ Fixed-to-growing canvas insertion, host resizing, and removal back to fixed heig
 were visually verified. Final removal left zero loading entries and no errors.
 Temporary browser/server resources were closed.
 
-Size check: App orchestration grew from 873 to 1,174 lines. The added code owns
+Size check: App orchestration grew from 873 to 1,179 lines. The added code owns
 attachment/reset, accepted-operation draining, and explicit persistence/scale
 observations. Coordination remains in the existing Core queue with one App
 transition flag and pending-promise set; no task or resource framework was added.
@@ -355,8 +355,10 @@ transition flag and pending-promise set; no task or resource framework was added
 Core KISS follow-up removes the request registry and wrapper: disposal awaits
 pending handle acquisitions and reader closure, with Figwig owning cancellation
 of pending queries. One container resize observer now lasts for the embed's
-lifetime and checks the current sizing mode. Focused source, mutation, App lifecycle
-and canvas suites, Core typing, lint, formatting and release checks passed.
+lifetime and checks the current sizing mode. The host mutation hook carries only
+the operation and an optional removal root, with no mutation descriptors. Focused
+source, mutation, App lifecycle and canvas suites, Core/App typing, lint, formatting
+and release checks passed.
 
 ## Tradeoffs and review
 

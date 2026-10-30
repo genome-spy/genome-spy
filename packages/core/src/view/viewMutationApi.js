@@ -220,8 +220,7 @@ function updateNamedDataBinding(view, binding, data) {
  *   requestedLayoutReflow: boolean,
  *   restoreLayoutReflow: () => void
  * }} TransactionState
- * @typedef {{kind: "insert" | "remove" | "move" | "transaction", parent?: import("./view.js").default, target?: import("./view.js").default}} ViewMutation
- * @typedef {<T>(mutation: ViewMutation, operation: () => Promise<T>) => Promise<T>} RunViewMutation
+ * @typedef {<T>(operation: () => Promise<T>, removalRoot?: import("./view.js").default) => Promise<T>} RunViewMutation
  */
 
 /**
@@ -229,13 +228,13 @@ function updateNamedDataBinding(view, binding, data) {
  *
  * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi>} genomeSpy
  * @param {() => boolean} [isActive]
- * @param {RunViewMutation} [runMutation] Internal host lifecycle boundary; runs inside the mutation queue.
+ * @param {RunViewMutation} [runMutation] Internal host lifecycle boundary; receives the subtree root for removals and runs inside the mutation queue.
  * @returns {import("../types/embedApi.js").ViewApi}
  */
 export function createViewMutationApi(
     genomeSpy,
     isActive = () => true,
-    runMutation = (_mutation, operation) => operation()
+    runMutation = (operation) => operation()
 ) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
@@ -791,22 +790,19 @@ export function createViewMutationApi(
                 ensureScopeNameIsAvailable(parentView, scopeName);
             }
 
-            return runMutation(
-                { kind: "insert", parent: parentView },
-                async () => {
-                    const childView = await addChildToMutableContainer(
-                        parentView,
-                        structuredClone(spec),
-                        index
-                    );
+            return runMutation(async () => {
+                const childView = await addChildToMutableContainer(
+                    parentView,
+                    structuredClone(spec),
+                    index
+                );
 
-                    if (options.scope !== undefined) {
-                        registerViewScope(childView, options.scope);
-                    }
-
-                    return getHandle(childView);
+                if (options.scope !== undefined) {
+                    registerViewScope(childView, options.scope);
                 }
-            );
+
+                return getHandle(childView);
+            });
         });
     }
 
@@ -999,8 +995,8 @@ export function createViewMutationApi(
             getMutableContainerChildCount(parentView);
             targetView.assertCanDisposeSubtree();
             await runMutation(
-                { kind: "remove", parent: parentView, target: targetView },
-                () => removeChildFromMutableContainer(parentView, index)
+                () => removeChildFromMutableContainer(parentView, index),
+                targetView
             );
         });
     }
@@ -1063,17 +1059,14 @@ export function createViewMutationApi(
 
             const index = getMoveIndex(options.index, children.length - 1);
             getMutableContainerChildCount(parentView);
-            return runMutation(
-                { kind: "move", parent: parentView, target: targetView },
-                async () => {
-                    await moveChildWithinMutableContainer(
-                        parentView,
-                        fromIndex,
-                        index
-                    );
-                    return getHandle(targetView);
-                }
-            );
+            return runMutation(async () => {
+                await moveChildWithinMutableContainer(
+                    parentView,
+                    fromIndex,
+                    index
+                );
+                return getHandle(targetView);
+            });
         });
     }
 
@@ -1144,9 +1137,7 @@ export function createViewMutationApi(
             activeTransaction
                 ? runTransaction(callback)
                 : enqueueTopLevelOperation(() =>
-                      runMutation({ kind: "transaction" }, () =>
-                          runTransaction(callback)
-                      )
+                      runMutation(() => runTransaction(callback))
                   ),
     };
 
