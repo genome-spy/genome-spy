@@ -6,7 +6,7 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 
 import WebGLMark from "./webGlMark.js";
 import { isValueDef } from "../../../encoder/encoder.js";
-import { cssColorToArray } from "../gl/colorUtils.js";
+import { cssColorToRgba } from "../../color.js";
 import { getCachedOrCall } from "../../../utils/propertyCacher.js";
 
 const hatchPatterns = [
@@ -154,7 +154,7 @@ export default class WebGLRectMark extends WebGLMark {
         this.registerMarkUniformValue(
             "uShadowColor",
             props.shadowColor ?? "black",
-            cssColorToArray
+            cssColorToRgba
         );
     }
 

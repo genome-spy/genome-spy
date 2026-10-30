@@ -1,7 +1,7 @@
 import { collectAppearanceSelections } from "../../selection/selection.js";
 import { resolveCategoryInput } from "../../selection/categorySelection.js";
 import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
-import { color as parseColor } from "d3-color";
+import { cssColorToRgba } from "../color.js";
 import { format as numberFormat } from "d3-format";
 import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
 import { getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
@@ -2504,12 +2504,11 @@ function toRgba(mark, value) {
     if (value == null) {
         return [0, 0, 0, 0];
     }
-    const parsed = parseColor(String(value));
-    if (!parsed) {
+    try {
+        return cssColorToRgba(String(value));
+    } catch {
         throw unsupported(mark, `Invalid color: ${String(value)}`);
     }
-    const rgb = parsed.rgb();
-    return [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
 }
 
 /**

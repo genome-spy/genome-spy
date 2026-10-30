@@ -1949,9 +1949,17 @@ describe("WebGPU mark adapter", () => {
     });
 
     test("translates data-driven colors without a scale", () => {
-        const mark = createMark("point", [{ color: "red" }], {
-            fill: createEncoder((datum) => datum.color),
-        });
+        const mark = createMark(
+            "point",
+            [
+                { color: "red" },
+                { color: "transparent" },
+                { color: "#00ff0080" },
+            ],
+            {
+                fill: createEncoder((datum) => datum.color),
+            }
+        );
 
         const translated = createWebGpuMarkConfig(
             mark,
@@ -1960,7 +1968,20 @@ describe("WebGPU mark adapter", () => {
         );
 
         expect(/** @type {any} */ (translated).config.channels.fill).toEqual({
-            data: new Float32Array([1, 0, 0, 1]),
+            data: new Float32Array([
+                1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                128 / 255,
+            ]),
             type: "f32",
             inputComponents: 4,
         });

@@ -1,4 +1,4 @@
-import { cssColorToArray } from "../../utils/colorUtils.js";
+import { cssColorToRgba } from "../../utils/colorUtils.js";
 import { getScaleDefinition } from "./scaleDefinition.js";
 
 /** @typedef {import("../../index.d.ts").ScaleStopKind} ScaleStopKind */
@@ -137,7 +137,7 @@ export function normalizeDiscreteRangeValue(
         }
     }
     if (typeof value === "string") {
-        return [...cssColorToArray(value), 1];
+        return cssColorToRgba(value);
     }
     throw new Error(
         `${label} scale on "${name}" expects vec4 range values or CSS colors.`

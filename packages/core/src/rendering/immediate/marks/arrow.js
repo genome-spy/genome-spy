@@ -4,6 +4,7 @@ import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
     encodeString,
+    getPaintOpacityAccessor,
     prepareRangeProjection,
     resolveMarkProperty,
     toPaintString,
@@ -86,6 +87,7 @@ export function visitArrowInstances(
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const strokeAlpha = getPaintOpacityAccessor(encoders.stroke);
     return visitArrowSkeletonInstances(
         mark,
         properties,
@@ -127,13 +129,14 @@ export function visitArrowInstances(
                           )
                 );
             });
+            const stroke =
+                constantStroke ??
+                toPaintString(encoders.stroke(skeleton.datum));
             const hasVisibleStroke =
-                (constantStroke ??
-                    toPaintString(encoders.stroke(skeleton.datum))) != "none" &&
                 encodeNumber(encoders.strokeOpacity, skeleton.datum) *
+                    strokeAlpha(stroke) *
                     viewOpacity >
-                    0 &&
-                skeleton.strokeWidth > 0;
+                    0 && skeleton.strokeWidth > 0;
             visitor({
                 datum: skeleton.datum,
                 boundaryLoops:

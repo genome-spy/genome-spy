@@ -79,7 +79,8 @@ void main(void) {
     gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity();
+    vec4 strokeColor = getScaled_stroke();
+    float strokeOpacity = getScaled_strokeOpacity() * strokeColor.a;
     vShape = getScaled_shape();
 
     // Line-only shapes use their width even when the stroke falls back to the
@@ -148,7 +149,7 @@ void main(void) {
     vHalfStrokeWidth = strokeWidth / 2.0;
 
     vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
-    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
+    vStrokeColor = premultiplyColor(vec4(strokeColor.rgb, 1.0), strokeOpa);
 
     setupPicking();
 }

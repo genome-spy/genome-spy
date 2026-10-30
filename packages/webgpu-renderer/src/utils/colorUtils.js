@@ -26,18 +26,11 @@ export function createSchemeTexture(scheme, { count = 256, interpolate } = {}) {
     const data = new Uint8Array(count * 4);
     for (let i = 0; i < count; i++) {
         const colorString = interpolator(count > 1 ? i / (count - 1) : 0);
-        const color = d3color(colorString);
-        if (!color) {
-            throw new Error(
-                `Invalid color "${colorString}" in the color ramp.`
-            );
-        }
-        const rgb = color.rgb();
+        const rgba = cssColorToRgba(colorString);
         const base = i * 4;
-        data[base] = rgb.r;
-        data[base + 1] = rgb.g;
-        data[base + 2] = rgb.b;
-        data[base + 3] = 255;
+        for (let j = 0; j < 4; j++) {
+            data[base + j] = rgba[j] * 255;
+        }
     }
     return { data, format: "rgba8unorm", width: count, height: 1 };
 }
@@ -83,10 +76,20 @@ function createColorInterpolator(colors, interpolate) {
 }
 
 /**
+ * d3-color uses NaN RGB for zero-alpha CSS colors. Normalize them before
+ * uploading scale resources, and retain straight alpha for mark compositing.
+ *
  * @param {string} color
- * @returns {number[]}
+ * @returns {[number, number, number, number]}
  */
-export function cssColorToArray(color) {
-    const rgb = d3color(color).rgb();
-    return [rgb.r, rgb.g, rgb.b].map((x) => x / 255);
+export function cssColorToRgba(color) {
+    const parsed = d3color(color);
+    if (!parsed) {
+        throw new Error("Invalid color: " + color);
+    }
+    const rgb = parsed.rgb();
+    const alpha = Math.max(0, Math.min(1, rgb.opacity));
+    return alpha === 0
+        ? [0, 0, 0, 0]
+        : [rgb.r / 255, rgb.g / 255, rgb.b / 255, alpha];
 }

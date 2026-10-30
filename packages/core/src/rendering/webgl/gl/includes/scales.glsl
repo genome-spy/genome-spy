@@ -8,12 +8,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {

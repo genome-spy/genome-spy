@@ -235,13 +235,13 @@ void main(void) {
     // Controls antialiasing of the SDF
     vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator * uDevicePixelRatio);
 
-    vec3 color = getScaled_color();
+    vec4 color = getScaled_color();
 
     // Premultiply alpha
     vColor = premultiplyColor(color, opacity);
 
     // Do something like gamma correction for text when the color is close to black or white.
-    vGamma = getGammaForColor(color);
+    vGamma = getGammaForColor(color.rgb);
 
     vTexCoord = textureCoord;
 

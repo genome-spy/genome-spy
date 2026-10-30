@@ -1,7 +1,7 @@
 import { group } from "d3-array";
 
 import ViewRenderingContext from "../../view/renderingContext/viewRenderingContext.js";
-import { color } from "d3-color";
+import { cssColorToRgba } from "../color.js";
 import {
     clipOptionsEqual,
     normalizeClipOptions,
@@ -97,11 +97,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     setClearColor(value) {
         if (value === this.#clearColorValue) return;
         this.#clearColorValue = value;
-        const c = value == null ? null : color(value).rgb();
-        this.#clearColor[0] = c ? c.r / 255 : 0;
-        this.#clearColor[1] = c ? c.g / 255 : 0;
-        this.#clearColor[2] = c ? c.b / 255 : 0;
-        this.#clearColor[3] = c ? c.opacity : 0;
+        this.#clearColor = value == null ? [0, 0, 0, 0] : cssColorToRgba(value);
     }
 
     getDevicePixelRatio() {

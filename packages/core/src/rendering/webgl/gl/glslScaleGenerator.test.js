@@ -3,6 +3,8 @@ import { scaleOrdinal, scaleLinear } from "d3-scale";
 import {
     generateConditionalEncoderGlsl,
     generateScaleGlsl,
+    generateConstantValueGlsl,
+    generateDynamicValueGlslAndUniform,
 } from "./glslScaleGenerator.js";
 
 test("ordinal expression ranges use a texture beyond four entries", () => {
@@ -118,4 +120,13 @@ describe("index gap specialization", () => {
             expect(JSON.stringify(result)).not.toMatch(/Gap|gapRank|scaleGaps/);
         }
     );
+});
+
+test("prepares finite RGBA constants and expression uniforms", () => {
+    const literal = generateConstantValueGlsl("fill", 0, "transparent");
+    expect(literal.accessorGlsl).toContain("vec4(0.0, 0.0, 0.0, 0.0)");
+    const dynamic = generateDynamicValueGlslAndUniform("stroke", 0);
+    expect(dynamic.uniformGlsl).toContain("uniform vec4");
+    expect(dynamic.adjuster("transparent")).toEqual([0, 0, 0, 0]);
+    expect(dynamic.adjuster("rgba(255,0,0,0.5)")).toEqual([1, 0, 0, 0.5]);
 });

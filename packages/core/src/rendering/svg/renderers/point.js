@@ -6,6 +6,7 @@ import {
 import { tracePointPath } from "../../immediate/geometry/pointPath.js";
 import {
     encodeNumber,
+    getPaintOpacityAccessor,
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
@@ -42,6 +43,8 @@ export function renderPointSvg(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const fillAlpha = getPaintOpacityAccessor(encoders.fill);
+    const strokeAlpha = getPaintOpacityAccessor(encoders.stroke);
     const encodeStyles = createSvgAttributeEncoder(group, {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
@@ -76,20 +79,23 @@ export function renderPointSvg(baseMark, options) {
                 ? { "stroke-width": formatSvgNumber(strokeWidth) }
                 : {}),
             ...(lineShape
-                ? getLineShapeStyles(encoders, datum, viewOpacity)
+                ? getLineShapeStyles(encoders, datum, viewOpacity, strokeAlpha)
                 : {}),
         };
-        const strokeOpacity = +(
-            styles["stroke-opacity"] ?? constantStrokeOpacity
-        );
-        const hasStroke =
-            (styles.stroke ?? constantStroke) != "none" && strokeOpacity > 0;
+        // Only inset fill geometry needs the stroke's effective alpha here.
+        const strokeOpacity =
+            radius == geometryRadius
+                ? 0
+                : +(styles["stroke-opacity"] ?? constantStrokeOpacity) *
+                  strokeAlpha(String(styles.stroke ?? constantStroke));
+        const hasStroke = strokeOpacity > 0;
         const separateFill =
             !lineShape &&
             radius != geometryRadius &&
             (!hasStroke || strokeOpacity < 1) &&
-            (styles.fill ?? constantFill) != "none" &&
-            +(styles["fill-opacity"] ?? constantFillOpacity) > 0;
+            +(styles["fill-opacity"] ?? constantFillOpacity) *
+                fillAlpha(String(styles.fill ?? constantFill)) >
+                0;
 
         if (separateFill) {
             // Preserve the nominal fill without introducing per-point clips.
@@ -197,12 +203,13 @@ function createPointPathBuilder() {
  * @param {Record<string, import("../../../types/encoder.js").Encoder>} encoders
  * @param {object} datum
  * @param {number} viewOpacity
+ * @param {(paint: string) => number} strokeAlpha
  * @returns {Record<string, string | number>}
  */
-function getLineShapeStyles(encoders, datum, viewOpacity) {
-    const stroke = encoders.stroke(datum);
+function getLineShapeStyles(encoders, datum, viewOpacity, strokeAlpha) {
+    const stroke = toPaintString(encoders.stroke(datum));
     const strokeOpacity = encodeNumber(encoders.strokeOpacity, datum);
-    const useFill = stroke == null || strokeOpacity <= 0;
+    const useFill = strokeOpacity * strokeAlpha(stroke) <= 0;
     return {
         fill: "none",
         stroke: toPaintString(useFill ? encoders.fill(datum) : stroke),

@@ -144,11 +144,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -552,11 +550,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -605,12 +601,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {
@@ -815,24 +811,24 @@ return accessor_yOffset_0();
 #define yOffset_DEFINED
 
 
-vec3 accessor_fill_0() {
+vec4 accessor_fill_0() {
     // Constant value
-    return vec3(0.3568627450980392, 0.5529411764705883, 0.9372549019607843);
+    return vec4(0.3568627450980392, 0.5529411764705883, 0.9372549019607843, 1.0);
 }
 
-vec3 getScaled_fill() {
+vec4 getScaled_fill() {
 return accessor_fill_0();
 }
 
 #define fill_DEFINED
 
 
-vec3 accessor_stroke_0() {
+vec4 accessor_stroke_0() {
     // Constant value
-    return vec3(0.0, 0.0, 0.0);
+    return vec4(0.0, 0.0, 0.0, 1.0);
 }
 
-vec3 getScaled_stroke() {
+vec4 getScaled_stroke() {
 return accessor_stroke_0();
 }
 
@@ -1598,11 +1594,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -2010,11 +2004,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -2063,12 +2055,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {
@@ -2272,24 +2264,24 @@ return accessor_yOffset_0();
 #define yOffset_DEFINED
 
 
-vec3 accessor_fill_0() {
+vec4 accessor_fill_0() {
     // Constant value
-    return vec3(0.3568627450980392, 0.5529411764705883, 0.9372549019607843);
+    return vec4(0.3568627450980392, 0.5529411764705883, 0.9372549019607843, 1.0);
 }
 
-vec3 getScaled_fill() {
+vec4 getScaled_fill() {
 return accessor_fill_0();
 }
 
 #define fill_DEFINED
 
 
-vec3 accessor_stroke_0() {
+vec4 accessor_stroke_0() {
     // Constant value
-    return vec3(0.0, 0.0, 0.0);
+    return vec4(0.0, 0.0, 0.0, 1.0);
 }
 
-vec3 getScaled_stroke() {
+vec4 getScaled_stroke() {
 return accessor_stroke_0();
 }
 
@@ -3022,11 +3014,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -3324,11 +3314,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -3377,12 +3365,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {
@@ -3722,12 +3710,12 @@ return accessor_angle_0();
 #define angle_DEFINED
 
 
-vec3 accessor_stroke_0() {
+vec4 accessor_stroke_0() {
     // Constant value
-    return vec3(0.0, 0.0, 0.0);
+    return vec4(0.0, 0.0, 0.0, 0.0);
 }
 
-vec3 getScaled_stroke() {
+vec4 getScaled_stroke() {
 return accessor_stroke_0();
 }
 
@@ -3746,18 +3734,18 @@ return accessor_strokeOpacity_0();
 #define strokeOpacity_DEFINED
 
 
-vec3 accessor_fill_0() {
+vec4 accessor_fill_0() {
     // Constant value
-    return vec3(0.2, 0.5333333333333333, 0.8);
+    return vec4(0.2, 0.5333333333333333, 0.8, 1.0);
 }
 
 
-vec3 accessor_fill_1() {
+vec4 accessor_fill_1() {
     // Constant value
-    return vec3(0.8666666666666667, 0.8666666666666667, 0.8666666666666667);
+    return vec4(0.8666666666666667, 0.8666666666666667, 0.8666666666666667, 1.0);
 }
 
-vec3 getScaled_fill() {
+vec4 getScaled_fill() {
     if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]))) || (true && !!isSelectionEmpty_brush()))) {
         return accessor_fill_0();
     }
@@ -3960,7 +3948,8 @@ void main(void) {
     gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity();
+    vec4 strokeColor = getScaled_stroke();
+    float strokeOpacity = getScaled_strokeOpacity() * strokeColor.a;
     vShape = getScaled_shape();
 
     // Line-only shapes use their width even when the stroke falls back to the
@@ -4029,7 +4018,7 @@ void main(void) {
     vHalfStrokeWidth = strokeWidth / 2.0;
 
     vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
-    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
+    vStrokeColor = premultiplyColor(vec4(strokeColor.rgb, 1.0), strokeOpa);
 
     setupPicking();
 }
@@ -4210,11 +4199,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -4474,11 +4461,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -4527,12 +4512,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {
@@ -5304,11 +5289,11 @@ void main(void) {
 
     gl_Position = pixelsToNdc(p);
 
-    vec3 color = getScaled_color();
+    vec4 color = getScaled_color();
 
     vColor = premultiplyColor(color, opacity);
 
-    vGamma = getGammaForColor(color);
+    vGamma = getGammaForColor(color.rgb);
 
     vSize = uShape == SHAPE_ORTHOGONAL
         ? (uPickingEnabled ? max(size, uMinPickingSize) : size) : paddedSize;
@@ -5456,11 +5441,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -5764,11 +5747,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -5817,12 +5798,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {
@@ -6169,9 +6150,9 @@ uint accessor_stroke_0() {
 }
 
 
-vec3 accessor_stroke_1() {
+vec4 accessor_stroke_1() {
     // Constant value
-    return vec3(0.8274509803921568, 0.8274509803921568, 0.8274509803921568);
+    return vec4(0.8274509803921568, 0.8274509803921568, 0.8274509803921568, 1.0);
 }
 
 
@@ -6181,9 +6162,9 @@ vec3 accessor_stroke_1() {
 uniform sampler2D uRangeTexture_stroke;
 uniform highp usampler2D uDomainTexture_stroke;
 
-vec3 scale_stroke(uint value) {
+vec4 scale_stroke(uint value) {
     uint slotId = getCategorySlot(uDomainTexture_stroke, value);
-    if (slotId == 0u) return vec3(-1.0);
+    if (slotId == 0u) return vec4(0.0);
     value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
@@ -6191,7 +6172,7 @@ vec3 scale_stroke(uint value) {
 
 }
 
-vec3 getScaled_stroke() {
+vec4 getScaled_stroke() {
     if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) && (uParam_brush_y[0] < uParam_brush_y[1] && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush()))) {
         return scale_stroke(accessor_stroke_0());
     }
@@ -6220,9 +6201,9 @@ uint accessor_fill_0() {
 }
 
 
-vec3 accessor_fill_1() {
+vec4 accessor_fill_1() {
     // Constant value
-    return vec3(0.8274509803921568, 0.8274509803921568, 0.8274509803921568);
+    return vec4(0.8274509803921568, 0.8274509803921568, 0.8274509803921568, 1.0);
 }
 
 
@@ -6232,9 +6213,9 @@ vec3 accessor_fill_1() {
 uniform sampler2D uRangeTexture_fill;
 uniform highp usampler2D uDomainTexture_fill;
 
-vec3 scale_fill(uint value) {
+vec4 scale_fill(uint value) {
     uint slotId = getCategorySlot(uDomainTexture_fill, value);
-    if (slotId == 0u) return vec3(-1.0);
+    if (slotId == 0u) return vec4(0.0);
     value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
@@ -6242,7 +6223,7 @@ vec3 scale_fill(uint value) {
 
 }
 
-vec3 getScaled_fill() {
+vec4 getScaled_fill() {
     if (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) && (uParam_brush_y[0] < uParam_brush_y[1] && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush()))) {
         return scale_fill(accessor_fill_0());
     }
@@ -6445,7 +6426,8 @@ void main(void) {
     gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity();
+    vec4 strokeColor = getScaled_stroke();
+    float strokeOpacity = getScaled_strokeOpacity() * strokeColor.a;
     vShape = getScaled_shape();
 
     // Line-only shapes use their width even when the stroke falls back to the
@@ -6514,7 +6496,7 @@ void main(void) {
     vHalfStrokeWidth = strokeWidth / 2.0;
 
     vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
-    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
+    vStrokeColor = premultiplyColor(vec4(strokeColor.rgb, 1.0), strokeOpa);
 
     setupPicking();
 }
@@ -6653,11 +6635,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -6955,11 +6935,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -7008,12 +6986,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {
@@ -7350,12 +7328,12 @@ return accessor_angle_0();
 #define angle_DEFINED
 
 
-vec3 accessor_stroke_0() {
+vec4 accessor_stroke_0() {
     // Constant value
-    return vec3(0.0, 0.0, 0.0);
+    return vec4(0.0, 0.0, 0.0, 0.0);
 }
 
-vec3 getScaled_stroke() {
+vec4 getScaled_stroke() {
 return accessor_stroke_0();
 }
 
@@ -7385,9 +7363,9 @@ uint accessor_fill_0() {
 uniform sampler2D uRangeTexture_fill;
 uniform highp usampler2D uDomainTexture_fill;
 
-vec3 scale_fill(uint value) {
+vec4 scale_fill(uint value) {
     uint slotId = getCategorySlot(uDomainTexture_fill, value);
-    if (slotId == 0u) return vec3(-1.0);
+    if (slotId == 0u) return vec4(0.0);
     value = slotId - 1u;
     int slot = 0;
     float transformed = scaleIdentity(value);
@@ -7395,7 +7373,7 @@ vec3 scale_fill(uint value) {
 
 }
 
-vec3 getScaled_fill() {
+vec4 getScaled_fill() {
 return scale_fill(accessor_fill_0());
 }
 
@@ -7593,7 +7571,8 @@ void main(void) {
     gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity();
+    vec4 strokeColor = getScaled_stroke();
+    float strokeOpacity = getScaled_strokeOpacity() * strokeColor.a;
     vShape = getScaled_shape();
 
     // Line-only shapes use their width even when the stroke falls back to the
@@ -7662,7 +7641,7 @@ void main(void) {
     vHalfStrokeWidth = strokeWidth / 2.0;
 
     vFillColor = premultiplyColor(getScaled_fill(), fillOpa);
-    vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpa);
+    vStrokeColor = premultiplyColor(vec4(strokeColor.rgb, 1.0), strokeOpa);
 
     setupPicking();
 }
@@ -7692,7 +7671,7 @@ layout(std140) uniform Mark {
 
     uniform int uHatchPattern;
 
-    uniform vec3 uShadowColor;
+    uniform vec4 uShadowColor;
     uniform float uShadowOpacity;
     uniform float uShadowBlur;
     uniform float uShadowOffsetX;
@@ -7810,11 +7789,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -8050,7 +8027,7 @@ void main(void) {
             maxCornerRadius + vHalfStrokeWidth
         ) * uShadowOpacity * uViewOpacity;
     }
-    backgroundColor = vec4(uShadowColor * shadow, shadow);
+    backgroundColor = premultiplyColor(uShadowColor, shadow);
 #endif
 
     // Hatches change the stroke band, not the nominal fill beneath it.
@@ -8107,7 +8084,7 @@ layout(std140) uniform Mark {
 
     uniform int uHatchPattern;
 
-    uniform vec3 uShadowColor;
+    uniform vec4 uShadowColor;
     uniform float uShadowOpacity;
     uniform float uShadowBlur;
     uniform float uShadowOffsetX;
@@ -8225,11 +8202,9 @@ bool hashContainsTexture(highp usampler2D s, highp uint value) {
     return false;
 }
 
-/** Missing ordinal paints use a negative RGB sentinel because encoders are RGB-only. */
-vec4 premultiplyColor(vec3 rgb, float opacity) {
-    return all(equal(rgb, vec3(-1.0)))
-        ? vec4(0.0)
-        : vec4(rgb * opacity, opacity);
+vec4 premultiplyColor(vec4 color, float opacity) {
+    float alpha = color.a * opacity;
+    return vec4(color.rgb * alpha, alpha);
 }
 
 /**
@@ -8278,12 +8253,12 @@ uint getCategorySlot(highp usampler2D domainMap, uint id) {
     return texelFetch(domainMap, ivec2(id % size.x, id / size.x), 0).r;
 }
 
-vec3 getDiscreteColor(sampler2D s, int index) {
-    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+vec4 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgba;
 }
 
-vec3 getInterpolatedColor(sampler2D s, float unitValue) {
-    return texture(s, vec2(unitValue, 0.0)).rgb;
+vec4 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgba;
 }
 
 float clampToRange(float value, vec2 range) {
@@ -8505,24 +8480,24 @@ return accessor_yOffset_0();
 #define yOffset_DEFINED
 
 
-vec3 accessor_fill_0() {
+vec4 accessor_fill_0() {
     // Constant value
-    return vec3(0.2980392156862745, 0.47058823529411764, 0.6588235294117647);
+    return vec4(0.2980392156862745, 0.47058823529411764, 0.6588235294117647, 1.0);
 }
 
-vec3 getScaled_fill() {
+vec4 getScaled_fill() {
 return accessor_fill_0();
 }
 
 #define fill_DEFINED
 
 
-vec3 accessor_stroke_0() {
+vec4 accessor_stroke_0() {
     // Constant value
-    return vec3(0.0, 0.0, 0.0);
+    return vec4(0.0, 0.0, 0.0, 1.0);
 }
 
-vec3 getScaled_stroke() {
+vec4 getScaled_stroke() {
 return accessor_stroke_0();
 }
 

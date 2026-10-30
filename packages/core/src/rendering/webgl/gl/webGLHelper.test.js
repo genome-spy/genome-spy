@@ -9,7 +9,6 @@ const colorTextureMocks = vi.hoisted(() => ({
 
 vi.mock("./colorUtils.js", () => ({
     ...colorTextureMocks,
-    cssColorToArray: vi.fn(),
 }));
 
 import scale from "../../../scale/scale.js";
