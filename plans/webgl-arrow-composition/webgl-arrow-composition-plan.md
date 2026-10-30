@@ -1,7 +1,7 @@
 # WebGL arrow paint composition
 
 Status: bounded correctness/performance proof passes on fresh master e0571a73.
-Implementation and focused delivery checks complete; no PR opened.
+Implementation, focused checks and two independent reviews complete; no PR opened.
 Part of #604, following WebGPU arrow #625. No new dependencies. Squash merges.
 
 ## Architecture and outcome
@@ -151,4 +151,18 @@ Exact delivery: four files, +249/-21 raw lines, net +228. Runtime +10/-7;
 212-line browser regression, two snapshot updates +20/-14, seven-line patch note.
 The temporary plan is separate. Retire it before squash merge. Common opacity,
 tight repeat layout and aligned stroke APIs remain explicit #604 follow-ups.
-No independent implementation review has been requested yet. No PR opened.
+Two independent Sol implementation reviews found no actionable issues. No PR opened.
+
+
+## Independent implementation reviews
+
+Architecture/simplicity and rendering-correctness reviewers both inspected
+e0571a73..6ac7ecf2 and reported no actionable findings. Native fragment ownership,
+open-head geometry, size-derived arm thickness, the width-zero path and geometric
+picking remain intact. No dependency, shared-helper, vertex or other-mark changes
+were found. The correctness reviewer independently passed all 35 focused unit
+tests and both actual WebGL browser tests at DPR1/2, including physical backing
+sizes, paint pixels, transparent images and original-ID arm/hole/outside probes.
+Saved hardware/software proof and timing evidence were reviewed; no benchmark
+was repeated. No production edits were needed following review. Plan retirement
+before squash merge remains required.
