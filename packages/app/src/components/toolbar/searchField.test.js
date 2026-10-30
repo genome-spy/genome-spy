@@ -113,40 +113,14 @@ it("cancels pending domain updates when disconnected before embed finalization",
 
         // Leave a second domain update pending while the host tears down.
         await scale.zoomTo([20, 30]);
+        input.focus();
+        await field.updateComplete;
+        // Native removal can blur the input and queue a render before disposal.
+        input.blur();
         field.remove();
         finalize();
         vi.advanceTimersByTime(60);
         await expect(field.updateComplete).resolves.toBe(true);
-    } finally {
-        vi.useRealTimers();
-    }
-});
-
-it("rebinds navigation to the live locus scale after hierarchy changes", async () => {
-    const { field, root, scale, input } = await setup();
-    const replacement = await createTestEmbed({
-        ...structuredClone(root.spec),
-        name: "replacement",
-    });
-    const nextScale = replacement.root.getScaleResolution("x");
-    await nextScale.zoomTo([20, 30]);
-    vi.useFakeTimers();
-    try {
-        field.app.genomeSpy.viewRoot = replacement.root;
-        field.app.datumSearch = createDatumSearch(replacement.views);
-        field.hierarchyRevision++;
-        await field.updateComplete;
-        expect(input.value).toBe("scaffold:21-31");
-
-        const update = vi.spyOn(field, "requestUpdate");
-        await scale.zoomTo([40, 50]);
-        await vi.advanceTimersByTimeAsync(60);
-        expect(update).not.toHaveBeenCalled();
-
-        await nextScale.zoomTo([60, 70]);
-        await vi.advanceTimersByTimeAsync(60);
-        await field.updateComplete;
-        expect(input.value).toBe("scaffold:61-71");
     } finally {
         vi.useRealTimers();
     }

@@ -88,22 +88,23 @@ export default class App {
     /** @type {Set<Promise<unknown>>} */
     #pendingCohortOperations = new Set();
 
-    #transitioning = false;
-
     /** @type {Pick<import("./spec/appSpec.js").AppRootSpec, "specId" | "baseUrl" | "bookmarks">} */
     #persistenceConfig;
 
     #updateUrl = debounce(
         () => {
-            if (!this.#finalized && !this.#transitioning)
+            if (
+                !this.#finalized &&
+                !this.store.getState().lifecycle.cohortTransitioning
+            )
                 this._updateStateToUrl();
         },
         500,
         false
     );
 
-    /** @type {Map<import("@genome-spy/core/scales/scaleResolution.js").default, () => void>} */
-    #scaleObservers = new Map();
+    /** @type {(() => void)[]} */
+    #scaleSubscriptions = [];
 
     /** @type {import("./embedTypes.js").AppViewApi} */
     views;
@@ -231,7 +232,7 @@ export default class App {
      */
     runCohortOperation(operation) {
         if (this.#finalized) throw new Error("App has been finalized.");
-        if (this.#transitioning)
+        if (this.store.getState().lifecycle.cohortTransitioning)
             throw new Error(
                 "The cohort is changing. Wait for the view mutation to finish."
             );
@@ -289,17 +290,15 @@ export default class App {
      * @param {import("@genome-spy/core/view/view.js").default} [removalRoot]
      */
     async #runViewMutation(operation, removalRoot) {
-        if (this.#transitioning)
+        if (this.store.getState().lifecycle.cohortTransitioning)
             return this.#mutateCohort(operation, removalRoot);
         if (this.#finalized) throw new Error("App has been finalized.");
 
-        this.#transitioning = true;
         this.store.dispatch(
             lifecycleSlice.actions.setCohortTransitioning(true)
         );
         try {
             await Promise.allSettled(this.#pendingCohortOperations);
-            await this.intentPipeline.whenIdle();
             await this.getSampleView()?.metadataView?.whenMetadataSettled();
             if (this.#finalized) throw new Error("App has been finalized.");
             this.paramProvenanceBridge?.flushPendingChanges();
@@ -319,7 +318,6 @@ export default class App {
                     }
                 }
             } finally {
-                this.#transitioning = false;
                 if (!this.#finalized)
                     this.store.dispatch(
                         lifecycleSlice.actions.setCohortTransitioning(false)
@@ -437,7 +435,6 @@ export default class App {
         }
         if (!this.#finalized && !sampleView.disposed) {
             await sampleView.metadataView?.whenMetadataSettled();
-            resetProvenanceHistory(this.store, paramProvenanceSlice.name);
         }
     }
 
@@ -502,7 +499,7 @@ export default class App {
 
         /**
          * Local bookmarks in the IndexedDB
-         * @type {import("./bookmark/bookmarkDatabase.js").default}
+         * @type {IDBBookmarkDatabase | undefined}
          */
         this.localBookmarkDatabase = this.isEmbedded()
             ? undefined
@@ -564,25 +561,17 @@ export default class App {
     }
 
     #observeScaleDomains() {
+        for (const unsubscribe of this.#scaleSubscriptions) unsubscribe();
+        this.#scaleSubscriptions.length = 0;
         if (this.isEmbedded()) return;
-        const current = new Set(
-            Array.from(
-                this.genomeSpy.getNamedScaleResolutions().values()
-            ).filter((resolution) => resolution.isZoomable())
-        );
-        for (const [resolution, unsubscribe] of this.#scaleObservers) {
-            if (!current.has(resolution)) {
-                unsubscribe();
-                this.#scaleObservers.delete(resolution);
-            }
-        }
-        for (const resolution of current) {
-            if (!this.#scaleObservers.has(resolution)) {
-                resolution.addEventListener("domain", this.#updateUrl);
-                this.#scaleObservers.set(resolution, () =>
-                    resolution.removeEventListener("domain", this.#updateUrl)
-                );
-            }
+        for (const resolution of this.genomeSpy
+            .getNamedScaleResolutions()
+            .values()) {
+            if (!resolution.isZoomable()) continue;
+            resolution.addEventListener("domain", this.#updateUrl);
+            this.#scaleSubscriptions.push(() =>
+                resolution.removeEventListener("domain", this.#updateUrl)
+            );
         }
     }
 
@@ -709,8 +698,8 @@ export default class App {
         this.#finalized = true;
         this.paramProvenanceBridge?.dispose();
         this.#updateUrl.cancel();
-        for (const unsubscribe of this.#scaleObservers.values()) unsubscribe();
-        this.#scaleObservers.clear();
+        for (const unsubscribe of this.#scaleSubscriptions) unsubscribe();
+        this.#scaleSubscriptions.length = 0;
         void this.localBookmarkDatabase
             ?.close()
             .catch((error) => console.error(error));

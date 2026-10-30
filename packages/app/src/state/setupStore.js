@@ -60,27 +60,26 @@ export default function setupStore() {
             const initialProvenance = provenanceReducer(undefined, {
                 type: "@@INIT",
             });
-            const clearedProvenance = provenanceReducer(
-                {
-                    ...initialProvenance,
-                    present: {
-                        ...initialProvenance.present,
-                        paramProvenance: { entries: action.payload },
-                    },
-                },
-                ActionCreators.clearHistory()
-            );
-
             return {
                 ...nextState,
                 intentStatus: intentStatusSlice.reducer(undefined, action),
-                provenance: provenanceReducer(clearedProvenance, {
-                    type: paramProvenanceSlice.name + BASELINE_ACTION_SUFFIX,
-                    provenanceId:
-                        /** @type {import("./provenance.js").ProvenanceAction} */ (
-                            action
-                        ).provenanceId,
-                }),
+                provenance: provenanceReducer(
+                    {
+                        ...initialProvenance,
+                        present: {
+                            ...initialProvenance.present,
+                            paramProvenance: { entries: action.payload },
+                        },
+                    },
+                    {
+                        type:
+                            paramProvenanceSlice.name + BASELINE_ACTION_SUFFIX,
+                        provenanceId:
+                            /** @type {import("./provenance.js").ProvenanceAction} */ (
+                                action
+                            ).provenanceId,
+                    }
+                ),
             };
         }
 

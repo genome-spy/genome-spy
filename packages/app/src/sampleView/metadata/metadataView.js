@@ -796,7 +796,7 @@ export class MetadataView extends ConcatView {
                     const store = this.#sampleView.provenance.store;
                     this.#sampleView.runCohortOperation(() => {
                         if (shouldUndo) store.dispatch(ActionCreators.undo());
-                        this.#sampleView.dispatchAttributeAction(action);
+                        this.#sampleView.intentExecutor.dispatch(action);
                     });
 
                     return true;

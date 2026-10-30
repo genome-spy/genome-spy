@@ -48,8 +48,8 @@ export default class Provenance {
     constructor(store) {
         this.#store = store;
 
-        /** @type {((action: Action) => ActionInfo)[]} */
-        this.actionInfoSources = [];
+        /** @type {Set<(action: Action) => ActionInfo>} */
+        this.actionInfoSources = new Set();
     }
 
     get store() {
@@ -80,13 +80,8 @@ export default class Provenance {
      * @returns {() => void}
      */
     addActionInfoSource(source) {
-        this.actionInfoSources.push(source);
-        return () => {
-            const index = this.actionInfoSources.indexOf(source);
-            if (index >= 0) {
-                this.actionInfoSources.splice(index, 1);
-            }
-        };
+        this.actionInfoSources.add(source);
+        return () => this.actionInfoSources.delete(source);
     }
 
     // Provenance is an API-only helper; reducer construction/composition is

@@ -55,7 +55,8 @@ it("refreshes controls after insertion and closes stale settings during replacem
     expect(toolbar.querySelector("genome-spy-search-field")).toBeNull();
     expect(settings.style.display).toBe("none");
 
-    const child = await views.insert(views.root(), {
+    /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
+    const trackSpec = {
         name: "Signals",
         params: [
             {
@@ -76,7 +77,8 @@ it("refreshes controls after insertion and closes stale settings during replacem
                 },
             },
         },
-    });
+    };
+    let child = await views.insert(views.root(), trackSpec);
     store.dispatch(lifecycleSlice.actions.hierarchyChanged());
     await toolbar.updateComplete;
     await settings.updateComplete;
@@ -108,6 +110,29 @@ it("refreshes controls after insertion and closes stale settings during replacem
     expect(nav.getAttribute("aria-busy")).toBe("true");
     expect(document.querySelector("[role='dialog']")).toBeNull();
     expect(highlightView).toHaveBeenLastCalledWith(null);
+
+    // Replace the scale's owner through the supported public mutation API.
+    await views.transaction(async (views) => {
+        await views.remove(child);
+        child = await views.insert(views.root(), {
+            ...trackSpec,
+            name: "Replacement",
+        });
+    });
+    store.dispatch(lifecycleSlice.actions.hierarchyChanged());
+    store.dispatch(lifecycleSlice.actions.setCohortTransitioning(false));
+    await toolbar.updateComplete;
+    const nextSearch = /** @type {import("./searchField.js").default} */ (
+        toolbar.querySelector("genome-spy-search-field")
+    );
+    await nextSearch.updateComplete;
+    await nextSearch.search("scaffold:21-31");
+    expect(
+        root
+            .findDescendantByName("Replacement")
+            .getScaleResolution("x")
+            .getDomain()
+    ).toEqual([20, 31]);
 
     await views.remove(child);
     store.dispatch(lifecycleSlice.actions.hierarchyChanged());

@@ -1,4 +1,3 @@
-import { subscribeTo } from "../../state/subscribeTo.js";
 import { sampleSlice } from "../state/sampleSlice.js";
 import { resetProvenanceHistory } from "../../state/provenanceBaseline.js";
 import {
@@ -8,57 +7,6 @@ import {
 } from "./metadataSourceInitialLoad.js";
 import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
 import { getMetadataSourceRuntime } from "./metadataSourceRuntimeState.js";
-
-/**
- * @param {import("../sampleView.js").default} sampleView
- * @returns {Promise<string[]>}
- */
-async function awaitSampleIds(sampleView) {
-    // TODO: Replace this with a first-class readiness primitive (e.g.
-    // SampleView-level "samples ready" awaitable or generic waitForSelector)
-    // so metadata bootstrap does not own subscribe/timeout plumbing.
-    const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
-    if (sampleIds) {
-        return sampleIds;
-    }
-
-    await new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-            unsubscribe();
-            reject(
-                new Error("Timed out while waiting for sample identifiers.")
-            );
-        }, 10000);
-
-        const unsubscribe = subscribeTo(
-            sampleView.provenance.store,
-            () => sampleView.sampleHierarchy.sampleData?.ids,
-            (ids) => {
-                if (!ids) {
-                    return;
-                }
-
-                clearTimeout(timeoutId);
-                unsubscribe();
-                resolve(undefined);
-            }
-        );
-        sampleView.registerDisposer(() => {
-            clearTimeout(timeoutId);
-            unsubscribe();
-            resolve(undefined);
-        });
-    });
-
-    if (sampleView.disposed) {
-        return [];
-    }
-
-    return (
-        sampleView.sampleHierarchy.sampleData?.ids ??
-        /** @type {string[]} */ ([])
-    );
-}
 
 /**
  * Loads metadata source attributes configured for startup.
@@ -76,7 +24,13 @@ export async function bootstrapInitialMetadataSources(
         return;
     }
 
-    const sampleIds = await awaitSampleIds(sampleView);
+    // App attaches metadata after Core or ensureSampleIdentity has loaded ids.
+    const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
+    if (!sampleIds) {
+        throw new Error(
+            "Sample identities must be loaded before metadata bootstrap."
+        );
+    }
     if (sampleIds.length === 0) {
         return;
     }

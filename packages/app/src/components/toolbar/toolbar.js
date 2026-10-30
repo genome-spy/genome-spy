@@ -1,4 +1,5 @@
 import { html, LitElement, nothing } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faInfoCircle,
@@ -262,10 +263,11 @@ export default class Toolbar extends LitElement {
     }
 
     render() {
-        const genomeSpy = this.app.genomeSpy;
-
         const { appInitialized, cohortTransitioning, hierarchyRevision } =
             this.app.store.getState().lifecycle;
+        const genomeResolution =
+            appInitialized &&
+            findGenomeScaleResolution(this.app.genomeSpy.viewRoot);
 
         return html`
             <nav
@@ -278,14 +280,16 @@ export default class Toolbar extends LitElement {
                 </a>
 
                 ${
-                    appInitialized &&
-                    findGenomeScaleResolution(genomeSpy.viewRoot)
-                        ? html`
-                              <genome-spy-search-field
-                                  .app=${this.app}
-                                  .hierarchyRevision=${hierarchyRevision}
-                              ></genome-spy-search-field>
-                          `
+                    genomeResolution
+                        ? keyed(
+                              genomeResolution,
+                              html`
+                                  <genome-spy-search-field
+                                      .app=${this.app}
+                                      .hierarchyRevision=${hierarchyRevision}
+                                  ></genome-spy-search-field>
+                              `
+                          )
                         : nothing
                 }
                 ${this._getToolButtons()}

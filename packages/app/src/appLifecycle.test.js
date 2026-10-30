@@ -243,7 +243,10 @@ test("replaces complete cohorts while retaining annotation data, locus and App s
     const navigatedLocus = Array.from(locus.getDomain());
     expect(app.getSampleView()).toBeUndefined();
 
-    const firstHandle = await app.views.insert(parent, cohortSpec("A"));
+    // Exercise signal-derived identities before replacing with metadata identities.
+    const firstSpec = cohortSpec("A");
+    firstSpec.samples = {};
+    const firstHandle = await app.views.insert(parent, firstSpec);
     const first = app.getSampleView();
     expect(first.sampleHierarchy.sampleMetadata.attributeNames).toEqual([
         "status",

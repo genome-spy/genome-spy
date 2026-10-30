@@ -28,9 +28,6 @@ export default class SearchField extends LitElement {
     /** @type {import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionApi} */
     _genomeResolution;
 
-    /** @type {(() => void) | undefined} */
-    #unsubscribeGenome;
-
     get _inputField() {
         return /** @type {HTMLInputElement} */ (this.inputRef.value);
     }
@@ -46,10 +43,6 @@ export default class SearchField extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this._initializeGenome();
-        this._subscriptions.addUnsubscribeCallback(() => {
-            this.#unsubscribeGenome?.();
-            this.#unsubscribeGenome = undefined;
-        });
 
         const documentClickListener = (/** @type {InputEvent} */ event) => {
             if (event.target !== this._inputField) {
@@ -68,23 +61,12 @@ export default class SearchField extends LitElement {
         return this;
     }
 
-    focusInput() {
-        this._inputField?.focus();
+    shouldUpdate() {
+        return this.isConnected;
     }
 
-    /** @param {Map<string, unknown>} changedProperties */
-    willUpdate(changedProperties) {
-        if (
-            this.isConnected &&
-            (changedProperties.has("app") ||
-                changedProperties.has("hierarchyRevision"))
-        ) {
-            this._initializeGenome();
-            if (this._inputField) {
-                this._inputField.blur();
-                this._inputField.value = this.getDefaultValue();
-            }
-        }
+    focusInput() {
+        this._inputField?.focus();
     }
 
     _initializeGenome() {
@@ -95,9 +77,6 @@ export default class SearchField extends LitElement {
             throw new Error(
                 "The search field requires a zoomable locus scale."
             );
-        if (resolution === this._genomeResolution && this.#unsubscribeGenome)
-            return;
-        this.#unsubscribeGenome?.();
         this._genomeResolution = resolution;
 
         /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -107,10 +86,10 @@ export default class SearchField extends LitElement {
             timeout = setTimeout(() => this.requestUpdate(), 60);
         };
         resolution.addEventListener("domain", listener);
-        this.#unsubscribeGenome = () => {
+        this._subscriptions.addUnsubscribeCallback(() => {
             resolution.removeEventListener("domain", listener);
             clearTimeout(timeout);
-        };
+        });
     }
 
     getDefaultValue() {

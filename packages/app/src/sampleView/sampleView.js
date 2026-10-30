@@ -163,9 +163,6 @@ export default class SampleView extends ContainerView {
     /** @type {(value: Record<string, any>) => void} */
     #visibleSampleMetadataParam;
 
-    /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
-    #actionAugmenter;
-
     /** @type {(value: number) => void} */
     #scrollbarOpacitySetter;
 
@@ -239,10 +236,7 @@ export default class SampleView extends ContainerView {
             }
         } catch (error) {
             this.disposed = true;
-            this.locationManager?.dispose();
             super.dispose();
-            if (this.#actionAugmenter)
-                intentExecutor.removeActionAugmenter(this.#actionAugmenter);
             throw error;
         }
     }
@@ -590,6 +584,7 @@ export default class SampleView extends ContainerView {
             isStickySummaries: () => this.#stickySummaries,
             sampleLayout: this.spec.sampleLayout,
         });
+        this.registerDisposer(() => this.locationManager.dispose());
     }
 
     /**
@@ -603,8 +598,9 @@ export default class SampleView extends ContainerView {
         /**
          * Augments attribute-related actions with accessed values so reducers can
          * stay pure and provenance remains based on serializable intent actions.
+         * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
          */
-        this.#actionAugmenter = (action) => {
+        const augmenter = (action) => {
             const getAttributeInfo =
                 this.compositeAttributeInfoSource.getAttributeInfo.bind(
                     this.compositeAttributeInfoSource
@@ -615,7 +611,10 @@ export default class SampleView extends ContainerView {
                 getAttributeInfo
             );
         };
-        intentExecutor.addActionAugmenter(this.#actionAugmenter);
+        intentExecutor.addActionAugmenter(augmenter);
+        this.registerDisposer(() =>
+            intentExecutor.removeActionAugmenter(augmenter)
+        );
     }
 
     /**
@@ -2048,9 +2047,7 @@ export default class SampleView extends ContainerView {
     dispose() {
         if (this.disposed) return;
         this.disposed = true;
-        this.locationManager.dispose();
         super.dispose();
-        this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);
     }
 }
 
