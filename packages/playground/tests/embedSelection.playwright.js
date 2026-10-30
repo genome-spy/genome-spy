@@ -172,3 +172,126 @@ for (const renderer of ["webgl", "canvas"]) {
         });
     }
 }
+
+test("retained WebGL marks follow shared scales across view mutations", async ({
+    page,
+}) => {
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.route("**/retained-scale.json", (route) =>
+        route.fulfill({
+            json: {
+                name: "tracks",
+                width: 400,
+                params: [{ name: "shift", value: 0 }],
+                scales: {
+                    x: {
+                        name: "position",
+                        type: "linear",
+                        domain: [0, 100],
+                        zoom: true,
+                    },
+                    xOffset: {
+                        type: "linear",
+                        domain: [0, 1],
+                        range: [0, { expr: "shift" }],
+                    },
+                },
+                resolve: { scale: { x: "shared", xOffset: "shared" } },
+                vconcat: [
+                    {
+                        name: "retained",
+                        height: 80,
+                        data: { values: [{ start: 20, end: 40 }] },
+                        mark: { type: "rect", color: "red" },
+                        encoding: {
+                            x: {
+                                field: "start",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            x2: { field: "end" },
+                            xOffset: { datum: 1, type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+        })
+    );
+    await page.goto("/?renderer=webgl&spec=/retained-scale.json");
+    await expect
+        .poll(() =>
+            page.evaluate(async () =>
+                Boolean((await import("/index.js")).getCurrentEmbedResult())
+            )
+        )
+        .toBe(true);
+
+    const frames = await page.evaluate(async () => {
+        const api = (await import("/index.js")).getCurrentEmbedResult();
+        const retained = api.views.get({ scope: [], view: "retained" });
+        const scale = api.getScaleResolutionByName("position");
+
+        // Read actual GPU output: SVG uses CPU encoders and missed this regression.
+        const sampleFrame = async () => {
+            await new Promise((resolve) =>
+                globalThis.requestAnimationFrame(() =>
+                    globalThis.requestAnimationFrame(resolve)
+                )
+            );
+            const { blob } = await api.imageExport.raster({ pixelRatio: 1 });
+            const bitmap = await globalThis.createImageBitmap(blob);
+            const canvas = new globalThis.OffscreenCanvas(
+                bitmap.width,
+                bitmap.height
+            );
+            const context = canvas.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            const bounds = api.views.getLayoutBounds(retained);
+            return [0.125, 0.375, 0.625].map((fraction) => {
+                const pixel = context.getImageData(
+                    Math.floor(bounds.x + bounds.width * fraction),
+                    Math.floor(bounds.y + bounds.height / 2),
+                    1,
+                    1
+                ).data;
+                return pixel[0] > 200 && pixel[1] < 50 && pixel[2] < 50;
+            });
+        };
+
+        const frames = [await sampleFrame()];
+        const inserted = await api.views.insert(
+            api.views.get({ scope: [], view: "tracks" }),
+            {
+                name: "inserted",
+                height: 80,
+                data: { values: [{ start: 50, end: 60 }] },
+                mark: { type: "rect", color: "blue" },
+                encoding: {
+                    x: { field: "start", type: "quantitative", axis: null },
+                    x2: { field: "end" },
+                    xOffset: { datum: 1, type: "quantitative" },
+                },
+            }
+        );
+        await scale.zoomTo([20, 60]);
+        frames.push(await sampleFrame());
+        // xOffset moves the rectangle's start edge, independently of x2.
+        api.getParam("shift").setValue(100);
+        frames.push(await sampleFrame());
+        await api.views.remove(inserted);
+        api.getParam("shift").setValue(0);
+        await scale.zoomTo([0, 40]);
+        frames.push(await sampleFrame());
+        return frames;
+    });
+
+    expect(frames).toEqual([
+        [false, true, false],
+        [true, true, false],
+        [false, true, false],
+        [false, false, true],
+    ]);
+    expect(errors).toEqual([]);
+});
