@@ -233,7 +233,7 @@ describe("scale domain owner integration", () => {
         }
     );
 
-    test("a range-only recreation preserves navigation while an authored domain edit replaces it", async () => {
+    test("range and domain edits retain the scale and preserve the navigation policy", async () => {
         const { view } = await createHarness({
             data: { values: [{ x: 0 }] },
             scales: { size: { domain: [0, 10], zoom: true } },
@@ -241,6 +241,7 @@ describe("scale domain owner integration", () => {
             encoding: { size: { field: "x", type: "quantitative" } },
         });
         const x = getRequiredScaleResolution(view, "size");
+        const scale = x.getScale();
         await x.zoomTo([2, 4]);
         x.attachViewLevelScaleProps(view, {
             domain: [0, 10],
@@ -249,12 +250,14 @@ describe("scale domain owner integration", () => {
         });
         expect(x.getDomain()).toEqual([2, 4]);
         expect(x.scale.range()).toEqual([0, 2]);
+        expect(x.getScale()).toBe(scale);
         x.attachViewLevelScaleProps(view, {
             domain: [0, 20],
             zoom: true,
             range: [0, 2],
         });
         expect(x.getDomain()).toEqual([0, 20]);
+        expect(x.getScale()).toBe(scale);
     });
 
     test("disposing an active animation cannot commit its target or request another render", async () => {

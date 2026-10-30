@@ -8,6 +8,7 @@ import createScale, {
     configureScaleProperties,
     configureScaleRange,
     configureDomain,
+    getScalePropertyDefaults,
 } from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
@@ -271,7 +272,7 @@ export default class ScaleInstanceManager {
     prepareDomain(props) {
         const working = this.#scale.copy();
         working.type = this.#scale.type;
-        configureScaleProperties(working, this.#stripNonScaleProps(props));
+        configureScaleProperties(working, this.#withPropertyDefaults(props));
         return configureDomain(working, props);
     }
 
@@ -279,6 +280,7 @@ export default class ScaleInstanceManager {
     configureProperties(props) {
         this.#domainNormalizer = undefined;
         this.#scale.props = props;
+        this.#bindGenomeIfNeeded(props);
     }
 
     /** @param {import("../spec/scale.js").Scale} props */
@@ -361,7 +363,7 @@ export default class ScaleInstanceManager {
      * @param {import("../spec/scale.js").Scale} props
      */
     #prepareMapping(props) {
-        props = this.#stripNonScaleProps(props);
+        props = this.#withPropertyDefaults(props);
         const working = this.#scale.copy();
         working.type = this.#scale.type;
         configureScaleProperties(working, props);
@@ -370,6 +372,19 @@ export default class ScaleInstanceManager {
             range: undefined,
         });
         return Object.assign(working, { props });
+    }
+
+    /** @param {import("../spec/scale.js").Scale} props */
+    #withPropertyDefaults(props) {
+        const next = this.#stripNonScaleProps(props);
+        return {
+            ...getScalePropertyDefaults(
+                this.#scale.type,
+                this.mapping.get()?.props,
+                next
+            ),
+            ...next,
+        };
     }
 
     /** @param {MappingConfiguration} configuration */

@@ -174,6 +174,26 @@ export function configureScaleProperties(scale, _, logger) {
 }
 
 /**
+ * Restore omitted properties when a configuration changes on a retained scale.
+ * Domain and range settings are handled by their own configuration paths.
+ * @param {string} type
+ * @param {import("../spec/scale.js").Scale | undefined} previous
+ * @param {import("../spec/scale.js").Scale} next
+ * @returns {import("../spec/scale.js").Scale}
+ */
+export function getScalePropertyDefaults(type, previous, next) {
+    let defaults;
+    const props = {};
+    for (const key in previous) {
+        if (key in next || SKIP[key]) continue;
+        if (key === "padding" && includePad(type)) continue;
+        defaults ??= getScale(type)();
+        if (isFunction(defaults[key])) props[key] = defaults[key]();
+    }
+    return props;
+}
+
+/**
  * Configures bins/range against the effective display cardinality.
  * @param {import("../types/encoder.js").VegaScale} scale
  * @param {import("../spec/scale.js").Scale} _

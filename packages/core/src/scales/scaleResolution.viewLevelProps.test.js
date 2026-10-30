@@ -12,6 +12,7 @@ describe("ScaleResolution view-level property attachment", () => {
     test("stores and clears view-level scale props", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
+        const scale = resolution.getScale();
         const props = { domain: [0, 10] };
 
         resolution.attachViewLevelScaleProps(view, props);
@@ -24,21 +25,27 @@ describe("ScaleResolution view-level property attachment", () => {
         resolution.clearViewLevelScaleProps(view);
 
         expect(resolution.getViewLevelScaleProps()).toBeUndefined();
+        expect(resolution.getScale()).toBe(scale);
     });
 
     test("allows the same view to replace its view-level scale props", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
-        const firstProps = { domain: [0, 10] };
+        const scale = resolution.getScale();
+        const firstProps = { domain: [0, 10], clamp: true };
         const secondProps = { domain: [2, 8] };
 
         resolution.attachViewLevelScaleProps(view, firstProps);
+        expect(scale.clamp()).toBe(true);
         resolution.attachViewLevelScaleProps(view, secondProps);
 
         expect(resolution.getViewLevelScaleProps()).toEqual({
             view,
             props: secondProps,
         });
+        expect(resolution.getScale()).toBe(scale);
+        expect(scale.domain()).toEqual([2, 8]);
+        expect(scale.clamp()).toBe(false);
     });
 
     test("keeps ancestor view-level props instead of merging descendant props", async () => {

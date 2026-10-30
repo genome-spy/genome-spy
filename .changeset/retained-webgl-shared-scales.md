@@ -4,6 +4,6 @@
 
 <!-- category: fix -->
 
-Keep existing WebGL tracks synchronized with shared scales after inserting or
-removing views. Retained annotations now continue to pan and zoom alongside
-dynamically added sample tracks.
+Preserve shared scale instances when views are inserted or removed and the scale
+type stays unchanged. Retained annotations continue to pan, zoom, and reveal
+details alongside dynamically added sample tracks.

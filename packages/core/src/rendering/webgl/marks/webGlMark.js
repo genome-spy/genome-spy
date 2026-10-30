@@ -747,12 +747,7 @@ export default class WebGLMark {
                             this.createMarkUniformSetter(rangeUniformName);
 
                         const set = () =>
-                            rangeSetter(
-                                getRangeForGlsl(
-                                    scaleResolution.getScale(),
-                                    channel
-                                )
-                            );
+                            rangeSetter(getRangeForGlsl(scale, channel));
                         this.registerScaleResolutionListener(
                             scaleResolution,
                             "range",
@@ -769,20 +764,17 @@ export default class WebGLMark {
                         const domainSetter =
                             this.createMarkUniformSetter(domainUniformName);
                         const set = () => {
-                            // View mutations can replace the scale behind a shared resolution.
-                            const currentScale = scaleResolution.getScale();
                             let domain;
-                            if (isDiscrete(currentScale.type)) {
-                                domain = [0, currentScale.domain().length];
-                            } else if (isDiscretizing(currentScale.type)) {
-                                domain =
-                                    getDiscretizingDomainForGlsl(currentScale);
+                            if (isDiscrete(scale.type)) {
+                                domain = [0, scale.domain().length];
+                            } else if (isDiscretizing(scale.type)) {
+                                domain = getDiscretizingDomainForGlsl(scale);
                             } else {
-                                domain = currentScale.domain();
+                                domain = scale.domain();
                             }
 
                             domainSetter(
-                                isIndexLikeDomainType(currentScale.type)
+                                isIndexLikeDomainType(scale.type)
                                     ? toHighPrecisionDomainUniform(domain)
                                     : domain
                             );

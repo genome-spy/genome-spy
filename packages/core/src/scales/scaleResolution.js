@@ -829,7 +829,7 @@ export default class ScaleResolution {
         this.#viewLevelScaleProps = { view, props };
         this.#invalidateMergedScaleProps();
 
-        this.#recreateInitializedScale(
+        this.#reconfigureInitializedScale(
             domainConfigurationChanged(previousProps, props)
                 ? "configuration"
                 : "membership"
@@ -848,7 +848,7 @@ export default class ScaleResolution {
             }
             this.#invalidateMergedScaleProps();
 
-            this.#recreateInitializedScale(
+            this.#reconfigureInitializedScale(
                 domainConfigurationChanged(previousProps, undefined)
                     ? "configuration"
                     : "membership"
@@ -857,14 +857,23 @@ export default class ScaleResolution {
     }
 
     /** @param {"configuration" | "membership"} reason */
-    #recreateInitializedScale(reason) {
+    #reconfigureInitializedScale(reason) {
         if (!this.#scaleManager.scale) {
             return;
         }
 
         this.#runtime.runInTransaction(() => {
-            this.#scaleManager.resetScale();
-            this.initializeScale();
+            // Retained encoders, opacity functions, and renderer callbacks share
+            // this instance. Only a different scale type needs a new instance.
+            if (
+                this.#getMergedScaleProps().type !==
+                this.#scaleManager.scale.type
+            ) {
+                this.#scaleManager.resetScale();
+                this.initializeScale();
+            } else {
+                this.bindDomainInputs();
+            }
             this.#updateDomainSource(reason, true);
             this.#runtime.flushNow({ afterTransaction: true });
         });
