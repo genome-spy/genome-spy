@@ -52,6 +52,22 @@ function createStore() {
 }
 
 describe("Provenance", () => {
+    it("releases action info sources with their owner", () => {
+        const provenance = new Provenance(createStore());
+        const remove = provenance.addActionInfoSource(() => ({
+            title: "Old cohort",
+        }));
+        expect(provenance.getActionInfo({ type: "sample/add" })?.title).toBe(
+            "Old cohort"
+        );
+
+        remove();
+        remove();
+        expect(
+            provenance.getActionInfo({ type: "sample/add" })
+        ).toBeUndefined();
+    });
+
     it("is not empty after a single recorded action", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(/** @type {any} */ (store));

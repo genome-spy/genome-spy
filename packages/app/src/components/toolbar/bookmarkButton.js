@@ -97,12 +97,14 @@ class BookmarkButton extends LitElement {
      * @param {string} name
      */
     async #loadBookmark(bookmarkDatabase, name) {
-        const entry = await bookmarkDatabase.get(name);
-        if (entry) {
-            restoreBookmarkAndShowInfoBox(entry, this.app, {
-                database: bookmarkDatabase,
-            });
-        }
+        return this.app.runCohortOperation(async () => {
+            const entry = await bookmarkDatabase.get(name);
+            if (entry) {
+                await restoreBookmarkAndShowInfoBox(entry, this.app, {
+                    database: bookmarkDatabase,
+                });
+            }
+        });
     }
 
     /**

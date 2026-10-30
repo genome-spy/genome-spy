@@ -26,6 +26,30 @@ describe("throttle", () => {
         }
     });
 
+    it("flushes the pending trailing call once with the latest arguments and context", () => {
+        vi.useFakeTimers();
+        try {
+            const fn = vi.fn();
+            const throttled = throttle(fn, 100);
+            const context = {};
+
+            throttled.flush();
+            expect(fn).not.toHaveBeenCalled();
+            throttled("first");
+            throttled.call(context, "second");
+            throttled.flush();
+
+            expect(fn).toHaveBeenCalledTimes(2);
+            expect(fn).toHaveBeenLastCalledWith("second");
+            expect(fn.mock.contexts[1]).toBe(context);
+            throttled.flush();
+            vi.advanceTimersByTime(100);
+            expect(fn).toHaveBeenCalledTimes(2);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("cancels pending trailing calls", () => {
         vi.useFakeTimers();
         try {
@@ -36,6 +60,7 @@ describe("throttle", () => {
             throttled("first");
             throttled("second");
             throttled.cancel();
+            throttled.flush();
 
             vi.advanceTimersByTime(100);
 

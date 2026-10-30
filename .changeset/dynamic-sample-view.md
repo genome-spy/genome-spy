@@ -1,9 +1,11 @@
 ---
 "@genome-spy/core": patch
+"@genome-spy/app": minor
 ---
 
-<!-- category: fix -->
+<!-- category: feature -->
 
-Release keyboard handlers and Figwig readers when views are removed, and clean up
-partially constructed view subtrees after failed insertion. Awaited removal now
-finishes closing retained readers before consumers release their source URLs.
+Keep GenomeSpy App open while inserting, removing, or replacing its sample cohort.
+Replacement clears cohort metadata and history while preserving independent
+annotation tracks and navigation. Removed or failed views release their keyboard
+handlers and retained readers before their source URLs can be released.

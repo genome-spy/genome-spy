@@ -35,6 +35,50 @@ function createSampleViewStub(metadataSources) {
 }
 
 describe("bootstrapInitialMetadataSources", () => {
+    it("releases the sample-id subscription and timeout on disposal", async () => {
+        vi.useFakeTimers();
+        const sampleView = createSampleViewStub([
+            {
+                backend: {
+                    backend: "data",
+                    data: { values: [{ sample: "s1", x: 1 }] },
+                },
+            },
+        ]);
+        /** @type {PromiseWithResolvers<void>} */
+        const subscribed = Promise.withResolvers();
+        const unsubscribe = vi.fn();
+        /** @type {(() => void)[]} */
+        const disposers = [];
+        sampleView.registerDisposer = (disposer) => disposers.push(disposer);
+        sampleView.sampleHierarchy.sampleData = undefined;
+        sampleView.provenance.store.getState = () => /** @type {any} */ ({});
+        sampleView.provenance.store.subscribe = () => {
+            subscribed.resolve();
+            return unsubscribe;
+        };
+        const pipeline = { submit: vi.fn(async () => {}) };
+
+        try {
+            const bootstrap = bootstrapInitialMetadataSourcesAny(
+                sampleView,
+                pipeline
+            );
+            await subscribed.promise;
+            sampleView.disposed = true;
+            for (const dispose of disposers) {
+                dispose();
+            }
+            await bootstrap;
+
+            expect(unsubscribe).toHaveBeenCalledOnce();
+            expect(vi.getTimerCount()).toBe(0);
+            expect(pipeline.submit).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("loads eager metadata sources in declaration order", async () => {
         const sampleView = createSampleViewStub([
             {

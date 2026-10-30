@@ -76,6 +76,10 @@ describe("IntentPipeline", () => {
             },
             { getAttributeInfo }
         );
+        let idle = false;
+        const idlePromise = pipeline.whenIdle().then(() => {
+            idle = true;
+        });
 
         expect(deps.intentExecutor.dispatch).not.toHaveBeenCalled();
 
@@ -83,9 +87,15 @@ describe("IntentPipeline", () => {
         await Promise.resolve();
 
         expect(deps.intentExecutor.dispatch).toHaveBeenCalledTimes(1);
+        expect(idle).toBe(false);
         processedDeferred.resolve();
 
         await submitPromise;
+        await idlePromise;
+        expect(idle).toBe(true);
+        expect(deps.store.dispatch).toHaveBeenLastCalledWith(
+            intentStatusSlice.actions.clearStatus()
+        );
     });
 
     it("queues single actions and rejects batches while running", async () => {
@@ -216,6 +226,7 @@ describe("IntentPipeline", () => {
 
         await expect(first).rejects.toThrow("Boom");
         await expect(second).rejects.toThrow("Boom");
+        await expect(pipeline.whenIdle()).resolves.toBeUndefined();
     });
 
     it("rejects and skips dispatch when ensureAvailability fails", async () => {

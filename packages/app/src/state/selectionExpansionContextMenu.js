@@ -14,7 +14,7 @@ import { createSelectionExpansionMenuItem } from "./selectionExpansionMenu.js";
 /**
  * @param {object} options
  * @param {View} options.viewRoot
- * @param {IntentExecutor} options.intentExecutor
+ * @param {Pick<IntentExecutor, "dispatch">} options.intentExecutor
  * @returns {() => void}
  */
 export function setupSelectionExpansionContextMenu({

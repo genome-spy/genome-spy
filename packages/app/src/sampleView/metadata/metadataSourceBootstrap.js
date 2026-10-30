@@ -43,7 +43,16 @@ async function awaitSampleIds(sampleView) {
                 resolve(undefined);
             }
         );
+        sampleView.registerDisposer(() => {
+            clearTimeout(timeoutId);
+            unsubscribe();
+            resolve(undefined);
+        });
     });
+
+    if (sampleView.disposed) {
+        return [];
+    }
 
     return (
         sampleView.sampleHierarchy.sampleData?.ids ??
@@ -63,7 +72,7 @@ export async function bootstrapInitialMetadataSources(
 ) {
     const runtime = getMetadataSourceRuntime(sampleView);
     const sources = await runtime.getSources();
-    if (sources.length === 0) {
+    if (sampleView.disposed || sources.length === 0) {
         return;
     }
 
@@ -81,7 +90,13 @@ export async function bootstrapInitialMetadataSources(
             continue;
         }
         const adapter = await runtime.getAdapter(source);
+        if (sampleView.disposed) {
+            return;
+        }
         const columnIds = await resolveInitialLoadColumnIds(source, adapter);
+        if (sampleView.disposed) {
+            return;
+        }
         if (columnIds.length === 0) {
             continue;
         }
@@ -105,6 +120,9 @@ export async function bootstrapInitialMetadataSources(
                 adapter,
                 resolveColumns: false,
             });
+            if (sampleView.disposed) {
+                return;
+            }
 
             actions.push(sampleSlice.actions.addMetadataFromSource(payload));
             replace = false;
@@ -116,5 +134,7 @@ export async function bootstrapInitialMetadataSources(
     }
 
     await intentPipeline.submit(actions);
-    resetProvenanceHistory(sampleView.provenance.store, sampleSlice.name);
+    if (!sampleView.disposed) {
+        resetProvenanceHistory(sampleView.provenance.store, sampleSlice.name);
+    }
 }

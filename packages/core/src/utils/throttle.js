@@ -3,7 +3,7 @@
  *
  * @param {function} func
  * @param {number} limit
- * @returns {((...args: any[]) => void) & { cancel: () => void }}
+ * @returns {((...args: any[]) => void) & { cancel: () => void, flush: () => void }}
  */
 export default function throttle(func, limit) {
     /** @type {ReturnType<typeof setTimeout> | null} */
@@ -50,6 +50,16 @@ export default function throttle(func, limit) {
                 lastRan = Date.now();
             }
         }, remaining);
+    };
+
+    throttled.flush = () => {
+        if (timeoutId === null) {
+            return;
+        }
+        clearTimeout(timeoutId);
+        timeoutId = null;
+        func.apply(lastContext, lastArgs);
+        lastRan = Date.now();
     };
 
     throttled.cancel = () => {

@@ -201,6 +201,7 @@ export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
  * @param {BookmarkInfoBoxOptions} [options]
  */
 export async function showBookmarkInfoBox(entry, app, options = {}) {
+    const sampleView = app.getSampleView();
     const existingDialog =
         /** @type {import("../components/dialogs/bookmarkInfoBox.js").default} */ (
             document.body.querySelector("gs-bookmark-info-box")
@@ -231,19 +232,21 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
                 }
             }
         ).then(async () => {
-            if (options.mode == "tour") {
-                const atb = options.afterTourBookmark;
-                if (typeof atb == "string") {
-                    const entry = await options.database.get(atb);
-                    if (!entry) {
-                        throw new Error(`No such bookmark: ${atb}`);
+            if (!sampleView?.disposed && options.mode == "tour") {
+                await app.runCohortOperation(async () => {
+                    const atb = options.afterTourBookmark;
+                    if (typeof atb == "string") {
+                        const entry = await options.database.get(atb);
+                        if (!entry) {
+                            throw new Error(`No such bookmark: ${atb}`);
+                        }
+                        await restoreBookmark(entry, app);
+                    } else if (atb === null) {
+                        // Do nothing
+                    } else {
+                        resetToDefaultState(app);
                     }
-                    restoreBookmark(entry, app);
-                } else if (atb === null) {
-                    // Do nothing
-                } else {
-                    resetToDefaultState(app);
-                }
+                });
             }
         });
 
@@ -257,19 +260,23 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
             addedDialog.addEventListener(
                 "gs-jump-to-bookmark",
                 async (/** @type {CustomEvent} */ event) => {
-                    const name = event.detail.name;
-                    restoreBookmarkAndShowInfoBox(
-                        await options.database.get(name),
-                        app,
-                        options
-                    );
+                    if (sampleView?.disposed) return;
+                    await app.runCohortOperation(async () => {
+                        const name = event.detail.name;
+                        await restoreBookmarkAndShowInfoBox(
+                            await options.database.get(name),
+                            app,
+                            options
+                        );
+                    });
                 }
             );
 
             addedDialog.addEventListener(
                 "gs-import-bookmark",
                 async (/** @type {CustomEvent} */ event) => {
-                    importBookmark(event.detail.entry, app);
+                    if (sampleView?.disposed) return;
+                    await importBookmark(event.detail.entry, app);
                 }
             );
         }

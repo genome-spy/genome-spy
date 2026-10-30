@@ -37,7 +37,15 @@ import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "./sampleView/specGuards.js";
 import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
-import setupStore from "./state/setupStore.js";
+import setupStore, { resetCohort } from "./state/setupStore.js";
+import { sampleSlice } from "./sampleView/state/sampleSlice.js";
+import {
+    resolveParamSelector,
+    resolveViewSelector,
+} from "@genome-spy/core/view/viewSelectors.js";
+import { getViewVisibilityKey } from "./viewSettingsUtils.js";
+import ConcatView from "@genome-spy/core/view/concatView.js";
+import { getDefaultParamValue } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import IntentPipeline from "./state/intentPipeline.js";
 import { setupMetadataSourceRuntime } from "./sampleView/metadata/metadataSourceRuntime.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
@@ -71,7 +79,18 @@ export default class App {
 
     #finalized = false;
 
-    /** @type {import("@genome-spy/core/types/embedApi.js").ViewApi} */
+    /** @type {SampleView | undefined} */
+    #activeSampleView;
+
+    /** @type {SampleView | undefined} */
+    #sampleViewCandidate;
+
+    /** @type {Set<Promise<unknown>>} */
+    #pendingCohortOperations = new Set();
+
+    #transitioning = false;
+
+    /** @type {import("./embedTypes.js").AppViewApi} */
     views;
 
     /** @type {import("@genome-spy/core/types/search.js").DatumSearch} */
@@ -174,20 +193,236 @@ export default class App {
                     /** @type {any} */ defaultName
                 ) =>
                     /** @type {any} */ (
-                        new SampleView(
+                        this.#createSampleView(
                             spec,
                             context,
                             layoutParent,
                             dataParent,
-                            defaultName,
-                            this.provenance,
-                            this.intentExecutor,
-                            createPlotBookmarkContext(this)
+                            defaultName
                         )
                     )
             )
         );
         this.#setupViewVisibilityHandling();
+    }
+
+    /**
+     * Track complete external operations; their internal pipeline continuations
+     * remain free to finish while a mutation waits for them.
+     * @template T
+     * @param {() => T} operation
+     * @returns {T}
+     */
+    runCohortOperation(operation) {
+        if (this.#finalized) throw new Error("App has been finalized.");
+        if (this.#transitioning)
+            throw new Error(
+                "The cohort is changing. Wait for the view mutation to finish."
+            );
+        const result = operation();
+        const completion = Promise.resolve(result);
+        this.#pendingCohortOperations.add(completion);
+        void completion.then(
+            () => this.#pendingCohortOperations.delete(completion),
+            () => this.#pendingCohortOperations.delete(completion)
+        );
+        return result;
+    }
+
+    /**
+     * @param {import("./spec/sampleView.js").SampleSpec} spec
+     * @param {import("@genome-spy/core/types/viewContext.js").default} context
+     * @param {import("@genome-spy/core/view/containerView.js").default} layoutParent
+     * @param {import("@genome-spy/core/view/view.js").default} dataParent
+     * @param {string} name
+     */
+    #createSampleView(spec, context, layoutParent, dataParent, name) {
+        if (this.#finalized) throw new Error("App has been finalized.");
+        if (this.#activeSampleView || this.#sampleViewCandidate) {
+            throw new Error(
+                "GenomeSpy App supports only one SampleView. Remove the current cohort first."
+            );
+        }
+        const view = new SampleView(
+            spec,
+            context,
+            layoutParent,
+            dataParent,
+            name,
+            this.provenance,
+            this.intentExecutor,
+            createPlotBookmarkContext(this)
+        );
+        this.#sampleViewCandidate = view;
+        view.runCohortOperation = (operation) => {
+            if (view.disposed) throw new Error("SampleView has been disposed.");
+            return this.runCohortOperation(operation);
+        };
+        view.registerDisposer(() => {
+            if (this.#sampleViewCandidate === view)
+                this.#sampleViewCandidate = undefined;
+            if (this.#activeSampleView === view)
+                this.#activeSampleView = undefined;
+        });
+        return view;
+    }
+
+    /** @template T @param {import("@genome-spy/core/view/viewMutationApi.js").ViewMutation} mutation @param {() => Promise<T>} operation */
+    async #runViewMutation(mutation, operation) {
+        if (this.#transitioning) return this.#mutateCohort(mutation, operation);
+        if (this.#finalized) throw new Error("App has been finalized.");
+
+        this.#transitioning = true;
+        this.store.dispatch(
+            lifecycleSlice.actions.setCohortTransitioning(true)
+        );
+        try {
+            await Promise.allSettled(this.#pendingCohortOperations);
+            await this.intentPipeline.whenIdle();
+            await this.getSampleView()?.metadataView?.whenMetadataSettled();
+            if (this.#finalized) throw new Error("App has been finalized.");
+            this.paramProvenanceBridge?.flushPendingChanges();
+            this.paramProvenanceBridge?.dispose();
+            return await this.#mutateCohort(mutation, operation);
+        } finally {
+            try {
+                if (!this.#finalized) {
+                    try {
+                        await this.#attachSampleView();
+                    } finally {
+                        this.#bindParamProvenance();
+                        this.store.dispatch(
+                            lifecycleSlice.actions.hierarchyChanged()
+                        );
+                    }
+                }
+            } finally {
+                this.#transitioning = false;
+                if (!this.#finalized)
+                    this.store.dispatch(
+                        lifecycleSlice.actions.setCohortTransitioning(false)
+                    );
+            }
+        }
+    }
+
+    /** @template T @param {import("@genome-spy/core/view/viewMutationApi.js").ViewMutation} mutation @param {() => Promise<T>} operation */
+    async #mutateCohort(mutation, operation) {
+        const sampleView = this.#activeSampleView ?? this.#sampleViewCandidate;
+        const removing =
+            mutation.kind === "remove" &&
+            sampleView &&
+            mutation.target.getDescendants().includes(sampleView);
+        const subtree = new Set(
+            removing ? mutation.target.getDescendants() : []
+        );
+        const entries =
+            this.store.getState().provenance.present.paramProvenance.entries;
+        /** @type {import("@genome-spy/core/view/viewSelectors.js").ResolvedParam[]} */
+        const clearedOrigins = [];
+        const retainedEntries = Object.fromEntries(
+            Object.entries(entries).filter(([, entry]) => {
+                const owner = resolveParamSelector(
+                    this.genomeSpy.viewRoot,
+                    entry.selector
+                );
+                const origin =
+                    entry.origin ??
+                    ("origin" in entry.value ? entry.value.origin : undefined);
+                const removedOrigin =
+                    origin &&
+                    subtree.has(
+                        resolveViewSelector(
+                            this.genomeSpy.viewRoot,
+                            origin.view
+                        )
+                    );
+                if (owner && !subtree.has(owner.view) && removedOrigin)
+                    clearedOrigins.push(owner);
+                return !subtree.has(owner?.view) && !removedOrigin;
+            })
+        );
+        const removedVisibilityKeys = new Set(
+            Array.from(subtree).flatMap((view) =>
+                [getViewVisibilityKey(view), view.explicitName].filter(Boolean)
+            )
+        );
+        try {
+            return await operation();
+        } finally {
+            if (
+                !this.getSampleView() &&
+                (removing ||
+                    this.store.getState().provenance.present[sampleSlice.name]
+                        .sampleData)
+            ) {
+                for (const { view, param } of clearedOrigins) {
+                    view.paramRuntime.setValue(
+                        param.name,
+                        getDefaultParamValue(param, view.paramRuntime),
+                        { animate: false }
+                    );
+                }
+                this.store.dispatch(resetCohort(retainedEntries));
+                const visibilities = Object.fromEntries(
+                    Object.entries(
+                        this.store.getState().viewSettings.visibilities
+                    ).filter(([key]) => !removedVisibilityKeys.has(key))
+                );
+                this.store.dispatch(
+                    viewSettingsSlice.actions.setViewSettings({ visibilities })
+                );
+            }
+        }
+    }
+
+    async #attachSampleView() {
+        const sampleView = this.getSampleView();
+        if (!sampleView || sampleView === this.#activeSampleView) return;
+        this.#activeSampleView = sampleView;
+        this.#sampleViewCandidate = undefined;
+        try {
+            await sampleView.ensureSampleIdentity();
+        } catch (error) {
+            // Core insertion succeeded, but this App-owned source could not load.
+            // Remove directly inside the existing mutation; enqueuing would deadlock.
+            const parent = sampleView.layoutParent;
+            if (!(parent instanceof ConcatView)) throw error;
+            await parent.removeChildAt(parent.children.indexOf(sampleView));
+            this.store.dispatch(
+                resetCohort(
+                    this.store.getState().provenance.present.paramProvenance
+                        .entries
+                )
+            );
+            throw error;
+        }
+        try {
+            await setupMetadataSourceRuntime(sampleView, this.intentPipeline);
+        } catch (error) {
+            if (this.#finalized) return;
+            console.error(error);
+            showMessageDialog(
+                "Could not load initial metadata sources: " + String(error),
+                {
+                    title: "Metadata source warning",
+                    type: "warning",
+                }
+            );
+        }
+        if (!this.#finalized && !sampleView.disposed) {
+            await sampleView.metadataView?.whenMetadataSettled();
+            resetProvenanceHistory(this.store, paramProvenanceSlice.name);
+        }
+    }
+
+    #bindParamProvenance() {
+        this.paramProvenanceBridge?.dispose();
+        this.paramProvenanceBridge = new ParamProvenanceBridge({
+            root: this.genomeSpy.viewRoot,
+            store: this.store,
+            intentExecutor: this.intentExecutor,
+        });
     }
 
     /**
@@ -284,6 +519,7 @@ export default class App {
         let cachedInput = EMPTY_VISIBILITIES;
         /** @type {import("@genome-spy/core/view/view.js").default | undefined} */
         let cachedRoot;
+        let cachedRevision = -1;
         /** @type {Record<string, boolean>} */
         let cachedResolved = EMPTY_VISIBILITIES;
 
@@ -291,12 +527,18 @@ export default class App {
             const input = visibilitiesSelector(this.store.getState());
             const root = this.genomeSpy.viewRoot;
 
-            if (input === cachedInput && root === cachedRoot) {
+            const revision = this.store.getState().lifecycle.hierarchyRevision;
+            if (
+                input === cachedInput &&
+                root === cachedRoot &&
+                revision === cachedRevision
+            ) {
                 return cachedResolved;
             }
 
             cachedInput = input;
             cachedRoot = root;
+            cachedRevision = revision;
             cachedResolved = root
                 ? resolveRadioVisibilityConflicts(root, input)
                 : input;
@@ -371,6 +613,7 @@ export default class App {
             return;
         }
         this.#finalized = true;
+        this.paramProvenanceBridge?.dispose();
 
         for (const disposer of Array.from(this.#disposers).reverse()) {
             disposer();
@@ -414,7 +657,8 @@ export default class App {
         }
         this.views = createViewMutationApi(
             this.genomeSpy,
-            () => !this.#finalized
+            () => !this.#finalized,
+            this.#runViewMutation.bind(this)
         );
         this.datumSearch = createDatumSearch(this.views);
         this.#showSelectorConstraintWarnings();
@@ -424,11 +668,7 @@ export default class App {
             throw new Error("No view root after launch");
         }
 
-        this.paramProvenanceBridge = new ParamProvenanceBridge({
-            root: viewRoot,
-            store: this.store,
-            intentExecutor: this.intentExecutor,
-        });
+        this.#bindParamProvenance();
         viewRoot.registerDisposer(() => {
             this.paramProvenanceBridge.dispose();
         });
@@ -462,28 +702,16 @@ export default class App {
         viewRoot.registerDisposer(
             setupSelectionExpansionContextMenu({
                 viewRoot,
-                intentExecutor: this.intentExecutor,
+                intentExecutor: {
+                    dispatch: (action) =>
+                        this.runCohortOperation(() =>
+                            this.intentExecutor.dispatch(action)
+                        ),
+                },
             })
         );
 
-        const sampleView = this.getSampleView();
-        if (sampleView) {
-            try {
-                await setupMetadataSourceRuntime(
-                    sampleView,
-                    this.intentPipeline
-                );
-            } catch (error) {
-                console.error(error);
-                showMessageDialog(
-                    "Could not load initial metadata sources: " + String(error),
-                    {
-                        title: "Metadata source warning",
-                        type: "warning",
-                    }
-                );
-            }
-        }
+        await this.#attachSampleView();
 
         // Make it focusable so that keyboard shortcuts can be caught
         this.appContainer
@@ -688,6 +916,10 @@ export default class App {
      * @returns {Promise<boolean>} `true` if restored successfully
      */
     async _restoreStateFromUrl() {
+        return this.runCohortOperation(() => this.#restoreStateFromUrl());
+    }
+
+    async #restoreStateFromUrl() {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
             try {

@@ -1,7 +1,7 @@
 # Dynamic SampleView lifecycle in GenomeSpy App
 
-Status: implementation in progress. Milestone 1 is implemented and verified;
-App lifecycle and persistence integration follow.
+Status: implementation in progress. Milestones 1 and 2 are implemented and
+verified; controls and persistence integration follow.
 
 Issue: [#628](https://github.com/genome-spy/genome-spy/issues/628).
 Base: `master` at `d983873ab`. Branch: `codex/dynamic-sample-view`.
@@ -249,6 +249,12 @@ Core disposal guarantees in the relevant architecture/API notes.
 Tentative commit: `fix(core): complete dynamic subtree lifecycle cleanup`.
 
 ### 2. Support App cohort attachment and serialized replacement
+
+Completed: public typed mutations, per-attachment metadata/identity initialization,
+non-undoable cohort reset, operation draining and failure recovery. Five composed
+App regressions cover A/B replacement, imports, ancestor removal, accepted slow
+work, removed selection origins and rapid independent inputs. Independent review
+findings are resolved; affected suites and App type checks pass.
 
 Outcome: empty start, insert/remove/replace, and failure recovery through the
 public typed API. Areas: App orchestration/factory, sample reset/provenance, pending

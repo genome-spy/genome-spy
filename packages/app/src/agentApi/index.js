@@ -12,6 +12,7 @@ import {
 import { getGroupColorScale } from "../charts/sampleAttributePlotUtils.js";
 import { getMetadataSourceRuntime } from "../sampleView/metadata/metadataSourceRuntimeState.js";
 import { UnknownAttributeInfoError } from "../sampleView/unknownAttributeInfoError.js";
+import { SAMPLE_SLICE_NAME } from "../sampleView/state/sampleSlice.js";
 export { embedRenderablePlot } from "../charts/chartDialogUtils.js";
 
 // `agentApi` exposes App internals to the agent and plugin surfaces only.
@@ -196,8 +197,20 @@ export function createAgentApi(app) {
          * @param {{ submissionKind?: "agent" | "bookmark" | "user" }} [options]
          * @returns {Promise<void>}
          */
-        submitIntentActions(actions, options) {
-            return app.intentPipeline.submit(actions, options);
+        async submitIntentActions(actions, options) {
+            return app.runCohortOperation(() => {
+                if (
+                    !app.getSampleView() &&
+                    actions.some((action) =>
+                        action.type.startsWith(SAMPLE_SLICE_NAME + "/")
+                    )
+                ) {
+                    throw new Error(
+                        "Sample actions require an active SampleView."
+                    );
+                }
+                return app.intentPipeline.submit(actions, options);
+            });
         },
 
         getPresentProvenanceState() {
@@ -313,11 +326,13 @@ export function createAgentApi(app) {
          * @param {boolean} visibility
          */
         setViewVisibility(selector, visibility) {
-            app.store.dispatch(
-                viewSettingsSlice.actions.setVisibility({
-                    key: makeViewSelectorKey(selector),
-                    visibility,
-                })
+            app.runCohortOperation(() =>
+                app.store.dispatch(
+                    viewSettingsSlice.actions.setVisibility({
+                        key: makeViewSelectorKey(selector),
+                        visibility,
+                    })
+                )
             );
         },
 
@@ -326,18 +341,22 @@ export function createAgentApi(app) {
          * @returns {boolean}
          */
         jumpToProvenanceState(provenanceId) {
-            const currentIndex = app.provenance.getCurrentIndex();
-            app.provenance.activateState(provenanceId);
-            return app.provenance.getCurrentIndex() !== currentIndex;
+            return app.runCohortOperation(() => {
+                const currentIndex = app.provenance.getCurrentIndex();
+                app.provenance.activateState(provenanceId);
+                return app.provenance.getCurrentIndex() !== currentIndex;
+            });
         },
 
         /**
          * @returns {boolean}
          */
         jumpToInitialProvenanceState() {
-            const currentIndex = app.provenance.getCurrentIndex();
-            app.provenance.activateInitialState();
-            return app.provenance.getCurrentIndex() !== currentIndex;
+            return app.runCohortOperation(() => {
+                const currentIndex = app.provenance.getCurrentIndex();
+                app.provenance.activateInitialState();
+                return app.provenance.getCurrentIndex() !== currentIndex;
+            });
         },
     };
 }

@@ -73,6 +73,9 @@ export default class IntentPipeline {
     #isRunning = false;
     #isBatchRunning = false;
 
+    /** @type {Promise<void>} */
+    #pendingDrain = Promise.resolve();
+
     /** @type {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource | undefined} */
     #getAttributeInfo;
 
@@ -172,9 +175,20 @@ export default class IntentPipeline {
                 abortController,
             });
             if (!this.#isRunning) {
-                void this.#drainQueue().catch(/** @returns {void} */ () => {});
+                this.#pendingDrain = this.#drainQueue().catch(
+                    /** @returns {void} */ () => {}
+                );
             }
         });
+    }
+
+    /** Waits for accepted intents and their final status updates to settle. */
+    async whenIdle() {
+        let pending;
+        do {
+            pending = this.#pendingDrain;
+            await pending;
+        } while (pending !== this.#pendingDrain);
     }
 
     abortCurrent() {

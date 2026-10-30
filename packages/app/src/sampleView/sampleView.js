@@ -12,6 +12,7 @@ import clamp from "@genome-spy/core/utils/clamp.js";
 import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory.js";
 import FlowNode from "@genome-spy/core/data/flowNode.js";
 import { createChain } from "@genome-spy/core/view/flowBuilder.js";
+import { findAncestorDataSource } from "@genome-spy/core/data/flowInit.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import SampleGroupView from "./sampleGroupView.js";
 import {
@@ -101,6 +102,11 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  *
  */
 export default class SampleView extends ContainerView {
+    disposed = false;
+
+    /** @type {<T>(operation: () => T) => T} App admission boundary; standalone test views execute directly. */
+    runCohortOperation = (operation) => operation();
+
     /**
      * @typedef {import("./state/sampleState.js").Sample} Sample
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
@@ -125,6 +131,12 @@ export default class SampleView extends ContainerView {
 
     /** @type {SampleGridChild} */
     #gridChild;
+
+    /** @type {View[]} Children owned before the grid wrapper can be constructed. */
+    #initializingChildren = [];
+
+    /** @type {import("@genome-spy/core/data/collector.js").default | undefined} */
+    #identityCollector;
 
     /** @type {ConcatView} */
     #sidebarView;
@@ -188,13 +200,13 @@ export default class SampleView extends ContainerView {
         intentExecutor,
         /** @type {import("../charts/plotDialog.js").PlotBookmarkContext | undefined} */ plotBookmarkContext = undefined
     ) {
+        const normalized = normalizeSampleViewSpec(spec);
         super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
         /** @type {import("../charts/plotDialog.js").PlotBookmarkContext | undefined} */
         this.plotBookmarkContext = plotBookmarkContext;
 
-        const normalized = normalizeSampleViewSpec(spec);
         for (const warning of normalized.warnings) {
             console.warn(warning);
         }
@@ -202,27 +214,36 @@ export default class SampleView extends ContainerView {
         this.spec = normalized.spec;
         this.#stickySummaries = spec.stickySummaries ?? true;
 
-        this.#initViewHelpers();
-        this.#setupBroadcastHandlers();
-        this.#setupInteractionHandlers();
-        this.#initAttributeInfo();
-        this.#setupActionAugmenter(intentExecutor);
-        this.#setupStoreSubscriptions();
-        this.#visibleSamplesParam = this.paramRuntime.allocateSetter(
-            "visibleSamples",
-            []
-        );
-        this.#visibleSampleMetadataParam = this.paramRuntime.allocateSetter(
-            "visibleSampleMetadata",
-            createVisibleSampleMetadataProxy(this.sampleHierarchy, [])
-        );
+        try {
+            this.#initViewHelpers();
+            this.#setupBroadcastHandlers();
+            this.#setupInteractionHandlers();
+            this.#initAttributeInfo();
+            this.#setupActionAugmenter(intentExecutor);
+            this.#setupStoreSubscriptions();
+            this.#visibleSamplesParam = this.paramRuntime.allocateSetter(
+                "visibleSamples",
+                []
+            );
+            this.#visibleSampleMetadataParam = this.paramRuntime.allocateSetter(
+                "visibleSampleMetadata",
+                createVisibleSampleMetadataProxy(this.sampleHierarchy, [])
+            );
 
-        this.getSamples = () => sampleSelector(this.sampleHierarchy);
+            this.getSamples = () => sampleSelector(this.sampleHierarchy);
 
-        if (this.spec.samples.identity) {
-            this.#loadSampleIdentity();
-        } else {
-            // TODO: schedule: extractSamplesFromData()
+            if (this.spec.samples.identity) {
+                this.#loadSampleIdentity();
+            } else {
+                // TODO: schedule: extractSamplesFromData()
+            }
+        } catch (error) {
+            this.disposed = true;
+            this.locationManager?.dispose();
+            super.dispose();
+            if (this.#actionAugmenter)
+                intentExecutor.removeActionAugmenter(this.#actionAugmenter);
+            throw error;
         }
     }
 
@@ -242,10 +263,12 @@ export default class SampleView extends ContainerView {
         ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
 
         // Register an action-info source so provenance UI can show readable titles
-        this.provenance.addActionInfoSource(
-            (
-                /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
-            ) => getActionInfo(action, getAttributeInfo)
+        this.registerDisposer(
+            this.provenance.addActionInfoSource(
+                (
+                    /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
+                ) => getActionInfo(action, getAttributeInfo)
+            )
         );
 
         // Expose slice actions to the view
@@ -604,6 +627,7 @@ export default class SampleView extends ContainerView {
                 this.provenance.store,
                 () => this.sampleHierarchy.rootGroup,
                 withMicrotask(() => {
+                    if (this.disposed) return;
                     this.locationManager.reset();
                     this.invalidateSizeCache();
                     this.sampleGroupView?.updateGroups();
@@ -617,7 +641,10 @@ export default class SampleView extends ContainerView {
             subscribeTo(
                 this.provenance.store,
                 () => this.sampleHierarchy.sampleMetadata,
-                withMicrotask(() => this.#updateVisibleSampleMetadataParam())
+                withMicrotask(() => {
+                    if (!this.disposed)
+                        this.#updateVisibleSampleMetadataParam();
+                })
             )
         );
     }
@@ -646,6 +673,7 @@ export default class SampleView extends ContainerView {
                 "sampleSummaries"
             )
         );
+        this.#initializingChildren.push(summaryViews);
         summaryViews.setLegendFilter((legend) => isInsideLegend(legend));
 
         const sampleFacetsView = await this.context.createOrImportView(
@@ -656,6 +684,7 @@ export default class SampleView extends ContainerView {
             undefined,
             { inheritEncoding: true }
         );
+        this.#initializingChildren.push(sampleFacetsView);
 
         this.#gridChild = new SampleGridChild(
             sampleFacetsView,
@@ -664,6 +693,7 @@ export default class SampleView extends ContainerView {
             summaryViews,
             this.spec.view
         );
+        this.#initializingChildren.length = 0;
 
         this.#sampleHeightParam = (value) => {
             this.#gridChild.view.paramRuntime.setValue("height", value);
@@ -702,13 +732,11 @@ export default class SampleView extends ContainerView {
         markViewAsChrome(this.#sidebarView, { skipSubtree: true });
 
         this.sampleGroupView = new SampleGroupView(this, this.#sidebarView);
+        this.#sidebarView.appendChild(this.sampleGroupView);
         this.sampleLabelView = new SampleLabelView(this, this.#sidebarView);
+        this.#sidebarView.appendChild(this.sampleLabelView);
         this.metadataView = new MetadataView(this, this.#sidebarView);
-        this.#sidebarView.setChildren([
-            this.sampleGroupView,
-            this.sampleLabelView,
-            this.metadataView,
-        ]);
+        this.#sidebarView.appendChild(this.metadataView);
 
         /** @type {import("@genome-spy/core/view/view.js").InteractionListener} */
         const stopSidebarZoomInteraction = (event) => {
@@ -883,9 +911,12 @@ export default class SampleView extends ContainerView {
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
-        yield this.#sidebarView;
-
-        yield* this.#gridChild.getChildren();
+        if (this.#sidebarView) yield this.#sidebarView;
+        if (this.#gridChild) {
+            yield* this.#gridChild.getChildren();
+        } else {
+            yield* this.#initializingChildren;
+        }
     }
 
     #extractSamplesFromData() {
@@ -946,14 +977,22 @@ export default class SampleView extends ContainerView {
             );
             resetProvenanceHistory(this.provenance.store, SAMPLE_SLICE_NAME);
         });
+        this.#identityCollector = collector;
         this.registerDisposer(stop);
-        if (!dataIdentity) {
-            this.registerDisposer(() =>
-                this.context.dataFlow.removeDataSource(dataSource)
-            );
-        }
+        this.registerDisposer(() =>
+            this.context.dataFlow.pruneBranch(collector)
+        );
 
         this.context.dataFlow.addDataSource(dataSource);
+    }
+
+    /** Loads the owner-local identity chain omitted by Core's view-handle traversal. */
+    async ensureSampleIdentity() {
+        if (!this.#identityCollector || this.sampleHierarchy.sampleData) return;
+        const source = findAncestorDataSource(this.#identityCollector);
+        source.visit((node) => node.initializeOnce());
+        source.activate();
+        await source.load();
     }
 
     /**
@@ -1654,7 +1693,10 @@ export default class SampleView extends ContainerView {
                 items.push(
                     createSelectionExpansionMenuItem(
                         selectionExpansionContext,
-                        (action) => this.intentExecutor.dispatch(action)
+                        (action) =>
+                            this.runCohortOperation(() =>
+                                this.intentExecutor.dispatch(action)
+                            )
                     )
                 );
                 selectionExpansionItemInserted = true;
@@ -1675,7 +1717,10 @@ export default class SampleView extends ContainerView {
             items.push(
                 createSelectionExpansionMenuItem(
                     selectionExpansionContext,
-                    (action) => this.intentExecutor.dispatch(action)
+                    (action) =>
+                        this.runCohortOperation(() =>
+                            this.intentExecutor.dispatch(action)
+                        )
                 )
             );
         }
@@ -1993,13 +2038,16 @@ export default class SampleView extends ContainerView {
      * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>} action
      */
     dispatchAttributeAction(action) {
-        this.intentExecutor.dispatch(action);
+        if (this.disposed) throw new Error("SampleView has been disposed.");
+        this.runCohortOperation(() => this.intentExecutor.dispatch(action));
     }
 
     /**
      * @override
      */
     dispose() {
+        if (this.disposed) return;
+        this.disposed = true;
         this.locationManager.dispose();
         super.dispose();
         this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);

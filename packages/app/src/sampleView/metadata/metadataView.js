@@ -2,7 +2,6 @@ import { html } from "lit";
 import { classMap } from "lit/directives/class-map.js";
 
 import ConcatView from "@genome-spy/core/view/concatView.js";
-import LayerView from "@genome-spy/core/view/layerView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
@@ -57,6 +56,8 @@ export class MetadataView extends ConcatView {
     #attributeViews = new Map();
 
     #metadataGeneration = 0;
+
+    #disposed = false;
 
     /** @type {Promise<void>} */
     #metadataUpdateTail = Promise.resolve();
@@ -318,6 +319,9 @@ export class MetadataView extends ConcatView {
      * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
      */
     async #setMetadata(sampleMetadata) {
+        if (this.#disposed) {
+            return;
+        }
         this.#metadata = sampleMetadata.entities;
 
         const flow = this.context.dataFlow;
@@ -338,7 +342,7 @@ export class MetadataView extends ConcatView {
             if (this.#isMetadataStale(metadataGeneration)) {
                 return;
             }
-            await this.#createViews();
+            await this.#createViews(metadataGeneration);
             if (this.#isMetadataStale(metadataGeneration)) {
                 return;
             }
@@ -369,10 +373,12 @@ export class MetadataView extends ConcatView {
 
             this.context.requestLayoutReflow();
         } catch (error) {
-            finalizeReady(
-                error instanceof Error ? error : new Error(String(error))
-            );
-            throw error;
+            if (!this.#disposed) {
+                finalizeReady(
+                    error instanceof Error ? error : new Error(String(error))
+                );
+                throw error;
+            }
         } finally {
             releaseUpdate();
             finalizeReady();
@@ -384,7 +390,9 @@ export class MetadataView extends ConcatView {
      * @returns {boolean}
      */
     #isMetadataStale(metadataGeneration) {
-        return metadataGeneration !== this.#metadataGeneration;
+        return (
+            this.#disposed || metadataGeneration !== this.#metadataGeneration
+        );
     }
 
     /**
@@ -456,7 +464,17 @@ export class MetadataView extends ConcatView {
         return this.#metadataReady.wait(signal);
     }
 
-    async #createViews() {
+    /** Waits for all metadata rebuild work, including superseded updates. */
+    async whenMetadataSettled() {
+        let pending;
+        do {
+            pending = this.#metadataUpdateTail;
+            await pending;
+        } while (pending !== this.#metadataUpdateTail);
+    }
+
+    /** @param {number} metadataGeneration */
+    async #createViews(metadataGeneration) {
         this.setChildren([]);
         this.#attributeViews.clear();
 
@@ -482,6 +500,9 @@ export class MetadataView extends ConcatView {
             inheritedAttributeDef
         ) => {
             for (const node of attributeNode.children.values()) {
+                if (this.#isMetadataStale(metadataGeneration)) {
+                    return;
+                }
                 if (node.children.size == 0) {
                     // It's a leaf
 
@@ -494,18 +515,23 @@ export class MetadataView extends ConcatView {
                         ...(attributeDefs?.[attributeName] ?? {}),
                     };
 
-                    const layerView = new LayerView(
-                        createAttributeSpec(
-                            attributeName,
-                            attributeDef,
-                            this.#sampleView.spec.metadata
-                        ),
-                        this.context,
-                        container,
-                        container,
-                        `attribute-${attributeName}`
-                    );
-                    await layerView.initializeChildren();
+                    const layerView =
+                        /** @type {import("@genome-spy/core/view/layerView.js").default} */ (
+                            await this.context.createOrImportView(
+                                createAttributeSpec(
+                                    attributeName,
+                                    attributeDef,
+                                    this.#sampleView.spec.metadata
+                                ),
+                                container,
+                                container,
+                                `attribute-${attributeName}`
+                            )
+                        );
+                    if (this.#isMetadataStale(metadataGeneration)) {
+                        layerView.disposeSubtree();
+                        return;
+                    }
 
                     const foregroundView = /** @type {UnitView} */ (
                         layerView.findDescendantByName(
@@ -569,6 +595,9 @@ export class MetadataView extends ConcatView {
         };
 
         await createAttributeViews(nestedAttributes, this, {});
+        if (this.#isMetadataStale(metadataGeneration)) {
+            return;
+        }
 
         // Metadata content must respect sticky-summary clipping, but its group
         // titles must not. TODO: Pass the content clip only to the unit views
@@ -765,10 +794,10 @@ export class MetadataView extends ConcatView {
                         lastAction.payload.values.length == 1;
 
                     const store = this.#sampleView.provenance.store;
-                    if (shouldUndo) {
-                        store.dispatch(ActionCreators.undo());
-                    }
-                    this.#sampleView.dispatchAttributeAction(action);
+                    this.#sampleView.runCohortOperation(() => {
+                        if (shouldUndo) store.dispatch(ActionCreators.undo());
+                        this.#sampleView.dispatchAttributeAction(action);
+                    });
 
                     return true;
                 }
@@ -785,6 +814,7 @@ export class MetadataView extends ConcatView {
      * @override
      */
     dispose() {
+        this.#disposed = true;
         super.dispose();
         this.#sampleView.compositeAttributeInfoSource.removeAttributeInfoSource(
             SAMPLE_ATTRIBUTE,

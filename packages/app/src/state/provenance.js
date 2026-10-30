@@ -76,9 +76,16 @@ export default class Provenance {
     /**
      *
      * @param {(action: Action) => ActionInfo} source
+     * @returns {() => void}
      */
     addActionInfoSource(source) {
         this.actionInfoSources.push(source);
+        return () => {
+            const index = this.actionInfoSources.indexOf(source);
+            if (index >= 0) {
+                this.actionInfoSources.splice(index, 1);
+            }
+        };
     }
 
     // Provenance is an API-only helper; reducer construction/composition is
