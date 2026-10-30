@@ -1,7 +1,7 @@
 {
   "description": [
     "Combine plot hover and legend selection",
-    "Hover a cell to focus its activation state, or use the legend. Shift-click toggles legend categories; double-click clears. Coordinates and categories are synthetic."
+    "Hover a cell to focus its activation state, or use the legend. Shift-click toggles legend categories; click the chart background to reset. Coordinates and categories are synthetic."
   ],
 
   "width": 420,

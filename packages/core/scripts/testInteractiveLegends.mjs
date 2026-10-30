@@ -110,7 +110,7 @@ await testRenderers(
             };
             const types = api.params.getSelection("cell_types");
             const states = api.params.getSelection("activation_states");
-            const inertPoints = () => {
+            const testPoints = () => {
                 const canvas = host
                     .querySelector("canvas")
                     .getBoundingClientRect();
@@ -121,16 +121,16 @@ await testRenderers(
                 const legend = find("T cell")
                     .view.getLayoutAncestors()
                     .find((view) => "legendProps" in view);
-                return [
-                    {
+                return {
+                    background: {
                         x: canvas.x + plot.x + plot.width / 2,
-                        y: canvas.y + plot.y + plot.height / 2,
+                        y: canvas.y + plot.y + 2,
                     },
-                    {
+                    title: {
                         x: canvas.x + legend.coords.x + 2,
                         y: canvas.y + legend.coords.y + 2,
                     },
-                ];
+                };
             };
             globalThis.__legendTest = {
                 api,
@@ -142,7 +142,7 @@ await testRenderers(
                 labelAlpha,
                 spec,
                 host,
-                inertPoints,
+                testPoints,
             };
         }, renderer);
         const click = async (label, shift = false, area = "label") => {
@@ -168,18 +168,17 @@ await testRenderers(
             alpha[0] > 200 && alpha[1] > 50 && alpha[1] < 110,
             `${renderer}: native label opacity ${alpha}`
         );
-        for (const point of await page.evaluate(() =>
-            globalThis.__legendTest.inertPoints()
-        )) {
-            await page.mouse.dblclick(point.x, point.y);
-            await page.evaluate(() => globalThis.__legendTest.frame());
-            assert.deepEqual(
-                await page.evaluate(
-                    () => globalThis.__legendTest.types.getValue().values
-                ),
-                [["T cell"]]
-            );
-        }
+        const title = await page.evaluate(
+            () => globalThis.__legendTest.testPoints().title
+        );
+        await page.mouse.click(title.x, title.y);
+        await page.evaluate(() => globalThis.__legendTest.frame());
+        assert.deepEqual(
+            await page.evaluate(
+                () => globalThis.__legendTest.types.getValue().values
+            ),
+            [["T cell"]]
+        );
         await click("activated");
         await page.waitForFunction(
             () =>
@@ -203,13 +202,24 @@ await testRenderers(
         );
         await page.mouse.dblclick(clear.x, clear.y);
         await page.waitForFunction(
-            () => !globalThis.__legendTest.types.getValue().active
+            () =>
+                globalThis.__legendTest.types.getValue().values[0]?.[0] ===
+                "B cell"
         );
         assert.deepEqual(
             await page.evaluate(
                 () => globalThis.__legendTest.states.getValue().values
             ),
             [["activated"]]
+        );
+        const background = await page.evaluate(
+            () => globalThis.__legendTest.testPoints().background
+        );
+        await page.mouse.click(background.x, background.y);
+        await page.waitForFunction(
+            () =>
+                !globalThis.__legendTest.types.getValue().active &&
+                !globalThis.__legendTest.states.getValue().active
         );
         const retained = await page.evaluate(async (renderer) => {
             const {

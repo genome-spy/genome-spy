@@ -144,7 +144,10 @@ export default class UnitView extends View {
 
             const source =
                 typeof param.select === "object" ? param.select : undefined;
-            const select = asSelectionConfig(param.select);
+            const select = asSelectionConfig(
+                param.select,
+                "bind" in param ? param.bind : undefined
+            );
             // Normalized config has eventConfig in "on"
             const eventConfig =
                 /** @type {import("../spec/parameter.js").EventConfig} */ (

@@ -34,10 +34,17 @@ EXAMPLE examples/docs/grammar/legend/interactive-legend.json height=350
 
     Coordinates, cell types, and activation states are synthetic.
 
-Click an entry to select its category, Shift-click to toggle additional
-categories, and double-click an entry to clear that legend's selection.
-`select.toggle: false` restricts it to one category; `select.clear: false`
-disables gesture clearing. An empty selection shows all entries normally.
+Click an entry to select its category and Shift-click to toggle categories.
+An unmodified background click resets **all legend-bound selections** in the
+visualization, including independent and collected legends. Background means
+space without a picked mark; non-interactive marks do not block the reset.
+Legend titles, padding, and spacing between collected legends remain inert.
+The reset only clears legend-bound selections. Other selections keep their own
+interaction behavior.
+
+Default double-click clearing is disabled for legend-bound selections.
+`select.toggle: false` restricts selection to one category. An empty selection
+shows all entries normally.
 Unselected symbols and labels use 35% of their normal opacity.
 
 The binding supports one nominal or ordinal `color`, `fill`, `stroke`, or `shape`
@@ -66,13 +73,14 @@ hover with multi-category legend clicks:
 
 Hover replaces the selected category; Shift-clicking legend entries toggles
 categories. The explicit `toggle: true` preserves multiple categories for this
-mixed-input configuration. Custom `select.clear` events and filters apply to
-legend entries and explicitly enabled plot input.
+mixed-input configuration. Explicit `select.clear` events and filters apply to
+legend entries and explicitly enabled plot input; `select.clear: false` disables
+those events. The global background reset remains available independently of
+`select.clear`.
 
 The `bind: "legend"` form follows Vega-Lite's grammar. Field projections,
 object-valued legend event bindings, and expression-valued toggling are not
-supported. GenomeSpy clears a bound selection on entry double-click by default
-and retains its existing single-value hover default.
+supported. GenomeSpy retains its existing single-value hover default.
 
 ## Gradient legends
 

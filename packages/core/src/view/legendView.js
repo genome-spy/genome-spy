@@ -1120,6 +1120,7 @@ export class LegendRegionView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
+        event.target = this;
         propagateInteraction(this, event, () => {
             const legend = this.#getVisibleLegendViews().find((view) =>
                 view.coords.containsPoint(event.point.x, event.point.y)

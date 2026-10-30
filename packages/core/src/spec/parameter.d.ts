@@ -328,6 +328,7 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 
     /**
      * A string or object that defines the events that should clear the selection.
+     * Legend-bound point selections have no default clear event.
      *
      * __Default value:__ `"dblclick"`
      */
@@ -492,6 +493,8 @@ export interface CategorySelectionParameter<C extends CategorySelectionChannel>
     /**
      * Populate this selection by clicking its categorical symbol legend.
      * Plot input is disabled unless `select.on` is explicitly specified.
+     * Empty-background clicks reset all legend-bound selections. Default
+     * double-click clearing is disabled.
      */
     bind?: "legend";
 
