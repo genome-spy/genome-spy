@@ -1,4 +1,3 @@
-import { subscribeTo } from "../../state/subscribeTo.js";
 import { sampleSlice } from "../state/sampleSlice.js";
 import { resetProvenanceHistory } from "../../state/provenanceBaseline.js";
 import {
@@ -8,48 +7,6 @@ import {
 } from "./metadataSourceInitialLoad.js";
 import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
 import { getMetadataSourceRuntime } from "./metadataSourceRuntimeState.js";
-
-/**
- * @param {import("../sampleView.js").default} sampleView
- * @returns {Promise<string[]>}
- */
-async function awaitSampleIds(sampleView) {
-    // TODO: Replace this with a first-class readiness primitive (e.g.
-    // SampleView-level "samples ready" awaitable or generic waitForSelector)
-    // so metadata bootstrap does not own subscribe/timeout plumbing.
-    const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
-    if (sampleIds) {
-        return sampleIds;
-    }
-
-    await new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-            unsubscribe();
-            reject(
-                new Error("Timed out while waiting for sample identifiers.")
-            );
-        }, 10000);
-
-        const unsubscribe = subscribeTo(
-            sampleView.provenance.store,
-            () => sampleView.sampleHierarchy.sampleData?.ids,
-            (ids) => {
-                if (!ids) {
-                    return;
-                }
-
-                clearTimeout(timeoutId);
-                unsubscribe();
-                resolve(undefined);
-            }
-        );
-    });
-
-    return (
-        sampleView.sampleHierarchy.sampleData?.ids ??
-        /** @type {string[]} */ ([])
-    );
-}
 
 /**
  * Loads metadata source attributes configured for startup.
@@ -63,11 +20,17 @@ export async function bootstrapInitialMetadataSources(
 ) {
     const runtime = getMetadataSourceRuntime(sampleView);
     const sources = await runtime.getSources();
-    if (sources.length === 0) {
+    if (sampleView.disposed || sources.length === 0) {
         return;
     }
 
-    const sampleIds = await awaitSampleIds(sampleView);
+    // App attaches metadata after Core or ensureSampleIdentity has loaded ids.
+    const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
+    if (!sampleIds) {
+        throw new Error(
+            "Sample identities must be loaded before metadata bootstrap."
+        );
+    }
     if (sampleIds.length === 0) {
         return;
     }
@@ -81,7 +44,13 @@ export async function bootstrapInitialMetadataSources(
             continue;
         }
         const adapter = await runtime.getAdapter(source);
+        if (sampleView.disposed) {
+            return;
+        }
         const columnIds = await resolveInitialLoadColumnIds(source, adapter);
+        if (sampleView.disposed) {
+            return;
+        }
         if (columnIds.length === 0) {
             continue;
         }
@@ -105,6 +74,9 @@ export async function bootstrapInitialMetadataSources(
                 adapter,
                 resolveColumns: false,
             });
+            if (sampleView.disposed) {
+                return;
+            }
 
             actions.push(sampleSlice.actions.addMetadataFromSource(payload));
             replace = false;
@@ -116,5 +88,7 @@ export async function bootstrapInitialMetadataSources(
     }
 
     await intentPipeline.submit(actions);
-    resetProvenanceHistory(sampleView.provenance.store, sampleSlice.name);
+    if (!sampleView.disposed) {
+        resetProvenanceHistory(sampleView.provenance.store, sampleSlice.name);
+    }
 }

@@ -66,8 +66,8 @@ class ViewSettingsButton extends LitElement {
         this.subscriptionController.addUnsubscribeCallback(
             subscribeTo(
                 this.#app.store,
-                (state) => state.lifecycle.appInitialized,
-                (appInitialized) => this.#handleAppInitialized(appInitialized)
+                (state) => state.lifecycle,
+                () => this.#handleLifecycle()
             )
         );
 
@@ -78,21 +78,31 @@ class ViewSettingsButton extends LitElement {
                 () => this.requestUpdate()
             )
         );
+        this.#handleLifecycle();
+    }
+
+    disconnectedCallback() {
+        this.#clearMenu();
+        super.disconnectedCallback();
     }
 
     createRenderRoot() {
         return this;
     }
 
-    /**
-     * @param {boolean} appInitialized
-     */
-    #handleAppInitialized(appInitialized) {
+    #handleLifecycle() {
+        const { appInitialized } = this.#app.store.getState().lifecycle;
+        this.#clearMenu();
         if (appInitialized) {
             this.#updateNestedPaths();
             this.requestUpdate();
             this.style.display = this.#nestedPaths ? "block" : "none";
         }
+    }
+
+    #clearMenu() {
+        if (isDropdownOpenFor(this.#buttonRef.value)) dismissDropdownMenu();
+        if (this.#hoveredView) this.#clearHoverHighlight();
     }
 
     /**

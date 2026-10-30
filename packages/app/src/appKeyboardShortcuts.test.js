@@ -134,15 +134,19 @@ describe("app keyboard shortcuts", () => {
         let keydownListener;
         const undo = vi.fn();
         const focusSearchField = vi.fn(() => true);
+        const unsubscribe = vi.fn();
+        const registerDisposer = vi.fn();
         const addKeyboardListener = vi.fn((type, listener) => {
             if (type == "keydown") {
                 keydownListener = listener;
             }
+            return unsubscribe;
         });
 
         setupAppKeyboardShortcuts({
             viewRoot: /** @type {any} */ ({
                 context: { addKeyboardListener },
+                registerDisposer,
             }),
             shortcuts: createDefaultAppKeyboardShortcuts({
                 provenance: /** @type {any} */ ({
@@ -160,5 +164,6 @@ describe("app keyboard shortcuts", () => {
         );
         expect(undo).toHaveBeenCalledTimes(1);
         expect(focusSearchField).not.toHaveBeenCalled();
+        expect(registerDisposer).toHaveBeenCalledWith(unsubscribe);
     });
 });

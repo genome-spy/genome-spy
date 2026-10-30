@@ -37,7 +37,7 @@ export default class LayerView extends ContainerView {
     async initializeChildren() {
         // Layer member titles are metadata only. They are used by App menus, but
         // chrome titles are shown only for an explicit title on the LayerView.
-        this.#children = await Promise.all(
+        await this.createChildViews(
             this.spec.layer.map(
                 (childSpec) =>
                     /** @type {(Promise<LayerView | import("./unitView.js").default>)} */ (
@@ -61,7 +61,10 @@ export default class LayerView extends ContainerView {
                             }
                         )
                     )
-            )
+            ),
+            (children) => {
+                this.#children = children;
+            }
         );
     }
 

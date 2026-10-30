@@ -23,6 +23,11 @@ For a complete example, check the
 [website-examples](https://github.com/genome-spy/website-examples/blob/master/index.html)
 repository on GitHub.
 
+The App defaults to `embedMode: "standalone"`, which manages URL state and
+bookmarks. When embedding in a host application that owns these, pass
+`{ embedMode: "embedded" }` as the third argument to `embed`. Local interaction
+controls remain available.
+
 When developing sample-collection visualizations locally, use the
 [Inspector](../api/inspector.md) from the three-dot menu in the App toolbar to
 inspect the live view hierarchy, dataflow, params, and scale/axis/legend
@@ -227,3 +232,59 @@ For runtime parameters that respond to the sample layout and current sample
 set, see [Sample View Parameters](sample-view-parameters.md). For summary
 tracks across samples or sample groups, see
 [Aggregating Samples](aggregating-samples.md).
+
+## Replacing sample collections
+
+An App can start without a SampleView and attach one later through `api.views`.
+Keep a persistent concat with a fixed assembly and an explicit shared locus scale.
+Independent annotation siblings can stay in that concat while the SampleView is
+removed and recreated. App supports one active SampleView.
+
+```js
+import { embed } from "@genome-spy/app";
+
+const api = await embed(container, {
+  name: "tracks",
+  assembly: "hg38",
+  scales: { x: { name: "locus", type: "locus", zoom: true } },
+  resolve: { scale: { x: "shared" } },
+  vconcat: [], // Independent annotation tracks can go here.
+});
+const tracks = api.views.get({ scope: [], view: "tracks" });
+let cohort;
+
+// The host supplies a SampleSpec compatible with the fixed assembly.
+async function openCohort(nextSampleSpec, persistenceContext = null) {
+  if (cohort) {
+    await api.views.remove(cohort);
+    cohort = undefined;
+    // The host can now revoke blob URLs belonging to the removed cohort.
+  }
+  await api.setPersistenceContext(persistenceContext);
+  cohort = await api.views.insert(tracks, nextSampleSpec);
+}
+```
+
+Await each replacement before starting another. Removing a cohort clears its
+metadata, grouping, filters, selections, and undo/redo history. The operation is
+not undoable. Surviving annotations, their loaded data, and the current locus stay
+in place. If the next insertion fails, its partial resources are released and the
+App remains empty and ready for another insertion. Keep host-owned blob URLs valid
+until awaited removal or failed-insertion cleanup finishes.
+
+`setPersistenceContext` changes source-specific bookmark identity without
+recreating App or changing cohort data. Pass `null` to disable source bookmarks,
+or provide a context such as:
+
+```js
+await openCohort(nextSampleSpec, {
+  specId: "dataset-b",
+  baseUrl: "https://example.org/dataset-b/",
+  remoteBookmarks: { url: "bookmarks.json" },
+});
+```
+
+A remote bookmark URL must be absolute or have an explicit `baseUrl`. Relative
+bookmark content resolves from the remote bookmark file's directory. Detachment
+clears the previous source context; insertion does not configure persistence or
+automatically restore a bookmark.

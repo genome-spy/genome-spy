@@ -5,7 +5,7 @@ import ValuesTransform from "../../transforms/values.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import FigWigSource from "./figWigSource.js";
 
-/** @type {{ url: string, getHeader: () => Promise<any> }[]} */
+/** @type {{ url: string, getHeader: ReturnType<typeof vi.fn>, close: ReturnType<typeof vi.fn> }[]} */
 const readers = [];
 
 /** @type {{ regions: import("@genome-spy/figwig").Region[], options: import("@genome-spy/figwig").BinOptions & { signal: AbortSignal } }[]} */
@@ -15,6 +15,8 @@ let failQuery = false;
 let summariesAvailable = true;
 /** @type {((result: any) => Promise<any>) | undefined} */
 let delayQuery;
+/** @type {Promise<void> | undefined} */
+let pendingHeader;
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class {
@@ -34,6 +36,7 @@ vi.mock("@genome-spy/figwig", () => ({
         }
 
         getHeader = vi.fn(async () => {
+            await pendingHeader;
             if (failHeader) throw new Error("Missing Figwig");
             return {
                 tileSize: 128,
@@ -43,6 +46,8 @@ vi.mock("@genome-spy/figwig", () => ({
                 ],
             };
         });
+
+        close = vi.fn(async () => {});
 
         /** @param {any[]} regions @param {any} options */
         async getBinsMulti(regions, options) {
@@ -182,6 +187,7 @@ describe("FigWigSource", () => {
         failQuery = false;
         summariesAvailable = true;
         delayQuery = undefined;
+        pendingHeader = undefined;
         vi.useFakeTimers();
         vi.stubGlobal("window", { setTimeout, clearTimeout });
     });
@@ -218,6 +224,8 @@ describe("FigWigSource", () => {
         });
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
         source.disposeSubtree();
+        await source.whenDisposed();
+        expect(readers[0].close).toHaveBeenCalledOnce();
     });
 
     it("clips chromosome ends, omits unavailable chromosomes, and batches the remaining regions", async () => {
@@ -257,6 +265,7 @@ describe("FigWigSource", () => {
         setTracks(["B"]);
         await paramRuntime.whenPropagated();
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
+        expect(readers[0].close).not.toHaveBeenCalled();
         await vi.runAllTimersAsync();
         expect(new Set(rows().map((d) => d.sampleId))).toEqual(new Set(["B"]));
 
@@ -277,6 +286,8 @@ describe("FigWigSource", () => {
         expect(readers[0].getHeader).toHaveBeenCalledTimes(1);
         expect(output.value.get()).toEqual([rows().length]);
         source.disposeSubtree();
+        await source.whenDisposed();
+        expect(readers[0].close).toHaveBeenCalledOnce();
     });
 
     it("aborts superseded selection queries and never publishes their stale data", async () => {
@@ -317,6 +328,7 @@ describe("FigWigSource", () => {
             detail: "Missing Figwig",
         });
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
+        expect(readers[0].close).toHaveBeenCalledOnce();
 
         failHeader = false;
         failQuery = true;
@@ -331,6 +343,56 @@ describe("FigWigSource", () => {
         expect(readers).toHaveLength(2);
         expect(statuses.at(-1).status).toBe("complete");
         source.disposeSubtree();
+        await source.whenDisposed();
+        expect(
+            readers.every((reader) => reader.close.mock.calls.length === 1)
+        ).toBe(true);
+    });
+
+    it("waits for a pending handle acquisition and closes its reader", async () => {
+        const gate = Promise.withResolvers();
+        pendingHeader = gate.promise;
+        const { create } = createFixture();
+        const { source } = create();
+        const request = source.requestInterval([0, 100]);
+        await vi.waitFor(() => expect(readers).toHaveLength(1));
+
+        source.disposeSubtree();
+        let settled = false;
+        const cleanup = source.whenDisposed().then(() => {
+            settled = true;
+        });
+        await Promise.resolve();
+        expect(settled).toBe(false);
+        expect(readers[0].close).not.toHaveBeenCalled();
+
+        gate.resolve(undefined);
+        await Promise.all([request, cleanup]);
+        expect(readers[0].close).toHaveBeenCalledOnce();
+        expect(queries).toHaveLength(0);
+    });
+
+    it("closes a reader with a pending query and prevents late publication", async () => {
+        const gate = Promise.withResolvers();
+        // Even work that ignores cancellation must not publish after removal.
+        delayQuery = async (result) => {
+            await gate.promise;
+            return result;
+        };
+        const { create, statuses } = createFixture();
+        const { source, collector } = create();
+        const request = source.requestInterval([0, 100]);
+        await vi.waitFor(() => expect(queries).toHaveLength(1));
+
+        source.disposeSubtree();
+        await source.whenDisposed();
+        expect(readers[0].close).toHaveBeenCalledOnce();
+        expect(queries[0].options.signal.aborted).toBe(true);
+
+        gate.resolve(undefined);
+        await request;
+        expect(collector.completed).toBe(false);
+        expect(statuses).toEqual([{ status: "loading", detail: undefined }]);
     });
 
     it("reloads at changed viewport resolution and pixelsPerBin, reopening only for URL changes", async () => {
@@ -355,6 +417,10 @@ describe("FigWigSource", () => {
             "other.fw",
         ]);
         source.disposeSubtree();
+        await source.whenDisposed();
+        expect(
+            readers.every((reader) => reader.close.mock.calls.length === 1)
+        ).toBe(true);
     });
 
     it.each([1, 100, 1000])(

@@ -134,7 +134,7 @@ async function createMetadataViewTestHarness(options = {}) {
     context.requestLayoutReflow = () => undefined;
     context.updateTooltip = () => undefined;
     context.getCurrentHover = () => undefined;
-    context.addKeyboardListener = () => undefined;
+    context.addKeyboardListener = () => () => undefined;
     context.getNamedDataFromProvider = () => [];
 
     const store = createStoreStub({
@@ -287,6 +287,60 @@ function createMissingColorTestHarness(options) {
 describe("MetadataView", () => {
     beforeEach(() => {
         contextMenuMocks.contextMenu.mockReset();
+    });
+
+    it("releases a pending rebuild and ignores store updates after disposal", async () => {
+        const { context, metadataView, sampleView, store } =
+            await createMetadataViewTestHarness();
+        /** @type {PromiseWithResolvers<void>} */
+        const constructionStarted = Promise.withResolvers();
+        /** @type {PromiseWithResolvers<void>} */
+        const releaseConstruction = Promise.withResolvers();
+        const releaseResource = vi.fn();
+        const createView = context.createOrImportView.bind(context);
+        const createSpy = vi
+            .spyOn(context, "createOrImportView")
+            .mockImplementation(async (...args) => {
+                const view = await createView(...args);
+                if (args[3] === "attribute-foo") {
+                    view.registerDisposer(releaseResource);
+                    constructionStarted.resolve();
+                    await releaseConstruction.promise;
+                }
+                return view;
+            });
+
+        try {
+            const metadata = { ...sampleView.sampleHierarchy.sampleMetadata };
+            store.setState({
+                provenance: {
+                    present: { sampleView: { sampleMetadata: metadata } },
+                },
+            });
+            await constructionStarted.promise;
+            metadataView.disposeSubtree();
+            const settled = metadataView.whenMetadataSettled();
+            releaseConstruction.resolve();
+            await settled;
+
+            expect(releaseResource).toHaveBeenCalledOnce();
+            expect(metadataView.children).toHaveLength(0);
+            expect(context.dataFlow.collectors).toHaveLength(0);
+            expect(store.getListenerCount()).toBe(0);
+            const creations = createSpy.mock.calls.length;
+            store.setState({
+                provenance: {
+                    present: {
+                        sampleView: { sampleMetadata: { ...metadata } },
+                    },
+                },
+            });
+            await metadataView.whenMetadataSettled();
+            expect(createSpy).toHaveBeenCalledTimes(creations);
+        } finally {
+            releaseConstruction.resolve();
+            createSpy.mockRestore();
+        }
     });
 
     it("provides short attribute titles from metadata leaf labels", async () => {
@@ -593,7 +647,7 @@ describe("MetadataView", () => {
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
-        context.addKeyboardListener = () => undefined;
+        context.addKeyboardListener = () => () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const dataFlow = context.dataFlow;
@@ -769,7 +823,7 @@ describe("MetadataView", () => {
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
-        context.addKeyboardListener = () => undefined;
+        context.addKeyboardListener = () => () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const store = createStoreStub({
@@ -996,7 +1050,7 @@ describe("MetadataView", () => {
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
-        context.addKeyboardListener = () => undefined;
+        context.addKeyboardListener = () => () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const store = createStoreStub({

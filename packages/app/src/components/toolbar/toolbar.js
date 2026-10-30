@@ -1,4 +1,5 @@
 import { html, LitElement, nothing } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faInfoCircle,
@@ -47,22 +48,30 @@ export default class Toolbar extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        this.#unsubscribeAppInitialized = subscribeTo(
+        this.#unsubscribeLifecycle = subscribeTo(
             this.app.store,
-            (state) => state.lifecycle.appInitialized,
-            () => this.requestUpdate()
+            (state) => state.lifecycle,
+            (lifecycle, previous) => {
+                if (
+                    lifecycle.cohortTransitioning ||
+                    lifecycle.hierarchyRevision !== previous.hierarchyRevision
+                ) {
+                    dismissDropdownMenu();
+                }
+                this.requestUpdate();
+            }
         );
         this.app.ui.addEventListener("change", this.#handleUiChange);
     }
 
     disconnectedCallback() {
-        this.#unsubscribeAppInitialized?.();
+        this.#unsubscribeLifecycle?.();
         this.app.ui.removeEventListener("change", this.#handleUiChange);
         super.disconnectedCallback();
     }
 
     /** @type {(() => void) | undefined} */
-    #unsubscribeAppInitialized = undefined;
+    #unsubscribeLifecycle = undefined;
 
     #handleUiChange = () => {
         this.requestUpdate();
@@ -254,25 +263,33 @@ export default class Toolbar extends LitElement {
     }
 
     render() {
-        const genomeSpy = this.app.genomeSpy;
-
-        const appInitialized =
-            this.app.store.getState().lifecycle.appInitialized;
+        const { appInitialized, cohortTransitioning, hierarchyRevision } =
+            this.app.store.getState().lifecycle;
+        const genomeResolution =
+            appInitialized &&
+            findGenomeScaleResolution(this.app.genomeSpy.viewRoot);
 
         return html`
-            <nav class="gs-toolbar">
+            <nav
+                class="gs-toolbar"
+                ?inert=${cohortTransitioning}
+                aria-busy=${String(cohortTransitioning)}
+            >
                 <a href="https://genomespy.app" target="_blank" class="logo">
                     <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
                 </a>
 
                 ${
-                    appInitialized &&
-                    findGenomeScaleResolution(genomeSpy.viewRoot)
-                        ? html`
-                              <genome-spy-search-field
-                                  .app=${this.app}
-                              ></genome-spy-search-field>
-                          `
+                    genomeResolution
+                        ? keyed(
+                              genomeResolution,
+                              html`
+                                  <genome-spy-search-field
+                                      .app=${this.app}
+                                      .hierarchyRevision=${hierarchyRevision}
+                                  ></genome-spy-search-field>
+                              `
+                          )
                         : nothing
                 }
                 ${this._getToolButtons()}

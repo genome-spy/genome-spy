@@ -95,22 +95,29 @@ export default class FacetView extends ContainerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(spec, context, layoutParent, dataParent, name, options) {
+        const facet = normalizeFacetSpec(spec);
+        const spacing = normalizeFacetSpacing(spec.spacing);
         super(spec, context, layoutParent, dataParent, name, options);
 
-        this.#facet = normalizeFacetSpec(spec);
-        this.#spacing = normalizeFacetSpacing(spec.spacing);
+        this.#facet = facet;
+        this.#spacing = spacing;
 
-        for (const channel of /** @type {const} */ (["row", "column"])) {
-            const field = this.#facet[channel];
-            if (field) {
-                this.#facet[channel] = activateExprRefProps(
-                    this.paramRuntime,
-                    field,
-                    this.#onFacetFactorsChanged
-                );
+        try {
+            for (const channel of /** @type {const} */ (["row", "column"])) {
+                const field = this.#facet[channel];
+                if (field) {
+                    this.#facet[channel] = activateExprRefProps(
+                        this.paramRuntime,
+                        field,
+                        this.#onFacetFactorsChanged
+                    );
+                }
             }
+            this.#updateFacetFactors();
+        } catch (error) {
+            this.disposeSubtree({ checkDependencies: false });
+            throw error;
         }
-        this.#updateFacetFactors();
     }
 
     /**
@@ -205,7 +212,12 @@ export default class FacetView extends ContainerView {
      * @returns {IterableIterator<import("./view.js").default>}
      */
     *[Symbol.iterator]() {
-        yield* this.#gridChild.getChildren();
+        if (this.#gridChild) {
+            yield* this.#gridChild.getChildren();
+        } else if (this.child) {
+            // Validation can fail after the child is owned but before wrapping.
+            yield this.child;
+        }
 
         yield* this.#headerViews.values();
         yield* this.#fieldTitles;

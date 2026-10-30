@@ -87,7 +87,7 @@ function createHeadlessAnimator() {
  *   addKeyboardListener?: (
  *     type: "keydown" | "keyup",
  *     listener: (event: KeyboardEvent) => void
- *   ) => void,
+ *   ) => () => void,
  *   addBroadcastListener?: (
  *     type: import("../genomeSpy.js").BroadcastEventType,
  *     listener: (message: import("../view/view.js").BroadcastMessage) => void
@@ -129,7 +129,8 @@ export function createHeadlessViewContext(options = {}) {
         getCurrentHover: options.getCurrentHover ?? (() => undefined),
         suspendHoverTracking: options.suspendHoverTracking ?? (() => undefined),
         resumeHoverTracking: options.resumeHoverTracking ?? (() => undefined),
-        addKeyboardListener: options.addKeyboardListener ?? (() => undefined),
+        addKeyboardListener:
+            options.addKeyboardListener ?? (() => () => undefined),
         addBroadcastListener: options.addBroadcastListener ?? (() => undefined),
         removeBroadcastListener:
             options.removeBroadcastListener ?? (() => undefined),

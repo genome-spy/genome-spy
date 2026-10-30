@@ -7,7 +7,7 @@ import { makeParamRuntimeProvider } from "../../flowTestUtils.js";
 class TestSource extends IntervalUrlSource {
     /**
      * @param {"domain" | "window"} debounceMode
-     * @param {{ modules: () => Promise<undefined>, handles: () => Promise<object>, loads: (interval: number[]) => void }} calls
+     * @param {{ modules: () => Promise<undefined>, handles: () => Promise<object>, loads: (interval: number[]) => void, dispose: (handle: object) => Promise<void> }} calls
      * @param {ReturnType<typeof createViewStub>} view
      */
     constructor(debounceMode, calls, view) {
@@ -22,6 +22,7 @@ class TestSource extends IntervalUrlSource {
             singleUrl: true,
             loadModules: calls.modules,
             createHandle: calls.handles,
+            disposeHandle: calls.dispose,
         });
         this.calls = calls;
     }
@@ -41,6 +42,7 @@ function createCalls() {
         modules: vi.fn(async () => undefined),
         handles: vi.fn(async () => ({})),
         loads: vi.fn(),
+        dispose: vi.fn(async (/** @type {object} */ _handle) => {}),
     };
 }
 
@@ -171,6 +173,7 @@ describe("IntervalUrlSource", () => {
 
             source.onDomainChanged([0, 10]);
             source.dispose();
+            expect(vi.getTimerCount()).toBe(0);
             await vi.runAllTimersAsync();
 
             expect(calls.modules).not.toHaveBeenCalled();
@@ -179,4 +182,29 @@ describe("IntervalUrlSource", () => {
             expect(view.loadingStatuses).toEqual([]);
         }
     );
+
+    it("waits for every handle to close even when one close fails", async () => {
+        const calls = createCalls();
+        const source = new TestSource("window", calls, createViewStub());
+        const closing = Promise.withResolvers();
+        const error = new Error("Cannot close first handle");
+        calls.dispose
+            .mockRejectedValueOnce(error)
+            .mockImplementationOnce(() => closing.promise);
+        await source.requestInterval([0, 10]);
+        source.params.url = "other";
+        await source.requestInterval([10, 20]);
+
+        source.dispose();
+        let settled = false;
+        const cleanup = source.whenDisposed().finally(() => {
+            settled = true;
+        });
+        const rejected = expect(cleanup).rejects.toBe(error);
+        await vi.waitFor(() => expect(calls.dispose).toHaveBeenCalledTimes(2));
+        expect(settled).toBe(false);
+
+        closing.resolve(undefined);
+        await rejected;
+    });
 });

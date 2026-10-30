@@ -15,8 +15,10 @@
  * @param {KeyboardShortcut[]} options.shortcuts
  */
 export function setupAppKeyboardShortcuts({ viewRoot, shortcuts }) {
-    viewRoot.context.addKeyboardListener("keydown", (event) =>
-        handleKeyboardShortcuts(event, shortcuts)
+    viewRoot.registerDisposer(
+        viewRoot.context.addKeyboardListener("keydown", (event) =>
+            handleKeyboardShortcuts(event, shortcuts)
+        )
     );
 }
 

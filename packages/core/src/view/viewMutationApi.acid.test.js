@@ -13,6 +13,62 @@ import {
     waitUntil,
 } from "./viewMutationAcidTestUtils.js";
 import AxisView from "./axisView.js";
+import { createViewMutationApi } from "./viewMutationApi.js";
+
+test("host lifecycle wraps transaction layout suppression and every nested mutation", async () => {
+    const { view, context } = await createViewMutationAcidHarness({
+        vconcat: [],
+    });
+    const requestLayout = context.requestLayoutReflow;
+    /** @type {boolean[]} */
+    const layoutEnabled = [];
+    let removals = 0;
+    const api = createViewMutationApi(
+        { viewRoot: view },
+        () => true,
+        async (operation, removalRoot) => {
+            layoutEnabled.push(context.requestLayoutReflow === requestLayout);
+            if (removalRoot) {
+                expect(removalRoot).toBe(getRequiredView(view, "cohort"));
+                removals++;
+            }
+            try {
+                return await operation();
+            } finally {
+                layoutEnabled.push(
+                    context.requestLayoutReflow === requestLayout
+                );
+            }
+        }
+    );
+
+    await api.transaction(async (views) => {
+        const child = await views.insert(
+            views.root(),
+            makeTrackSpec("cohort", "Cohort")
+        );
+        await views.move(child, { index: 0 });
+        await views.remove(child);
+    });
+    // Only the outer boundary runs outside transaction layout suppression.
+    expect(layoutEnabled).toEqual([
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+    ]);
+    expect(removals).toBe(1);
+    layoutEnabled.length = 0;
+    await expect(
+        api.insert(api.root(), makeTrackSpec("bad", "Bad"), { index: -1 })
+    ).rejects.toThrow();
+    expect(layoutEnabled).toEqual([]);
+    view.disposeSubtree();
+});
 
 // These acid scenarios intentionally drive mutations through the public
 // ViewMutationApi. The assertions inspect normalized internal state because

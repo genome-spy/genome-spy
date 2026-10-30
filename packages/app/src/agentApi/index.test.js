@@ -183,6 +183,7 @@ describe("createAgentApi", () => {
         };
 
         app = {
+            runCohortOperation: vi.fn((operation) => operation()),
             rootSpec: {
                 genomes: {
                     hg38: {},
@@ -213,6 +214,35 @@ describe("createAgentApi", () => {
                 dispatch: vi.fn(),
             },
         };
+    });
+
+    it("rejects sample actions without a cohort while preserving independent parameter actions", async () => {
+        app.getSampleView.mockReturnValue(undefined);
+        const api = createAgentApi(app);
+
+        await expect(
+            api.submitIntentActions([{ type: "sampleView/filter" }])
+        ).rejects.toThrow("require an active SampleView");
+        expect(app.intentPipeline.submit).not.toHaveBeenCalled();
+
+        const actions = [{ type: "paramProvenance/paramChange" }];
+        await api.submitIntentActions(actions);
+        expect(app.intentPipeline.submit).toHaveBeenCalledWith(
+            actions,
+            undefined
+        );
+        expect(app.runCohortOperation).toHaveBeenCalledTimes(2);
+    });
+
+    it("gates external intent submissions before entering the pipeline", async () => {
+        app.runCohortOperation.mockImplementation(() => {
+            throw new Error("The cohort is changing.");
+        });
+
+        await expect(
+            createAgentApi(app).submitIntentActions([])
+        ).rejects.toThrow("cohort is changing");
+        expect(app.intentPipeline.submit).not.toHaveBeenCalled();
     });
 
     it("exposes the bound sample and provenance handles", async () => {
@@ -298,6 +328,7 @@ describe("createAgentApi", () => {
         const first = await agentApi.getMetadataSourceSummaries();
         const second = await agentApi.getMetadataSourceSummaries();
 
+        expect(app.runCohortOperation).toHaveBeenCalledTimes(2);
         expect(first).toBe(second);
         expect(first).toEqual([
             {

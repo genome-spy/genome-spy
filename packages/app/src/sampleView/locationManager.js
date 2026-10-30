@@ -8,7 +8,9 @@ import clamp from "@genome-spy/core/utils/clamp.js";
 import { mapToPixelCoords } from "@genome-spy/core/view/layout/flexLayout.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import smoothstep from "@genome-spy/core/utils/smoothstep.js";
-import transition from "@genome-spy/core/utils/transition.js";
+import transition, {
+    createCancelToken,
+} from "@genome-spy/core/utils/transition.js";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import { getFlattenedGroupHierarchy } from "./state/sampleSlice.js";
 
@@ -29,6 +31,11 @@ export class LocationManager {
      * 0: Bird's eye view, 1: Closeup view, (0, 1): Transitioning between the two
      */
     #peekState = 0;
+
+    #peekCancelToken = createCancelToken();
+
+    /** @type {((timestamp: number) => void) | undefined} */
+    #peekFrame;
 
     #scrollOffset = 0;
 
@@ -96,6 +103,18 @@ export class LocationManager {
      */
     constructor(locationContext) {
         this.#locationContext = locationContext;
+    }
+
+    dispose() {
+        this.#peekCancelToken.canceled = true;
+        if (this.#peekFrame) {
+            this.#locationContext.viewContext.animator.cancelTransition(
+                this.#peekFrame
+            );
+            // Settle the canceled transition without waiting for another frame.
+            this.#peekFrame(performance.now());
+        }
+        this.#placementSource.dispose();
     }
 
     isCloseup() {
@@ -210,6 +229,10 @@ export class LocationManager {
      * @returns {Promise<void>}
      */
     togglePeek(open, mouseY, sampleId) {
+        if (this.#peekCancelToken.canceled) {
+            return Promise.resolve();
+        }
+
         if (this.#peekState > 0 && this.#peekState < 1) {
             // Transition is going on
             return Promise.resolve();
@@ -228,8 +251,14 @@ export class LocationManager {
 
         /** @type {import("@genome-spy/core/utils/transition.js").TransitionOptions} */
         const props = {
-            requestAnimationFrame: (callback) =>
-                viewContext.animator.requestTransition(callback),
+            requestAnimationFrame: (callback) => {
+                this.#peekFrame = (timestamp) => {
+                    this.#peekFrame = undefined;
+                    callback(timestamp);
+                };
+                viewContext.animator.requestTransition(this.#peekFrame);
+            },
+            cancelToken: this.#peekCancelToken,
             onUpdate: (value) => {
                 this.#peekState = Math.pow(value, 2);
                 this.#ensureDynamicLocations();

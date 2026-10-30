@@ -1,4 +1,8 @@
-import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import {
+    combineReducers,
+    configureStore,
+    createAction,
+} from "@reduxjs/toolkit";
 import { ActionCreators } from "redux-undo";
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
@@ -10,6 +14,16 @@ import {
     getParamChangeGroupKey,
     paramProvenanceSlice,
 } from "./paramProvenanceSlice.js";
+import { BASELINE_ACTION_SUFFIX } from "./provenanceBaseline.js";
+
+/** Resets cohort-owned state at a non-undoable lifecycle boundary. */
+export const resetCohort = createAction(
+    "app/resetCohort",
+    (
+        /** @type {Record<string, import("./paramProvenanceTypes.js").ParamProvenanceEntry>} */
+        survivingParamEntries = {}
+    ) => ({ payload: survivingParamEntries })
+);
 
 /**
  * Setup the Redux store for the application.
@@ -41,6 +55,33 @@ export default function setupStore() {
      */
     const rootReducer = (state, action) => {
         const nextState = combinedReducer(state, action);
+
+        if (resetCohort.match(action)) {
+            const initialProvenance = provenanceReducer(undefined, {
+                type: "@@INIT",
+            });
+            return {
+                ...nextState,
+                intentStatus: intentStatusSlice.reducer(undefined, action),
+                provenance: provenanceReducer(
+                    {
+                        ...initialProvenance,
+                        present: {
+                            ...initialProvenance.present,
+                            paramProvenance: { entries: action.payload },
+                        },
+                    },
+                    {
+                        type:
+                            paramProvenanceSlice.name + BASELINE_ACTION_SUFFIX,
+                        provenanceId:
+                            /** @type {import("./provenance.js").ProvenanceAction} */ (
+                                action
+                            ).provenanceId,
+                    }
+                ),
+            };
+        }
 
         if (action.type === intentStatusSlice.actions.setError.type) {
             const rollbackIndex =

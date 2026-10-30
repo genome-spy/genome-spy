@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import {
     getTopLevelSpecView,
     ViewFactory,
@@ -7,6 +7,143 @@ import {
 import { createTestViewContext } from "./testUtils.js";
 import UnitView from "./unitView.js";
 import ConcatView from "./concatView.js";
+import ContainerView from "./containerView.js";
+
+test("failed construction releases adopted and late siblings before rejecting", async () => {
+    const context = createTestViewContext();
+    const host = /** @type {ConcatView} */ (
+        await context.createOrImportView(
+            { vconcat: [{ name: "survivor", mark: "point" }] },
+            null,
+            null,
+            "host"
+        )
+    );
+    const survivor = host.children[0];
+    const error = new Error("Child initialization failed");
+    const lateStarted = Promise.withResolvers();
+    const releaseLate = Promise.withResolvers();
+    /** @type {Set<import("./view.js").default>} */
+    const liveResources = new Set();
+    const createView = ViewFactory.prototype.createView;
+    const factorySpy = vi
+        .spyOn(ViewFactory.prototype, "createView")
+        .mockImplementation(function (...args) {
+            const view = createView.apply(this, args);
+            liveResources.add(view);
+            view.registerDisposer(() => liveResources.delete(view));
+
+            if (view instanceof ContainerView) {
+                const initialize = view.initializeChildren.bind(view);
+                view.initializeChildren = async () => {
+                    if (view.name === "late") {
+                        lateStarted.resolve();
+                        await releaseLate.promise;
+                    }
+                    await initialize();
+                    if (view.name === "failure") {
+                        throw error;
+                    }
+                };
+            }
+
+            return view;
+        });
+
+    try {
+        // Both concat and layer construct children in parallel. The failing
+        // child already owns descendants while its sibling is still pending.
+        const result = host
+            .addChildSpec({
+                name: "candidate",
+                vconcat: [
+                    { name: "early", mark: "point" },
+                    {
+                        layer: [
+                            {
+                                name: "failure",
+                                layer: [{ mark: "point" }],
+                            },
+                            {
+                                name: "late",
+                                layer: [{ mark: "point" }],
+                            },
+                        ],
+                    },
+                ],
+            })
+            .catch((failure) => failure);
+
+        await lateStarted.promise;
+        expect(liveResources.size).toBeGreaterThan(0);
+        releaseLate.resolve();
+
+        expect(await result).toBe(error);
+        expect(liveResources.size).toBe(0);
+        expect(host.children).toEqual([survivor]);
+        expect(host.spec).toMatchObject({ vconcat: [survivor.spec] });
+    } finally {
+        releaseLate.resolve();
+        factorySpy.mockRestore();
+        host.disposeSubtree();
+    }
+});
+
+test("failed UnitView construction releases its parameter scope and subscriptions", async () => {
+    const context = createTestViewContext();
+    const host = /** @type {ConcatView} */ (
+        await context.createOrImportView(
+            {
+                params: [{ name: "foo", value: 1 }],
+                vconcat: [],
+                resolve: {
+                    scale: { x: "independent" },
+                    axis: { x: "shared" },
+                },
+            },
+            null,
+            null,
+            "host"
+        )
+    );
+    /** @type {import("../paramRuntime/viewParamRuntime.js").default | undefined} */
+    let candidateRuntime;
+    const observeDerived = vi.fn();
+    const resolve = UnitView.prototype.resolve;
+    const resolveSpy = vi
+        .spyOn(UnitView.prototype, "resolve")
+        .mockImplementation(function (type) {
+            if (this.name === "bad" && !candidateRuntime) {
+                candidateRuntime = this.paramRuntime;
+                // Materialize a real dependency before the constructor fails.
+                expect(candidateRuntime.getValue("derived")).toBe(2);
+                candidateRuntime.subscribe("derived", observeDerived);
+            }
+            return resolve.call(this, type);
+        });
+
+    try {
+        await expect(
+            host.addChildSpec({
+                name: "bad",
+                params: [{ name: "derived", expr: "foo + 1" }],
+                data: { values: [{ x: 1 }] },
+                mark: "point",
+                encoding: { x: { field: "x", type: "quantitative" } },
+            })
+        ).rejects.toThrow("Shared axes must have a shared scale");
+
+        expect(candidateRuntime.getDebugState().disposed).toBe(true);
+        host.paramRuntime.setValue("foo", 2);
+        await host.paramRuntime.whenPropagated();
+
+        expect(observeDerived).not.toHaveBeenCalled();
+        expect(host.children).toEqual([]);
+    } finally {
+        resolveSpy.mockRestore();
+        host.disposeSubtree();
+    }
+});
 
 test("isViewSpec", () => {
     const factory = new ViewFactory();

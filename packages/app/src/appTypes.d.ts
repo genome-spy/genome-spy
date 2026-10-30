@@ -1,5 +1,4 @@
 import { BookmarkEntry } from "./bookmark/databaseSchema.js";
-import { EmbedResult } from "@genome-spy/core/types/embedApi.js";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
 export type UrlHash = Partial<BookmarkEntry>;
@@ -70,11 +69,7 @@ export interface AppUiRegistry extends AppUiHost, EventTarget {
     registerSidePanel(panel: SidePanelSpec): SidePanelHandle;
 }
 
-export type AppEmbedFunction = (
-    el: HTMLElement | string,
-    spec: import("./spec/appSpec.js").AppRootSpec | string,
-    options?: AppEmbedOptions
-) => EmbedResult;
+export type AppEmbedFunction = import("./embedTypes.js").AppEmbedFunction;
 
 export interface DependencyQueryDetails {
     /** Name of the queried dependency */

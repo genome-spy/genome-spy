@@ -29,6 +29,7 @@ const { AppMock } = vi.hoisted(() => ({
             analyzeSvgExport: vi.fn(),
         };
         this.launch = vi.fn(async () => true);
+        this.setPersistenceContext = vi.fn(async () => {});
         this.finalize = vi.fn();
     }),
 }));
@@ -199,6 +200,19 @@ describe("embed", () => {
         await embed(element, {}, { embedMode: "embedded" });
 
         expect(AppMock.mock.instances[0].options.embedMode).toBe("embedded");
+    });
+
+    it("exposes persistence context switching on the public embed result", async () => {
+        const handle = await embed(document.createElement("div"), {});
+        const context = { specId: "dataset-b" };
+
+        await handle.setPersistenceContext(context);
+        await handle.setPersistenceContext(null);
+
+        expect(
+            AppMock.mock.instances[0].setPersistenceContext.mock.calls
+        ).toEqual([[context], [null]]);
+        handle.finalize();
     });
 
     it("forwards SVG export", async () => {

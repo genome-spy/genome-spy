@@ -27,9 +27,19 @@ import GenomeSpy from "./genomeSpyBase.js";
 import { createEmbed } from "./embedFactory.js";
 import { annotateSpecError } from "./utils/specError.js";
 import { renderToLayout } from "./view/testUtils.js";
+import CanvasSizeHelper from "./rendering/canvasSizeHelper.js";
+import { createViewMutationApi } from "./view/viewMutationApi.js";
+import Canvas2DRenderCoordinator from "./rendering/canvas2d/canvas2DRenderCoordinator.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            observe() {}
+            disconnect() {}
+        }
+    );
     vi.stubGlobal(
         "matchMedia",
         vi.fn(() => ({
@@ -101,6 +111,148 @@ test("launches with a rendering backend that has no retained resources", async (
 
     genomeSpy.destroy();
     expect(finalize).toHaveBeenCalledOnce();
+});
+
+test("keeps canvas responsive across fixed and growing views", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    /** @type {TestResizeObserver[]} */
+    const observers = [];
+    class TestResizeObserver {
+        /** @type {Set<Element>} */
+        targets = new Set();
+        /** @param {ResizeObserverCallback} callback */
+        constructor(callback) {
+            this.callback = callback;
+            observers.push(this);
+        }
+        /** @param {Element} target */
+        observe(target) {
+            this.targets.add(target);
+        }
+        disconnect() {
+            this.targets.clear();
+        }
+        notify() {
+            this.callback([], /** @type {any} */ (this));
+        }
+    }
+    vi.stubGlobal("ResizeObserver", TestResizeObserver);
+    let availableHeight = 600;
+    mocks.createRenderingBackend.mockImplementation((options) => {
+        const backend = createMockBackend(options);
+        const { canvas } = backend.surface;
+        // jsdom has no flex layout. Model only the wrapper's assigned box;
+        // actual root sizing, cache invalidation and view layout remain real.
+        Object.assign(options.container.style, {
+            padding: "0",
+            border: "0px solid",
+        });
+        options.container.getBoundingClientRect = () =>
+            new DOMRect(
+                0,
+                0,
+                200,
+                options.container.style.flexGrow === "1" ? availableHeight : 100
+            );
+        const size = new CanvasSizeHelper(
+            options.container,
+            canvas,
+            options.sizeSource
+        );
+        let applied = { width: 0, height: 0 };
+        backend.surface = {
+            canvas,
+            invalidateSize() {
+                size.invalidate();
+                const next = size.getLogicalCanvasSize();
+                const changed =
+                    next.width !== applied.width ||
+                    next.height !== applied.height;
+                applied = next;
+                return changed;
+            },
+            getLogicalCanvasSize: () => size.getLogicalCanvasSize(),
+            getDevicePixelRatio: () => size.getDevicePixelRatio(),
+            finalize: () => size.finalize(),
+        };
+        backend.createRenderCoordinator = (layoutOptions) => {
+            const layout = new Canvas2DRenderCoordinator({
+                ...layoutOptions,
+                context: /** @type {CanvasRenderingContext2D} */ ({}),
+                surface: /** @type {any} */ (backend.surface),
+                textMetrics: backend.textMetrics,
+            });
+            return {
+                computeLayout: () => layout.computeLayout(),
+                renderAll() {},
+            };
+        };
+        return backend;
+    });
+    const genomeSpy = new GenomeSpy(
+        container,
+        {
+            vconcat: [
+                {
+                    name: "fixed",
+                    width: 200,
+                    height: 60,
+                    data: { values: [{}] },
+                    mark: "point",
+                },
+            ],
+        },
+        { renderer: "canvas" }
+    );
+    onTestFinished(() => {
+        genomeSpy.destroy();
+        container.remove();
+    });
+    expect(await genomeSpy.launch()).toBe(true);
+    const wrapper = /** @type {HTMLElement} */ (
+        container.querySelector(".canvas-wrapper")
+    );
+    const fixedSize = genomeSpy.getLogicalCanvasSize();
+    expect(wrapper.style.flexGrow).toBe("0");
+    expect(fixedSize.height).toBeLessThan(availableHeight);
+    const observer = observers.find((candidate) =>
+        candidate.targets.has(container)
+    );
+    expect(observer).toBeDefined();
+    const computeLayout = vi.spyOn(genomeSpy, "computeLayout");
+    observer.notify();
+    expect(computeLayout).not.toHaveBeenCalled();
+
+    const views = createViewMutationApi(genomeSpy);
+    const growing = await views.insert(views.root(), {
+        name: "growing",
+        width: 200,
+        height: { grow: 1 },
+        data: { values: [{}] },
+        mark: "point",
+    });
+    genomeSpy.renderAll();
+    expect(wrapper.style.flexGrow).toBe("1");
+    expect(genomeSpy.getLogicalCanvasSize().height).toBe(availableHeight);
+    expect(views.getLayoutBounds(growing).height).toBeGreaterThan(100);
+
+    availableHeight = 500;
+    observer.notify();
+    expect(genomeSpy.getLogicalCanvasSize().height).toBe(availableHeight);
+
+    await views.remove(growing);
+    genomeSpy.renderAll();
+    expect(wrapper.style.flexGrow).toBe("0");
+    expect(genomeSpy.getLogicalCanvasSize()).toEqual(fixedSize);
+    computeLayout.mockClear();
+    availableHeight = 400;
+    observer.notify();
+    expect(computeLayout).not.toHaveBeenCalled();
+    expect(genomeSpy.getLogicalCanvasSize()).toEqual(fixedSize);
+
+    genomeSpy.destroy();
+    expect(observer.targets.has(container)).toBe(false);
 });
 
 test("forwards a font catalog to the selected rendering backend", async () => {

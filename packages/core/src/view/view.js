@@ -1220,6 +1220,11 @@ export default class View {
         this.paramRuntime.dispose();
         this.namedDataScope.dispose();
 
+        for (const output of this.flowOutputs) {
+            output.producerView = undefined;
+        }
+        this.flowOutputs.clear();
+
         this.flowHandle = undefined;
         this.context.dataFlow.loadingStatusRegistry.delete(this);
     }
@@ -1245,9 +1250,13 @@ export default class View {
         }
     }
 
-    /** Dispose owned scales before releasing views in post-order. */
-    disposeSubtree() {
-        this.assertCanDisposeSubtree();
+    /**
+     * Dispose owned scales before releasing views in post-order. Only failed
+     * construction may skip the live output-dependency removal check.
+     * @param {{checkDependencies?: boolean}} [options]
+     */
+    disposeSubtree({ checkDependencies = true } = {}) {
+        if (checkDependencies) this.assertCanDisposeSubtree();
         /** @type {Visitor} */
         const visitor = (view) => {
             // Member removal must not reconfigure scales that are being torn down.

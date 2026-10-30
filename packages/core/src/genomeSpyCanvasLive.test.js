@@ -28,6 +28,13 @@ beforeEach(() => {
     contextTypes = [];
     animationFrames = [];
     vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            observe() {}
+            disconnect() {}
+        }
+    );
+    vi.stubGlobal(
         "matchMedia",
         vi.fn(() => ({
             addEventListener: /** @returns {void} */ () => undefined,

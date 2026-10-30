@@ -189,9 +189,11 @@ class UploadMetadataDialog extends BaseDialog {
                 ${icon(caveats ? faExclamationCircle : faInfoCircle).node[0]}
                 <div>
                     <p>
-                        ${caveats
-                            ? "Metadata loaded (with caveats)!"
-                            : "Metadata loaded successfully!"}
+                        ${
+                            caveats
+                                ? "Metadata loaded (with caveats)!"
+                                : "Metadata loaded successfully!"
+                        }
                     </p>
                     <ul>
                         <li>
@@ -290,6 +292,9 @@ const INTRO_TEXT = html`<p>
  * @param {import("../sampleView.js").default} sampleView
  */
 export function showUploadMetadataDialog(sampleView) {
+    if (sampleView.disposed) {
+        return Promise.resolve(false);
+    }
     return showDialogAndMap(
         "gs-upload-metadata-dialog",
         (/** @type {UploadMetadataDialog} */ el) => {
@@ -299,7 +304,7 @@ export function showUploadMetadataDialog(sampleView) {
             el.resetWizard();
         },
         (result) => {
-            if (!result.ok) {
+            if (!result.ok || sampleView.disposed) {
                 return false;
             }
 
@@ -307,11 +312,12 @@ export function showUploadMetadataDialog(sampleView) {
                 /** @type {import("../state/payloadTypes.js").SetMetadata} */ (
                     result.data
                 );
-            sampleView.intentExecutor.dispatch(
-                sampleView.actions.addMetadata(uploadResult)
-            );
-
-            return true;
+            return sampleView.runCohortOperation(() => {
+                sampleView.intentExecutor.dispatch(
+                    sampleView.actions.addMetadata(uploadResult)
+                );
+                return true;
+            });
         }
     );
 }

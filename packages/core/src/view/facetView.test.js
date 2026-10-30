@@ -3,6 +3,7 @@ import {
     create,
     createAndInitialize,
     createBroadcastingTestViewContext,
+    createTestViewContext,
     renderToLayout,
 } from "./testUtils.js";
 import FacetView from "./facetView.js";
@@ -121,6 +122,35 @@ test.each(
     ])
 )("rejects invalid facet configuration %j", async (overrides, error) => {
     await expect(create(spec(overrides), FacetView)).rejects.toThrow(error);
+});
+
+test("failed facet construction releases parent parameter subscriptions", async () => {
+    const context = createTestViewContext();
+    const host = /** @type {ConcatView} */ (
+        await context.createOrImportView(
+            { params: [{ name: "groups", value: "invalid" }], vconcat: [] },
+            null,
+            null,
+            "host"
+        )
+    );
+    const reflow = vi.spyOn(context, "requestLayoutReflow");
+
+    try {
+        await expect(
+            host.addChildSpec(
+                spec({ facet: { field: "g", domain: { expr: "groups" } } })
+            )
+        ).rejects.toThrow(/Facet domain must/);
+
+        reflow.mockClear();
+        host.paramRuntime.setValue("groups", ["A"]);
+        await host.paramRuntime.whenPropagated();
+        expect(reflow).not.toHaveBeenCalled();
+    } finally {
+        reflow.mockRestore();
+        host.disposeSubtree();
+    }
 });
 
 test.each([

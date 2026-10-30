@@ -31,6 +31,7 @@ export class MetadataSourceMenuController {
         try {
             importableSources = await this.#getImportableSources(sampleView);
         } catch (error) {
+            if (sampleView.disposed) return undefined;
             showMessageDialog(
                 "Could not load metadata sources: " + String(error),
                 {
@@ -41,7 +42,7 @@ export class MetadataSourceMenuController {
             return undefined;
         }
 
-        if (importableSources.length === 0) {
+        if (sampleView.disposed || importableSources.length === 0) {
             return undefined;
         }
 

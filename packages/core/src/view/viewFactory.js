@@ -312,26 +312,31 @@ export class ViewFactory {
             options
         );
 
-        if (importScopeName !== undefined) {
-            registerImportInstance(view, importScopeName);
+        try {
+            if (importScopeName !== undefined) {
+                registerImportInstance(view, importScopeName);
+            }
+
+            if (isImplicitRoot) {
+                markViewAsNonAddressable(view);
+            }
+
+            if (view instanceof ContainerView) {
+                await view.initializeChildren();
+            }
+
+            if (isImplicitRoot) {
+                const implicitRoot = /** @type {ConcatView} */ (view);
+                topLevelSpecViews.set(view, implicitRoot.children[0]);
+            }
+
+            view.registerSizeInvalidation();
+
+            return view;
+        } catch (error) {
+            view.disposeSubtree({ checkDependencies: false });
+            throw error;
         }
-
-        if (isImplicitRoot) {
-            markViewAsNonAddressable(view);
-        }
-
-        if (view instanceof ContainerView) {
-            await view.initializeChildren();
-        }
-
-        if (isImplicitRoot) {
-            const implicitRoot = /** @type {ConcatView} */ (view);
-            topLevelSpecViews.set(view, implicitRoot.children[0]);
-        }
-
-        view.registerSizeInvalidation();
-
-        return view;
     }
 }
 

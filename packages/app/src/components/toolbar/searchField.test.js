@@ -113,6 +113,10 @@ it("cancels pending domain updates when disconnected before embed finalization",
 
         // Leave a second domain update pending while the host tears down.
         await scale.zoomTo([20, 30]);
+        input.focus();
+        await field.updateComplete;
+        // Native removal can blur the input and queue a render before disposal.
+        input.blur();
         field.remove();
         finalize();
         vi.advanceTimersByTime(60);

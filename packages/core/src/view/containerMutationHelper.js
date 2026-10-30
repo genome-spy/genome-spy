@@ -14,6 +14,7 @@ import { isChromeView } from "./viewSelectors.js";
 import { isImportSpec } from "./viewSpecGuards.js";
 import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
 import { finalizeOutputDeclarations } from "./transformOutputDeclarations.js";
+import IntervalUrlSource from "../data/sources/lazy/intervalUrlSource.js";
 
 /**
  * Shared helper for dynamic container mutations.
@@ -118,7 +119,9 @@ export default class ContainerMutationHelper {
                 await this.#rollbackInsertedChild(insertIndex, error);
             } else {
                 if (specInserted) specs.splice(insertIndex, 1);
+                const sources = this.container.context.dataFlow.dataSources;
                 childView.disposeSubtree();
+                await awaitDisposedSources(sources);
             }
 
             throw error;
@@ -152,22 +155,28 @@ export default class ContainerMutationHelper {
         const child = this.container.children[index];
         if (!child) throw new Error("Child index out of range!");
         child.assertCanDisposeSubtree();
-        clearViewLevelScaleProps(this.container);
-        clearViewLevelGuideProps(this.container);
-        this.options.removeView(index);
-        this.options.specs.splice(index, 1);
-        attachViewLevelScaleProps(this.container);
-        attachViewLevelAxisProps(this.container);
-        attachViewLevelLegendProps(this.container);
+        const sources = this.container.context.dataFlow.dataSources;
 
-        // Removed children may change shared guide ownership and visibility.
-        const guideRoots = await this.options.syncMutationGuideViews?.();
+        try {
+            clearViewLevelScaleProps(this.container);
+            clearViewLevelGuideProps(this.container);
+            this.options.removeView(index);
+            this.options.specs.splice(index, 1);
+            attachViewLevelScaleProps(this.container);
+            attachViewLevelAxisProps(this.container);
+            attachViewLevelLegendProps(this.container);
 
-        await this.initializeUninitializedChromeViews(guideRoots);
+            // Removed children may change shared guide ownership and visibility.
+            const guideRoots = await this.options.syncMutationGuideViews?.();
 
-        if (options.requestLayout !== false) {
-            this.container.invalidateSizeCache();
-            this.container.context.requestLayoutReflow();
+            await this.initializeUninitializedChromeViews(guideRoots);
+
+            if (options.requestLayout !== false) {
+                this.container.invalidateSizeCache();
+                this.container.context.requestLayoutReflow();
+            }
+        } finally {
+            await awaitDisposedSources(sources);
         }
     }
 
@@ -198,6 +207,27 @@ export default class ContainerMutationHelper {
             viewsToInitialize
         );
     }
+}
+
+/**
+ * Await only readers actually pruned by this mutation; shared sources survive.
+ * @param {import("../data/sources/dataSource.js").default[]} sources
+ */
+async function awaitDisposedSources(sources) {
+    const results = await Promise.allSettled(
+        sources
+            .filter(
+                (source) =>
+                    source.disposed && source instanceof IntervalUrlSource
+            )
+            .map((source) =>
+                /** @type {IntervalUrlSource<any, any>} */ (
+                    source
+                ).whenDisposed()
+            )
+    );
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure?.status === "rejected") throw failure.reason;
 }
 
 /**

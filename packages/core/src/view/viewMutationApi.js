@@ -220,6 +220,7 @@ function updateNamedDataBinding(view, binding, data) {
  *   requestedLayoutReflow: boolean,
  *   restoreLayoutReflow: () => void
  * }} TransactionState
+ * @typedef {<T>(operation: () => Promise<T>, removalRoot?: import("./view.js").default) => Promise<T>} RunViewMutation
  */
 
 /**
@@ -227,9 +228,14 @@ function updateNamedDataBinding(view, binding, data) {
  *
  * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi>} genomeSpy
  * @param {() => boolean} [isActive]
+ * @param {RunViewMutation} [runMutation] Internal host lifecycle boundary; receives the subtree root for removals and runs inside the mutation queue.
  * @returns {import("../types/embedApi.js").ViewApi}
  */
-export function createViewMutationApi(genomeSpy, isActive = () => true) {
+export function createViewMutationApi(
+    genomeSpy,
+    isActive = () => true,
+    runMutation = (operation) => operation()
+) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
      * @typedef {import("../types/embedApi.js").ViewHandle} ViewHandle
@@ -784,18 +790,19 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 ensureScopeNameIsAvailable(parentView, scopeName);
             }
 
-            const childSpec = structuredClone(spec);
-            const childView = await addChildToMutableContainer(
-                parentView,
-                childSpec,
-                index
-            );
+            return runMutation(async () => {
+                const childView = await addChildToMutableContainer(
+                    parentView,
+                    structuredClone(spec),
+                    index
+                );
 
-            if (options.scope !== undefined) {
-                registerViewScope(childView, options.scope);
-            }
+                if (options.scope !== undefined) {
+                    registerViewScope(childView, options.scope);
+                }
 
-            return getHandle(childView);
+                return getHandle(childView);
+            });
         });
     }
 
@@ -985,7 +992,12 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 );
             }
 
-            await removeChildFromMutableContainer(parentView, index);
+            getMutableContainerChildCount(parentView);
+            targetView.assertCanDisposeSubtree();
+            await runMutation(
+                () => removeChildFromMutableContainer(parentView, index),
+                targetView
+            );
         });
     }
 
@@ -1046,9 +1058,15 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
             }
 
             const index = getMoveIndex(options.index, children.length - 1);
-            await moveChildWithinMutableContainer(parentView, fromIndex, index);
-
-            return getHandle(targetView);
+            getMutableContainerChildCount(parentView);
+            return runMutation(async () => {
+                await moveChildWithinMutableContainer(
+                    parentView,
+                    fromIndex,
+                    index
+                );
+                return getHandle(targetView);
+            });
         });
     }
 
@@ -1118,7 +1136,9 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
         transaction: (callback) =>
             activeTransaction
                 ? runTransaction(callback)
-                : enqueueTopLevelOperation(() => runTransaction(callback)),
+                : enqueueTopLevelOperation(() =>
+                      runMutation(() => runTransaction(callback))
+                  ),
     };
 
     registerViewRuntime(api, {

@@ -13,8 +13,8 @@ mistakes before the specification reaches the browser.
 
 ## Entry points
 
-When embedding GenomeSpy into a web application, you can choose between two
-entry points for importing the `embed` function.
+Core offers two `embed` entry points. For the App, see
+[Visualizing Sample Collections](../sample-collections/visualizing.md).
 
 ### Default
 

@@ -357,8 +357,16 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this.dialogTitle = html`Import metadata from
             <em>${sourceLabel}</em> source`;
         this.groupPath = this.source.groupPath ?? "";
-        void this.#refreshSourceContext();
-        void this.#updatePreview();
+        try {
+            await this.sampleView.runCohortOperation(() =>
+                Promise.all([
+                    this.#refreshSourceContext(),
+                    this.#updatePreview(),
+                ])
+            );
+        } catch (error) {
+            this._error = String(error);
+        }
     }
 
     #getAdapter() {
@@ -391,10 +399,16 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     /**
      * @param {string[]} columnIds
      */
-    #setColumnSelection(columnIds) {
+    async #setColumnSelection(columnIds) {
         const normalized = parseColumnQueries(columnIds.join("\n"));
         this.columnInput = normalized.join("\n");
-        void this.#updatePreview();
+        try {
+            await this.sampleView.runCohortOperation(() =>
+                this.#updatePreview()
+            );
+        } catch (error) {
+            this._error = String(error);
+        }
     }
 
     #revalidateColumnsAfterPreview() {
@@ -473,7 +487,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const version = ++this._sourceContextVersion;
         const adapterPromise = this.#getAdapter();
 
-        void adapterPromise
+        const columnsPromise = adapterPromise
             .then((adapter) => adapter.listColumns())
             .then((columns) => {
                 if (version !== this._sourceContextVersion) {
@@ -490,7 +504,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 this._columnSearchIndex.replace([]);
             });
 
-        void adapterPromise
+        const sampleIdsPromise = adapterPromise
             .then((adapter) => adapter.listSampleIds())
             .then((sourceSampleIds) => {
                 if (version !== this._sourceContextVersion) {
@@ -511,6 +525,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 };
                 this._showAlignmentDetails = false;
             });
+
+        return Promise.all([columnsPromise, sampleIdsPromise]);
     }
 
     /**
@@ -599,40 +615,38 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             );
         }
 
-        this._columnValidationEnabled = true;
-        await this.#updatePreview();
-        if (this._form.validateAll()) {
-            return true;
-        }
-
-        if (!this.#canImport()) {
-            return true;
-        }
-
-        if (!this.source) {
-            return true;
-        }
-
-        this._loading = true;
-        this._error = "";
-
         try {
-            /** @type {import("../state/payloadTypes.js").AddMetadataFromSource} */
-            const actionPayload = {
-                columnIds: this._preview.readiness.resolved.columnIds,
-            };
-            if (this.source.id) {
-                actionPayload.sourceId = this.source.id;
-            }
-            // Always send the explicit dialog value so clearing the field
-            // overrides any source-level default group path.
-            actionPayload.groupPath = this.groupPath.trim();
+            return await this.sampleView.runCohortOperation(async () => {
+                this._columnValidationEnabled = true;
+                await this.#updatePreview();
+                if (
+                    this._form.validateAll() ||
+                    !this.#canImport() ||
+                    !this.source
+                ) {
+                    return true;
+                }
 
-            await this.intentPipeline.submit(
-                this.sampleView.actions.addMetadataFromSource(actionPayload)
-            );
-            this.finish({ ok: true });
-            return false;
+                this._loading = true;
+                this._error = "";
+
+                /** @type {import("../state/payloadTypes.js").AddMetadataFromSource} */
+                const actionPayload = {
+                    columnIds: this._preview.readiness.resolved.columnIds,
+                };
+                if (this.source.id) {
+                    actionPayload.sourceId = this.source.id;
+                }
+                // Always send the explicit dialog value so clearing the field
+                // overrides any source-level default group path.
+                actionPayload.groupPath = this.groupPath.trim();
+
+                await this.intentPipeline.submit(
+                    this.sampleView.actions.addMetadataFromSource(actionPayload)
+                );
+                this.finish({ ok: true });
+                return false;
+            });
         } catch (error) {
             this._error = String(error);
             this._loading = false;
@@ -745,6 +759,9 @@ export function showImportMetadataFromSourceDialog(
     intentPipeline,
     source
 ) {
+    if (sampleView.disposed) {
+        return Promise.resolve({ ok: false });
+    }
     if (!source) {
         throw new Error("Import metadata dialog requires a metadata source.");
     }

@@ -81,25 +81,28 @@ export async function embed(el, spec, options = {}) {
         ]);
     }
 
-    return createEmbedResult({
-        genomeSpy,
-        isActive,
-        debug: app.debug,
-        views: app.views,
-        finalize() {
-            active = false;
-            const disposers = pluginDisposers;
-            pluginDisposers = [];
+    return {
+        ...createEmbedResult({
+            genomeSpy,
+            isActive,
+            debug: app.debug,
+            views: app.views,
+            finalize() {
+                active = false;
+                const disposers = pluginDisposers;
+                pluginDisposers = [];
 
-            for (let index = disposers.length - 1; index >= 0; index -= 1) {
-                disposers[index]();
-            }
-            app?.finalize();
-            genomeSpy?.destroy();
-            genomeSpy = undefined;
-            element.replaceChildren();
-        },
-    });
+                for (let index = disposers.length - 1; index >= 0; index -= 1) {
+                    disposers[index]();
+                }
+                app?.finalize();
+                genomeSpy?.destroy();
+                genomeSpy = undefined;
+                element.replaceChildren();
+            },
+        }),
+        setPersistenceContext: (context) => app.setPersistenceContext(context),
+    };
 }
 
 /**

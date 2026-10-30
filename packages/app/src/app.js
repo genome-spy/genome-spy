@@ -37,7 +37,15 @@ import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "./sampleView/specGuards.js";
 import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
-import setupStore from "./state/setupStore.js";
+import setupStore, { resetCohort } from "./state/setupStore.js";
+import { sampleSlice } from "./sampleView/state/sampleSlice.js";
+import {
+    resolveParamSelector,
+    resolveViewSelector,
+} from "@genome-spy/core/view/viewSelectors.js";
+import { getViewVisibilityKey } from "./viewSettingsUtils.js";
+import ConcatView from "@genome-spy/core/view/concatView.js";
+import { getDefaultParamValue } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import IntentPipeline from "./state/intentPipeline.js";
 import { setupMetadataSourceRuntime } from "./sampleView/metadata/metadataSourceRuntime.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
@@ -71,7 +79,34 @@ export default class App {
 
     #finalized = false;
 
-    /** @type {import("@genome-spy/core/types/embedApi.js").ViewApi} */
+    /** @type {SampleView | undefined} */
+    #activeSampleView;
+
+    /** @type {SampleView | undefined} */
+    #sampleViewCandidate;
+
+    /** @type {Set<Promise<unknown>>} */
+    #pendingCohortOperations = new Set();
+
+    /** @type {Pick<import("./spec/appSpec.js").AppRootSpec, "specId" | "baseUrl" | "bookmarks">} */
+    #persistenceConfig;
+
+    #updateUrl = debounce(
+        () => {
+            if (
+                !this.#finalized &&
+                !this.store.getState().lifecycle.cohortTransitioning
+            )
+                this._updateStateToUrl();
+        },
+        500,
+        false
+    );
+
+    /** @type {(() => void)[]} */
+    #scaleSubscriptions = [];
+
+    /** @type {import("./embedTypes.js").AppViewApi} */
     views;
 
     /** @type {import("@genome-spy/core/types/search.js").DatumSearch} */
@@ -84,6 +119,7 @@ export default class App {
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
+        this.#persistenceConfig = rootSpec;
 
         this.options = {
             embedMode: /** @type {const} */ ("standalone"),
@@ -174,20 +210,241 @@ export default class App {
                     /** @type {any} */ defaultName
                 ) =>
                     /** @type {any} */ (
-                        new SampleView(
+                        this.#createSampleView(
                             spec,
                             context,
                             layoutParent,
                             dataParent,
-                            defaultName,
-                            this.provenance,
-                            this.intentExecutor,
-                            createPlotBookmarkContext(this)
+                            defaultName
                         )
                     )
             )
         );
         this.#setupViewVisibilityHandling();
+    }
+
+    /**
+     * Track complete external operations; their internal pipeline continuations
+     * remain free to finish while a mutation waits for them.
+     * @template T
+     * @param {() => T} operation
+     * @returns {T}
+     */
+    runCohortOperation(operation) {
+        if (this.#finalized) throw new Error("App has been finalized.");
+        if (this.store.getState().lifecycle.cohortTransitioning)
+            throw new Error(
+                "The cohort is changing. Wait for the view mutation to finish."
+            );
+        const result = operation();
+        const completion = Promise.resolve(result);
+        this.#pendingCohortOperations.add(completion);
+        void completion.then(
+            () => this.#pendingCohortOperations.delete(completion),
+            () => this.#pendingCohortOperations.delete(completion)
+        );
+        return result;
+    }
+
+    /**
+     * @param {import("./spec/sampleView.js").SampleSpec} spec
+     * @param {import("@genome-spy/core/types/viewContext.js").default} context
+     * @param {import("@genome-spy/core/view/containerView.js").default} layoutParent
+     * @param {import("@genome-spy/core/view/view.js").default} dataParent
+     * @param {string} name
+     */
+    #createSampleView(spec, context, layoutParent, dataParent, name) {
+        if (this.#finalized) throw new Error("App has been finalized.");
+        if (this.#activeSampleView || this.#sampleViewCandidate) {
+            throw new Error(
+                "GenomeSpy App supports only one SampleView. Remove the current cohort first."
+            );
+        }
+        const view = new SampleView(
+            spec,
+            context,
+            layoutParent,
+            dataParent,
+            name,
+            this.provenance,
+            this.intentExecutor,
+            createPlotBookmarkContext(this)
+        );
+        this.#sampleViewCandidate = view;
+        view.runCohortOperation = (operation) => {
+            if (view.disposed) throw new Error("SampleView has been disposed.");
+            return this.runCohortOperation(operation);
+        };
+        view.registerDisposer(() => {
+            if (this.#sampleViewCandidate === view)
+                this.#sampleViewCandidate = undefined;
+            if (this.#activeSampleView === view)
+                this.#activeSampleView = undefined;
+        });
+        return view;
+    }
+
+    /**
+     * @template T
+     * @param {() => Promise<T>} operation
+     * @param {import("@genome-spy/core/view/view.js").default} [removalRoot]
+     */
+    async #runViewMutation(operation, removalRoot) {
+        if (this.store.getState().lifecycle.cohortTransitioning)
+            return this.#mutateCohort(operation, removalRoot);
+        if (this.#finalized) throw new Error("App has been finalized.");
+
+        this.store.dispatch(
+            lifecycleSlice.actions.setCohortTransitioning(true)
+        );
+        try {
+            await Promise.allSettled(this.#pendingCohortOperations);
+            await this.getSampleView()?.metadataView?.whenMetadataSettled();
+            if (this.#finalized) throw new Error("App has been finalized.");
+            this.paramProvenanceBridge?.flushPendingChanges();
+            this.paramProvenanceBridge?.dispose();
+            return await this.#mutateCohort(operation, removalRoot);
+        } finally {
+            try {
+                if (!this.#finalized) {
+                    try {
+                        await this.#attachSampleView();
+                    } finally {
+                        this.#bindParamProvenance();
+                        this.#observeScaleDomains();
+                        this.store.dispatch(
+                            lifecycleSlice.actions.hierarchyChanged()
+                        );
+                    }
+                }
+            } finally {
+                if (!this.#finalized)
+                    this.store.dispatch(
+                        lifecycleSlice.actions.setCohortTransitioning(false)
+                    );
+                if (!this.#finalized && !this.isEmbedded())
+                    this._updateStateToUrl();
+            }
+        }
+    }
+
+    /**
+     * @template T
+     * @param {() => Promise<T>} operation
+     * @param {import("@genome-spy/core/view/view.js").default} [removalRoot]
+     */
+    async #mutateCohort(operation, removalRoot) {
+        const sampleView = this.#activeSampleView ?? this.#sampleViewCandidate;
+        const descendants = removalRoot?.getDescendants() ?? [];
+        const removing = sampleView && descendants.includes(sampleView);
+        const subtree = new Set(removing ? descendants : []);
+        const entries =
+            this.store.getState().provenance.present.paramProvenance.entries;
+        /** @type {import("@genome-spy/core/view/viewSelectors.js").ResolvedParam[]} */
+        const clearedOrigins = [];
+        const retainedEntries = Object.fromEntries(
+            Object.entries(entries).filter(([, entry]) => {
+                const owner = resolveParamSelector(
+                    this.genomeSpy.viewRoot,
+                    entry.selector
+                );
+                const origin =
+                    entry.origin ??
+                    ("origin" in entry.value ? entry.value.origin : undefined);
+                const removedOrigin =
+                    origin &&
+                    subtree.has(
+                        resolveViewSelector(
+                            this.genomeSpy.viewRoot,
+                            origin.view
+                        )
+                    );
+                if (owner && !subtree.has(owner.view) && removedOrigin)
+                    clearedOrigins.push(owner);
+                return !subtree.has(owner?.view) && !removedOrigin;
+            })
+        );
+        const removedVisibilityKeys = new Set(
+            Array.from(subtree).flatMap((view) =>
+                [getViewVisibilityKey(view), view.explicitName].filter(Boolean)
+            )
+        );
+        try {
+            return await operation();
+        } finally {
+            if (
+                !this.getSampleView() &&
+                (removing ||
+                    this.store.getState().provenance.present[sampleSlice.name]
+                        .sampleData)
+            ) {
+                for (const { view, param } of clearedOrigins) {
+                    view.paramRuntime.setValue(
+                        param.name,
+                        getDefaultParamValue(param, view.paramRuntime),
+                        { animate: false }
+                    );
+                }
+                this.store.dispatch(resetCohort(retainedEntries));
+                if (removing) await this.#replacePersistenceContext(null);
+                const visibilities = Object.fromEntries(
+                    Object.entries(
+                        this.store.getState().viewSettings.visibilities
+                    ).filter(([key]) => !removedVisibilityKeys.has(key))
+                );
+                this.store.dispatch(
+                    viewSettingsSlice.actions.setViewSettings({ visibilities })
+                );
+            }
+        }
+    }
+
+    async #attachSampleView() {
+        const sampleView = this.getSampleView();
+        if (!sampleView || sampleView === this.#activeSampleView) return;
+        this.#activeSampleView = sampleView;
+        this.#sampleViewCandidate = undefined;
+        try {
+            await sampleView.ensureSampleIdentity();
+        } catch (error) {
+            // Core insertion succeeded, but this App-owned source could not load.
+            // Remove directly inside the existing mutation; enqueuing would deadlock.
+            const parent = sampleView.layoutParent;
+            if (!(parent instanceof ConcatView)) throw error;
+            await parent.removeChildAt(parent.children.indexOf(sampleView));
+            this.store.dispatch(
+                resetCohort(
+                    this.store.getState().provenance.present.paramProvenance
+                        .entries
+                )
+            );
+            throw error;
+        }
+        try {
+            await setupMetadataSourceRuntime(sampleView, this.intentPipeline);
+        } catch (error) {
+            if (this.#finalized) return;
+            console.error(error);
+            showMessageDialog(
+                "Could not load initial metadata sources: " + String(error),
+                {
+                    title: "Metadata source warning",
+                    type: "warning",
+                }
+            );
+        }
+        if (!this.#finalized && !sampleView.disposed) {
+            await sampleView.metadataView?.whenMetadataSettled();
+        }
+    }
+
+    #bindParamProvenance() {
+        this.paramProvenanceBridge?.dispose();
+        this.paramProvenanceBridge = new ParamProvenanceBridge({
+            root: this.genomeSpy.viewRoot,
+            store: this.store,
+            intentExecutor: this.intentExecutor,
+        });
     }
 
     /**
@@ -242,12 +499,12 @@ export default class App {
 
         /**
          * Local bookmarks in the IndexedDB
-         * @type {import("./bookmark/bookmarkDatabase.js").default}
+         * @type {IDBBookmarkDatabase | undefined}
          */
         this.localBookmarkDatabase = this.isEmbedded()
             ? undefined
-            : typeof this.rootSpec.specId == "string"
-              ? new IDBBookmarkDatabase(this.rootSpec.specId)
+            : typeof this.#persistenceConfig.specId == "string"
+              ? new IDBBookmarkDatabase(this.#persistenceConfig.specId)
               : undefined;
 
         /**
@@ -255,6 +512,67 @@ export default class App {
          * @type {import("./bookmark/bookmarkDatabase.js").default}
          */
         this.globalBookmarkDatabase = undefined;
+    }
+
+    /** Base for bookmark-authored assets in the current source context. */
+    get bookmarkBaseUrl() {
+        return this.#persistenceConfig.baseUrl ?? "";
+    }
+
+    /**
+     * Change source persistence independently of hierarchy mutation.
+     * @param {import("./embedTypes.js").AppPersistenceContext | null} context
+     */
+    async setPersistenceContext(context) {
+        const remoteUrl = context?.remoteBookmarks?.url;
+        if (remoteUrl && !context.baseUrl && !URL.canParse(remoteUrl)) {
+            throw new Error(
+                "Relative remote bookmark URLs require a persistence baseUrl."
+            );
+        }
+        await this.views.transaction(async () => {
+            await this.#replacePersistenceContext(context);
+            await this.#ensureRemoteBookmarks(this.#loadRemoteBookmarks());
+        });
+    }
+
+    /** @param {import("./embedTypes.js").AppPersistenceContext | null} context */
+    async #replacePersistenceContext(context) {
+        this.#updateUrl.cancel();
+        await this.localBookmarkDatabase?.close();
+        this.#persistenceConfig = {
+            specId: context?.specId,
+            baseUrl: context?.baseUrl ?? "",
+            bookmarks: context?.remoteBookmarks
+                ? { remote: context.remoteBookmarks }
+                : undefined,
+        };
+        this.#setupBookmarkDatabases();
+    }
+
+    /** @returns {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>} */
+    #loadRemoteBookmarks() {
+        const remote = this.#persistenceConfig.bookmarks?.remote;
+        return this.isEmbedded() || !remote
+            ? Promise.resolve([])
+            : vegaLoader({ baseURL: this.bookmarkBaseUrl })
+                  .load(remote.url)
+                  .then((/** @type {string} */ value) => JSON.parse(value));
+    }
+
+    #observeScaleDomains() {
+        for (const unsubscribe of this.#scaleSubscriptions) unsubscribe();
+        this.#scaleSubscriptions.length = 0;
+        if (this.isEmbedded()) return;
+        for (const resolution of this.genomeSpy
+            .getNamedScaleResolutions()
+            .values()) {
+            if (!resolution.isZoomable()) continue;
+            resolution.addEventListener("domain", this.#updateUrl);
+            this.#scaleSubscriptions.push(() =>
+                resolution.removeEventListener("domain", this.#updateUrl)
+            );
+        }
     }
 
     /**
@@ -284,6 +602,7 @@ export default class App {
         let cachedInput = EMPTY_VISIBILITIES;
         /** @type {import("@genome-spy/core/view/view.js").default | undefined} */
         let cachedRoot;
+        let cachedRevision = -1;
         /** @type {Record<string, boolean>} */
         let cachedResolved = EMPTY_VISIBILITIES;
 
@@ -291,12 +610,18 @@ export default class App {
             const input = visibilitiesSelector(this.store.getState());
             const root = this.genomeSpy.viewRoot;
 
-            if (input === cachedInput && root === cachedRoot) {
+            const revision = this.store.getState().lifecycle.hierarchyRevision;
+            if (
+                input === cachedInput &&
+                root === cachedRoot &&
+                revision === cachedRevision
+            ) {
                 return cachedResolved;
             }
 
             cachedInput = input;
             cachedRoot = root;
+            cachedRevision = revision;
             cachedResolved = root
                 ? resolveRadioVisibilityConflicts(root, input)
                 : input;
@@ -371,6 +696,13 @@ export default class App {
             return;
         }
         this.#finalized = true;
+        this.paramProvenanceBridge?.dispose();
+        this.#updateUrl.cancel();
+        for (const unsubscribe of this.#scaleSubscriptions) unsubscribe();
+        this.#scaleSubscriptions.length = 0;
+        void this.localBookmarkDatabase
+            ?.close()
+            .catch((error) => console.error(error));
 
         for (const disposer of Array.from(this.#disposers).reverse()) {
             disposer();
@@ -392,15 +724,7 @@ export default class App {
          * Initiate async fetching of the remote bookmark entries.
          * @type {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>}
          */
-        const remoteBookmarkPromise = this.isEmbedded()
-            ? Promise.resolve([])
-            : this.rootSpec.bookmarks?.remote
-              ? vegaLoader({ baseURL: this.rootSpec.baseUrl })
-                    .load(this.rootSpec.bookmarks.remote.url)
-                    .then((/** @type {string} */ str) =>
-                        Promise.resolve(JSON.parse(str))
-                    )
-              : Promise.resolve([]);
+        const remoteBookmarkPromise = this.#loadRemoteBookmarks();
 
         // Restore view visibility early so initial data/scale init honors bookmarks.
         // This avoids lazy-init races where in-flight loads miss newly visible branches.
@@ -414,7 +738,8 @@ export default class App {
         }
         this.views = createViewMutationApi(
             this.genomeSpy,
-            () => !this.#finalized
+            () => !this.#finalized,
+            this.#runViewMutation.bind(this)
         );
         this.datumSearch = createDatumSearch(this.views);
         this.#showSelectorConstraintWarnings();
@@ -424,11 +749,7 @@ export default class App {
             throw new Error("No view root after launch");
         }
 
-        this.paramProvenanceBridge = new ParamProvenanceBridge({
-            root: viewRoot,
-            store: this.store,
-            intentExecutor: this.intentExecutor,
-        });
+        this.#bindParamProvenance();
         viewRoot.registerDisposer(() => {
             this.paramProvenanceBridge.dispose();
         });
@@ -462,28 +783,16 @@ export default class App {
         viewRoot.registerDisposer(
             setupSelectionExpansionContextMenu({
                 viewRoot,
-                intentExecutor: this.intentExecutor,
+                intentExecutor: {
+                    dispatch: (action) =>
+                        this.runCohortOperation(() =>
+                            this.intentExecutor.dispatch(action)
+                        ),
+                },
             })
         );
 
-        const sampleView = this.getSampleView();
-        if (sampleView) {
-            try {
-                await setupMetadataSourceRuntime(
-                    sampleView,
-                    this.intentPipeline
-                );
-            } catch (error) {
-                console.error(error);
-                showMessageDialog(
-                    "Could not load initial metadata sources: " + String(error),
-                    {
-                        title: "Metadata source warning",
-                        type: "warning",
-                    }
-                );
-            }
-        }
+        await this.#attachSampleView();
 
         // Make it focusable so that keyboard shortcuts can be caught
         this.appContainer
@@ -544,26 +853,8 @@ export default class App {
                 window.removeEventListener("hashchange", onHashChange, false)
             );
 
-            const debouncedUpdateUrl = debounce(
-                () => {
-                    if (!this.#finalized) {
-                        this._updateStateToUrl();
-                    }
-                },
-                500,
-                false
-            );
-
-            this.#registerDisposer(this.store.subscribe(debouncedUpdateUrl));
-
-            for (const [, res] of this.genomeSpy.getNamedScaleResolutions()) {
-                if (res.isZoomable()) {
-                    res.addEventListener("domain", debouncedUpdateUrl);
-                    this.#registerDisposer(() =>
-                        res.removeEventListener("domain", debouncedUpdateUrl)
-                    );
-                }
-            }
+            this.#registerDisposer(this.store.subscribe(this.#updateUrl));
+            this.#observeScaleDomains();
         }
 
         const title = asArray(this.genomeSpy.spec.description ?? []);
@@ -610,7 +901,7 @@ export default class App {
      * Restore state from url. If not restored, load a bookmark if requested in config.
      */
     async _restoreStateFromUrlOrBookmark() {
-        const remoteConf = this.rootSpec.bookmarks?.remote;
+        const remoteConf = this.#persistenceConfig.bookmarks?.remote;
         const remoteDb = this.globalBookmarkDatabase;
 
         const restored = await this._restoreStateFromUrl();
@@ -688,6 +979,10 @@ export default class App {
      * @returns {Promise<boolean>} `true` if restored successfully
      */
     async _restoreStateFromUrl() {
+        return this.runCohortOperation(() => this.#restoreStateFromUrl());
+    }
+
+    async #restoreStateFromUrl() {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
             try {
@@ -723,7 +1018,7 @@ export default class App {
      */
     async #resolveBookmarkFromHash(hash, remoteBookmarkPromise) {
         if (hash.startsWith("#bookmark:")) {
-            const remoteConf = this.rootSpec.bookmarks?.remote;
+            const remoteConf = this.#persistenceConfig.bookmarks?.remote;
             if (!remoteConf) {
                 return;
             }
@@ -776,7 +1071,7 @@ export default class App {
         }
 
         if (hash.startsWith("#bookmark:")) {
-            const remoteConf = this.rootSpec.bookmarks?.remote;
+            const remoteConf = this.#persistenceConfig.bookmarks?.remote;
             return {
                 entry,
                 mode: "tour",
@@ -805,7 +1100,7 @@ export default class App {
             this.globalBookmarkDatabase = new SimpleBookmarkDatabase(
                 remoteBookmarks,
                 {
-                    baseUrl: getRemoteBookmarkBaseUrl(this.rootSpec),
+                    baseUrl: getRemoteBookmarkBaseUrl(this.#persistenceConfig),
                 }
             );
         }
@@ -832,7 +1127,7 @@ export default class App {
 }
 
 /**
- * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
+ * @param {Pick<import("./spec/appSpec.js").AppRootSpec, "baseUrl" | "bookmarks">} rootSpec
  */
 export function getRemoteBookmarkBaseUrl(rootSpec) {
     const remoteConf = rootSpec.bookmarks?.remote;

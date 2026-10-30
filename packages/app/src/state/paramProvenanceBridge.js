@@ -51,6 +51,7 @@ const THROTTLE_INTERVAL_MS = 150;
  */
 
 export default class ParamProvenanceBridge {
+    #disposed = false;
     /**
      * Bridges Core param state (param runtime) with App provenance.
      *
@@ -108,7 +109,7 @@ export default class ParamProvenanceBridge {
     /** @type {WeakSet<object>} */
     #pendingCollectors = new WeakSet();
 
-    /** @type {Map<string, ((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void }>} */
+    /** @type {Map<string, ((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void, flush: () => void }>} */
     #throttledDispatchers = new Map();
 
     /** @type {Promise<void>} */
@@ -136,11 +137,19 @@ export default class ParamProvenanceBridge {
     }
 
     dispose() {
+        this.#disposed = true;
         for (const disposer of this.#disposers) {
             disposer();
         }
         this.#disposers.length = 0;
         this.#clearThrottledDispatchers();
+    }
+
+    /** Preserve the latest live input before a hierarchy change rebinds this bridge. */
+    flushPendingChanges() {
+        this.#root.paramRuntime.flushNow();
+        for (const dispatcher of this.#throttledDispatchers.values())
+            dispatcher.flush();
     }
 
     /**
@@ -200,7 +209,7 @@ export default class ParamProvenanceBridge {
      * @param {BookmarkableParamEntry} entry
      */
     #handleParamChange(entry) {
-        if (this.#suppressCapture) {
+        if (this.#disposed || this.#suppressCapture) {
             return;
         }
 
@@ -377,7 +386,7 @@ export default class ParamProvenanceBridge {
 
     /**
      * @param {string} selectorKey
-     * @returns {((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void }}
+     * @returns {((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void, flush: () => void }}
      */
     #getThrottledDispatch(selectorKey) {
         let throttled = this.#throttledDispatchers.get(selectorKey);
@@ -584,6 +593,7 @@ export default class ParamProvenanceBridge {
      * @param {Record<string, ParamProvenanceEntry>} entries
      */
     #applyProvenanceEntries(entries) {
+        if (this.#disposed) return;
         this.#suppressCapture = true;
         try {
             this.#root.paramRuntime.runInTransaction(() => {

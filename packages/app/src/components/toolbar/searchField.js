@@ -22,6 +22,7 @@ export default class SearchField extends LitElement {
 
         this._focused = false;
         this._subscriptions = new SubscriptionController(this);
+        this.hierarchyRevision = 0;
     }
 
     /** @type {import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionApi} */
@@ -35,6 +36,7 @@ export default class SearchField extends LitElement {
         return {
             app: { type: Object },
             _focused: { state: true },
+            hierarchyRevision: { type: Number },
         };
     }
 
@@ -57,6 +59,10 @@ export default class SearchField extends LitElement {
 
     createRenderRoot() {
         return this;
+    }
+
+    shouldUpdate() {
+        return this.isConnected;
     }
 
     focusInput() {
@@ -197,7 +203,10 @@ export default class SearchField extends LitElement {
      * @param {string} term
      */
     _doExampleSearch(term) {
+        const revision = this.hierarchyRevision;
         typeSlowly(term, this._inputField).then(() => {
+            if (!this.isConnected || revision !== this.hierarchyRevision)
+                return;
             this._inputField.blur();
             this.search(term);
         });
@@ -301,13 +310,16 @@ export default class SearchField extends LitElement {
                     ${ref(this.inputRef)}
                 />
                 ${guard(
-                    this.app.datumSearch
-                        .listSearchableViews({ exampleLimit: 0 })
-                        .flatMap(({ view, source }) => [
-                            view.id,
-                            source.dataRevision,
-                            source.readiness,
-                        ]),
+                    [
+                        this.hierarchyRevision,
+                        ...this.app.datumSearch
+                            .listSearchableViews({ exampleLimit: 0 })
+                            .flatMap(({ view, source }) => [
+                                view.id,
+                                source.dataRevision,
+                                source.readiness,
+                            ]),
+                    ],
                     () => this._getSearchHelp()
                 )}
             </div>

@@ -76,7 +76,6 @@ describe("IntentPipeline", () => {
             },
             { getAttributeInfo }
         );
-
         expect(deps.intentExecutor.dispatch).not.toHaveBeenCalled();
 
         ensureDeferred.resolve();
@@ -86,6 +85,9 @@ describe("IntentPipeline", () => {
         processedDeferred.resolve();
 
         await submitPromise;
+        expect(deps.store.dispatch).toHaveBeenLastCalledWith(
+            intentStatusSlice.actions.clearStatus()
+        );
     });
 
     it("queues single actions and rejects batches while running", async () => {

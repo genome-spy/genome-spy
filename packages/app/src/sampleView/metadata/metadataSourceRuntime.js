@@ -40,6 +40,7 @@ export async function setupMetadataSourceRuntime(sampleView, intentPipeline) {
 
     sampleView.registerDisposer(unregisterMetadataReadyHook);
     sampleView.registerDisposer(unregisterMetadataSourceAugmenter);
+    sampleView.registerDisposer(() => intentPipeline.setResolvers({}));
 
     await bootstrapInitialMetadataSources(sampleView, intentPipeline);
 }

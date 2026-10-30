@@ -62,7 +62,6 @@ export function createAppTestContext(options = {}) {
     context.requestLayoutReflow = () => undefined;
     context.updateTooltip = () => undefined;
     context.getCurrentHover = () => undefined;
-    context.addKeyboardListener = () => undefined;
 
     return {
         context,

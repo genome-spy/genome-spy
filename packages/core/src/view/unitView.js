@@ -78,31 +78,37 @@ export default class UnitView extends View {
 
         this.spec = spec; // Set here again to keep types happy
 
-        const Mark = markTypes[this.getMarkType()];
-        if (Mark) {
-            /** @type {import("../marks/mark.js").default} */
-            this.mark = new Mark(this);
-        } else {
-            throw new Error(`No such mark: ${this.getMarkType()}`);
+        try {
+            const Mark = markTypes[this.getMarkType()];
+            if (Mark) {
+                /** @type {import("../marks/mark.js").default} */
+                this.mark = new Mark(this);
+            } else {
+                throw new Error(`No such mark: ${this.getMarkType()}`);
+            }
+
+            this.resolve();
+
+            // Domain-inert linked scales have no collector publication to seed the
+            // brush. Keep this startup bridge until that case has an owner boundary.
+            this.registerDisposer(
+                this._addBroadcastHandler("subtreeDataReady", () => {
+                    for (const channel of primaryPositionalChannels) {
+                        this.getScaleResolution(
+                            channel
+                        )?.syncLinkedSelectionFromDomain();
+                    }
+                })
+            );
+
+            this.needsAxes = { x: true, y: true };
+
+            this.#setupPointSelection();
+        } catch (error) {
+            // The factory cannot own a view whose constructor never returned.
+            this.disposeSubtree({ checkDependencies: false });
+            throw error;
         }
-
-        this.resolve();
-
-        // Domain-inert linked scales have no collector publication to seed the
-        // brush. Keep this startup bridge until that case has an owner boundary.
-        this.registerDisposer(
-            this._addBroadcastHandler("subtreeDataReady", () => {
-                for (const channel of primaryPositionalChannels) {
-                    this.getScaleResolution(
-                        channel
-                    )?.syncLinkedSelectionFromDomain();
-                }
-            })
-        );
-
-        this.needsAxes = { x: true, y: true };
-
-        this.#setupPointSelection();
     }
 
     #setupPointSelection() {

@@ -296,12 +296,11 @@ export default class GenomeSpy {
 
         this.#onCanvasResize = resizeCallback;
 
-        if (this.viewRoot.getSize().isGrowing()) {
-            // TODO: Size should be observed only if the content is not absolutely sized
-            const resizeObserver = new ResizeObserver(resizeCallback);
-            resizeObserver.observe(this.container);
-            this.#destructionCallbacks.push(() => resizeObserver.disconnect());
-        }
+        const resizeObserver = new ResizeObserver(() => {
+            if (this.viewRoot.getSize().isGrowing()) resizeCallback();
+        });
+        resizeObserver.observe(this.container);
+        this.#destructionCallbacks.push(() => resizeObserver.disconnect());
 
         /** @type {() => void} */
         let remove = null;
@@ -465,13 +464,12 @@ export default class GenomeSpy {
                 this.#interactionController?.suspendHoverTracking(),
             resumeHoverTracking: (event) =>
                 this.#interactionController?.resumeHoverTracking(event),
-            addKeyboardListener: (type, listener) => {
+            addKeyboardListener: (type, listener) =>
                 this.#keyboardListenerManager.add(type, (event) => {
                     if (this.#shouldDispatchKeyboardEvent(type, event)) {
                         listener(event);
                     }
-                });
-            },
+                }),
             addBroadcastListener: (type, listener) =>
                 this.#extraBroadcastListeners.add(type, listener),
             removeBroadcastListener: (type, listener) =>
@@ -544,9 +542,6 @@ export default class GenomeSpy {
         await initializeViewGuides(this.viewRoot);
 
         this.#loadingStatusRegistry.set(this.viewRoot, "loading");
-
-        this.#canvasWrapper.style.flexGrow =
-            this.viewRoot.getSize().height.grow > 0 ? "1" : "0";
 
         this.#initializeParameterBindings();
 
@@ -953,6 +948,8 @@ export default class GenomeSpy {
 
     computeLayout() {
         this.#layoutReflowRequested = false;
+        this.#canvasWrapper.style.flexGrow =
+            this.viewRoot.getSize().height.grow > 0 ? "1" : "0";
         this.#renderCoordinator.computeLayout();
     }
 
