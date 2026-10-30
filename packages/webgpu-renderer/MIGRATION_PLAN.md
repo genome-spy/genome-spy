@@ -222,6 +222,11 @@ Tentative commit: `refactor(webgpu-renderer): remove measured scale duplication`
 
 ## Final integration verification
 
+Categorical-selection foundation (#608): `multi` set membership now accepts an
+explicit retained scalar `u32` input, retaining the existing hash-set resource,
+activity/count, update, and disposal path. Core integration uses per-mapping set
+bindings; the renderer remains independent of Core category/scoping grammar.
+
 Run renderer unit/GPU tests, package type/lint/bundle/package checks, focused
 Core adapter and surface suites, and the recursive example inventories for any
 milestone that changes shared rendering behavior. Update this file when a

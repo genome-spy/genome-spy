@@ -1,5 +1,6 @@
 import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
+import { getWebGpuCategorySelectionBinding } from "./webGpuMarkAdapter.js";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
@@ -681,7 +682,10 @@ function updateRetainedSelections(retained, mark) {
     for (const [name, slot] of Object.entries(
         retained.handle.selections ?? {}
     )) {
-        const selection = paramRuntime.findValue(name);
+        const categoryBinding = getWebGpuCategorySelectionBinding(mark, name);
+        const selection = paramRuntime.findValue(
+            categoryBinding?.param ?? name
+        );
         if (!selection) {
             continue;
         }
@@ -694,12 +698,33 @@ function updateRetainedSelections(retained, mark) {
                 retained.selections.set(name, id);
             }
         } else if (slot.type == "multi") {
-            const ids = Uint32Array.from(selection.data.keys());
-            if (!uint32ArraysEqual(retained.selections.get(name), ids)) {
+            const indexer = categoryBinding
+                ? /** @type {any} */ (
+                      mark.encoders[
+                          /** @type {import("../../spec/channel.js").Channel} */ (
+                              categoryBinding.input
+                          )
+                      ].scale.props
+                  ).domainIndexer
+                : undefined;
+            const previous = /** @type {IntegerSetSnapshot | undefined} */ (
+                retained.selections.get(name)
+            );
+            // Record map mutations also publish a new selection wrapper.
+            if (previous?.value === selection && previous.indexer === indexer)
+                continue;
+
+            const ids = Uint32Array.from(
+                categoryBinding
+                    ? selection.values.values().map(indexer)
+                    : selection.data.keys()
+            );
+
+            if (!uint32ArraysEqual(previous?.ids, ids)) {
                 slot.set(ids);
                 writes++;
-                retained.selections.set(name, ids);
             }
+            retained.selections.set(name, { value: selection, indexer, ids });
         } else if (slot.type == "interval") {
             let snapshot = /** @type {SelectionSnapshot | undefined} */ (
                 retained.selections.get(name)
@@ -856,7 +881,7 @@ function getLogicalChannelSeries(channel) {
  * @prop {ResourceBinding[]} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
- * @prop {Map<string, number | Uint32Array | SelectionSnapshot>} selections
+ * @prop {Map<string, number | SelectionSnapshot | IntegerSetSnapshot>} selections
  */
 
 /**
@@ -872,4 +897,11 @@ function getLogicalChannelSeries(channel) {
  * @typedef {object} SelectionSnapshot
  * @property {"interval"} type
  * @property {Record<string, [number, number] | null>} intervals
+ */
+
+/**
+ * @typedef {object} IntegerSetSnapshot
+ * @property {import("../../types/selectionTypes.js").CategoryPointSelection | import("../../types/selectionTypes.js").MultiPointSelection} value
+ * @property {((value: import("../../spec/channel.js").Scalar) => number) | undefined} indexer
+ * @property {Uint32Array} ids
  */

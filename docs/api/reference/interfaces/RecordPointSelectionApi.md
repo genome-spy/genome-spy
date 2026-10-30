@@ -1,6 +1,6 @@
-[GenomeSpy Core API](../index.md) / PointSelectionApi
+[GenomeSpy Core API](../index.md) / RecordPointSelectionApi
 
-# Interface: PointSelectionApi
+# Interface: RecordPointSelectionApi
 
 Capability for reading, replacing, and clearing a row-backed point selection.
 
@@ -21,15 +21,21 @@ Discriminator for this selection capability.
 
 ***
 
+### membership
+
+> `readonly` **membership**: `"records"`
+
+***
+
 ### getValue
 
-> **getValue**: () => [`PointSnapshot`](PointSnapshot.md)
+> **getValue**: () => [`RecordPointSnapshot`](RecordPointSnapshot.md)
 
 Returns the current detached selection snapshot.
 
 #### Returns
 
-[`PointSnapshot`](PointSnapshot.md)
+[`RecordPointSnapshot`](RecordPointSnapshot.md)
 
 ***
 

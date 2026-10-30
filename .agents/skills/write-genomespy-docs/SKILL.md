@@ -20,6 +20,10 @@ description: Write and verify GenomeSpy user-facing documentation, schema-derive
 - When documenting a feature, focus on its user-facing rationale—the problem it
   solves—its behavior, and representative use cases. Include implementation
   details or internal design rationale only when needed for correct usage.
+- Treat consistent behavior across supported renderers as the default. Omit
+  repeated renderer support lists and backend implementation details from feature
+  documentation. Describe a renderer difference only when it changes how users
+  author, configure, or interpret the visualization.
 - Prefer the shortest explanation that gives readers the context they need.
 - For UI changes, do not describe visible controls or standard keyboard behavior
   merely because they changed. Document non-obvious workflows, constraints, or

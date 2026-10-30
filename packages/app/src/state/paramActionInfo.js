@@ -115,23 +115,25 @@ function formatParamActionTitle(action, view, selector, value, origin, root) {
     }
 
     if (value.type === "point") {
-        if (value.keys.length === 0) {
+        const tuples =
+            value.membership === "categories" ? value.values : value.keys;
+        if (tuples.length === 0) {
             return html`Clear selection
                 <strong>${paramLabel}</strong> ${formatOriginSuffix(
                     origin,
                     root
                 )}`;
         }
-        if (value.keys.length === 1) {
+        if (tuples.length === 1) {
             return html`Select <strong>${paramLabel}</strong> =
                 ${formatStrong(
-                    formatPointKeyTuple(value.keys[0])
+                    formatPointKeyTuple(tuples[0])
                 )}${formatOriginSuffix(origin, root)}`;
         }
         return html`Select <strong>${paramLabel}</strong> (${formatStrong(
-                value.keys.length
+                tuples.length
             )}
-            points)${formatOriginSuffix(origin, root)}`;
+            ${value.membership === "categories" ? "categories" : "points"})${formatOriginSuffix(origin, root)}`;
     }
 
     if (value.type === "pointExpand") {

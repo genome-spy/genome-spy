@@ -4,10 +4,34 @@ import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
+import { collectAppearanceSelections } from "../selection/selection.js";
+import {
+    collectSamplingSelections,
+    compileSelectionPredicateTree,
+} from "../selection/selectionPredicateTree.js";
 
 /** @extends {Mark<import("../spec/mark.js").PointProps>} */
 export default class PointMark extends Mark {
     #semanticZoomFraction = () => 0;
+
+    /** @type {((datum: import("../data/flowNode.js").Datum) => boolean)[]} */
+    #samplingSelections = [];
+
+    initializeEncoders() {
+        super.initializeEncoders();
+        this.#samplingSelections = collectSamplingSelections(
+            collectAppearanceSelections(this.encoders)
+        ).map((leaf) =>
+            compileSelectionPredicateTree(leaf, (name) =>
+                this.unitView.paramRuntime.findValue(name)
+            )
+        );
+    }
+
+    /** @param {import("../data/flowNode.js").Datum} datum */
+    isPreservedBySelection(datum) {
+        return this.#samplingSelections.some((matches) => matches(datum));
+    }
 
     /** @param {import("../view/unitView.js").default} unitView */
     constructor(unitView) {

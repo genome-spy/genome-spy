@@ -86,6 +86,57 @@ describe("validateIntentBatch", () => {
         resolveParamSelectorMock.mockReset();
     });
 
+    it("checks category membership against the target projection and cardinality", () => {
+        const categoryValue = {
+            type: "point",
+            membership: "categories",
+            encodings: ["color"],
+            values: [["A"]],
+        };
+        const validate = (select, value) => {
+            resolveParamSelectorMock.mockReturnValue({
+                param: { name: "focus", select },
+                view: {},
+            });
+            return validateIntentBatch(createAgentApiStub(), {
+                schemaVersion: 1,
+                steps: [
+                    {
+                        actionType: "paramProvenance/paramChange",
+                        payload: {
+                            selector: { scope: [], param: "focus" },
+                            value,
+                        },
+                    },
+                ],
+            });
+        };
+        const select = { type: "point", encodings: ["color"], toggle: false };
+        expect(validate(select, categoryValue).ok).toBe(true);
+        expect(
+            validate(select, {
+                ...categoryValue,
+                encodings: ["shape"],
+            }).errors.join("\n")
+        ).toContain('projected on "color"');
+        expect(
+            validate(select, {
+                type: "point",
+                keyFields: ["id"],
+                keys: [["A"]],
+            }).ok
+        ).toBe(false);
+        expect(
+            validate(select, {
+                ...categoryValue,
+                values: [["A"], ["B"]],
+            }).errors.join("\n")
+        ).toContain("at most one");
+        expect(validate("point", categoryValue).errors.join("\n")).toContain(
+            "expected record keys"
+        );
+    });
+
     it("accepts a valid supported batch", () => {
         const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,

@@ -1,13 +1,18 @@
 import { validateParameterName } from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { field } from "../utils/field.js";
+import { isSelectionActive } from "./selection.js";
+import {
+    resolveCategoryInput,
+    testCategorySelection,
+} from "./categorySelection.js";
 
 /**
- * @typedef {{param: string, empty: boolean, project?: {x?: "x" | "x2", y?: "y" | "y2"}}} SelectionLeaf
+ * @typedef {{param: string, empty: boolean, project?: import("../spec/channel.js").ParameterPredicate["project"]}} SelectionLeaf
  * @typedef {{selectionActive: string}} SelectionActivity
  * @typedef {SelectionLeaf | SelectionActivity | {all: readonly SelectionPredicateTree[]} | {any: readonly SelectionPredicateTree[]} | {not: SelectionPredicateTree}} SelectionPredicateTree
  * @typedef {{component: string, input: string, field: string, secondaryInput?: string, secondaryField?: string, hitTest?: "intersects" | "encloses" | "endpoints"}} SelectionProjection
- * @typedef {{param: string, type: "single" | "multi" | "interval", empty: boolean, projections?: SelectionProjection[]} | {selectionActive: {param: string, type: "single" | "multi" | "interval", components: string[]}} | {all: readonly ResolvedSelectionPredicate[]} | {any: readonly ResolvedSelectionPredicate[]} | {not: ResolvedSelectionPredicate}} ResolvedSelectionPredicate
+ * @typedef {{param: string, type: "single" | "multi" | "interval" | "categories", empty: boolean, projections?: SelectionProjection[]} | {selectionActive: {param: string, type: "single" | "multi" | "interval" | "categories", components: string[]}} | {all: readonly ResolvedSelectionPredicate[]} | {any: readonly ResolvedSelectionPredicate[]} | {not: ResolvedSelectionPredicate}} ResolvedSelectionPredicate
  */
 
 /**
@@ -70,25 +75,6 @@ export function normalizeSelectionPredicateTree(condition) {
                     typeof (node.empty ?? true) !== "boolean"
                 ) {
                     throw new Error("Invalid selection parameter predicate.");
-                }
-                if (node.project !== undefined) {
-                    const project = node.project;
-                    if (
-                        !project ||
-                        typeof project !== "object" ||
-                        Array.isArray(project) ||
-                        Object.keys(project).length === 0 ||
-                        Object.entries(project).some(
-                            ([component, target]) =>
-                                !["x", "y"].includes(component) ||
-                                (target !== component &&
-                                    target !== component + "2")
-                        )
-                    ) {
-                        throw new Error(
-                            "Invalid interval selection projection."
-                        );
-                    }
                 }
                 return {
                     param: validateParameterName(node.param),
@@ -173,33 +159,31 @@ export function getSelectionPredicateTreeParams(tree) {
     return Array.from(names);
 }
 
-/** @param {ResolvedSelectionPredicate} tree @returns {ResolvedSelectionPredicate} */
-export function activeMatchResolvedSelectionPredicate(tree) {
-    const activities = new Map();
+/**
+ * Appearance references preserve each active record/positional match independently
+ * of Boolean operators. Category and activity-only leaves do not bypass sampling.
+ *
+ * @param {readonly ResolvedSelectionPredicate[]} roots
+ * @returns {ResolvedSelectionPredicate[]}
+ */
+export function collectSamplingSelections(roots) {
+    const leaves = new Map();
     /** @param {ResolvedSelectionPredicate} node */
     const visit = (node) => {
         if ("param" in node) {
-            activities.set(node.param, {
-                selectionActive: {
-                    param: node.param,
-                    type: node.type,
-                    components:
-                        node.projections?.map(({ component }) => component) ??
-                        [],
-                },
-            });
-        } else if ("selectionActive" in node) {
-            activities.set(node.selectionActive.param, node);
+            if (node.type !== "categories") {
+                const leaf = { ...node, empty: false };
+                leaves.set(JSON.stringify(leaf), leaf);
+            }
         } else if ("not" in node) {
             visit(node.not);
-        } else {
-            for (const child of "all" in node ? node.all : node.any) {
+        } else if ("all" in node || "any" in node) {
+            for (const child of "all" in node ? node.all : node.any)
                 visit(child);
-            }
         }
     };
-    visit(tree);
-    return { all: [tree, { any: Array.from(activities.values()) }] };
+    for (const root of roots) visit(root);
+    return Array.from(leaves.values());
 }
 
 /** @param {SelectionPredicateTree} tree @returns {boolean} */
@@ -225,9 +209,10 @@ export function selectionPredicateMatchesWhenEmpty(tree) {
  *
  * @param {SelectionPredicateTree} tree
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
+ * @param {{findValue: (name: string) => any, findSelectionCapability?: (name: string) => {type: "single" | "multi" | "categories" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]} | undefined}} runtime
  * @param {"intersects" | "encloses" | "endpoints"} hitTestMode
  * @param {(channel: "x" | "x2" | "y" | "y2") => import("../spec/channel.js").Type | undefined} [getType]
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} [getScale]
  * @returns {ResolvedSelectionPredicate}
  */
 export function resolveSelectionPredicateTree(
@@ -235,26 +220,30 @@ export function resolveSelectionPredicateTree(
     encoding,
     runtime,
     hitTestMode,
-    getType
+    getType,
+    getScale
 ) {
-    /** @param {string} name @returns {{type: "single" | "multi" | "interval", components: {component: string, type?: import("../spec/channel.js").Type}[]}} */
+    /** @param {string} name @returns {{type: "single" | "multi" | "interval" | "categories", components: {component: string, type?: import("../spec/channel.js").Type}[]}} */
     const capability = (name) => {
         const registered = runtime.findSelectionCapability?.(name);
-        if (registered) {
-            return registered;
-        }
+        if (registered) return registered;
         const value = runtime.findValue(name);
-        if (!value || !["single", "multi", "interval"].includes(value.type)) {
+        if (
+            !value ||
+            !["single", "multi", "interval", "categories"].includes(value.type)
+        ) {
             throw new Error(`Selection parameter "${name}" was not found.`);
         }
         return {
             type: /** @type {"single" | "multi" | "interval"} */ (value.type),
             components:
-                value.type === "interval"
-                    ? Object.keys(/** @type {object} */ (value.intervals)).map(
-                          (component) => ({ component })
-                      )
-                    : [],
+                value.type === "categories"
+                    ? [{ component: value.component }]
+                    : value.type === "interval"
+                      ? Object.keys(
+                            /** @type {object} */ (value.intervals)
+                        ).map((component) => ({ component }))
+                      : [],
         };
     };
 
@@ -301,6 +290,38 @@ export function resolveSelectionPredicateTree(
                 },
             };
         }
+        if (declared.type === "categories") {
+            const component = declared.components[0].component;
+            if (
+                node.project &&
+                (Object.keys(node.project).length !== 1 ||
+                    !(component in node.project))
+            ) {
+                throw new Error(
+                    `Selection "${name}" project must cover its declared component: ${component}.`
+                );
+            }
+            const target = node.project
+                ? /** @type {Record<string, import("../spec/parameter.js").CategorySelectionChannel>} */ (
+                      node.project
+                  )[component]
+                : component;
+            const input = resolveCategoryInput(
+                encoding,
+                /** @type {import("../spec/parameter.js").CategorySelectionChannel} */ (
+                    target
+                ),
+                getScale
+            );
+            return {
+                param: name,
+                type: "categories",
+                empty: node.empty,
+                projections: [
+                    { component, input: input.input, field: input.field },
+                ],
+            };
+        }
         if (node.project && declared.type !== "interval") {
             throw new Error(
                 `Selection "${name}" is not an interval selection; project is invalid.`
@@ -326,7 +347,7 @@ export function resolveSelectionPredicateTree(
                 /** @type {Record<string, string> | undefined} */ (
                     node.project
                 )?.[component] ?? component;
-            if (!["x", "x2", "y", "y2"].includes(input)) {
+            if (![component, component + "2"].includes(input)) {
                 throw new Error(
                     `Selection "${name}" has unsupported component "${component}".`
                 );
@@ -410,6 +431,17 @@ export function compileSelectionPredicateTree(tree, getSelection) {
         return () => isActive(getSelection(param));
     }
     const { param, type, empty } = tree;
+    if (type === "categories") {
+        const read = field(tree.projections[0].field);
+        return (datum) =>
+            testCategorySelection(
+                /** @type {import("../types/selectionTypes.js").CategoryPointSelection} */ (
+                    getSelection(param)
+                ),
+                read(datum),
+                empty
+            );
+    }
     if (type === "single") {
         return (datum) => {
             const selection =
@@ -477,16 +509,10 @@ export function compileSelectionPredicateTree(tree, getSelection) {
 
 /** @param {import("../types/selectionTypes.js").Selection} selection */
 function isActive(selection) {
-    if (selection.type === "single") {
-        return selection.uniqueId != null;
-    }
-    if (selection.type === "multi") {
-        return selection.data.size !== 0;
-    }
     if (selection.type === "interval") {
         return Object.values(selection.intervals).every(
             (interval) => !!interval
         );
     }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
+    return isSelectionActive(selection);
 }

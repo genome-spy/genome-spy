@@ -7,7 +7,7 @@ import { createAndInitialize } from "../view/testUtils.js";
 import Rectangle from "../view/layout/rectangle.js";
 import { createWebGpuMarkConfig } from "../rendering/webgpu/webGpuMarkAdapter.js";
 import {
-    activeMatchResolvedSelectionPredicate,
+    collectSamplingSelections,
     compileSelectionPredicateTree,
     getSelectionPredicateTreeParams,
     normalizeSelectionPredicateTree,
@@ -323,7 +323,7 @@ describe("logical selection predicates", () => {
         expect(matches(row)).toBe(true);
     });
 
-    test("active-match guards the entire conjunction and preserves not", () => {
+    test("sampling preserves eligible leaves independently of conjunction and negation", () => {
         const values = /** @type {Record<string, any>} */ ({
             access: interval("access"),
             score: interval("score"),
@@ -343,28 +343,31 @@ describe("logical selection predicates", () => {
                 { param: "score", project: { x: "x" } },
             ],
         });
-        const activeMatch = compileSelectionPredicateTree(
-            activeMatchResolvedSelectionPredicate(conjunction),
-            (name) => values[name]
-        );
+        const matches = (
+            /** @type {import("./selectionPredicateTree.js").ResolvedSelectionPredicate} */ tree
+        ) => {
+            const predicates = collectSamplingSelections([tree]).map((leaf) =>
+                compileSelectionPredicateTree(leaf, (name) => values[name])
+            );
+            return (/** @type {object} */ row) =>
+                predicates.some((predicate) => predicate(row));
+        };
+        const activeMatch = matches(conjunction);
         const row = { source: 15, target: 25, [UNIQUE_ID_KEY]: 7 };
         expect(activeMatch(row)).toBe(false);
         values.access.intervals.x = [20, 30];
         expect(activeMatch(row)).toBe(true);
         values.score.intervals.x = [40, 50];
-        expect(activeMatch(row)).toBe(false);
+        expect(activeMatch(row)).toBe(true);
 
-        const notHover = compileSelectionPredicateTree(
-            activeMatchResolvedSelectionPredicate(
-                resolve({ not: { param: "hover", empty: false } })
-            ),
-            (name) => values[name]
+        const notHover = matches(
+            resolve({ not: { param: "hover", empty: false } })
         );
         expect(notHover(row)).toBe(false);
         values.hover.uniqueId = 8;
-        expect(notHover(row)).toBe(true);
-        values.hover.uniqueId = 7;
         expect(notHover(row)).toBe(false);
+        values.hover.uniqueId = 7;
+        expect(notHover(row)).toBe(true);
     });
 
     test("rejects invalid projections before evaluation", () => {
@@ -389,7 +392,7 @@ describe("logical selection predicates", () => {
         ).toThrow(/cover/);
         expect(() =>
             resolve({ test: { param: "brush", project: { x: "y" } } })
-        ).toThrow(/Invalid interval/);
+        ).toThrow(/unsupported component/);
         expect(() =>
             resolve(
                 { test: { param: "brush", project: { x: "x2" } } },
@@ -509,19 +512,13 @@ describe("logical selection predicates", () => {
             resolve(false),
             () => values.brush
         );
-        const activeMatch = compileSelectionPredicateTree(
-            activeMatchResolvedSelectionPredicate(resolve(true)),
-            () => values.brush
-        );
         expect(matches({ x: 15, y: 100 })).toBe(true);
         expect(matches({ x: 25, y: 100 })).toBe(true);
         expect(matchesNonempty({ x: 15, y: 100 })).toBe(false);
-        expect(activeMatch({ x: 15, y: 100 })).toBe(false);
 
         values.brush.intervals.y = [90, 110];
         expect(matches({ x: 15, y: 100 })).toBe(true);
         expect(matchesNonempty({ x: 15, y: 100 })).toBe(true);
-        expect(activeMatch({ x: 15, y: 100 })).toBe(true);
         expect(matches({ x: 25, y: 100 })).toBe(false);
     });
 });

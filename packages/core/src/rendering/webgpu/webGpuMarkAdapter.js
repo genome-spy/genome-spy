@@ -1,5 +1,6 @@
 import { collectAppearanceSelections } from "../../selection/selection.js";
-import { activeMatchResolvedSelectionPredicate } from "../../selection/selectionPredicateTree.js";
+import { resolveCategoryInput } from "../../selection/categorySelection.js";
+import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
 import { color as parseColor } from "d3-color";
 import { format as numberFormat } from "d3-format";
 import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
@@ -36,6 +37,36 @@ import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { isDatumDef, isValueDef } from "../../encoder/encoder.js";
 import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
+
+/** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string}>>} */
+const CATEGORY_SELECTION_BINDINGS = new WeakMap();
+
+/** @param {import("../../marks/mark.js").default} mark @param {string} slot */
+export function getWebGpuCategorySelectionBinding(mark, slot) {
+    return CATEGORY_SELECTION_BINDINGS.get(mark)?.get(slot);
+}
+
+/** @param {import("../../marks/mark.js").default} mark @param {string} param @param {string} input */
+function categorySelectionSlot(mark, param, input) {
+    let bindings = CATEGORY_SELECTION_BINDINGS.get(mark);
+    if (!bindings) {
+        bindings = new Map();
+        CATEGORY_SELECTION_BINDINGS.set(mark, bindings);
+    }
+    for (const [slot, binding] of bindings) {
+        if (binding.param === param && binding.input === input) return slot;
+    }
+    let index = bindings.size;
+    let slot;
+    do {
+        slot = "__categorySelection" + index++;
+    } while (
+        mark.unitView.paramRuntime.findConfiguredParam(slot) ||
+        bindings.has(slot)
+    );
+    bindings.set(slot, { param, input });
+    return slot;
+}
 
 const SHAPE_NAMES = [
     "circle",
@@ -392,6 +423,22 @@ function createSelectionCondition(mark, predicate) {
     }
     if ("selectionActive" in predicate) {
         const { param, type, components } = predicate.selectionActive;
+        if (type === "categories") {
+            const input = resolveCategoryInput(
+                mark.encoding,
+                /** @type {import("../../spec/parameter.js").CategorySelectionChannel} */ (
+                    components[0]
+                ),
+                (channel) =>
+                    mark.unitView.getScaleResolution(channel).getScale()
+            ).input;
+            return {
+                selectionActive: {
+                    selection: categorySelectionSlot(mark, param, input),
+                    type: "multi",
+                },
+            };
+        }
         return {
             selectionActive:
                 type === "interval"
@@ -403,6 +450,16 @@ function createSelectionCondition(mark, predicate) {
                           ),
                       }
                     : { selection: param, type },
+        };
+    }
+    if (predicate.type === "categories") {
+        const input = predicate.projections[0].input;
+        return {
+            selection: categorySelectionSlot(mark, predicate.param, input),
+            type: "multi",
+            input:
+                mark.getType() === "text" && input === "color" ? "fill" : input,
+            empty: predicate.empty,
         };
     }
     if (predicate.type === "interval") {
@@ -696,16 +753,9 @@ function createPointVisibilityConfig(mark, data) {
  * @returns {object[]}
  */
 function createPointVisibilitySelections(mark) {
-    if (!mark.encoders.uniqueId) {
-        return [];
-    }
-
-    return collectAppearanceSelections(mark.encoders).map((root) =>
-        createSelectionCondition(
-            mark,
-            activeMatchResolvedSelectionPredicate(root)
-        )
-    );
+    return collectSamplingSelections(
+        collectAppearanceSelections(mark.encoders)
+    ).map((leaf) => createSelectionCondition(mark, leaf));
 }
 
 /**

@@ -1,0 +1,19 @@
+id,x,y,cell_type,activation_state
+T1,1.2,1.5,T cell,resting
+T2,1.5,2.4,T cell,resting
+T3,2.1,1.8,T cell,resting
+T4,2.4,3.1,T cell,intermediate
+T5,2.8,2.2,T cell,intermediate
+T6,3.2,3.6,T cell,intermediate
+T7,3.5,2.8,T cell,activated
+T8,3.8,4.1,T cell,activated
+T9,4.2,3.3,T cell,activated
+B1,5.3,3.7,B cell,resting
+B2,5.7,4.5,B cell,resting
+B3,6.1,3.9,B cell,resting
+B4,6.3,5.2,B cell,intermediate
+B5,6.7,4.5,B cell,intermediate
+B6,7.1,5.6,B cell,intermediate
+B7,7.4,4.8,B cell,activated
+B8,7.7,6.0,B cell,activated
+B9,8.1,5.2,B cell,activated

@@ -57,6 +57,12 @@ vi.mock("@genome-spy/webgpu-renderer", () => ({
     createRenderer: mocks.createRenderer,
 }));
 
+vi.mock("./webGpuMarkAdapter.js", () => ({
+    /** @param {unknown} _mark @param {string} name */
+    getWebGpuCategorySelectionBinding: (_mark, name) =>
+        name === "categorySet" ? { param: "chosen", input: "fill" } : undefined,
+}));
+
 vi.mock("../canvasSizeHelper.js", () => ({
     default: class {
         invalidate() {}
@@ -1058,3 +1064,59 @@ test("recreates retained infrastructure across static gap enablement", async () 
     expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(2);
     surface.finalize();
 });
+
+test.each([false, true])(
+    "updates retained membership without redundant writes (categories=%s)",
+    async (categories) => {
+        const set = vi.fn();
+        const slot = categories ? "categorySet" : "chosen";
+        mocks.handle.selections = { [slot]: { type: "multi", set } };
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        let selection = categories
+            ? { type: "categories", values: new Set(["A"]) }
+            : { type: "multi", data: new Map([[0, {}]]) };
+        /** @type {{props: {domainIndexer: (value: string) => number}}} */
+        const scale = {
+            props: { domainIndexer: (value) => (value === "A" ? 0 : 1) },
+        };
+        const mark = {
+            encoders: { fill: { scale } },
+            unitView: { paramRuntime: { findValue: () => selection } },
+        };
+        const definition = { type: "point" };
+        const config = createConfig(0);
+        useMark(surface, mark, definition, config);
+        expect(set).toHaveBeenLastCalledWith(new Uint32Array([0]));
+        set.mockClear();
+        useMark(surface, mark, definition, config);
+        expect(set).not.toHaveBeenCalled();
+        if (categories) {
+            selection = { type: "categories", values: new Set(["B"]) };
+        } else {
+            // Record selections reuse their map but publish a new wrapper.
+            const data = selection.data;
+            data.clear();
+            data.set(1, {});
+            selection = { type: "multi", data };
+        }
+        useMark(surface, mark, definition, config);
+        expect(set).toHaveBeenLastCalledWith(new Uint32Array([1]));
+        if (categories) {
+            scale.props.domainIndexer = () => 42;
+            useMark(surface, mark, definition, config);
+            expect(set).toHaveBeenLastCalledWith(new Uint32Array([42]));
+        }
+        selection = categories
+            ? { type: "categories", values: new Set() }
+            : { type: "multi", data: new Map() };
+        useMark(surface, mark, definition, config);
+        expect(set).toHaveBeenLastCalledWith(new Uint32Array());
+        surface.finalize();
+    }
+);

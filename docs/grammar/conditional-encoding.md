@@ -99,6 +99,35 @@ Each consuming unit must define names referenced by its encodings, including
 inherited encodings. Selection parameters and projected channels resolve in
 that unit. Named predicates cannot refer to other named predicates.
 
+## Matching Categories Across Views
+
+A category selection declared with `select.encodings: ["color"]` tests the
+consuming view's color input by default. Views can use different field names
+for the same category concept without an explicit mapping. To read that
+concept from another categorical channel, map the stored component to the
+consumer input:
+
+```json
+{ "param": "activation_states", "project": { "color": "shape" }, "value": 1 }
+```
+
+Here shape must encode activation state. `project` only chooses the input to
+compare; it does not convert rendered colors into shapes or change stored
+membership. Comparing activation states to unrelated cell-type labels does not
+join the concepts. Use two named selections with `test.and` for their intersection.
+
+Categorical positional channels work the same way. For a selection declared with
+`select.encodings: ["x"]` on a band scale, `"project": {"x": "shape"}` links
+the selected x categories to shapes in another plot. Likewise, categories selected
+through color can be tested against a categorical y input with
+`"project": {"color": "y"}`.
+
+Each mapped input must be an unconditional nominal or ordinal field encoding
+with a discrete scale. Identity uses raw typed values, independently of scale
+domains, palettes, and shape codes. These rules also apply to conditional order
+and named/logical predicates. Interval mappings retain the same-axis endpoint
+and data-type requirements below.
+
 ## Testing Different Link Endpoints
 
 An interval normally tests the matching positional channel and, on ranged

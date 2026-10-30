@@ -457,6 +457,10 @@
       "required": ["attribute", "operator", "values"],
       "type": "object"
     },
+    "CategorySelectionChannel": {
+      "enum": ["x", "y", "color", "fill", "stroke", "shape"],
+      "type": "string"
+    },
     "ChromosomalLocus": {
       "additionalProperties": false,
       "properties": {
@@ -1246,6 +1250,41 @@
       ],
       "description": "Bookmarkable param value stored in provenance."
     },
+    "ParamValueCategoryPoint": {
+      "additionalProperties": false,
+      "description": "Raw categorical membership, independent of source rows and scale domains.",
+      "properties": {
+        "encodings": {
+          "items": {
+            "$ref": "#/definitions/CategorySelectionChannel"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        },
+        "membership": {
+          "const": "categories",
+          "type": "string"
+        },
+        "type": {
+          "const": "point",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "items": {
+              "$ref": "#/definitions/Scalar"
+            },
+            "maxItems": 1,
+            "minItems": 1,
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["type", "membership", "encodings", "values"],
+      "type": "object"
+    },
     "ParamValueInterval": {
       "additionalProperties": false,
       "properties": {
@@ -1328,33 +1367,14 @@
       "type": "object"
     },
     "ParamValuePoint": {
-      "additionalProperties": false,
-      "properties": {
-        "keyFields": {
-          "description": "Fields used to identify selected points.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ParamValueRecordPoint"
         },
-        "keys": {
-          "description": "Selected key tuples.",
-          "items": {
-            "items": {
-              "$ref": "#/definitions/Scalar"
-            },
-            "type": "array"
-          },
-          "type": "array"
-        },
-        "type": {
-          "const": "point",
-          "description": "Point selection value.",
-          "type": "string"
+        {
+          "$ref": "#/definitions/ParamValueCategoryPoint"
         }
-      },
-      "required": ["type", "keyFields", "keys"],
-      "type": "object"
+      ]
     },
     "ParamValuePointExpand": {
       "anyOf": [
@@ -1422,6 +1442,40 @@
         }
       ],
       "description": "Expanded point selection value stored in provenance."
+    },
+    "ParamValueRecordPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "keyFields": {
+          "description": "Fields used to identify selected points.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "keys": {
+          "description": "Selected key tuples.",
+          "items": {
+            "items": {
+              "$ref": "#/definitions/Scalar"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "membership": {
+          "const": "records",
+          "description": "Omitted by existing record bookmarks.",
+          "type": "string"
+        },
+        "type": {
+          "const": "point",
+          "description": "Point selection value.",
+          "type": "string"
+        }
+      },
+      "required": ["type", "keyFields", "keys"],
+      "type": "object"
     },
     "PlotAttributeIdentifier": {
       "$ref": "#/definitions/UnfilteredAgentAttributeCandidate"

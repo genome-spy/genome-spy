@@ -27,7 +27,8 @@ const { resolveParamSelectorMock } = vi.hoisted(() => ({
     resolveParamSelectorMock: vi.fn(),
 }));
 
-vi.mock("@genome-spy/core/selection/selection.js", () => ({
+vi.mock("@genome-spy/core/selection/selection.js", async (importOriginal) => ({
+    ...(await importOriginal()),
     asSelectionConfig: asSelectionConfigMock,
     isIntervalSelectionConfig: isIntervalSelectionConfigMock,
     isPointSelectionConfig: isPointSelectionConfigMock,

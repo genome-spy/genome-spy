@@ -133,9 +133,10 @@ lazy requests with `api.awaitVisibleLazyData(signal)` when needed, and verify
 completeness for analysis. Unready data, containers, unsupported projections, and
 stale handles throw.
 
-Point-selection records remain available through the existing
-`view.params.getSelection(name).getValue().data`; their getter and subscription
-behavior are unchanged. Named selection scopes accept interval selections only.
+Record point selections expose rows through `getValue().data` after narrowing
+the handle to `type === "point"` and `membership === "records"`. Category point
+selections instead expose raw `encodings` and `values`. Named data-read scopes
+accept interval selections only.
 See [Read and select records](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples/src/dataReadback)
 for a small readback-to-selection example.
 

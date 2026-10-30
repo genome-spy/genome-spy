@@ -29,9 +29,9 @@ this is necessary for bookmarkable state in the GenomeSpy App.
 By default, selection parameters and parameters with input bindings are
 persisted in the GenomeSpy App's bookmarks and provenance history. Use
 `persist: false` to opt out of persistence for ephemeral params (such as hover
-selections) or when `encoding.key` is not defined for point selections.
+selections) or when `encoding.key` is not defined for record point selections.
 
-For point selections, `encoding.key` should uniquely identify rows.
+For record point selections, `encoding.key` should uniquely identify rows.
 You can use either a single field or a composite key (an array of field
 definitions). When using a composite key, keep the field order stable across
 bookmark creation and restore.
@@ -158,13 +158,47 @@ interactions in very large data sets.
 
 ### Point Selection
 
-The following example has been adapted from Vega-Lite's [example
+Ordinary `select: "point"` selects individual records. The following example has
+been adapted from Vega-Lite's [example
 gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
 with slight modifications (GenomeSpy provides no `"bar"` mark). The
 specification below is fully compatible with Vega-Lite. You can select multiple
 bars by holding down the `Shift` key.
 
 EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
+
+#### Categorical Point Selection
+
+`select: {"type": "point", "encodings": ["color"]}` selects all records with
+matching raw values in the color field. This is a subset of
+[Vega-Lite's selection projections](https://vega.github.io/vega-lite/docs/selection.html#project):
+GenomeSpy supports one unconditional nominal or ordinal field encoding with a
+discrete scale, using `x`, `y`, `color`, `fill`, `stroke`, or `shape`. Categorical
+positions use band or point scales. Direct `fields`
+projection and multi-channel projections are not supported.
+
+Category selections can link plots with different scales, for example a
+categorical x axis and a shape encoding. Map the selected component to the other
+plot's input with [`project`](conditional-encoding.md#matching-categories-across-views).
+
+Initial values use channel-keyed objects such as `value: [{"color": "activated"}]`.
+See the [selection API](../api/runtime-state.md#setting-categorical-point-selections)
+for value rules and programmatic updates, and
+[selection functions](expressions.md#selection-functions) for expression access.
+
+EXAMPLE examples/docs/grammar/parameters/categorical-point-selection.json height=300
+
+!!! disclaimer ""
+
+    Coordinates, cell types, and activation states are synthetic.
+
+#### Selection and Semantic Zoom
+
+Active record selections and positional brushes referenced by appearance
+conditions preserve their matching rows during semantic-zoom sampling,
+independently of enclosing `and`, `or`, or `not` operators. Category selections,
+empty selections, and conditions used only for drawing order preserve no extra
+rows.
 
 ### Interval Selection
 

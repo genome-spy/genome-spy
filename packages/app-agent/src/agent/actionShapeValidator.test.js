@@ -7,6 +7,39 @@ import {
 } from "./actionShapeValidator.js";
 
 describe("actionShapeValidator", () => {
+    it("accepts typed category parameter values and rejects malformed tuples and components", () => {
+        const payload = {
+            selector: { scope: [], param: "focus" },
+            value: {
+                type: "point",
+                membership: "categories",
+                encodings: ["color"],
+                values: [[1], ["1"], [false]],
+            },
+        };
+        for (const component of ["color", "x", "y"]) {
+            expect(
+                validateActionPayloadShape("paramProvenance/paramChange", {
+                    ...payload,
+                    value: { ...payload.value, encodings: [component] },
+                }).ok
+            ).toBe(true);
+        }
+        for (const changes of [
+            { encodings: ["x2"] },
+            { encodings: ["color", "shape"] },
+            { values: [["A", "B"]] },
+            { values: [[null]] },
+            { keys: [["A"]] },
+        ]) {
+            const result = validateActionPayloadShape(
+                "paramProvenance/paramChange",
+                { ...payload, value: { ...payload.value, ...changes } }
+            );
+            expect(result.ok).toBe(false);
+            expect(result.errors.join("\n")).toContain("value");
+        }
+    });
     it("accepts a valid intent batch shape", () => {
         const result = validateIntentBatchShape({
             schemaVersion: 1,

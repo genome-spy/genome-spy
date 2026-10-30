@@ -249,7 +249,7 @@ fn isInstanceVisible(i: u32) -> bool {
         const uniqueId = channelIRByName.get("uniqueId");
         if (
             __DEV__ &&
-            (def.type === "single" || def.type === "multi") &&
+            def.type === "single" &&
             def.membershipUsed !== false &&
             !uniqueId
         ) {
@@ -273,6 +273,7 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
 `;
             }
             case "multi": {
+                const input = channelIRByName.get(def.input ?? "uniqueId");
                 const bufferName = SELECTION_BUFFER_PREFIX + def.name;
                 const lookupName = hashLookupFunctionName(bufferName);
                 return /* wgsl */ `
@@ -280,7 +281,7 @@ fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
     let count = u32(params.${SELECTION_COUNT_PREFIX}${def.name});
     if (allowEmpty && count == 0u) { return true; }
     if (count == 0u) { return false; }
-    let id = ${uniqueId?.rawValueExpr ?? "0u"};
+    let id = ${input?.rawValueExpr ?? "0u"};
     return ${lookupName}(id, arrayLength(&${bufferName})) != HASH_NOT_FOUND;
 }
 fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {

@@ -67,6 +67,8 @@ export type {
     ParamValueInterval,
     ParamValueLiteral,
     ParamValuePoint,
+    ParamValueRecordPoint,
+    ParamValueCategoryPoint,
     ParamValuePointExpand,
     PointExpandMatcher,
     PointExpandOrigin,

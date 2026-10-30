@@ -146,6 +146,37 @@ function contains(table, key) {
 }
 
 describe("SelectionResourceManager", () => {
+    it("binds integer sets to explicit scalar inputs and rejects incompatible bindings", () => {
+        const channels = makeMultiChannels();
+        delete channels.uniqueId;
+        channels.group = {
+            data: new Uint32Array([0]),
+            type: "u32",
+            components: 1,
+        };
+        channels.fill.conditions[0].when = {
+            selection: "chosen",
+            type: "multi",
+            input: "group",
+        };
+        const create = () =>
+            new SelectionResourceManager({
+                device: createDevice(),
+                channels,
+                setUniformValue: vi.fn(),
+            });
+        expect(create().selectionDefs[0].input).toBe("group");
+
+        channels.group = {
+            data: new Float32Array([0]),
+            type: "f32",
+            components: 1,
+        };
+        expect(create).toThrow(/scalar u32/);
+        delete channels.group;
+        expect(create).toThrow(/unknown input/);
+    });
+
     it("discovers every leaf of a selection union once", () => {
         const channels = /** @type {any} */ ({
             uniqueId: { value: 1, type: "u32", components: 1 },

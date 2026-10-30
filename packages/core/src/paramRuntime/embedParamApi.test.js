@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import { createTestEmbed } from "../view/embedTestUtils.js";
 import GenomeStore from "../genome/genomeStore.js";
 import {
     createEmbedParamNamespace,
@@ -106,7 +107,7 @@ describe("embed param API", () => {
     });
 
     test("collapses push outer params to their outer value", async () => {
-        const { view: root } = await createHeadlessEngine({
+        const { root, views } = await createTestEmbed({
             params: [{ name: "brush" }],
             vconcat: [
                 makeUnit("overview", [
@@ -119,12 +120,20 @@ describe("embed param API", () => {
             ],
         });
 
-        const api = resolveEmbedParam(root, "brush");
-        const value = intervalSelection({ x: [10, 20] });
-
-        api.setValue(value);
-
-        expect(api.getValue()).toEqual(value);
+        const apis = [
+            resolveEmbedParam(root, "brush"),
+            views.root().params.get("brush"),
+            views.get({ scope: [], view: "overview" }).params.get("brush"),
+        ];
+        for (const [index, api] of apis.entries()) {
+            const value = intervalSelection({ x: [10 + index, 20 + index] });
+            api.setValue(value);
+            expect(apis.map((handle) => handle.getValue())).toEqual([
+                value,
+                value,
+                value,
+            ]);
+        }
     });
 
     test("rejects writes to computed params", async () => {
@@ -135,12 +144,15 @@ describe("embed param API", () => {
             ])
         );
 
-        const api = resolveEmbedParam(root, "doubleThreshold");
-
-        expect(api.getValue()).toBe(4);
-        expect(() => api.setValue(5)).toThrow(
-            'Cannot set computed parameter "doubleThreshold".'
-        );
+        for (const api of [
+            resolveEmbedParam(root, "doubleThreshold"),
+            resolveScopedEmbedParam(root, "doubleThreshold"),
+        ]) {
+            expect(api.getValue()).toBe(4);
+            expect(() => api.setValue(5)).toThrow(
+                'Cannot set computed parameter "doubleThreshold".'
+            );
+        }
     });
 
     test("rejects writes to point selection params", async () => {
@@ -162,6 +174,50 @@ describe("embed param API", () => {
             'Cannot set point selection parameter "selected" through the embed API.'
         );
     });
+
+    test.each(/** @type {const} */ (["records", "categories"]))(
+        "generic APIs protect an outer %s selection slot without a local selection declaration",
+        async (membership) => {
+            const source = makeUnit("writer", [
+                {
+                    name: "focus",
+                    select:
+                        membership === "records"
+                            ? "point"
+                            : {
+                                  type: "point",
+                                  encodings: ["color"],
+                                  toggle: false,
+                              },
+                    push: "outer",
+                },
+            ]);
+            source.encoding.color = {
+                field: "x",
+                type: "ordinal",
+                scale: { domain: [1] },
+                legend: null,
+            };
+            const { root, views } = await createTestEmbed({
+                params: [{ name: "focus" }],
+                vconcat: [source],
+            });
+            const writer = views.get({ scope: [], view: "writer" });
+            const before = root.paramRuntime.getValue("focus");
+            for (const api of [
+                resolveEmbedParam(root, "focus"),
+                views.root().params.get("focus"),
+                writer.params.get("focus"),
+            ]) {
+                expect(() => api.setValue(123)).toThrow(/getSelection/);
+                expect(root.paramRuntime.getValue("focus")).toBe(before);
+            }
+            const selection = writer.params.getSelection("focus");
+            expect(selection.type).toBe("point");
+            if (selection.type === "point")
+                expect(selection.membership).toBe(membership);
+        }
+    );
 
     test("throws when same-name params are independent", async () => {
         const { view: root } = await createHeadlessEngine({
@@ -402,22 +458,35 @@ describe("embed param API", () => {
         });
     });
 
-    test("a plain nearest declaration shadows an ancestor selection", async () => {
-        const { view: root } = await createHeadlessEngine({
-            params: [
-                {
-                    name: "brush",
-                    select: { type: "interval", encodings: ["x"] },
-                },
-            ],
-            vconcat: [makeUnit("track", [{ name: "brush", value: 1 }])],
-        });
+    test.each(/** @type {const} */ (["point", "interval"]))(
+        "a plain nearest declaration shadows an ancestor %s selection",
+        async (type) => {
+            const { view: root } = await createHeadlessEngine({
+                params: [
+                    {
+                        name: "brush",
+                        select:
+                            type === "point"
+                                ? "point"
+                                : { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                vconcat: [makeUnit("track", [{ name: "brush", value: 1 }])],
+            });
 
-        const child = /** @type {any} */ (root).children[0];
-        expect(() => resolveEmbedSelection(child, "brush")).toThrow(
-            'Parameter "brush" is not a selection in this scope.'
-        );
-    });
+            const child = /** @type {any} */ (root).children[0];
+            expect(() => resolveEmbedSelection(child, "brush")).toThrow(
+                'Parameter "brush" is not a selection in this scope.'
+            );
+            for (const [index, api] of [
+                resolveEmbedParam(child, "brush"),
+                resolveScopedEmbedParam(child, "brush"),
+            ].entries()) {
+                api.setValue(index + 2);
+                expect(api.getValue()).toBe(index + 2);
+            }
+        }
+    );
 
     test("keeps a child selection capability across a push outer alias", async () => {
         const { view: root } = await createHeadlessEngine({
@@ -448,21 +517,21 @@ describe("embed param API", () => {
         const selection = resolveEmbedSelection(root, "selected");
         expect(selection.getValue()).toEqual({
             type: "point",
+            membership: "records",
             active: false,
             data: [],
         });
 
         const datum = /** @type {any} */ (root).getCollector().getData()[0];
-        /** @type {any} */ (resolveScopedEmbedParam(root, "selected")).setValue(
-            {
-                type: "single",
-                datum,
-                uniqueId: datum.__uniqueId,
-            }
-        );
+        root.paramRuntime.setValue("selected", {
+            type: "single",
+            datum,
+            uniqueId: datum.__uniqueId,
+        });
 
         expect(selection.getValue()).toEqual({
             type: "point",
+            membership: "records",
             active: true,
             data: [{ x: 1, y: 2 }],
         });

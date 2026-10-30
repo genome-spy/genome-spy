@@ -27,7 +27,7 @@ export async function createTestEmbed(spec, options) {
  */
 export function getPointSelection(handle, name = "selected") {
     const selection = handle.params.getSelection(name);
-    if (selection.type !== "point")
+    if (selection.type !== "point" || selection.membership !== "records")
         throw new Error("Expected point selection.");
     return selection;
 }

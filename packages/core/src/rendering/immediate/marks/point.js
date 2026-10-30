@@ -93,7 +93,10 @@ export function visitPointInstances(mark, properties, options, visitor) {
 
     for (let i = start; i < end; i++) {
         const datum = data[i];
-        if (encodeNumber(encoders.semanticScore, datum) < semanticThreshold) {
+        if (
+            encodeNumber(encoders.semanticScore, datum) < semanticThreshold &&
+            !mark.isPreservedBySelection(datum)
+        ) {
             continue;
         }
 

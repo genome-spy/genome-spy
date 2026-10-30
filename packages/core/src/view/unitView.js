@@ -16,7 +16,12 @@ import {
     createSinglePointSelection,
     isPointSelectionConfig,
     updateMultiPointSelection,
+    clearPointSelection,
 } from "../selection/selection.js";
+import {
+    resolveCategoryInput,
+    updateCategorySelection,
+} from "../selection/categorySelection.js";
 import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
 import {
     createEventPredicate,
@@ -63,6 +68,25 @@ export default class UnitView extends View {
      * @type {import("vega-util").AccessorFn[] | null}
      */
     #searchAccessors = null;
+
+    /** @type {Map<import("../spec/parameter.js").CategorySelectionChannel, (datum: import("../data/flowNode.js").Datum) => any>} */
+    #categorySelectionAccessors = new Map();
+
+    /** Validate each explicitly authored interaction source after scale initialization. */
+    validatePointSelectionSources() {
+        for (const param of this.paramRuntime.paramConfigs.values()) {
+            if (!("select" in param)) continue;
+            const select = asSelectionConfig(param.select);
+            if (select.type !== "point" || !select.encodings) continue;
+            const component = select.encodings[0];
+            const input = resolveCategoryInput(
+                this.mark.encoding,
+                component,
+                (channel) => this.getScaleResolution(channel)?.getScale()
+            );
+            this.#categorySelectionAccessors.set(component, field(input.field));
+        }
+    }
 
     /**
      *
@@ -163,10 +187,7 @@ export default class UnitView extends View {
                 );
 
                 const clearSelection = () => {
-                    const selection = select.toggle
-                        ? createMultiPointSelection()
-                        : createSinglePointSelection(null);
-                    setter(selection);
+                    setter(clearPointSelection(select));
                 };
 
                 const listener = (
@@ -188,7 +209,17 @@ export default class UnitView extends View {
                     /** @type {any} */
                     let selection;
 
-                    if (select.toggle) {
+                    if (select.encodings) {
+                        selection = updateCategorySelection(
+                            this.paramRuntime.findValue(name),
+                            datum
+                                ? this.#categorySelectionAccessors.get(
+                                      select.encodings[0]
+                                  )(datum)
+                                : undefined,
+                            !!select.toggle && event.mouseEvent.shiftKey
+                        );
+                    } else if (select.toggle) {
                         const toggle = event.mouseEvent.shiftKey;
 
                         if (toggle) {

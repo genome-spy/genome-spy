@@ -250,6 +250,7 @@ export const RangedText = withSource(
 );
 
 const selectionPredicateArgs = {
+    group: -1,
     pickEnabled: true,
     pickedX: 1,
     pickedY: 8,
@@ -267,6 +268,12 @@ export const SelectionPredicates = withSource(
     {
         args: selectionPredicateArgs,
         argTypes: {
+            group: {
+                name: "Integer input group",
+                control: { type: "range", min: -1, max: 2, step: 1 },
+                description:
+                    "Highlights a retained group input; -1 clears it without changing point series.",
+            },
             pickEnabled: {
                 name: "Pick a point",
                 control: "boolean",

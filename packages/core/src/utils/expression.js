@@ -19,6 +19,12 @@ import linearstep from "./linearstep.js";
 import { annotateSpecError } from "./specError.js";
 import compileDatumAccessor from "./compileDatumAccessor.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
+import {
+    isSelectionActive,
+    selectionValues,
+    selectionContains,
+    selectionBounds,
+} from "../selection/selection.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -39,6 +45,10 @@ function sequence(value) {
 }
 
 const functionContext = {
+    selectionActive: isSelectionActive,
+    selectionValues,
+    selectionContains,
+    selectionBounds,
     clamp,
     tickStep,
     format(/** @type {number} */ value, /** @type {string} */ format) {
@@ -84,7 +94,8 @@ const functionContext = {
     ) {
         return sequence(seq).slice(start, end);
     },
-    mapHasKey(/** @type {Map<any, any>} */ map, /** @type {any} */ key) {
+    /** @param {Map<any, any> | Set<any>} map @param {any} key */
+    mapHasKey(map, key) {
         return map.has(key);
     },
     isArray,

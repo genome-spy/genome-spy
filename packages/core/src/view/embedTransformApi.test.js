@@ -99,7 +99,8 @@ test("captures brushed transformed records before analysis and limits only compl
 test("runs window/filter and sample pipelines while preserving keys and native selection", async () => {
     const { handle } = await setup();
     const selected = handle.params.getSelection("selected");
-    if (selected.type !== "point") throw new Error("Expected point selection.");
+    if (selected.type !== "point" || selected.membership !== "records")
+        throw new Error("Expected point selection.");
     selected.setValue([["A1"]]);
     const result = handle.data.transform({
         ...viewport,

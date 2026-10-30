@@ -19,4 +19,3 @@ Current limitations:
 - Computed `expr` parameters are readable but cannot be written.
 - Point selections are exposed through `ParamNamespace.getSelection()`;
   they are not writable through the generic parameter API.
-- Projected selections are not supported.

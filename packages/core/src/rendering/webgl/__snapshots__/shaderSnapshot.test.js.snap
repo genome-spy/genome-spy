@@ -3781,7 +3781,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]))) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
+    return ((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1]))) || (false && !!isSelectionEmpty_brush()));
 }
 
 
@@ -6266,7 +6266,7 @@ return accessor_fillOpacity_0();
 #define fillOpacity_DEFINED
 
 bool isDatumSelected() {
-    return (((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) && (uParam_brush_y[0] < uParam_brush_y[1] && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1]))) || (true && !!isSelectionEmpty_brush())) && ((!isSelectionEmpty_brush())));
+    return ((!isSelectionEmpty_brush() && (uParam_brush_x[0] < uParam_brush_x[1] && (uParam_brush_x[0] <= attr_x && attr_x < uParam_brush_x[1])) && (uParam_brush_y[0] < uParam_brush_y[1] && (uParam_brush_y[0] <= attr_y && attr_y < uParam_brush_y[1]))) || (false && !!isSelectionEmpty_brush()));
 }
 
 
@@ -8725,7 +8725,7 @@ return accessor_y2Offset_0();
 #define y2Offset_DEFINED
 
 bool isDatumSelected() {
-    return ((isSelectionMember_select() || (false && isSelectionEmpty_select())) && ((!isSelectionEmpty_select()))) || ((isSelectionMember_highlight() || (false && isSelectionEmpty_highlight())) && ((!isSelectionEmpty_highlight()))) || ((isSelectionMember_select() || (true && isSelectionEmpty_select())) && ((!isSelectionEmpty_select())));
+    return (isSelectionMember_select() || (false && isSelectionEmpty_select())) || (isSelectionMember_highlight() || (false && isSelectionEmpty_highlight()));
 }
 
 

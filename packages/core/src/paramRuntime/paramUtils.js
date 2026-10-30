@@ -1,13 +1,13 @@
 import { isString } from "vega-util";
 import {
     asSelectionConfig,
+    clearPointSelection,
     createIntervalSelection,
-    createMultiPointSelection,
-    createSinglePointSelection,
     isIntervalSelectionConfig,
     isPointSelectionConfig,
 } from "../selection/selection.js";
 import { createRulerValue } from "../ruler/rulerValue.js";
+import { createCategorySelection } from "../selection/categorySelection.js";
 
 /**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
@@ -135,9 +135,19 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
     if ("select" in param) {
         const select = asSelectionConfig(param.select);
         if (isPointSelectionConfig(select)) {
-            return select.toggle
-                ? createMultiPointSelection()
-                : createSinglePointSelection(null);
+            if (select.encodings && param.value !== undefined) {
+                const component = select.encodings[0];
+                const values =
+                    /** @type {Record<string, import("../spec/channel.js").Scalar>[]} */ (
+                        param.value
+                    );
+                return createCategorySelection(
+                    component,
+                    values.map((value) => value[component]),
+                    !!select.toggle
+                );
+            }
+            return clearPointSelection(select);
         }
         if (isIntervalSelectionConfig(select)) {
             if (!select.encodings) {

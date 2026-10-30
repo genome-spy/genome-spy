@@ -152,7 +152,7 @@
             { "type": "collect" },
             {
               "type": "formula",
-              "expr": "brush.intervals.x ? brush.intervals.x[datum.side] : datum.x2",
+              "expr": "selectionBounds(brush, 'x') ? selectionBounds(brush, 'x')[datum.side] : datum.x2",
               "as": "x"
             }
           ],

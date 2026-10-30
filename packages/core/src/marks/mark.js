@@ -458,6 +458,7 @@ export default class Mark {
      * @returns {void}
      */
     initializeEncoders() {
+        this.unitView.validatePointSelectionSources();
         this.encoders = createEncoders(this.unitView, this.encoding);
     }
 
@@ -474,7 +475,9 @@ export default class Mark {
                 this.encoding,
                 this.unitView.paramRuntime,
                 this.defaultHitTestMode,
-                (channel) => this.unitView.getScaleResolution(channel)?.type
+                (channel) => this.unitView.getScaleResolution(channel)?.type,
+                (channel) =>
+                    this.unitView.getScaleResolution(channel)?.getScale()
             );
             this.#orderInitialized = true;
         }
@@ -630,8 +633,10 @@ export default class Mark {
                         getSelectionPredicateTreeParams(
                             normalizeSelectionPredicateTree(condition)
                         ).some((name) => {
+                            const capability =
+                                runtime.findSelectionCapability(name);
                             const type =
-                                runtime.findSelectionCapability(name)?.type ??
+                                capability?.type ??
                                 runtime.findValue(name)?.type;
                             return type === "single" || type === "multi";
                         })
@@ -657,6 +662,7 @@ export default class Mark {
                 (this.#requiresSelectionIdentity ||
                     this.unitView.paramRuntime.hasPointSelections({
                         inherited: true,
+                        recordsOnly: true,
                     })))
         );
     }

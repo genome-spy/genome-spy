@@ -338,6 +338,12 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
     type: "point";
 
     /**
+     * Select raw categories from one unconditional nominal or ordinal field
+     * encoding with a discrete scale. Omit to select individual records.
+     */
+    encodings?: [CategorySelectionChannel];
+
+    /**
      * Controls whether data values should be toggled (inserted or removed from a point selection)
      * when clicking with the shift key pressed.
      *
@@ -469,7 +475,25 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     measure?: "none" | "inside" | "outside";
 }
 
-export interface SelectionParameter<T extends SelectionType = SelectionType>
+export type CategorySelectionChannel =
+    "x" | "y" | "color" | "fill" | "stroke" | "shape";
+
+export interface RecordSelectionParameter
+    extends ParameterBase, PersistedParameter {
+    select: "point" | Omit<PointSelectionConfig, "encodings">;
+
+    value?: never;
+}
+
+export interface CategorySelectionParameter<C extends CategorySelectionChannel>
+    extends ParameterBase, PersistedParameter {
+    select: Omit<PointSelectionConfig, "encodings"> & { encodings: [C] };
+
+    /** Initial raw categories, keyed by the declared encoding channel. */
+    value?: Record<C, Scalar>[];
+}
+
+export interface IntervalSelectionParameter
     extends ParameterBase, PersistedParameter {
     /**
      * Determines the default event processing and data query for the selection. GenomeSpy supports two selection types, following the Vega-Lite model:
@@ -477,19 +501,24 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
      */
-    select:
-        | T
-        | (T extends "point"
-              ? PointSelectionConfig
-              : T extends "interval"
-                ? IntervalSelectionConfig
-                : never);
+    select: "interval" | IntervalSelectionConfig;
 
     /**
      * Initial value for the selection.
      */
-    value?: T extends "interval" ? SelectionInitIntervalMapping : never;
+    value?: SelectionInitIntervalMapping;
 }
+
+export type SelectionParameter<T extends SelectionType = SelectionType> =
+    T extends "interval"
+        ? IntervalSelectionParameter
+        : | RecordSelectionParameter
+          | CategorySelectionParameter<"x">
+          | CategorySelectionParameter<"y">
+          | CategorySelectionParameter<"color">
+          | CategorySelectionParameter<"fill">
+          | CategorySelectionParameter<"stroke">
+          | CategorySelectionParameter<"shape">;
 
 export type SelectionInitIntervalMapping = Partial<
     Record<PrimaryPositionalChannel, [number, number]>

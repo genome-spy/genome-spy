@@ -1,3 +1,4 @@
+import { splitAccessPath } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
     getSecondaryChannel,
@@ -10,6 +11,10 @@ import {
     getSelectionPredicateTreeParams,
     normalizeSelectionPredicateTree,
 } from "./selectionPredicateTree.js";
+import {
+    createCategorySelection,
+    testCategorySelection,
+} from "./categorySelection.js";
 
 /**
  * @param {import("../data/flowNode.js").Datum} datum
@@ -178,6 +183,17 @@ export function makeSelectionTestExpression(params, selection) {
     const paramName = validateParameterName(params.param);
     const fields = params.fields ?? {};
 
+    if (isCategorySelection(selection)) {
+        if (Object.keys(fields).length !== 1 || !fields[selection.component]) {
+            throw new Error(
+                `Category filter fields must map the declared component "${selection.component}".`
+            );
+        }
+        const access = splitAccessPath(fields[selection.component])
+            .map((part) => `[${JSON.stringify(part)}]`)
+            .join("");
+        return `${paramName}.values.size == 0 ? ${empty} : mapHasKey(${paramName}.values, datum${access})`;
+    }
     if (isSinglePointSelection(selection)) {
         return `${paramName}.uniqueId == null ? ${empty} : ${paramName}.uniqueId === datum[${JSON.stringify(
             UNIQUE_ID_KEY
@@ -314,10 +330,68 @@ export function isMultiPointSelection(selection) {
 
 /**
  * @param {import("../types/selectionTypes.js").Selection} selection
- * @returns {selection is import("../types/selectionTypes.js").ProjectedSelection}
+ * @returns {selection is import("../types/selectionTypes.js").CategoryPointSelection}
  */
-export function isProjectedSelection(selection) {
-    return selection.type === "projected";
+export function isCategorySelection(selection) {
+    return selection.type === "categories";
+}
+
+/** @param {import("../spec/parameter.js").PointSelectionConfig} select */
+export function clearPointSelection(select) {
+    return select.encodings
+        ? createCategorySelection(select.encodings[0])
+        : select.toggle
+          ? createMultiPointSelection()
+          : createSinglePointSelection(null);
+}
+
+/**
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {string} component
+ */
+export function selectionValues(selection, component) {
+    if (!isCategorySelection(selection)) {
+        throw new Error("selectionValues requires a category point selection.");
+    }
+    if (selection.component !== component) {
+        throw new Error(`Undeclared selection component "${component}".`);
+    }
+    return Array.from(selection.values);
+}
+
+/**
+ * Tests raw category membership without materializing the selected values.
+ *
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {string} component
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function selectionContains(selection, component, value) {
+    if (!isCategorySelection(selection)) {
+        throw new Error(
+            "selectionContains requires a category point selection."
+        );
+    }
+    if (selection.component !== component) {
+        throw new Error(`Undeclared selection component "${component}".`);
+    }
+    return testCategorySelection(selection, value, false);
+}
+
+/**
+ * @param {import("../types/selectionTypes.js").Selection} selection
+ * @param {string} component
+ */
+export function selectionBounds(selection, component) {
+    if (!isIntervalSelection(selection)) {
+        throw new Error("selectionBounds requires an interval selection.");
+    }
+    if (!Object.hasOwn(selection.intervals, component)) {
+        throw new Error(`Undeclared selection component "${component}".`);
+    }
+    const bounds = selection.intervals[/** @type {"x" | "y"} */ (component)];
+    return bounds ? bounds.slice() : null;
 }
 
 /**
@@ -388,10 +462,13 @@ export function isSelectionActive(selection) {
     if (isMultiPointSelection(selection)) {
         return selection.data.size > 0;
     }
+    if (isCategorySelection(selection)) {
+        return selection.values.size > 0;
+    }
     if (isIntervalSelection(selection)) {
         return isActiveIntervalSelection(selection);
     }
-    throw new Error(`Unsupported selection type: ${selection.type}`);
+    throw new Error("Unsupported selection value.");
 }
 
 /**

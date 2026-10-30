@@ -73,6 +73,87 @@ describe("generated core schema", () => {
         }
     });
 
+    test("categorical point projections and channel-keyed initializers have precise shapes", () => {
+        const validate = createCoreValidator();
+        const param = {
+            name: "focus",
+            select: { type: "point", encodings: ["color"] },
+            value: [{ color: "A" }],
+        };
+        const spec = { mark: "point", params: [param] };
+        expect(validate(spec), JSON.stringify(validate.errors)).toBe(true);
+        for (const channel of ["x", "y"]) {
+            expect(
+                validate({
+                    ...spec,
+                    params: [
+                        {
+                            ...param,
+                            select: { type: "point", encodings: [channel] },
+                            value: [{ [channel]: "A" }],
+                        },
+                    ],
+                })
+            ).toBe(true);
+        }
+        for (const project of [
+            { color: "shape" },
+            { fill: "color" },
+            { x: "x2" },
+            { color: "x" },
+            { x: "shape" },
+            { x: "y" },
+            { y: "color" },
+        ]) {
+            expect(
+                validate({
+                    ...spec,
+                    encoding: {
+                        opacity: {
+                            condition: { param: "focus", project, value: 1 },
+                            value: 0.1,
+                        },
+                    },
+                })
+            ).toBe(true);
+        }
+        for (const project of [
+            { color: { field: "state" } },
+            { encoding: "color" },
+            { color: "x2" },
+            { x: "size" },
+        ]) {
+            expect(
+                validate({
+                    ...spec,
+                    encoding: {
+                        opacity: {
+                            condition: { param: "focus", project, value: 1 },
+                            value: 0.1,
+                        },
+                    },
+                })
+            ).toBe(false);
+        }
+        for (const invalid of [
+            { ...param, select: { type: "point", encodings: [] } },
+            {
+                ...param,
+                select: { type: "point", encodings: ["color", "shape"] },
+            },
+            { ...param, select: { type: "point", encodings: ["x2"] } },
+            // Positional initializers must use the declared component key.
+            { ...param, select: { type: "point", encodings: ["x"] } },
+            { ...param, select: { type: "point", encoding: "color" } },
+            { ...param, select: { type: "point", fields: ["state"] } },
+            { ...param, value: [["A"]] },
+            { ...param, value: [{ state: "A" }] },
+            { ...param, value: [{ color: "A", shape: "B" }] },
+            { ...param, value: [{ color: null }] },
+        ])
+            expect(validate({ ...spec, params: [invalid] })).toBe(false);
+    });
+
     test("surround restricts plot kinds while accepting scoped and nested sides", () => {
         const validate = createCoreValidator();
         const spec = {
@@ -454,7 +535,7 @@ describe("generated core schema", () => {
         condition.test.or = [{ param: "brush" }];
         expect(validate(base)).toBe(false);
         delete condition.test.or;
-        condition.test.and[0].project = { x: "y" };
+        condition.test.and[0].project = { x: "size" };
         expect(validate(base)).toBe(false);
         delete condition.test;
         condition.param = { or: ["selected"] };

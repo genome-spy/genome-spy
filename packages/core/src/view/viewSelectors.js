@@ -336,7 +336,7 @@ export function resolveParamSelector(root, selector) {
                 continue;
             }
 
-            if (!isBookmarkableParam(param)) {
+            if (!isBookmarkableParam(param, view)) {
                 continue;
             }
 
@@ -376,7 +376,7 @@ export function visitBookmarkableParams(root, visitor) {
         }
 
         for (const [name, param] of view.paramRuntime.paramConfigs) {
-            if (!isBookmarkableParam(param)) {
+            if (!isBookmarkableParam(param, view)) {
                 continue;
             }
 
@@ -455,11 +455,21 @@ function validateViewSelector(selector) {
  * Returns true for parameters that are persisted in bookmarks.
  *
  * @param {import("../spec/parameter.js").Parameter} param
+ * @param {import("./view.js").default} view
  * @returns {boolean}
  */
-function isBookmarkableParam(param) {
+function isBookmarkableParam(param, view) {
     if (param.persist === false) {
         return false;
+    }
+
+    if (param.push === "outer") {
+        const owner = view.paramRuntime.findRuntimeForParam(param.name);
+        // Persist an explicitly declared selection once at its value owner.
+        // Legacy controllers pushing into an untyped slot remain bookmarkable.
+        if (isSelectionParameter(owner.paramConfigs.get(param.name))) {
+            return false;
+        }
     }
 
     if (isSelectionParameter(param)) {
@@ -530,7 +540,7 @@ function validateParamNamesInScope(root, scope, issues) {
 
     visitViewsInScope(root, scope, (view) => {
         for (const [name, param] of view.paramRuntime.paramConfigs) {
-            if (!isBookmarkableParam(param)) {
+            if (!isBookmarkableParam(param, view)) {
                 continue;
             }
 
@@ -663,7 +673,7 @@ function hasAddressableFeatures(root) {
 
         if (behavior !== "exclude") {
             for (const param of view.paramRuntime.paramConfigs.values()) {
-                if (isBookmarkableParam(param)) {
+                if (isBookmarkableParam(param, view)) {
                     found = true;
                     return VISIT_STOP;
                 }

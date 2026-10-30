@@ -475,14 +475,27 @@ export default class WebGLHelper {
             );
         }
 
-        const { table, capacity } = buildHashTableSet(selection.data.keys());
+        const texture = this.createIntegerSetTexture(
+            selection.data.keys(),
+            update ? this.selectionTextures.get(selection) : undefined
+        );
+        this.selectionTextures.set(selection, texture);
+        this._ownedTextures.add(texture);
+    }
+
+    /**
+     * Updates one backend-owned membership resource without changing mark data.
+     * The caller owns the returned texture and its disposal.
+     * @param {Iterable<number>} values
+     * @param {WebGLTexture} [existingTexture]
+     * @returns {WebGLTexture}
+     */
+    createIntegerSetTexture(values, existingTexture) {
+        const { table, capacity } = buildHashTableSet(values);
         const { width, height } = computeHashTextureDimensions(
             capacity,
             this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE)
         );
-
-        const existingTexture = this.selectionTextures.get(selection);
-
         const gl = this.gl;
         const texture = createOrUpdateTexture(
             this.gl,
@@ -498,15 +511,14 @@ export default class WebGLHelper {
                 height,
             },
             table,
-            update ? existingTexture : false
+            existingTexture
         );
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_BASE_LEVEL, 0);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, 0);
         gl.bindTexture(gl.TEXTURE_2D, null);
 
-        this.selectionTextures.set(selection, texture);
-        this._ownedTextures.add(texture);
+        return texture;
     }
 }
 

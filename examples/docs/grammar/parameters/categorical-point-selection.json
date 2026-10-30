@@ -1,0 +1,39 @@
+{
+  "description": [
+    "Select cells by activation state",
+    "Select an activation state to highlight all matching cells. Coordinates, cell types, and activation states are synthetic."
+  ],
+
+  "title": {
+    "text": "Select an activation state",
+    "subtitle": "Shift-click to toggle; double-click to clear.",
+    "anchor": "start"
+  },
+
+  "params": [
+    { "name": "focus", "select": { "type": "point", "encodings": ["color"] } }
+  ],
+
+  "data": { "url": "data/immune-cell-activation.csv" },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 9] }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 7] }
+    },
+    "color": { "field": "activation_state", "type": "ordinal" },
+    "shape": { "field": "cell_type", "type": "nominal" },
+    "opacity": {
+      "condition": { "param": "focus", "value": 1 },
+      "value": 0.12
+    }
+  }
+}

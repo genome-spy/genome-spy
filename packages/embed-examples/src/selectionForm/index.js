@@ -2,8 +2,8 @@ import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
 
 /** @typedef {import("@genome-spy/core/types/embedApi.js").IntervalSelectionApi} IntervalSelectionApi */
-/** @typedef {import("@genome-spy/core/types/embedApi.js").PointSelectionApi} PointSelectionApi */
-/** @typedef {import("@genome-spy/core/types/embedApi.js").SelectionSnapshot} SelectionSnapshot */
+/** @typedef {import("@genome-spy/core/types/embedApi.js").RecordPointSelectionApi} PointSelectionApi */
+/** @typedef {import("@genome-spy/core/types/embedApi.js").RecordPointSnapshot | import("@genome-spy/core/types/embedApi.js").IntervalSnapshot} SelectionSnapshot */
 
 const bridgeUrl = "http://127.0.0.1:8765";
 // Add `?bridge` to exchange selections and annotations with the optional

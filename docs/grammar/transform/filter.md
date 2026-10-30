@@ -37,6 +37,21 @@ independently scheduled lazy load.
 
 ### Filtering by a Selection Predicate
 
+Category selection filters require a mapping from the declared channel to the
+field in the filtered data, for example:
+
+```json
+{
+  "type": "filter",
+  "param": "activation_states",
+  "fields": { "color": "activation_state" }
+}
+```
+
+Matching uses raw typed category values. Empty selections retain all rows by
+default; `empty: false` retains none. Filtering can change inferred scale
+domains, while selected values remain stored if temporarily absent.
+
 Interval selections in GenomeSpy are defined by their data extent along the x
 and/or y channels. When filtering data based on a selection, you must explicitly
 map the visual channels (x or y) to the corresponding data fields to ensure
