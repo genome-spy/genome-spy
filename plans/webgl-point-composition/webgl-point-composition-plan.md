@@ -1,6 +1,6 @@
 # WebGL point fill/stroke composition
 
-Status: implementation, local qualification and independent reviews complete; draft PR delivery.
+Status: scoped implementation and reviews complete; maintainer LGTM and original-head CI pass.
 Base: fresh master 22cc6b69. Related: #604, #474 and WebGPU point PR #623.
 No new dependencies. This slice completes neither issue.
 
@@ -285,5 +285,7 @@ must be removed before merge; report its final separate count at PR delivery.
 Production fix commit: b9d2e9de. Local checks and two independent Sol
 implementation reviews are complete, with no actionable findings. Reviewers
 inspected sources and saved results without independently rerunning browsers.
-Remote CI remains pending. Keep this temporary plan in the draft for review
-and retire it before merge. Delivery remains separate from rectangle PR #622.
+Remote CI passed on c8da5a11. The maintainer approved PR #624 and requested plan
+retirement before merge. Every scoped implementation/proof gate is complete;
+common-opacity normalization, shared alignment and broader native/picking parity
+remain separate #604 work. Retire this reconciled plan before squash merge.
