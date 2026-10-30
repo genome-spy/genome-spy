@@ -114,7 +114,6 @@ export function bindLegend(legend, binding, units) {
     const alias = "legendSelection";
     legend.paramRuntime.registerScopedExpression(alias, name, runtime);
     const entry = units.find((unit) => unit.name === "entries");
-    entry.mark.pickingGeometry = true;
     for (const unit of units) {
         if (!["symbols", "labels"].includes(unit.name)) continue;
         const label = unit.name === "labels";

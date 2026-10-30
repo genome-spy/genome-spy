@@ -1,9 +1,10 @@
 # Native interactive legends
 
-Status: implemented and automatically verified. User manual testing is pending.
+Status: implementation complete and automatically verified; reconciled for retirement.
+User-owned manual testing is tracked as a PR follow-up.
 
-Branch: `codex/native-interactive-legends`, based on master at `0feddbb1d`.
-That commit merges the categorical point-selection prerequisite, PR #614.
+Branch: `codex/native-interactive-legends`, rebased onto master at `bb361bfc7`.
+This includes categorical point selections (#614) and WebGPU picking parity (#636).
 
 ## Outcome and scope
 
@@ -143,12 +144,11 @@ domain contributions, tooltip content, and inherited chart selections. Picking
 IDs for small entry targets are legitimate; chart-sized record IDs are not needed
 merely because a legend-bound category selection exists.
 
-Prove transparent hit rectangles work on WebGPU early. Its shader builder
-currently discards zero-alpha fragments (`marks/shaders/markShaderBuilder.js`).
-If the existing public renderer contract cannot express the hit target, add a
-minimal renderer-generic picking-only/hit-area capability and a standalone GPU
-test. Do not make invisible shapes visibly opaque, add DOM overlays, or inspect
-renderer private state from Core.
+Use ordinary transparent rectangles on WebGPU. The renderer's mark-specific hit
+coverage ignores paint opacity while retaining shape boundaries, matching WebGL
+(#636). No picking mode or Core-side hit-geometry flag is needed. Verify the
+default renderer behavior and real legend gestures without DOM overlays or
+access to renderer private state.
 
 Async click and double-click picks must dispatch selection effects in native
 event order. Test reversed pick completion before modifying the controller. If
@@ -288,9 +288,11 @@ The two implementation questions are resolved:
    membership resources. The existing `registerScopedExpression` represents the
    owner-bound alias, including shared-contributor shadowing; no alias API or
    mirrored selection state was necessary.
-2. WebGPU needed an explicit geometry-picking mode because transparent paint is
-   normally discarded. The independent prerequisite is committed as
-   `2841c449e` (`feat(webgpu-renderer): support geometry picking for invisible hit areas`).
+2. Master's `15e596ad9` (#636) provides WebGL-compatible WebGPU hit coverage,
+   independent of paint opacity. Rebasing drops the temporary geometry-picking
+   prerequisite and removes its Core flag and adapter hook. Transparent legend
+   entries now use the renderer's default picking contract; this branch adds no
+   renderer API, picking shader, or redundant renderer regression test.
    Native browser checks also exposed asynchronous event/pick ordering: interactions
    now carry their own picked mark and discrete effects preserve input order while
    readbacks remain concurrent. Ordinary synchronous delivery and hover coalescing
@@ -327,15 +329,16 @@ alias primitive, and combine delivery into one complete feature milestone.
 - [x] Native browser integration on Canvas, WebGL, and WebGPU at DPR 1 and 2:
       symbols, labels, whitespace, Shift-toggle, double-click clear, independent
       membership, inert title/plot events, native raster opacity, and SVG agreement.
-      The focused renderer GPU test also verifies transparent geometry picking and
-      clipping independently.
+      Master's picking-coverage GPU test verifies transparent hit surfaces, shape
+      boundaries, minimum point picking size, and clipping independently.
 - [x] WebGL/WebGPU 100,000-row retained-update probe: 12 selection changes cause
       zero chart geometry uploads, collector completions, series extractions, or
       pipeline rebuilds. Record and brush values and semantic samples stay unchanged.
 - [x] Workspace TypeScript, lint, schema and agent artifact regeneration,
       documentation type freshness, and release checks. The Core minor fragment
       advances the fixed release group to 1.3.0.
-- [ ] User manual testing, including the supplemental mixed-hover example.
+- Discarded from the implementation task list: user-owned manual testing,
+  including the supplemental mixed-hover example. Track it as a PR follow-up.
 
 The subsequent KISS review fixes reject inconsistent clear settings on a shared
 legend, retain equivalent normalized bindings once, use packed pixel bounds for
@@ -347,5 +350,12 @@ and 2, including retained updates. The browser check now waits for the canvas's
 loading transition before reading entry coordinates, correcting a demonstrated
 startup click race in the test.
 
-Retain this reconciled plan for branch discussion and commit history. Remove it
-in a later cleanup before merging, per the repository's plan-retirement workflow.
+Rebase verification on `bb361bfc7`: 347 focused tests, all workspace type checks,
+lint, and release checks pass. Native legend checks pass on Canvas, WebGL, and
+WebGPU at DPR 1 and 2, including retained updates; master's picking-coverage GPU
+tests pass at both pixel ratios. There is no remaining diff in the WebGPU
+renderer package. Runtime impact against this master is +371/-41, net +330
+non-comment JavaScript lines in Core, excluding tests and declaration files.
+
+The implementation tasks are complete. Preserve this reconciled plan in branch
+history and remove it from the PR diff in the next cleanup commit.
