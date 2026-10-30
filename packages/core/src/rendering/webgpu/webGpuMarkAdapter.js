@@ -220,6 +220,26 @@ export function createWebGpuMarkConfig(
         throw unsupported(mark, `Mark type "${markType}" is not supported.`);
     }
 
+    for (const input of mark.nonvisualInputs.keys()) {
+        const encoder =
+            mark.encoders[
+                /** @type {import("../../spec/channel.js").Channel} */ (input)
+            ];
+        config.inputs ??= {};
+        config.inputs[input] = {
+            data: toCategoricalArray(
+                mark,
+                input,
+                data,
+                encoder.branches[0].accessor,
+                encoder.scale
+            ).values,
+            type: "u32",
+        };
+    }
+
+    if (mark.pickingGeometry) config.picking = "geometry";
+
     return createTranslation(
         definition,
         addOccurrenceConfig(config, resolvedPlacementIndex, mark, coords),

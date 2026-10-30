@@ -437,11 +437,17 @@ describe("InteractionController", () => {
         const dispatched = [];
         const viewRoot = {
             propagateInteraction(/** @type {any} */ interaction) {
-                if (["mousemove", "click"].includes(interaction.type)) {
+                if (
+                    ["mousemove", "click", "dblclick"].includes(
+                        interaction.type
+                    )
+                ) {
                     dispatched.push({
                         type: interaction.type,
                         shiftKey: interaction.mouseEvent.shiftKey,
-                        hoverId: controller.getCurrentHover()?.uniqueId,
+                        hoverId:
+                            interaction.markHit?.uniqueId ??
+                            controller.getCurrentHover()?.uniqueId,
                     });
                 }
             },
@@ -516,15 +522,18 @@ describe("InteractionController", () => {
         pending[4](2);
         await Promise.resolve();
         await Promise.resolve();
+        await vi.waitFor(() => expect(emitted).toHaveLength(3));
         expect(emitted.map(({ event }) => event.datum.id)).toEqual([
             "datum-1",
             "datum-1",
             "datum-2",
         ]);
-        expect(dispatched).toEqual([
+        expect(dispatched.filter(({ type }) => type === "click")).toEqual([
             { type: "click", shiftKey: false, hoverId: 1 },
             { type: "click", shiftKey: true, hoverId: 1 },
             { type: "click", shiftKey: false, hoverId: 2 },
+        ]);
+        expect(dispatched.filter(({ type }) => type === "mousemove")).toEqual([
             { type: "mousemove", shiftKey: false, hoverId: 2 },
         ]);
 
@@ -564,6 +573,24 @@ describe("InteractionController", () => {
         await Promise.resolve();
         expect(dispatched).toHaveLength(dispatchCount);
         expect(controller.getCurrentHover()?.uniqueId).toBe(1);
+
+        // A later double-click pick may finish before the clicks it must clear.
+        globalThis.window = /** @type {any} */ ({
+            requestAnimationFrame: () => 0,
+        });
+        const before = dispatched.length;
+        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("click", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("dblclick", { clientX: 20 }));
+        pending[10](2);
+        await Promise.resolve();
+        expect(dispatched).toHaveLength(before);
+        pending[9](1);
+        await vi.waitFor(() => expect(dispatched).toHaveLength(before + 2));
+        expect(dispatched.slice(before)).toEqual([
+            { type: "click", shiftKey: false, hoverId: 1 },
+            { type: "dblclick", shiftKey: false, hoverId: 2 },
+        ]);
     });
 
     it("freezes hover-derived cursor state while interactions are frozen", () => {

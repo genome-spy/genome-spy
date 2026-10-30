@@ -5,6 +5,7 @@ import FlowOutput from "../data/flowOutput.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 import {
     getDefaultParamValue,
+    hasPlotSelectionInput,
     isExprRef,
     isSelectionParameter,
     validateParameterName,
@@ -1258,10 +1259,14 @@ export default class ViewParamRuntime {
      * Returns whether an authored point-selection declaration is accessible.
      * When inherited declarations are included, nearer declarations shadow names.
      *
-     * @param {{ inherited?: boolean, recordsOnly?: boolean }} [options]
+     * @param {{ inherited?: boolean, recordsOnly?: boolean, inputOnly?: boolean }} [options]
      * @returns {boolean}
      */
-    hasPointSelections({ inherited = false, recordsOnly = false } = {}) {
+    hasPointSelections({
+        inherited = false,
+        recordsOnly = false,
+        inputOnly = false,
+    } = {}) {
         for (
             let runtime = /** @type {ViewParamRuntime} */ (this);
             runtime;
@@ -1270,6 +1275,7 @@ export default class ViewParamRuntime {
             for (const param of runtime.#paramConfigs.values()) {
                 if (
                     isSelectionParameter(param) &&
+                    (!inputOnly || hasPlotSelectionInput(param)) &&
                     (param.select === "point" ||
                         (typeof param.select === "object" &&
                             param.select.type === "point")) &&

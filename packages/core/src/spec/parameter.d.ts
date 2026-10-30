@@ -489,6 +489,12 @@ export interface CategorySelectionParameter<C extends CategorySelectionChannel>
     extends ParameterBase, PersistedParameter {
     select: Omit<PointSelectionConfig, "encodings"> & { encodings: [C] };
 
+    /**
+     * Populate this selection by clicking its categorical symbol legend.
+     * Plot input is disabled unless `select.on` is explicitly specified.
+     */
+    bind?: "legend";
+
     /** Initial raw categories, keyed by the declared encoding channel. */
     value?: Record<C, Scalar>[];
 }

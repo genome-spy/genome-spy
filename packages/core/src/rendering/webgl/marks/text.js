@@ -173,7 +173,7 @@ export default class WebGLTextMark extends WebGLMark {
 
         const builder = new TextVertexBuilder({
             encoders: this.encoders,
-            attributes: this.getAttributes(),
+            attributes: this.getEncodingAttributes(),
             properties: {
                 align: props.align,
                 baseline: props.baseline,

@@ -26,7 +26,8 @@ import { isChromeView } from "../view/viewSelectors.js";
  *     legend: import("../spec/legend.js").LegendConfig,
  *     format?: string,
  *     dataType: import("../spec/channel.js").Type,
- *     scaleResolution: import("./scaleResolution.js").default
+ *     scaleResolution: import("./scaleResolution.js").default,
+ *     binding?: import("../view/legend/legendBinding.js").LegendBinding
  * }} LegendDefinition
  */
 
@@ -43,6 +44,9 @@ const SYMBOL_LEGEND_CHANNELS = new Set([
 const GRADIENT_LEGEND_CHANNELS = new Set(["color", "fill", "stroke"]);
 
 export default class LegendResolution {
+    /** @type {Map<import("./scaleResolution.js").default, import("../view/legend/legendBinding.js").LegendBinding>} */
+    selectionBindings = new Map();
+
     /** @type {Set<LegendResolutionMember>} */
     #members = new Set();
 
@@ -90,6 +94,9 @@ export default class LegendResolution {
                 !seenScaleResolutions.has(definition.scaleResolution)
             ) {
                 seenScaleResolutions.add(definition.scaleResolution);
+                definition.binding = this.selectionBindings.get(
+                    definition.scaleResolution
+                );
                 definitions.push(definition);
             }
         }

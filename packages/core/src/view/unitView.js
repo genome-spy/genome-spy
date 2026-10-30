@@ -29,6 +29,7 @@ import {
 } from "../utils/interactionConfig.js";
 import { field } from "../utils/field.js";
 import { resolveViewResolutions } from "./resolutionPlanner.js";
+import { hasPlotSelectionInput } from "../paramRuntime/paramUtils.js";
 
 /**
  *
@@ -137,7 +138,7 @@ export default class UnitView extends View {
 
     #setupPointSelection() {
         for (const [name, param] of this.paramRuntime.paramConfigs) {
-            if (!("select" in param)) {
+            if (!("select" in param) || !hasPlotSelectionInput(param)) {
                 continue;
             }
 
@@ -172,8 +173,13 @@ export default class UnitView extends View {
                     this.paramRuntime.setValue(name, selection);
                 };
 
-                const getHoveredDatum = () => {
-                    const h = this.context.getCurrentHover();
+                const getHoveredDatum = (
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) => {
+                    const h =
+                        event.markHit === undefined
+                            ? this.context.getCurrentHover()
+                            : event.markHit;
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
@@ -196,7 +202,7 @@ export default class UnitView extends View {
                     if (!eventPredicate(event.proxiedMouseEvent)) {
                         return;
                     }
-                    const datum = getHoveredDatum();
+                    const datum = getHoveredDatum(event);
                     // Other layers may receive this move after the picked mark.
                     if (
                         hoverSelection &&

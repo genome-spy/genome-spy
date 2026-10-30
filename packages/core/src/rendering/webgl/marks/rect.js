@@ -164,7 +164,7 @@ export default class WebGLRectMark extends WebGLMark {
 
         const builder = new RectVertexBuilder({
             encoders: this.encoders,
-            attributes: this.getAttributes(),
+            attributes: this.getEncodingAttributes(),
             numItems,
         });
 
