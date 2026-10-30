@@ -180,46 +180,56 @@ describe("SVG rectangle renderer", () => {
         ]);
     });
 
-    test("slightly overlaps adjacent opaque rectangles", async () => {
-        const { view } = await createHeadlessEngine({
-            data: {
-                values: [
-                    { x: 0, x2: 0.5 },
-                    { x: 0.5, x2: 1 },
-                ],
-            },
-            mark: "rect",
-            encoding: {
-                x: { field: "x", type: "quantitative", scale: null },
-                x2: { field: "x2" },
-                y: { value: 0 },
-                y2: { value: 1 },
-                fill: { value: "black" },
-            },
-        });
+    test.each(["black", "rgba(0, 0, 0, 0.5)"])(
+        "pads seams only for opaque rectangle paint (%s)",
+        async (fill) => {
+            const { view } = await createHeadlessEngine({
+                data: {
+                    values: [
+                        { x: 0, x2: 0.5 },
+                        { x: 0.5, x2: 1 },
+                    ],
+                },
+                mark: "rect",
+                encoding: {
+                    x: { field: "x", type: "quantitative", scale: null },
+                    x2: { field: "x2" },
+                    y: { value: 0 },
+                    y2: { value: 1 },
+                    fill: { value: fill },
+                },
+            });
 
-        const { svg } = createSvg({
-            viewRoot: view,
-            logicalWidth: 100,
-            logicalHeight: 100,
-            background: null,
-        });
-        const rects = Array.from(
-            svg.querySelectorAll('[data-mark-type="rect"] rect')
-        );
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 100,
+                background: null,
+            });
+            const rects = Array.from(
+                svg.querySelectorAll('[data-mark-type="rect"] rect')
+            );
 
-        // The overlap suppresses antialiasing seams in SVG and PDF viewers.
-        expect(
-            rects.map((rect) => [
-                rect.getAttribute("x"),
-                rect.getAttribute("width"),
-                rect.getAttribute("height"),
-            ])
-        ).toEqual([
-            ["-0.1", "50.2", "100.2"],
-            ["49.9", "50.2", "100.2"],
-        ]);
-    });
+            // The overlap suppresses antialiasing seams in SVG and PDF viewers.
+            expect(
+                rects.map((rect) => [
+                    rect.getAttribute("x"),
+                    rect.getAttribute("width"),
+                    rect.getAttribute("height"),
+                ])
+            ).toEqual(
+                fill === "black"
+                    ? [
+                          ["-0.1", "50.2", "100.2"],
+                          ["49.9", "50.2", "100.2"],
+                      ]
+                    : [
+                          ["0", "50", "100"],
+                          ["50", "50", "100"],
+                      ]
+            );
+        }
+    );
 
     test("exports expression-valued uniform rectangle radii", async () => {
         const { view } = await createHeadlessEngine({
@@ -394,8 +404,14 @@ describe("SVG rectangle renderer", () => {
         const { view } = await createHeadlessEngine({
             data: {
                 values: [
-                    { x: 0.1, x2: 0.6, opacity: 1 },
-                    { x: 0.4, x2: 0.9, opacity: 0.5 },
+                    { x: 0.1, x2: 0.6, opacity: 1, color: "#123456" },
+                    { x: 0.4, x2: 0.9, opacity: 0.5, color: "#123456" },
+                    {
+                        x: 0.4,
+                        x2: 0.9,
+                        opacity: 1,
+                        color: "rgba(0, 0, 0, 0.5)",
+                    },
                 ],
             },
             mark: {
@@ -408,7 +424,7 @@ describe("SVG rectangle renderer", () => {
                 x2: { field: "x2" },
                 y: { value: 0.2 },
                 y2: { value: 0.8 },
-                fill: { value: "#123456" },
+                fill: { field: "color", type: "nominal", scale: null },
                 fillOpacity: {
                     field: "opacity",
                     type: "quantitative",
@@ -432,13 +448,15 @@ describe("SVG rectangle renderer", () => {
             "rect",
             "g",
             "rect",
+            "g",
+            "rect",
         ]);
         expect(
             children.map(
                 (element) =>
                     element.querySelectorAll(":scope > [filter]").length
             )
-        ).toEqual([0, 0, 1, 0]);
+        ).toEqual([0, 0, 1, 0, 1, 0]);
         expect(children[0].hasAttribute("filter")).toBe(true);
         expect(svg.querySelectorAll("clipPath[id^=shadow-clip-]")).toHaveLength(
             1

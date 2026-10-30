@@ -192,7 +192,7 @@ void main(void) {
             maxCornerRadius + vHalfStrokeWidth
         ) * uShadowOpacity * uViewOpacity;
     }
-    backgroundColor = vec4(uShadowColor * shadow, shadow);
+    backgroundColor = premultiplyColor(uShadowColor, shadow);
 #endif
 
     // Hatches change the stroke band, not the nominal fill beneath it.

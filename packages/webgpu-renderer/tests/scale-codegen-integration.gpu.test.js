@@ -924,7 +924,7 @@ test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", a
     const input = [0, 0.25, 0.5, 0.75, 1.0];
     const domain = [0, 1];
     const unitRange = [0, 1];
-    const colors = ["#ed553b", "#20639b"];
+    const colors = ["rgba(237, 85, 59, 0.25)", "rgba(32, 99, 155, 0.75)"];
     const gamma = 2.2;
     const gammaInterpolator = interpolateRgb.gamma(gamma);
     const colorScale = scaleLinear()
@@ -941,9 +941,11 @@ test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", a
 
     const codegenFn = buildScaleFn({
         scale: "linear",
-        scaleConfig: { type: "linear", domain, range: unitRange },
+        outputComponents: 4,
+        scaleConfig: { type: "linear", domain, range: colors },
+        useRangeTexture: true,
     });
-    const shaderCode = buildScaleCodegenRampShader({
+    const shaderCode = buildScaleCodegenTextureShader({
         scaleFn: codegenFn,
         inputLength: input.length,
     });
@@ -961,7 +963,7 @@ test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", a
         expect(result[base]).toBeCloseTo(expected.r / 255, 2);
         expect(result[base + 1]).toBeCloseTo(expected.g / 255, 2);
         expect(result[base + 2]).toBeCloseTo(expected.b / 255, 2);
-        expect(result[base + 3]).toBeCloseTo(1, 5);
+        expect(result[base + 3]).toBeCloseTo(expected.opacity, 2);
     });
 });
 

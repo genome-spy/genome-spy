@@ -37,3 +37,15 @@ describe("createSchemeTexture", () => {
         );
     });
 });
+
+it("preserves color alpha when sampling a ramp", () => {
+    const ramp = createSchemeTexture(["transparent", "red"], { count: 3 });
+    expect(ramp.data).toEqual(
+        new Uint8Array([0, 0, 0, 0, 255, 0, 0, 127, 255, 0, 0, 255])
+    );
+    const custom = createSchemeTexture(
+        (t) => (t === 0 ? "#12345600" : "rgba(0, 0, 255, 0.5)"),
+        { count: 2 }
+    );
+    expect(custom.data).toEqual(new Uint8Array([0, 0, 0, 0, 0, 0, 255, 127]));
+});

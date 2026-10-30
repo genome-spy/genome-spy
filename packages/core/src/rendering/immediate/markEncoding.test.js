@@ -1,10 +1,12 @@
 import { describe, expect, test, vi } from "vitest";
 import Rectangle from "../../view/layout/rectangle.js";
+import * as colorUtils from "../color.js";
 import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import { createAccessor } from "../../encoder/accessor.js";
 import { createEncoder as buildEncoder } from "../../encoder/encoder.js";
 import {
     getDrawConstantPaint,
+    getPaintOpacityAccessor,
     prepareRangeProjection,
 } from "./markEncoding.js";
 
@@ -47,6 +49,30 @@ test("draw paint snapshots preserve settled scoped aliases", async () => {
     expect(
         getDrawConstantPaint(encoder, { ...options, end: 0 })
     ).toBeUndefined();
+});
+
+test("caches parsed alpha across alternating paints and repaints", () => {
+    const parseColor = vi.spyOn(colorUtils, "cssColorToRgba");
+    const encoder = createEncoder(() => "red");
+    try {
+        const alpha = getPaintOpacityAccessor(encoder);
+        let total = 0;
+        // Categorical points need lookups, but must not parse CSS per point.
+        for (let i = 0; i < 1000; i++) {
+            total += alpha(i % 2 ? "rgba(7, 19, 31, 0.5)" : "blue");
+        }
+        expect(total).toBe(750);
+        expect(parseColor).toHaveBeenCalledTimes(2);
+
+        const repaintAlpha = getPaintOpacityAccessor(encoder);
+        expect(repaintAlpha("blue")).toBe(1);
+        expect(repaintAlpha("rgba(7, 19, 31, 0.5)")).toBe(0.5);
+        expect(parseColor).toHaveBeenCalledTimes(2);
+        expect(repaintAlpha("transparent")).toBe(0);
+        expect(parseColor).toHaveBeenCalledTimes(3);
+    } finally {
+        parseColor.mockRestore();
+    }
 });
 
 describe("prepareRangeProjection", () => {

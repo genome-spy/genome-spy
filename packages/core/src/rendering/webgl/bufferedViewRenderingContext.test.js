@@ -147,7 +147,7 @@ describe("BufferedViewRenderingContext", () => {
         context.setClearColor("black");
         context.render();
         expect(gl.clearColor).toHaveBeenLastCalledWith(0, 0, 0, 1);
-        context.setClearColor(undefined);
+        context.setClearColor("transparent");
         context.render();
         expect(gl.clearColor).toHaveBeenLastCalledWith(0, 0, 0, 0);
         expect(draws).toBe(6);

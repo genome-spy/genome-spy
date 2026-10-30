@@ -70,8 +70,7 @@ function emitRampSampleBlock(name, unitExpr) {
     const samplerName = `${RANGE_SAMPLER_PREFIX}${name}`;
     return /* wgsl */ `
     let unitValue = clamp(${unitExpr}, 0.0, 1.0);
-    let rgb = getInterpolatedColor(${textureName}, ${samplerName}, unitValue);
-    return vec4<f32>(rgb, 1.0);
+    return getInterpolatedColor(${textureName}, ${samplerName}, unitValue);
 `;
 }
 

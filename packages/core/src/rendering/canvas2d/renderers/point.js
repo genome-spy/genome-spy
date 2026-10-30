@@ -6,6 +6,7 @@ import { tracePointPath } from "../../immediate/geometry/pointPath.js";
 import {
     encodeNumber,
     getDrawConstantPaint,
+    getPaintOpacityAccessor,
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
@@ -35,6 +36,8 @@ export function renderPointCanvas(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const fillAlpha = getPaintOpacityAccessor(encoders.fill);
+    const strokeAlpha = getPaintOpacityAccessor(encoders.stroke);
     const constantFill = getDrawConstantPaint(encoders.fill, options);
     const constantStroke = getDrawConstantPaint(encoders.stroke, options);
     /** @type {string | undefined} */
@@ -52,14 +55,19 @@ export function renderPointCanvas(baseMark, options) {
         let stroke = constantStroke ?? toPaintString(encoders.stroke(datum));
         let strokeOpacity =
             encodeNumber(encoders.strokeOpacity, datum) * options.viewOpacity;
-        if (lineShape && (stroke == "none" || strokeOpacity <= 0)) {
+        let effectiveStrokeOpacity =
+            instance.strokeWidth > 0 && strokeOpacity > 0
+                ? strokeOpacity * strokeAlpha(stroke)
+                : 0;
+        if (lineShape && effectiveStrokeOpacity <= 0) {
             stroke = fill;
             strokeOpacity = fillOpacity;
+            effectiveStrokeOpacity = fillOpacity * fillAlpha(fill);
         }
 
-        const hasFill = !lineShape && fill != "none" && fillOpacity > 0;
+        const hasFill = !lineShape && fillOpacity * fillAlpha(fill) > 0;
         const fillRadius =
-            strokeOpacity < 1 || stroke == "none"
+            effectiveStrokeOpacity < 1
                 ? instance.radius
                 : instance.geometryRadius;
         tracePointCanvas(
@@ -77,7 +85,7 @@ export function renderPointCanvas(baseMark, options) {
             setAlpha(context, fillOpacity);
             context.fill();
         }
-        if (stroke != "none" && strokeOpacity > 0 && instance.strokeWidth > 0) {
+        if (effectiveStrokeOpacity > 0 && instance.strokeWidth > 0) {
             // Opaque strokes and centered points reuse the fill path.
             if (hasFill && fillRadius != instance.geometryRadius) {
                 tracePointCanvas(

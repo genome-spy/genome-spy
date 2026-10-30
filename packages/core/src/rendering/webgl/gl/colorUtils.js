@@ -1,4 +1,4 @@
-import { color as d3color } from "d3-color";
+import { cssColorToRgba } from "../../color.js";
 import { range } from "d3-array";
 import { scheme as vegaScheme, interpolateColors } from "vega-scale";
 import { isString, isArray, isFunction } from "vega-util";
@@ -40,7 +40,7 @@ export function createSchemeTexture(
                 gl,
                 {
                     minMag: gl.LINEAR,
-                    format: gl.RGB,
+                    format: gl.RGBA,
                     height: 1,
                     wrap: gl.CLAMP_TO_EDGE,
                 },
@@ -86,7 +86,7 @@ export function createInterpolatedColorTexture(
         gl,
         {
             minMag: gl.LINEAR,
-            format: gl.RGB,
+            format: gl.RGBA,
             height: 1,
             wrap: gl.CLAMP_TO_EDGE,
         },
@@ -126,7 +126,7 @@ export function createDiscreteTexture(range, gl, count, existingTexture) {
 }
 
 /**
- * Creates a texture that maps integer indices to discrete RGB colors.
+ * Creates a texture that maps integer indices to discrete RGBA colors.
  *
  * @param {string[]} colors
  * @param {WebGL2RenderingContext} gl
@@ -139,7 +139,7 @@ export function createDiscreteColorTexture(colors, gl, count, existingTexture) {
         gl,
         {
             minMag: gl.NEAREST,
-            format: gl.RGB,
+            format: gl.RGBA,
             height: 1,
         },
         textureData,
@@ -185,30 +185,12 @@ function interpolatorToTextureData(
 function colorArrayToTextureData(scheme, count) {
     const size = Math.max(scheme.length, count || 0);
 
-    const textureData = new Uint8Array(size * 3);
+    const textureData = new Uint8Array(size * 4);
     for (let i = 0; i < size; i++) {
-        const colorString = scheme[i % scheme.length];
-        const color = d3color(colorString);
-        if (!color) {
-            throw new Error(
-                `Invalid color "${colorString}" in the scheme ${JSON.stringify(scheme)}!`
-            );
+        const rgba = cssColorToRgba(scheme[i % scheme.length]);
+        for (let j = 0; j < 4; j++) {
+            textureData[i * 4 + j] = rgba[j] * 255;
         }
-        const rgb = color.rgb();
-        textureData[i * 3 + 0] = rgb.r;
-        textureData[i * 3 + 1] = rgb.g;
-        textureData[i * 3 + 2] = rgb.b;
     }
     return textureData;
-}
-
-/**
- * @param {string} color
- */
-export function cssColorToArray(color) {
-    // TODO: Support CSS "transparent" like Vega/Vega-Lite do. Currently
-    // d3-color returns NaN RGB with zero opacity, but GenomeSpy color channels
-    // are RGB-only and cannot carry alpha in this conversion path.
-    const rgb = d3color(color).rgb();
-    return [rgb.r, rgb.g, rgb.b].map((x) => x / 255);
 }

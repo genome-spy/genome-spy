@@ -3,6 +3,7 @@ import { intersectsBounds } from "../bounds.js";
 import {
     encodeNumber,
     getDrawConstantPaint,
+    getPaintOpacityAccessor,
     prepareRangeProjection,
     resolveMarkProperty,
     toPaintString,
@@ -123,6 +124,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
     if (start === end) {
         return 0;
     }
+    const fillAlpha = getPaintOpacityAccessor(encoders.fill);
     const strokeWidthIsConstant = encoders.strokeWidth.constant;
     const fillOpacityIsConstant = encoders.fillOpacity.constant;
     const constantStrokeWidth = strokeWidthIsConstant
@@ -212,7 +214,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
                 : encodeNumber(encoders.fillOpacity, datum)) * viewOpacity;
         const seamPadding =
             strokeWidth == 0 &&
-            fillOpacity == 1 &&
+            fillOpacity * fillAlpha(fill) == 1 &&
             opacityFactor == 1 &&
             properties.canPadSeams &&
             fill != "none"

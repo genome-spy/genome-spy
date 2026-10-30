@@ -323,11 +323,11 @@ void main(void) {
 
     gl_Position = pixelsToNdc(p);
 
-    vec3 color = getScaled_color();
+    vec4 color = getScaled_color();
 
     vColor = premultiplyColor(color, opacity);
 
-    vGamma = getGammaForColor(color);
+    vGamma = getGammaForColor(color.rgb);
 
     vSize = uShape == SHAPE_ORTHOGONAL
         ? (uPickingEnabled ? max(size, uMinPickingSize) : size) : paddedSize;

@@ -3,7 +3,11 @@ import {
     resolveRectProperties,
     visitRectInstances,
 } from "../../immediate/marks/rect.js";
-import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
+import {
+    encodeNumber,
+    getPaintOpacityAccessor,
+    toPaintString,
+} from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
 import { formatSvgNumber, formatSvgUnitless } from "../svgNumber.js";
 
@@ -23,6 +27,7 @@ export function renderRectSvg(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const fillAlpha = getPaintOpacityAccessor(encoders.fill);
     const encodeStyles = createSvgAttributeEncoder(group, {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
@@ -108,7 +113,7 @@ export function renderRectSvg(baseMark, options) {
             const hasOpaqueFill =
                 hatch == "none" &&
                 fill != "none" &&
-                fillOpacity == 1 &&
+                fillOpacity * fillAlpha(fill) == 1 &&
                 opacityFactor == 1;
             if (hasOpaqueFill) {
                 group.appendChild(shadowElement);

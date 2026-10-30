@@ -789,6 +789,85 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(fill).toHaveBeenCalledTimes(3);
     });
 
+    test("uses color alpha for point fills and line-only fallback in Canvas and SVG", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "paint", value: "rgba(255, 0, 0, 0.5)" }],
+            data: {
+                values: [
+                    { x: 0.2, shape: "circle", stroke: "transparent" },
+                    { x: 0.4, shape: "circle", stroke: "rgba(0, 0, 255, 0.5)" },
+                    { x: 0.6, shape: "x", stroke: "transparent" },
+                    { x: 0.8, shape: "+", stroke: "#0000ff00" },
+                ],
+            },
+            mark: {
+                type: "point",
+                inwardStroke: true,
+                size: 400,
+                strokeWidth: 4,
+                fill: { expr: "paint" },
+                fillOpacity: 0.5,
+                strokeOpacity: 0.5,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                shape: { field: "shape", type: "nominal", scale: null },
+                stroke: { field: "stroke", type: "nominal", scale: null },
+            },
+        });
+        const recording = createRecordingContext();
+        render(view, recording.context);
+        expect(recording.calls.arcs).toEqual([
+            [20, 50, 10],
+            [40, 50, 10],
+            [40, 50, 8],
+        ]);
+        // Native CSS paint supplies color alpha; globalAlpha supplies paint opacity once.
+        expect(recording.calls.fills).toEqual(
+            Array(2).fill([0.5, "rgba(255, 0, 0, 0.5)"])
+        );
+        expect(recording.calls.strokes).toEqual([
+            [0.5, "rgba(0, 0, 255, 0.5)"],
+            [0.5, "rgba(255, 0, 0, 0.5)"],
+            [0.5, "rgba(255, 0, 0, 0.5)"],
+        ]);
+        expect(recording.context.lineWidth).toBe(4);
+
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+        });
+        const group = svg.querySelector('[data-mark-type="point"]');
+        const circles = Array.from(group.querySelectorAll("circle"));
+        expect(circles.map((circle) => circle.getAttribute("r"))).toEqual([
+            "10",
+            "10",
+            "8",
+        ]);
+        const lines = Array.from(group.querySelectorAll("path"));
+        expect(lines.map((line) => line.getAttribute("stroke"))).toEqual(
+            Array(2).fill("rgba(255, 0, 0, 0.5)")
+        );
+        expect(lines.map((line) => line.getAttribute("stroke-width"))).toEqual([
+            "4",
+            "4",
+        ]);
+        expect(
+            lines.map((line) => line.getAttribute("stroke-opacity"))
+        ).toEqual(["0.5", "0.5"]);
+
+        view.paramRuntime.setValue("paint", "transparent");
+        const repainted = createRecordingContext();
+        render(view, repainted.context);
+        expect(repainted.calls.fills).toEqual([]);
+        expect(repainted.calls.strokes).toEqual([
+            [0.5, "rgba(0, 0, 255, 0.5)"],
+        ]);
+        view.disposeSubtree();
+    });
+
     test("preserves inward point fills without per-datum save scopes", async () => {
         const { view } = await createHeadlessEngine({
             data: {

@@ -2,6 +2,41 @@ import clamp from "../../utils/clamp.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import { getGapPeer } from "../../marks/markUtils.js";
+import { cssColorToRgba } from "../color.js";
+
+/** @type {WeakMap<import("../../types/encoder.js").Encoder, (paint: string) => number>} */
+const paintOpacityAccessors = new WeakMap();
+
+/**
+ * Prepare once before traversing instances. The encoder-owned cache survives
+ * repainting; repeated paints reuse the last alpha without querying a map.
+ * Native painting applies CSS alpha itself, so this accessor is for geometry.
+ *
+ * @param {import("../../types/encoder.js").Encoder} encoder
+ * @returns {(paint: string) => number}
+ */
+export function getPaintOpacityAccessor(encoder) {
+    let accessor = paintOpacityAccessors.get(encoder);
+    if (!accessor) {
+        const cache = new Map([["none", 0]]);
+        let lastPaint = "none";
+        let lastOpacity = 0;
+        accessor = (paint) => {
+            if (paint !== lastPaint) {
+                let opacity = cache.get(paint);
+                if (opacity === undefined) {
+                    opacity = cssColorToRgba(paint)[3];
+                    cache.set(paint, opacity);
+                }
+                lastPaint = paint;
+                lastOpacity = opacity;
+            }
+            return lastOpacity;
+        };
+        paintOpacityAccessors.set(encoder, accessor);
+    }
+    return accessor;
+}
 
 /**
  * Prepares one axis for repeated projection during a synchronous mark

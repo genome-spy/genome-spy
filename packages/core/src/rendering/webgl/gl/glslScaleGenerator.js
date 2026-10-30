@@ -20,7 +20,7 @@ import scaleNull from "../../../utils/scaleNull.js";
 import { hasGroupingGaps } from "../../../genome/indexGapMapping.js";
 import { getGapPeer } from "../../../marks/markUtils.js";
 import { indexGapGlsl } from "./indexGaps.js";
-import { cssColorToArray } from "./colorUtils.js";
+import { cssColorToRgba } from "../../color.js";
 import {
     isIndexLikeDomainType,
     isLargeIndexDomain,
@@ -141,7 +141,7 @@ export function generateConstantValueGlsl(channel, conditionNumber, value) {
         vec = vectorize(value ? 1 : 0);
     } else if (value === null) {
         if (isColorChannel(channel)) {
-            vec = vectorize([0, 0, 0]);
+            vec = vectorize([0, 0, 0, 0]);
         } else {
             throw new Error(
                 `null value is not supported on the "${channel}" chanel.`
@@ -182,8 +182,8 @@ export function generateDynamicValueGlslAndUniform(channel, conditionNumber) {
     let adjuster = (x) => x;
 
     if (isColorChannel(channel)) {
-        dataType = "vec3";
-        adjuster = (x) => cssColorToArray(x);
+        dataType = "vec4";
+        adjuster = (x) => cssColorToRgba(x);
     } else if (isDiscreteChannel(channel)) {
         adjuster = getDiscreteRangeMapper(channel);
     }
@@ -486,9 +486,9 @@ export function generateScaleGlsl(channel, scale, channelDef) {
             glsl.push(`uniform highp usampler2D ${texture};`);
         scaleBody.push(`uint slotId = getCategorySlot(${texture}, value);`);
         // Unknown enums keep their zero-valued fallback (circle/forward).
-        // Undefined numbers propagate as NaN; missing RGB paint is transparent.
+        // Undefined numbers propagate as NaN; missing paint is transparent.
         const unknown = isColorChannel(channel)
-            ? "vec3(-1.0)"
+            ? "vec4(0.0)"
             : isDiscreteChannel(channel)
               ? "0.0"
               : "uintBitsToFloat(0x7fc00000u)";
@@ -713,7 +713,7 @@ function getFloatVectorType(numComponents) {
  */
 export function getScaledDataTypeForChannel(channel) {
     return isColorChannel(channel)
-        ? "vec3"
+        ? "vec4"
         : channel == "uniqueId"
           ? "uint"
           : "float";
@@ -723,7 +723,7 @@ export function getScaledDataTypeForChannel(channel) {
  * @param {string} color
  */
 function vectorizeCssColor(color) {
-    return vectorize(cssColorToArray(color));
+    return vectorize(cssColorToRgba(color));
 }
 
 /**

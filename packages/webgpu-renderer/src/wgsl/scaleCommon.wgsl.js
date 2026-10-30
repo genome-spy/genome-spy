@@ -1,13 +1,13 @@
 export default /* wgsl */ `
 
-fn getDiscreteColor(s: texture_2d<f32>, index: i32) -> vec3<f32> {
+fn getDiscreteColor(s: texture_2d<f32>, index: i32) -> vec4<f32> {
     let size = textureDimensions(s).x;
     let ix = i32(u32(index) % size);
-    return textureLoad(s, vec2<i32>(ix, 0), 0).rgb;
+    return textureLoad(s, vec2<i32>(ix, 0), 0).rgba;
 }
 
-fn getInterpolatedColor(s: texture_2d<f32>, samp: sampler, unitValue: f32) -> vec3<f32> {
-    return textureSampleLevel(s, samp, vec2<f32>(unitValue, 0.0), 0.0).rgb;
+fn getInterpolatedColor(s: texture_2d<f32>, samp: sampler, unitValue: f32) -> vec4<f32> {
+    return textureSampleLevel(s, samp, vec2<f32>(unitValue, 0.0), 0.0).rgba;
 }
 
 fn clampToRange(value: f32, range: vec2<f32>) -> f32 {
