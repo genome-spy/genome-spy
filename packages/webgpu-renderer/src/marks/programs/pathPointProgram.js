@@ -92,10 +92,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
-    let diameter = sqrt(max(getScaled_size(i), 0.0));
-    if (diameter <= 0.0) {
-        return culledPoint();
-    }
+    var diameter = sqrt(max(getScaled_size(i), 0.0));
     var strokeWidth = max(getScaled_strokeWidth(i), 0.0);
     let strokeOpacity = getScaled_strokeOpacity(i);
     if (strokeOpacity <= 0.0) {
@@ -103,6 +100,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
     let entry = pathAtlasEntries[shape];
     let inwardStroke = getScaled_inwardStroke(i);
+    if (pickingEnabled && (strokeWidth <= 0.0 || inwardStroke != 0u)) {
+        diameter = max(diameter, 1.0 / globals.dpr);
+    }
+    if (diameter <= 0.0) {
+        return culledPoint();
+    }
     let devicePixelsPerAtlas = max(
         diameter * globals.dpr / params.uShapePixels,
         1.0 / params.uSpread
@@ -139,7 +142,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let sinTheta = sin(angle);
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
-    let screenOffset = rot * localScreen;
+    // WebGL enlarges the padded sprite while retaining its local silhouette.
+    let paddedDiameter = diameter + select(strokeWidth, 0.0, inwardStroke != 0u) + 1.0 / globals.dpr;
+    let pickingScale = select(1.0,
+        max(1.0, getScaled_minPickingSize(i) / paddedDiameter), pickingEnabled);
+    let screenOffset = rot * localScreen * pickingScale;
     let center = projectClampedPosition(
 #if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
         vec2<f32>(getScaled_x(i), getScaled_y(i)),
@@ -219,6 +226,10 @@ fn shade(in: VSOut) -> vec4<f32> {
         in.uv,
         in.devicePixelsPerAtlas
     );
+    if (pickingEnabled) {
+        if (distance + in.halfStrokeWidth * globals.dpr < 0.0) { discard; }
+        return vec4<f32>(1.0);
+    }
     let shapeCoverage = clamp(distance + 0.5, 0.0, 1.0);
     var fillColor = in.fill;
     var strokeColor = in.stroke;

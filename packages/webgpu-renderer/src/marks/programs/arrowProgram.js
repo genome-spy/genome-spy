@@ -410,6 +410,10 @@ fn shade(in: VSOut) -> vec4<f32> {
     }
 
     let d = min(stem, head);
+    if (pickingEnabled) {
+        if (d >= halfStroke) { discard; }
+        return vec4<f32>(1.0);
+    }
     var fill = in.fill;
     var stroke = in.stroke;
     return distanceToColor(d, fill, stroke, halfStroke);

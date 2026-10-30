@@ -606,6 +606,7 @@ function createPointConfig(mark, data, coords, viewOpacity) {
     mark.initializeRenderingRevisions([
         "fillGradientStrength",
         "inwardStroke",
+        "minPickingSize",
         "semanticZoomFraction",
     ]);
     const visibility = createPointVisibilityConfig(mark, data);
@@ -645,6 +646,9 @@ function createPointConfig(mark, data, coords, viewOpacity) {
             inwardStroke: liveValue(
                 () => (readProperty(mark, "inwardStroke") ? 1 : 0),
                 "u32"
+            ),
+            minPickingSize: liveValue(() =>
+                readOptionalNumericProperty(mark, "minPickingSize", 2)
             ),
         },
         ...visibility,

@@ -287,6 +287,8 @@ fn ruleCoverage(in: VSOut) -> vec3<f32> {
 }
 
 fn shade(in: VSOut) -> vec4<f32> {
+    // WebGL picks the extruded rule quad, including dash gaps and cap corners.
+    if (pickingEnabled) { return vec4<f32>(1.0); }
     let coverage = ruleCoverage(in);
     let ci = coverage.x;
     let cf = coverage.y;

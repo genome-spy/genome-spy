@@ -451,7 +451,8 @@ fn shade(in: VSOut) -> vec4<f32> {
     if (in.fadeDistance >= 0.0) {
         alpha *= 1.0 - smoothstep(params.uArcFadingDistance.x, params.uArcFadingDistance.y, in.fadeDistance);
     }
-    return in.color * alpha;
+    // Geometric coverage and arc fading affect hits; authored alpha does not.
+    return select(in.color, vec4<f32>(1.0), pickingEnabled) * alpha;
 }
 
 @fragment
@@ -530,7 +531,7 @@ export default class LinkProgram extends BaseProgram {
         return LINK_SHADER_BODY;
     }
 
-    get usesPickingEnabledOverride() {
+    get usesPickingEnabledInVertex() {
         return true;
     }
 

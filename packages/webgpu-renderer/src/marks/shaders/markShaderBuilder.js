@@ -782,8 +782,8 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
 
     // Compose the final WGSL with scale helpers, per-channel accessors,
     // and the mark-specific shader body.
-    // Picking reuses the mark's shading logic; shader bodies must provide
-    // a `shade` function that returns the final premultiplied color.
+    // Mark shaders specialize shade() with pickingEnabled to return hit coverage
+    // independently of paint, retaining their own silhouette and fading rules.
     const pickFns = /* wgsl */ `
 fn encodePickId(id: u32) -> vec4<f32> {
     let r = f32(id & 255u);
@@ -802,7 +802,7 @@ fn fs_pick(in: VSOut) -> @location(0) vec4<f32> {
         discard;
     }
     let color = shade(in);
-    if (color.a <= 0.0) {
+    if (pickingEnabled && color.a <= 0.0) {
         discard;
     }
     return encodePickId(in.pickId);

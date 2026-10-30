@@ -268,7 +268,8 @@ test("TrueType text renders label-major outline and SDF shadow layers", async ({
 
     expect(result).toEqual({
         found: [true, true, true],
-        picks: [91, null, null],
+        // These effect samples also lie inside the base glyph quad.
+        picks: [91, 91, 91],
         drawCount: 1,
         expandedInstances: 3,
         hasRenderItems: true,

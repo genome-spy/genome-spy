@@ -95,13 +95,18 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     let size = getScaled_size(i);
-    let diameter = sqrt(size);
+    var diameter = sqrt(size);
 
     var strokeWidth = getScaled_strokeWidth(i);
     let strokeOpacity = getScaled_strokeOpacity(i);
 
     if (strokeOpacity <= 0.0) {
         strokeWidth = 0.0;
+    }
+
+    // WebGL clamps subpixel fill geometry before enlarging the picking sprite.
+    if (pickingEnabled && (strokeWidth <= 0.0 || getScaled_inwardStroke(i) > 0u)) {
+        diameter = max(diameter, 1.0 / globals.dpr);
     }
 
     let aaPadding = 1.0 / globals.dpr;
@@ -112,7 +117,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
     let padding = strokePadding + aaPadding;
 
-    let total = diameter + padding;
+    // Match WebGL's enlarged point sprite without expanding its silhouette
+    // into the corners of the bounding quad.
+    let total = select(diameter + padding,
+        max(diameter + padding, getScaled_minPickingSize(i)), pickingEnabled);
     let local = quad[v];
     let center = projectClampedPosition(
 #if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
@@ -178,6 +186,11 @@ fn shade(in: VSOut) -> vec4<f32> {
     let r = in.radius;
     let d = circle(p, r);
 
+    if (pickingEnabled) {
+        if (d > in.halfStrokeWidth) { discard; }
+        return vec4<f32>(1.0);
+    }
+
     var fillColor = in.fill;
     var strokeColor = in.stroke;
 
@@ -220,6 +233,10 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 
 export default class PointProgram extends BaseProgram {
+    get usesPickingEnabledInVertex() {
+        return true;
+    }
+
     /** @returns {GPUPrimitiveTopology} */
     get primitiveTopology() {
         return "triangle-strip";

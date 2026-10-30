@@ -420,7 +420,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     if (USE_MULTISAMPLE_EDGE_COVERAGE &&
             all(in.cornerRadii <= vec4<f32>(0.0)) && in.strokeWidth <= 0.0 &&
             in.shadowOpacity <= 0.0) {
-        return fillColor * in.opacityFactor;
+        return select(fillColor * in.opacityFactor, vec4<f32>(1.0), pickingEnabled);
     }
 
     let halfSize = in.size * 0.5;
@@ -430,6 +430,11 @@ fn shade(in: VSOut) -> vec4<f32> {
         d = sdSharpBox(centered, halfSize);
     } else {
         d = sdRoundedBox(centered, halfSize, in.cornerRadii);
+    }
+
+    if (pickingEnabled) {
+        if (d >= in.strokeWidth * 0.5) { discard; }
+        return vec4<f32>(1.0);
     }
 
     var strokeColor = in.stroke;

@@ -396,7 +396,7 @@ export default class BaseProgram {
             compiledChannels,
             uniformLayout: this.#uniformLayout,
             shaderBody: this.shaderBody,
-            usesPickingEnabledOverride: this.usesPickingEnabledOverride,
+            usesPickingEnabledInVertex: this.usesPickingEnabledInVertex,
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             selectionDefs: this.#selectionResources.selectionDefs,
@@ -521,17 +521,17 @@ export default class BaseProgram {
     }
 
     /**
-     * Whether the mark shader uses the pickingEnabled WGSL override.
+     * Whether the vertex shader specializes picking geometry or culling.
      *
      * WGSL override constants are set when a GPU pipeline is created. Only
-     * links currently use pickingEnabled, to widen their hit areas without
-     * widening the visible marks. Safari 26.5 fails native shader compilation
+     * some programs use pickingEnabled to widen hit areas or keep transparent
+     * hit targets. Safari 26.5 fails native shader compilation
      * when this constant is supplied to a stage that does not use it, so the
      * pipeline builder sets it only for programs that opt in here.
      *
      * @returns {boolean}
      */
-    get usesPickingEnabledOverride() {
+    get usesPickingEnabledInVertex() {
         return false;
     }
 

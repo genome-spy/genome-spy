@@ -116,6 +116,11 @@ describe("WebGPU mark adapter", () => {
             strokeOpacity: createConstantEncoder(1),
             angle: createConstantEncoder(0),
         });
+        const pointProperties =
+            /** @type {import("../../spec/mark.js").PointProps} */ (
+                mark.properties
+            );
+        pointProperties.minPickingSize = 12;
 
         const translated = createWebGpuMarkConfig(
             mark,
@@ -153,6 +158,9 @@ describe("WebGPU mark adapter", () => {
         });
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.fillOpacity).toEqual(dynamicValue(0.375));
+        expect(channels.minPickingSize).toEqual(dynamicValue(12));
+        pointProperties.minPickingSize = 20;
+        expect(channels.minPickingSize.value).toBe(20);
     });
 
     test("keeps categorical point offset scales in the renderer", () => {
