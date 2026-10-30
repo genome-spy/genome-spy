@@ -71,6 +71,12 @@ export default class KeyboardZoomController {
     constructor({ context, viewRoot }) {
         this.#context = context;
         this.#viewRoot = viewRoot;
+        viewRoot.registerDisposer(() => {
+            this.#keyboardNavigationActive = false;
+            this.#keyboardNavigationTimestamp = 0;
+            this.#keyboardZoomMotion.reset();
+            context.animator.cancelTransition(this.#keyboardNavigationStep);
+        });
         this.#setupKeyboardNavigation();
     }
 
@@ -116,47 +122,55 @@ export default class KeyboardZoomController {
             return;
         }
 
-        addKeyboardListener("keydown", (event) => {
-            if (shouldIgnoreKeyboardNavigation(event)) {
-                return;
-            }
+        this.#viewRoot.registerDisposer(
+            addKeyboardListener("keydown", (event) => {
+                if (shouldIgnoreKeyboardNavigation(event)) {
+                    return;
+                }
 
-            if (!this.#keyboardZoomMotion.isNavigationKey(event.code)) {
-                return;
-            }
+                if (!this.#keyboardZoomMotion.isNavigationKey(event.code)) {
+                    return;
+                }
 
-            const resolution = getKeyboardZoomTarget(this.#viewRoot);
-            if (!resolution) {
-                return;
-            }
+                const resolution = getKeyboardZoomTarget(this.#viewRoot);
+                if (!resolution) {
+                    return;
+                }
 
-            const changed = this.#keyboardZoomMotion.handleKeyDown(event.code);
-            if (!changed) {
-                return;
-            }
+                const changed = this.#keyboardZoomMotion.handleKeyDown(
+                    event.code
+                );
+                if (!changed) {
+                    return;
+                }
 
-            event.preventDefault();
-            this.#activateKeyboardNavigation();
-        });
+                event.preventDefault();
+                this.#activateKeyboardNavigation();
+            })
+        );
 
-        addKeyboardListener("keyup", (event) => {
-            if (!this.#keyboardZoomMotion.isNavigationKey(event.code)) {
-                return;
-            }
+        this.#viewRoot.registerDisposer(
+            addKeyboardListener("keyup", (event) => {
+                if (!this.#keyboardZoomMotion.isNavigationKey(event.code)) {
+                    return;
+                }
 
-            const changed = this.#keyboardZoomMotion.handleKeyUp(event.code);
-            if (!changed) {
-                return;
-            }
+                const changed = this.#keyboardZoomMotion.handleKeyUp(
+                    event.code
+                );
+                if (!changed) {
+                    return;
+                }
 
-            const resolution = getKeyboardZoomTarget(this.#viewRoot);
-            if (!resolution) {
-                return;
-            }
+                const resolution = getKeyboardZoomTarget(this.#viewRoot);
+                if (!resolution) {
+                    return;
+                }
 
-            event.preventDefault();
-            this.#activateKeyboardNavigation();
-        });
+                event.preventDefault();
+                this.#activateKeyboardNavigation();
+            })
+        );
     }
 
     #activateKeyboardNavigation() {

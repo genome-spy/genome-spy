@@ -33,6 +33,8 @@ function createKeyboardHarness({ eligible = true } = {}) {
 
     context.addKeyboardListener = (type, listener) => {
         listeners[type].push(listener);
+        return () =>
+            listeners[type].splice(listeners[type].indexOf(listener), 1);
     };
 
     const requestTransition = vi.fn((callback) => transitions.push(callback));
@@ -40,6 +42,12 @@ function createKeyboardHarness({ eligible = true } = {}) {
 
     context.animator = /** @type {any} */ ({
         requestTransition,
+        cancelTransition: (
+            /** @type {(timestamp: number) => void} */ callback
+        ) => {
+            const index = transitions.indexOf(callback);
+            if (index >= 0) transitions.splice(index, 1);
+        },
         requestRender,
         transition: () => Promise.resolve(),
     });
@@ -109,8 +117,10 @@ describe("GridView keyboard navigation", () => {
             const context = createTestViewContext(
                 {},
                 {
-                    addKeyboardListener: (type, listener) =>
-                        listeners.set(type, listener),
+                    addKeyboardListener: (type, listener) => {
+                        listeners.set(type, listener);
+                        return () => listeners.delete(type);
+                    },
                 }
             );
             vi.spyOn(context.animator, "requestTransition").mockImplementation(
@@ -195,6 +205,20 @@ describe("GridView keyboard navigation", () => {
         expect(anchor).toBe(0.5);
         expect(pan).toBeLessThan(0);
         expect(harness.requestRender).toHaveBeenCalledTimes(1);
+    });
+
+    test("disposal removes keyboard listeners and stops pending navigation", () => {
+        const harness = createKeyboardHarness();
+        harness.listeners.keydown[0](createKeyboardEvent("KeyD").event);
+        const pendingFrame = harness.transitions[0];
+
+        harness.view.dispose();
+
+        expect(harness.listeners).toEqual({ keydown: [], keyup: [] });
+        expect(harness.transitions).toEqual([]);
+        // A frame already taken by the animator must also become inert.
+        pendingFrame(performance.now() + 16);
+        expect(harness.resolution.zoom).not.toHaveBeenCalled();
     });
 
     test("ignores keydown when target is editable", () => {

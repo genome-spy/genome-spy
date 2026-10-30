@@ -234,6 +234,15 @@ state; the routing `GridView` owns pan sessions across child and gap surfaces.
 
 ## Dynamic view lifecycle
 
+- Public mutations share one queue. An optional internal host callback encloses
+  each operation and the outer transaction before layout suppression begins and
+  after it ends; App uses this boundary for cohort lifecycle policy.
+- Failed parallel construction settles all children and disposes successful
+  siblings before rejecting. A factory also disposes a returned view whose child
+  initialization fails; constructors own cleanup until they return an instance.
+- Windowed URL sources retain a local disposal-completion promise. Mutation
+  cleanup waits for disposed sources' pending reads and handle closure while
+  preserving shared sources; ordinary view/dataflow disposal remains synchronous.
 - Prefer `ViewFactory.createOrImportView`; some App views are still constructed
   directly and need equivalent lifecycle wiring.
 - `src/data/flowInit.js` owns `initializeViewSubtree` and

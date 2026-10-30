@@ -465,13 +465,12 @@ export default class GenomeSpy {
                 this.#interactionController?.suspendHoverTracking(),
             resumeHoverTracking: (event) =>
                 this.#interactionController?.resumeHoverTracking(event),
-            addKeyboardListener: (type, listener) => {
+            addKeyboardListener: (type, listener) =>
                 this.#keyboardListenerManager.add(type, (event) => {
                     if (this.#shouldDispatchKeyboardEvent(type, event)) {
                         listener(event);
                     }
-                });
-            },
+                }),
             addBroadcastListener: (type, listener) =>
                 this.#extraBroadcastListeners.add(type, listener),
             removeBroadcastListener: (type, listener) =>

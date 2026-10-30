@@ -36,6 +36,12 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     /** @type {Map<string, Promise<H>>} */
     #handleCache = new Map();
 
+    /** @type {Set<Promise<void>>} */
+    #requests = new Set();
+
+    /** @type {Promise<void>} */
+    #disposalPromise = Promise.resolve();
+
     /** @type {number[]} */
     #lastQuantizedInterval = [0, 0];
 
@@ -51,7 +57,7 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     /** @type {any} */
     params;
 
-    /** @type {{ loadModules: () => Promise<any>, createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: any) => Promise<H>, cacheKey?: (descriptor: import("../urlDescriptor.js").UrlDescriptor) => string, singleUrl?: boolean }} */
+    /** @type {{ loadModules: () => Promise<any>, createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: any) => Promise<H>, disposeHandle?: (handle: H) => void | Promise<void>, cacheKey?: (descriptor: import("../urlDescriptor.js").UrlDescriptor) => string, singleUrl?: boolean }} */
     #options;
 
     /**
@@ -62,8 +68,41 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         super(view, channel);
         this.registerDisposer(() => {
             this.#abortController.abort();
-            this.#handleCache.clear();
+            this.#disposalPromise = this.#disposeHandles();
+            // Synchronous finalization may have no caller awaiting cleanup.
+            void this.#disposalPromise.catch(/** @returns {void} */ () => {});
         });
+    }
+
+    /**
+     * Waits for pending reads and retained handles to finish closing after disposal.
+     *
+     * @returns {Promise<void>}
+     */
+    whenDisposed() {
+        return this.#disposalPromise;
+    }
+
+    async #disposeHandles() {
+        await Promise.allSettled(this.#requests);
+        const handles = Array.from(this.#handleCache.values());
+        this.#handleCache.clear();
+
+        const results = await Promise.allSettled(
+            handles.map(async (promise) => {
+                /** @type {H} */
+                let handle;
+                try {
+                    handle = await promise;
+                } catch {
+                    // Failed acquisitions must release their partial resources.
+                    return;
+                }
+                await this.#options.disposeHandle?.(handle);
+            })
+        );
+        const failure = results.find((result) => result.status === "rejected");
+        if (failure) throw failure.reason;
     }
 
     /**
@@ -71,6 +110,7 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
      * @param {{
      *     loadModules: () => Promise<M>,
      *     createHandle: (descriptor: import("../urlDescriptor.js").UrlDescriptor, modules: M) => Promise<H>,
+     *     disposeHandle?: (handle: H) => void | Promise<void>,
      *     cacheKey?: (descriptor: import("../urlDescriptor.js").UrlDescriptor) => string,
      *     singleUrl?: boolean,
      * }} options
@@ -82,17 +122,17 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         const wait = () => withoutExprRef(this.params.debounce);
         const mode = this.params.debounceMode;
         if (mode == "domain") {
-            this.onDomainChanged = debounce(
+            const onDomainChanged = debounce(
                 this.onDomainChanged.bind(this),
                 wait,
                 false
             );
+            this.onDomainChanged = onDomainChanged;
+            this.registerDisposer(() => onDomainChanged.cancel());
         } else if (mode == "window") {
-            this.#debouncedRequest = debounce(
-                this.#debouncedRequest,
-                wait,
-                false
-            );
+            const request = debounce(this.#debouncedRequest, wait, false);
+            this.#debouncedRequest = request;
+            this.registerDisposer(() => request.cancel());
         } else {
             throw new Error("Invalid debounceMode: " + mode);
         }
@@ -148,9 +188,19 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
      * @param {number[]} domain
      * @param {number} [windowSize]
      */
-    async requestInterval(domain, windowSize) {
-        if (this.disposed) return;
+    requestInterval(domain, windowSize) {
+        if (this.disposed) return Promise.resolve();
 
+        const request = this.#requestInterval(domain, windowSize);
+        this.#requests.add(request);
+        return request.finally(() => this.#requests.delete(request));
+    }
+
+    /**
+     * @param {number[]} domain
+     * @param {number} [windowSize]
+     */
+    async #requestInterval(domain, windowSize) {
         this.#abortController.abort();
         this.#abortController = new AbortController();
         const signal = this.#abortController.signal;

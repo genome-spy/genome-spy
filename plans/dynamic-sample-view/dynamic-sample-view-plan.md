@@ -1,6 +1,7 @@
 # Dynamic SampleView lifecycle in GenomeSpy App
 
-Status: proposed; implementation has not started.
+Status: implementation in progress. Milestone 1 is implemented and verified;
+App lifecycle and persistence integration follow.
 
 Issue: [#628](https://github.com/genome-spy/genome-spy/issues/628).
 Base: `master` at `d983873ab`. Branch: `codex/dynamic-sample-view`.
@@ -227,6 +228,12 @@ Finalization invalidates pending callbacks and preserves synchronous embed clean
 ## Implementation milestones
 
 ### 1. Complete Core mutation and disposal boundaries
+
+Completed: queued host hooks, partial construction cleanup (including shared
+outputs and constructor failure), keyboard ownership, and awaited reader closure.
+Independent review found and verified fixes for constructor and sibling-output
+cleanup. Focused mutation/construction/source/keyboard suites and Core type checks
+pass; release checks accept the Core patch fragment.
 
 Outcome: the existing queue hosts App coordination, and removed/failed subtrees
 release registrations and readers. Areas: mutation API/helper/factory, concat/layer

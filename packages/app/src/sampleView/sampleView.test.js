@@ -318,6 +318,41 @@ describe("parent grid chrome ownership", () => {
     });
 });
 
+test("disposed SampleView stops responding to keyboard peek commands", async () => {
+    const keyboard = new EventTarget();
+    const context = createTestViewContext(
+        {},
+        {
+            addKeyboardListener: (type, listener) => {
+                const handler = /** @type {EventListener} */ (listener);
+                keyboard.addEventListener(type, handler);
+                return () => keyboard.removeEventListener(type, handler);
+            },
+        }
+    );
+    const { view } = await createSampleViewForTest({
+        context,
+        initializeFlow: false,
+        spec: {
+            samples: {},
+            spec: { mark: "point", data: { values: [] } },
+        },
+    });
+    const togglePeek = vi.spyOn(view.locationManager, "togglePeek");
+    const releasePeek = () =>
+        keyboard.dispatchEvent(
+            Object.assign(new Event("keyup"), { code: "KeyE" })
+        );
+
+    releasePeek();
+    await Promise.resolve();
+    expect(togglePeek).toHaveBeenCalledOnce();
+
+    view.disposeSubtree();
+    releasePeek();
+    expect(togglePeek).toHaveBeenCalledOnce();
+});
+
 describe("sample data and metadata wiring", () => {
     test("extracts samples from main data subtree on subtreeDataReady", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */

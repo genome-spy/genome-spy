@@ -134,7 +134,7 @@ async function createMetadataViewTestHarness(options = {}) {
     context.requestLayoutReflow = () => undefined;
     context.updateTooltip = () => undefined;
     context.getCurrentHover = () => undefined;
-    context.addKeyboardListener = () => undefined;
+    context.addKeyboardListener = () => () => undefined;
     context.getNamedDataFromProvider = () => [];
 
     const store = createStoreStub({
@@ -593,7 +593,7 @@ describe("MetadataView", () => {
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
-        context.addKeyboardListener = () => undefined;
+        context.addKeyboardListener = () => () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const dataFlow = context.dataFlow;
@@ -769,7 +769,7 @@ describe("MetadataView", () => {
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
-        context.addKeyboardListener = () => undefined;
+        context.addKeyboardListener = () => () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const store = createStoreStub({
@@ -996,7 +996,7 @@ describe("MetadataView", () => {
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
-        context.addKeyboardListener = () => undefined;
+        context.addKeyboardListener = () => () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const store = createStoreStub({

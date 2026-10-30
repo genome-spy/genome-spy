@@ -15,6 +15,25 @@ export default class ContainerView extends View {
     }
 
     /**
+     * Adopts all successful children before reporting a sibling's failure so
+     * factory cleanup disposes their outputs together with the owning parent.
+     *
+     * @template {View} T
+     * @param {Promise<T>[]} pendingChildren
+     * @param {(children: T[]) => void} adoptChildren
+     */
+    async createChildViews(pendingChildren, adoptChildren) {
+        const results = await Promise.allSettled(pendingChildren);
+        const children = results
+            .filter((result) => result.status === "fulfilled")
+            .map((result) => result.value);
+        const failure = results.find((result) => result.status === "rejected");
+
+        adoptChildren(children);
+        if (failure) throw failure.reason;
+    }
+
+    /**
      * Materializes guides after the authored hierarchy's resolutions are ready.
      * @param {{ legendOwners?: View[] }} [_options]
      */

@@ -36,5 +36,13 @@ export function debounce(func, wait, rejectOnDebounce = true) {
         });
     };
 
+    debouncer.cancel = () => {
+        clearTimeout(timeout);
+        if (rejectOnDebounce) {
+            rejectPrevious("debounced");
+        }
+        rejectPrevious = (_) => undefined;
+    };
+
     return debouncer;
 }

@@ -1,5 +1,5 @@
 // @ts-check
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import {
     calculateLocations,
@@ -77,6 +77,33 @@ describe("LocationManager defaults", () => {
             manager.getGroupBackgroundRects(Rectangle.create(0, 0, 100, 0))
         ).toEqual([]);
     });
+});
+
+test("disposal cancels and settles an active peek transition", async () => {
+    const root = createRootGroup();
+    root.groups = [createSampleGroup("A", ["s1", "s2", "s3"])];
+    /** @type {Set<(timestamp: number) => void>} */
+    const frames = new Set();
+    const requestRender = vi.fn();
+    const manager = createLocationManager(root, {
+        height: 20,
+        animator: {
+            requestTransition: (callback) => frames.add(callback),
+            cancelTransition: (callback) => frames.delete(callback),
+            requestRender,
+        },
+    });
+    const finished = manager.togglePeek(true);
+    const pendingFrame = frames.values().next().value;
+
+    manager.dispose();
+    await finished;
+
+    expect(frames.size).toBe(0);
+    // A frame taken by the animator before disposal must not update locations.
+    pendingFrame(performance.now() + 1000);
+    expect(manager.getPeekState()).toBe(0);
+    expect(requestRender).not.toHaveBeenCalled();
 });
 
 describe("calculateLocations", () => {
@@ -562,8 +589,9 @@ function createSampleGroup(name, samples) {
  * @param {object} options
  * @param {number} options.height
  * @param {import("@genome-spy/app/spec/sampleView.js").SampleLayoutDef} [options.sampleLayout]
+ * @param {Pick<import("@genome-spy/core/utils/animator.js").default, "requestTransition" | "cancelTransition" | "requestRender">} [options.animator]
  */
-function createLocationManager(rootGroup, { height, sampleLayout }) {
+function createLocationManager(rootGroup, { height, sampleLayout, animator }) {
     return new LocationManager({
         getSampleHierarchy: () =>
             /** @type {import("./state/sampleState.js").SampleHierarchy} */ ({
@@ -573,8 +601,9 @@ function createLocationManager(rootGroup, { height, sampleLayout }) {
         getSummaryHeight: () => 0,
         onLocationUpdate: () => {},
         viewContext: /** @type {any} */ ({
-            animator: {
+            animator: animator ?? {
                 requestTransition: () => {},
+                cancelTransition: () => {},
                 requestRender: () => {},
             },
         }),

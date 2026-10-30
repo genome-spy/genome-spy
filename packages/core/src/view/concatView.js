@@ -58,19 +58,18 @@ export default class ConcatView extends GridView {
     async initializeChildren() {
         const childOptions = this.#getChildOptions();
 
-        this.setChildren(
-            await Promise.all(
-                this.#getChildSpecs().map((childSpec) =>
-                    this.context.createOrImportView(
-                        childSpec,
-                        this,
-                        this,
-                        this.getNextAutoName("grid"),
-                        this.options.childSpecValidator,
-                        childOptions
-                    )
+        await this.createChildViews(
+            this.#getChildSpecs().map((childSpec) =>
+                this.context.createOrImportView(
+                    childSpec,
+                    this,
+                    this,
+                    this.getNextAutoName("grid"),
+                    this.options.childSpecValidator,
+                    childOptions
                 )
-            )
+            ),
+            (children) => this.setChildren(children)
         );
 
         await this.#initializeAnnotationLayer();

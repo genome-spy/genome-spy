@@ -13,6 +13,59 @@ import {
     waitUntil,
 } from "./viewMutationAcidTestUtils.js";
 import AxisView from "./axisView.js";
+import { createViewMutationApi } from "./viewMutationApi.js";
+
+test("host lifecycle wraps transaction layout suppression and every nested mutation", async () => {
+    const { view, context } = await createViewMutationAcidHarness({
+        vconcat: [],
+    });
+    const requestLayout = context.requestLayoutReflow;
+    /** @type {string[]} */
+    const phases = [];
+    const api = createViewMutationApi(
+        { viewRoot: view },
+        () => true,
+        async (mutation, operation) => {
+            phases.push(mutation.kind + ":before");
+            if (mutation.kind === "transaction") {
+                expect(context.requestLayoutReflow).toBe(requestLayout);
+            }
+            try {
+                return await operation();
+            } finally {
+                if (mutation.kind === "transaction") {
+                    expect(context.requestLayoutReflow).toBe(requestLayout);
+                }
+                phases.push(mutation.kind + ":after");
+            }
+        }
+    );
+
+    await api.transaction(async (views) => {
+        const child = await views.insert(
+            views.root(),
+            makeTrackSpec("cohort", "Cohort")
+        );
+        await views.move(child, { index: 0 });
+        await views.remove(child);
+    });
+    expect(phases).toEqual([
+        "transaction:before",
+        "insert:before",
+        "insert:after",
+        "move:before",
+        "move:after",
+        "remove:before",
+        "remove:after",
+        "transaction:after",
+    ]);
+    phases.length = 0;
+    await expect(
+        api.insert(api.root(), makeTrackSpec("bad", "Bad"), { index: -1 })
+    ).rejects.toThrow();
+    expect(phases).toEqual([]);
+    view.disposeSubtree();
+});
 
 // These acid scenarios intentionally drive mutations through the public
 // ViewMutationApi. The assertions inspect normalized internal state because

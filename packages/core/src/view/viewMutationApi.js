@@ -220,6 +220,8 @@ function updateNamedDataBinding(view, binding, data) {
  *   requestedLayoutReflow: boolean,
  *   restoreLayoutReflow: () => void
  * }} TransactionState
+ * @typedef {{kind: "insert" | "remove" | "move" | "transaction", parent?: import("./view.js").default, target?: import("./view.js").default}} ViewMutation
+ * @typedef {<T>(mutation: ViewMutation, operation: () => Promise<T>) => Promise<T>} RunViewMutation
  */
 
 /**
@@ -227,9 +229,14 @@ function updateNamedDataBinding(view, binding, data) {
  *
  * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi>} genomeSpy
  * @param {() => boolean} [isActive]
+ * @param {RunViewMutation} [runMutation] Internal host lifecycle boundary; runs inside the mutation queue.
  * @returns {import("../types/embedApi.js").ViewApi}
  */
-export function createViewMutationApi(genomeSpy, isActive = () => true) {
+export function createViewMutationApi(
+    genomeSpy,
+    isActive = () => true,
+    runMutation = (_mutation, operation) => operation()
+) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
      * @typedef {import("../types/embedApi.js").ViewHandle} ViewHandle
@@ -784,18 +791,22 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 ensureScopeNameIsAvailable(parentView, scopeName);
             }
 
-            const childSpec = structuredClone(spec);
-            const childView = await addChildToMutableContainer(
-                parentView,
-                childSpec,
-                index
+            return runMutation(
+                { kind: "insert", parent: parentView },
+                async () => {
+                    const childView = await addChildToMutableContainer(
+                        parentView,
+                        structuredClone(spec),
+                        index
+                    );
+
+                    if (options.scope !== undefined) {
+                        registerViewScope(childView, options.scope);
+                    }
+
+                    return getHandle(childView);
+                }
             );
-
-            if (options.scope !== undefined) {
-                registerViewScope(childView, options.scope);
-            }
-
-            return getHandle(childView);
         });
     }
 
@@ -985,7 +996,12 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
                 );
             }
 
-            await removeChildFromMutableContainer(parentView, index);
+            getMutableContainerChildCount(parentView);
+            targetView.assertCanDisposeSubtree();
+            await runMutation(
+                { kind: "remove", parent: parentView, target: targetView },
+                () => removeChildFromMutableContainer(parentView, index)
+            );
         });
     }
 
@@ -1046,9 +1062,18 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
             }
 
             const index = getMoveIndex(options.index, children.length - 1);
-            await moveChildWithinMutableContainer(parentView, fromIndex, index);
-
-            return getHandle(targetView);
+            getMutableContainerChildCount(parentView);
+            return runMutation(
+                { kind: "move", parent: parentView, target: targetView },
+                async () => {
+                    await moveChildWithinMutableContainer(
+                        parentView,
+                        fromIndex,
+                        index
+                    );
+                    return getHandle(targetView);
+                }
+            );
         });
     }
 
@@ -1118,7 +1143,11 @@ export function createViewMutationApi(genomeSpy, isActive = () => true) {
         transaction: (callback) =>
             activeTransaction
                 ? runTransaction(callback)
-                : enqueueTopLevelOperation(() => runTransaction(callback)),
+                : enqueueTopLevelOperation(() =>
+                      runMutation({ kind: "transaction" }, () =>
+                          runTransaction(callback)
+                      )
+                  ),
     };
 
     registerViewRuntime(api, {

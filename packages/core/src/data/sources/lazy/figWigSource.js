@@ -68,18 +68,24 @@ export default class FigWigSource extends IntervalUrlSource {
                 const reader = new FigWig({
                     filehandle: new RemoteFile(descriptor.url),
                 });
-                const header = await reader.getHeader();
-                return {
-                    reader,
-                    tileSize: header.tileSize,
-                    chromosomeLengths: new Map(
-                        header.chromosomes.map((c) => [c.name, c.length])
-                    ),
-                    attachFields: createDescriptorFieldAttacher(
-                        descriptor.fields
-                    ),
-                };
+                try {
+                    const header = await reader.getHeader();
+                    return {
+                        reader,
+                        tileSize: header.tileSize,
+                        chromosomeLengths: new Map(
+                            header.chromosomes.map((c) => [c.name, c.length])
+                        ),
+                        attachFields: createDescriptorFieldAttacher(
+                            descriptor.fields
+                        ),
+                    };
+                } catch (error) {
+                    await reader.close();
+                    throw error;
+                }
             },
+            disposeHandle: (handle) => handle.reader.close(),
         });
     }
 

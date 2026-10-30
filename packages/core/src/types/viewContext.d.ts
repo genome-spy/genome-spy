@@ -106,16 +106,14 @@ export default interface ViewContext {
     resumeHoverTracking: (event?: MouseEvent) => void;
 
     /**
-     * Adds a keyboard event listener to the document. Cleanup is performed automatically
-     * when GenomeSpy is finalized.
-     *
-     * TODO: Listeners should be called only when the mouse pointer is inside the
-     * container or the app covers the full document.
+     * Adds a keyboard event listener and returns its unsubscriber. Keydown events
+     * are scoped to the active embed; keyup always dispatches to release held keys.
+     * Remaining listeners are removed when GenomeSpy is finalized.
      */
     addKeyboardListener: (
         type: "keydown" | "keyup",
         listener: (event: KeyboardEvent) => void
-    ) => void;
+    ) => () => void;
 
     /**
      * Registers a listener for broadcast messages.

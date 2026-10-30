@@ -509,21 +509,25 @@ export default class SampleView extends ContainerView {
         );
 
         // Keyboard handlers
-        context.addKeyboardListener(
-            "keydown",
-            (/** @type {KeyboardEvent} */ event) => {
-                if (event.code == "KeyE" && !event.repeat) {
-                    this.#openCloseup();
+        this.registerDisposer(
+            context.addKeyboardListener(
+                "keydown",
+                (/** @type {KeyboardEvent} */ event) => {
+                    if (event.code == "KeyE" && !event.repeat) {
+                        this.#openCloseup();
+                    }
                 }
-            }
+            )
         );
-        context.addKeyboardListener(
-            "keyup",
-            (/** @type {KeyboardEvent} */ event) => {
-                if (event.code == "KeyE") {
-                    this.#togglePeek(false);
+        this.registerDisposer(
+            context.addKeyboardListener(
+                "keyup",
+                (/** @type {KeyboardEvent} */ event) => {
+                    if (event.code == "KeyE") {
+                        this.#togglePeek(false);
+                    }
                 }
-            }
+            )
         );
     }
 
@@ -1996,7 +2000,7 @@ export default class SampleView extends ContainerView {
      * @override
      */
     dispose() {
-        this.locationManager.getPlacementSource().dispose();
+        this.locationManager.dispose();
         super.dispose();
         this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);
     }
