@@ -69,9 +69,6 @@ export default class Mark {
      */
     nonvisualInputs = new Set();
 
-    /** Internal hit targets can be picked independently of paint opacity. */
-    pickingGeometry = false;
-
     /**
      * Creates the semantic mark owned by a unit view and resolves its configured
      * property defaults.

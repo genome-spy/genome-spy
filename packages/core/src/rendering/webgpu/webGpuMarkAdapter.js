@@ -238,8 +238,6 @@ export function createWebGpuMarkConfig(
         };
     }
 
-    if (mark.pickingGeometry) config.picking = "geometry";
-
     return createTranslation(
         definition,
         addOccurrenceConfig(config, resolvedPlacementIndex, mark, coords),
