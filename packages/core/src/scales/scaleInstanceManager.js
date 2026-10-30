@@ -330,18 +330,22 @@ export default class ScaleInstanceManager {
             if (command && !canUseCommand) this.#rangeCommandActive = false;
             const range =
                 command && canUseCommand ? command.range : configuredRange;
-            const previous = this.mapping.get();
-            const prepared =
-                scale.type === "null" ||
-                (previous?.scale === scale && previous?.props === props)
-                    ? undefined
-                    : this.#prepareMapping(props);
             const state =
                 scale.type === "null" ? null : this.#domainState.get();
+            const domain = state ? state.visibleDomain : [];
+            const previous = this.mapping.get();
+            // Interpolating schemes and rangeStep depend on domain cardinality.
+            const prepared =
+                scale.type === "null" ||
+                (previous?.scale === scale &&
+                    previous?.props === props &&
+                    previous.domain.length === domain.length)
+                    ? undefined
+                    : this.#prepareMapping(props);
             return {
                 scale,
                 props,
-                domain: state ? state.visibleDomain : [],
+                domain,
                 gapDomain: state?.gapDomain,
                 gapPositions,
                 gapWidth: width(null),

@@ -5,6 +5,7 @@ in vec2 vPosInPixels;
 flat in vec2 vHalfSizeInPixels;
 
 flat in lowp vec4 vFillColor;
+flat in float vOpacityFactor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
 flat in vec4 vCornerRadii;
@@ -194,17 +195,23 @@ void main(void) {
     backgroundColor = vec4(uShadowColor * shadow, shadow);
 #endif
 
+    // Hatches change the stroke band, not the nominal fill beneath it.
+    float fillDistance = d;
     if (vHalfStrokeWidth > 0.0 && uHatchPattern > 0) {
         d = max(d, -pattern());
     }
 
-    fragColor = distanceToColor(
-        d,
-        vFillColor,
-        vStrokeColor,
-        backgroundColor,
-        vHalfStrokeWidth
-    );
+    float cf = distanceToRatio(-fillDistance);
+    vec4 paint = cf * vFillColor;
+    if (vHalfStrokeWidth > 0.0) {
+        float ci = distanceToRatio(-d - vHalfStrokeWidth);
+        float co = distanceToRatio(-fillDistance + vHalfStrokeWidth);
+        paint = ci * vFillColor
+            + (cf - ci) * (vStrokeColor + (1.0 - vStrokeColor.a) * vFillColor)
+            + (co - cf) * vStrokeColor;
+    }
+    paint *= vOpacityFactor;
+    fragColor = paint + (1.0 - paint.a) * backgroundColor;
 
     if (uPickingEnabled) {
         if (d < vHalfStrokeWidth) {
@@ -215,7 +222,7 @@ void main(void) {
     }
 #else
     // The trivial, non-decorated case
-    fragColor = vFillColor;
+    fragColor = vFillColor * vOpacityFactor;
     if (uPickingEnabled) {
         fragColor = vPickingColor;
     }

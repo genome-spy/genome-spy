@@ -113,7 +113,7 @@ for (const dpr of [1, 2]) {
                 [12, 20],
                 [64, 20],
                 [116, 20],
-                [12, 10],
+                [18, 14], // Probe the upper wing inside its diagonal edge.
                 [12, 0],
                 [12, 48],
                 [64, 48],

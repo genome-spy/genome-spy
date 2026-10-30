@@ -1,4 +1,5 @@
 flat out lowp vec4 vFillColor;
+flat out float vOpacityFactor;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
 flat out vec4 vCornerRadii;
@@ -104,6 +105,7 @@ void main(void) {
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
+    vOpacityFactor = opaFactor;
     size = max(size, normalizedMinSize);
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
@@ -115,7 +117,7 @@ void main(void) {
     float shadowPadding = uShadowBlur + max(abs(uShadowOffsetX), abs(uShadowOffsetY));
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity() * opaFactor;
+    float strokeOpacity = getScaled_strokeOpacity();
 
     vec2 centeredFrac = frac - 0.5;
     vec2 expand = centeredFrac * (strokeWidth + aaPadding + shadowPadding * 2.0) / uViewportSize;
@@ -133,7 +135,7 @@ void main(void) {
 
     gl_Position = unitToNdc(pos);
 
-    float fillOpacity = getScaled_fillOpacity() * opaFactor;
+    float fillOpacity = getScaled_fillOpacity();
     vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();

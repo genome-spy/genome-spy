@@ -38,9 +38,12 @@ describe("generated core schema", () => {
             { tracks: [] },
             { mode: "exact" },
             { mode: "fast" },
+            { maxSummaryPixels: 0 },
+            { maxSummaryPixels: 4 },
             {
                 tracks: { expr: "visibleSamples" },
                 pixelsPerBin: { expr: "binWidth" },
+                maxSummaryPixels: { expr: "summaryWidth" },
                 mode: { expr: "signalMode" },
             },
         ]) {
@@ -59,6 +62,7 @@ describe("generated core schema", () => {
             { url: ["a.fw", "b.fw"] },
             { channel: "color" },
             { mode: "approximate" },
+            { maxSummaryPixels: "4" },
         ]) {
             expect(
                 validate({

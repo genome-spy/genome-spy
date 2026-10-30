@@ -116,6 +116,17 @@ GenomeSpy App can also use embedded track attributes as
 
 SCHEMA FigWigData
 
+The default favors interactive browsing. Its coarser summaries can hide narrow
+features and change comparisons between tracks with different amounts of missing
+data. For example, ten observed bases scoring 10 in a 100-base bin have an
+observed-base mean of **10**, but a zero-filled summary mean of **1**. A wholly
+missing summary bin appears as zero rather than missing.
+
+Choose `mode: "exact"` when raw-derived, missing-aware bin means are required;
+broad views can then read substantial raw data. Statistics calculated from
+displayed bins, including brush summaries, still depend on binning and brush
+boundaries. At close zooms, both modes use the same raw queries and resolution.
+
 ### Example
 
 This [sample collection](../../sample-collections/visualizing.md) source follows

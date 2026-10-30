@@ -115,8 +115,12 @@ fn distanceToColor(d: f32, fill: vec4<f32>, stroke: vec4<f32>, halfStroke: f32) 
     let fillColor = premultiplyAlpha(fill);
     let strokeColor = premultiplyAlpha(stroke);
     if (halfStroke > 0.0) {
-        return mix(strokeColor, select(vec4<f32>(0.0), fillColor, d <= 0.0),
-            distanceToRatio(abs(d) - halfStroke));
+        let ci = distanceToRatio(-d - halfStroke);
+        let cf = distanceToRatio(-d);
+        let co = distanceToRatio(halfStroke - d);
+        return ci * fillColor
+            + (cf - ci) * (strokeColor + (1.0 - strokeColor.a) * fillColor)
+            + (co - cf) * strokeColor;
     }
     return fillColor * distanceToRatio(-d);
 }
