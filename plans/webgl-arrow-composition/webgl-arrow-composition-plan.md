@@ -1,7 +1,7 @@
 # WebGL arrow paint composition
 
 Status: bounded correctness/performance proof passes on fresh master e0571a73.
-Production implementation has not started.
+Implementation and focused delivery checks complete; no PR opened.
 Part of #604, following WebGPU arrow #625. No new dependencies. Squash merges.
 
 ## Architecture and outcome
@@ -76,13 +76,13 @@ entire proof in permanent tests. Independent implementation reviewers are run
 when requested. Show exact diff before opening a PR. Keep plan updated in draft
 review, reconcile and retire it before squash merge.
 
-
 ## Bounded proof results (2026-10-30)
 
 The browser-only candidate changes the local fragment resolve by +10/-7 lines.
 Public Core embed, production shader generation and actual WebGL submission are
 used throughout; only the arrow fragment module is intercepted for the candidate.
-Production files on disk are unchanged. No geometry or picking branch is edited.
+At that proof stage, production files on disk were unchanged. No geometry or
+picking branch is edited by the candidate.
 
 Hardware Metal/Apple M5 and software SwiftShader, DPR1/2: all 24 independent
 premultiplied color samples match the thin/wide stem oracles exactly (<=2-byte
@@ -116,3 +116,39 @@ for implementation; this plan-only contribution has no release impact. The
 runtime correction is independently useful and does not require pending #624.
 Proof runners, candidate, raw buffers and JSON evidence are retained outside Git
 in chat-local webgl-arrow-proof/. Review this plan/proof before production edits.
+
+## Implementation checkpoint
+
+The final 212-line browser regression fails master at DPR1/2 (64-byte channel
+error) and passes the local correction: independent thin/wide colors, separate
+paint opacities, transparent filled/open-head images and open-head interior,
+hole and outside IDs. It uses public Core embed, live parameter updates and
+submitted framebuffer readback. Keep the broader proof matrix outside Git.
+
+All 35 focused arrow/generated-shader unit tests pass. Exactly two arrow snapshot
+entries change; point/rectangle snapshots, shared helper, vertex and picking code
+are untouched. Runtime is +10/-7; the complete delivery target is four files,
++249/-21 raw lines (212 browser, 20 snapshot, 10 shader, 7 patch note additions).
+Types, lint, Core build, release validation and existing-example smoke pass.
+
+## Final delivery qualification
+
+The committed runtime matches the bounded candidate byte for byte. Permanent
+SwiftShader browser regressions pass at DPR1/2, including asserted 64x64/128x128
+backing sizes. Match existing per-DPR browser launch configuration: context-only
+DPR emulation does not set native ResizeObserver device-pixel boxes correctly.
+All 35 focused unit tests pass; exactly two arrow snapshots change. Existing
+arrow-playground and arrow_direction examples pass the standard Core smoke check.
+
+Core types, production bundles, schema/declaration build, targeted lint,
+formatting and release validation pass. The initial FigWig type errors came from
+installed 0.1.0 versus locked 0.2.3; restoring the existing lockfile installation
+cleared them. No dependency, package or lockfile edits are included. The patch
+fragment covers this Core fix; unrelated fragments retain the aggregate minor
+release. No additional benchmark or custom framework is added to the repository.
+
+Exact delivery: four files, +249/-21 raw lines, net +228. Runtime +10/-7;
+212-line browser regression, two snapshot updates +20/-14, seven-line patch note.
+The temporary plan is separate. Retire it before squash merge. Common opacity,
+tight repeat layout and aligned stroke APIs remain explicit #604 follow-ups.
+No independent implementation review has been requested yet. No PR opened.
