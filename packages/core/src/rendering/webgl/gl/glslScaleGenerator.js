@@ -374,7 +374,7 @@ export function generateScaleGlsl(channel, scale, channelDef) {
                 scale.paddingOuter(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
-                channelDef.band ?? (gaps && peer ? 0 : 0.5),
+                toDecimal(channelDef.band ?? (gaps && peer ? 0 : 0.5)),
                 ...(gaps
                     ? [
                           peer
@@ -397,7 +397,7 @@ export function generateScaleGlsl(channel, scale, channelDef) {
                 transform === "point" ? scale.padding() : scale.paddingOuter(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
-                channelDef.band ?? 0.5
+                toDecimal(channelDef.band ?? 0.5)
             );
             break;
 
