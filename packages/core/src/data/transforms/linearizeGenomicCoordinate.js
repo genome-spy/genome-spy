@@ -57,6 +57,7 @@ export default class LinearizeGenomicCoordinate extends Transform {
             );
         }
 
+        // Serialize offsets so untyped spec values remain data in generated code.
         const setter = new Function(
             "datum",
             "chromOffset",
@@ -66,9 +67,9 @@ export default class LinearizeGenomicCoordinate extends Transform {
                     (a, i) =>
                         `datum[${JSON.stringify(
                             a
-                        )}] = chromOffset + +posAccessors[${i}](datum) - ${
+                        )}] = chromOffset + +posAccessors[${i}](datum) - ${JSON.stringify(
                             posOffsets[i]
-                        };`
+                        )};`
                 )
                 .join("\n")
         );
