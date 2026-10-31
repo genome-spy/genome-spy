@@ -94,6 +94,8 @@ export const RULE_MARK_DEFAULTS = {
     strokeDash: null,
     strokeDashOffset: 0,
     strokeCap: "butt",
+    outlineColor: "black",
+    outlineWidth: 0,
 };
 
 /** @type {import("../../spec/config.js").TickConfig} */

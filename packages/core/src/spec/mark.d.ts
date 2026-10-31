@@ -534,6 +534,21 @@ export interface StrokeStyleProps {
 export interface RuleProps
     extends MarkPropsBase, SecondaryPositionProps, SizeProps, StrokeStyleProps {
     type: "rule";
+
+    /**
+     * Color of the outline around each rule. The outline shares the rule's opacity.
+     *
+     * __Default value:__ `"black"`
+     */
+    outlineColor?: string | ExprRef;
+
+    /**
+     * Outline width in pixels on each side of the rule, outside its `size`.
+     * Nonpositive values disable the outline. Outlines follow the stroke caps and dash pattern.
+     *
+     * __Default value:__ `0`
+     */
+    outlineWidth?: number | ExprRef;
 }
 
 export interface TickProps extends MarkPropsBase, StrokeStyleProps {

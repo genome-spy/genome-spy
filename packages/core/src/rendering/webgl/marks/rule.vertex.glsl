@@ -13,6 +13,7 @@ flat out vec4 vColor;
 
 /** Stroke width */
 flat out float vSize;
+flat out float vOuterSize;
 
 /** The distance from the line center to the direction of normal in pixels */
 out float vNormalLengthInPixels;
@@ -53,11 +54,17 @@ void main(void) {
     // Stroke width in pixels
     float size = getScaled_size();
     float opacity = getScaled_opacity() * uViewOpacity;
+    float outerSize = size + 2.0 * uOutlineWidth;
+    if (uOutlineWidth > 0.0 && size <= 0.0) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
 
-    // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
-    if (size < pixelSize) {
-        opacity *= size / pixelSize;
-        size = pixelSize;
+    // Compensate the complete footprint without fading a visible outline on a thin rule.
+    if (outerSize < pixelSize) {
+        opacity *= outerSize / pixelSize;
+        size = outerSize > 0.0 ? size * pixelSize / outerSize : pixelSize;
+        outerSize = pixelSize;
     }
 
     vec2 a = applyOffset(
@@ -75,7 +82,7 @@ void main(void) {
     vec2 upper = (vec2(1.0) - uViewOffset) / uViewScale;
     // Keep artificial caps outside the viewport, including thick strokes.
     vec2 margin = max(upper - lower,
-        vec2(size + uMinLength + pixelSize) / uViewportSize);
+        vec2(outerSize + uMinLength + pixelSize) / uViewportSize);
     vec2 xBounds = vec2(lower.x - margin.x, upper.x + margin.x);
     vec2 yBounds = vec2(lower.y - margin.y, upper.y + margin.y);
 #ifdef CLAMP_X
@@ -103,7 +110,7 @@ void main(void) {
 
         // Add line caps
         if (uStrokeCap != BUTT) {
-            diff += size;
+            diff += outerSize;
         }
 
         relativeDiff = diff / len;
@@ -120,16 +127,17 @@ void main(void) {
 
     // Extrude
     vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);
-    p += normal * side * (size + aaPadding) / uViewportSize;
+    p += normal * side * (outerSize + aaPadding) / uViewportSize;
 
     gl_Position = unitToNdc(p);
 
     vColor = premultiplyColor(getScaled_color(), opacity);
     vSize = size;
-    vNormalLengthInPixels = side * (size + aaPadding);
+    vOuterSize = outerSize;
+    vNormalLengthInPixels = side * (outerSize + aaPadding);
 
     vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
-        vec2(uStrokeCap != BUTT ? size / 2.0 : 0.0);
+        vec2(uStrokeCap != BUTT ? outerSize / 2.0 : 0.0);
     
     setupPicking();
 }

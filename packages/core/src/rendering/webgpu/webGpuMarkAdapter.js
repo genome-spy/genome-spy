@@ -770,6 +770,15 @@ function createPointVisibilitySelections(mark) {
  * @returns {object}
  */
 function createRuleConfig(mark, data, coords, viewOpacity) {
+    const props = /** @type {import("../../spec/mark.js").RuleProps} */ (
+        mark.properties
+    );
+    if (isExprRef(props.outlineWidth) || props.outlineWidth > 0) {
+        throw unsupported(
+            mark,
+            "Rule outlines are not supported by the experimental WebGPU renderer."
+        );
+    }
     mark.initializeRenderingRevisions([
         "minLength",
         "strokeCap",

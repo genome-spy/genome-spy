@@ -3,7 +3,7 @@ import {
     resolveRuleProperties,
     visitRuleInstances,
 } from "../../immediate/marks/rule.js";
-import { toPaintString } from "../../immediate/markEncoding.js";
+import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
 import { formatSvgNumber } from "../svgNumber.js";
 
@@ -52,15 +52,42 @@ export function renderRuleSvg(baseMark, options) {
             if (options.countOnly) {
                 return;
             }
-            group.appendChild(
-                createSvgElement("line", {
-                    x1: formatSvgNumber(instance.x1),
-                    y1: formatSvgNumber(instance.y1),
-                    x2: formatSvgNumber(instance.x2),
-                    y2: formatSvgNumber(instance.y2),
-                    ...encodeStyles(instance.datum),
-                })
-            );
+            if (
+                properties.outlineWidth > 0 &&
+                toPaintString(encoders.color(instance.datum)) == "none"
+            )
+                return;
+            const positions = {
+                x1: formatSvgNumber(instance.x1),
+                y1: formatSvgNumber(instance.y1),
+                x2: formatSvgNumber(instance.x2),
+                y2: formatSvgNumber(instance.y2),
+            };
+            const line = createSvgElement("line", {
+                ...positions,
+                ...encodeStyles(instance.datum),
+            });
+            if (properties.outlineWidth > 0) {
+                // Isolate opacity per rule while preserving datum paint order.
+                const pair = createSvgElement("g", {
+                    opacity:
+                        encodeNumber(encoders.opacity, instance.datum) *
+                        viewOpacity,
+                    "stroke-opacity": 1,
+                });
+                pair.appendChild(
+                    createSvgElement("line", {
+                        ...positions,
+                        stroke: properties.outlineColor,
+                        "stroke-width": formatSvgNumber(instance.outerWidth),
+                    })
+                );
+                line.setAttribute("stroke-opacity", "1");
+                pair.appendChild(line);
+                group.appendChild(pair);
+            } else {
+                group.appendChild(line);
+            }
         }
     );
 }

@@ -10,6 +10,7 @@ import VERTEX_SHADER from "./rule.vertex.glsl";
 import FRAGMENT_SHADER from "./rule.fragment.glsl";
 import COMMON_SHADER from "./rule.common.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices.js";
+import { cssColorToArray } from "../gl/colorUtils.js";
 
 /**
  * @extends {WebGLMark}
@@ -82,6 +83,16 @@ export default class WebGLRuleMark extends WebGLMark {
         const props = this.properties;
 
         this.registerMarkUniformValue("uMinLength", props.minLength);
+        this.registerMarkUniformValue(
+            "uOutlineColor",
+            props.outlineColor ?? "black",
+            cssColorToArray
+        );
+        this.registerMarkUniformValue(
+            "uOutlineWidth",
+            props.outlineWidth ?? 0,
+            (width) => Math.max(0, width)
+        );
         this.registerMarkUniformValue(
             "uStrokeCap",
             props.strokeCap ?? "butt",

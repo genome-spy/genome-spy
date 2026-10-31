@@ -5,6 +5,7 @@ Run focused browser checks directly from the repository root:
 ```sh
 node packages/core/scripts/testDefaultThemeStyles.mjs
 node packages/core/scripts/testArrowWebGL.mjs
+node packages/core/scripts/testRuleOutlines.mjs
 node packages/core/scripts/testOrthogonalLinks.mjs
 node packages/core/scripts/testDendrogramRenderers.mjs
 node packages/core/scripts/testCategoricalDomains.mjs
