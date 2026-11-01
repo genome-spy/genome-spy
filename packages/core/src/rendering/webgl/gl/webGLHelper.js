@@ -330,6 +330,8 @@ export default class WebGLHelper {
         }
         this.gl.deleteFramebuffer(this._pickingBufferInfo.framebuffer);
         this._canvasSizeHelper.finalize();
+        // Removing the canvas alone leaves its context occupying a browser slot.
+        this.gl.getExtension("WEBGL_lose_context")?.loseContext();
         this.canvas.remove();
     }
 
@@ -565,6 +567,13 @@ export function createProgram(gl, vertexShader, fragmentShader) {
     gl.linkProgram(program);
 
     function getProgramErrors() {
+        if (gl.isContextLost()) {
+            return {
+                message: "WebGL context lost during shader initialization.",
+                detail: undefined,
+            };
+        }
+
         /** @type {string} */
         let errorMsg;
         /** @type {string} */
@@ -572,7 +581,9 @@ export function createProgram(gl, vertexShader, fragmentShader) {
 
         const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
         if (!linked) {
-            errorMsg = gl.getProgramInfoLog(program);
+            errorMsg =
+                gl.getProgramInfoLog(program) ||
+                "Shader program linking failed.";
 
             for (const shader of [vertexShader, fragmentShader]) {
                 const compiled = gl.getShaderParameter(
@@ -580,10 +591,12 @@ export function createProgram(gl, vertexShader, fragmentShader) {
                     gl.COMPILE_STATUS
                 );
                 if (!compiled) {
-                    errorMsg = gl.getShaderInfoLog(shader);
+                    errorMsg =
+                        gl.getShaderInfoLog(shader) ||
+                        "Shader compilation failed.";
                     errorDetail =
                         addLineNumbersWithError(
-                            gl.getShaderSource(shader),
+                            gl.getShaderSource(shader) ?? "",
                             errorMsg,
                             0
                         ) + `\nError compiling: ${errorMsg}`;
