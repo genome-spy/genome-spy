@@ -119,3 +119,20 @@ rectangle, arrow or text alignment migration into this prerequisite.
   remain intact. This does not prove #604's future combined-opacity contract.
 - Visible outlines and the following-slice design gate above remain outside
   this completed prerequisite. No partial stroke API has been exposed.
+
+## Review correction
+
+Three independent Sol reviews found the architectural fit, helper reuse and
+bounded test scope sound. Two reviewers reproduced one P2 omission: explicit
+rule fill beat color in the plot but not in size-legend symbols.
+
+Guide styling now reads the normalized rule body paint for size symbols,
+retaining neutral styling for independent field scales. It uses the existing
+empty-selection value extraction and expression-scoping path; explicit legend
+stroke-color overrides still win, and the link path is unchanged. The SVG
+regression fails before the fix and passes after it, including live fill
+changes, competing encoded color, and an explicit legend override. Focused
+rule/legend tests: 109 passed, plus five existing legend-reactivity tests. Core
+types, focused lint and release checks pass.
+This corrects the same unreleased feature; its existing minor Changeset remains
+accurate and unchanged.

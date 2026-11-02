@@ -353,6 +353,18 @@ function createInheritedSymbolStyle(
         }
     }
 
+    // Rule size symbols inherit the normalized body paint, including fill precedence.
+    if (channel == "size" && sourceView.getMarkType() == "rule") {
+        const bodyPaint =
+            getEmptySelectionValueDef(
+                sourceView.mark.encoding.fill,
+                sourceView.spec.predicates ?? {}
+            ) ?? styleEncoding.fill;
+        if (bodyPaint) {
+            styleEncoding.color = bodyPaint;
+        }
+    }
+
     return style;
 }
 

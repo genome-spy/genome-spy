@@ -140,4 +140,68 @@ describe("SVG rule renderer", () => {
             }
         }
     );
+    test.each([undefined, "purple"])(
+        "size symbols follow explicit fill with legend override %s",
+        async (symbolStrokeColor) => {
+            const { view } = await createHeadlessEngine({
+                params: [{ name: "paint", value: "red" }],
+                config: {
+                    legend: {
+                        disable: false,
+                        labelColor: "black",
+                        titleColor: "black",
+                    },
+                },
+                vconcat: [
+                    {
+                        name: "rules",
+                        data: { values: [{ width: 1 }, { width: 2 }] },
+                        mark: {
+                            type: "rule",
+                            color: "blue",
+                            fill: { expr: "paint" },
+                        },
+                        encoding: {
+                            x: { value: 0.5 },
+                            color: { value: "cyan" },
+                            size: {
+                                field: "width",
+                                type: "quantitative",
+                                scale: { domain: [1, 2], range: [2, 5] },
+                                legend: { symbolStrokeColor },
+                            },
+                        },
+                    },
+                ],
+            });
+            try {
+                for (const paint of ["red", "orange"]) {
+                    view.paramRuntime.setValue("paint", paint);
+                    await view.paramRuntime.whenPropagated();
+                    const { svg, warnings } = createSvg({
+                        viewRoot: view,
+                        logicalWidth: 200,
+                        logicalHeight: 150,
+                        background: null,
+                    });
+                    const rules = svg.querySelector(
+                        '[data-name="rules"] [data-mark-type="rule"]'
+                    );
+                    const symbols = svg.querySelector(
+                        '[data-name="symbols"] [data-mark-type="rule"]'
+                    );
+                    expect(rules.getAttribute("stroke")).toBe(paint);
+                    expect(symbols.getAttribute("stroke")).toBe(
+                        symbolStrokeColor ?? paint
+                    );
+                    expect(
+                        symbols.querySelectorAll("line").length
+                    ).toBeGreaterThan(0);
+                    expect(warnings).toEqual([]);
+                }
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
 });
