@@ -392,6 +392,60 @@ band code, retain its BSD-3-Clause copyright/notice and add a durable source lin
 with `Adapted from ...`; its license is compatible with this MIT repository.
 D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 
+## User documentation approach
+
+Extend the existing grammar pages when the feature is implemented. Explain the
+heat-map use case and author-visible behavior; keep renderer/resource details
+and the internal sizing derivation in this plan.
+
+- **`docs/grammar/scale.md`, Grouping gaps:** start with the shared purpose of
+  separating selected rows/columns and the distinction between fixed CSS-pixel
+  `gapWidth` and proportional `paddingInner`. Give band scales and index/locus
+  scales separate subsections. Keep chromosome cuts, half-open numeric endpoints,
+  navigation, and interval brushing under index/locus so they are not implied
+  to apply to bands. Preserve shared-scale configuration guidance.
+- **One categorical example:** add
+  `examples/docs/grammar/scale/band-grouping-gaps.json` and embed it with `EXAMPLE`
+  in the band subsection. Use a small heat map with named categories, explicit
+  ordering, and independent cuts on both axes. Show gaps before domain values,
+  including that numeric categories are values rather than ranks. Explain that
+  removing a boundary category removes its gap under the proposed contract.
+  Keep the existing numeric grouping-gap example in the index/locus subsection.
+- **`docs/grammar/composition/concat.md`, Step sizing:** distinguish the requested
+  base step, cell bandwidth after padding, and added grouping-gap pixels. Explain
+  that fixed dimensions shrink cells while step-sized dimensions grow the plot.
+  Give the unpadded four-category example: `width: {step: 20}` plus one 8 px gap
+  produces an 88 px plot width, excluding guides and view padding. Cross-link
+  the scale example; retain `SCHEMA Step` rather than repeat its property table.
+  Clarify that scrolling uses the full content size and a separately sized viewport.
+- **Authoritative property reference:** update `Scale.gapPositions` and
+  `Scale.gapWidth` in `packages/core/src/spec/scale.d.ts`, `Step` in `view.d.ts`,
+  and `ScaleGroupsData` in `data.d.ts`. Put defaults and exact input/endpoint
+  semantics in JSDoc, then regenerate affected schema/doc types. Update
+  `docs/grammar/data/lazy.md` for categorical `scaleGroups` endpoints without
+  changing numeric half-open semantics. Avoid duplicating generated reference
+  tables in prose.
+- **Constraints:** document the actual shipped restrictions concisely in the
+  relevant reference and link from feature prose: automatically fitted categorical
+  offsets, `round: true`, and same-axis size-dependent gap expressions. Settle
+  open contracts before publishing their wording. Treat renderer parity as normal
+  behavior; describe a backend difference only if it affects correct usage.
+
+Draft wording for the band-scale subsection, subject to the final contract:
+
+> Grouping gaps separate selected groups of heat-map rows or columns. On a band
+> scale, `gapPositions` lists categories before which gaps appear. For example,
+> `gapPositions: ["C"]` inserts a gap between B and C in the domain
+> `["A", "B", "C", "D"]`.
+>
+> `gapWidth` specifies extra spacing in CSS pixels. `paddingInner` continues to
+> control proportional spacing between every pair of cells. Filtering out a
+> boundary category removes its gap.
+
+Verify the live example and affected generated references with the lightest
+applicable documentation checks. Read the complete rewritten grouping-gap and
+step-sizing sections for consistent scope and transitions.
+
 ## Implementation milestones and review gates
 
 ### 1. Internal categorical scale geometry
@@ -453,12 +507,11 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 
 ### 3. User example and final integration
 
-- [ ] Add a small two-axis categorical heat-map example and explain value-based
-      cuts, ordinary padding, fixed pixel widths, filtering, and numeric categories
-      in `docs/grammar/scale.md`. Update step-size JSDoc and
-      `docs/grammar/composition/concat.md` to distinguish base step, cell bandwidth,
-      and added gap pixels. Follow `examples/README.md` and documentation skills;
-      regenerate affected schema/doc types instead of editing generated output manually.
+- [ ] Deliver the User documentation approach above: separate categorical and
+      index/locus guidance, embed the named-category example, explain fixed versus
+      step-sized behavior, and synchronize authoritative JSDoc/generated references.
+      Follow `examples/README.md` and the documentation skill. Verify that the
+      88 px example describes plot width and that restrictions match implementation.
 - [ ] Browser-check the new example on WebGL, Canvas2D, and WebGPU: resize, reverse
       Y, change cuts/width/order, hover and point-select cells beside gaps, confirm
       empty gaps have no hit, then export SVG and raster at a different size/DPR.
@@ -497,6 +550,9 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
    shared placements and exports use their own allocated extent.
 6. Disabled gaps follow existing band behavior without gap shader/resources;
    exhausted placements recover cleanly. Index/locus regression suites pass.
+7. The grammar example and sizing explanation let readers configure named-category
+   gaps and predict plot size; generated references and documented restrictions
+   agree with the implemented contract.
 
 ## Risks and questions to confirm before implementation
 
