@@ -157,6 +157,15 @@ export interface Legend {
     gradientStrokeWidth?: number;
 
     /**
+     * Show the selected numeric range below a bound gradient legend. Set to
+     * `false` to hide the readout and remove its reserved space. Does not affect
+     * gradient ticks or the brush.
+     *
+     * __Default value:__ `true`
+     */
+    selectionLabel?: boolean;
+
+    /**
      * Desired number of ticks for a quantitative gradient legend. Explicit
      * `values` take precedence over this property.
      *

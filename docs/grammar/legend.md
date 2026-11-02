@@ -139,6 +139,35 @@ Reaching the numeric maximum removes the upper limit: the feedback reads
 that edge inward restores a finite upper bound. Clearing removes both bounds.
 Domain changes preserve stored bounds and clip only the visible brush.
 
+The brush uses the same `select.mark` configuration as a positional interval
+brush. Rect appearance properties control its fill, stroke, opacity, rounded
+corners, hatching, and shadow; expressions resolve in the selection's declaring
+scope. Gradient brushes default to an unclipped black outline with a white glow.
+Shared gradient-brush defaults can be set with
+`config.style["gradient-selection-brush"]`.
+For example, this configuration changes the outline and disables the glow:
+
+```json
+{
+  "select": {
+    "type": "interval",
+    "encodings": ["color"],
+    "mark": { "stroke": "#5b21b6", "strokeWidth": 2, "shadowOpacity": 0 }
+  },
+  "bind": "legend"
+}
+```
+
+Numeric feedback is shown only while a range is set. Clearing hides the feedback
+and keeps its space reserved so the legend layout stays stable.
+Set `legend.selectionLabel` to `false` to hide the readout entirely and remove
+that space, or set `config.legend.selectionLabel` to `false` for all legends.
+The brush and the ramp's tick labels remain visible.
+
+```json
+"legend": { "selectionLabel": false }
+```
+
 Highlighting uses an ordinary `condition: {param: "activation_range", value: 1}`,
 with a fallback opacity for other rows. The predicate reads raw numeric values
 from the consuming view's same channel; `project: {color: "fill"}` can map it to

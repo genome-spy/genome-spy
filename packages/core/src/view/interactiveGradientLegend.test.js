@@ -572,3 +572,161 @@ test("collected brush expressions must resolve the same bindings", async () => {
         { contextOptions: { baseConfig } }
     );
 });
+
+test("rect appearance overrides update reactively and cleared feedback keeps its space", async () => {
+    const input = spec();
+    input.params.push(
+        { name: "brushColor", value: "#663399" },
+        { name: "brushAlpha", value: 0.25 },
+        { name: "brushRadius", value: 2 }
+    );
+    const declaration =
+        /** @type {import("../spec/parameter.js").GradientIntervalSelectionParameter<"color">} */ (
+            input.params[0]
+        );
+    declaration.value = { color: [3, 30] };
+    input.config.style = {
+        reviewBrush: {
+            fill: "#ffffff",
+            strokeOpacity: 0.8,
+            strokeWidth: 2,
+            shadowOpacity: 0,
+            clip: true,
+        },
+    };
+    declaration.select.mark = {
+        style: "reviewBrush",
+        fillOpacity: { expr: "brushAlpha" },
+        stroke: { expr: "brushColor" },
+        cornerRadius: { expr: "brushRadius" },
+    };
+    const { root, views } = await createTestEmbed(input, {
+        contextOptions: { baseConfig, viewFactoryOptions: { wrapRoot: true } },
+    });
+    renderToLayout(root);
+    const params = views.get({ scope: [], view: "cells" }).params;
+    const brush = /** @type {import("./unitView.js").default} */ (
+        root.getDescendants().find((view) => view.name === "gradientBrush")
+    );
+    const feedback = root
+        .getDescendants()
+        .find((view) => view.name === "gradientSelectionFeedback");
+    const feedbackBounds = [
+        feedback.coords.x,
+        feedback.coords.y,
+        feedback.coords.width,
+        feedback.coords.height,
+    ];
+    const svg = () =>
+        createSvg({
+            viewRoot: root,
+            logicalWidth: 600,
+            logicalHeight: 400,
+            background: null,
+        }).svg;
+    expect(brush.mark.properties.clip).toBe(true);
+    expect(
+        /** @type {import("../spec/mark.js").RectProps} */ (
+            brush.mark.properties
+        ).shadowOpacity
+    ).toBe(0);
+    const row = Array.from(brush.getCollector().getData())[0];
+    expect(brush.mark.encoders.stroke(row)).toBe("#663399");
+    expect(brush.mark.encoders.fillOpacity(row)).toBe(0.25);
+    expect(
+        svg()
+            .querySelector('[data-name="gradientBrush"] rect')
+            .getAttribute("rx")
+    ).toBe("2");
+    params.get("brushColor").setValue("#cc3300");
+    params.get("brushAlpha").setValue(0.5);
+    params.get("brushRadius").setValue(4);
+    expect(brush.mark.encoders.stroke(row)).toBe("#cc3300");
+    expect(brush.mark.encoders.fillOpacity(row)).toBe(0.5);
+    expect(
+        svg()
+            .querySelector('[data-name="gradientBrush"] rect')
+            .getAttribute("rx")
+    ).toBe("4");
+    expect(svg().textContent).toContain("3 to <30");
+    params.getSelection("scores").clear();
+    renderToLayout(root);
+    expect(
+        Array.from(
+            svg().querySelectorAll(
+                '[data-name="gradientSelectionFeedback"] text'
+            ),
+            (element) => element.textContent
+        ).join("")
+    ).toBe("");
+    expect([
+        feedback.coords.x,
+        feedback.coords.y,
+        feedback.coords.width,
+        feedback.coords.height,
+    ]).toEqual(feedbackBounds);
+});
+
+test.each([false, true])(
+    "range feedback can be disabled independently of brushing (vertical=%s)",
+    async (vertical) => {
+        const extents = [];
+        for (const enabled of [true, false]) {
+            const input = /** @type {any} */ (spec("linear", vertical));
+            input.params[0].value = { color: [3, 30] };
+            // Exercise per-legend settings and shared defaults without a configuration matrix.
+            if (vertical) input.config.legend.selectionLabel = enabled;
+            else {
+                input.config.legend.selectionLabel = false;
+                input.encoding.color.legend.selectionLabel = enabled;
+            }
+            const { root, views } = await createTestEmbed(input, {
+                contextOptions: {
+                    baseConfig,
+                    viewFactoryOptions: { wrapRoot: true },
+                },
+            });
+            renderToLayout(root);
+            const host = rampHost(root, "cells");
+            const ramp = root
+                .getDescendants()
+                .find((view) => view.name === "gradientRamp");
+            const unit = root
+                .getDescendants()
+                .find((view) => view.name === "cells");
+            expect(ramp.getScaleResolution("color")).toBe(
+                unit.getScaleResolution("color")
+            );
+            extents.push(
+                vertical
+                    ? host.legend.getStackedParallelSize()
+                    : host.legend.getPerpendicularSize()
+            );
+            const svg = createSvg({
+                viewRoot: root,
+                logicalWidth: 600,
+                logicalHeight: 400,
+                background: null,
+            }).svg;
+            expect(
+                svg.querySelectorAll('[data-name="gradientSelectionFeedback"]')
+            ).toHaveLength(enabled ? 1 : 0);
+            expect(
+                svg.querySelector('[data-name="gradientBrush"] rect')
+            ).not.toBeNull();
+            expect(
+                svg.querySelector('[data-name="gradientLabels"] text')
+            ).not.toBeNull();
+            await host.start(0.5);
+            host.move(1);
+            host.end();
+            const selected = views
+                .get({ scope: [], view: "cells" })
+                .params.getSelection("scores");
+            if (selected.type !== "interval")
+                throw new Error("Expected interval selection");
+            expect(selected.getValue().intervals.color[1]).toBe(Infinity);
+        }
+        expect(extents[0] - extents[1]).toBe(20);
+    }
+);

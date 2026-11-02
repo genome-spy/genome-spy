@@ -24,8 +24,7 @@ export function gradientBrushLayers(binding) {
         mark: {
             type: "rect",
             tooltip: false,
-            style: "selection-brush",
-            clip: true,
+            style: ["selection-brush", "gradient-selection-brush"],
             cursor: mark.cursor ?? {
                 expr: "legendCreating ? legendBrushCursor : intervalDragActive ? 'grabbing' : 'move'",
             },
@@ -124,7 +123,7 @@ export function bindGradientLegend(legend, binding, units, format) {
                         : formatBound(bounds[0]) +
                           " to <" +
                           formatBound(bounds[1])
-                    : "All scores",
+                    : "",
             };
         }
     );

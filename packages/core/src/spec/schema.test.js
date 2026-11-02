@@ -34,7 +34,22 @@ describe("generated core schema", () => {
     test("gradient interval bindings require one color component and encode open initial bounds", () => {
         const parameter = {
             name: "range",
-            select: { type: "interval", encodings: ["color"] },
+            select: {
+                type: "interval",
+                encodings: ["color"],
+                mark: {
+                    opacity: { expr: "0.9" },
+                    fillOpacity: { expr: "0.1" },
+                    strokeWidth: { expr: "2" },
+                    strokeOpacity: { expr: "1" },
+                    cornerRadius: 3,
+                    hatch: "diagonal",
+                    shadowColor: "white",
+                    shadowOpacity: 1,
+                    shadowBlur: 6,
+                    clip: false,
+                },
+            },
             bind: "legend",
             value: { color: [0.3, "Infinity"] },
         };
@@ -53,6 +68,17 @@ describe("generated core schema", () => {
             expect(validate(spec({ ...parameter, select }))).toBe(false);
         }
         expect(validate(spec({ ...parameter, bind: undefined }))).toBe(false);
+        expect(
+            validate(
+                spec({
+                    ...parameter,
+                    select: {
+                        ...parameter.select,
+                        mark: { ...parameter.select.mark, x: 0 },
+                    },
+                })
+            )
+        ).toBe(false);
     });
 
     test("accepts Figwig track selections and rejects invalid track and URL shapes", () => {
@@ -906,6 +932,7 @@ describe("generated core schema", () => {
                     disable: false,
                     orient: "right",
                     labelLimit: 160,
+                    selectionLabel: false,
                     layout: {
                         anchor: "middle",
                         top: { direction: "horizontal" },
@@ -923,6 +950,7 @@ describe("generated core schema", () => {
                     type: "nominal",
                     legend: {
                         title: "Category",
+                        selectionLabel: true,
                         orient: "right",
                         style: /** @type {null} */ (null),
                     },
@@ -1155,6 +1183,9 @@ describe("generated core schema", () => {
                         mark: {
                             fill: { expr: "defaultThemeColors.grid" },
                             stroke: { expr: "defaultThemeColors.foreground" },
+                            fillOpacity: { expr: "0.2" },
+                            cornerRadius: 3,
+                            hatch: "diagonal",
                         },
                     },
                 },

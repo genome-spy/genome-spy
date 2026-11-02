@@ -25,6 +25,7 @@ export const LEGEND_DEFAULTS = {
     gradientThickness: DEFAULT_GRADIENT_THICKNESS,
     gradientOpacity: DEFAULT_GRADIENT_OPACITY,
     gradientStrokeWidth: DEFAULT_GRADIENT_STROKE_WIDTH,
+    selectionLabel: true,
     tickCount: DEFAULT_GRADIENT_TICK_COUNT,
     // Shape and stroke width fall back in the generated symbol mark so that
     // only author-configured legend properties override inherited styling.
@@ -48,6 +49,16 @@ const TRACK_BOTTOM_LEGEND_STYLE = {
 
 /** @type {Record<string, import("../../spec/config.js").StyleConfig>} */
 export const LEGEND_STYLE_DEFAULTS = {
+    "gradient-selection-brush": {
+        clip: false,
+        stroke: "black",
+        strokeOpacity: 1,
+        shadowColor: "white",
+        shadowOpacity: 1,
+        shadowBlur: 6,
+        shadowOffsetX: 0,
+        shadowOffsetY: 0,
+    },
     "track-bottom-legend": TRACK_BOTTOM_LEGEND_STYLE,
     // Deprecated compatibility alias. TODO: Remove "track-bottom" in the next breaking release.
     "track-bottom": TRACK_BOTTOM_LEGEND_STYLE,

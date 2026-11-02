@@ -1,6 +1,16 @@
-import { PrimaryPositionalChannel, Scalar } from "./channel.js";
+import {
+    PrimaryPositionalChannel,
+    PositionalChannel,
+    OffsetChannel,
+    Scalar,
+} from "./channel.js";
 import { ChromosomalLocus } from "./genome.js";
-import { ShadowProps, FillAndStrokeProps, MarkPropsBase } from "./mark.js";
+import {
+    ShadowProps,
+    FillAndStrokeProps,
+    MarkPropsBase,
+    RectProps,
+} from "./mark.js";
 import { ZIndexProps } from "./decoration.js";
 
 export interface ExprRef {
@@ -405,7 +415,25 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
     zoom?: DomEventType | EventConfig | string | boolean;
 }
 
-export interface BrushConfig extends ShadowProps, ZIndexProps {
+/**
+ * Rect mark appearance for positional and gradient-legend interval brushes.
+ * Expressions resolve in the selection's declaring scope. Selection bounds
+ * determine the rectangle's position.
+ */
+export interface BrushConfig
+    extends
+        Omit<
+            RectProps,
+            | "type"
+            | PositionalChannel
+            | OffsetChannel
+            | "x2Offset"
+            | "y2Offset"
+            | "tooltip"
+            | "buildIndex"
+            | "cullByVisibleRange"
+        >,
+        ZIndexProps {
     /**
      * Mouse cursor shown while the pointer is over the interval mark.
      *
@@ -425,38 +453,39 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
      *
      * __Default value:__ `0.05`
      */
-    fillOpacity?: number;
+    fillOpacity?: RectProps["fillOpacity"];
 
     /**
      * The stroke color of the interval mark.
      *
      * __Default value:__ `defaultThemeColors.foreground`, falling back to `"black"`
-     * in the default theme
+     * in the default theme, for positional brushes. Gradient-legend brushes
+     * default to `"black"`.
      */
     stroke?: string | ExprRef;
 
     /**
      * The stroke opacity of the interval mark (a value between `0` and `1`).
      *
-     * __Default value:__ `0.2`
+     * __Default value:__ `0.2` for positional brushes, `1` for gradient legends
      */
-    strokeOpacity?: number;
+    strokeOpacity?: RectProps["strokeOpacity"];
 
     /**
      * The stroke width of the interval mark.
      *
      * __Default value:__ `1`
      */
-    strokeWidth?: number;
+    strokeWidth?: RectProps["strokeWidth"];
 
     /**
      * Clip the brush rectangle to the viewport along the selected axes.
      * An explicit value overrides this direction-based default.
      *
      * __Default value:__ `"x"` for x selections, `"y"` for y selections,
-     * and `true` for x/y selections.
+     * `true` for x/y selections, and `false` for gradient legends.
      */
-    clip?: boolean | "never";
+    clip?: RectProps["clip"];
 
     /**
      * Z-order of the interval mark relative to the view content.

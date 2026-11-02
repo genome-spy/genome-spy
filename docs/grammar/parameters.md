@@ -238,8 +238,9 @@ draws a rectangle in each participating view. `"container"` requires the
 spanning rectangle, and `"view"` always draws per-view rectangles.
 
 The brush outline follows `defaultThemeColors.foreground` in the default theme. Override
-its appearance with `select.mark`; its `fill` and `stroke` colors can be
-expressions. Use `config.style["selection-brush"]` to set shared brush defaults.
+its appearance with `select.mark`, using rect properties such as fill, stroke,
+opacity, rounded corners, hatching, and shadow. Numeric and color properties can
+be expressions. Use `config.style["selection-brush"]` to set shared brush defaults.
 
 EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
 

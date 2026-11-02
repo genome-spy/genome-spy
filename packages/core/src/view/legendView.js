@@ -895,7 +895,7 @@ export function createGradientLegendSpec({
     return createLegendRootSpec(
         legend,
         /** @type {import("../spec/view.js").ViewSpec} */ (
-            binding
+            binding && legend.selectionLabel !== false
                 ? {
                       vconcat: [body, feedback],
                       spacing: 0,
@@ -1475,7 +1475,8 @@ export default class LegendView extends ContainerView {
     }
 
     getPerpendicularSize() {
-        return this.#binding?.select.type === "interval"
+        return this.#binding?.select.type === "interval" &&
+            this.legendProps.selectionLabel !== false
             ? isHorizontalLegend(this.legendProps)
                 ? this.#effectiveExtent + 20
                 : Math.max(110, this.#effectiveExtent)
@@ -1515,6 +1516,7 @@ export default class LegendView extends ContainerView {
                 this.context
             ) +
             (this.#binding?.select.type === "interval" &&
+            this.legendProps.selectionLabel !== false &&
             !isHorizontalLegend(this.legendProps)
                 ? 20
                 : 0)
