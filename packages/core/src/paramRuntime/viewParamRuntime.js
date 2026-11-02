@@ -205,7 +205,9 @@ export default class ViewParamRuntime {
                 type:
                     declaration.kind === "interval"
                         ? declaration.source?.getScaleResolution(
-                              /** @type {"x" | "y"} */ (component)
+                              /** @type {import("../spec/parameter.js").IntervalSelectionChannel} */ (
+                                  component
+                              )
                           )?.type
                         : undefined,
             })),
@@ -441,6 +443,27 @@ export default class ViewParamRuntime {
         this.#lazyExpressionNames.add(name);
     }
 
+    /** Named read-only producer for generated chrome; materialized with its consumers.
+     * @template T
+     * @param {string} name
+     * @param {() => import("./types.js").ParamRef<any>[]} dependencies
+     * @param {() => T} evaluate
+     */
+    registerComputed(name, dependencies, evaluate) {
+        this.#runtime.registerInitializer(this.#scopeId, name, () => {
+            this.#localRefs.set(
+                name,
+                this.#runtime.registerComputed(
+                    this.#scopeId,
+                    name,
+                    dependencies(),
+                    evaluate
+                )
+            );
+        });
+        this.#lazyExpressionNames.add(name);
+    }
+
     /**
      * Registers a read-only expression evaluated in another view's scope.
      * Generated views use this to preserve the declaration scope of styling.
@@ -608,6 +631,14 @@ export default class ViewParamRuntime {
         this.#paramConfigs.set(name, param);
 
         this.#registerSelectionCapability(param);
+        if (
+            "select" in param &&
+            asSelectionConfig(param.select).type === "interval"
+        ) {
+            this.getIntervalSelectionState(name).beforeWrite(
+                this.findValue(name)
+            );
+        }
 
         return setter;
     }
@@ -879,7 +910,9 @@ export default class ViewParamRuntime {
         return Object.fromEntries(
             Object.entries(intervals).map(([component, interval]) => {
                 const resolution = source?.getScaleResolution(
-                    /** @type {"x" | "y"} */ (component)
+                    /** @type {import("../spec/parameter.js").IntervalSelectionChannel} */ (
+                        component
+                    )
                 );
                 return [
                     component,

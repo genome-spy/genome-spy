@@ -3,6 +3,7 @@ import {
     asSelectionConfig,
     clearPointSelection,
     createIntervalSelection,
+    decodeGradientIntervals,
     isIntervalSelectionConfig,
     isPointSelectionConfig,
 } from "../selection/selection.js";
@@ -173,7 +174,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
                       intervals: {
                           ...createIntervalSelection(select.encodings)
                               .intervals,
-                          ...param.value,
+                          ...decodeGradientIntervals(param.value),
                       },
                   }
                 : createIntervalSelection(select.encodings);

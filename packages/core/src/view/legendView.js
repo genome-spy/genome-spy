@@ -40,6 +40,10 @@ import { getLegendAnchorFactor } from "./gridView/legendLayout.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
 import { measureText, requestFont } from "../fonts/textMetrics.js";
+import {
+    bindGradientLegend,
+    gradientBrushLayers,
+} from "./legend/gradientLegendBinding.js";
 import { bindLegend } from "./legend/legendBinding.js";
 import {
     DEFAULT_GRADIENT_STROKE_WIDTH,
@@ -626,11 +630,18 @@ export function createSymbolLegendSpec({
  * @param {object} options
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {LegendConfig} options.legend
+ * @param {import("./legend/legendBinding.js").LegendBinding} [options.binding]
  * @param {string} [options.format]
  * @param {import("../types/viewContext.js").default} options.context
  * @returns {LegendRootSpec}
  */
-export function createGradientLegendSpec({ channel, legend, format, context }) {
+export function createGradientLegendSpec({
+    channel,
+    legend,
+    format,
+    context,
+    binding,
+}) {
     const h = isHorizontalLegend(legend);
     const gradientThickness =
         legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS;
@@ -707,6 +718,9 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
                 type: "rect",
                 clip: false,
                 opacity: legend.gradientOpacity,
+                ...(binding
+                    ? { cursor: h ? "text" : "vertical-text", tooltip: false }
+                    : {}),
             },
             encoding: {
                 [p]: enc(h ? "position0" : "position1", ps, p == "x"),
@@ -780,6 +794,28 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         },
     ];
 
+    if (binding) {
+        bodyLayer.push(
+            /** @type {import("../spec/view.js").UnitSpec} */ ({
+                ...gradientBrushLayers(binding),
+                encoding: {
+                    [p]: {
+                        datum: { expr: "legendBrush.start" },
+                        type: "quantitative",
+                        scale: ps,
+                    },
+                    [p2]: {
+                        datum: { expr: "legendBrush.end" },
+                        type: "quantitative",
+                        scale: ps,
+                    },
+                    [q]: enc(bandStart, qs),
+                    [q2]: enc(bandStop, qs),
+                },
+            })
+        );
+    }
+
     if (hasGradientBorder) {
         bodyLayer.push({
             name: "gradientBorder",
@@ -802,26 +838,55 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         });
     }
 
+    const body = {
+        name: "gradientBody",
+        padding: gradientBorderOutset / 2,
+        width: h ? gradientLength : undefined,
+        height: h ? { grow: 1 } : gradientLength,
+        view: LEGEND_VIEW_BACKGROUND,
+        resolve: {
+            scale: { x: "excluded", y: "excluded" },
+        },
+        data: {
+            lazy: {
+                type: "legendGradient",
+                channel,
+                count: DEFAULT_GRADIENT_SAMPLE_COUNT,
+            },
+        },
+        layer: bodyLayer,
+    };
+    const feedback = {
+        name: "gradientSelectionFeedback",
+        height: 20,
+        data: { values: [{}] },
+        transform: [
+            { type: "formula", expr: "legendBrush.label", as: "label" },
+            {
+                type: "truncateText",
+                field: "label",
+                limit: { expr: "width" },
+                fontSize: labelFontSize,
+            },
+        ],
+        mark: {
+            type: "text",
+            align: "left",
+            baseline: "middle",
+            size: labelFontSize,
+            color: legend.labelColor,
+        },
+        encoding: {
+            x: { value: 0 },
+            y: { value: 0.5 },
+            text: { field: "label" },
+        },
+    };
     return createLegendRootSpec(
         legend,
-        {
-            name: "gradientBody",
-            padding: gradientBorderOutset / 2,
-            width: h ? gradientLength : undefined,
-            height: h ? { grow: 1 } : gradientLength,
-            view: LEGEND_VIEW_BACKGROUND,
-            resolve: {
-                scale: { x: "excluded", y: "excluded" },
-            },
-            data: {
-                lazy: {
-                    type: "legendGradient",
-                    channel,
-                    count: DEFAULT_GRADIENT_SAMPLE_COUNT,
-                },
-            },
-            layer: bodyLayer,
-        },
+        /** @type {import("../spec/view.js").ViewSpec} */ (
+            binding ? { vconcat: [body, feedback], spacing: 0 } : body
+        ),
         context,
         [channel]
     );
@@ -1215,6 +1280,7 @@ export default class LegendView extends ContainerView {
         const spec =
             type == "gradient"
                 ? createGradientLegendSpec({
+                      binding,
                       channel,
                       legend,
                       format,
@@ -1296,7 +1362,7 @@ export default class LegendView extends ContainerView {
         markViewAsChrome(this.#child, { skipSubtree: true });
 
         if (this.#binding) {
-            bindLegend(
+            (this.#type === "gradient" ? bindGradientLegend : bindLegend)(
                 this,
                 this.#binding,
                 this.getDescendants().filter((view) => view instanceof UnitView)
@@ -1386,7 +1452,11 @@ export default class LegendView extends ContainerView {
     }
 
     getPerpendicularSize() {
-        return this.#effectiveExtent;
+        return this.#binding?.select.type === "interval"
+            ? isHorizontalLegend(this.legendProps)
+                ? this.#effectiveExtent + 20
+                : Math.max(110, this.#effectiveExtent)
+            : this.#effectiveExtent;
     }
 
     getOffset() {
@@ -1414,11 +1484,17 @@ export default class LegendView extends ContainerView {
         const measuredLabels =
             this.#measuredLabels ?? getMeasuredLabels(this.#labelViews);
 
-        return getStackedLegendParallelSize(
-            this.legendProps,
-            this.#type,
-            measuredLabels,
-            this.context
+        return (
+            getStackedLegendParallelSize(
+                this.legendProps,
+                this.#type,
+                measuredLabels,
+                this.context
+            ) +
+            (this.#binding?.select.type === "interval" &&
+            !isHorizontalLegend(this.legendProps)
+                ? 20
+                : 0)
         );
     }
 

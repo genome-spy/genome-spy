@@ -298,6 +298,10 @@ Interval selection snapshots keep these numeric ranges in `intervals`. They
 also expose `complexIntervals`: locus channels use `{ chrom, pos }` endpoints,
 numeric channels remain numeric, and cleared channels are `null`. The same
 snapshot shape is returned by `getValue()` and passed to subscriptions.
+Numeric legend intervals use their declared channel, for example
+`intervalSelection({color: [0.3, Infinity]})`. The upper `Infinity` endpoint means
+no upper limit; snapshots and `selectionBounds(range, "color")` preserve it.
+
 Reading, observing, and clearing interval selections do not require an on-screen
 brush host. Only `contains({x, y})` needs one unambiguous interaction host in the
 selected scope. Change subscriptions observe settled updates during a drag;

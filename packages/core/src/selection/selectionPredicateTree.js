@@ -1,3 +1,4 @@
+import { isGradientSelectionChannel } from "./selection.js";
 import { validateParameterName } from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { field } from "../utils/field.js";
@@ -171,7 +172,15 @@ export function collectSamplingSelections(roots) {
     /** @param {ResolvedSelectionPredicate} node */
     const visit = (node) => {
         if ("param" in node) {
-            if (node.type !== "categories") {
+            if (
+                node.type !== "categories" &&
+                !(
+                    node.type === "interval" &&
+                    node.projections.some((p) =>
+                        isGradientSelectionChannel(p.component)
+                    )
+                )
+            ) {
                 const leaf = { ...node, empty: false };
                 leaves.set(JSON.stringify(leaf), leaf);
             }
@@ -345,6 +354,30 @@ export function resolveSelectionPredicateTree(
             );
         }
         const projections = declared.components.map(({ component, type }) => {
+            if (isGradientSelectionChannel(component)) {
+                const target =
+                    /** @type {Record<string,string>} */ (node.project)?.[
+                        component
+                    ] ?? component;
+                const candidates =
+                    target === "color" ? ["color", "fill", "stroke"] : [target];
+                const input = candidates.find(
+                    (input) =>
+                        definitions[input] &&
+                        "field" in definitions[input] &&
+                        !("condition" in definitions[input])
+                );
+                const definition = definitions[input];
+                if (
+                    !input ||
+                    !isGradientSelectionChannel(target) ||
+                    definition.type !== "quantitative"
+                )
+                    throw new Error(
+                        `Selection "${name}" requires an unconditional quantitative input for "${target}".`
+                    );
+                return { component, input, field: definition.field };
+            }
             const input =
                 /** @type {Record<string, string> | undefined} */ (
                     node.project
@@ -487,6 +520,11 @@ export function compileSelectionPredicateTree(tree, getSelection) {
             )[input.component];
             const first = input.read(datum);
             const second = input.readSecondary?.(datum);
+            if (
+                isGradientSelectionChannel(input.component) &&
+                !Number.isFinite(first)
+            )
+                return false;
             const [lo, hi] = interval;
             if (lo === hi) return false;
 

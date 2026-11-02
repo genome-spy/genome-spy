@@ -51,6 +51,8 @@ Explicit `values` determine the ticks when provided and take precedence over
 
 ## Interactive legends
 
+### Categorical selections
+
 Add `bind: "legend"` to a [categorical point selection](parameters.md#categorical-point-selection)
 to select categories through its symbol legend. Chart highlighting remains an
 ordinary conditional encoding, so selections from different legends can be
@@ -63,14 +65,14 @@ EXAMPLE examples/docs/grammar/legend/interactive-legend.json height=350
     Coordinates, cell types, and activation states are synthetic.
 
 Click an entry to select its category and Shift-click to toggle categories.
-An unmodified background click resets **all legend-bound selections** in the
+An unmodified background click resets **all categorical legend-bound selections** in the
 visualization, including independent and collected legends. Background means
 space without a picked mark; non-interactive marks do not block the reset.
 Legend titles, padding, and spacing between collected legends remain inert.
 The reset only clears legend-bound selections. Other selections keep their own
 interaction behavior.
 
-Default double-click clearing is disabled for legend-bound selections.
+Default double-click clearing is disabled for categorical legend-bound selections.
 `select.toggle: false` restricts selection to one category. An empty selection
 shows all entries normally.
 Unselected symbols and labels use 35% of their normal opacity.
@@ -110,6 +112,50 @@ background reset remains available independently of `select.clear`.
     The `bind: "legend"` form follows Vega-Lite's grammar. Field projections,
     object-valued legend event bindings, and expression-valued toggling are not
     supported.
+
+### Numeric ranges
+
+A continuous quantitative `color`, `fill`, or `stroke` legend can bind a
+one-dimensional interval selection:
+
+```json
+{
+  "name": "activation_range",
+  "select": { "type": "interval", "encodings": ["color"] },
+  "bind": "legend"
+}
+```
+
+Drag on the ramp to create a range, drag the existing brush to move it, and use
+its mouse wheel to resize it. Double-click the ramp to clear. `select.on`,
+`select.clear`, and `select.zoom` customize those supported events; they do not
+activate a plot brush for the color component. A click without dragging outside
+an existing brush clears it as part of replacing the range. I-beam cursors suggest
+brushing along the ramp; an existing brush shows its move cursor.
+
+Interior ranges include their lower endpoint and exclude the upper endpoint.
+Reaching the numeric maximum removes the upper limit: the feedback reads
+`≥ 0.3`, and values above the displayed maximum also match. Moving or resizing
+that edge inward restores a finite upper bound. Clearing removes both bounds.
+Domain changes preserve stored bounds and clip only the visible brush.
+
+Highlighting uses an ordinary `condition: {param: "activation_range", value: 1}`,
+with a fallback opacity for other rows. The predicate reads raw numeric values
+from the consuming view's same channel; `project: {color: "fill"}` can map it to
+another quantitative color input. These predicates combine normally with
+categorical or spatial selections. Brushing keeps the full color key and its
+domain stable. Explicit dataflow filtering retains its usual domain effects.
+
+Bindings require an unconditional quantitative field and a monotonic invertible
+continuous scale, including linear and logarithmic scales. Discrete color buckets
+are unsupported. Each shared/collected legend binds one selection and must have
+compatible event and brush settings. Explicit compatible outer aliases can share
+bounds across independent scales and differently oriented ramps.
+
+An initial range uses `value: {color: [0.3, 0.7]}`. The upper token `"Infinity"`
+requests no upper limit, for example `value: {color: [0.3, "Infinity"]}`. Runtime
+APIs use the numeric `Infinity` value instead. Gradient interval legend binding
+is a GenomeSpy extension to Vega-Lite's symbol-legend binding.
 
 ## Configuration
 

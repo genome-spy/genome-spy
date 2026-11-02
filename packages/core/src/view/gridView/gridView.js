@@ -722,11 +722,17 @@ export default class GridView extends ContainerView {
         for (const [paramName, param] of this.paramRuntime.paramConfigs) {
             if ("select" in param) {
                 const select = asSelectionConfig(param.select);
-                if (!isIntervalSelectionConfig(select)) {
+                if (
+                    !isIntervalSelectionConfig(select) ||
+                    ("bind" in param && param.bind === "legend")
+                ) {
                     continue;
                 }
 
-                const channels = select.encodings ?? ["x"];
+                const channels =
+                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ (
+                        select.encodings ?? ["x"]
+                    );
                 const channel = this.#getContainerOverlayChannel(
                     channels,
                     select.extent,

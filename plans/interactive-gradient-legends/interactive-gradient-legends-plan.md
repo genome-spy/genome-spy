@@ -509,3 +509,19 @@ selection state total 2,794 lines versus 2,673 previously. The net growth owns
 shared commit/cancellation semantics explicitly instead of duplicating them in
 every controller. Focused API, grid, gap, and selection-state tests verify the
 existing interactions and new host-independent contracts.
+
+## Milestone 2 checkpoint
+
+Numeric color/fill/stroke bindings now use the native interval controller and
+predicate consumers. One normalized mapping serves ramp samples, ticks, brush
+projection, and inversion. Generated marks show the finite or open range while
+the full ramp remains unchanged. Quantitative color accessors retain missing
+scores as NaN so CPU and GPU membership agree. Numeric focus does not contribute
+to semantic sampling preservation.
+
+Focused Core suites pass (163 tests), including existing categorical legends,
+SVG gradient export, consumers, accessors, runtime API, and grid behavior. Core
+TypeScript, changed-source lint, schema/API generation, and release checks pass.
+The browser probe exercises actual gestures, native cursor picking, authoritative
+replacement, and SVG feedback on Canvas, WebGL, and WebGPU. Remaining composition,
+persistence, retained-resource, and example checks belong to milestone 3.

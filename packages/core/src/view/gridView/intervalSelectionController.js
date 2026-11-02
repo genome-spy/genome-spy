@@ -30,10 +30,11 @@ import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracke
  * @property {import("../view.js").default} view
  * @property {import("../containerView.js").default} layoutParent
  * @property {import("../../types/viewContext.js").default} context
+ * @property {{ horizontal: boolean, getScale: () => import("../../scales/legendGradientMapping.js").NormalizedPositionScale, getDomain: () => [number, number], setDragActive: (active: boolean, creating: boolean) => void }} [ramp]
  * @property {boolean} [captureInteractions]
  * @property {(point: Point) => Rectangle | undefined} getInteractionCoords
  * @property {(name: string, point: Point) => boolean} [ownsInteraction]
- * @property {(channel: import("../../spec/channel.js").PrimaryPositionalChannel, point: Point) => Rectangle} getProjectionCoords
+ * @property {(channel: import("../../spec/parameter.js").IntervalSelectionChannel, point: Point) => Rectangle} getProjectionCoords
  * @property {() => import("./selectionRect.js").SelectionRectOverlay | undefined} [getSelectionRect]
  * @property {(overlay: import("./selectionRect.js").SelectionRectOverlay) => void} [setSelectionRect]
  */
@@ -152,6 +153,7 @@ export class IntervalSelectionController {
     #setup(name, param, select, paramRuntime, renderOverlay, selectionRect) {
         const view = this.host.view;
         const channels = select.encodings ?? ["x"];
+        const ramp = this.host.ramp;
 
         const scaleResolutions = Object.fromEntries(
             channels.map((channel) => {
@@ -235,9 +237,9 @@ export class IntervalSelectionController {
         let activeBrush = null;
 
         /**
-         * @param {{x: number, y: number}} a
-         * @param {{x: number, y: number}} b
-         * @return {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, [number, number]>>}
+         * @param {Record<string, number>} a
+         * @param {Record<string, number>} b
+         * @return {Partial<Record<import("../../spec/parameter.js").IntervalSelectionChannel, [number, number]>>}
          */
         const pointsToIntervals = (a, b) =>
             Object.fromEntries(
@@ -255,6 +257,22 @@ export class IntervalSelectionController {
             /** @type {import("../../types/selectionTypes.js").IntervalSelection} */
             selection
         ) => {
+            if (ramp && selection.intervals[channels[0]]) {
+                const component = channels[0];
+                const bounds = selection.intervals[component];
+                const [min, max] = ramp.getDomain();
+                const visible = (/** @type {number} */ value) =>
+                    Math.max(min, Math.min(max, value));
+                const previous = selectionExpr().intervals[component];
+                if (
+                    previous &&
+                    visible(previous[0]) === bounds[0] &&
+                    visible(previous[1]) === bounds[1]
+                )
+                    return;
+                if (bounds[0] < bounds[1] && bounds[1] === max)
+                    bounds[1] = Infinity;
+            }
             paramRuntime.setValue(name, selection, {
                 intervalGesture: activeBrush ? this : undefined,
             });
@@ -288,7 +306,10 @@ export class IntervalSelectionController {
             dragOverlay = createSelectionRectOverlay({
                 selectionExpr,
                 selectionExpression: name,
-                channels,
+                channels:
+                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ (
+                        channels
+                    ),
                 brushConfig: select.mark,
                 context: this.host.context,
                 layoutParent: this.host.layoutParent,
@@ -304,19 +325,40 @@ export class IntervalSelectionController {
                       active
                   );
               }
-            : () => {};
+            : (/** @type {boolean} */ active) =>
+                  ramp?.setDragActive(
+                      active,
+                      !!activeBrush && !activeBrush.translatedRectangle
+                  );
 
         const invertPoint = (
             /** @type {import("../layout/point.js").default} */ point,
             projectionCoords = this.host.getProjectionCoords(channels[0], point)
         ) => {
-            const inverted = { x: 0, y: 0 };
+            const inverted = /** @type {Record<string, number>} */ ({
+                x: 0,
+                y: 0,
+            });
             const normalizedPoint = projectionCoords.normalizePoint(
                 point.x,
                 point.y,
                 true
             );
 
+            if (ramp) {
+                const scale = ramp.getScale();
+                const position = ramp.horizontal
+                    ? normalizedPoint.x
+                    : normalizedPoint.y;
+                const [min, max] = ramp.getDomain();
+                inverted[channels[0]] =
+                    position === scale(min)
+                        ? min
+                        : position === scale(max)
+                          ? max
+                          : scale.invert(position);
+                return inverted;
+            }
             for (const channel of channels) {
                 const scale = scaleResolutions[channel].getScale();
                 const position =
@@ -340,11 +382,33 @@ export class IntervalSelectionController {
          * @param {Rectangle} projectionCoords
          */
         const selectionToRect = (selection, projectionCoords) => {
+            if (ramp) {
+                const bounds = selection.intervals[channels[0]];
+                const [min, max] = ramp.getDomain();
+                const scale = ramp.getScale();
+                const a = scale(Math.max(min, Math.min(max, bounds[0])));
+                const b = scale(Math.max(min, Math.min(max, bounds[1])));
+                return ramp.horizontal
+                    ? Rectangle.create(
+                          projectionCoords.x +
+                              Math.min(a, b) * projectionCoords.width,
+                          projectionCoords.y,
+                          Math.abs(a - b) * projectionCoords.width,
+                          projectionCoords.height
+                      )
+                    : Rectangle.create(
+                          projectionCoords.x,
+                          projectionCoords.y +
+                              (1 - Math.max(a, b)) * projectionCoords.height,
+                          projectionCoords.width,
+                          Math.abs(a - b) * projectionCoords.height
+                      );
+            }
             const { intervals } = selection;
 
             const mapCorner = (/** @type {number} */ i) => {
                 const getCoord = (
-                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ channel
+                    /** @type {import("../../spec/parameter.js").IntervalSelectionChannel} */ channel
                 ) => {
                     const value = intervals[channel]?.[i];
                     if (value == null) return i;
@@ -503,7 +567,9 @@ export class IntervalSelectionController {
 
                 for (const channel of channels) {
                     const scaleResolution = scaleResolutions[channel];
-                    const { zoomExtent } = scaleResolution;
+                    const zoomExtent = ramp
+                        ? ramp.getDomain()
+                        : scaleResolution.zoomExtent;
                     // Translation preserves span before normalization clips and rounds.
                     // As before, span preservation is in domain units (linear scales).
                     const interval = brush.translatedRectangle
@@ -513,10 +579,15 @@ export class IntervalSelectionController {
                               zoomExtent[1]
                           )
                         : intervals[channel];
-                    intervals[channel] = normalizeIntervalForChannel(
-                        scaleResolution,
-                        /** @type {[number, number]} */ (interval)
-                    ) ?? [zoomExtent[0], zoomExtent[0]];
+                    intervals[channel] = (ramp
+                        ? normalizeIntervalForSelection(
+                              /** @type {[number, number]} */ (interval),
+                              zoomExtent
+                          )
+                        : normalizeIntervalForChannel(
+                              scaleResolution,
+                              /** @type {[number, number]} */ (interval)
+                          )) ?? [zoomExtent[0], zoomExtent[0]];
                 }
 
                 setter({ type: "interval", intervals });
@@ -575,7 +646,9 @@ export class IntervalSelectionController {
             /** @param {import("../../utils/interaction.js").default} event */
             const canClear = (event) =>
                 clearEventPredicate(event.proxiedMouseEvent) &&
-                this.#containsPoint(event.point);
+                (ramp
+                    ? isInsideHost(event.point)
+                    : this.#containsPoint(event.point));
 
             if (clearEventConfig.type === "wheel") {
                 this.#addViewInteractionListener(
@@ -649,18 +722,23 @@ export class IntervalSelectionController {
 
                 const scaleResolution = scaleResolutions[channel];
                 const scale = scaleResolution.getScale();
+                const extent = ramp?.getDomain();
+                const visibleInterval = extent
+                    ? currentInterval.map((/** @type {number} */ v) =>
+                          Math.max(extent[0], Math.min(extent[1], v))
+                      )
+                    : currentInterval;
                 const zoomed = zoomDomainByScaleType(
                     scale,
-                    /** @type {[number, number]} */ ([...currentInterval]),
+                    /** @type {[number, number]} */ ([...visibleInterval]),
                     anchor[channel],
                     scaleFactor,
                     { onUnsupported: "identity" }
                 );
 
-                const normalized = normalizeIntervalForChannel(
-                    scaleResolution,
-                    zoomed
-                );
+                const normalized = extent
+                    ? normalizeIntervalForSelection(zoomed, extent)
+                    : normalizeIntervalForChannel(scaleResolution, zoomed);
                 if (!normalized) {
                     continue;
                 }

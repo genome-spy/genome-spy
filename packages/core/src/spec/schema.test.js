@@ -31,6 +31,30 @@ describe("generated core schema", () => {
         }).compile(schema);
     }, 30000);
 
+    test("gradient interval bindings require one color component and encode open initial bounds", () => {
+        const parameter = {
+            name: "range",
+            select: { type: "interval", encodings: ["color"] },
+            bind: "legend",
+            value: { color: [0.3, "Infinity"] },
+        };
+        const spec = (/** @type {any} */ param) => ({
+            params: [param],
+            mark: "point",
+        });
+        expect(validate(spec(parameter)), JSON.stringify(validate.errors)).toBe(
+            true
+        );
+        for (const select of [
+            { type: "interval", encodings: ["color", "fill"] },
+            { type: "interval", encodings: ["x"] },
+            { type: "interval", encodings: ["shape"] },
+        ]) {
+            expect(validate(spec({ ...parameter, select }))).toBe(false);
+        }
+        expect(validate(spec({ ...parameter, bind: undefined }))).toBe(false);
+    });
+
     test("accepts Figwig track selections and rejects invalid track and URL shapes", () => {
         const lazy = { type: "figwig", url: "signals.fw" };
 

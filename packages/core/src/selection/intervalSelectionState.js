@@ -2,6 +2,7 @@ import {
     createIntervalSelection,
     isActiveIntervalSelection,
 } from "./selection.js";
+import { isGradientSelectionChannel } from "./selection.js";
 import deepEqual from "../utils/deepEqual.js";
 
 /** Shared semantic state; controllers own only gestures and screen geometry. */
@@ -53,6 +54,33 @@ export default class IntervalSelectionState {
      * @param {object} [host]
      */
     beforeWrite(value, host) {
+        const components = this.#runtime
+            .findSelectionCapability(this.#name)
+            ?.components.map((d) => d.component);
+        if (components?.some(isGradientSelectionChannel)) {
+            const component =
+                /** @type {import("../spec/parameter.js").IntervalSelectionChannel} */ (
+                    components[0]
+                );
+            const bounds = value?.intervals?.[component];
+            if (
+                value?.type !== "interval" ||
+                Object.keys(value.intervals).length !== 1 ||
+                bounds === undefined ||
+                (bounds !== null &&
+                    (!Array.isArray(bounds) ||
+                        bounds.length !== 2 ||
+                        !Number.isFinite(bounds[0]) ||
+                        !(
+                            Number.isFinite(bounds[1]) || bounds[1] === Infinity
+                        ) ||
+                        bounds[0] > bounds[1]))
+            ) {
+                throw new Error(
+                    `Interval "${this.#name}" requires a finite lower and finite or unbounded upper endpoint for "${component}".`
+                );
+            }
+        }
         if (this.#gesture && host !== this.#gesture.host) this.cancel();
         this.#pendingCommit =
             !this.#gesture &&

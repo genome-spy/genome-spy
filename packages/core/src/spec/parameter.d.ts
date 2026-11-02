@@ -356,13 +356,17 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
     toggle?: boolean;
 }
 
+export type GradientSelectionChannel = "color" | "fill" | "stroke";
+export type IntervalSelectionChannel =
+    PrimaryPositionalChannel | GradientSelectionChannel;
+
 export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval"> {
     type: "interval";
 
     /**
      * An array of encoding channels that define the interval selection.
      */
-    encodings?: PrimaryPositionalChannel[];
+    encodings?: IntervalSelectionChannel[];
 
     /**
      * Visual extent of the interval selection rectangle.
@@ -502,7 +506,7 @@ export interface CategorySelectionParameter<C extends CategorySelectionChannel>
     value?: Record<C, Scalar>[];
 }
 
-export interface IntervalSelectionParameter
+export interface PositionalIntervalSelectionParameter
     extends ParameterBase, PersistedParameter {
     /**
      * Determines the default event processing and data query for the selection. GenomeSpy supports two selection types, following the Vega-Lite model:
@@ -510,13 +514,37 @@ export interface IntervalSelectionParameter
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
      */
-    select: "interval" | IntervalSelectionConfig;
+    select:
+        | "interval"
+        | (Omit<IntervalSelectionConfig, "encodings"> & {
+              encodings?: PrimaryPositionalChannel[];
+          });
 
     /**
      * Initial value for the selection.
      */
     value?: SelectionInitIntervalMapping;
 }
+
+/** Brush a quantitative gradient legend. Interior bounds are half-open; brushing
+ * to its numeric maximum removes the upper limit. */
+export interface GradientIntervalSelectionParameter<
+    C extends GradientSelectionChannel,
+>
+    extends ParameterBase, PersistedParameter {
+    select: Omit<IntervalSelectionConfig, "encodings" | "extent"> & {
+        encodings: [C];
+    };
+    bind: "legend";
+    /** Initial range; the upper token "Infinity" means no upper limit. */
+    value?: Record<C, [number, number | "Infinity"] | null>;
+}
+
+export type IntervalSelectionParameter =
+    | PositionalIntervalSelectionParameter
+    | GradientIntervalSelectionParameter<"color">
+    | GradientIntervalSelectionParameter<"fill">
+    | GradientIntervalSelectionParameter<"stroke">;
 
 export type SelectionParameter<T extends SelectionType = SelectionType> =
     T extends "interval"

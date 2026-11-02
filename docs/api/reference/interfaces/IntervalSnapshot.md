@@ -17,7 +17,7 @@ channels, while numeric channels retain numeric endpoints.
 
 Discriminator for interval selection snapshots.
 
-***
+---
 
 ### active
 
@@ -25,15 +25,15 @@ Discriminator for interval selection snapshots.
 
 Whether at least one interval is currently set.
 
-***
+---
 
 ### intervals
 
-> **intervals**: `Partial`<`Record`<`"x"` \| `"y"`, readonly \[`number`, `number`\] \| `null`\>\>
+> **intervals**: `Partial`<`Record`<`IntervalSelectionChannel`, readonly \[`number`, `number`\] \| `null`\>\>
 
 Selected range for each configured positional channel, or `null`.
 
-***
+---
 
 ### complexIntervals
 

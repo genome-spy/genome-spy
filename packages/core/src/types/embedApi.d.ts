@@ -205,7 +205,10 @@ export type ComplexInterval = readonly [IntervalEndpoint, IntervalEndpoint];
 
 /** Complex interval values keyed by positional channel, or `null` when clear. */
 export type ComplexIntervals = Partial<
-    Record<"x" | "y", ComplexInterval | null>
+    Record<
+        import("../spec/parameter.js").IntervalSelectionChannel,
+        ComplexInterval | null
+    >
 >;
 
 /**
@@ -224,7 +227,12 @@ export interface IntervalSnapshot {
     active: boolean;
 
     /** Selected range for each configured positional channel, or `null`. */
-    intervals: Partial<Record<"x" | "y", readonly [number, number] | null>>;
+    intervals: Partial<
+        Record<
+            import("../spec/parameter.js").IntervalSelectionChannel,
+            readonly [number, number] | null
+        >
+    >;
 
     /**
      * The same ranges with locus channels converted to `{ chrom, pos }`

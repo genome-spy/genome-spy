@@ -426,12 +426,16 @@ export default class GridChild {
             const select = asSelectionConfig(param.select);
             if (
                 !isIntervalSelectionConfig(select) ||
+                ("bind" in param && param.bind === "legend") ||
                 (owner === this.view && isAnyConcatSpec(owner.spec))
             ) {
                 continue;
             }
 
-            const channels = select.encodings ?? ["x"];
+            const channels =
+                /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ (
+                    select.encodings ?? ["x"]
+                );
             if (
                 this.#usesContainerOverlay(
                     owner,

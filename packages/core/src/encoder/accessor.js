@@ -5,6 +5,7 @@ import {
     isExprDef,
     isFieldDef,
     isValueDef,
+    isColorChannel,
 } from "./encoder.js";
 import { field } from "../utils/field.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -97,13 +98,31 @@ export function createAccessor(channel, channelDef, paramRuntime) {
 
     if (isFieldDef(channelDef)) {
         try {
-            return asAccessor(
-                field(
-                    channelDef.field,
-                    undefined,
-                    paramRuntime?.getSpecLocation?.(channelDef, ["field"])
-                )
+            const read = field(
+                channelDef.field,
+                undefined,
+                paramRuntime?.getSpecLocation?.(channelDef, ["field"])
             );
+            if (
+                isColorChannel(channel) &&
+                "type" in channelDef &&
+                channelDef.type === "quantitative"
+            ) {
+                // Preserve missing/nonfinite numeric inputs in retained GPU attributes.
+                // Typed arrays would otherwise coerce a missing null score to zero.
+                return asAccessor(
+                    Object.assign(
+                        (
+                            /** @type {import("../data/flowNode.js").Datum} */ datum
+                        ) => {
+                            const value = read(datum);
+                            return Number.isFinite(value) ? value : NaN;
+                        },
+                        { fields: read.fields }
+                    )
+                );
+            }
+            return asAccessor(read);
         } catch (e) {
             throw new Error(`Invalid field definition: ${e.message}`, {
                 cause: e,

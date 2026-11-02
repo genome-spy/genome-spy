@@ -206,6 +206,8 @@ rows.
 ### Interval Selection
 
 Interval selections allow for selecting a range of rows along one or two axes.
+They also support [brushing numeric gradient legends](legend.md#numeric-ranges)
+through a single color, fill, or stroke component with `bind: "legend"`.
 The selected range includes its start and excludes its end. For example, an
 index brush spanning `[6, 11)` selects positions 6 through 10.
 

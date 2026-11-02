@@ -423,12 +423,10 @@ export default class WebGLMark {
                     `bool ${SELECTION_EMPTY_PREFIX}${param}() { return ${uniformName} == 0u; }`
                 );
             } else if (isIntervalSelection(selection)) {
-                const intervalChannels = Object.keys(
-                    selection.intervals
-                ).filter((channel) => ["x", "y"].includes(channel));
+                const intervalChannels = Object.keys(selection.intervals);
                 if (intervalChannels.length == 0) {
                     throw new ViewError(
-                        `Interval selection "${param}" has no supported x or y targets.`,
+                        `Interval selection "${param}" has no components.`,
                         this.unitView
                     );
                 }
@@ -445,9 +443,11 @@ export default class WebGLMark {
 
                     const { attributeType, largeHp } =
                         getAttributeAndArrayTypes(
-                            this.unitView
-                                .getScaleResolution(channel)
-                                .getScale(),
+                            ["color", "fill", "stroke"].includes(channel)
+                                ? undefined
+                                : this.unitView
+                                      .getScaleResolution(channel)
+                                      .getScale(),
                             channel
                         );
                     dynamicMarkUniforms.push(`    // Selection parameter`);
@@ -564,7 +564,9 @@ export default class WebGLMark {
                 const { largeHp } = getAttributeAndArrayTypes(
                     this.unitView
                         .getScaleResolution(
-                            /** @type {"x" | "y"} */ (projection.component)
+                            /** @type {import("../../../spec/channel.js").ChannelWithScale} */ (
+                                projection.component
+                            )
                         )
                         .getScale(),
                     /** @type {Channel} */ (projection.component)
