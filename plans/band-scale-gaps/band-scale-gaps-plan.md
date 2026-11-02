@@ -138,19 +138,22 @@ values before which a gap is inserted**, rather than numeric ranks:
 
 ### A small categorical mapping, with shared cut infrastructure
 
-Add a shared Core band/point implementation, tentatively
-`packages/core/src/scales/scaleBand.js`, integrated through `src/scale/scale.js`.
-Prefer composition with the existing Vega band constructor for ordinary setter,
-domain normalization, and disabled-gap behavior. Preserve each public scale type
-and its discrete traits. Do not build a general discontinuous-scale framework or
-refactor the index navigation machinery as a prerequisite.
+Own the Core band/point implementation in `packages/core/src/scales/scaleBand.js`
+and register its constructors as Vega's `band` and `point` in `src/scale/scale.js`.
+The user confirmed there are no other consumers of this registry. Adapt Vega's
+installed BSD-3-Clause implementation, retaining its provenance and license, and
+use D3 ordinal primitives for category identity and domain normalization.
+Preserve ordinary padding, alignment, rounding, inversion, and copy behavior.
+Do not build a general discontinuous-scale framework or refactor index navigation.
 
-The simplification revision uses ordinary native band positions as its source:
-with rounding disabled, compressing a band range is an affine transform. Cache
-the final category starts once per placement extent, then share that table
-between forward lookup and inversion. Do not keep a second rank map or copy a
-native scale for each placement. GPU band gaps similarly call their existing
-band function on the compressed range before adding the gap offset.
+One mapping calculation handles ordinary and gapped layouts from owned state.
+Setters directly invalidate cached geometry; no native scale, setter forwarding,
+or Core-factory construction exception remains. Cache final category starts once
+per placement extent and share that table between lookup and inversion. Keep a
+distinct ordinary cache entry so disabled gaps never read placement extent.
+Point remains a thin zero-bandwidth band variant with native padding semantics.
+GPU band gaps call their existing band function on the compressed range before
+adding the gap offset.
 
 Keep the three existing gap properties and their validation in one small shared
 installer for index and categorical scales. A scale-owned `sizeForStep(step)`
@@ -581,7 +584,7 @@ dendrogram layout contract is introduced; real examples are regression smoke che
 
 Final verification on 2026-11-02:
 
-- Full unit suite after structural simplification: 575 files, 5,462 tests passed.
+- Full unit suite after owning band/point layout: 575 files, 5,463 tests passed.
 - All workspace TypeScript checks passed; lint passed, with the last SVG test
   checked separately after addition.
 - Real Chrome WebGPU regression: three cases passed. Renderer Storybook built.
@@ -695,3 +698,10 @@ Final verification on 2026-11-02:
   independence, static-disabled behavior, point inversion, fractional index gaps,
   and offset-step composition. Full tests, workspace types, lint, three real GPU
   cases, and four WebGL examples passed after the change.
+- The user then confirmed sole ownership of the Vega registry and selected an
+  owned band/point implementation. The final constructors use ordinal primitives
+  and one layout path, replacing the decorator and Core construction exception.
+  Independent contract review covered rounding, singleton/empty metadata, point
+  padding/copy shape, and snapshot independence. The ordinary empty-point-range
+  inversion return shape was preserved after review. Full tests, workspace types,
+  lint, release validation, four WebGL examples, and the Canvas heat map passed.

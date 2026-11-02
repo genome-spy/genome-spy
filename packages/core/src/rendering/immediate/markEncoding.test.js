@@ -7,7 +7,6 @@ import {
     createEncoder as buildEncoder,
     createSimpleOrConditionalEncoder,
 } from "../../encoder/encoder.js";
-import { scale as vegaScale } from "vega-scale";
 import scaleBand from "../../scales/scaleBand.js";
 import {
     getDrawConstantPaint,
@@ -83,7 +82,7 @@ test("caches parsed alpha across alternating paints and repaints", () => {
 describe("prepareRangeProjection", () => {
     test("gapped categorical positions preserve conditional unscaled values", () => {
         const runtime = new ViewParamRuntime();
-        const scale = scaleBand(/** @type {any} */ (vegaScale)("band")())
+        const scale = scaleBand()
             .domain(["A", "B", "C", "D"])
             .gapPositions([2])
             .gapWidth(8)

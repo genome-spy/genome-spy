@@ -27,7 +27,7 @@
  */
 
 import { tickCount } from "./ticks.js";
-import scaleBand from "../scales/scaleBand.js";
+import scaleBand, { scalePoint } from "../scales/scaleBand.js";
 import {
     error,
     inherits,
@@ -76,6 +76,9 @@ import {
 import { range as sequence } from "d3-array";
 
 import { interpolate, interpolateRound } from "d3-interpolate";
+
+getScale(Band, scaleBand, ["discrete"]);
+getScale(Point, scalePoint, ["discrete"]);
 
 const Locus = "locus";
 const Index = "index";
@@ -229,8 +232,7 @@ export default function createScale(_, logger) {
         throw new Error("Unknown scale type: " + key);
     }
 
-    const scaleInstance =
-        key === Band || key === Point ? scaleBand(scale()) : scale();
+    const scaleInstance = scale();
 
     configureScale(
         scaleProps,

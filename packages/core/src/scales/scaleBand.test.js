@@ -1,10 +1,41 @@
 import { expect, test } from "vitest";
-import { scale as vegaScale } from "vega-scale";
-import scaleBand from "./scaleBand.js";
+import scaleBand, { scalePoint } from "./scaleBand.js";
 
 /** @param {"band" | "point"} [type] */
 const create = (type = "band") =>
-    scaleBand(/** @type {any} */ (vegaScale)(type)());
+    type === "point" ? scalePoint() : scaleBand();
+
+test("ordinary bands retain rounded padded layout, domain normalization, and independent copies", () => {
+    const scale = create()
+        .domain(["A", "A", "B"])
+        .rangeRound([103, 0])
+        .paddingInner(0.2)
+        .paddingOuter(0.1)
+        .align(0.3);
+    expect(scale.domain()).toEqual(["A", "B"]);
+    expect(scale.domain().map(scale)).toEqual([54, 3]);
+    expect(scale.step()).toBe(51);
+    expect(scale.bandwidth()).toBe(41);
+    expect(scale.invert(48)).toBeUndefined();
+    expect(scale.invert(44)).toBe("B");
+
+    const range = scale.range();
+    range[0] = 0;
+    expect(scale.range()).toEqual([103, 0]);
+    const copy = scale.copy();
+    scale.padding(-1).align(2);
+    expect(scale.padding()).toBe(0);
+    expect(scale.align()).toBe(1);
+    expect(copy.domain().map(copy)).toEqual([54, 3]);
+
+    scale.domain(["only"]).range([0, 100]).round(false).paddingInner(0.8);
+    expect(scale.step()).toBeCloseTo(500);
+    expect(scale.bandwidth()).toBeCloseTo(100);
+    scale.domain([]);
+    expect(scale.step()).toBe(100);
+    expect(scale.bandwidth()).toBeCloseTo(20);
+    expect(scale.invertRange([0, 0])).toEqual([]);
+});
 
 test("categorical gaps preserve equal cells, inverse membership, and copied state", () => {
     const scale = create()
@@ -81,6 +112,17 @@ test("point scales share gap geometry while retaining zero bandwidth and singlet
     expect(scale.bandwidth()).toBe(0);
     expect(scale.invert(48 / 68)).toBe("C");
     expect(scale.invert(44 / 68)).toBeUndefined();
+
+    const padded = create("point")
+        .domain(["A", "B", "C"])
+        .range([100, 0])
+        .padding(0.25);
+    expect(padded.domain().map(padded)).toEqual([90, 50, 10]);
+    const paddedCopy = padded.copy();
+    expect(paddedCopy.domain().map(paddedCopy)).toEqual([90, 50, 10]);
+    expect(paddedCopy).not.toHaveProperty("paddingInner");
+    expect(padded.bandwidth()).toBe(0);
+    expect(padded.paddingOuter()).toBe(0.25);
 
     const singleton = create("point").domain(["only"]).padding(0);
     singleton.props = { gapPositions: { expr: "cuts" } };
