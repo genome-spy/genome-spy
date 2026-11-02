@@ -1,8 +1,7 @@
 # Grouping gaps for categorical positional scales
 
-Status: proposed; investigation and planning only. Updated on 2026-11-02 against
-`master` at `be31682a6` in a dedicated worktree. No runtime changes are part of
-this branch. Implementation milestones below are intentionally pending.
+Status: implementation in progress. Updated on 2026-11-02 against `master` at
+`be31682a6` in a dedicated worktree. Milestone status is recorded below.
 
 ## Motivation and scope
 
@@ -468,17 +467,17 @@ step-sizing sections for consistent scope and transitions.
 
 ### 1. Internal categorical scale geometry
 
-- [ ] Implement the shared internal band/point mapping, category-to-cut normalization, scale
+- [x] Implement the shared internal band/point mapping, category-to-cut normalization, scale
       composition, copy/inversion behavior, and disabled fast path. Keep public
       band-gap validation and specification types unchanged until milestone 2;
       ordinary consumers must never observe enabled gaps before they support them.
-- [ ] Verify direct scale behavior for string, numeric, and boolean categories;
+- [x] Verify direct scale behavior for string, numeric, and boolean categories;
       padded singleton/empty domains; reverse/align; reordered cuts; gap inversion;
       exhaustion and recovery. Retain existing headless categorical/index-gap
       regressions. Prefer representative contracts over setter-shape assertions.
-- [ ] Verify point zero bandwidth, outer padding, reversal, singleton placement,
+- [x] Verify point zero bandwidth, outer padding, reversal, singleton placement,
       exact-position inversion, and copy through the same implementation.
-- [ ] Document internal capability semantics; no changeset is needed for this
+- [x] Document internal capability semantics; no changeset is needed for this
       preparatory milestone without observable behavior changes.
 - Tentative commit: `refactor(core): prepare categorical band gap geometry`
 - **Review gate:** proposed public API, categorical identity, geometry, and the
