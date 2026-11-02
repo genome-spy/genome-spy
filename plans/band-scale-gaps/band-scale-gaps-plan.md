@@ -1,4 +1,4 @@
-# Grouping gaps for band scales
+# Grouping gaps for categorical positional scales
 
 Status: proposed; investigation and planning only. Updated on 2026-11-02 against
 `master` at `be31682a6` in a dedicated worktree. No runtime changes are part of
@@ -12,7 +12,9 @@ Index and locus scales already offer `gapPositions` and `gapWidth`, but enabling
 them on a band scale currently fails validation. Uniform `paddingInner` cannot
 express larger separators at selected group boundaries.
 
-Extend positional `band` scales with fixed CSS-pixel grouping gaps. Keep equal
+Extend positional `band` and `point` scales with fixed CSS-pixel grouping gaps.
+Point is the zero-bandwidth variant of band and shares its gap implementation.
+Keep equal
 cell bandwidths, category identities, explicit domain ordering, aligned axes,
 shared annotation tracks, picking, and export consistent. Support gaps on both
 heat-map axes, fixed/stretch dimensions, and step-based dimensions. Initially
@@ -20,8 +22,8 @@ reject automatically fitted categorical offset scales under a statically gapped
 primary band. Supporting those across unequal placements requires a separate
 renderer contract; ordinary heat-map cells do not need it.
 
-Non-goals: categorical zoom/pan or interval brushing; grouping gaps on `point`,
-`ordinal`, color, or offset scales; automatic clustering/group discovery; group
+Non-goals: categorical zoom/pan or interval brushing; grouping gaps on
+`ordinal`, nonpositional, or offset scales; automatic clustering/group discovery; group
 labels, dendrogram splitting, variable widths per cut, and new App sample-layout
 behavior. Preserve index/locus mapping and navigation. Correct their step-sized
 view extent to reserve gaps using the same accounting as their existing mapping.
@@ -68,7 +70,7 @@ view extent to reserve gaps using the same accounting as their existing mapping.
 
 ## Proposed public contract
 
-Reuse the existing properties. For a band scale, `gapPositions` lists **domain
+Reuse the existing properties. For a band or point scale, `gapPositions` lists **domain
 values before which a gap is inserted**, rather than numeric ranks:
 
 ```json
@@ -121,10 +123,14 @@ values before which a gap is inserted**, rather than numeric ranks:
   grouping gaps add pixels at selected boundaries. Cell bandwidth excludes both
   kinds of padding. `band` anchors always refer to the cell, never the following
   group gap. Explicit multi-category ranges may span a gap normally.
-- Keep the ordinary band lookup/copy/padding/alignment/inversion behavior.
+- Keep the ordinary band/point lookup/copy/padding/alignment/inversion behavior.
   Point inversion wholly within padding or a grouping gap returns `undefined`;
   `invertRange` returns only intersected categories in domain order.
-- Initially reject `round: true` with statically enabled band gaps. GenomeSpy's
+- Point scales keep zero bandwidth, outer-padding semantics, and exact-position
+  inversion; `band` anchors have no effect. Grouping gaps increase spacing
+  between point centers. Large symbols may extend into that spacing under their
+  ordinary geometry/picking rules; no symbol-size exclusion strip is promised.
+- Initially reject `round: true` with statically enabled categorical gaps. GenomeSpy's
   normalized positional ranges and existing GPU formulas do not provide a sound
   cross-renderer rounding contract. Do not silently accept conflicting rounding
   and fixed CSS-pixel widths. Disabled-gap band scales retain existing rounding.
@@ -133,11 +139,11 @@ values before which a gap is inserted**, rather than numeric ranks:
 
 ### A small categorical mapping, with shared cut infrastructure
 
-Add a Core band-scale implementation, tentatively
+Add a shared Core band/point implementation, tentatively
 `packages/core/src/scales/scaleBand.js`, integrated through `src/scale/scale.js`.
 Prefer composition with the existing Vega band constructor for ordinary setter,
-domain normalization, and disabled-gap behavior. Preserve the public type `band`
-and discrete traits. Do not build a general discontinuous-scale framework or
+domain normalization, and disabled-gap behavior. Preserve each public scale type
+and its discrete traits. Do not build a general discontinuous-scale framework or
 refactor the index navigation machinery as a prerequisite.
 
 Extend existing `gapMapping(extent)` with a shared forward contract: `position`,
@@ -155,7 +161,9 @@ That default is insufficient for automatically derived nested offset ranges,
 which are excluded initially. Do not claim arbitrary `scale()`/`bandwidth()`
 expressions become occurrence-local by updating renderer projection.
 
-For a nonempty domain of `n` categories, `m` effective internal cuts, pixel extent
+Use effective inner padding 1 for point scales; their native API omits
+`paddingInner()`. Reuse the categorical geometry with that value and point's
+outer padding. For a nonempty domain of `n` categories, `m` internal cuts, pixel extent
 `E`, and normalized output span `R`:
 
 ```text
@@ -210,6 +218,7 @@ E = S * D + gapWidth * M
 | Scale                 | D                                                                      | M                                                             |
 | --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Band                  | Vega `bandSpace(n, paddingInner, paddingOuter)`                        | Number of resolved internal cuts in the active ordered domain |
+| Point                 | Vega `bandSpace(n, 1, padding)`                                        | Same resolved category cuts as band                           |
 | Index/locus with gaps | `max(gapDomain ? EPSILON : 1, span - paddingInner + 2 * paddingOuter)` | `lastRank - firstRank` from the existing index mapping rules  |
 
 For index/locus, use the current internal half-open displayed domain, not the
@@ -225,6 +234,7 @@ Representative preferred plot extents (all use `S = 20`, `gapWidth = 8`):
 | Case                                                                    | E                                          |
 | ----------------------------------------------------------------------- | ------------------------------------------ |
 | Four unpadded band categories, one internal gap                         | `4 * 20 + 8 = 88 px`                       |
+| Four unpadded point categories, one internal gap                        | `3 * 20 + 8 = 68 px`                       |
 | Same, inner padding .2 and outer padding .1                             | `4 * 20 + 8 = 88 px`; cells are 16 px wide |
 | Same, inner padding .2 and outer padding .3                             | `4.4 * 20 + 8 = 96 px`                     |
 | Index internal domain `[10, 10.5]`, cut 10, ranks `[.5, 1]`, no padding | `.5 * 20 + .5 * 8 = 14 px`                 |
@@ -241,6 +251,9 @@ a padded index singleton with inner padding .8 would jump between a 20 px
 gap-aware extent and a 4 px legacy extent when a reactive gap is disabled.
 Do not replace Vega's padded-singleton divisor with index's minimum divisor, or
 rewrite unrelated constant-disabled/non-gapped index sizing in this feature.
+Empty/singleton point domains retain native behavior: no cuts at a lone category,
+zero bandwidth, and native alignment. Fix the existing step-sizing assumption
+that all categorical scales expose `paddingInner()` by using point's effective 1.
 
 This changes preferred content size, including implicit `config.view.step`.
 For a fixed/stretch dimension, keep its size and shrink cells to reserve gaps.
@@ -296,7 +309,7 @@ layout and is outside this feature.
 
 ### Axes and scale groups
 
-Extend `scaleGroups` deliberately to band scales so the existing automatic
+Extend `scaleGroups` deliberately to band/point scales so the existing automatic
 segmented-axis behavior remains available. Preserve all numeric half-open
 index/locus fields and semantics. For band axes, each row represents a contiguous
 category group; `Start` and `End` contain the categories at the lower and higher
@@ -304,6 +317,8 @@ numeric projected edges, respectively. Render with `band: 0` and `band: 1`.
 Swap endpoint categories when the scale range reverses; `Group` numbering stays
 in logical domain order. A singleton group has identical endpoint categories.
 These categorical endpoints are inclusive cell identifiers, not half-open indices.
+For point scales, endpoints are first/last point centers and a singleton group
+has a zero-length segment; do not invent cell extents around points.
 
 Update `ScaleGroupsData` JSDoc, source validation/publication, axis encodings, and
 lazy-source docs together. Depend on active domain, effective cuts, and range
@@ -368,6 +383,9 @@ duplication or a concrete correctness benefit; moving lines is not a reduction.
 - [D3 band scales](https://d3js.org/d3-scale/band) establish categorical band
   lookup, within-band anchors, and uniform padding. Preserve those concepts;
   selected fixed-pixel separators are an additional GenomeSpy capability.
+- [D3 point scales](https://d3js.org/d3-scale/point) are zero-bandwidth bands.
+  Vega's CPU factory and both GPU paths already share their band geometry.
+  Keep point as a thin variant with the same category cuts, not another gap engine.
 - [Vega band scales](https://vega.github.io/vega/docs/scales/#band-scales) distinguish
   fixed extent and fixed step. Follow the installed Vega implementation's exact
   geometry/inversion behavior rather than assuming all D3 formulas match.
@@ -400,7 +418,7 @@ and the internal sizing derivation in this plan.
 
 - **`docs/grammar/scale.md`, Grouping gaps:** start with the shared purpose of
   separating selected rows/columns and the distinction between fixed CSS-pixel
-  `gapWidth` and proportional `paddingInner`. Give band scales and index/locus
+  `gapWidth` and proportional `paddingInner`. Give band/point scales and index/locus
   scales separate subsections. Keep chromosome cuts, half-open numeric endpoints,
   navigation, and interval brushing under index/locus so they are not implied
   to apply to bands. Preserve shared-scale configuration guidance.
@@ -450,7 +468,7 @@ step-sizing sections for consistent scope and transitions.
 
 ### 1. Internal categorical scale geometry
 
-- [ ] Implement the internal band mapping, category-to-cut normalization, scale
+- [ ] Implement the shared internal band/point mapping, category-to-cut normalization, scale
       composition, copy/inversion behavior, and disabled fast path. Keep public
       band-gap validation and specification types unchanged until milestone 2;
       ordinary consumers must never observe enabled gaps before they support them.
@@ -458,6 +476,8 @@ step-sizing sections for consistent scope and transitions.
       padded singleton/empty domains; reverse/align; reordered cuts; gap inversion;
       exhaustion and recovery. Retain existing headless categorical/index-gap
       regressions. Prefer representative contracts over setter-shape assertions.
+- [ ] Verify point zero bandwidth, outer padding, reversal, singleton placement,
+      exact-position inversion, and copy through the same implementation.
 - [ ] Document internal capability semantics; no changeset is needed for this
       preparatory milestone without observable behavior changes.
 - Tentative commit: `refactor(core): prepare categorical band gap geometry`
@@ -492,6 +512,9 @@ step-sizing sections for consistent scope and transitions.
       and disposal on dynamic removal. Reuse existing grouped-bar tests for the
       unchanged non-gapped offset contract. Cover scrollable content with fixed
       viewport size using an existing layout test rather than a new harness.
+- [ ] Add one representative point-scale sizing/reversal regression: four
+      unpadded points at a 20 px base step and one 8 px gap need 68 px. Preserve
+      ordinary symbol geometry/picking and point-center guide endpoints.
 - [ ] Exercise real headless gapped specs through reorder/remove/reinsert,
       unchanged stable IDs, constant-disabled expressions, reactive enable/disable,
       and completed mapping observers. Review related tests for overlapping coverage.
@@ -550,6 +573,8 @@ step-sizing sections for consistent scope and transitions.
    shared placements and exports use their own allocated extent.
 6. Disabled gaps follow existing band behavior without gap shader/resources;
    exhausted placements recover cleanly. Index/locus regression suites pass.
+   Point scales share the categorical implementation, retain zero bandwidth,
+   and size their intervals rather than fictitious cells.
 7. The grammar example and sizing explanation let readers configure named-category
    gaps and predict plot size; generated references and documented restrictions
    agree with the implemented contract.
@@ -606,3 +631,6 @@ step-sizing sections for consistent scope and transitions.
   observers after scale configuration and keep static specialization stable.
   Extent-dependent gap expressions are explicitly outside the supported sizing
   contract; cheap enforcement of indirect dependencies remains an open question.
+- Point gaps are included at the user's request through the same categorical
+  implementation. The extra contracts are effective inner padding 1, zero
+  bandwidth, point-center guides, and native point inversion/singleton behavior.
