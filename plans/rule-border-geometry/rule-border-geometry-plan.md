@@ -1,6 +1,6 @@
 # Rule border geometry: bounded design and proof
 
-Status: qualification in progress; no production implementation.
+Status: bounded qualification complete; native candidate rejected; no production implementation.
 Base: `0feee7824` (the reviewed fill prerequisite in PR #644, pending review).
 Requirement: https://github.com/genome-spy/genome-spy/issues/604 .
 
@@ -101,21 +101,31 @@ archived outside Git at `rule-border-proof/` in this chat's artifact directory.
 
 ### Geometry and paint evidence
 
-A one-dimensional union of equal rounded intervals constructs the native
-silhouette for straight rules and their dashes. Outside expansion commutes with
-union, so nominal and expanded contours can be constructed independently.
+A one-dimensional union of equal rounded intervals is a promising construction
+for straight rules and positive-length dash fragments. Outside expansion
+commutes with union, so nominal and expanded contours can be constructed
+independently.
 An even-odd ring is valid only after forming each union; overlapping individual
 outer/hole contours are not a valid substitute. Selected wide-border probes
 preserve red interiors, paint the closed gap blue, and retain a genuine gap
 when the dash spacing is larger. This is promising geometry, not full renderer
-qualification.
+qualification. The prototype discards zero-length painted spans: for example,
+`intervals(40, 4, "round", [0, 8], 0)` returns no intervals. It therefore cannot
+represent native dotted round-cap strokes. Zero-on dashes were not included in
+the browser probes; the omission was confirmed directly in the interval helper,
+not with an additional browser test. Do not promote the prototype as a general
+dash implementation. Preserve the archived source and results as evidence of
+this rejected candidate.
 
 For straight horizontal edges, 24/24 numeric paint samples pass the outside
 coverage equation across Canvas and WebGPU at DPR 1/2: opaque, fractional fill,
 fractional stroke, common opacity, transparent stroke and subpixel border.
 The oracle uses unbordered coverage from the same actual backend to avoid
-assuming identical layout pixel alignment. SVG stays vector-only in its 12
-representative exports and shows the already accepted internal hairline.
+assuming identical layout pixel alignment. SVG stays vector-only in twelve
+horizontal butt-cap paint exports (six paint cases at two DPRs), which show the
+already accepted internal hairline. SVG cap/rotation, dash-union and ordinary
+dash-cap behavior were not tested by this runner. These exports do not qualify
+SVG geometry generally.
 
 Canvas fails the broader strict gate: only 4/12 cap/rotation seam cases pass.
 At an opaque shared edge that is fully inside the expanded contour, several
@@ -132,10 +142,12 @@ and broader browser qualification were not pursued. No outline API PR is ready.
 
 ### Existing backend findings
 
-- Native Canvas/SVG cap every dash; current WebGL/WebGPU apply caps to the whole
-  ribbon and cut internal dash ends flat. Actual unbordered probes confirm the
-  difference. Preserve current behavior while designing; do not silently select
-  a different nominal silhouette only when a border is visible.
+- Actual unbordered probes confirm that Canvas caps every dash, whereas current
+  WebGL/WebGPU cap the whole ribbon and cut internal dash ends flat. SVG 2's
+  stroke-shape specification also describes caps on dashes, but the runner did
+  not independently verify SVG's ordinary dashed output. Preserve current
+  behavior while designing; do not silently select a different nominal
+  silhouette only when a border is visible.
 - For a half-physical-pixel body with an opaque four-physical-pixel outside
   stroke, WebGPU's maximum alpha is 128 rather than 255 at both DPRs. Its thin
   body compensation currently multiplies the complete result. This belongs in
@@ -146,24 +158,39 @@ and broader browser qualification were not pursued. No outline API PR is ready.
   WebGPU end coverage changes at each fractional phase. MSAA supplies some
   intermediate coverage, so the current result is not strictly binary.
 
-## Small independently useful first PR candidate
+## Next decision for the outline work
 
-Before exposing rule borders, a bounded WebGL butt-end AA correction is a
-coherent GPU geometry prerequisite and works without PR #644's API addition.
-It would touch only the existing rule vertex/fragment shaders, a focused actual
-rendering regression using the existing Core runner, and a patch Changeset.
-Estimated runtime change: 20-40 lines; approximately 80-120 test lines. Measure
-the exact diff after qualification rather than treating this as a size promise.
+No border implementation PR is qualified. Keep the work focused on strict
+native composition: before another experiment, describe how one representation
+will produce consistent shared-edge coverage for both paints, with synchronous
+Canvas rendering and backend-owned resources. A single rotated solid rule with
+fractional paint opacity and an opaque internal-edge check is sufficient for
+its first gate. Do not recreate the six-context matrix or add more rendering
+machinery before that gate passes. No new representation is currently selected;
+the existing negative result stands until a concrete alternative is justified.
 
-Scope: extend the visible quad for end AA and shade the finite butt boundary;
-keep six vertices, size/thin-body policy, cap/minLength positions and dash phase.
-Picking must retain its existing geometric extent and datum IDs. Preserve
-round/square caps and ticks. No fill/stroke API, native painter, shared resource
-or dependency changes. Tentative commit:
-`fix(core): antialias WebGL rule butt ends`.
+Only after this coverage gate passes should the work return to complete dash
+geometry (including zero-on dotted patterns), occurrence order, bounds/picking,
+SVG limits and performance. Existing correctness and PNG budgets remain intact.
+Do not expose a partial API, change native/GPU cap semantics implicitly, or
+relax strict Canvas coverage to manufacture a small PR.
 
-Success: actual fractional endpoint coverage at DPR 1/2 on hardware and software
-WebGL, preserved neighboring cap/dash/minLength/tick/picking behavior, and no
-meaningful regression against the stated no-border performance budget. This
-candidate is proposed, not implemented. Native strict composition and the dash
-cap parity decision remain explicit blockers for the later public border PR.
+## Optional independent rendering defect
+
+WebGL's coarse butt-end coverage is a separately observed rendering defect.
+A finite SDF correction could be useful independently, but the proof does not
+establish it as a required prerequisite or the next step for rule outlines. It
+resolves none of the native composition, dash-cap or WebGPU thin-border issues.
+Do not start that fix as the default continuation of this plan. Any separate
+proposal must justify its user-visible benefit and verify picking, ticks,
+minLength, dash phase and performance on its own merits; no implementation or
+size commitment is made here.
+
+## Review reconciliation
+
+Three independent reviews supported stopping the failed candidate and the
+existing ownership boundaries. Applied their findings: removed the unsupported
+butt-AA prerequisite and size estimate, narrowed the dash-geometry claim to the
+positive-length cases actually probed, documented the dotted-pattern omission,
+and stated the exact SVG test scope. The raw archived source and numeric results
+remain unchanged. This is a planning/evidence correction with no release impact.
