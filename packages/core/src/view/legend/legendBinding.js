@@ -17,11 +17,15 @@ import deepEqual from "../../utils/deepEqual.js";
  * @prop {import("../../spec/parameter.js").PointSelectionConfig} select
  */
 
-/** Resolve explicit sources before constructing generated guides.
- * @param {import("../view.js").default[]} views
+/** Resolve sources throughout the hierarchy before constructing generated guides.
+ * @param {import("../view.js").default} viewRoot
  */
-export function resolveLegendBindings(views) {
-    const authored = views.filter((view) => !isInChromeSubtree(view));
+export function resolveLegendBindings(viewRoot) {
+    const authored = viewRoot
+        .getLayoutAncestors()
+        .at(-1)
+        .getDescendants()
+        .filter((view) => !isInChromeSubtree(view));
     const resolutions = new Set(
         authored.flatMap((view) => Object.values(view.resolutions.legend))
     );

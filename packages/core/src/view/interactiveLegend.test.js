@@ -179,7 +179,7 @@ function panel(name, params) {
     };
 }
 
-test("shared legend captures the binding ref despite another contributor's shadowed name", async () => {
+test("shared legend preserves the binding ref through shadowing and source removal", async () => {
     const { root, views } = await createTestEmbed({
         config: { legend: { disable: false, symbolOpacity: 1 } },
         params: [
@@ -239,6 +239,81 @@ test("shared legend captures the binding ref despite another contributor's shado
     expect(rows.map((row) => symbols.mark.encoders.strokeOpacity(row))).toEqual(
         [0.35, 1]
     );
+
+    // The outer selection survives its first writer's removal.
+    await views.remove({ scope: [], view: "writer" });
+    const legend = root
+        .getDescendants()
+        .find((view) => view instanceof LegendView);
+    const entry = /** @type {UnitView} */ (
+        legend.getDescendants().find((view) => view.name === "entries")
+    );
+    const first = Array.from(entry.getCollector().getData())[0];
+    legend.handleInteraction(pickedEvent("click", entry, first), false);
+    expect(focus.getValue().values).toEqual([["A"]]);
+
+    await views.remove({ scope: [], view: "otherWriter" });
+    expect(
+        root
+            .getDescendants()
+            .find((view) => view instanceof LegendView)
+            .isPickingSupported()
+    ).toBe(false);
+});
+
+test("inserted sources bind ancestor legends and reject competing bindings", async () => {
+    const { root, views } = await createTestEmbed({
+        name: "plots",
+        config: { legend: { disable: false } },
+        params: [
+            {
+                name: "focus",
+                select: { type: "point", encodings: ["color"] },
+            },
+        ],
+        resolve: { scale: { color: "shared" }, legend: { color: "shared" } },
+        hconcat: [panel("existing", [])],
+    });
+    await views.insert(
+        { scope: [], view: "plots" },
+        panel("writer", [
+            {
+                name: "focus",
+                select: { type: "point", encodings: ["color"] },
+                push: "outer",
+                bind: "legend",
+            },
+        ])
+    );
+    const focus = views.root().params.getSelection("focus");
+    const clickFirstEntry = () => {
+        const legend = root
+            .getDescendants()
+            .find((view) => view instanceof LegendView);
+        const entry = /** @type {UnitView} */ (
+            legend.getDescendants().find((view) => view.name === "entries")
+        );
+        const row = Array.from(entry.getCollector().getData())[0];
+        legend.handleInteraction(pickedEvent("click", entry, row), false);
+        expect(focus.getValue()).toMatchObject({ values: [["A"]] });
+    };
+    clickFirstEntry();
+
+    // Validation must include existing siblings, and rollback must restore their binding.
+    await expect(
+        views.insert(
+            { scope: [], view: "plots" },
+            panel("competitor", [
+                {
+                    name: "other",
+                    select: { type: "point", encodings: ["color"] },
+                    bind: "legend",
+                },
+            ])
+        )
+    ).rejects.toThrow(/competing selections/);
+    focus.clear();
+    clickFirstEntry();
 });
 
 test("collected independent legends retain local selection and scale ownership", async () => {
