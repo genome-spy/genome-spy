@@ -534,3 +534,26 @@ export function decodeGradientIntervals(intervals) {
         ])
     );
 }
+
+/** Validate logical numeric bounds at API and persistence boundaries.
+ * @param {Record<string, any>} intervals
+ * @param {import("../spec/parameter.js").GradientSelectionChannel} component
+ */
+export function validateGradientIntervals(intervals, component) {
+    const bounds = intervals?.[component];
+    if (
+        !intervals ||
+        Object.keys(intervals).length !== 1 ||
+        bounds === undefined ||
+        (bounds !== null &&
+            (!Array.isArray(bounds) ||
+                bounds.length !== 2 ||
+                !Number.isFinite(bounds[0]) ||
+                !(Number.isFinite(bounds[1]) || bounds[1] === Infinity) ||
+                bounds[0] > bounds[1]))
+    ) {
+        throw new Error(
+            `Interval requires a finite lower and finite or unbounded upper endpoint for "${component}".`
+        );
+    }
+}

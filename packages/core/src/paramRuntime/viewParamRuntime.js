@@ -11,7 +11,10 @@ import {
     isSelectionParameter,
     validateParameterName,
 } from "./paramUtils.js";
-import { asSelectionConfig } from "../selection/selection.js";
+import {
+    asSelectionConfig,
+    isGradientSelectionChannel,
+} from "../selection/selection.js";
 
 export {
     activateExprRefProps,
@@ -893,7 +896,15 @@ export default class ViewParamRuntime {
         const owner = this.findRuntimeForParam(name);
         let state = owner.#intervalStates.get(name);
         if (!state) {
-            state = new IntervalSelectionState(owner, name);
+            const declaration = owner.#selectionDeclarations
+                .get(name)
+                ?.values()
+                .next().value;
+            state = new IntervalSelectionState(
+                owner,
+                name,
+                declaration?.components.find(isGradientSelectionChannel)
+            );
             owner.#intervalStates.set(name, state);
         }
         return state;

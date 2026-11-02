@@ -2,6 +2,7 @@ import { createNormalizedScale } from "../../scales/legendGradientMapping.js";
 import { IntervalSelectionController } from "../gridView/intervalSelectionController.js";
 import Rectangle from "../layout/rectangle.js";
 import { format as numberFormat } from "d3-format";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /** @param {import("./legendBinding.js").LegendBinding} binding */
 export function gradientBrushLayers(binding) {
@@ -12,6 +13,10 @@ export function gradientBrushLayers(binding) {
     const mark = { ...select.mark };
     delete mark.zindex;
     delete mark.measure;
+    for (const [key, value] of Object.entries(mark)) {
+        if (isExprRef(value))
+            Object.assign(mark, { [key]: { expr: "legendBrushStyle_" + key } });
+    }
     return {
         name: "gradientBrush",
         data: { values: [{}] },
@@ -33,8 +38,9 @@ export function gradientBrushLayers(binding) {
  * @param {import("../legendView.js").default} legend
  * @param {import("./legendBinding.js").LegendBinding} binding
  * @param {import("../unitView.js").default[]} units
+ * @param {string} [format]
  */
-export function bindGradientLegend(legend, binding, units) {
+export function bindGradientLegend(legend, binding, units, format) {
     const { name, runtime, component } = binding;
     const select =
         /** @type {import("../../spec/parameter.js").IntervalSelectionConfig} */ (
@@ -43,6 +49,14 @@ export function bindGradientLegend(legend, binding, units) {
     const ramp = units.find((unit) => unit.name === "gradientRamp");
     const resolution = legend.getScaleResolution(component);
     const horizontal = legend.legendProps.direction === "horizontal";
+    for (const [key, value] of Object.entries(select.mark ?? {})) {
+        if (isExprRef(value))
+            legend.paramRuntime.registerScopedExpression(
+                "legendBrushStyle_" + key,
+                value.expr,
+                runtime
+            );
+    }
     const getDomain = () => {
         const domain = resolution.getDomain().map(Number);
         return /** @type {[number, number]} */ ([
@@ -84,7 +98,7 @@ export function bindGradientLegend(legend, binding, units) {
         name: "legendBrushCursor",
         value: horizontal ? "text" : "vertical-text",
     });
-    const format = numberFormat(".3~g");
+    const formatBound = numberFormat(format ?? ".3~g");
     legend.paramRuntime.registerComputed(
         "legendBrush",
         () => [runtime.getParamRef(name), resolution.getMappingRef()],
@@ -106,8 +120,10 @@ export function bindGradientLegend(legend, binding, units) {
                 end: Math.max(a, b),
                 label: bounds
                     ? bounds[1] === Infinity
-                        ? "≥ " + format(bounds[0])
-                        : format(bounds[0]) + " – <" + format(bounds[1])
+                        ? ">= " + formatBound(bounds[0])
+                        : formatBound(bounds[0]) +
+                          " to <" +
+                          formatBound(bounds[1])
                     : "All scores",
             };
         }

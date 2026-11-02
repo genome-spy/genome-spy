@@ -6,6 +6,7 @@ import {
     decodeGradientIntervals,
     isIntervalSelectionConfig,
     isPointSelectionConfig,
+    isGradientSelectionChannel,
 } from "../selection/selection.js";
 import { createRulerValue } from "../ruler/rulerValue.js";
 import { createCategorySelection } from "../selection/categorySelection.js";
@@ -161,6 +162,17 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
             return clearPointSelection(select);
         }
         if (isIntervalSelectionConfig(select)) {
+            if (
+                select.encodings?.some(isGradientSelectionChannel) &&
+                (!("bind" in param) ||
+                    param.bind !== "legend" ||
+                    select.encodings.length !== 1 ||
+                    select.extent !== undefined)
+            ) {
+                throw new Error(
+                    `Numeric interval "${param.name}" requires one legend-bound color, fill, or stroke component without an extent.`
+                );
+            }
             if (!select.encodings) {
                 throw new Error(
                     'Interval selection "' +

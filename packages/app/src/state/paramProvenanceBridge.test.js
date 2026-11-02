@@ -178,6 +178,104 @@ async function getShowMessageDialogMock() {
 }
 
 describe("ParamProvenanceBridge", () => {
+    it("round-trips open numeric ranges through bookmark JSON and undo/redo before a host exists", async () => {
+        vi.useFakeTimers();
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "activation",
+            select: { type: "interval", encodings: ["color"] },
+            bind: "legend",
+        });
+        const store = createStore();
+        const bridge = createBridge(view, store, new IntentExecutor(store));
+        const selector = { scope: [], param: "activation" };
+        const key = makeParamSelectorKey(selector);
+        const settle = async () => {
+            await view.paramRuntime.whenPropagated();
+            vi.advanceTimersByTime(200);
+            await bridge.whenApplied();
+        };
+        try {
+            view.paramRuntime.setValue("activation", {
+                type: "interval",
+                intervals: { color: [0.3, Infinity] },
+            });
+            await settle();
+            const entry =
+                store.getState().provenance.present.paramProvenance.entries[
+                    key
+                ];
+            expect(entry.value).toEqual({
+                type: "interval",
+                intervals: { color: [0.3, "Infinity"] },
+            });
+            const bookmark = decompressFromUrlHash(
+                compressToUrlHash({
+                    actions: [paramProvenanceSlice.actions.paramChange(entry)],
+                })
+            );
+
+            view.paramRuntime.getIntervalSelectionState("activation").clear();
+            await settle();
+            store.dispatch(ActionCreators.undo());
+            await settle();
+            expect(
+                view.paramRuntime.getValue("activation").intervals.color
+            ).toEqual([0.3, Infinity]);
+            store.dispatch(ActionCreators.redo());
+            await settle();
+            expect(
+                view.paramRuntime.getValue("activation").intervals.color
+            ).toBeNull();
+            store.dispatch(bookmark.actions[0]);
+            await settle();
+            expect(
+                view.paramRuntime.getValue("activation").intervals.color
+            ).toEqual([0.3, Infinity]);
+        } finally {
+            bridge.dispose();
+            view.paramRuntime.dispose();
+            vi.useRealTimers();
+        }
+    });
+
+    it("rejects malformed numeric bookmark bounds before publication", async () => {
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "activation",
+            select: { type: "interval", encodings: ["color"] },
+            bind: "legend",
+            value: { color: [0.2, "Infinity"] },
+        });
+        const store = createStore();
+        const bridge = createBridge(view, store, new IntentExecutor(store));
+        try {
+            for (const color of [
+                [0.2, null],
+                ["Infinity", 1],
+                [0.2, "infinity"],
+                [0.8, 0.2],
+            ]) {
+                store.dispatch(
+                    paramProvenanceSlice.actions.paramChange({
+                        selector: { scope: [], param: "activation" },
+                        value: /** @type {any} */ ({
+                            type: "interval",
+                            intervals: { color },
+                        }),
+                    })
+                );
+                await bridge.whenApplied();
+                expect(
+                    view.paramRuntime.getValue("activation").intervals.color
+                ).toEqual([0.2, Infinity]);
+            }
+        } finally {
+            bridge.dispose();
+            view.paramRuntime.dispose();
+        }
+    });
+
     it("captures shared raw categories and replays URL state, clear, undo, and redo without data lookup", async () => {
         vi.useFakeTimers();
         const { root, views } = await createTestEmbed({

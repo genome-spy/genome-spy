@@ -1,3 +1,5 @@
+import { isGradientSelectionChannel } from "@genome-spy/core/selection/selection.js";
+
 /**
  * Serializes a bookmarkable param value so it matches the provenance shape.
  *
@@ -40,6 +42,14 @@ function serializeIntervals(view, intervals) {
 
     for (const [channel, interval] of Object.entries(intervals)) {
         if (!interval) {
+            continue;
+        }
+
+        if (isGradientSelectionChannel(channel)) {
+            copy[channel] = [
+                interval[0],
+                interval[1] === Infinity ? "Infinity" : interval[1],
+            ];
             continue;
         }
 

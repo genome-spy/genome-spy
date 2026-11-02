@@ -13,6 +13,9 @@ import {
     isSinglePointSelection,
     isCategorySelection,
     resolvePointSelectionFromKeyTuples,
+    decodeGradientIntervals,
+    isGradientSelectionChannel,
+    validateGradientIntervals,
 } from "@genome-spy/core/selection/selection.js";
 import { categorySelectionFromTuples } from "@genome-spy/core/selection/categorySelection.js";
 import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
@@ -861,20 +864,34 @@ export default class ParamProvenanceBridge {
                 const selection = /** @type {any} */ (
                     createIntervalSelection(select.encodings)
                 );
-                this.#applyIntervals(
-                    entry.view,
-                    selection,
-                    storedValue.intervals
-                );
-
-                const originIntervals = this.#resolveOriginIntervals(
-                    storedEntry.origin
-                );
-                if (originIntervals) {
-                    this.#applyIntervals(
-                        entry.view,
-                        selection,
-                        originIntervals
+                try {
+                    const component = select.encodings?.find(
+                        isGradientSelectionChannel
+                    );
+                    const intervals = decodeGradientIntervals(
+                        storedValue.intervals
+                    );
+                    if (component)
+                        validateGradientIntervals(intervals, component);
+                    this.#applyIntervals(entry.view, selection, intervals);
+                    const originIntervals = this.#resolveOriginIntervals(
+                        storedEntry.origin
+                    );
+                    if (originIntervals)
+                        this.#applyIntervals(
+                            entry.view,
+                            selection,
+                            originIntervals
+                        );
+                    if (component)
+                        validateGradientIntervals(
+                            selection.intervals,
+                            component
+                        );
+                } catch (error) {
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
+                        `cannot be restored: ${error.message}`
                     );
                 }
 
@@ -1081,7 +1098,9 @@ export default class ParamProvenanceBridge {
                     /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
                         channel
                     );
-                const resolution = view.getScaleResolution(channelWithScale);
+                const resolution = isGradientSelectionChannel(channel)
+                    ? undefined
+                    : view.getScaleResolution(channelWithScale);
                 selection.intervals[channel] = [
                     resolution?.fromComplex
                         ? resolution.fromComplex(interval[0])

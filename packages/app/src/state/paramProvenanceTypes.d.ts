@@ -1,6 +1,9 @@
 import type { Scalar } from "@genome-spy/core/spec/channel.js";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
-import type { CategorySelectionChannel } from "@genome-spy/core/spec/parameter.js";
+import type {
+    CategorySelectionChannel,
+    GradientSelectionChannel,
+} from "@genome-spy/core/spec/parameter.js";
 import type {
     ParamSelector,
     ViewSelector,
@@ -42,7 +45,13 @@ export type ParamValueInterval = {
             "x" | "y",
             [number, number] | [ChromosomalLocus, ChromosomalLocus] | null
         >
-    >;
+    > &
+        Partial<
+            Record<
+                GradientSelectionChannel,
+                [number, number | "Infinity"] | null
+            >
+        >;
 };
 
 export type ParamValueRecordPoint = {

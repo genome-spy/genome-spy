@@ -6,6 +6,7 @@ import {
     faWrench,
 } from "@fortawesome/free-solid-svg-icons";
 import { formatInterval } from "../sampleView/attributeAggregation/intervalFormatting.js";
+import { isGradientSelectionChannel } from "@genome-spy/core/selection/selection.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import {
     resolveParamSelector,
@@ -158,7 +159,14 @@ function formatParamActionTitle(action, view, selector, value, origin, root) {
         const y = intervals.y;
         const xLabel = x && view ? formatInterval(view, x) : formatRange(x);
         const yLabel = y ? formatRange(y) : null;
-        const intervalLabel = formatIntervalSummary(xLabel, yLabel);
+        const numeric = Object.entries(intervals).find(([channel]) =>
+            isGradientSelectionChannel(channel)
+        )?.[1];
+        const intervalLabel = numeric
+            ? numeric[1] === "Infinity"
+                ? "(≥ " + numeric[0] + ")"
+                : "(" + numeric[0] + " – <" + numeric[1] + ")"
+            : formatIntervalSummary(xLabel, yLabel);
 
         if (!intervalLabel) {
             return html`Clear selection

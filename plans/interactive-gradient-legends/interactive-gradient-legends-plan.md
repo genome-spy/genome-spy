@@ -156,7 +156,7 @@ Keep stored bounds when the source or domain changes. Clip domain bounds to the
 visible ramp before projecting overlay coordinates, so `+Infinity` never enters
 layout, position-scale inversion, or log/linear gesture arithmetic. Labels show
 the stored semantics: finite ranges retain their exclusive upper label, while
-an unbounded upper endpoint shows `≥ lo`, including when the visible overlay is
+an unbounded upper endpoint shows `>= lo`, including when the visible overlay is
 partial or absent. Cancel an active drag if its mapping/domain or host changes.
 
 Translation and wheel resize start from the finite visible interval and reuse
@@ -303,7 +303,7 @@ chrome lifecycle. Any local geometry expressions derive from the native interval
 through the same position helper; they are not a separately writable parameter.
 
 Render a visible brush and readable lower/upper numeric labels with the ordinary
-generated rect/rule/text path; unbounded ranges show `≥ lo`. Reserve label space
+generated rect/rule/text path; unbounded ranges show `>= lo`. Reserve label space
 in legend layout and respect authored brush/legend styling. Keep the full ramp
 and ticks as a stable color key; do not add responsive ramp dimming in this first
 implementation. If generated
@@ -405,7 +405,7 @@ than leave compatibility wrappers or overlapping assertions.
   illustrative immune cells with shape/cell-type selection AND color/activation
   interval. Clearly label synthetic coordinates/scores, show a stable explicit
   color domain, an exact upper-maximum row, and one finite score above that domain.
-  Explain half-open interior bounds, `≥ lo` at the greater end, cursor cues, and
+  Explain half-open interior bounds, `>= lo` at the greater end, cursor cues, and
   move/resize back to a finite range. Reuse/extend the small existing immune-cell
   fixture where useful; follow `examples/README.md` portable paths. Supplement
   with a focused log/reversed/shared-host spec under `examples/core/` if it
@@ -418,17 +418,17 @@ than leave compatibility wrappers or overlapping assertions.
 
 ## Final integration and acceptance
 
-- [ ] The polished immune-cell example works in WebGL and WebGPU: choose T cells,
+- [x] The polished immune-cell example works in WebGL and WebGPU: choose T cells,
       brush activation, translate/resize it, and clear independently. Only the
       native predicate intersection highlights; record selection and a spatial
       brush still work. Check titles/padding/other legends are inert for this range.
-- [ ] Representative linear and log examples produce expected numeric bounds,
+- [x] Representative linear and log examples produce expected numeric bounds,
       including a geometric midpoint for log, reversed vertical dragging, the
       numeric-maximum edge in either screen direction, exact-maximum and higher
       finite rows, and nonfinite/missing inputs. Interior upper bounds remain
       exclusive; returning an open edge inward restores a finite upper bound.
       Explicit numeric filters agree; legacy positional endpoint behavior stays.
-- [ ] Two explicit compatible hosts share values and project independently.
+- [x] Two explicit compatible hosts share values and project independently.
       Reading values and expressions needs no host selection. Only containment
       requires unambiguous geometry. A drag produces no premature or duplicate
       commit from idle hosts; API writes/clear and disposal prevent stale replay.
@@ -436,23 +436,23 @@ than leave compatibility wrappers or overlapping assertions.
       `Infinity` for both hosts. Moving inward on the second writes a finite upper
       bound; clipping it on the first does not promote it. Initialization, reads,
       domain changes, no-op input, and idle observers never reinterpret either value.
-- [ ] Bookmark capture/restore and undo/redo retain logical components and numeric
+- [x] Bookmark capture/restore and undo/redo retain logical components and numeric
       bounds without row keys, including `Infinity` via its explicit JSON token.
       Source/domain replacement retains stored bounds and clips only the overlay;
       it never promotes a finite bound or caps an unbounded one. Existing genomic
       endpoint snapshots and persisted formats still work.
-- [ ] A horizontal ramp suggests brushing with a vertical I-beam (`text`), and
+- [x] A horizontal ramp suggests brushing with a vertical I-beam (`text`), and
       a vertical ramp uses a horizontal I-beam (`vertical-text`). Existing brush
       move/grabbing and authored cursor precedence work; inert legend areas and
       disposal do not leave a brushing cursor active.
-- [ ] WebGL/WebGPU pixels and input behavior agree with native membership;
+- [x] WebGL/WebGPU pixels and input behavior agree with native membership;
       Canvas2D feedback and actual SVG export retain the full gradient, brush,
       and readable endpoints. SVG optimization does not consume overlay/label marks.
-- [ ] Repeated appearance-only brushing reuses chart input buffers, bounds update
+- [x] Repeated appearance-only brushing reuses chart input buffers, bounds update
       resources independently of row count, and chart/ramp dataflow and color
       domains stay unchanged. Gradient focus preserves the semantic sample;
       ordinary record/positional preservation still works in mixed predicates.
-- [ ] Focused Vitest suites pass with `--reporter=agent`. Run workspace type checks,
+- [x] Focused Vitest suites pass with `--reporter=agent`. Run workspace type checks,
       lint, schema/API/docs checks, existing browser renderer probes, and release
       checks appropriate to the final diff. Expand testing for a concrete failure
       or unresolved risk, without creating a renderer/configuration cross-product.
@@ -525,3 +525,51 @@ TypeScript, changed-source lint, schema/API generation, and release checks pass.
 The browser probe exercises actual gestures, native cursor picking, authoritative
 replacement, and SVG feedback on Canvas, WebGL, and WebGPU. Remaining composition,
 persistence, retained-resource, and example checks belong to milestone 3.
+
+## Milestone 3 integration notes
+
+Open upper bounds are encoded as the explicit JSON token only at the initializer
+and App persistence boundary. Bookmark URL JSON and undo/redo restore numeric
+Infinity before any host exists; malformed numeric bounds are rejected before
+publication. The synthetic immune-cell fixture now includes numeric scores,
+including exact-maximum and above-domain rows, without changing its categorical
+columns.
+
+Visual verification caught and corrected a detached color resolution in the new
+feedback container and negative rectangle extents in vertical brush picking.
+Range feedback uses ASCII `>= lo` and `lo to <hi`: the bundled WebGL bitmap font
+contains only ASCII and would render mathematical glyphs as question marks. This
+replaces the exact mathematical-glyph label requirement without changing bounds.
+
+## Milestone 3 checkpoint and final verification
+
+The implementation uses one native interval value, one owner-level completion
+state, and the existing gesture controller. It does not add renderer APIs or a
+second selection state machine. The controller is 820 lines versus 788 on the
+base branch; its host-independent state (136 lines) and gradient binding (179
+lines) make shared semantic ownership and guide projection explicit. The shared
+normalized mapping replaces the previous source-local implementation.
+
+Validation completed:
+
+- Full Vitest suite: 574 files, 5,475 tests passed; one skipped and two existing
+  todo cases. Focused Core and App regression suites also pass.
+- The real browser probe passes on Canvas, WebGL, and WebGPU. It verifies actual
+  point opacity/picking, drag/translate/wheel/clear, horizontal and vertical
+  cursor cues, cancellation, exported SVG feedback, and the synthetic immune-cell
+  category/range intersection. Repeated updates on 100,000 rows preserve chart
+  buffers, collectors, ramp samples, semantic samples, other selections, and domain.
+- Core, App, App-agent, Inspector, Playground, and WebGPU type checks pass. The
+  workspace-wide command reports an existing missing `react-dom/client` type
+  declaration in embed-examples; no feature code depends on that workspace.
+- Lint, schema generation, API generation, generated type-table checks, and
+  changeset policy checks pass. The existing fixed release group advances to
+  1.3.0 (minor); Core and App are directly affected.
+
+The acceptance list is reconciled by the native state/controller tests, authored
+specification tests, actual renderer probe, and visual inspection. Exhaustive
+renderer/DPR/orientation combinations are intentionally omitted; representative
+horizontal and vertical interaction covers the contract. The precise glyph form
+is replaced by the ASCII labels explained above. No issue comment is required
+for delivery: the decisions are recorded in the committed plan and grammar docs.
+Keep this reconciled plan on the feature branch until pre-merge retirement.

@@ -23,7 +23,8 @@ export function zoomDomainByScaleType(
 ) {
     const onUnsupported = options.onUnsupported ?? "throw";
 
-    switch (scale.type) {
+    // Continuous color scales use the same transforms with a Vega type prefix.
+    switch (scale.type.replace(/^(sequential|diverging)-/, "")) {
         case "linear":
         case "index":
         case "locus":

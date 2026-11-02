@@ -170,6 +170,10 @@ export class IntervalSelectionController {
         );
         for (const resolution of Object.values(scaleResolutions)) {
             const cancel = () => this.#cancelActiveDrag();
+            if (ramp) {
+                this.#scaleDisposers.push(resolution.observeMapping(cancel));
+                continue;
+            }
             resolution.addEventListener("domain", cancel);
             this.#scaleDisposers.push(() =>
                 resolution.removeEventListener("domain", cancel)
@@ -263,11 +267,18 @@ export class IntervalSelectionController {
                 const [min, max] = ramp.getDomain();
                 const visible = (/** @type {number} */ value) =>
                     Math.max(min, Math.min(max, value));
-                const previous = selectionExpr().intervals[component];
+                const previous = /** @type {[number, number] | null} */ (
+                    selectionExpr().intervals[component]
+                );
+                const scale = ramp.getScale();
                 if (
                     previous &&
-                    visible(previous[0]) === bounds[0] &&
-                    visible(previous[1]) === bounds[1]
+                    previous.every(
+                        (value, index) =>
+                            Math.abs(
+                                scale(visible(value)) - scale(bounds[index])
+                            ) < 1e-12
+                    )
                 )
                     return;
                 if (bounds[0] < bounds[1] && bounds[1] === max)

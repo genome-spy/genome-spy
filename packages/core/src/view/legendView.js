@@ -800,12 +800,16 @@ export function createGradientLegendSpec({
                 ...gradientBrushLayers(binding),
                 encoding: {
                     [p]: {
-                        datum: { expr: "legendBrush.start" },
+                        datum: {
+                            expr: h ? "legendBrush.start" : "legendBrush.end",
+                        },
                         type: "quantitative",
                         scale: ps,
                     },
                     [p2]: {
-                        datum: { expr: "legendBrush.end" },
+                        datum: {
+                            expr: h ? "legendBrush.end" : "legendBrush.start",
+                        },
                         type: "quantitative",
                         scale: ps,
                     },
@@ -867,6 +871,9 @@ export function createGradientLegendSpec({
                 field: "label",
                 limit: { expr: "width" },
                 fontSize: labelFontSize,
+                font: legend.labelFont,
+                fontStyle: legend.labelFontStyle,
+                fontWeight: legend.labelFontWeight,
             },
         ],
         mark: {
@@ -875,6 +882,9 @@ export function createGradientLegendSpec({
             baseline: "middle",
             size: labelFontSize,
             color: legend.labelColor,
+            font: legend.labelFont,
+            fontStyle: legend.labelFontStyle,
+            fontWeight: legend.labelFontWeight,
         },
         encoding: {
             x: { value: 0 },
@@ -885,7 +895,13 @@ export function createGradientLegendSpec({
     return createLegendRootSpec(
         legend,
         /** @type {import("../spec/view.js").ViewSpec} */ (
-            binding ? { vconcat: [body, feedback], spacing: 0 } : body
+            binding
+                ? {
+                      vconcat: [body, feedback],
+                      spacing: 0,
+                      resolve: { scale: { [channel]: "forced" } },
+                  }
+                : body
         ),
         context,
         [channel]
@@ -1215,6 +1231,9 @@ export default class LegendView extends ContainerView {
     /** @type {import("./legend/legendBinding.js").LegendBinding | undefined} */
     #binding;
 
+    /** @type {string | undefined} */
+    #format;
+
     #effectiveExtent;
 
     /** @type {import("./view.js").default | undefined} */
@@ -1310,6 +1329,7 @@ export default class LegendView extends ContainerView {
 
         this.needsAxes = { x: false, y: false };
         this.#binding = binding;
+        this.#format = format;
         this.legendProps = legend;
         this.#type = type ?? "symbol";
         this.#effectiveExtent = getMinimumLegendExtent(
@@ -1365,7 +1385,10 @@ export default class LegendView extends ContainerView {
             (this.#type === "gradient" ? bindGradientLegend : bindLegend)(
                 this,
                 this.#binding,
-                this.getDescendants().filter((view) => view instanceof UnitView)
+                this.getDescendants().filter(
+                    (view) => view instanceof UnitView
+                ),
+                this.#format
             );
         }
 

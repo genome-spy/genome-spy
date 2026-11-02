@@ -72,7 +72,7 @@ export function resolveLegendBindings(viewRoot) {
                 !matches.length
             ) {
                 throw new Error(
-                    `Legend binding "${param.name}" requires an unambiguous categorical symbol legend in its declaring scope.`
+                    `Legend binding "${param.name}" requires an unambiguous ${gradient ? "quantitative gradient" : "categorical symbol"} legend in its declaring scope.`
                 );
             }
             const binding = {

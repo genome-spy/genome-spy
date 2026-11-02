@@ -135,7 +135,7 @@ brushing along the ramp; an existing brush shows its move cursor.
 
 Interior ranges include their lower endpoint and exclude the upper endpoint.
 Reaching the numeric maximum removes the upper limit: the feedback reads
-`≥ 0.3`, and values above the displayed maximum also match. Moving or resizing
+`>= 0.3`, and values above the displayed maximum also match. Moving or resizing
 that edge inward restores a finite upper bound. Clearing removes both bounds.
 Domain changes preserve stored bounds and clip only the visible brush.
 
@@ -156,6 +156,18 @@ An initial range uses `value: {color: [0.3, 0.7]}`. The upper token `"Infinity"`
 requests no upper limit, for example `value: {color: [0.3, "Infinity"]}`. Runtime
 APIs use the numeric `Infinity` value instead. Gradient interval legend binding
 is a GenomeSpy extension to Vega-Lite's symbol-legend binding.
+
+This example combines cell-type categories with a numeric activation range.
+Interior upper bounds are exclusive; brushing to the ramp's greater end shows
+`>= lo` and includes the scores at and above 1. Move the brush or resize it with
+the wheel to return to a finite range. The ramp uses an I-beam cursor along its
+active direction; an existing brush uses move/grabbing cues.
+
+EXAMPLE examples/docs/grammar/legend/interactive-gradient-legend.json
+
+!!! disclaimer ""
+
+    Cell types, embedding coordinates, and activation scores are synthetic.
 
 ## Configuration
 
