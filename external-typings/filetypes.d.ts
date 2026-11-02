@@ -13,6 +13,11 @@ declare module "*.png" {
     export default value;
 }
 
+declare module "*.webp" {
+    const url: string;
+    export default url;
+}
+
 declare module "*?raw" {
     const content: string;
     export default content;

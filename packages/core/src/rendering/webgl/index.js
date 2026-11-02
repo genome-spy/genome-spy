@@ -1,4 +1,4 @@
-import latoRegularBitmap from "./fonts/Lato-Regular.png";
+import latoRegularBitmap from "./fonts/Lato-Regular.webp";
 import WebGLHelper, { readPickingPixel } from "./gl/webGLHelper.js";
 import RenderCoordinator from "./renderCoordinator.js";
 import { exportCanvas, exportRaster } from "./canvasExport.js";
